@@ -1,0 +1,5 @@
+-- Run in a transaction against the greenfield audit project and always roll back.
+-- Covers: eligibility/cross-team denial, stale squad, duplicate command,
+-- guardian acting-as scope, expired/replayed token, delivery/domain separation,
+-- and explicit unknown attendance. Fixed fixture prefix: 84000000-... .
+-- The executed hosted matrix and result are recorded in S04 evidence.

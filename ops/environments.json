@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "environments": {
+    "audit": {
+      "supabaseProjectRef": "hgcshgunvooyudvrcpig",
+      "firebaseProject": "teamzoneapp-b02a2",
+      "flutterOrigin": "https://app.teamzoneapp.se",
+      "publicOrigin": "https://public.teamzoneapp.se"
+    },
+    "production": {
+      "status": "not_provisioned",
+      "supabaseProjectRef": null,
+      "firebaseProject": null,
+      "flutterOrigin": "https://app.teamzoneapp.se",
+      "publicOrigin": "https://teamzoneapp.se"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "generated_at": "2026-08-22",
+  "repository": "C:/Dev/TeamzoneApp",
+  "source_revision": null,
+  "source_revision_note": "The greenfield workspace has no initial Git commit yet.",
+  "target": {
+    "supabase_project_ref": "hgcshgunvooyudvrcpig",
+    "firebase_project": "teamzoneapp-b02a2",
+    "client_origin": "https://app.teamzoneapp.se"
+  },
+  "migration_range": {
+    "first": "20260807163737_s01_platform_identity_context.sql",
+    "last": "20260822090354_s10b_board_effective_period.sql"
+  },
+  "slices": [
+    {"id":"S00","status":"verified","evidence":"docs/evidence/s00_bootstrap_2026-08-07.md"},
+    {"id":"S01","status":"verified","evidence":"docs/evidence/s01_local_implementation_2026-08-07.md"},
+    {"id":"S02","status":"verified","evidence":"docs/evidence/s02_roster_lifecycle_2026-08-07.md"},
+    {"id":"S03","status":"verified","evidence":"docs/evidence/s03_event_calendar_2026-08-08.md"},
+    {"id":"S04","status":"verified","evidence":"docs/evidence/s04_squad_callup_attendance_2026-08-08.md"},
+    {"id":"S05","status":"verified","evidence":"docs/evidence/s05_main_surfaces_2026-08-08.md"},
+    {"id":"S06","status":"verified","evidence":"docs/evidence/s06_messaging_progress_2026-08-08.md"},
+    {"id":"S07","status":"verified","evidence":"docs/evidence/s07_match_v2_baseline_2026-08-15.md"},
+    {"id":"S08","status":"verified","evidence":"docs/evidence/s08_development_signals_baseline_2026-08-15.md"},
+    {"id":"S09","status":"verified","evidence":"docs/evidence/s09_publication_fail_closed_baseline_2026-08-15.md"},
+    {"id":"S10A","status":"verified","evidence":"docs/evidence/s10a_entitlement_foundation_2026-08-16.md"},
+    {"id":"S10B","status":"verified_with_closed_scope","evidence":"docs/evidence/s10b_economy_board_foundation_2026-08-17.md"}
+  ],
+  "privilege_manifests": [
+    "supabase/privileges/s01_expected_privileges.json",
+    "supabase/privileges/s10a_expected_privileges.json",
+    "supabase/privileges/s10b_expected_privileges.json"
+  ],
+  "verification": {
+    "flutter_tests": 57,
+    "flutter_test_result": "passed",
+    "flutter_analyze_result": "no_issues",
+    "hosted_privilege_diff": "passed",
+    "hosted_privilege_diff_test": "supabase/tests/xqa_privilege_diff.sql"
+  },
+  "known_exceptions": [
+    "PAR-FIN-03 remains closed: fee, payment and settlement commands are absent.",
+    "Supabase leaked-password protection warning remains open.",
+    "S11 workspaces and webtools are explicitly deferred."
+  ]
+}

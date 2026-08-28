@@ -1,0 +1,8 @@
+{
+  "name": "teamzone-observability-bridge",
+  "private": true,
+  "engines": {"node": "22"},
+  "main": "index.js",
+  "scripts": {"test": "node --test --test-isolation=none"},
+  "dependencies": {"firebase-functions": "6.6.0"}
+}

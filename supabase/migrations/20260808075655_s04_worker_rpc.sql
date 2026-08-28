@@ -1,0 +1,5 @@
+create function api.claim_notification_batch(batch_size integer default 25) returns setof internal.notification_outbox language sql security invoker set search_path='' as $$select * from internal.claim_notification_batch(batch_size)$$;
+create function api.finish_notification_attempt(target_outbox_id uuid,target_state text,error_code text default null,provider_reference text default null) returns void language sql security invoker set search_path='' as $$select internal.finish_notification_attempt(target_outbox_id,target_state,error_code,provider_reference)$$;
+revoke all on function api.claim_notification_batch(integer),api.finish_notification_attempt(uuid,text,text,text) from public,anon,authenticated;
+grant execute on function api.claim_notification_batch(integer),api.finish_notification_attempt(uuid,text,text,text) to service_role;
+insert into internal.migration_provenance(migration_name,source_kind,source_reference)values('20260808075655_s04_worker_rpc','greenfield',null);notify pgrst,'reload schema';

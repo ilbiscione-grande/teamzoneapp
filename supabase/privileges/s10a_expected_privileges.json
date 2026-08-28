@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "slice": "S10A",
+  "schemas": {
+    "api": {"authenticated": ["USAGE"], "anon": []},
+    "core": {"authenticated": [], "anon": []},
+    "internal": {"authenticated": ["USAGE"], "anon": []},
+    "audit": {"authenticated": [], "anon": []}
+  },
+  "functions": {
+    "api.get_club_entitlements(uuid)": {"authenticated": ["EXECUTE"], "anon": [], "public": []},
+    "api.get_published_pricebook(uuid)": {"authenticated": ["EXECUTE"], "anon": [], "public": []},
+    "internal.get_club_entitlements_for_actor(uuid)": {"authenticated": ["EXECUTE"], "anon": [], "public": []},
+    "internal.get_published_pricebook_for_actor(uuid)": {"authenticated": [], "anon": [], "public": []},
+    "internal.entitlement_allows_write(uuid,text)": {"authenticated": [], "anon": [], "public": []},
+    "internal.recompute_club_entitlements(uuid)": {"authenticated": [], "anon": [], "public": []}
+    ,"api.prepare_billing_checkout(uuid,text,text,uuid)": {"authenticated": ["EXECUTE"], "anon": [], "public": []}
+    ,"api.claim_billing_checkout(uuid)": {"authenticated": [], "anon": [], "public": [], "service_role": ["EXECUTE"]}
+    ,"api.ingest_stripe_event(text,bigint,text,boolean,jsonb)": {"authenticated": [], "anon": [], "public": [], "service_role": ["EXECUTE"]}
+  },
+  "direct_table_privileges": {
+    "anon": [],
+    "authenticated": []
+  },
+  "required_rls_tables": [
+    "core.billing_accounts",
+    "core.billing_subscriptions",
+    "core.billing_subscription_items",
+    "core.club_entitlements",
+    "core.billing_pricebooks",
+    "core.billing_pricebook_plans"
+  ],
+  "server_only_tables": [
+    "internal.billing_provider_events",
+    "internal.billing_provider_prices",
+    "internal.billing_checkout_requests"
+  ]
+}

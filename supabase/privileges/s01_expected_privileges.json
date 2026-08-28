@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "slice": "S01",
+  "schemas": {
+    "api": {"authenticated": ["USAGE"], "anon": []},
+    "core": {"authenticated": [], "anon": []},
+    "internal": {"authenticated": ["USAGE"], "anon": []},
+    "audit": {"authenticated": [], "anon": []}
+  },
+  "functions": {
+    "api.get_profile()": {"authenticated": ["EXECUTE"], "anon": [], "public": []},
+    "api.get_my_contexts()": {"authenticated": ["EXECUTE"], "anon": [], "public": []},
+    "api.set_profile_preferences(text,text,uuid)": {"authenticated": ["EXECUTE"], "anon": [], "public": []},
+    "internal.get_profile_for_actor()": {"authenticated": ["EXECUTE"], "anon": [], "public": []},
+    "internal.get_my_contexts_for_actor()": {"authenticated": ["EXECUTE"], "anon": [], "public": []},
+    "internal.set_profile_preferences_for_actor(text,text,uuid)": {"authenticated": ["EXECUTE"], "anon": [], "public": []},
+    "internal.actor_has_club_access(uuid)": {"authenticated": [], "anon": [], "public": []},
+    "internal.handle_new_auth_user()": {"authenticated": [], "anon": [], "public": []},
+    "internal.enforce_capability_scope()": {"authenticated": [], "anon": [], "public": []}
+  },
+  "direct_table_privileges": {
+    "anon": [],
+    "authenticated": []
+  },
+  "required_rls_tables": [
+    "core.profiles",
+    "core.clubs",
+    "core.teams",
+    "core.club_people",
+    "core.person_account_links",
+    "core.assignments",
+    "core.capability_grants"
+  ]
+}

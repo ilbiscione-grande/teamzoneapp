@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "322548184079",
+    "project_id": "teamzoneapp-b02a2",
+    "storage_bucket": "teamzoneapp-b02a2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:322548184079:android:0de2958fdb0ba7537a1f7a",
+        "android_client_info": {
+          "package_name": "com.teamzone.teamzone"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZyFXnpz26To6liNBdpkeaGn6l-Hs9zeM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

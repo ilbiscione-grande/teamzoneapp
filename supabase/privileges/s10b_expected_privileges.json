@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "slice": "S10B",
+  "direct_table_privileges": {"anon": [], "authenticated": []},
+  "api_functions_authenticated_only": [
+    "api.create_economy_account(uuid,uuid,text,uuid)",
+    "api.create_economy_entry(uuid,uuid,bigint,text,text,text,uuid)",
+    "api.approve_economy_entry(uuid,text,text,uuid)",
+    "api.post_economy_entry(uuid,uuid)",
+    "api.reverse_economy_entry(uuid,text,uuid)",
+    "api.get_economy(uuid)"
+  ],
+  "required_entitlement": "module.economy",
+  "dual_control_threshold_minor_sek": 1000000
+}

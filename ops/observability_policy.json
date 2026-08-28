@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "approvedAt": "2026-08-22",
+  "providers": {
+    "supabase": ["database", "auth", "storage", "realtime", "edge"],
+    "firebaseCrashlytics": ["android", "ios"],
+    "googleCloudLogging": ["flutter_web", "public_web"]
+  },
+  "analyticsEnabled": false,
+  "retentionDays": {"errors": 30, "performance": 14},
+  "alerts": {
+    "p0": "immediate",
+    "criticalFailureRatePercent": 5,
+    "windowMinutes": 5,
+    "flows": ["auth", "checkout", "messaging", "critical_commands"]
+  },
+  "onCall": {"primaryRole": "product_owner", "backupRole": null},
+  "prohibitedFields": [
+    "email", "free_text", "sports_data", "health_data", "minor_data",
+    "token", "headers", "request_body", "response_body"
+  ]
+}

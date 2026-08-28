@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "status": "partial",
+  "automated_baseline": {
+    "status": "passed",
+    "verified_at": "2026-08-28",
+    "test": "test/rel02_automated_release_matrix_test.dart",
+    "cases": 12,
+    "scope": "core surface navigation, responsive shell, role contract and fail-safe rendering",
+    "does_not_replace": "physical accounts, hosted authorization, assistive technology and interruption verification"
+  },
+  "automated_interruption_accessibility": {
+    "status": "passed",
+    "verified_at": "2026-08-28",
+    "gate": "tool/rel02_automated_gate.ps1",
+    "latest_targeted_result": "43/43",
+    "covered": ["cold_link_rebuild", "system_back", "safe_failure", "session_fail_closed", "keyboard_focus", "text_scale_200", "contrast_aa", "reduced_motion"],
+    "manual_remaining": ["hosted_session_expiry", "browser_back_forward", "physical_offline_reconnect", "screen_reader_device"]
+  },
+  "roles": ["leader", "player", "guardian", "club_functionary"],
+  "devices": ["phone", "tablet", "desktop_web"],
+  "surfaces": ["home", "team", "calendar", "inbox"],
+  "role_device_matrix": [
+    {"id":"REL02-RD-01","role":"leader","device":"phone","status":"prior_evidence_requires_regression"},
+    {"id":"REL02-RD-02","role":"leader","device":"tablet","status":"structural_only"},
+    {"id":"REL02-RD-03","role":"leader","device":"desktop_web","status":"structural_only"},
+    {"id":"REL02-RD-04","role":"player","device":"phone","status":"structural_only"},
+    {"id":"REL02-RD-05","role":"player","device":"tablet","status":"structural_only"},
+    {"id":"REL02-RD-06","role":"player","device":"desktop_web","status":"structural_only"},
+    {"id":"REL02-RD-07","role":"guardian","device":"phone","status":"structural_only"},
+    {"id":"REL02-RD-08","role":"guardian","device":"tablet","status":"structural_only"},
+    {"id":"REL02-RD-09","role":"guardian","device":"desktop_web","status":"structural_only"},
+    {"id":"REL02-RD-10","role":"club_functionary","device":"phone","status":"structural_only"},
+    {"id":"REL02-RD-11","role":"club_functionary","device":"tablet","status":"structural_only"},
+    {"id":"REL02-RD-12","role":"club_functionary","device":"desktop_web","status":"structural_only"}
+  ],
+  "interruption_matrix": [
+    {"id":"REL02-I-01","scenario":"cold_start","status":"prior_evidence_requires_regression"},
+    {"id":"REL02-I-02","scenario":"deep_link","status":"prior_evidence_requires_regression"},
+    {"id":"REL02-I-03","scenario":"back_forward","status":"structural_only"},
+    {"id":"REL02-I-04","scenario":"context_switch","status":"structural_only"},
+    {"id":"REL02-I-05","scenario":"offline","status":"structural_only"},
+    {"id":"REL02-I-06","scenario":"reconnect","status":"structural_only"},
+    {"id":"REL02-I-07","scenario":"session_expiry","status":"structural_only"}
+  ],
+  "accessibility_matrix": [
+    {"id":"REL02-A-01","scenario":"screen_reader","status":"prior_evidence_requires_regression"},
+    {"id":"REL02-A-02","scenario":"keyboard_focus","status":"prior_evidence_requires_regression"},
+    {"id":"REL02-A-03","scenario":"text_scale_200","status":"prior_evidence_requires_regression"},
+    {"id":"REL02-A-04","scenario":"contrast","status":"prior_evidence_requires_regression"},
+    {"id":"REL02-A-05","scenario":"reduced_motion","status":"prior_evidence_requires_regression"}
+  ],
+  "required_evidence_per_case": [
+    "tester_and_timestamp",
+    "build_identity",
+    "role_and_context",
+    "device_and_viewport",
+    "observed_result",
+    "screenshot_or_log_reference",
+    "pass_or_defect"
+  ]
+}

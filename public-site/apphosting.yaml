@@ -1,0 +1,39 @@
+runConfig:
+  minInstances: 0
+  maxInstances: 2
+  concurrency: 40
+
+env:
+  - variable: PUBLIC_ORIGIN
+    value: https://teamzoneapp.se
+    availability:
+      - RUNTIME
+  - variable: TRUSTED_PROXY_HOPS
+    value: "1"
+    availability:
+      - RUNTIME
+  - variable: CAPTCHA_VERIFY_URL
+    value: https://challenges.cloudflare.com/turnstile/v0/siteverify
+    availability:
+      - RUNTIME
+  - variable: NEXT_PUBLIC_TURNSTILE_SITE_KEY
+    value: 0x4AAAAAAEQ6g5LvDvlA-hM6
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: SUPABASE_URL
+    value: https://hgcshgunvooyudvrcpig.supabase.co
+    availability:
+      - RUNTIME
+  - variable: SUPABASE_SECRET_KEY
+    secret: teamzoneapp-supabase-secret-key
+    availability:
+      - RUNTIME
+  - variable: PUBLIC_API_IP_HMAC_SECRET
+    secret: teamzoneapp-public-api-ip-hmac-secret
+    availability:
+      - RUNTIME
+  - variable: CAPTCHA_SECRET_KEY
+    secret: teamzoneapp-turnstile-secret-key
+    availability:
+      - RUNTIME
