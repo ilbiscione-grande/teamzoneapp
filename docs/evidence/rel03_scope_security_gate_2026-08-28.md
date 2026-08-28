@@ -20,12 +20,16 @@ Verifierat:
 
 Ingen Supabaseanslutning eller liveändring gjordes under REL-03. Tidigare livearbete är dokumenterat i separata slice-/rolloutbevis, bland annat `hosted_core_migration_rollout_2026-08-27.md`. Den här grinden validerar lokala mål och verktygsgränser; den försöker inte skriva eller provisionera något.
 
-## Öppen leveransgräns
+## Återställningsbar leveransgräns
 
-Arbetsytan saknar fortfarande en första git-commit. Filerna är därför lokalt bevarade men det finns ingen revisionsidentifierad återställningspunkt för den samlade leveransen. Dessutom är REL-01 och REL-02 partiella. Den sista REL-03-punkten och hela kortet står därför korrekt som `[~]`.
+Den första granskade återställningspunkten skapades på `main` som root-commit `bef10fb` (`chore: establish TeamZone rebuild baseline`). Committen innehåller 554 avsedda käll-, test-, migrations-, konfigurations- och evidencefiler. Lokala `.tmp-*`-artefakter, CLI-cache, buildoutput, `node_modules`, lokala miljöfiler och lokal evidence är ignorerade och ingår inte.
+
+REL-01 är grön och den återställningsbara leveransgränsen är nu etablerad. REL-03 står fortsatt som `[~]` enbart eftersom beroendet REL-02 fortfarande har uttryckligen uppskjutna hosted/fysiska slutkontroller.
 
 ## Kontroller
 
 - `tool/release_scope_gate.ps1`: godkänd.
 - Paket-/runtime-referensscan: godkänd.
-- PowerShell-syntax och `git diff --check`: godkända.
+- Secret-liknande filnamn och värdemönster granskades; endast dokumenterade rollnamn, placeholders och publika Firebase-klientnycklar förekommer i revisionen.
+- Förbjuden stagingkontroll: inga temporära filer, buildoutput, lokala miljöfiler eller lokala evidencefiler.
+- Git-återställningspunkt: `bef10fb`.

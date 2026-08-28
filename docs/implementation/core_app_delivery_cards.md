@@ -786,7 +786,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Dokumenterade Supabase-liveändringar ligger i tidigare separat godkända rolloutbevis; aktuellt arbete är lokalt och releaseverktygen innehåller inga push/deploykommandon.
 - [x] Produktion är fortsatt `not_provisioned` utan Supabase-/Firebaseprojekt; inga `webtools`- eller `workspaces`-kataloger finns eller har startats.
 - [x] Android namespace/applicationId och iOS bundle identifier är fortsatt `com.teamzone.teamzone`.
-- [~] Alla implementerade arbetskort har evidence enligt automatisk kontroll, men återställningsbar leveransgräns kräver fortfarande en första git-revision och gröna REL-01/02.
+- [~] Alla implementerade arbetskort har evidence, REL-01 är grön och första återställningspunkten `bef10fb` finns; endast REL-02:s uppskjutna hosted/fysiska slutkontroller återstår.
 
 ## 14. Rekommenderat nästa konkreta arbete
 
