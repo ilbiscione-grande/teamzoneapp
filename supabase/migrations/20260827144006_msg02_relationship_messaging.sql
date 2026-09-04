@@ -1,6 +1,6 @@
 -- MSG-02 one relationship rule for search/create/add/send.
 
-create function internal.messaging_relationship_allowed(actor_profile_id uuid,target_profile_id uuid,
+create or replace function internal.messaging_relationship_allowed(actor_profile_id uuid,target_profile_id uuid,
  target_club_id uuid,target_team_id uuid)
 returns boolean language sql stable security definer set search_path='' as $$
  select actor_profile_id is not null and target_profile_id is not null and actor_profile_id<>target_profile_id

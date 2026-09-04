@@ -1,12 +1,17 @@
-alter table core.events add column archived_at timestamptz;
-alter table core.events add column archived_by uuid references core.profiles(id);
-alter table core.events add column archive_reason text;
-alter table core.events add constraint events_archive_shape_check check(
- (archived_at is null and archived_by is null and archive_reason is null)
- or(archived_at is not null and archived_by is not null
-  and length(btrim(archive_reason)) between 3 and 500)
-);
-create index events_archived_idx on core.events(archived_at,id) where archived_at is not null;
+alter table core.events add column if not exists archived_at timestamptz;
+alter table core.events add column if not exists archived_by uuid references core.profiles(id);
+alter table core.events add column if not exists archive_reason text;
+do $$
+begin
+ if not exists(select 1 from pg_constraint where conname='events_archive_shape_check') then
+  alter table core.events add constraint events_archive_shape_check check(
+   (archived_at is null and archived_by is null and archive_reason is null)
+   or(archived_at is not null and archived_by is not null
+    and length(btrim(archive_reason)) between 3 and 500)
+  );
+ end if;
+end $$;
+create index if not exists events_archived_idx on core.events(archived_at,id) where archived_at is not null;
 
 create or replace function internal.assert_event_primary_team()
 returns trigger language plpgsql security definer set search_path='' as $$

@@ -1,6 +1,6 @@
-alter table core.callups add column last_reminded_at timestamptz;
-alter table core.callups add column reminder_count integer not null default 0 check(reminder_count>=0);
-create index callups_reminder_due_idx on core.callups(last_reminded_at,event_id)
+alter table core.callups add column if not exists last_reminded_at timestamptz;
+alter table core.callups add column if not exists reminder_count integer not null default 0 check(reminder_count>=0);
+create index if not exists callups_reminder_due_idx on core.callups(last_reminded_at,event_id)
  where state='pending';
 
 alter table core.callup_response_tokens add column allowed_responses text[] not null
@@ -174,7 +174,7 @@ begin
  return result_revision;
 end;$$;
 
-create function internal.actor_callup_response_context(target_callup_id uuid)
+create or replace function internal.actor_callup_response_context(target_callup_id uuid)
 returns jsonb language sql stable security definer set search_path='' as $$
  select coalesce((
   select case

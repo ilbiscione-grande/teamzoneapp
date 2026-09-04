@@ -115,7 +115,7 @@ begin
  values(actor_id,idempotency_key,'event.event.revise.v2',jsonb_build_object('revision',new_revision));
  insert into audit.command_events(club_id,actor_profile_id,command_type,aggregate_type,aggregate_id,
   aggregate_revision,metadata) values(anchor.club_id,actor_id,'event.event.revise.v2','event',anchor.id,
-  new_revision,jsonb_build_object('scope',change_scope,'fields',(select jsonb_agg(key) from jsonb_object_keys(patch) key));
+  new_revision,jsonb_build_object('scope',change_scope,'fields',(select jsonb_agg(key) from jsonb_object_keys(patch) key)));
  return new_revision;
 end;
 $$;

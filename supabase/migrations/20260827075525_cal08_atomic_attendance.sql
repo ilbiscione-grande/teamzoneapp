@@ -1,13 +1,18 @@
-alter table audit.attendance_revisions add column change_kind text not null default 'initial'
+alter table audit.attendance_revisions add column if not exists change_kind text not null default 'initial'
  check(change_kind in('initial','correction','late_correction'));
-alter table audit.attendance_revisions add column correction_reason text;
-alter table audit.attendance_revisions add constraint attendance_revision_reason_check check(
- (change_kind='late_correction' and correction_reason is not null
-  and length(btrim(correction_reason)) between 3 and 500)
- or(change_kind<>'late_correction' and correction_reason is null)
-);
+alter table audit.attendance_revisions add column if not exists correction_reason text;
+do $$
+begin
+ if not exists(select 1 from pg_constraint where conname='attendance_revision_reason_check') then
+  alter table audit.attendance_revisions add constraint attendance_revision_reason_check check(
+   (change_kind='late_correction' and correction_reason is not null
+    and length(btrim(correction_reason)) between 3 and 500)
+   or(change_kind<>'late_correction' and correction_reason is null)
+  );
+ end if;
+end $$;
 
-create function internal.actor_can_correct_late_attendance(target_event_id uuid)
+create or replace function internal.actor_can_correct_late_attendance(target_event_id uuid)
 returns boolean language sql stable security definer set search_path='' as $$
  select exists(select 1 from core.events event_row join core.event_teams relation
   on relation.event_id=event_row.id and relation.club_id=event_row.club_id
@@ -16,7 +21,7 @@ returns boolean language sql stable security definer set search_path='' as $$
    and internal.actor_has_capability(event_row.club_id,relation.team_id,'event.attendance.correct_late'))
 $$;
 
-create function internal.record_attendance_v2_for_actor(target_event_id uuid,changes jsonb,
+create or replace function internal.record_attendance_v2_for_actor(target_event_id uuid,changes jsonb,
  correction_reason text,idempotency_key uuid) returns jsonb language plpgsql security definer set search_path='' as $$
 declare actor_id uuid:=auth.uid();event_row core.events%rowtype;change jsonb;person_id uuid;
  old_row core.attendance_facts%rowtype;saved_row core.attendance_facts%rowtype;new_revision bigint;
@@ -88,11 +93,11 @@ exception when invalid_text_representation or numeric_value_out_of_range then
  raise invalid_parameter_value using message='invalid_input';
 end;$$;
 
-create function api.record_attendance_v2(target_event_id uuid,changes jsonb,correction_reason text,
+create or replace function api.record_attendance_v2(target_event_id uuid,changes jsonb,correction_reason text,
  idempotency_key uuid) returns jsonb language sql security invoker set search_path=''
 as $$select internal.record_attendance_v2_for_actor(target_event_id,changes,correction_reason,idempotency_key)$$;
 
-create function internal.get_attendance_permissions_for_actor(target_event_id uuid)
+create or replace function internal.get_attendance_permissions_for_actor(target_event_id uuid)
 returns jsonb language plpgsql stable security definer set search_path='' as $$
 declare event_row core.events%rowtype;is_late boolean;
 begin
@@ -105,7 +110,7 @@ begin
   'can_record',internal.actor_can_manage_attendance(target_event_id),
   'can_correct_late',internal.actor_can_correct_late_attendance(target_event_id));
 end;$$;
-create function api.get_attendance_permissions(target_event_id uuid) returns jsonb
+create or replace function api.get_attendance_permissions(target_event_id uuid) returns jsonb
 language sql stable security invoker set search_path=''
 as $$select internal.get_attendance_permissions_for_actor(target_event_id)$$;
 

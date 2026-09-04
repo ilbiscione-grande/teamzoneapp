@@ -1,11 +1,11 @@
-alter table core.squad_revisions add column selection_source text not null default 'manual'
+alter table core.squad_revisions add column if not exists selection_source text not null default 'manual'
  check(selection_source in('manual','all','group','generator'));
-alter table core.squad_revisions add column selection_context jsonb not null default '{}'::jsonb
+alter table core.squad_revisions add column if not exists selection_context jsonb not null default '{}'::jsonb
  check(jsonb_typeof(selection_context)='object');
-alter table core.squad_revisions add column dispatch_kind text not null default 'initial'
+alter table core.squad_revisions add column if not exists dispatch_kind text not null default 'initial'
  check(dispatch_kind in('initial','late'));
 
-create function internal.save_squad_draft_v2_for_actor(target_event_id uuid,member_ids uuid[],
+create or replace function internal.save_squad_draft_v2_for_actor(target_event_id uuid,member_ids uuid[],
  selection_source text,selection_context jsonb,expected_revision bigint,idempotency_key uuid)
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare actor_id uuid:=auth.uid();event_row core.events%rowtype;current_row core.squad_revisions%rowtype;
@@ -193,7 +193,7 @@ begin
    then array['record_attendance']::text[] else array[]::text[] end);
 end;$$;
 
-create function api.save_squad_draft_v2(target_event_id uuid,member_ids uuid[],selection_source text,
+create or replace function api.save_squad_draft_v2(target_event_id uuid,member_ids uuid[],selection_source text,
  selection_context jsonb,expected_revision bigint,idempotency_key uuid) returns jsonb
 language sql security invoker set search_path=''
 as $$select internal.save_squad_draft_v2_for_actor(target_event_id,member_ids,selection_source,

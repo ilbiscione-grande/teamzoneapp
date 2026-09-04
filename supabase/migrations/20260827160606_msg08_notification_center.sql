@@ -33,9 +33,9 @@ create function internal.notification_deep_link(outbox internal.notification_out
 returns text language sql stable set search_path='' as $$
  select case
   when outbox.event_type='message.message.sent.v1'and outbox.payload_ref->>'thread_id'~'^[0-9a-fA-F-]{36}$'
-   then '/inbox?thread='||outbox.payload_ref->>'thread_id'
+   then '/inbox?thread='||(outbox.payload_ref->>'thread_id')
   when outbox.event_type like 'callup.%'and outbox.payload_ref->>'event_id'~'^[0-9a-fA-F-]{36}$'
-   then '/calendar?event='||outbox.payload_ref->>'event_id'
+   then '/calendar?event='||(outbox.payload_ref->>'event_id')
   when outbox.aggregate_type='event'then '/calendar?event='||outbox.aggregate_id::text
   else '/inbox'end
 $$;
@@ -131,7 +131,7 @@ begin
 end$$;
 
 drop function if exists api.list_notification_center(integer);
-create function api.list_notification_center(page_before timestamptz default null,page_limit integer default 50)
+create or replace function api.list_notification_center(page_before timestamptz default null,page_limit integer default 50)
 returns jsonb language sql stable security invoker set search_path=''as
 $$select internal.list_notification_center_for_actor(page_before,page_limit)$$;
 create function api.set_notification_state(notification_id uuid,state text,idempotency_key uuid)

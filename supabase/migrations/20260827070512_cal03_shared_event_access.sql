@@ -108,7 +108,7 @@ begin
    or(entry->>'type'='club' and entry->>'team_id' is not null)
    or(entry->>'type'<>'club' and(not(entry?'team_id') or
     (entry->>'team_id')::uuid<>event_row.owning_team_id and not exists(
-     select 1 from pg_temp.cal03_shared shared where shared.team_id=(entry->>'team_id')::uuid)))
+     select 1 from pg_temp.cal03_shared shared where shared.team_id=(entry->>'team_id')::uuid))))
  then raise invalid_parameter_value using message='invalid_audience';end if;
  delete from core.event_audiences where event_id=event_row.id
   and(team_id<>event_row.owning_team_id or team_id is null);

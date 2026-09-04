@@ -31,7 +31,7 @@ language sql stable security definer set search_path='' as $$
   and internal.actor_can_access_thread(file.thread_id,false)
  order by file.created_at,file.id;
 $$;
-create function api.list_message_files(thread_id uuid)
+create or replace function api.list_message_files(thread_id uuid)
 returns table(id uuid,message_id uuid,original_name text,mime_type text,size_bytes bigint)
 language sql stable security invoker set search_path='' as
 $$select * from internal.list_message_files_for_actor(thread_id)$$;
