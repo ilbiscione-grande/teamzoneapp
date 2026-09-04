@@ -11,6 +11,9 @@ void main() {
   final surface = File(
     'lib/src/features/messaging/inbox_surface.dart',
   ).readAsStringSync();
+  final relationFix = File(
+    'supabase/migrations/20260828095553_msg01_reconcile_old_and_new_relations.sql',
+  ).readAsStringSync();
   final services = File(
     'lib/src/features/messaging/messaging_services.dart',
   ).readAsStringSync();
@@ -38,6 +41,16 @@ void main() {
     );
   });
 
+  test('moved links and grants reconcile both old and new teams', () {
+    expect(relationFix, contains("tg_op<>'INSERT'"));
+    expect(relationFix, contains('old.club_person_id'));
+    expect(relationFix, contains("tg_op<>'DELETE'"));
+    expect(relationFix, contains('new.club_person_id'));
+    expect(relationFix, contains('old.assignment_id'));
+    expect(relationFix, contains('new.assignment_id'));
+    expect(relationFix, contains('array_agg(distinct assignment.team_id)'));
+  });
+
   test('inbox has private invalidation and visible UX controls', () {
     expect(migration, contains("'message:inbox:'||participant.profile_id"));
     expect(migration, contains("='message:inbox:'||auth.uid()::text"));
@@ -46,6 +59,12 @@ void main() {
     expect(surface, contains("('muted', 'Tystade')"));
     expect(surface, contains('_inboxTime(context, thread.lastAt)'));
     expect(surface, contains('Duration(milliseconds: 300)'));
+    expect(surface, contains('persistentFooterButtons: compact'));
+    expect(surface, contains("strings.feature('Fler inkorgsåtgärder')"));
+    expect(surface, contains('onSelected: _handleCompactAction'));
+    expect(surface, contains('_scheduleStaleResync'));
+    expect(surface, contains('if (_data.state.isStale)'));
+    expect(surface, contains('_clearStaleResync'));
   });
 
   test('shared list controller supports inbox search and unread filter', () {

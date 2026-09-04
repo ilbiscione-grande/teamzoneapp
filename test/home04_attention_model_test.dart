@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teamzone_app/src/features/messaging/messaging_models.dart';
 
 void main() {
   final migration = File(
@@ -23,7 +24,7 @@ void main() {
     expect(migration, contains("then 30"));
     expect(migration, contains("then 40"));
     expect(overviewModels, contains('int homeAttentionPriority'));
-    expect(messagingModels, contains("json['priority']"));
+    expect(messagingModels, contains("priority: attentionPriority(category)"));
   });
 
   test('domain notifications deduplicate by canonical key', () {
@@ -57,7 +58,57 @@ void main() {
   test('screen density changes while data and actions stay identical', () {
     expect(overviewSurface, contains('MediaQuery.sizeOf(context).width'));
     expect(overviewSurface, contains('AppBreakpoints.tablet'));
-    expect(overviewSurface, contains('if (!wide) {'));
-    expect(overviewSurface, contains('return Row('));
+    expect(overviewSurface, contains('final content = !wide'));
+    expect(
+      overviewSurface,
+      contains('crossAxisAlignment: CrossAxisAlignment.start'),
+    );
+  });
+
+  test('notification client defensively deduplicates and reprioritizes', () {
+    final center = NotificationCenter.fromJson({
+      'unread_count': 2,
+      'items': [
+        {
+          'id': 'older',
+          'event_type': 'callup.old',
+          'category': 'callup',
+          'title': 'Äldre',
+          'preview': 'Äldre',
+          'deep_link': '/calendar?event=1',
+          'unread': true,
+          'canonical_key': 'callup:1',
+          'priority': 999,
+          'created_at': '2026-08-28T08:00:00Z',
+        },
+        {
+          'id': 'newer',
+          'event_type': 'callup.new',
+          'category': 'callup',
+          'title': 'Nyare',
+          'preview': 'Nyare',
+          'deep_link': '/calendar?event=1',
+          'unread': true,
+          'canonical_key': 'callup:1',
+          'priority': 999,
+          'created_at': '2026-08-28T09:00:00Z',
+        },
+        {
+          'id': 'urgent',
+          'event_type': 'callup.cancelled',
+          'category': 'callup_cancelled',
+          'title': 'Inställd',
+          'preview': 'Inställd',
+          'deep_link': '/calendar?event=2',
+          'unread': true,
+          'canonical_key': 'callup:2',
+          'priority': 999,
+          'created_at': '2026-08-28T07:00:00Z',
+        },
+      ],
+    });
+
+    expect(center.items.map((item) => item.id), ['urgent', 'newer']);
+    expect(center.items.map((item) => item.priority), [10, 20]);
   });
 }

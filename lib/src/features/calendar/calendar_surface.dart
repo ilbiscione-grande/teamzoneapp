@@ -6,6 +6,7 @@ class _CalendarSurface extends StatefulWidget {
     required this.contexts,
     required this.calendar,
     required this.match,
+    required this.onNavigate,
     required this.matchSpaceV2,
     this.initialEventId,
   });
@@ -14,6 +15,7 @@ class _CalendarSurface extends StatefulWidget {
   final List<TeamZoneContext> contexts;
   final CalendarServices calendar;
   final MatchServices match;
+  final ValueChanged<String> onNavigate;
   final bool matchSpaceV2;
   final String? initialEventId;
 
@@ -371,12 +373,14 @@ class _CalendarMonth extends StatelessWidget {
   Widget build(BuildContext context) {
     final first = projection.rangeStart;
     final gridStart = first.subtract(Duration(days: first.weekday - 1));
+    final compact = MediaQuery.sizeOf(context).width < 600;
+    final visibleEventCount = compact ? 1 : 2;
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 7,
-        childAspectRatio: MediaQuery.sizeOf(context).width < 600 ? .72 : 1.15,
+        childAspectRatio: compact ? .72 : 1.15,
       ),
       itemCount: 42,
       itemBuilder: (context, index) {
@@ -395,7 +399,7 @@ class _CalendarMonth extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('${day.day}'),
-                  for (final event in items.take(2))
+                  for (final event in items.take(visibleEventCount))
                     InkWell(
                       onTap: () => onEvent(event),
                       child: Text(
@@ -405,9 +409,9 @@ class _CalendarMonth extends StatelessWidget {
                         style: Theme.of(context).textTheme.labelSmall,
                       ),
                     ),
-                  if (items.length > 2)
+                  if (items.length > visibleEventCount)
                     Text(
-                      '+${items.length - 2}',
+                      '+${items.length - visibleEventCount}',
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                 ],
@@ -1027,21 +1031,21 @@ class _EventDetailsPanelState extends State<_EventDetailsPanel> {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Stäng',
+                  tooltip: strings.close,
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.close),
                 ),
               ],
             ),
           ),
-          const TabBar(
+          TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             tabs: [
-              Tab(text: 'Info'),
-              Tab(text: 'Deltagare'),
-              Tab(text: 'Förberedelser'),
-              Tab(text: 'Uppföljning'),
+              Tab(text: strings.feature('Info')),
+              Tab(text: strings.feature('Deltagare')),
+              Tab(text: strings.feature('Förberedelser')),
+              Tab(text: strings.feature('Uppföljning')),
             ],
           ),
           Expanded(
@@ -1064,10 +1068,13 @@ class _EventDetailsPanelState extends State<_EventDetailsPanel> {
 
   Widget _info(BuildContext context) {
     final event = widget.event;
+    final strings = AppStrings.of(context);
     final teamNames = event.teams
         .map((team) {
           final name = team['name'] as String? ?? '';
-          return team['relation'] == 'primary' ? '$name (ägare)' : name;
+          return team['relation'] == 'primary'
+              ? strings.eventOwner(name)
+              : name;
         })
         .where((name) => name.isNotEmpty)
         .join(' · ');
@@ -1077,9 +1084,7 @@ class _EventDetailsPanelState extends State<_EventDetailsPanel> {
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.schedule_outlined),
-          title: Text(
-            '${widget.event.startsAt.toLocal()} – ${widget.event.endsAt.toLocal()}',
-          ),
+          title: Text(_eventDateTimeLabel(context, event)),
           subtitle: Text(widget.event.timezone),
         ),
         if (event.locationName != null)
@@ -1153,6 +1158,26 @@ class _EventDetailsPanelState extends State<_EventDetailsPanel> {
     );
   }
 
+  String _eventDateTimeLabel(BuildContext context, EventDetails event) {
+    final localizations = MaterialLocalizations.of(context);
+    final start = event.startsAt.toLocal();
+    final end = event.endsAt.toLocal();
+    final sameDay = DateUtils.isSameDay(start, end);
+    if (event.allDay) {
+      final startDate = localizations.formatFullDate(start);
+      return sameDay
+          ? startDate
+          : '$startDate – ${localizations.formatFullDate(end)}';
+    }
+    final startTime = TimeOfDay.fromDateTime(start).format(context);
+    final endTime = TimeOfDay.fromDateTime(end).format(context);
+    if (sameDay) {
+      return '${localizations.formatFullDate(start)} · $startTime–$endTime';
+    }
+    return '${localizations.formatMediumDate(start)} $startTime – '
+        '${localizations.formatMediumDate(end)} $endTime';
+  }
+
   Widget _participants(BuildContext context) => FutureBuilder<SquadDetails>(
     future: _squad,
     builder: (context, snapshot) {
@@ -1160,6 +1185,7 @@ class _EventDetailsPanelState extends State<_EventDetailsPanel> {
         return const Center(child: CircularProgressIndicator());
       }
       if (snapshot.hasError) {
+        final strings = AppStrings.of(context);
         return ListTile(
           leading: const Icon(Icons.lock_outline),
           title: Text(
@@ -1168,7 +1194,9 @@ class _EventDetailsPanelState extends State<_EventDetailsPanel> {
             ).feature('Deltagaruppgifter är inte tillgängliga'),
           ),
           subtitle: Text(
-            'Din roll kan sakna åtkomst eller informationen kunde inte laddas.',
+            strings.feature(
+              'Din roll kan sakna åtkomst eller informationen kunde inte laddas.',
+            ),
           ),
         );
       }
@@ -1179,6 +1207,7 @@ class _EventDetailsPanelState extends State<_EventDetailsPanel> {
       final pending = squad.callups
           .where((callup) => callup.state == 'pending')
           .length;
+      final strings = AppStrings.of(context);
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1186,29 +1215,27 @@ class _EventDetailsPanelState extends State<_EventDetailsPanel> {
             AppStrings.of(context).feature('Urval'),
             style: Theme.of(context).textTheme.titleMedium,
           ),
-          Text('${squad.members.length} valda deltagare'),
+          Text(strings.selectedParticipants(squad.members.length)),
           const SizedBox(height: 16),
           Text(
-            'Kallelser och svar',
+            strings.feature('Kallelser och svar'),
             style: Theme.of(context).textTheme.titleMedium,
           ),
-          Text(
-            '${squad.callups.length} skickade · $accepted accepterade · $pending väntar',
-          ),
+          Text(strings.callupSummary(squad.callups.length, accepted, pending)),
           const SizedBox(height: 16),
           Text(
             AppStrings.of(context).feature('Närvaro'),
             style: Theme.of(context).textTheme.titleMedium,
           ),
-          Text('${squad.attendance.length} registrerade deltagare'),
+          Text(strings.registeredParticipants(squad.attendance.length)),
           const SizedBox(height: 20),
           OutlinedButton.icon(
             onPressed: widget.onParticipants,
             icon: const Icon(Icons.groups_outlined),
             label: Text(
               squad.callerActions.isEmpty
-                  ? 'Visa deltagare och mina svar'
-                  : 'Hantera urval, kallelser, svar och närvaro',
+                  ? strings.viewParticipantsAndResponses
+                  : strings.manageEventParticipation,
             ),
           ),
         ],
@@ -1219,29 +1246,22 @@ class _EventDetailsPanelState extends State<_EventDetailsPanel> {
   Widget _preparation(BuildContext context) {
     final event = widget.event;
     final actions = event.preparationActions;
+    final strings = AppStrings.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(switch (event.type) {
-          'match' => 'Matchförberedelser',
-          'training' => 'Träningsförberedelser',
-          'meeting' => 'Mötesförberedelser',
-          _ => 'Förberedelser',
-        }, style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
         Text(
-          event.type == 'match'
-              ? 'Planera trupp, taktik och matchgenomförande i Match Space.'
-              : 'Samla deltagare och uppdatera eventets information före genomförandet.',
+          strings.preparationTitle(event.type),
+          style: Theme.of(context).textTheme.titleLarge,
         ),
+        const SizedBox(height: 8),
+        Text(strings.preparationDescription(event.type)),
         const SizedBox(height: 20),
         if (actions.contains(EventPreparationAction.matchSpace))
           FilledButton.tonalIcon(
             onPressed: widget.onMatchSpace,
             icon: const Icon(Icons.sports_soccer),
-            label: Text(
-              widget.matchSpaceV2 ? 'Öppna Match Space' : 'Öppna matchöversikt',
-            ),
+            label: Text(strings.matchSpaceAction(widget.matchSpaceV2)),
           ),
         if (actions.contains(EventPreparationAction.participants))
           OutlinedButton.icon(
@@ -1272,6 +1292,7 @@ class _EventDetailsPanelState extends State<_EventDetailsPanel> {
       final recorded = attendance
           .where((entry) => entry.status != 'unknown')
           .length;
+      final strings = AppStrings.of(context);
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1282,8 +1303,8 @@ class _EventDetailsPanelState extends State<_EventDetailsPanel> {
           const SizedBox(height: 8),
           Text(
             snapshot.hasError
-                ? 'Uppföljningsuppgifter är inte tillgängliga för din roll.'
-                : '$recorded av ${attendance.length} närvarostatusar registrerade.',
+                ? strings.followUpUnavailable
+                : strings.attendanceSummary(recorded, attendance.length),
           ),
           const SizedBox(height: 20),
           if (widget.event.can('manage_roster'))
@@ -1502,6 +1523,13 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
   }
 
   Future<void> _showDetails(CalendarEventSummary summary) async {
+    _openedInitialEventId = summary.id;
+    widget.onNavigate(
+      Uri(
+        path: ProductRouteContract.calendar,
+        queryParameters: {'event': summary.id},
+      ).toString(),
+    );
     await _showDetailsById(summary.id);
   }
 
@@ -1565,6 +1593,10 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
           child: panel(sheetContext),
         ),
       );
+    }
+    if (mounted && widget.initialEventId == eventId) {
+      _openedInitialEventId = null;
+      widget.onNavigate(ProductRouteContract.calendar);
     }
   }
 
@@ -1972,6 +2004,52 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
                   Text(
                     'Urval: ${AppStrings.of(context).domainValue(squad.selectionSource)} · ${squad.dispatchKind == 'late' ? 'Sen kallelse' : 'Ordinarie utskick'}',
                   ),
+                if (squad.can('set_callup_visibility')) ...[
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: squad.showCallupsToMembers,
+                    title: const Text(
+                      'Visa kallade för spelare och vårdnadshavare',
+                    ),
+                    subtitle: const Text(
+                      'Av som standard. Om du slår på detta kan deltagare se '
+                      'vilka som kallats och deras svar, men aldrig närvaro eller '
+                      'administrativa uppgifter.',
+                    ),
+                    onChanged: (value) async {
+                      Navigator.pop(sheetContext);
+                      try {
+                        await widget.calendar.setEventCallupVisibility(
+                          eventId: event.id,
+                          showToMembers: value,
+                          expectedRevision: squad.callupVisibilityRevision,
+                          idempotencyKey: _newUuid(),
+                        );
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              value
+                                  ? 'Deltagarlistan är synlig för kallade.'
+                                  : 'Deltagarlistan är privat.',
+                            ),
+                          ),
+                        );
+                        await _showSquad(event);
+                      } catch (_) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Synligheten kunde inte sparas. Försök igen.',
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ],
                 if (squad.members.isEmpty)
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: 12),

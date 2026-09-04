@@ -8,14 +8,17 @@
 - Hemmets rollkort använder samma prioriteringsnivåer och dedupliceringsfunktion.
 - Ett event som redan representeras av en kallelse visas inte igen som separat nästa-event-kort. Ledarens nästa event upprepas inte om det redan ligger under Idag.
 - Mobil och större skärmar använder samma objekt, routes och mutationscallbacks. Endast kompositionen ändras mellan prioriterad enkelkolumn och flerpanelslayout.
+- Klienten räknar om notifieringsprioritet från samma gemensamma kategorikontrakt och deduplicerar defensivt på `canonical_key`; vid lika prioritet behålls den senaste posten deterministiskt.
 
 ## Verifierat lokalt
 
-- Dart-format och statisk kontraktsgrind täcker prioritetsnivåer, kanoniska nycklar, server-/klientdeduplicering och responsiv layout utan rättighetsskillnad.
+- HOME-04, MSG-08 och HOME-01–HOME-03: 25/25 riktade tester passerar.
+- Beteendetest verifierar att dublett med samma kanoniska nyckel väljer senaste post och att manipulerad serverprioritet ersätts av det gemensamma kategorikontraktet.
+- `dart analyze lib test`: inga problem.
+- Dart-format, beteendetest och statisk kontraktsgrind täcker prioritetsnivåer, kanoniska nycklar, server-/klientdeduplicering och responsiv layout utan rättighetsskillnad.
 - Ingen Supabase-liveändring eller produktionsprovisionering är gjord.
 
 ## Återstår
 
 - PostgreSQL-runtime/advisors när en godkänd lokal databas är tillgänglig.
-- Flutter test/analyze när wrappern kan slutföra utan låsning.
 - Fysisk verifiering av flera outboxposter för samma domänhändelse, cross-device read/dismiss och mobil/tablet/desktop.

@@ -77,6 +77,10 @@ class AppStrings {
     'approved' => isSwedish ? 'Godkänd' : 'Approved',
     'rejected' => isSwedish ? 'Avslagen' : 'Rejected',
     'withdrawn' => isSwedish ? 'Återkallad' : 'Withdrawn',
+    'issued' => isSwedish ? 'Utfärdad' : 'Issued',
+    'revoked' => isSwedish ? 'Återkallad' : 'Revoked',
+    'expired' => isSwedish ? 'Utgången' : 'Expired',
+    'consumed' => isSwedish ? 'Använd' : 'Used',
     'accepted' => isSwedish ? 'Accepterad' : 'Accepted',
     'declined' => isSwedish ? 'Avböjd' : 'Declined',
     'cancelled' => isSwedish ? 'Inställd' : 'Cancelled',
@@ -105,6 +109,9 @@ class AppStrings {
     'players' => isSwedish ? 'Spelare' : 'Players',
     'leaders' => isSwedish ? 'Ledare' : 'Leaders',
     'guardians' => isSwedish ? 'Vårdnadshavare' : 'Guardians',
+    'leader' => isSwedish ? 'Ledare' : 'Leader',
+    'guardian' => isSwedish ? 'Vårdnadshavare' : 'Guardian',
+    'club_functionary' => isSwedish ? 'Klubbfunktionär' : 'Club official',
     'club' => isSwedish ? 'Hela klubben' : 'Entire club',
     _ => value.replaceAll('_', ' '),
   };
@@ -197,6 +204,15 @@ class AppStrings {
     'Översikt': 'Overview',
     'Kalender': 'Calendar',
     'Ingen lagbild': 'No team image',
+    'Redigera lagprofil': 'Edit team profile',
+    'Lagtyp': 'Team type',
+    'Kort lagpresentation': 'Short team presentation',
+    'Lagbildens HTTPS-adress': 'Team image HTTPS address',
+    'Säker bilduppladdning läggs till separat.':
+        'Secure image upload will be added separately.',
+    'Ange en giltig HTTPS-adress.': 'Enter a valid HTTPS address.',
+    'Lagprofilen kunde inte laddas.': 'The team profile could not be loaded.',
+    'Lagprofilen kunde inte sparas.': 'The team profile could not be saved.',
     'Lagets grundinformation och rollanpassade genvägar byggs vidare i TEAM-02.':
         'Team information and role-adapted shortcuts continue in TEAM-02.',
     'Laddar lagets kalender': 'Loading team calendar',
@@ -250,6 +266,82 @@ class AppStrings {
     'Manuell': 'Manual',
     'Generator': 'Generator',
     'Spara draft': 'Save draft',
+    'Nyhetsredaktion': 'Newsroom',
+    'Redaktionen är inte tillgänglig': 'The newsroom is unavailable',
+    'Ditt aktuella klubbmandat saknar publiceringsbehörighet.':
+        'Your current club mandate does not include publishing access.',
+    'Uppdatera': 'Refresh',
+    'Ny artikel': 'New article',
+    'Redigera artikel': 'Edit article',
+    'Laddar artiklar': 'Loading articles',
+    'Artiklarna kunde inte laddas': 'Articles could not be loaded',
+    'Inga artiklar ännu': 'No articles yet',
+    'Skapa ett utkast och välj sedan när det ska publiceras.':
+        'Create a draft and then choose when to publish it.',
+    'Klubbkanal': 'Club channel',
+    'Endast lagkanaler': 'Team channels only',
+    'Artikelåtgärder': 'Article actions',
+    'Schemalägg': 'Schedule',
+    'Publicera nu': 'Publish now',
+    'Avpublicera': 'Unpublish',
+    'Adressnamn': 'URL slug',
+    'Ingress': 'Summary',
+    'Artikeltext': 'Article text',
+    'Avsändare': 'Byline',
+    'Visa i klubbkanalen': 'Show in the club channel',
+    'Visa i lagkanalen': 'Show in the team channel',
+    'Välj minst en klubb- eller lagkanal.':
+        'Select at least one club or team channel.',
+    'Spara utkast': 'Save draft',
+    'Bilder är inte aktiverade ännu. Endast strukturerad text publiceras.':
+        'Images are not enabled yet. Only structured text is published.',
+    'Event och partners': 'Events and partners',
+    'Förhandsgranska händelse': 'Preview event',
+    'Publik titel': 'Public title',
+    'Visa plats publikt': 'Show location publicly',
+    'Gör privat': 'Make private',
+    'Publicera': 'Publish',
+    'Ny partner': 'New partner',
+    'Redigera partner': 'Edit partner',
+    'Namn': 'Name',
+    'HTTPS-adress': 'HTTPS address',
+    'Sortering': 'Sort order',
+    'Partnerlogotyp kommer senare': 'Partner logo is coming later',
+    'Säker mediaworker är ännu inte konfigurerad.':
+        'The secure media worker is not configured yet.',
+    'Publiceringsdata kunde inte laddas':
+        'Publication data could not be loaded',
+    'Publika händelser': 'Public events',
+    'Endast titel, tid, typ och uttryckligt vald plats publiceras.':
+        'Only title, time, type and an explicitly selected location are published.',
+    'Inga publicerbara händelser': 'No publishable events',
+    'Hantera publicering': 'Manage publication',
+    'Partners': 'Partners',
+    'Partnerhantering kräver klubbmandat.':
+        'Partner management requires a club mandate.',
+    'Domäner': 'Domains',
+    'Anslut egen domän': 'Connect a custom domain',
+    'Domännamn': 'Domain name',
+    'Domänen aktiveras först efter betalningsgodkännande, DNS-verifiering och färdigt TLS-certifikat.':
+        'The domain is activated only after payment approval, DNS verification and a ready TLS certificate.',
+    'Skapa DNS-instruktion': 'Create DNS instructions',
+    'DNS-instruktion': 'DNS instructions',
+    'Token visas bara vid första begäran':
+        'The token is only shown with the first request',
+    'Klar': 'Done',
+    'Egen domän': 'Custom domain',
+    'Domänstatus kunde inte laddas': 'Domain status could not be loaded',
+    'Kostnadsfri standardadress': 'Free standard address',
+    'Publicera klubbsidan först': 'Publish the club page first',
+    'Premiumsubdomän kommer senare': 'Premium subdomain is coming later',
+    'Wildcard DNS, TLS och automatisk routing är ännu inte aktiverade.':
+        'Wildcard DNS, TLS and automatic routing are not enabled yet.',
+    'Använd standardadressen som huvudadress':
+        'Use the standard address as the primary address',
+    'Använd som huvudadress': 'Use as primary address',
+    'Fältet krävs': 'This field is required',
+    'Använd små bokstäver, siffror och bindestreck.':
+        'Use lowercase letters, numbers and hyphens.',
     'Varför kan du inte delta?': 'Why can you not participate?',
     'Sjukdom': 'Illness',
     'Inte tillgänglig': 'Unavailable',
@@ -276,6 +368,9 @@ class AppStrings {
     'Aktiva': 'Active',
     'Övriga': 'Other',
     'Truppen är inte tillgänglig': 'The roster is not available',
+    'Du är inte kopplad till något lag': 'You are not connected to a team',
+    'När du blir tillagd i ett lag visas lagets översikt, trupp och kalender här.':
+        'When you are added to a team, its overview, roster and calendar will appear here.',
     'Din roll saknar behörighet att visa den här truppen.':
         'Your role does not have permission to view this roster.',
     'Välj en person': 'Select a person',
@@ -323,13 +418,26 @@ class AppStrings {
     'Ansökningsroll': 'Application role',
     'Riktad inbjudan': 'Targeted invitation',
     'Mottagarens e-post': "Recipient's email",
+    'Ange en giltig e-postadress.': 'Enter a valid email address.',
     'Guardian': 'Guardian',
     'Barn': 'Child',
+    'Behöver vårdnadshavarkoppling': 'Needs a guardian connection',
+    'Gör personen valbar som barn i en guardianinbjudan.':
+        'Makes the person selectable as the child in a guardian invitation.',
+    'Markera först ett barn som behöver vårdnadshavarkoppling.':
+        'First mark a child as needing a guardian connection.',
     'Koden är skapad': 'The code has been created',
+    'Visa kod': 'Show code',
+    'Kopiera': 'Copy',
+    'Lagkoden har kopierats.': 'The team code has been copied.',
+    'Lagkoden kan inte visas. Återkalla den och skapa en ny kod.':
+        'The team code cannot be shown. Revoke it and create a new code.',
     'Inbjudan kunde inte skapas.': 'The invitation could not be created.',
     'Inbjudan kunde inte återkallas.': 'The invitation could not be revoked.',
     'Koder visas bara en gång. Status och återkallelse finns kvar här.':
         'Codes are shown once. Status and revocation remain available here.',
+    'Lagkoder kan visas och kopieras igen. Personliga koder visas bara en gång.':
+        'Team codes can be shown and copied again. Personal codes are shown only once.',
     'Riktad': 'Targeted',
     'Laddar inbjudningar': 'Loading invitations',
     'Inbjudningarna kunde inte laddas': 'The invitations could not be loaded',
@@ -420,6 +528,8 @@ class AppStrings {
     'Minst en accepterad kallelse krävs innan matchtruppen kan frysas.':
         'At least one accepted call-up is required before the match squad can be frozen.',
     'Förfrågningar': 'Requests',
+    'Fler inkorgsåtgärder': 'More inbox actions',
+    'Slå på notiser': 'Turn on notifications',
     'Försök igen med samma kommando': 'Retry the same command',
     'Försök igen': 'Try again',
     'Guardianinbjudan': 'Guardian invitation',
@@ -475,6 +585,16 @@ class AppStrings {
         'If the address is registered, password reset instructions will be sent.',
     'Det gick inte att slutföra åtgärden. Kontrollera uppgifterna och försök igen.':
         'The action could not be completed. Check the details and try again.',
+    'Lösenordet uppfyller inte säkerhetskraven. Välj ett längre och mindre vanligt lösenord.':
+        'The password does not meet the security requirements. Choose a longer and less common password.',
+    'För många försök har gjorts. Vänta en stund innan du försöker igen.':
+        'Too many attempts have been made. Wait a while before trying again.',
+    'E-postadressen kan inte användas. Kontrollera adressen eller använd en annan.':
+        'The email address cannot be used. Check the address or use another one.',
+    'Det gick inte att skapa kontot. Prova att logga in eller återställa lösenordet.':
+        'The account could not be created. Try signing in or resetting the password.',
+    'Det går inte att skapa konto med e-post just nu.':
+        'Accounts cannot be created with email right now.',
     'Lösenordet kunde inte uppdateras. Begär en ny återställningslänk.':
         'The password could not be updated. Request a new recovery link.',
     'Skapa': 'Create',
@@ -483,6 +603,11 @@ class AppStrings {
     'Grupp': 'Group',
     'Gruppnamn': 'Group name',
     'Info': 'Info',
+    'Deltagare': 'Participants',
+    'Förberedelser': 'Preparation',
+    'Kallelser och svar': 'Call-ups and responses',
+    'Din roll kan sakna åtkomst eller informationen kunde inte laddas.':
+        'Your role may lack access, or the information could not be loaded.',
     'Rubrik': 'Subject',
     'Markera alla som lästa': 'Mark all as read',
     'Visa äldre meddelanden': 'Show older messages',
@@ -754,6 +879,44 @@ class AppStrings {
     'Skada': 'Injury',
   };
   String get signOut => isSwedish ? 'Logga ut' : 'Sign out';
+  String eventOwner(String name) =>
+      isSwedish ? '$name (ägare)' : '$name (owner)';
+  String selectedParticipants(int count) =>
+      isSwedish ? '$count valda deltagare' : '$count selected participants';
+  String callupSummary(int total, int accepted, int pending) => isSwedish
+      ? '$total skickade · $accepted accepterade · $pending väntar'
+      : '$total sent · $accepted accepted · $pending pending';
+  String registeredParticipants(int count) => isSwedish
+      ? '$count registrerade deltagare'
+      : '$count participants recorded';
+  String get viewParticipantsAndResponses => isSwedish
+      ? 'Visa deltagare och mina svar'
+      : 'View participants and my responses';
+  String get manageEventParticipation => isSwedish
+      ? 'Hantera urval, kallelser, svar och närvaro'
+      : 'Manage selection, call-ups, responses and attendance';
+  String preparationTitle(String eventType) => switch (eventType) {
+    'match' => isSwedish ? 'Matchförberedelser' : 'Match preparation',
+    'training' => isSwedish ? 'Träningsförberedelser' : 'Training preparation',
+    'meeting' => isSwedish ? 'Mötesförberedelser' : 'Meeting preparation',
+    _ => isSwedish ? 'Förberedelser' : 'Preparation',
+  };
+  String preparationDescription(String eventType) => eventType == 'match'
+      ? (isSwedish
+            ? 'Planera trupp, taktik och matchgenomförande i Match Space.'
+            : 'Plan the squad, tactics and match delivery in Match Space.')
+      : (isSwedish
+            ? 'Samla deltagare och uppdatera eventets information före genomförandet.'
+            : 'Gather participants and update the event information before it starts.');
+  String matchSpaceAction(bool v2) => v2
+      ? (isSwedish ? 'Öppna Match Space' : 'Open Match Space')
+      : (isSwedish ? 'Öppna matchöversikt' : 'Open match overview');
+  String get followUpUnavailable => isSwedish
+      ? 'Uppföljningsuppgifter är inte tillgängliga för din roll.'
+      : 'Follow-up information is not available for your role.';
+  String attendanceSummary(int recorded, int total) => isSwedish
+      ? '$recorded av $total närvarostatusar registrerade.'
+      : '$recorded of $total attendance statuses recorded.';
   String welcome(String name) => name.isEmpty
       ? (isSwedish ? 'Välkommen' : 'Welcome')
       : (isSwedish ? 'Välkommen, $name' : 'Welcome, $name');

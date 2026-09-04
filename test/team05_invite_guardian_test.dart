@@ -7,6 +7,7 @@ import 'package:teamzone_app/src/app/teamzone_app.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
 import 'package:teamzone_app/src/core/identity/identity_services.dart';
+import 'package:teamzone_app/src/core/localization/app_strings.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 import 'package:teamzone_app/src/features/roster/roster_models.dart';
 import 'package:teamzone_app/src/features/roster/roster_services.dart';
@@ -49,12 +50,94 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Lagkod').last);
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'a' * 40);
+    await tester.enterText(
+      _textFieldWithLabel('Säker inbjudningskod'),
+      'a' * 40,
+    );
     await tester.tap(find.text('Acceptera'));
     await tester.pumpAndSettle();
     expect(roster.claimCodeCalls, 1);
     expect(find.text('Medlemsansökan har skapats.'), findsOneWidget);
   });
+
+  testWidgets('leader can reveal and copy a recoverable team code', (
+    tester,
+  ) async {
+    final roster = _Roster();
+    await tester.pumpWidget(_app(roster));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Laget'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Trupp'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hantera'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Inbjudningar och lagkoder'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Visa kod'));
+    await tester.pumpAndSettle();
+    expect(roster.revealCodeCalls, 1);
+    expect(find.text('r' * 64), findsOneWidget);
+    expect(find.text('Kopiera'), findsOneWidget);
+  });
+
+  testWidgets('guardian invite explains when no child is eligible', (
+    tester,
+  ) async {
+    final roster = _Roster();
+    await tester.pumpWidget(_app(roster));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Laget'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Trupp'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hantera'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Inbjudningar och lagkoder'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardian'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Markera först ett barn som behöver vårdnadshavarkoppling.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'targeted invite keeps invalid email visible and submits valid email',
+    (tester) async {
+      final roster = _Roster();
+      await tester.pumpWidget(_app(roster));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Laget'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Trupp'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Hantera'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Inbjudningar och lagkoder'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Riktad'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        _textFieldWithLabel('Mottagarens e-post'),
+        'ogiltig',
+      );
+      await tester.tap(find.text('Skapa'));
+      await tester.pumpAndSettle();
+      expect(find.text('Ange en giltig e-postadress.'), findsOneWidget);
+      expect(find.text('Riktad inbjudan'), findsOneWidget);
+      expect(roster.targetedInviteCalls, 0);
+      await tester.enterText(
+        _textFieldWithLabel('Mottagarens e-post'),
+        'test@example.com',
+      );
+      await tester.tap(find.text('Skapa'));
+      await tester.pumpAndSettle();
+      expect(roster.targetedInviteCalls, 1);
+      expect(find.text('Koden är skapad'), findsOneWidget);
+    },
+  );
 
   test(
     'TEAM-05 SQL keeps shared codes reviewed and guardian acting-as explicit',
@@ -90,7 +173,88 @@ void main() {
     );
     expect(item.canRevoke, isFalse);
   });
+
+  testWidgets('invitation states are localized in Swedish', (tester) async {
+    late BuildContext context;
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('sv'),
+        home: Builder(
+          builder: (value) {
+            context = value;
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+    expect(AppStrings.of(context).domainValue('issued'), 'Utfärdad');
+    expect(AppStrings.of(context).domainValue('revoked'), 'Återkallad');
+    expect(AppStrings.of(context).domainValue('expired'), 'Utgången');
+    expect(AppStrings.of(context).domainValue('consumed'), 'Använd');
+  });
+
+  test('TEAM-05 orders the compound invitation projection outside UNION', () {
+    final sql = File(
+      'supabase/migrations/20260901150836_team05_fix_invitation_admin_ordering.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(sql, contains('from ('));
+    expect(sql, contains(') as item'));
+    expect(sql, contains('order by item.expires_at desc nulls last'));
+    expect(sql, contains('revoke all on function'));
+  });
+
+  test('TEAM-05 scopes targeted invites to an actively managed team', () {
+    final sql = File(
+      'supabase/migrations/20260901202344_team05_allow_team_scoped_targeted_invite.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(sql, contains('from core.team_assignments target_assignment'));
+    expect(sql, contains("target_assignment.state = 'active'"));
+    expect(sql, contains("'team.roster.manage'"));
+    expect(sql, contains("'club.memberships.manage'"));
+    expect(sql, contains('target_assignment.team_id'));
+    expect(sql, contains("message = 'not_found'"));
+  });
+
+  test('TEAM-05 stores recoverable team codes in Vault behind an audited RPC', () {
+    final sql = File(
+      'supabase/migrations/20260901211827_team05_reveal_encrypted_team_code.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(sql, contains('vault.create_secret'));
+    expect(sql, contains('vault.decrypted_secrets'));
+    expect(sql, contains('roster.team_code.reveal.v1'));
+    expect(sql, contains("'club.memberships.manage'"));
+    expect(sql, contains('revoke all on function'));
+    expect(sql, contains('api.reveal_team_join_code'));
+  });
+
+  test('TEAM-05 repairs the qualified parameter after claim function rename', () {
+    final sql = File(
+      'supabase/migrations/20260902215140_team05_fix_renamed_guardian_claim_parameter.sql',
+    ).readAsStringSync();
+    expect(
+      sql,
+      contains(
+        'accept_guardian_invite_and_link_for_actor.idempotency_key',
+      ),
+    );
+    expect(sql, contains('pg_get_functiondef'));
+  });
+
+  test('TEAM-05 guardian issue is scoped to the child active team', () {
+    final sql = File(
+      'supabase/migrations/20260901215526_team05_guardian_team_scope_and_child_flag.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(sql, contains('set_guardian_requirement_for_actor'));
+    expect(sql, contains('child_assignment.team_id'));
+    expect(sql, contains("child.safeguarding_required"));
+    expect(sql, contains("'club.memberships.manage'"));
+    expect(sql, contains('roster.person.guardian_requirement.set.v1'));
+  });
 }
+
+Finder _textFieldWithLabel(String label) => find.byWidgetPredicate(
+  (widget) => widget is TextField && widget.decoration?.labelText == label,
+);
 
 Widget _app(_Roster roster) => TeamZoneApp(
   environment: const AppEnvironment(name: 'team05'),
@@ -103,7 +267,24 @@ Widget _app(_Roster roster) => TeamZoneApp(
 );
 
 class _Roster extends UnconfiguredRosterServices {
-  int revokeCalls = 0, claimCodeCalls = 0;
+  int revokeCalls = 0,
+      claimCodeCalls = 0,
+      targetedInviteCalls = 0,
+      revealCodeCalls = 0;
+  @override
+  Future<List<RosterPersonSummary>> listPeople({
+    required String clubId,
+    String? teamId,
+  }) async => const [
+    RosterPersonSummary(
+      id: 'person',
+      displayName: 'Testperson',
+      safeguardingRequired: false,
+      teamId: 'team',
+      teamName: 'F2012',
+      assignmentState: 'active',
+    ),
+  ];
   @override
   Future<List<InvitationAdminItem>> listInvitationAdmin({
     required String clubId,
@@ -132,6 +313,24 @@ class _Roster extends UnconfiguredRosterServices {
   }) async {
     claimCodeCalls++;
     return 'application';
+  }
+
+  @override
+  Future<String> issueTargetedInvitation({
+    required String personId,
+    required String intendedEmail,
+    required String token,
+    required DateTime expiresAt,
+    required String idempotencyKey,
+  }) async {
+    targetedInviteCalls++;
+    return 'invite';
+  }
+
+  @override
+  Future<String> revealTeamCode({required String codeId}) async {
+    revealCodeCalls++;
+    return 'r' * 64;
   }
 }
 

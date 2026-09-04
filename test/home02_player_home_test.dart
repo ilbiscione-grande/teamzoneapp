@@ -12,6 +12,12 @@ void main() {
   final services = File(
     'lib/src/features/calendar/calendar_services.dart',
   ).readAsStringSync();
+  final overviewServices = File(
+    'lib/src/features/overview/overview_services.dart',
+  ).readAsStringSync();
+  final models = File(
+    'lib/src/features/overview/overview_models.dart',
+  ).readAsStringSync();
 
   test('player projection is restricted to own linked person and team', () {
     expect(migration, contains("context_row.role_package<>'player'"));
@@ -47,5 +53,14 @@ void main() {
     );
     expect(surface, isNot(contains('respond_for_child')));
     expect(surface, isNot(contains('club.memberships.manage')));
+  });
+
+  test('cached player data is marked stale and cannot submit old callups', () {
+    expect(models, contains('PlayerHomeProjection asStale()'));
+    expect(overviewServices, contains('_playerCache[contextId]'));
+    expect(overviewServices, contains('return cached.asStale()'));
+    expect(surface, contains('callup.canRespond && !widget.value.isStale'));
+    expect(surface, contains('if (!widget.value.isStale) return content'));
+    expect(surface, contains('Kallelsesvar är avstängda'));
   });
 }

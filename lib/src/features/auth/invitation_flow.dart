@@ -36,6 +36,16 @@ class _InvitationFlowState extends State<_InvitationFlow> {
   InvitationClaimResult? _result;
   String? _error;
 
+  @override
+  void didUpdateWidget(covariant _InvitationFlow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.token == widget.token) return;
+    _preview = _loadPreview();
+    _pending = false;
+    _result = null;
+    _error = null;
+  }
+
   Future<InvitationPreview> _loadPreview() => widget.roster
       .previewInvitation(token: widget.token)
       .timeout(const Duration(seconds: 15));

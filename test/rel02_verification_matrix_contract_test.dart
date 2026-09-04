@@ -69,6 +69,13 @@ void main() {
     expect(guide, contains('aldrig som aktuell releasepassering'));
     expect(guide, contains('REL-01 är grön'));
     expect(guide, contains('alla 12 roll-/enhetsfall'));
-    expect(matrix['status'], 'partial');
+    expect(matrix['status'], 'passed');
+    final releaseRows = <Map<String, dynamic>>[
+      ...(matrix['role_device_matrix'] as List).cast<Map<String, dynamic>>(),
+      ...(matrix['interruption_matrix'] as List).cast<Map<String, dynamic>>(),
+      ...(matrix['accessibility_matrix'] as List).cast<Map<String, dynamic>>(),
+    ];
+    expect(releaseRows, everyElement(containsPair('status', 'passed')));
+    expect(matrix['evidence_ref'], isNotEmpty);
   });
 }

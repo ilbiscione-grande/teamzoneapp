@@ -358,6 +358,8 @@ class SquadDetails {
     required this.selectionSource,
     required this.selectionContext,
     required this.dispatchKind,
+    this.showCallupsToMembers = false,
+    this.callupVisibilityRevision = 0,
     this.squadRevisionId,
     this.revision,
   });
@@ -370,6 +372,8 @@ class SquadDetails {
   final Set<String> callerActions;
   final String selectionSource, dispatchKind;
   final Map<String, dynamic> selectionContext;
+  final bool showCallupsToMembers;
+  final int callupVisibilityRevision;
   bool can(String action) => callerActions.contains(action);
   factory SquadDetails.fromJson(Map<String, dynamic> json) => SquadDetails(
     eventId: json['event_id'] as String,
@@ -395,6 +399,10 @@ class SquadDetails {
     selectionContext:
         json['selection_context'] as Map<String, dynamic>? ?? const {},
     dispatchKind: json['dispatch_kind'] as String? ?? 'initial',
+    showCallupsToMembers:
+        json['show_callups_to_members'] as bool? ?? false,
+    callupVisibilityRevision:
+        (json['callup_visibility_revision'] as num?)?.toInt() ?? 0,
   );
 }
 

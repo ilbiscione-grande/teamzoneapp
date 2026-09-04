@@ -64,6 +64,28 @@ void main() {
     expect(shell, contains("queryParameters['event']"));
     expect(calendar, contains('_showDetailsById(eventId)'));
   });
+
+  testWidgets('club-only context gets a useful no-team state', (tester) async {
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'team01-club-only'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _ClubOnlyIdentity(),
+          roster: const _Roster(),
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Laget'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Du är inte kopplad till något lag'), findsOneWidget);
+    expect(find.text('Använd kod'), findsOneWidget);
+    expect(find.text('Lagöversikten kunde inte laddas'), findsNothing);
+    expect(find.byType(TabBar), findsNothing);
+  });
 }
 
 class _Roster extends UnconfiguredRosterServices {
@@ -113,4 +135,17 @@ class _Identity implements IdentityServices {
   }) async {}
   @override
   Future<void> signOut() async {}
+}
+
+class _ClubOnlyIdentity extends _Identity {
+  @override
+  Future<List<TeamZoneContext>> getContexts() async => const [
+    TeamZoneContext(
+      id: 'club-context',
+      clubId: 'club',
+      clubName: 'Verifieringsklubben',
+      rolePackage: 'club_functionary',
+      capabilities: {'club.board.read', 'club.economy.read'},
+    ),
+  ];
 }

@@ -119,6 +119,8 @@ class _SignInScreenState extends State<_SignInScreen> {
           ),
         );
       }
+    } on AuthException catch (error) {
+      _safeAuthFailure(error);
     } catch (_) {
       _safeFailure();
     }
@@ -216,6 +218,25 @@ class _SignInScreenState extends State<_SignInScreen> {
         'Det gick inte att slutföra åtgärden. Kontrollera uppgifterna och försök igen.',
       ),
     );
+  }
+
+  void _safeAuthFailure(AuthException error) {
+    if (!mounted) return;
+    final message = switch (error.code) {
+      'weak_password' =>
+        'Lösenordet uppfyller inte säkerhetskraven. Välj ett längre och mindre vanligt lösenord.',
+      'over_email_send_rate_limit' || 'over_request_rate_limit' =>
+        'För många försök har gjorts. Vänta en stund innan du försöker igen.',
+      'email_address_invalid' || 'validation_failed' =>
+        'E-postadressen kan inte användas. Kontrollera adressen eller använd en annan.',
+      'email_exists' || 'user_already_exists' =>
+        'Det gick inte att skapa kontot. Prova att logga in eller återställa lösenordet.',
+      'signup_disabled' || 'email_provider_disabled' =>
+        'Det går inte att skapa konto med e-post just nu.',
+      _ =>
+        'Det gick inte att slutföra åtgärden. Kontrollera uppgifterna och försök igen.',
+    };
+    setState(() => _error = AppStrings.of(context).feature(message));
   }
 
   void _changeMode(_AuthStartMode mode) {
@@ -707,6 +728,9 @@ class _ContextBootstrapState extends State<_ContextBootstrap> {
           );
         }
         return _ContextSelector(
+          key: ValueKey(
+            data.contexts.map((context) => context.id).join('|'),
+          ),
           profile: data.profile,
           contexts: data.contexts,
           identity: widget.services.identity,
@@ -723,6 +747,9 @@ class _ContextBootstrapState extends State<_ContextBootstrap> {
           billing: widget.services.billing,
           economy: widget.services.economy,
           board: widget.services.board,
+          editorial: widget.services.editorial,
+          assistantIdentity: widget.services.assistantIdentity,
+          assistantPresentation: widget.services.assistantPresentation,
           matchSpaceV2: widget.matchSpaceV2,
         );
       },
@@ -1342,7 +1369,11 @@ class _ContextSelector extends StatefulWidget {
     required this.billing,
     required this.economy,
     required this.board,
+    required this.editorial,
+    required this.assistantIdentity,
+    required this.assistantPresentation,
     required this.matchSpaceV2,
+    super.key,
   });
 
   final TeamZoneProfile profile;
@@ -1361,6 +1392,9 @@ class _ContextSelector extends StatefulWidget {
   final BillingServices billing;
   final EconomyServices economy;
   final BoardServices board;
+  final EditorialServices editorial;
+  final AssistantIdentityServices assistantIdentity;
+  final AssistantPresentationServices assistantPresentation;
   final bool matchSpaceV2;
 
   @override
@@ -1369,6 +1403,7 @@ class _ContextSelector extends StatefulWidget {
 
 class _ContextSelectorState extends State<_ContextSelector> {
   TeamZoneContext? _activeContext;
+  late List<TeamZoneContext> _contexts = widget.contexts;
 
   @override
   void initState() {
@@ -1381,7 +1416,7 @@ class _ContextSelectorState extends State<_ContextSelector> {
       widget.profile.id,
     );
     if (!mounted) return;
-    final selected = selectValidContext(widget.contexts, stored);
+    final selected = selectValidContext(_contexts, stored);
     setState(() => _activeContext = selected);
     if (stored != selected.id) {
       await widget.contextPersistence.writeActiveContextId(
@@ -1396,6 +1431,27 @@ class _ContextSelectorState extends State<_ContextSelector> {
     await widget.contextPersistence.writeActiveContextId(
       widget.profile.id,
       value.id,
+    );
+  }
+
+  Future<void> _reloadContexts() async {
+    final contexts = await widget.identity.getContexts();
+    if (!mounted || contexts.isEmpty) return;
+    final currentId = _activeContext?.id;
+    final guardianContexts = contexts
+        .where((context) => context.rolePackage == 'guardian')
+        .toList(growable: false);
+    final selected = guardianContexts
+        .where((context) => context.id != currentId)
+        .firstOrNull;
+    final next = selected ?? selectValidContext(contexts, currentId);
+    setState(() {
+      _contexts = contexts;
+      _activeContext = next;
+    });
+    await widget.contextPersistence.writeActiveContextId(
+      widget.profile.id,
+      next.id,
     );
   }
 
@@ -1415,8 +1471,9 @@ class _ContextSelectorState extends State<_ContextSelector> {
     return _ProductShell(
       key: ValueKey(activeContext.id),
       contextValue: activeContext,
-      contexts: widget.contexts,
+      contexts: _contexts,
       onContextChanged: _changeContext,
+      onContextsChanged: _reloadContexts,
       onSignOut: _signOut,
       roster: widget.roster,
       membership: widget.membership,
@@ -1429,6 +1486,9 @@ class _ContextSelectorState extends State<_ContextSelector> {
       billing: widget.billing,
       economy: widget.economy,
       board: widget.board,
+      editorial: widget.editorial,
+      assistantIdentity: widget.assistantIdentity,
+      assistantPresentation: widget.assistantPresentation,
       matchSpaceV2: widget.matchSpaceV2,
     );
   }

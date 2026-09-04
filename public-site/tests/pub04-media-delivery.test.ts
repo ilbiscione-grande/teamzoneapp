@@ -1,0 +1,12 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import test from "node:test";
+const root=new URL("../../",import.meta.url);
+const sql=readFileSync(new URL("supabase/migrations/20260828092016_pub04_public_media_delivery.sql",root),"utf8");
+const worker=readFileSync(new URL("supabase/functions/public-media-worker/index.ts",root),"utf8");
+const route=readFileSync(new URL("public-site/app/media/public/[token]/route.ts",root),"utf8");
+const proxy=readFileSync(new URL("public-site/proxy.ts",root),"utf8");
+test("media storage stays private and uploads are capability scoped",()=>{assert.match(sql,/public-media-source','public-media-source',false/);assert.match(sql,/public-media-variants','public-media-variants',false/);assert.match(sql,/actor_has_capability\(target_club_id,null,'publication.manage'\)/);assert.match(sql,/owner_id=\(select auth\.uid\(\)::text\)/);});
+test("worker fails closed without a scanner and only accepts webp variants",()=>{assert.match(worker,/PUBLIC_MEDIA_PROVIDER_URL/);assert.match(worker,/worker_not_configured/);assert.match(worker,/strip_metadata:true/);assert.match(worker,/isWebp\(bytes\)/);assert.doesNotMatch(worker,/service_role.*console/);});
+test("public delivery resolves only ready opaque media",()=>{assert.match(sql,/scan_state='clean' and item\.variant_state='ready'/);assert.match(route,/\^\[a-f0-9\]\{32\}\$/);assert.match(route,/x-content-type-options/);assert.match(route,/image\/webp/);assert.match(route,/s-maxage=31536000, immutable/);});
+test("media bypasses HTML tenant rewrites and keeps its own cache contract",()=>{assert.match(proxy,/"\/media\/public\/"/);assert.doesNotMatch(route,/s-maxage=60/);});

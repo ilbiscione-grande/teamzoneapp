@@ -1,8 +1,8 @@
 # TEAM-02 – Rollstyrd lagöversikt
 
 **Datum:** 2026-08-24  
-**Status:** LOKALT IMPLEMENTERAD OCH KLIENTVERIFIERAD; SQL-RUNTIME OCH FYSISK/HOSTED GRIND ÅTERSTÅR  
-**Livepåverkan:** Ingen. Migrationen har inte applicerats mot Supabase live.
+**Status:** IMPLEMENTERAD; HOSTED SQL-RUNTIME OCH FYSISK WEBBGRIND VERIFIERADE, ANDROID-/MEDIAGRIND ÅTERSTÅR  
+**Livepåverkan:** TEAM-02:s profil- och ledarbehörighetsmigreringar är applicerade på den uttryckligen godkända testdatabasen `hgcshgunvooyudvrcpig`.
 
 ## Implementerat
 
@@ -27,14 +27,29 @@
 - Negativt spelartest verifierar att administrativa rubriker och räknare inte renderas.
 - Källkontrakt verifierar privat tabell, klubbåtkomst, capabilitygrind, nollad adminprojektion och avsaknad av direkta grants till ansökningstabellen.
 - Säkerhetsutformningen följer aktuell Supabase-vägledning med explicit RLS/revoke, privat definer-funktion, tom `search_path` och explicit RPC-grant.
-- Ingen åtkomst till eller ändring av Supabase live gjordes.
+- Hosted RPC-signaturer, execute-grants och nekad `anon`/`PUBLIC`-åtkomst verifierades 2026-09-01.
 
 ## Kvarvarande grind
 
-1. Exekvera migrationen i lokal eller separat uttryckligen godkänd testdatabas.
-2. Verifiera outsider/cross-club, player/guardian, team leader och club administrator med riktiga JWT-roller.
-3. Verifiera invite-/ansökningsräknare, utgångna invites och samtidiga statusändringar mot SQL-fixtures.
-4. Fastställ senare redigerings-/uppladdningsflöde och Storage-policy för lagbild; TEAM-02 läser endast en redan godkänd HTTPS-bildadress.
+1. Slutför kvarvarande Androidgranskning av profilredigering, större text och bildfallback.
+2. Verifiera invite-/ansökningsräknare, utgångna invites och samtidiga statusändringar mot SQL-fixtures.
+3. Fastställ senare redigerings-/uppladdningsflöde och Storage-policy för lagbild; TEAM-02 läser endast en redan godkänd HTTPS-bildadress.
+
+## Lokal profilredigering 2026-09-01
+
+TEAM-02 har kompletterats med ett capabilitystyrt formulär för lagtyp, åldersklass, kort presentation och en befintlig HTTPS-lagbild. Player/guardian ser inte redigeringsknappen. En separat edit-projektion hämtar aktuell profilrevision; update-kommandot validerar längder och HTTPS, serialiserar per lag, kräver expected revision, återanvänder idempotensresultat och skriver ett minimerat audit-event utan presentationstext eller URL.
+
+Den nya migreringen är `20260901100421_team02_team_profile_edit.sql` och applicerades 2026-09-01 på den uttryckligen godkända Supabase-testdatabasen `hgcshgunvooyudvrcpig`. Säker filuppladdning är medvetet inte låtsasaktiverad: den kräver senare privat staging, skanning och en godkänd bildvariant.
+
+Verifiering:
+
+- TEAM-01/02 riktad Flutter-regression: 7/7.
+- Riktad Dart-analys av ändrade roster-, lokaliserings- och testfiler: inga problem.
+- Transaktionsbunden Supabase-testdatabasvalidering skapade båda publika RPC-signaturerna (`read_rpc=true`, `write_rpc=true`) och rullade därefter tillbaka hela migreringen utan bestående liveändring.
+- Bestående testdatabasdriftsättning verifierades med `read_rpc=true`, `write_rpc=true`, execute för `authenticated` och nekad execute för `anon`/`PUBLIC`. Migreringshistoriken matchar den lokala versionen `20260901100421`.
+- Den efterföljande ledarkorrigeringen `20260901104226_team02_allow_team_leader_profile_edit.sql` låter `team.roster.manage` redigera endast det egna laget. Hosted funktionsdefinitioner gav `true` för overview/read/write och migreringshistoriken synkroniserades.
+- Produktägaren verifierade fysiskt på webb att `Redigera lagprofil` visas för ledarkontot, att formuläret öppnas och att ändringar kan sparas mot backend.
+- Full `flutter analyze` startade men fastnade utan diagnostik och avbröts kontrollerat; detta ersätts inte felaktigt av den riktade analysen.
 5. Genomför fysisk Android-/webbgranskning av bildbeskärning, fallback, långa namn, större text och genvägar.
 6. Kör full regressionssvit.
 

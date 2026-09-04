@@ -51,4 +51,13 @@ void main() {
     expect(services, contains("'notification:center:\$profileId'"));
     expect(surface, contains('watchNotificationInvalidations()'));
   });
+
+  test('dismiss waits for server confirmation and rolls back on failure', () {
+    expect(surface, contains('confirmDismiss: (_) async'));
+    expect(surface, contains("await widget.messaging.setNotificationState("));
+    expect(surface, contains("'dismissed'"));
+    expect(surface, contains('return true;'));
+    expect(surface, contains('return false;'));
+    expect(surface, contains('onDismissed: (_)'));
+  });
 }

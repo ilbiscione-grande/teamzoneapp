@@ -28,6 +28,13 @@ Status: lokalt genomförd, runtimegrindar återstår
 - SQL-runtime återstår eftersom lokal Docker/PostgreSQL inte är tillgänglig och Supabase live inte får ändras utan separat godkännande.
 - Fysisk delete/cancel/archive-grind återstår.
 
+### Fysisk liveprojektion 2026-08-28
+
+- Ett avgränsat testevent kunde skapas och ställas in via appens ordinarie flöde. Backvarningen för osparad redigering passerade båda grenarna utan att den sparade titeln ändrades.
+- Efter `Inställd` returnerade den anslutna projektionen endast `revise`/restore och ingen `archive`-action. Klienten dolde därför arkivering korrekt fail-closed.
+- Den lokala CAL-04-migrationen innehåller redan regeln som ger `archive` för `cancelled`/`completed` när aktören kan hantera primärlagets eventdelning. Skillnaden ligger därmed mellan lokal migrationsnivå och ansluten liveprojektion, inte i klientens knappvillkor.
+- Testeventet `rel02 osparat test` kvarstår synligt som `Inställd`. Ingen direkt Supabase-liveändring eller kringgång av servercapability gjordes. Full cancel/archive/delete-passering väntar på separat godkänd migrations-/runtimegrind.
+
 ## Ändrade huvudfiler
 
 - `supabase/migrations/20260827072045_cal04_safe_event_lifecycle.sql`

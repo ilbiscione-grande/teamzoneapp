@@ -7,7 +7,7 @@ cross join(values('event.squad.manage'),('event.attendance.manage'))capability(v
 where grant_row.capability='event.manage'and grant_row.scope_type='team'
 on conflict(assignment_id,capability,scope_type,scope_id)do nothing;
 
-create function internal.sync_event_management_capabilities()
+create or replace function internal.sync_event_management_capabilities()
 returns trigger language plpgsql security definer set search_path=''as $$
 begin
  if new.capability='event.manage'and new.scope_type='team'then
@@ -19,10 +19,11 @@ begin
  end if;
  return null;
 end$$;
+drop trigger if exists event_management_capabilities_sync on core.capability_grants;
 create trigger event_management_capabilities_sync after insert or update of starts_at,ends_at on core.capability_grants
 for each row execute function internal.sync_event_management_capabilities();
 
-create function internal.get_leader_home_for_actor(target_context_id uuid)
+create or replace function internal.get_leader_home_for_actor(target_context_id uuid)
 returns jsonb language plpgsql stable security definer set search_path=''as $$
 declare actor_id uuid:=auth.uid();context_row record;observed_at timestamptz:=statement_timestamp();
  can_manage_squad boolean;can_record_attendance boolean;
@@ -74,10 +75,11 @@ begin
  );
 end$$;
 
-create function api.get_leader_home(context_id uuid)returns jsonb language sql stable security invoker set search_path=''as
+create or replace function api.get_leader_home(context_id uuid)returns jsonb language sql stable security invoker set search_path=''as
 $$select internal.get_leader_home_for_actor(context_id)$$;
 revoke all on function internal.sync_event_management_capabilities(),internal.get_leader_home_for_actor(uuid),api.get_leader_home(uuid)from public,anon,authenticated;
 grant execute on function internal.get_leader_home_for_actor(uuid),api.get_leader_home(uuid)to authenticated;
 insert into internal.migration_provenance(migration_name,source_kind,source_reference)
-values('20260827191211_home01_leader_home','greenfield','HOME-01 leader today, next event and deterministic tasks');
+select '20260827191211_home01_leader_home','greenfield','HOME-01 leader today, next event and deterministic tasks'
+where not exists(select 1 from internal.migration_provenance where migration_name='20260827191211_home01_leader_home');
 notify pgrst,'reload schema';

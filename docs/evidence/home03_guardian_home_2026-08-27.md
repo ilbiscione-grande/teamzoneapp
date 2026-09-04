@@ -8,14 +8,16 @@
 - Kallelser filtreras till valt barn. Barnets namn visas både överst och direkt vid svarsknapparna.
 - Varje snabbsvar skickar serverprojektionens `acting_as_person_id`, expected revision och strukturerad decline reason genom CAL-07-flödet och vidare till audit.
 - Nästa event och meddelanderäknare begränsas till valt lags relationstillåtna kontext; ingen meddelandebody exponeras.
+- Cachefallback isoleras per lagkontext och valt barn samt märks explicit som inaktuell. Barnbyte och kallelsesvar spärras tills relationen har verifierats mot servern igen.
 
 ## Verifierat lokalt
 
-- Dart-format och statisk kontraktsgrind täcker aktiv relation, barn-/lagisolering, synlig acting-as och mutationens acting-as/revision/decline reason.
+- Gemensam HOME-01–HOME-03-regression: 15/15 tester passerar.
+- `dart analyze lib test`: inga problem.
+- Dart-format och statisk kontraktsgrind täcker aktiv relation, barn-/lagisolering, synlig acting-as, mutationens acting-as/revision/decline reason och skrivskyddad stale-cache.
 - Ingen Supabase-liveändring eller produktionsprovisionering är gjord.
 
 ## Återstår
 
 - PostgreSQL-runtime/advisors när en godkänd lokal databas är tillgänglig.
-- Flutter test/analyze när wrappern kan slutföra utan låsning.
 - Fysisk guardianverifiering med minst två barn, två lagkontexter, stale revision och avslutad relation.

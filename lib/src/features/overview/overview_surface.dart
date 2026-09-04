@@ -373,11 +373,13 @@ class _GuardianHomeContent extends StatelessWidget {
                     child: Text(item.displayName),
                   ),
               ],
-              onChanged: (id) {
-                if (id != null && id != value.selectedChildId) {
-                  onChildChanged(id);
-                }
-              },
+              onChanged: value.isStale
+                  ? null
+                  : (id) {
+                      if (id != null && id != value.selectedChildId) {
+                        onChildChanged(id);
+                      }
+                    },
             ),
           ),
         ),
@@ -398,6 +400,7 @@ class _GuardianHomeContent extends StatelessWidget {
             callups: value.callups,
             unreadMessageCount: value.unreadMessageCount,
             nextEvent: value.nextEvent,
+            isStale: value.isStale,
           ),
           calendar: calendar,
           onNavigate: onNavigate,
@@ -594,7 +597,7 @@ class _PlayerHomeContentState extends State<_PlayerHomeContent> {
                     ProductRouteContract.calendarEvent(callup.eventId),
                   ),
                 ),
-                if (callup.canRespond)
+                if (callup.canRespond && !widget.value.isStale)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                     child: Wrap(
@@ -650,15 +653,30 @@ class _PlayerHomeContentState extends State<_PlayerHomeContent> {
             ],
           );
     final wide = MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
-    if (!wide) {
-      return Column(children: [callupSection, teamAndMessages, nextSection]);
-    }
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final content = !wide
+        ? Column(children: [callupSection, teamAndMessages, nextSection])
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: callupSection),
+              const SizedBox(width: 12),
+              Expanded(child: Column(children: [teamAndMessages, nextSection])),
+            ],
+          );
+    if (!widget.value.isStale) return content;
+    return Column(
       children: [
-        Expanded(child: callupSection),
-        const SizedBox(width: 12),
-        Expanded(child: Column(children: [teamAndMessages, nextSection])),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.cloud_off_outlined),
+            title: Text(AppStrings.of(context).offlineData),
+            subtitle: Text(
+              '${AppStrings.of(context).lastUpdated(widget.value.generatedAt)} '
+              'Kallelsesvar är avstängda tills sidan har uppdaterats.',
+            ),
+          ),
+        ),
+        content,
       ],
     );
   }
@@ -748,27 +766,41 @@ class _LeaderHomeContent extends StatelessWidget {
               _LeaderEventTile(event: uniqueNext, onNavigate: onNavigate),
             ],
           );
-    if (!wide) {
-      return Column(children: [tasks, today, next, planning]);
-    }
+    final content = !wide
+        ? Column(children: [tasks, today, next, planning])
+        : Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: tasks),
+                  const SizedBox(width: 12),
+                  Expanded(child: today),
+                ],
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: next),
+                  const SizedBox(width: 12),
+                  Expanded(child: planning),
+                ],
+              ),
+            ],
+          );
+    if (!value.isStale) return content;
     return Column(
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: tasks),
-            const SizedBox(width: 12),
-            Expanded(child: today),
-          ],
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.cloud_off_outlined),
+            title: Text(AppStrings.of(context).offlineData),
+            subtitle: Text(
+              AppStrings.of(context).lastUpdated(value.generatedAt),
+            ),
+          ),
         ),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: next),
-            const SizedBox(width: 12),
-            Expanded(child: planning),
-          ],
-        ),
+        content,
       ],
     );
   }

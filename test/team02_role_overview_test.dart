@@ -35,6 +35,7 @@ void main() {
     expect(find.text('Kräver åtgärd'), findsOneWidget);
     expect(find.text('Aktiva inbjudningar'), findsOneWidget);
     expect(find.text('Väntande ansökningar'), findsOneWidget);
+    expect(find.text('Redigera lagprofil'), findsOneWidget);
     expect(find.byIcon(Icons.groups_outlined), findsWidgets);
   });
 
@@ -50,6 +51,7 @@ void main() {
     expect(find.text('Kräver åtgärd'), findsNothing);
     expect(find.text('Aktiva inbjudningar'), findsNothing);
     expect(find.text('Väntande ansökningar'), findsNothing);
+    expect(find.text('Redigera lagprofil'), findsNothing);
   });
 
   test('TEAM-02 projection minimizes admin data behind capability', () {
@@ -72,6 +74,28 @@ void main() {
       sql,
       isNot(contains('grant select on core.membership_applications')),
     );
+  });
+
+  test('TEAM-02 profile editing is capability scoped and revision safe', () {
+    final sql = File(
+      'supabase/migrations/20260901100421_team02_team_profile_edit.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(sql, contains("'club.memberships.manage'"));
+    expect(sql, contains('expected_revision'));
+    expect(sql, contains("'team.profile.update.v1'"));
+    expect(sql, contains('pg_advisory_xact_lock'));
+    expect(sql, contains("normalized_image!~'^https://'"));
+    expect(sql, contains('revoke all on function'));
+  });
+
+  test('TEAM-02 permits a team-scoped leader without club-wide access', () {
+    final sql = File(
+      'supabase/migrations/20260901104226_team02_allow_team_leader_profile_edit.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(sql, contains("'team.roster.manage'"));
+    expect(sql, contains("'club.memberships.manage'"));
+    expect(sql, contains('team_row.id'));
+    expect(sql, contains('revoke all on function'));
   });
 }
 
@@ -127,7 +151,7 @@ class _Identity implements IdentityServices {
       teamName: 'F2012',
       rolePackage: canManage ? 'leader' : 'player',
       capabilities: canManage
-          ? const {'team.read', 'club.memberships.manage'}
+          ? const {'team.read', 'team.roster.manage'}
           : const {'team.read'},
     ),
   ];

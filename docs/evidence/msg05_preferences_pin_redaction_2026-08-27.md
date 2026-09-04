@@ -9,6 +9,7 @@
 - En trigger reducerar message-outboxpayload till `thread_id`, `message_id` och `preview_key=new_message`. Rå body, avsändarnamn, rubrik, filnamn och URL tillåts inte i payloaden.
 - Notification-workern loggar endast komponent/resultat/felkod och aldrig payload.
 - Den mätta command-gatewayns lokala allowlist omfattar nu även MSG-02/03/05-kommandona.
+- Klienten tillåter bara en pushinställningsdialog/-skrivning åt gången. Mute och pin låser sitt avsedda målvärde före nätverksanropet, och en mutad tråd visar den omvända, tydliga åtgärden ”Slå på notiser”.
 - Ingen ändring har skickats till Supabase live.
 
 ## Ändringar
@@ -28,11 +29,12 @@
 - `git diff --check` passerade.
 - Statisk SQL-/gateway-/workergrind verifierade RLS, explicit revoke/grant, fail-closed preferens/mute, kontosynkad pin, automatisk payloadredaction och frånvaro av payloadloggning.
 - Deno finns inte installerat lokalt, så separat TypeScript/Deno-kontroll återstår.
-- Riktad `flutter test test/msg05_preferences_pin_redaction_test.dart` gav ingen output inom 30 sekunder i den kända lokala Flutter-wrapperlåsningen och avbröts kontrollerat; ingen process lämnades igång.
+- Riktade MSG-04–06-tester passerade 14/14, inklusive dubbelklicks-/stale-toggle-grinden.
+- `dart analyze lib test` passerade utan anmärkning.
 
 ## Kvarvarande grindar
 
 - Kör migreringen i isolerad PostgreSQL/Supabase-runtime och kör advisors.
-- Kör Flutter-test/analys och Deno check när de lokala verktygen fungerar.
+- Kör Deno check när verktyget finns lokalt.
 - Verifiera med två enheter: mute/unmute, pin/unpin och ordning efter reconnect samt push opt-in/out.
 - Aktivera och verifiera pushprovider/endpoints endast efter separat driftgodkännande.

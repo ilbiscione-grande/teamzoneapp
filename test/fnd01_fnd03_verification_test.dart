@@ -114,6 +114,32 @@ void main() {
       expect(find.text('Översikt'), findsOneWidget);
       expect(find.text('Verifieringslaget'), findsWidgets);
     });
+
+    testWidgets('system back returns from assistant to the previous surface', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(_verifiedApp());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('assistant-coach-mobile-fab')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('assistant-coach-holding-surface')),
+        findsOneWidget,
+      );
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('assistant-coach-holding-surface')),
+        findsNothing,
+      );
+      expect(find.text('Hem'), findsWidgets);
+    });
   });
 
   testWidgets('system back warns before discarding unsaved changes', (

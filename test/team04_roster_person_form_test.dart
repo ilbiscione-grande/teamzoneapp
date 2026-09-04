@@ -104,6 +104,17 @@ void main() {
     expect(sql, contains('revoke all on function'));
   });
 
+  test('team leaders receive scoped roster management, not club admin', () {
+    final sql = File(
+      'supabase/migrations/20260831153810_team_leader_scoped_roster_management.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(sql, contains("'team.roster.manage'"));
+    expect(sql, contains("assignment.role_package = 'leader'"));
+    expect(sql, contains("required_capability = 'club.memberships.manage'"));
+    expect(sql, contains('target_team_id is not null'));
+    expect(sql, contains("grant_row.scope_type = 'team'"));
+  });
+
   test('person revision is parsed separately from assignment revision', () {
     final details = RosterPersonDetails.fromJson(const {
       'club_person_id': 'person',
@@ -241,11 +252,7 @@ class _Identity implements IdentityServices {
       teamId: 'team',
       teamName: 'F2012',
       rolePackage: 'leader',
-      capabilities: {
-        'team.read',
-        'team.roster.view',
-        'club.memberships.manage',
-      },
+      capabilities: {'team.read', 'team.roster.view', 'team.roster.manage'},
     ),
   ];
   @override

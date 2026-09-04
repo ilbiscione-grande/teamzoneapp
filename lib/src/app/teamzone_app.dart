@@ -5,8 +5,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
 import 'package:teamzone_app/src/core/identity/identity_services.dart';
@@ -20,6 +22,11 @@ import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 import 'package:teamzone_app/src/app/product_route_contract.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_models.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_services.dart';
+import 'package:teamzone_app/src/features/assistant_coach/assistant_identity.dart';
+import 'package:teamzone_app/src/features/assistant_coach/assistant_queue.dart';
+import 'package:teamzone_app/src/features/assistant_coach/assistant_presentation.dart';
+import 'package:teamzone_app/src/features/assistant_coach/assistant_policy.dart';
+import 'package:teamzone_app/src/features/assistant_coach/assistant_specialist_registry.dart';
 import 'package:teamzone_app/src/features/billing/billing_models.dart';
 import 'package:teamzone_app/src/features/billing/billing_services.dart';
 import 'package:teamzone_app/src/features/board/board_models.dart';
@@ -30,6 +37,8 @@ import 'package:teamzone_app/src/features/economy/economy_models.dart';
 import 'package:teamzone_app/src/features/economy/economy_services.dart';
 import 'package:teamzone_app/src/features/overview/overview_models.dart';
 import 'package:teamzone_app/src/features/overview/overview_services.dart';
+import 'package:teamzone_app/src/features/publication/editorial_models.dart';
+import 'package:teamzone_app/src/features/publication/editorial_services.dart';
 import 'package:teamzone_app/src/features/messaging/messaging_models.dart';
 import 'package:teamzone_app/src/features/messaging/messaging_services.dart';
 import 'package:teamzone_app/src/features/match/match_models.dart';
@@ -62,6 +71,9 @@ part '../features/economy/economy_surface.dart';
 part '../features/match/match_space_dialog.dart';
 part '../features/messaging/inbox_surface.dart';
 part '../features/overview/overview_surface.dart';
+part '../features/publication/editorial_surface.dart';
+part '../features/publication/publication_management_surface.dart';
+part '../features/publication/domain_management_surface.dart';
 part '../features/roster/roster_surface.dart';
 
 class TeamZoneApp extends StatefulWidget {
@@ -181,11 +193,26 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
             sessionEnded: _sessionEnded,
           );
 
+    final appKey = ValueKey(
+      '${_sessionStatus.name}:$_recoveringPassword:'
+      '${invitationToken != null}:$_showInvitationSignIn',
+    );
+    if (kIsWeb) {
+      return MaterialApp.router(
+        key: appKey,
+        routerDelegate: _StaticRootRouterDelegate(root),
+        debugShowCheckedModeBanner: false,
+        title: 'TeamZone',
+        theme: theme,
+        darkTheme: darkTheme,
+        themeMode: ThemeMode.system,
+        supportedLocales: const [Locale('sv'), Locale('en')],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        locale: widget.locale,
+      );
+    }
     return MaterialApp(
-      key: ValueKey(
-        '${_sessionStatus.name}:$_recoveringPassword:'
-        '${invitationToken != null}:$_showInvitationSignIn',
-      ),
+      key: appKey,
       debugShowCheckedModeBanner: false,
       title: 'TeamZone',
       theme: theme,
@@ -207,6 +234,27 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
       if (mounted) setState(() => _signingOut = false);
     }
   }
+}
+
+class _StaticRootRouterDelegate extends RouterDelegate<Object>
+    with ChangeNotifier {
+  _StaticRootRouterDelegate(this.root);
+
+  final Widget root;
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  Widget build(BuildContext context) => Navigator(
+    key: _navigatorKey,
+    pages: [MaterialPage<void>(key: const ValueKey('root'), child: root)],
+    onDidRemovePage: (_) {},
+  );
+
+  @override
+  Future<bool> popRoute() async => false;
+
+  @override
+  Future<void> setNewRoutePath(Object configuration) async {}
 }
 
 class _NotFoundSurface extends StatelessWidget {

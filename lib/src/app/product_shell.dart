@@ -5,6 +5,7 @@ class _ProductShell extends StatefulWidget {
     required this.contextValue,
     required this.contexts,
     required this.onContextChanged,
+    required this.onContextsChanged,
     required this.onSignOut,
     required this.roster,
     required this.membership,
@@ -17,6 +18,9 @@ class _ProductShell extends StatefulWidget {
     required this.billing,
     required this.economy,
     required this.board,
+    required this.editorial,
+    required this.assistantIdentity,
+    required this.assistantPresentation,
     required this.matchSpaceV2,
     super.key,
   });
@@ -24,6 +28,7 @@ class _ProductShell extends StatefulWidget {
   final TeamZoneContext contextValue;
   final List<TeamZoneContext> contexts;
   final ValueChanged<TeamZoneContext> onContextChanged;
+  final Future<void> Function() onContextsChanged;
   final Future<void> Function() onSignOut;
   final RosterServices roster;
   final MembershipServices membership;
@@ -36,6 +41,9 @@ class _ProductShell extends StatefulWidget {
   final BillingServices billing;
   final EconomyServices economy;
   final BoardServices board;
+  final EditorialServices editorial;
+  final AssistantIdentityServices assistantIdentity;
+  final AssistantPresentationServices assistantPresentation;
   final bool matchSpaceV2;
 
   @override
@@ -43,10 +51,14 @@ class _ProductShell extends StatefulWidget {
 }
 
 class _ProductShellState extends State<_ProductShell> {
+  final RootBackButtonDispatcher _backButtonDispatcher =
+      RootBackButtonDispatcher();
+
   late final GoRouter _router = GoRouter(
     initialLocation: _initialProductLocation(
       WidgetsBinding.instance.platformDispatcher.defaultRouteName,
     ),
+    overridePlatformDefaultLocation: true,
     routes: [
       GoRoute(path: '/', redirect: (_, _) => '/home'),
       GoRoute(
@@ -72,8 +84,20 @@ class _ProductShellState extends State<_ProductShell> {
         ),
       ),
       GoRoute(
+        path: ProductRouteContract.editorial,
+        builder: (_, _) => _EditorialSurface(
+          contextValue: widget.contextValue,
+          contexts: widget.contexts,
+          editorial: widget.editorial,
+        ),
+      ),
+      GoRoute(
         path: ProductRouteContract.assistant,
-        builder: (_, _) => const _AssistantCoachHoldingSurface(),
+        builder: (_, _) => _AssistantCoachHoldingSurface(
+          assistantIdentity: widget.assistantIdentity,
+          assistantPresentation: widget.assistantPresentation,
+          contextValue: widget.contextValue,
+        ),
       ),
       for (final destination in _destinations)
         GoRoute(
@@ -84,6 +108,7 @@ class _ProductShellState extends State<_ProductShell> {
                   roster: widget.roster,
                   membership: widget.membership,
                   calendar: widget.calendar,
+                  onContextsChanged: widget.onContextsChanged,
                   initialTab: state.uri.queryParameters['tab'],
                 )
               : destination.path == '/calendar'
@@ -92,6 +117,7 @@ class _ProductShellState extends State<_ProductShell> {
                   contexts: widget.contexts,
                   calendar: widget.calendar,
                   match: widget.match,
+                  onNavigate: _router.go,
                   matchSpaceV2: widget.matchSpaceV2,
                   initialEventId: state.uri.queryParameters['event'],
                 )
@@ -154,9 +180,10 @@ class _ProductShellState extends State<_ProductShell> {
                     DropdownMenuItem(
                       value: item,
                       child: Tooltip(
-                        message: item.teamName ?? item.clubName,
+                        message:
+                            '${item.teamName ?? item.clubName} · ${strings.domainValue(item.rolePackage)}',
                         child: Text(
-                          item.teamName ?? item.clubName,
+                          '${item.teamName ?? item.clubName} · ${strings.domainValue(item.rolePackage)}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -183,6 +210,12 @@ class _ProductShellState extends State<_ProductShell> {
                   tooltip: AppStrings.of(context).feature('Styrelse'),
                   onPressed: () => _router.go('/board'),
                   icon: const Icon(Icons.badge_outlined),
+                ),
+              if (widget.contextValue.can('publication.manage'))
+                IconButton(
+                  tooltip: strings.feature('Nyhetsredaktion'),
+                  onPressed: () => _router.go(ProductRouteContract.editorial),
+                  icon: const Icon(Icons.newspaper_outlined),
                 ),
               IconButton(
                 tooltip: strings.feature('Integritetsinställningar'),
@@ -227,6 +260,7 @@ class _ProductShellState extends State<_ProductShell> {
                         routeInformationParser: _router.routeInformationParser,
                         routeInformationProvider:
                             _router.routeInformationProvider,
+                        backButtonDispatcher: _backButtonDispatcher,
                       ),
                     ),
                     if (!AppBreakpoints.usesNavigationRail(
@@ -249,6 +283,7 @@ class _ProductShellState extends State<_ProductShell> {
                   ) &&
                   location != ProductRouteContract.assistant)
                 _AssistantCoachSidePanel(
+                  contextValue: widget.contextValue,
                   onOpen: () => _router.push(ProductRouteContract.assistant),
                 ),
             ],
@@ -260,6 +295,10 @@ class _ProductShellState extends State<_ProductShell> {
               ? NavigationBar(
                   selectedIndex: selectedIndex,
                   onDestinationSelected: _goTo,
+                  labelBehavior:
+                      MediaQuery.textScalerOf(context).scale(1) >= 1.5
+                      ? NavigationDestinationLabelBehavior.onlyShowSelected
+                      : NavigationDestinationLabelBehavior.alwaysShow,
                   destinations: [
                     for (final item in _destinations)
                       NavigationDestination(

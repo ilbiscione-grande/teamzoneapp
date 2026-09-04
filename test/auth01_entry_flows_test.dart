@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/app/teamzone_app.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
 import 'package:teamzone_app/src/core/identity/auth_entry_services.dart';
@@ -47,6 +48,29 @@ void main() {
       );
     },
   );
+
+  testWidgets('password signup shows a safe actionable auth error', (
+    tester,
+  ) async {
+    final entry = _EntryFake()
+      ..signUpError = const AuthException(
+        'backend detail must stay hidden',
+        statusCode: '422',
+        code: 'weak_password',
+      );
+    await tester.pumpWidget(_app(entry));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Skapa konto'));
+    await tester.pumpAndSettle();
+    await tester.enterText(_field('E-post'), 'new@example.com');
+    await tester.enterText(_field('Lösenord'), 'correct-horse');
+    await tester.enterText(_field('Bekräfta lösenord'), 'correct-horse');
+    await tester.tap(find.widgetWithText(FilledButton, 'Skapa konto'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('säkerhetskraven'), findsOneWidget);
+    expect(find.textContaining('backend detail'), findsNothing);
+  });
 
   testWidgets('email sign-in explicitly forbids implicit account creation', (
     tester,
@@ -182,6 +206,7 @@ class _EntryFake implements AuthEntryServices {
   String? verifiedCode;
   EmailChallengePurpose? lastPurpose;
   bool failReset = false;
+  AuthException? signUpError;
 
   @override
   Stream<AuthEntryEvent> get entryEvents => events.stream;
@@ -207,6 +232,7 @@ class _EntryFake implements AuthEntryServices {
   }) async {
     signUpCalls += 1;
     lastEmail = email;
+    if (signUpError case final error?) throw error;
     return const PasswordSignUpResult(verificationRequired: true);
   }
 

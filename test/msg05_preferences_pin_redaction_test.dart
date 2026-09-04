@@ -63,4 +63,18 @@ void main() {
       expect(gateway, contains('$operation: "messaging"'));
     }
   });
+
+  test('preference UX prevents duplicate and stale toggles', () {
+    expect(surface, contains('bool _settingsPending = false'));
+    expect(surface, contains('if (_settingsPending) return'));
+    expect(
+      surface,
+      contains('onPressed: _settingsPending ? null : _showMessagingSettings'),
+    );
+    expect(surface, contains('final targetMuted = !_muted'));
+    expect(surface, contains('_muted = targetMuted'));
+    expect(surface, contains('final targetPinned = !_pinned'));
+    expect(surface, contains('_pinned = targetPinned'));
+    expect(surface, contains("feature('Slå på notiser')"));
+  });
 }

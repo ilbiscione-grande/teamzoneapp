@@ -1,6 +1,17 @@
 {
   "schema_version": 1,
-  "status": "partial",
+  "status": "passed",
+  "verified_at": "2026-09-01",
+  "tester": "product_owner",
+  "build_identity": "configured local Flutter web release build 2026-09-01 plus Xiaomi Mi 9 Android audit build",
+  "evidence_ref": "docs/evidence/rel02_verification_matrix_2026-08-28.md",
+  "fixture_cleanup": {
+    "status": "passed",
+    "verified_at": "2026-09-01",
+    "second_team_deleted": true,
+    "temporary_role_relationships_ended": true,
+    "historical_references_preserved": true
+  },
   "automated_baseline": {
     "status": "passed",
     "verified_at": "2026-08-28",
@@ -13,42 +24,42 @@
     "status": "passed",
     "verified_at": "2026-08-28",
     "gate": "tool/rel02_automated_gate.ps1",
-    "latest_targeted_result": "43/43",
+    "latest_targeted_result": "44/44",
     "covered": ["cold_link_rebuild", "system_back", "safe_failure", "session_fail_closed", "keyboard_focus", "text_scale_200", "contrast_aa", "reduced_motion"],
-    "manual_remaining": ["hosted_session_expiry", "browser_back_forward", "physical_offline_reconnect", "screen_reader_device"]
+    "manual_remaining": []
   },
   "roles": ["leader", "player", "guardian", "club_functionary"],
   "devices": ["phone", "tablet", "desktop_web"],
   "surfaces": ["home", "team", "calendar", "inbox"],
   "role_device_matrix": [
-    {"id":"REL02-RD-01","role":"leader","device":"phone","status":"prior_evidence_requires_regression"},
-    {"id":"REL02-RD-02","role":"leader","device":"tablet","status":"structural_only"},
-    {"id":"REL02-RD-03","role":"leader","device":"desktop_web","status":"structural_only"},
-    {"id":"REL02-RD-04","role":"player","device":"phone","status":"structural_only"},
-    {"id":"REL02-RD-05","role":"player","device":"tablet","status":"structural_only"},
-    {"id":"REL02-RD-06","role":"player","device":"desktop_web","status":"structural_only"},
-    {"id":"REL02-RD-07","role":"guardian","device":"phone","status":"structural_only"},
-    {"id":"REL02-RD-08","role":"guardian","device":"tablet","status":"structural_only"},
-    {"id":"REL02-RD-09","role":"guardian","device":"desktop_web","status":"structural_only"},
-    {"id":"REL02-RD-10","role":"club_functionary","device":"phone","status":"structural_only"},
-    {"id":"REL02-RD-11","role":"club_functionary","device":"tablet","status":"structural_only"},
-    {"id":"REL02-RD-12","role":"club_functionary","device":"desktop_web","status":"structural_only"}
+    {"id":"REL02-RD-01","role":"leader","device":"phone","status":"passed"},
+    {"id":"REL02-RD-02","role":"leader","device":"tablet","status":"passed"},
+    {"id":"REL02-RD-03","role":"leader","device":"desktop_web","status":"passed"},
+    {"id":"REL02-RD-04","role":"player","device":"phone","status":"passed"},
+    {"id":"REL02-RD-05","role":"player","device":"tablet","status":"passed"},
+    {"id":"REL02-RD-06","role":"player","device":"desktop_web","status":"passed"},
+    {"id":"REL02-RD-07","role":"guardian","device":"phone","status":"passed"},
+    {"id":"REL02-RD-08","role":"guardian","device":"tablet","status":"passed"},
+    {"id":"REL02-RD-09","role":"guardian","device":"desktop_web","status":"passed"},
+    {"id":"REL02-RD-10","role":"club_functionary","device":"phone","status":"passed"},
+    {"id":"REL02-RD-11","role":"club_functionary","device":"tablet","status":"passed"},
+    {"id":"REL02-RD-12","role":"club_functionary","device":"desktop_web","status":"passed"}
   ],
   "interruption_matrix": [
-    {"id":"REL02-I-01","scenario":"cold_start","status":"prior_evidence_requires_regression"},
-    {"id":"REL02-I-02","scenario":"deep_link","status":"prior_evidence_requires_regression"},
-    {"id":"REL02-I-03","scenario":"back_forward","status":"structural_only"},
-    {"id":"REL02-I-04","scenario":"context_switch","status":"structural_only"},
-    {"id":"REL02-I-05","scenario":"offline","status":"structural_only"},
-    {"id":"REL02-I-06","scenario":"reconnect","status":"structural_only"},
-    {"id":"REL02-I-07","scenario":"session_expiry","status":"structural_only"}
+    {"id":"REL02-I-01","scenario":"cold_start","status":"passed"},
+    {"id":"REL02-I-02","scenario":"deep_link","status":"passed"},
+    {"id":"REL02-I-03","scenario":"back_forward","status":"passed"},
+    {"id":"REL02-I-04","scenario":"context_switch","status":"passed"},
+    {"id":"REL02-I-05","scenario":"offline","status":"passed"},
+    {"id":"REL02-I-06","scenario":"reconnect","status":"passed"},
+    {"id":"REL02-I-07","scenario":"session_expiry","status":"passed"}
   ],
   "accessibility_matrix": [
-    {"id":"REL02-A-01","scenario":"screen_reader","status":"prior_evidence_requires_regression"},
-    {"id":"REL02-A-02","scenario":"keyboard_focus","status":"prior_evidence_requires_regression"},
-    {"id":"REL02-A-03","scenario":"text_scale_200","status":"prior_evidence_requires_regression"},
-    {"id":"REL02-A-04","scenario":"contrast","status":"prior_evidence_requires_regression"},
-    {"id":"REL02-A-05","scenario":"reduced_motion","status":"prior_evidence_requires_regression"}
+    {"id":"REL02-A-01","scenario":"screen_reader","status":"passed","scope":"phone_talkback"},
+    {"id":"REL02-A-02","scenario":"keyboard_focus","status":"passed","scope":"desktop_web"},
+    {"id":"REL02-A-03","scenario":"text_scale_200","status":"passed","scope":"phone_tablet_desktop_web"},
+    {"id":"REL02-A-04","scenario":"contrast","status":"passed","scope":"automated_aa_and_phone_light_dark"},
+    {"id":"REL02-A-05","scenario":"reduced_motion","status":"passed","scope":"automated_and_desktop_web","limitation":"Xiaomi Mi 9 OS toggle unavailable"}
   ],
   "required_evidence_per_case": [
     "tester_and_timestamp",

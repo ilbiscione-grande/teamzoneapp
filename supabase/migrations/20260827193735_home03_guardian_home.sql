@@ -1,24 +1,24 @@
 -- HOME-03: explicit child selection with relation-verified guardian acting-as.
 
-create function internal.get_guardian_home_for_actor(target_context_id uuid,target_child_person_id uuid default null)
+create or replace function internal.get_guardian_home_for_actor(target_context_id uuid,target_child_person_id uuid default null)
 returns jsonb language plpgsql stable security definer set search_path=''as $$
-declare actor_id uuid:=auth.uid();context_row record;guardian_person_id uuid;selected_child_id uuid;
+declare actor_id uuid:=auth.uid();context_row record;guardian_actor_person_id uuid;selected_child_id uuid;
  observed_at timestamptz:=statement_timestamp();
 begin
  if actor_id is null then raise insufficient_privilege using message='unauthenticated';end if;
  select * into context_row from internal.get_my_contexts_for_actor()where context_id=target_context_id;
  if context_row.context_id is null or context_row.role_package<>'guardian'or context_row.team_id is null
  then raise insufficient_privilege using message='not_found';end if;
- select link.club_person_id into guardian_person_id from core.person_account_links link
+ select link.club_person_id into guardian_actor_person_id from core.person_account_links link
  join core.assignments assignment on assignment.club_person_id=link.club_person_id and assignment.club_id=link.club_id
  where link.profile_id=actor_id and link.club_id=context_row.club_id and link.state='active'
   and assignment.team_id=context_row.team_id and assignment.role_package='guardian'and assignment.state='active'
   and assignment.starts_at<=observed_at and(assignment.ends_at is null or assignment.ends_at>observed_at)
  order by assignment.starts_at desc,assignment.id limit 1;
- if guardian_person_id is null then raise insufficient_privilege using message='not_found';end if;
+ if guardian_actor_person_id is null then raise insufficient_privilege using message='not_found';end if;
  select child.id into selected_child_id from core.guardian_relations relation
  join core.club_people child on child.id=relation.child_person_id and child.club_id=relation.club_id
- where relation.club_id=context_row.club_id and relation.guardian_person_id=guardian_person_id
+ where relation.club_id=context_row.club_id and relation.guardian_person_id=guardian_actor_person_id
   and relation.state='active'and relation.starts_at<=observed_at and(relation.ends_at is null or relation.ends_at>observed_at)
   and(target_child_person_id is null or child.id=target_child_person_id)
   and exists(select 1 from core.team_assignments assignment where assignment.club_id=relation.club_id
@@ -35,7 +35,7 @@ begin
   'children',coalesce((select jsonb_agg(jsonb_build_object('child_person_id',child.id,'display_name',child.display_name,
     'relation_kind',relation.kind)order by child.display_name,child.id)
    from core.guardian_relations relation join core.club_people child on child.id=relation.child_person_id and child.club_id=relation.club_id
-   where relation.club_id=context_row.club_id and relation.guardian_person_id=guardian_person_id
+   where relation.club_id=context_row.club_id and relation.guardian_person_id=guardian_actor_person_id
     and relation.state='active'and relation.starts_at<=observed_at and(relation.ends_at is null or relation.ends_at>observed_at)
     and exists(select 1 from core.team_assignments assignment where assignment.club_id=relation.club_id
      and assignment.team_id=context_row.team_id and assignment.club_person_id=child.id and assignment.state='active'
@@ -71,11 +71,12 @@ begin
  );
 end$$;
 
-create function api.get_guardian_home(context_id uuid,child_person_id uuid default null)returns jsonb
+create or replace function api.get_guardian_home(context_id uuid,child_person_id uuid default null)returns jsonb
 language sql stable security invoker set search_path=''as
 $$select internal.get_guardian_home_for_actor(context_id,child_person_id)$$;
 revoke all on function internal.get_guardian_home_for_actor(uuid,uuid),api.get_guardian_home(uuid,uuid)from public,anon,authenticated;
 grant execute on function internal.get_guardian_home_for_actor(uuid,uuid),api.get_guardian_home(uuid,uuid)to authenticated;
 insert into internal.migration_provenance(migration_name,source_kind,source_reference)
-values('20260827193735_home03_guardian_home','greenfield','HOME-03 child switcher, relation-scoped data and visible acting-as');
+select '20260827193735_home03_guardian_home','greenfield','HOME-03 child switcher, relation-scoped data and visible acting-as'
+where not exists(select 1 from internal.migration_provenance where migration_name='20260827193735_home03_guardian_home');
 notify pgrst,'reload schema';

@@ -9,6 +9,12 @@ void main() {
   final surface = File(
     'lib/src/features/overview/overview_surface.dart',
   ).readAsStringSync();
+  final services = File(
+    'lib/src/features/overview/overview_services.dart',
+  ).readAsStringSync();
+  final models = File(
+    'lib/src/features/overview/overview_models.dart',
+  ).readAsStringSync();
 
   test('guardian and selected child require active relation and team', () {
     expect(migration, contains("context_row.role_package<>'guardian'"));
@@ -49,5 +55,15 @@ void main() {
     expect(migration, contains('scope.team_id=context_row.team_id'));
     expect(migration, contains("'child_callups'"));
     expect(migration, contains("'unread_message_count'"));
+  });
+
+  test('cached guardian relation is stale and read-only per child', () {
+    expect(models, contains('GuardianHomeProjection asStale()'));
+    expect(services, contains(r"final cacheKey = '$contextId:"));
+    expect(services, contains("childPersonId ?? 'default'"));
+    expect(services, contains('return cached.asStale()'));
+    expect(surface, contains('onChanged: value.isStale'));
+    expect(surface, contains('isStale: value.isStale'));
+    expect(surface, contains('callup.canRespond && !widget.value.isStale'));
   });
 }

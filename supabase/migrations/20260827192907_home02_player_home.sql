@@ -1,6 +1,6 @@
 -- HOME-02: player-only home projection with own, revisioned callup actions.
 
-create function internal.get_player_home_for_actor(target_context_id uuid)
+create or replace function internal.get_player_home_for_actor(target_context_id uuid)
 returns jsonb language plpgsql stable security definer set search_path=''as $$
 declare actor_id uuid:=auth.uid();context_row record;actor_person_id uuid;observed_at timestamptz:=statement_timestamp();
 begin
@@ -51,10 +51,11 @@ begin
  );
 end$$;
 
-create function api.get_player_home(context_id uuid)returns jsonb language sql stable security invoker set search_path=''as
+create or replace function api.get_player_home(context_id uuid)returns jsonb language sql stable security invoker set search_path=''as
 $$select internal.get_player_home_for_actor(context_id)$$;
 revoke all on function internal.get_player_home_for_actor(uuid),api.get_player_home(uuid)from public,anon,authenticated;
 grant execute on function internal.get_player_home_for_actor(uuid),api.get_player_home(uuid)to authenticated;
 insert into internal.migration_provenance(migration_name,source_kind,source_reference)
-values('20260827192907_home02_player_home','greenfield','HOME-02 own callups, next event, team and messages');
+select '20260827192907_home02_player_home','greenfield','HOME-02 own callups, next event, team and messages'
+where not exists(select 1 from internal.migration_provenance where migration_name='20260827192907_home02_player_home');
 notify pgrst,'reload schema';

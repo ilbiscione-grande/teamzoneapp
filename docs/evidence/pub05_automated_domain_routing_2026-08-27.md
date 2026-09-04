@@ -15,6 +15,9 @@ Status: lokalt genomfört, provider- och hosted verifiering återstår
 - Canonical metadata använder den verifierade custom-hostens ursprungliga externa path.
 - TeamZone-subdomäner kan inte begäras: alla tre wildcardgrindar har databasvillkoret `false` tills en senare separat migration öppnar dem.
 - DNS-/TLS-/canonical-/rollbackguiden finns i `docs/operations/pub05_domain_activation_guide.md`.
+- Flutter-appen har capabilitystyrd självbetjäning för status, egen domän, engångs-TXT-instruktion och canonical-val. Kostnadsfri path-adress visas alltid som fallback.
+- Den lokala, ej utrullade migrationen `20260828093026_pub05_domain_management_projection.sql` tenantfiltrerar status och exponerar wildcardtillgänglighet endast när samtliga tre runtimegrindar är sanna.
+- Publiceringskommandona för PUB-03–PUB-05 är nu explicit allowlistade i den mätta kommandogatewayen; före rättningen hade runtime nekat dem med `operation_not_allowed`.
 
 Supabase-säkerhetsgränsen styrde implementationen: tabellerna saknar direkta klientgrants, RLS är defense-in-depth, användarkommandon verifierar `auth.uid()` och capability, serviceövergångar har explicita grants och domänhändelser auditeras separat.
 
@@ -24,6 +27,9 @@ Supabase-säkerhetsgränsen styrde implementationen: tabellerna saknar direkta k
 - Full publiksajtssvit: 18/18 godkända efter canonical-korrigeringen.
 - Next-produktionsbuild: godkänd och verifierar att Proxy inkluderas.
 - Kontraktstest täcker ägarverifiering, TLS-grind, canonical uniqueness, 308, wildcardblockering och hostile routinginput.
+- `dart analyze lib test`: godkänd utan anmärkningar den 2026-08-28.
+- Riktade domän-, publicerings-, gateway-, lokalisering- och scope-tester: godkända.
+- Full Flutter-regression: 277/277 tester godkända den 2026-08-28.
 
 ## Återstår
 

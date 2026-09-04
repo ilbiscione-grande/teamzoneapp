@@ -6,6 +6,9 @@ void main() {
   final migration = File(
     'supabase/migrations/20260827155531_msg07_thread_lifecycle_erasure.sql',
   ).readAsStringSync();
+  final applicationHardeningMigration = File(
+    'supabase/migrations/20260828115514_msg07_dual_control_erasure_application.sql',
+  ).readAsStringSync();
   final services = File(
     'lib/src/features/messaging/messaging_services.dart',
   ).readAsStringSync();
@@ -43,6 +46,32 @@ void main() {
     );
     expect(migration, contains("'teamzone_review'"));
     expect(migration, contains("thread_row.thread_type='cross_club_direct'"));
+  });
+
+  test('ordinary erasure is exactly dual control and replay safe', () {
+    expect(
+      applicationHardeningMigration,
+      contains("if request_row.state = 'completed' then"),
+    );
+    expect(
+      applicationHardeningMigration,
+      contains('reviewer_profile_id is distinct from request_row.approved_by'),
+    );
+    expect(
+      applicationHardeningMigration,
+      contains("message = 'approved_reviewer_required'"),
+    );
+    expect(
+      applicationHardeningMigration,
+      contains("message = 'independent_teamzone_reviewer_required'"),
+    );
+    expect(
+      applicationHardeningMigration,
+      contains(
+        "when request_row.requires_teamzone_review then 'teamzone_review'",
+      ),
+    );
+    expect(applicationHardeningMigration, contains("else 'dual_control'"));
   });
 
   test('neutral tombstones preserve references and ordering', () {

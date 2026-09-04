@@ -6,6 +6,9 @@ void main() {
   final migration = File(
     'supabase/migrations/20260827145227_msg03_announcement_read_status.sql',
   ).readAsStringSync();
+  final participantHardeningMigration = File(
+    'supabase/migrations/20260828103629_msg03_bind_announcement_participants_to_assignments.sql',
+  ).readAsStringSync();
   final models = File(
     'lib/src/features/messaging/messaging_models.dart',
   ).readAsStringSync();
@@ -35,6 +38,35 @@ void main() {
       contains("participant.participant_role in('creator','moderator')"),
     );
     expect(migration, contains("thread_row.thread_type='announcement'"));
+  });
+
+  test('announcement participants bind to current assignments', () {
+    expect(
+      participantHardeningMigration,
+      contains('join core.assignments assignment'),
+    );
+    expect(
+      participantHardeningMigration,
+      contains('assignment.starts_at <= now()'),
+    );
+    expect(
+      participantHardeningMigration,
+      contains('(assignment.ends_at is null or assignment.ends_at > now())'),
+    );
+    expect(
+      participantHardeningMigration,
+      contains(
+        '(context_row.team_id is null or assignment.team_id = context_row.team_id)',
+      ),
+    );
+    expect(
+      participantHardeningMigration,
+      contains('materialized_count <> recipient_count'),
+    );
+    expect(
+      participantHardeningMigration,
+      contains("message = 'relationship_changed'"),
+    );
   });
 
   test('mark all routes messages and announcements atomically', () {

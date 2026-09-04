@@ -3,6 +3,16 @@ import 'package:teamzone_app/src/features/roster/roster_models.dart';
 
 abstract interface class RosterServices {
   Future<TeamOverview> getTeamOverview({required String teamId});
+  Future<TeamProfileEditData> getTeamProfileEdit({required String teamId});
+  Future<int> updateTeamProfile({
+    required String teamId,
+    required String teamType,
+    required String ageClass,
+    required String summary,
+    required String imageUrl,
+    required int expectedRevision,
+    required String idempotencyKey,
+  });
   Future<RosterPersonDetails> getPersonDetails({
     required String clubId,
     required String teamId,
@@ -29,6 +39,14 @@ abstract interface class RosterServices {
     required int expectedRevision,
     required String idempotencyKey,
   });
+  Future<int> setGuardianRequirement({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required bool guardianRequired,
+    required int expectedRevision,
+    required String idempotencyKey,
+  });
   Future<String> issueTargetedInvitation({
     required String personId,
     required String intendedEmail,
@@ -52,6 +70,7 @@ abstract interface class RosterServices {
     required int maxUses,
     required String idempotencyKey,
   });
+  Future<String> revealTeamCode({required String codeId});
   Future<String> claimTeamCode({
     required String token,
     required String idempotencyKey,
@@ -162,6 +181,21 @@ class UnconfiguredRosterServices implements RosterServices {
       Future.error(StateError('Supabase is not configured.'));
 
   @override
+  Future<TeamProfileEditData> getTeamProfileEdit({required String teamId}) =>
+      Future.error(StateError('Supabase is not configured.'));
+
+  @override
+  Future<int> updateTeamProfile({
+    required String teamId,
+    required String teamType,
+    required String ageClass,
+    required String summary,
+    required String imageUrl,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) => Future.error(StateError('Supabase is not configured.'));
+
+  @override
   Future<RosterPersonDetails> getPersonDetails({
     required String clubId,
     required String teamId,
@@ -194,6 +228,15 @@ class UnconfiguredRosterServices implements RosterServices {
     required int expectedRevision,
     required String idempotencyKey,
   }) => Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<int> setGuardianRequirement({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required bool guardianRequired,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) => Future.error(StateError('Supabase is not configured.'));
 
   @override
   Future<String> issueTargetedInvitation({
@@ -221,6 +264,9 @@ class UnconfiguredRosterServices implements RosterServices {
     required int maxUses,
     required String idempotencyKey,
   }) => Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<String> revealTeamCode({required String codeId}) =>
+      Future.error(StateError('Supabase is not configured.'));
   @override
   Future<String> claimTeamCode({
     required String token,
@@ -362,6 +408,50 @@ class SupabaseRosterServices implements RosterServices {
   }
 
   @override
+  Future<TeamProfileEditData> getTeamProfileEdit({
+    required String teamId,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'get_team_profile_edit',
+          params: {'target_team_id': teamId},
+        );
+    if (value is! Map<String, dynamic>) {
+      throw const FormatException('Team profile response is invalid.');
+    }
+    return TeamProfileEditData.fromJson(value);
+  }
+
+  @override
+  Future<int> updateTeamProfile({
+    required String teamId,
+    required String teamType,
+    required String ageClass,
+    required String summary,
+    required String imageUrl,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'update_team_profile',
+          params: {
+            'target_team_id': teamId,
+            'new_team_type': teamType,
+            'new_age_class': ageClass,
+            'new_summary': summary,
+            'new_image_url': imageUrl,
+            'expected_revision': expectedRevision,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+    if (value is! num) throw const FormatException('Invalid team revision.');
+    return value.toInt();
+  }
+
+  @override
   Future<RosterPersonDetails> getPersonDetails({
     required String clubId,
     required String teamId,
@@ -462,6 +552,34 @@ class SupabaseRosterServices implements RosterServices {
   }
 
   @override
+  Future<int> setGuardianRequirement({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required bool guardianRequired,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'set_guardian_requirement',
+          params: {
+            'target_club_id': clubId,
+            'target_team_id': teamId,
+            'target_club_person_id': personId,
+            'guardian_required': guardianRequired,
+            'expected_revision': expectedRevision,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+    if (value is! num) {
+      throw const FormatException('Guardian requirement response is invalid.');
+    }
+    return value.toInt();
+  }
+
+  @override
   Future<String> issueTargetedInvitation({
     required String personId,
     required String intendedEmail,
@@ -507,6 +625,16 @@ class SupabaseRosterServices implements RosterServices {
     'max_uses': maxUses,
     'idempotency_key': idempotencyKey,
   });
+  @override
+  Future<String> revealTeamCode({required String codeId}) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>('reveal_team_join_code', params: {'code_id': codeId});
+    if (value is! String || value.length < 32) {
+      throw const FormatException('Team code response is invalid.');
+    }
+    return value;
+  }
   @override
   Future<String> claimTeamCode({
     required String token,

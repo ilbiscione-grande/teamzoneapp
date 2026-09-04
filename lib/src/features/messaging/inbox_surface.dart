@@ -21,9 +21,12 @@ class _InboxSurfaceState extends State<_InboxSurface> {
   StreamSubscription<void>? _inboxSync;
   StreamSubscription<void>? _notificationSync;
   Timer? _resyncDebounce;
+  Timer? _staleResync;
+  int _staleResyncAttempt = 0;
   String _filter = 'all';
   List<MessageThreadSummary>? _syncedThreads;
   bool _initialThreadOpened = false;
+  bool _settingsPending = false;
   int _notificationUnread = 0;
   Future<List<MessageThreadSummary>> _reload() =>
       widget.messaging.listThreads([widget.contextValue.id]);
@@ -56,9 +59,14 @@ class _InboxSurfaceState extends State<_InboxSurface> {
     _inboxSync = widget.messaging.watchInboxInvalidations().listen((_) {
       _resyncDebounce?.cancel();
       _resyncDebounce = Timer(const Duration(milliseconds: 300), () {
-        if (mounted) unawaited(_data.refresh());
+        if (mounted) unawaited(_resyncFromSignal());
       });
     }, onError: (_) {});
+  }
+
+  Future<void> _resyncFromSignal() async {
+    final succeeded = await _data.refresh();
+    if (succeeded) _clearStaleResync();
   }
 
   void _subscribeToNotifications() {
@@ -109,11 +117,43 @@ class _InboxSurfaceState extends State<_InboxSurface> {
 
   Future<void> _refresh() async {
     final succeeded = await _data.refresh();
+    if (succeeded) {
+      _clearStaleResync();
+    } else if (_data.state.isStale) {
+      _scheduleStaleResync();
+    }
     if (!succeeded && mounted) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(AppStrings.of(context).safeError)));
     }
+  }
+
+  void _scheduleStaleResync() {
+    if (_staleResync?.isActive == true || !mounted) return;
+    final seconds = switch (_staleResyncAttempt) {
+      0 => 3,
+      1 => 5,
+      2 => 10,
+      _ => 30,
+    };
+    _staleResync = Timer(Duration(seconds: seconds), () async {
+      _staleResync = null;
+      if (!mounted || !_data.state.isStale) return;
+      final succeeded = await _data.refresh();
+      if (succeeded) {
+        _clearStaleResync();
+      } else {
+        _staleResyncAttempt++;
+        _scheduleStaleResync();
+      }
+    });
+  }
+
+  void _clearStaleResync() {
+    _staleResync?.cancel();
+    _staleResync = null;
+    _staleResyncAttempt = 0;
   }
 
   Future<void> _markAllRead() async {
@@ -131,7 +171,9 @@ class _InboxSurfaceState extends State<_InboxSurface> {
   }
 
   Future<void> _showMessagingSettings() async {
+    if (_settingsPending) return;
     final strings = AppStrings.of(context);
+    setState(() => _settingsPending = true);
     try {
       final preferences = await widget.messaging.getPreferences();
       if (!mounted) return;
@@ -153,6 +195,8 @@ class _InboxSurfaceState extends State<_InboxSurface> {
           context,
         ).showSnackBar(SnackBar(content: Text(strings.safeError)));
       }
+    } finally {
+      if (mounted) setState(() => _settingsPending = false);
     }
   }
 
@@ -175,6 +219,7 @@ class _InboxSurfaceState extends State<_InboxSurface> {
   void dispose() {
     _data.removeListener(_syncList);
     _resyncDebounce?.cancel();
+    _clearStaleResync();
     unawaited(_inboxSync?.cancel());
     unawaited(_notificationSync?.cancel());
     _data.dispose();
@@ -185,33 +230,36 @@ class _InboxSurfaceState extends State<_InboxSurface> {
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
+    final compact = MediaQuery.sizeOf(context).width < 600;
     return Scaffold(
-      persistentFooterButtons: [
-        TextButton.icon(
-          onPressed: _showRequests,
-          icon: const Icon(Icons.mark_email_unread_outlined),
-          label: Text(AppStrings.of(context).feature('Förfrågningar')),
-        ),
-        TextButton.icon(
-          onPressed: _crossClub,
-          icon: const Icon(Icons.travel_explore),
-          label: Text(AppStrings.of(context).feature('Ledarkontakt')),
-        ),
-        TextButton.icon(
-          onPressed: _showNotifications,
-          icon: Badge(
-            isLabelVisible: _notificationUnread > 0,
-            label: Text('$_notificationUnread'),
-            child: const Icon(Icons.notifications_outlined),
-          ),
-          label: Text(AppStrings.of(context).feature('Notiser')),
-        ),
-        TextButton.icon(
-          onPressed: _showMessagingSettings,
-          icon: const Icon(Icons.settings_outlined),
-          label: Text(AppStrings.of(context).feature('Inställningar')),
-        ),
-      ],
+      persistentFooterButtons: compact
+          ? null
+          : [
+              TextButton.icon(
+                onPressed: _showRequests,
+                icon: const Icon(Icons.mark_email_unread_outlined),
+                label: Text(AppStrings.of(context).feature('Förfrågningar')),
+              ),
+              TextButton.icon(
+                onPressed: _crossClub,
+                icon: const Icon(Icons.travel_explore),
+                label: Text(AppStrings.of(context).feature('Ledarkontakt')),
+              ),
+              TextButton.icon(
+                onPressed: _showNotifications,
+                icon: Badge(
+                  isLabelVisible: _notificationUnread > 0,
+                  label: Text('$_notificationUnread'),
+                  child: const Icon(Icons.notifications_outlined),
+                ),
+                label: Text(AppStrings.of(context).feature('Notiser')),
+              ),
+              TextButton.icon(
+                onPressed: _settingsPending ? null : _showMessagingSettings,
+                icon: const Icon(Icons.settings_outlined),
+                label: Text(AppStrings.of(context).feature('Inställningar')),
+              ),
+            ],
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _compose,
         icon: const Icon(Icons.edit),
@@ -284,16 +332,50 @@ class _InboxSurfaceState extends State<_InboxSurface> {
                   ],
                 ),
               ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed:
-                      state.data?.any((item) => item.unreadCount > 0) == true
-                      ? _markAllRead
-                      : null,
-                  icon: const Icon(Icons.done_all),
-                  label: Text(strings.feature('Markera alla som lästa')),
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton.icon(
+                    onPressed:
+                        state.data?.any((item) => item.unreadCount > 0) == true
+                        ? _markAllRead
+                        : null,
+                    icon: const Icon(Icons.done_all),
+                    label: Text(strings.feature('Markera alla som lästa')),
+                  ),
+                  if (compact)
+                    PopupMenuButton<String>(
+                      tooltip: strings.feature('Fler inkorgsåtgärder'),
+                      onSelected: _handleCompactAction,
+                      itemBuilder: (context) => [
+                        _compactAction(
+                          context,
+                          value: 'requests',
+                          icon: Icons.mark_email_unread_outlined,
+                          label: 'Förfrågningar',
+                        ),
+                        _compactAction(
+                          context,
+                          value: 'cross_club',
+                          icon: Icons.travel_explore,
+                          label: 'Ledarkontakt',
+                        ),
+                        _compactAction(
+                          context,
+                          value: 'notifications',
+                          icon: Icons.notifications_outlined,
+                          label: 'Notiser',
+                        ),
+                        _compactAction(
+                          context,
+                          value: 'settings',
+                          icon: Icons.settings_outlined,
+                          label: 'Inställningar',
+                        ),
+                      ],
+                      icon: const Icon(Icons.more_vert),
+                    ),
+                ],
               ),
               Expanded(
                 child: threads.isEmpty
@@ -385,6 +467,37 @@ class _InboxSurfaceState extends State<_InboxSurface> {
         },
       ),
     );
+  }
+
+  PopupMenuItem<String> _compactAction(
+    BuildContext context, {
+    required String value,
+    required IconData icon,
+    required String label,
+  }) => PopupMenuItem<String>(
+    value: value,
+    child: ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon),
+      title: Text(AppStrings.of(context).feature(label)),
+    ),
+  );
+
+  void _handleCompactAction(String action) {
+    switch (action) {
+      case 'requests':
+        unawaited(_showRequests());
+        break;
+      case 'cross_club':
+        unawaited(_crossClub());
+        break;
+      case 'notifications':
+        unawaited(_showNotifications());
+        break;
+      case 'settings':
+        unawaited(_showMessagingSettings());
+        break;
+    }
   }
 
   Future<void> _compose() async {
@@ -606,14 +719,28 @@ class _InboxSurfaceState extends State<_InboxSurface> {
                       padding: const EdgeInsets.only(right: 24),
                       child: const Icon(Icons.delete_outline),
                     ),
-                    onDismissed: (_) {
-                      unawaited(
-                        widget.messaging.setNotificationState(
+                    confirmDismiss: (_) async {
+                      try {
+                        await widget.messaging.setNotificationState(
                           item.id,
                           'dismissed',
                           _newUuid(),
-                        ),
-                      );
+                        );
+                        return true;
+                      } catch (_) {
+                        if (sheetContext.mounted) {
+                          ScaffoldMessenger.of(sheetContext).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                AppStrings.of(sheetContext).safeError,
+                              ),
+                            ),
+                          );
+                        }
+                        return false;
+                      }
+                    },
+                    onDismissed: (_) {
                       setSheetState(() {
                         center = NotificationCenter(
                           items: center.items
@@ -750,6 +877,15 @@ class _InboxSurfaceState extends State<_InboxSurface> {
   }
 
   Future<void> _openThread(MessageThreadSummary thread) async {
+    _initialThreadOpened = true;
+    if (widget.initialThreadId != thread.id) {
+      widget.onNavigate(
+        Uri(
+          path: ProductRouteContract.inbox,
+          queryParameters: {'thread': thread.id},
+        ).toString(),
+      );
+    }
     await showDialog<void>(
       context: context,
       builder: (context) => _ThreadDialog(
@@ -758,7 +894,11 @@ class _InboxSurfaceState extends State<_InboxSurface> {
         contextId: widget.contextValue.id,
       ),
     );
-    if (mounted) unawaited(_data.refresh());
+    if (mounted) {
+      _initialThreadOpened = false;
+      widget.onNavigate(ProductRouteContract.inbox);
+      unawaited(_data.refresh());
+    }
   }
 }
 
@@ -974,6 +1114,7 @@ class _ThreadDialogState extends State<_ThreadDialog> {
   List<ThreadMessage>? _messages;
   StreamSubscription<void>? _threadSync;
   Timer? _threadResyncDebounce;
+  int _messageRequestGeneration = 0;
   int? _nextBeforeRevision;
   bool _hasMore = false;
   bool _loadingMessages = true;
@@ -1014,14 +1155,16 @@ class _ThreadDialogState extends State<_ThreadDialog> {
   }
 
   Future<void> _replaceMessages() async {
+    final requestGeneration = ++_messageRequestGeneration;
     try {
       final page = await widget.messaging.listMessagePage(widget.thread.id);
-      if (!mounted) return;
+      if (!mounted || requestGeneration != _messageRequestGeneration) return;
       setState(() {
         _messages = page.messages;
         _nextBeforeRevision = page.nextBeforeRevision;
         _hasMore = page.hasMore;
         _loadingMessages = false;
+        _loadingOlder = false;
         _messageLoadFailed = false;
         _filesLoad = widget.messaging.listFiles(widget.thread.id);
       });
@@ -1035,9 +1178,10 @@ class _ThreadDialogState extends State<_ThreadDialog> {
         );
       }
     } catch (_) {
-      if (mounted) {
+      if (mounted && requestGeneration == _messageRequestGeneration) {
         setState(() {
           _loadingMessages = false;
+          _loadingOlder = false;
           _messageLoadFailed = true;
         });
       }
@@ -1047,13 +1191,14 @@ class _ThreadDialogState extends State<_ThreadDialog> {
   Future<void> _loadOlder() async {
     final cursor = _nextBeforeRevision;
     if (_loadingOlder || !_hasMore || cursor == null) return;
+    final requestGeneration = _messageRequestGeneration;
     setState(() => _loadingOlder = true);
     try {
       final page = await widget.messaging.listMessagePage(
         widget.thread.id,
         beforeRevision: cursor,
       );
-      if (!mounted) return;
+      if (!mounted || requestGeneration != _messageRequestGeneration) return;
       final byId = {
         for (final message in [...?_messages, ...page.messages])
           message.id: message,
@@ -1067,7 +1212,9 @@ class _ThreadDialogState extends State<_ThreadDialog> {
         _loadingOlder = false;
       });
     } catch (_) {
-      if (mounted) setState(() => _loadingOlder = false);
+      if (mounted && requestGeneration == _messageRequestGeneration) {
+        setState(() => _loadingOlder = false);
+      }
     }
   }
 
@@ -1278,10 +1425,11 @@ class _ThreadDialogState extends State<_ThreadDialog> {
 
   Future<void> _toggleMute() async {
     if (_preferencePending) return;
+    final targetMuted = !_muted;
     setState(() => _preferencePending = true);
     try {
-      await widget.messaging.setMute(widget.thread.id, !_muted, _newUuid());
-      if (mounted) setState(() => _muted = !_muted);
+      await widget.messaging.setMute(widget.thread.id, targetMuted, _newUuid());
+      if (mounted) setState(() => _muted = targetMuted);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1295,10 +1443,11 @@ class _ThreadDialogState extends State<_ThreadDialog> {
 
   Future<void> _togglePin() async {
     if (_preferencePending) return;
+    final targetPinned = !_pinned;
     setState(() => _preferencePending = true);
     try {
-      await widget.messaging.setPin(widget.thread.id, !_pinned, _newUuid());
-      if (mounted) setState(() => _pinned = !_pinned);
+      await widget.messaging.setPin(widget.thread.id, targetPinned, _newUuid());
+      if (mounted) setState(() => _pinned = targetPinned);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1552,7 +1701,9 @@ class _ThreadDialogState extends State<_ThreadDialog> {
             ),
             IconButton(
               onPressed: _preferencePending ? null : _toggleMute,
-              tooltip: strings.muteThread,
+              tooltip: _muted
+                  ? strings.feature('Slå på notiser')
+                  : strings.muteThread,
               icon: Icon(
                 _muted
                     ? Icons.notifications_active_outlined

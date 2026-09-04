@@ -12,6 +12,9 @@ void main() {
   final recallMigration = File(
     'supabase/migrations/20260815073924_s06_fix_recall_thread_revision.sql',
   ).readAsStringSync();
+  final replayMigration = File(
+    'supabase/migrations/20260828105601_msg06_replay_safe_message_files.sql',
+  ).readAsStringSync();
   final services = File(
     'lib/src/features/messaging/messaging_services.dart',
   ).readAsStringSync();
@@ -52,6 +55,26 @@ void main() {
     expect(recallMigration, contains("'recalled',actor_id"));
     expect(recallMigration, contains("state='withdrawn'"));
     expect(recallMigration, contains('next_thread_revision'));
+  });
+
+  test('attachment send retry is replay safe and payload bound', () {
+    expect(
+      replayMigration,
+      contains("dedup.command_type = 'message.message.sent.v1'"),
+    );
+    expect(replayMigration, contains("result ->> 'message_id'"));
+    expect(replayMigration, contains('file.message_id = target_message'));
+    expect(replayMigration, contains('attached_count <> expected_count'));
+    expect(replayMigration, contains('valid_count <> expected_count'));
+    expect(replayMigration, contains('updated_count <> expected_count'));
+    expect(
+      replayMigration,
+      contains("message = 'idempotency_payload_mismatch'"),
+    );
+    expect(
+      replayMigration,
+      contains("result || jsonb_build_object('file_count', expected_count)"),
+    );
   });
 
   test('report blocks and service moderation is auditable', () {

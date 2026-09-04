@@ -154,6 +154,57 @@ void main() {
     expect(inbox, contains('AppListController<MessageThreadSummary>'));
     expect(inbox, contains('RefreshIndicator'));
   });
+
+  test('web root leaves browser route information to the product router', () {
+    final source = File('lib/src/app/teamzone_app.dart').readAsStringSync();
+
+    expect(source, contains('if (kIsWeb)'));
+    expect(source, contains('MaterialApp.router('));
+    expect(source, contains('_StaticRootRouterDelegate(root)'));
+    expect(
+      source,
+      contains('Future<void> setNewRoutePath(Object configuration)'),
+    );
+    expect(source, contains('Future<bool> popRoute() async => false'));
+  });
+
+  test('web root provides an overlay without owning browser route info', () {
+    final source = File('lib/src/app/teamzone_app.dart').readAsStringSync();
+
+    expect(
+      source,
+      contains('Widget build(BuildContext context) => Navigator('),
+    );
+    expect(source, contains('pages: [MaterialPage<void>('));
+    expect(source, contains("key: const ValueKey('root')"));
+  });
+
+  test('web uses canonical path URLs without a hash route', () {
+    final main = File('lib/main.dart').readAsStringSync();
+    final strategy = File(
+      'lib/src/core/routing/app_url_strategy_web.dart',
+    ).readAsStringSync();
+
+    expect(main, contains('configureAppUrlStrategy();'));
+    expect(strategy, contains('usePathUrlStrategy()'));
+  });
+
+  test('calendar and inbox details reflect their identity in the URL', () {
+    final calendar = File(
+      'lib/src/features/calendar/calendar_surface.dart',
+    ).readAsStringSync();
+    final inbox = File(
+      'lib/src/features/messaging/inbox_surface.dart',
+    ).readAsStringSync();
+
+    expect(calendar, contains("queryParameters: {'event': summary.id}"));
+    expect(
+      calendar,
+      contains('widget.onNavigate(ProductRouteContract.calendar)'),
+    );
+    expect(inbox, contains("queryParameters: {'thread': thread.id}"));
+    expect(inbox, contains('widget.onNavigate(ProductRouteContract.inbox)'));
+  });
 }
 
 class _ListItem {

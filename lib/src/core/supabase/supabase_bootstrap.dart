@@ -8,11 +8,14 @@ import 'package:teamzone_app/src/core/identity/identity_services.dart';
 import 'package:teamzone_app/src/core/identity/auth_entry_services.dart';
 import 'package:teamzone_app/src/core/identity/session_persistence.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_services.dart';
+import 'package:teamzone_app/src/features/assistant_coach/assistant_identity.dart';
+import 'package:teamzone_app/src/features/assistant_coach/assistant_presentation.dart';
 import 'package:teamzone_app/src/features/billing/billing_services.dart';
 import 'package:teamzone_app/src/features/board/board_services.dart';
 import 'package:teamzone_app/src/features/development/development_services.dart';
 import 'package:teamzone_app/src/features/economy/economy_services.dart';
 import 'package:teamzone_app/src/features/overview/overview_services.dart';
+import 'package:teamzone_app/src/features/publication/editorial_services.dart';
 import 'package:teamzone_app/src/features/messaging/messaging_services.dart';
 import 'package:teamzone_app/src/features/match/match_services.dart';
 import 'package:teamzone_app/src/features/membership/membership_services.dart';
@@ -36,6 +39,10 @@ class AppServices {
     this.billing = const UnconfiguredBillingServices(),
     this.economy = const UnconfiguredEconomyServices(),
     this.board = const UnconfiguredBoardServices(),
+    this.editorial = const UnconfiguredEditorialServices(),
+    this.assistantIdentity = const UnconfiguredAssistantIdentityServices(),
+    this.assistantPresentation =
+        const UnconfiguredAssistantPresentationServices(),
   });
 
   final IdentityServices identity;
@@ -52,6 +59,9 @@ class AppServices {
   final BillingServices billing;
   final EconomyServices economy;
   final BoardServices board;
+  final EditorialServices editorial;
+  final AssistantIdentityServices assistantIdentity;
+  final AssistantPresentationServices assistantPresentation;
   final bool isConfigured;
 }
 
@@ -98,6 +108,13 @@ class SupabaseBootstrap {
       billing: SupabaseBillingServices(Supabase.instance.client),
       economy: SupabaseEconomyServices(Supabase.instance.client),
       board: SupabaseBoardServices(Supabase.instance.client),
+      editorial: SupabaseEditorialServices(Supabase.instance.client),
+      assistantIdentity: SupabaseAssistantIdentityServices(
+        Supabase.instance.client,
+      ),
+      assistantPresentation: SupabaseAssistantPresentationServices(
+        Supabase.instance.client,
+      ),
       isConfigured: true,
     );
   }

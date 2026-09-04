@@ -1,7 +1,7 @@
 # TEAM-04 – skapa och redigera rosterperson
 
 Datum: 2026-08-26  
-Status: lokalt genomförd, runtime-/fysisk grind återstår
+Status: genomförd och hosted runtimeverifierad; fysisk create/edit-grind återstår
 
 ## Levererat
 
@@ -29,7 +29,7 @@ Status: lokalt genomförd, runtime-/fysisk grind återstår
 - Idempotency sparas per actor, command type och nyckel; mutationer auditloggas.
 - Update låser klubbposten och avvisar stale revision.
 - Definer-funktioner använder tom `search_path`; den nya API-funktionen har explicit revoke/grant.
-- Liveprojektet `hgcshgunvooyudvrcpig` har inte ändrats.
+- TEAM-04-migreringen finns i den uttryckligen godkända testdatabasen `hgcshgunvooyudvrcpig`.
 
 ## Verifiering
 
@@ -38,8 +38,19 @@ Status: lokalt genomförd, runtime-/fysisk grind återstår
 - Samlad TEAM-01–04/Auth-regression före det sista separata edit-testet: 17/17 passerar.
 - Nuvarande Supabase-dokumentation för databasfunktioner och 2026 års Data API-/grantförändring kontrollerades innan implementationen.
 
+### Hosted runtime 2026-09-01
+
+- Create- och update-RPC finns i testdatabasen och kan exekveras av `authenticated`; `anon` och `PUBLIC` saknar execute.
+- Installerad create-funktion innehåller `club.memberships.manage` och advisory lock; installerad update-funktion innehåller expected-revision-grinden.
+- Ingen persondata skapades eller ändrades under runtimekontrollen.
+- Omsprungen TEAM-04-regression passerade 6/6 och riktad analys gav inga problem.
+
+### Fysisk webbverifiering 2026-09-01
+
+- Produktägaren skapade en rosterperson via `Laget → Trupp → Hantera → Lägg till person` och bekräftade att personen visades i truppen.
+- Befintlig rosterperson öppnades och redigerades; den sparade ändringen visades korrekt.
+- Redigering lämnades med osparad ändring och varningen för osparade ändringar fungerade.
+
 ## Kvarstående grindar
 
-- Migrationen är lokal och har inte körts mot Supabase live.
-- Docker/lokal PostgreSQL saknas, så SQL-runtime och advisor-körning återstår.
-- Fysisk phone/tablet/desktop-verifiering av create/edit och back-varningen återstår.
+- Fysisk phone/tablet-verifiering återstår; webbflödet för create/edit och osparade ändringar är godkänt.

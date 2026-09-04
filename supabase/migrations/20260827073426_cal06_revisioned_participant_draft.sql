@@ -104,7 +104,8 @@ begin
  update core.squad_revisions set state='locked',locked_at=now(),eligibility_version=now() where id=squad.id;
  existing:=jsonb_build_object('squad_revision_id',squad.id,'revision',squad.revision,'state','locked',
   'dispatch_kind',squad.dispatch_kind);
- insert into internal.command_deduplication values(actor_id,idempotency_key,'squad.locked.v1',existing,now());
+ insert into internal.command_deduplication(actor_profile_id,idempotency_key,command_type,result)
+ values(actor_id,idempotency_key,'squad.locked.v1',existing);
  insert into audit.command_events(club_id,actor_profile_id,command_type,aggregate_type,aggregate_id,aggregate_revision)
  values(squad.club_id,actor_id,'squad.locked.v1','squad',squad.id,squad.revision);return existing;
 end;$$;
@@ -148,7 +149,8 @@ begin
   jsonb_build_object('count',created_count,'dispatch_kind',squad.dispatch_kind));
  existing:=jsonb_build_object('squad_revision_id',squad.id,'created_callups',created_count,'state','sent',
   'dispatch_kind',squad.dispatch_kind);
- insert into internal.command_deduplication values(actor_id,idempotency_key,'callup.callup.sent.v1',existing,now());
+ insert into internal.command_deduplication(actor_profile_id,idempotency_key,command_type,result)
+ values(actor_id,idempotency_key,'callup.callup.sent.v1',existing);
  insert into audit.command_events(club_id,actor_profile_id,command_type,aggregate_type,aggregate_id,
   aggregate_revision,metadata) values(squad.club_id,actor_id,'callup.callup.sent.v1','squad',squad.id,
    squad.revision,jsonb_build_object('count',created_count,'dispatch_kind',squad.dispatch_kind));return existing;

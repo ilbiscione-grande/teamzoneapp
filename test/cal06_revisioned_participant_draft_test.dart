@@ -41,6 +41,24 @@ void main() {
     expect(sql, contains('on conflict do nothing'));
   });
 
+  test('lock and send commands name every deduplication column', () {
+    final correction = File(
+      'supabase/migrations/20260831202517_cal06_fix_command_deduplication_inserts.sql',
+    ).readAsStringSync();
+    expect(
+      correction,
+      contains(
+        'internal.command_deduplication(actor_profile_id,idempotency_key,command_type,result)',
+      ),
+    );
+    expect(
+      correction,
+      isNot(contains('internal.command_deduplication values')),
+    );
+    expect(correction, contains("'squad.locked.v1'"));
+    expect(correction, contains("'callup.callup.sent.v1'"));
+  });
+
   test('candidate parser preserves event-time eligibility group', () {
     final candidate = SquadCandidate.fromJson({
       'person_id': 'person-1',

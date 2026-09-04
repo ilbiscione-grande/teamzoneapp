@@ -65,3 +65,16 @@ Blockeringen isolerades till Flutter-wrapperns åtkomst till SDK-cachelåset. Kv
 - Säkerhetskontrakt: ingår i den gröna fulla Flutter-sviten.
 
 Verifieringen rättade samtidigt mobil layout för kalenderkontroller, 200-procentig textskalning i Assistant Coach-panelen, fail-safe rollprojektioner, textkontrollers livscykel vid trupparkivering samt svensk/engelsk copy-gräns. Inga live- eller produktionsmiljöer ändrades.
+
+## Routingregression 2026-08-30
+
+Efter webbens canonical path-, Overlay- och detalj-URL-rättningar kördes hela grinden på nytt mot slutlig filstatus. Fem tidigare testfiler formaterades mekaniskt; därefter passerade formatkontrollen med 148 filer och 0 ändringar.
+
+- REL-01: `passed`, 9/9 steg.
+- Dart-analys: inga anmärkningar.
+- Flutter: 321/321 tester godkända.
+- Flutter web och Android debug APK: godkända.
+- Publiksajt: 22/22 tester, typecheck och komplett Next-build godkända.
+- Säkerhetskontrakt: 20/20 i det separata grindsteget, utöver fullsviten.
+
+Den maskinläsbara rapporten finns lokalt i `docs/evidence/local/rel01_quality_gate_latest.json`. Ingen Supabase-liveändring, produktionsprovisionering, webtools eller workspaces utfördes.

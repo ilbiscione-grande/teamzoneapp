@@ -29,7 +29,9 @@ void main() {
       surface,
       allOf(
         contains("static const board = '/board';"),
-        contains('auxiliaryPaths = {billing, economy, board, assistant}'),
+        contains(
+          'auxiliaryPaths = {billing, economy, board, assistant, editorial}',
+        ),
       ),
       reason: 'A cold Board deep link must survive app bootstrap.',
     );

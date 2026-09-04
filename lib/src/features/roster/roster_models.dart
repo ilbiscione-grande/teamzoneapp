@@ -86,6 +86,31 @@ class TeamOverview {
   );
 }
 
+class TeamProfileEditData {
+  const TeamProfileEditData({
+    required this.teamId,
+    required this.revision,
+    this.teamType,
+    this.ageClass,
+    this.summary,
+    this.imageUrl,
+  });
+
+  final String teamId;
+  final int revision;
+  final String? teamType, ageClass, summary, imageUrl;
+
+  factory TeamProfileEditData.fromJson(Map<String, dynamic> json) =>
+      TeamProfileEditData(
+        teamId: json['team_id'] as String,
+        revision: (json['revision'] as num? ?? 0).toInt(),
+        teamType: json['team_type'] as String?,
+        ageClass: json['age_class'] as String?,
+        summary: json['summary'] as String?,
+        imageUrl: json['image_url'] as String?,
+      );
+}
+
 class RosterPersonDetails {
   const RosterPersonDetails({
     required this.id,

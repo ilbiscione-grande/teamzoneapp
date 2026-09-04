@@ -1,3 +1,5 @@
+import '../../shared/attention/attention_priority.dart';
+
 class MainSurfacesProjection {
   const MainSurfacesProjection({
     required this.schemaVersion,
@@ -160,12 +162,14 @@ class LeaderHomeProjection {
     required this.tasks,
     required this.planningActions,
     this.nextEvent,
+    this.isStale = false,
   });
   final DateTime generatedAt;
   final List<LeaderHomeEvent> todayEvents;
   final List<LeaderHomeTask> tasks;
   final List<LeaderHomeAction> planningActions;
   final LeaderHomeEvent? nextEvent;
+  final bool isStale;
   factory LeaderHomeProjection.fromJson(Map<String, dynamic> json) {
     if (json['schema_version'] != 1 || json['role_package'] != 'leader') {
       throw const FormatException('Unsupported leader home projection.');
@@ -187,6 +191,15 @@ class LeaderHomeProjection {
           : LeaderHomeEvent.fromJson(_map(json['next_event'])),
     );
   }
+
+  LeaderHomeProjection asStale() => LeaderHomeProjection(
+    generatedAt: generatedAt,
+    todayEvents: todayEvents,
+    tasks: tasks,
+    planningActions: planningActions,
+    nextEvent: nextEvent,
+    isStale: true,
+  );
 }
 
 class LeaderHomeEvent {
@@ -260,12 +273,14 @@ class PlayerHomeProjection {
     required this.callups,
     required this.unreadMessageCount,
     this.nextEvent,
+    this.isStale = false,
   });
   final DateTime generatedAt;
   final PlayerHomeTeam team;
   final List<PlayerHomeCallup> callups;
   final int unreadMessageCount;
   final LeaderHomeEvent? nextEvent;
+  final bool isStale;
   factory PlayerHomeProjection.fromJson(Map<String, dynamic> json) {
     if (json['schema_version'] != 1 || json['role_package'] != 'player') {
       throw const FormatException('Unsupported player home projection.');
@@ -282,6 +297,15 @@ class PlayerHomeProjection {
           : LeaderHomeEvent.fromJson(_map(json['next_event'])),
     );
   }
+
+  PlayerHomeProjection asStale() => PlayerHomeProjection(
+    generatedAt: generatedAt,
+    team: team,
+    callups: callups,
+    unreadMessageCount: unreadMessageCount,
+    nextEvent: nextEvent,
+    isStale: true,
+  );
 }
 
 class PlayerHomeTeam {
@@ -354,6 +378,7 @@ class GuardianHomeProjection {
     required this.callups,
     required this.unreadMessageCount,
     this.nextEvent,
+    this.isStale = false,
   });
   final DateTime generatedAt;
   final PlayerHomeTeam team;
@@ -362,6 +387,7 @@ class GuardianHomeProjection {
   final List<PlayerHomeCallup> callups;
   final int unreadMessageCount;
   final LeaderHomeEvent? nextEvent;
+  final bool isStale;
   GuardianHomeChild get selectedChild =>
       children.firstWhere((child) => child.id == selectedChildId);
   factory GuardianHomeProjection.fromJson(Map<String, dynamic> json) {
@@ -384,6 +410,17 @@ class GuardianHomeProjection {
           : LeaderHomeEvent.fromJson(_map(json['next_event'])),
     );
   }
+
+  GuardianHomeProjection asStale() => GuardianHomeProjection(
+    generatedAt: generatedAt,
+    team: team,
+    children: children,
+    selectedChildId: selectedChildId,
+    callups: callups,
+    unreadMessageCount: unreadMessageCount,
+    nextEvent: nextEvent,
+    isStale: true,
+  );
 }
 
 class GuardianHomeChild {
@@ -411,13 +448,7 @@ Iterable<Map<String, dynamic>> _maps(Object? value) {
   return value.whereType<Map<String, dynamic>>();
 }
 
-int homeAttentionPriority(String kind) => switch (kind) {
-  'missing_attendance' || 'callup_cancelled' => 10,
-  'pending_callups' || 'pending_callup' || 'callup_reminder' || 'callup' => 20,
-  'event_today' || 'next_event' || 'event' => 30,
-  'unread_message' || 'message' => 40,
-  _ => 50,
-};
+int homeAttentionPriority(String kind) => attentionPriority(kind);
 
 List<T> uniqueHomeAttention<T>(
   Iterable<T> items, {

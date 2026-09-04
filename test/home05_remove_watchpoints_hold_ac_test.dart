@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teamzone_app/src/features/messaging/messaging_models.dart';
 
 void main() {
   final migration = File(
@@ -23,7 +24,7 @@ void main() {
     expect(migration, contains('new.recipient_profile_id:=null'));
   });
 
-  test('Assistant Coach remains blocked until AC-01', () {
+  test('Assistant Coach activation remains blocked by the AC-01 gate', () {
     expect(migration, contains("values('AC-01','blocked'"));
     expect(migration, contains('check(not generative_ai_enabled)'));
     expect(migration, contains('check(not workload_enabled)'));
@@ -42,5 +43,33 @@ void main() {
     expect(overview, contains("'Dina kallelser'"));
     expect(overview.toLowerCase(), isNot(contains('watchpoint')));
     expect(overview, isNot(contains('AssistantCoach')));
+  });
+
+  test('client rejects retired and premature notification payloads', () {
+    Map<String, Object> item(String id, String eventType) => {
+      'id': id,
+      'event_type': eventType,
+      'category': 'general',
+      'title': 'Systempost',
+      'preview': 'Systempost',
+      'deep_link': '/home',
+      'unread': true,
+      'canonical_key': '$eventType:$id',
+      'priority': 50,
+      'created_at': '2026-08-28T10:00:00Z',
+    };
+
+    final center = NotificationCenter.fromJson({
+      'unread_count': 4,
+      'items': [
+        item('watchpoint', 'workload.watchpoint'),
+        item('assistant', 'assistant.signal.ready'),
+        item('medical', 'medical.clearance.ready'),
+        item('message', 'message.message.sent.v1'),
+      ],
+    });
+
+    expect(center.items.map((value) => value.id), ['message']);
+    expect(center.unreadCount, 1);
   });
 }

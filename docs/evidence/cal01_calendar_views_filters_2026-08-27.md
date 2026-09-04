@@ -1,7 +1,7 @@
 # CAL-01 – kalenderns vyer och filter
 
 Datum: 2026-08-27  
-Status: lokalt genomförd, fysisk/testgrind återstår
+Status: lokalt genomförd; samtliga fyra mobilvyer och overflow-regression fysiskt verifierade, tablet/desktop och eventfylld Vecka/Dag återstår
 
 ## Levererat
 
@@ -34,11 +34,19 @@ Status: lokalt genomförd, fysisk/testgrind återstår
 
 - `flutter analyze`: inga problem.
 - Ett mobilt widgettest samt två projektionstester för filter, vyer, nattpass, heldag och DST har lagts till.
-- Flutter-testwrappen startade utan output även med `--no-pub` och avbröts efter begränsad väntan; testresultat anges därför inte som godkänt.
+- Riktad CAL-01-körning passerar 3/3 och riktad analys är ren.
 - Befintlig S03-serverprojektion, cursor-pagination, all-day-guard och privata Realtime-invalidation återanvänds oförändrade.
 - Supabase live har inte ändrats.
 
+### Fysisk Mi 9-regression 2026-08-28
+
+- Agenda renderade vyval, lag-/eventtypfilter, datumbläddring, tomläge, `Nytt event` och Min assistent-FAB utan overflow.
+- Första Månadskörningen hittade `BOTTOM OVERFLOWED BY 12 PIXELS` i en mobilcell med tre event och summeringsrad.
+- Mobilcellen begränsades till en eventrad plus `+N`; tablet/desktop behåller två eventrader. Widgettestet kräver nu fyra event på samma mobildag, `+3` och ingen layout-exception.
+- Korrigerad audit-debugbuild `629CC42B1C051FF4775A4FAE2AE532ACD5186149297D018AF361671F0FE918A3` installerades på Xiaomi Mi 9, Android 10.
+- Fysisk omkörning visade fullständigt 6×7-rutnät utan röd overflow; den 16 augusti visade en ellipsiserad titel och `+2`, medan semantiken behöll hela titeln.
+- Vecka och Dag renderade korrekta svenska datumintervall, periodnavigation, filter, tomläge och separata event-/assistentåtgärder utan overflow på samma build.
+
 ## Kvarstående grindar
 
-- CAL-01-testet och kalenderregressionen ska köras när Flutter-testwrappen svarar.
-- Fysisk visuell kontroll av månad/vecka på phone/tablet/desktop återstår.
+- Eventfylld Vecka/Dag på telefon och samtliga vyer på tablet/desktop återstår.

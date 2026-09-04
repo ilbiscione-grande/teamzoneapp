@@ -15,6 +15,7 @@ test("published HTML is bounded while APIs remain no-store", () => {
   assert.match(config, /source: "\/api\/:path\*"[\s\S]*"no-store"/);
   assert.match(sql, /invalidation_worker_timeout/);
   assert.match(sql, /finish_publication_invalidation/);
+  assert.match(proxy, /"\/media\/public\/"/);
 });
 
 test("invalidation worker bearer comparison is strict", () => {

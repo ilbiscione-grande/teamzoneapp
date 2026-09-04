@@ -38,6 +38,22 @@
 
 Kontrollen gällde den lokala fail-closed-vyn eftersom ingen livebackend fick användas. Autentiserade huvudytor vid 200 % täcks av widgetmatrisen.
 
+### Kompletterande Mi 9-kontroll 2026-08-28
+
+- En autentiserad Xiaomi Mi 9-körning vid 200 % hittade att sex permanenta etiketter i mobilens `NavigationBar` bröts och klipptes, främst `Kalender` och `Utveckling`.
+- Vid textskala 150 % eller högre visar navigationen nu endast etiketten för vald flik. Alla sex ikoner och deras fulla semantiska fliknamn finns kvar.
+- Två saknade engelska menytexter som lokaliseringsgrinden samtidigt upptäckte (`Fler inkorgsåtgärder`, `Slå på notiser`) lades till.
+- Riktad tillgänglighets-/lokaliseringskörning passerade 9/9 och analys av ändrade filer var ren.
+- Audit-debugbuild `AA01C48FD01453EEF4AB6F46324ED2CD6D5CAFFC31952C0CF2F71BAFFF305CB5` installerades. Fysisk omkörning vid 200 % visade vald `Hem`-etikett och sex intakta ikoner utan brutna eller klippta navigeringstexter.
+- Telefonens font scale återställdes och verifierades som 1,0 efter körningen.
+
+### TalkBack-passering på Mi 9 2026-08-28
+
+- TalkBack verifierades aktivt och produktägaren genomförde fysisk svepnavigering på Hem, Laget, Kalender inklusive Månad, Inbox, en direkttråd och Min assistent.
+- Rubriker, felcopy, appbaråtgärder, flikar, kalenderkontroller, trådmetadata, composer, assistentkontext och medicinsk avgränsning lästes begripligt i logisk fokusordning.
+- Färg var inte ensam informationsbärare, ingen namnlös kontroll eller fokusfälla rapporterades och Android-back från assistenten återgick korrekt.
+- Inget meddelande skickades och ingen live-data ändrades under kontrollen.
+
 ## Kontrakt
 
 - `docs/implementation/accessibility_localization_contract.md`

@@ -8,6 +8,7 @@
 - Efter lyckad send ersätts den optimistiska raden av serverns kanoniska meddelande.
 - Varje send går fortsatt genom `internal.actor_can_access_thread(..., true)` och MSG-03:s announcement-kontroll.
 - Trådvyn prenumererar på den privata `message:thread:{id}`-kanalen. Både första subscribe och reconnect utlöser debouncad hämtning av första sidan från servern.
+- Trådvyn generationsmärker hämtningar. Ett äldre initial-/Realtime-svar får inte skriva över en nyare resync, och en äldre pagineringssida ignoreras om en ny first-page-hämtning har startat.
 - Ingen ändring har skickats till Supabase live.
 
 ## Ändringar
@@ -25,11 +26,10 @@
 - Direkt Dart-format passerade för samtliga ändrade Dartfiler.
 - `git diff --check` passerade.
 - Statisk kontraktsgrind verifierade exklusiv cursor, deterministisk ordning, continuation, idempotent retry, aktiv participantkontroll och subscribe/reconnect-resync.
-- Direkt Dart-analys kunde inte starta analysservern i sandboxen (`CreateFile failed 5`) och fastnade därefter utan output utanför sandboxen; processen avbröts kontrollerat.
-- Riktad `flutter test test/msg04_history_send_resync_test.dart` gav ingen output inom 30 sekunder i samma lokala verktygslåsning och avbröts kontrollerat; ingen process lämnades igång.
+- Riktade MSG-03–05-tester passerade 14/14, inklusive generationsgrinden för stale resync/pagination.
+- `dart analyze lib test` passerade utan anmärkning.
 
 ## Kvarvarande grindar
 
 - Kör migreringen i isolerad PostgreSQL/Supabase-runtime och kör advisors.
-- Kör riktat Flutter-test och analys när den lokala wrappern fungerar.
 - Verifiera fysiskt med två enheter: fler än 50 meddelanden, samtidiga nya meddelanden under äldre pagination, offline send/failure/retry, reconnect och borttagen participant före retry.

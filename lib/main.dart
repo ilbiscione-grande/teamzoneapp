@@ -6,10 +6,12 @@ import 'package:teamzone_app/src/app/teamzone_app.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
 import 'package:teamzone_app/src/core/observability/app_observability.dart';
 import 'package:teamzone_app/src/core/observability/firebase_crash_reporter.dart';
+import 'package:teamzone_app/src/core/routing/app_url_strategy.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  configureAppUrlStrategy();
   const environment = AppEnvironment.fromDefines();
   final observability = AppObservability(
     environment: environment.name,

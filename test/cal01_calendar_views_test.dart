@@ -28,6 +28,10 @@ void main() {
     expect(find.text('Alla lag'), findsOneWidget);
     expect(find.text('Alla eventtyper'), findsOneWidget);
     expect(find.text('Kvällsträning'), findsOneWidget);
+    await tester.tap(find.text('Månad'));
+    await tester.pumpAndSettle();
+    expect(find.text('+3'), findsOneWidget);
+    expect(tester.takeException(), isNull);
     await tester.tap(find.text('Dag'));
     await tester.pumpAndSettle();
     expect(find.text('Kvällsträning'), findsOneWidget);
@@ -99,6 +103,29 @@ void main() {
     expect(dstStart.isUtc, isTrue);
     expect(dstEnd.difference(dstStart), const Duration(hours: 1));
   });
+
+  test('long calendar ranges are split within the backend limit', () {
+    final from = DateTime.utc(2025, 1, 1);
+    final to = DateTime.utc(2028, 1, 1);
+    final windows = buildCalendarQueryWindows(
+      from: from,
+      to: to,
+      maximumWindow: const Duration(days: 399),
+    );
+
+    expect(windows.length, 3);
+    expect(windows.first.from, from);
+    expect(windows.last.to, to);
+    for (var index = 0; index < windows.length; index++) {
+      expect(
+        windows[index].to.difference(windows[index].from),
+        lessThanOrEqualTo(const Duration(days: 399)),
+      );
+      if (index > 0) {
+        expect(windows[index].from, windows[index - 1].to);
+      }
+    }
+  });
 }
 
 Widget _app() => TeamZoneApp(
@@ -156,6 +183,21 @@ class _Calendar extends UnconfiguredCalendarServices {
         timezone: 'Europe/Stockholm',
         revision: 1,
       ),
+      for (var index = 1; index <= 3; index++)
+        CalendarEventSummary(
+          id: 'event-$index',
+          clubId: 'club',
+          owningTeamId: 'team-a',
+          teamName: 'F2012',
+          title: 'Extraevent $index',
+          type: 'training',
+          state: 'scheduled',
+          startsAt: DateTime(now.year, now.month, now.day, 19 + index),
+          endsAt: DateTime(now.year, now.month, now.day, 20 + index),
+          allDay: false,
+          timezone: 'Europe/Stockholm',
+          revision: 1,
+        ),
     ];
   }
 }

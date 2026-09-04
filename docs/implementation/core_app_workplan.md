@@ -67,11 +67,15 @@ Responsiv design får därför ändra informationshierarki och arbetsflöde, int
 bara bredden på samma layout. Funktionens behörighet och resultat ska däremot
 vara konsekventa mellan enheter.
 
-### Assistant Coach ersätter Watchpoints
+### Min assistent ersätter Watchpoints
 
-Gamla Watchpoints ska inte flyttas över som produkt eller namn. Assistant Coach
-är den nya sammanhållna assistenten och ska på sikt kunna få en godkänd
-generativ AI-del, men kärnan ska fungera utan språkmodell.
+Gamla Watchpoints ska inte flyttas över som produkt eller namn. **Min assistent**
+är det fasta funktionsnamnet för den nya sammanhållna assistenten. Den får ett
+senare beslutat sportigt, internationellt standardnamn och varje användare kan
+välja ett eget personligt namn. Namnet påverkar endast presentation. Assistenten
+kan på sikt få en godkänd generativ AI-del, men kärnan ska fungera utan
+språkmodell. Full målmodell finns i
+`docs/implementation/min_assistent_concept.md`.
 
 - Första versionen är transparent och deterministisk: verifierbara signaler,
   datakälla, tidsfönster, osäkerhet och förklaring.
@@ -79,12 +83,16 @@ generativ AI-del, men kärnan ska fungera utan språkmodell.
 - Förslag visas endast när användaren redan har vanlig capability för målet.
 - Varje mutation kräver preview och uttrycklig bekräftelse och går genom samma
   auditerade domänkommando som resten av appen.
-- Assistant Coach får aldrig autonomt skicka, kalla, ändra data eller fatta
+- Min assistent får aldrig autonomt skicka, kalla, ändra data eller fatta
   medicinska/eligibilitybeslut.
-- På mobil nås Assistant Coach från en flytande FAB längst ned till höger
-  ovanpå Hem. På tablet/desktop ska Assistant Coach i första hand utnyttja det
+- På mobil nås Min assistent från en flytande FAB längst ned till höger
+  ovanpå Hem. På tablet/desktop ska Min assistent i första hand utnyttja det
   större utrymmet som en synlig, integrerad eller beständig panel; en FAB behövs
   där endast om den senare UX-genomgången visar ett tydligt värde.
+- En gemensam kö kompletteras med specialistområden. Varje post visar område
+  med textetikett, ikon och färg; status och prioritet visas separat.
+- Alla områden delar historik, deduplicering, prioritering och notifieringsbudget
+  och får inte skapa konkurrerande specialistinkorgar.
 - Gamla Watchpoint-trösklar kopieras inte. Varje ny signal ska definieras,
   versionshanteras och verifieras på nytt.
 
@@ -117,7 +125,7 @@ generativ AI-del, men kärnan ska fungera utan språkmodell.
 | Yta | Rebuildens grund finns | Viktiga sannolika paritetsluckor |
 |---|---|---|
 | Inloggning/Skapa konto | `[~]` Password login, session, väntrum, contextval, claim och guardian invite | Skapa konto med både lösenord och e-postkod/magic link, verifiering, glömt lösenord, invite under onboarding, ansök/skapa klubb och lag, skyddade/officiella klubbnamn, villkor/privacy |
-| Hem | `[~]` Multi-context projection, nästa innehåll, actions, cache/felläge | Separata rollprioriteringar, situations-/enhetsanpassning och Assistant Coach som ersätter Watchpoints |
+| Hem | `[~]` Multi-context projection, nästa innehåll, actions, cache/felläge | Separata rollprioriteringar, situations-/enhetsanpassning och Min assistent som ersätter Watchpoints |
 | Laget | `[~]` Rosterlista, detaljgrund, claim och guardian invite | Skapa/redigera person, import, invite, medlemsdetaljflikar, historik, statistik och grupper |
 | Kalender | `[~]` Lista, details, create/edit/cancel/complete, recurrence, squad/callup/attendance och Match Space | Månad/vecka/dag, filter, import, personal notes, attachments, full EventDetails-struktur |
 | Inbox | `[~]` Trådar, create/send/read/mute, filer, recall/report, requests, notifications och realtimegrund | Automatiska team-/ledarchattar, broadcast/announcement, pagination, reconnect-resync, komplett notification center |
@@ -270,12 +278,12 @@ utan blindväg och alla misslyckanden är begripliga, säkra och återhämtnings
   vertikal kvalitetssäkring i ordningen ledare → spelare → guardian;
   klubbfunktionär hanteras capabilityanpassat där klubböversikt behövs.
 - [x] Hem prioriterar: (1) saker som kräver åtgärd nu, (2) dagens aktiviteter,
-  (3) Assistant Coach-signaler via dess FAB, (4) nästa kommande event,
+  (3) Min assistent-poster via dess FAB, (4) nästa kommande event,
   (5) olästa meddelanden/notiser och (6) övrig överblick/genvägar.
 - [x] "Kräver åtgärd" är rollanpassat: spelare/guardian ser främst obesvarade
   kallelser, medan ledare även kan se ofärdig trupp, ej utskickad kallelse och
   oregistrerad närvaro.
-- [x] Gamla Watchpoints ersätts av Assistant Coach och flyttas inte över som
+- [x] Gamla Watchpoints ersätts av Min assistent och flyttas inte över som
   separat funktion eller genom okritisk återanvändning av gamla trösklar.
 
 #### 4B. Funktioner
@@ -289,11 +297,11 @@ utan blindväg och alla misslyckanden är begripliga, säkra och återhämtnings
 - [ ] Visa neutral tom dag i stället för en tom teknisk lista.
 - [ ] Visa timestamp på stale data och erbjud retry/refresh.
 - [ ] Säkerställ deterministisk deduplicering över flera contexts.
-- [ ] Placera Assistant Coach som en flytande FAB längst ned till höger ovanpå
-  Hem på mobil; FAB:en öppnar en kompakt AC-yta.
-- [ ] Visa Assistant Coach som en integrerad eller beständig panel på
+- [ ] Placera Min assistent som en flytande FAB längst ned till höger ovanpå
+  Hem på mobil; FAB:en öppnar en kompakt assistentyta.
+- [ ] Visa Min assistent som en integrerad eller beständig panel på
   tablet/desktop där skärmutrymmet tillåter, i stället för att kräva en FAB.
-- [ ] Låt Assistant Coach formulera rollrelevant prioritering utan att visa
+- [ ] Låt Min assistent formulera rollrelevant prioritering utan att visa
   ledardata för spelare/guardian eller annan otillåten kontext.
 
 #### 4C. Verifiering
@@ -306,20 +314,20 @@ utan blindväg och alla misslyckanden är begripliga, säkra och återhämtnings
 Godkänd när: Hem besvarar "Vad händer nu och vad behöver jag göra?" inom en
 skärm för varje huvudroll.
 
-### Steg 4D – Assistant Coach, datadrivet implementationsspår
+### Steg 4D – Min assistent, datadrivet implementationsspår
 
 - [x] Behåll den befintliga fail-closed grunden med deterministiska råfakta och
   avstängd generativ AI/känslig signalbehandling.
-- [~] En lokal Assistant Coach-prototyp finns på Hem med rollanpassad copy,
+- [~] En lokal teknisk Assistant Coach-grund finns med rollanpassad copy,
   verifierbara råfakta och säkra loading/empty/error/retry-lägen. Den ska senare
-  anpassas till den beslutade FAB-ingången innan punkten kan klarmarkeras.
+  anpassas till den beslutade Min assistent-identiteten och områdesmodellen.
 - [ ] Definiera signalmodell: ID/version, typ, prioritet, positiv/neutral/action,
   förklaring, datakällor, tidsfönster, beräknad tid, stale/missing och confidence.
 - [ ] Definiera roll- och capabilityfilter per signal och föreslagen action.
 - [ ] Definiera användarfeedback: hjälpsam/inte hjälpsam, dismiss/snooze och
   varför, utan rå känslig payload.
 - [ ] Definiera första signalpaketet tillsammans innan trösklar implementeras.
-- [x] Assistant Coach v1 ska prioritera följande första signalpaket:
+- [x] Min assistent v1 ska under området Lagplanering prioritera följande första signalpaket:
   1. obesvarade kallelser;
   2. event som snart börjar men saknar färdig trupp eller utskickad kallelse;
   3. genomförda event där närvaro inte registrerats;
@@ -334,14 +342,14 @@ skärm för varje huvudroll.
 - [ ] Skapa kill switch per signal och separat för framtida generativ formulering.
 - [ ] Håll generativ AI blockerad tills leverantör, region, dataminimering,
   retention, minderårigdata, utvärdering och incidentflöde har godkänts separat.
-- [x] Full Assistant Coach-implementation ska inte starta innan identitet,
+- [x] Full datadriven Min assistent-implementation ska inte starta innan identitet,
   klubb/lag, roster och eventlivscykeln producerar stabil, verifierad data.
 - [ ] Före dess får endast dataoberoende förberedelser göras: signal-/actionkontrakt,
   capabilitygränser, responsiv AC-ingång, testfixtures och kill-switchdesign.
 - [ ] Aktivera ingen signal mot verklig produktdata förrän dess källdata,
   semantik, freshness och cross-context-isolering har klarat respektive domängrind.
 
-Godkänd när: Assistant Coach ger transparent, rollrelevant och verifierbar
+Godkänd när: Min assistent ger transparent, rollrelevant och verifierbar
 hjälp på Hem utan att Watchpoints gamla semantik eller autonoma actions återinförs.
 
 ### Steg 5 – Laget
@@ -663,7 +671,7 @@ Följande frågor har gåtts igenom och beslutats tillsammans:
 7. `[x]` Team chat och leader chat skapas automatiskt när laget skapas.
 8. `[x]` Announcement/broadcast och samlat notification center ingår direkt i
    samma Inbox-etapp.
-9. `[x]` Watchpoints ersätts av Assistant Coach. Första signalpaketet omfattar
+9. `[x]` Watchpoints ersätts av Min assistent. Första signalpaketet under Lagplanering omfattar
    obesvarade kallelser, ofullständig trupp/kallelse inför nära event,
    oregistrerad närvaro efter event, positiva planerings-/svarssignaler och
    luckor i kommande planering.
@@ -679,7 +687,7 @@ Följande frågor har gåtts igenom och beslutats tillsammans:
 6. Publik klubbsajt och lagkanaler ovanpå stabil klubb-/lag-/eventdata och publiceringssamtycken.
 7. Inbox, automatiska chattar, announcement/broadcast och notification center.
 8. Rollanpassat Hem ovanpå de stabila domänflödena.
-9. Assistant Coach: mobil-FAB, tablet/desktop-panel och de fem godkända signalerna.
+9. Min assistent: identitet/personligt namn, specialistområden, mobil-FAB, tablet/desktop-panel och de fem första Lagplanering-signalerna.
 10. Laget fas 2 samt senare kalenderfunktioner/import.
 11. Samlad grundappsgrind på web och Android.
 
@@ -687,7 +695,7 @@ Motivet är att identitet/context först måste styra all behörighet och att La
 Kalender måste därefter skapa stabil, korrekt och tidsmärkt data. Den publika
 klubbsajten och lagkanalerna byggs på dessa kanoniska källor innan Inbox
 färdigställs. Hem kan sedan
-prioritera verkliga användarbehov. Assistant Coach byggs efter dessa
+prioritera verkliga användarbehov. Min assistent byggs efter dessa
 dataproducerande flöden så att signalerna reagerar på verifierad produktdata i
 stället för konstruerade antaganden. Endast dess dataoberoende kontrakt och
 säkerhetsgränser får förberedas tidigare.
@@ -696,6 +704,7 @@ säkerhetsgränser får förberedas tidigare.
 
 | Datum | Ändring | Beslutad av |
 |---|---|---|
+| 2026-08-28 | Paraplynamnet fastställdes till Min assistent. Ett sportigt internationellt standardnamn väljs senare och användaren får välja eget privat namn. En gemensam kärna/kö får specialistområden märkta med text, ikon och färg enligt separat målmodell. | Produktägaren |
 | 2026-08-23 | Första utkast skapat från gammal dokumentation och rebuildens nuläge. | Ej fastställd |
 | 2026-08-23 | Båda authmetoderna, direkt klubb-/lagskapande med namnskydd, roll-/situationsanpassning och Assistant Coach som ersättare för Watchpoints införda i arbetsplanen. | Produktägaren |
 | 2026-08-23 | Första lokala Assistant Coach-modulen på Hem implementerad och verifierad; signalmodell/actions återstår. | Pågående implementation |

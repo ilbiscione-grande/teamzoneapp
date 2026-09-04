@@ -71,7 +71,7 @@ class SupabaseOverviewServices implements OverviewServices {
       return _leaderCache[contextId] = LeaderHomeProjection.fromJson(value);
     } catch (_) {
       final cached = _leaderCache[contextId];
-      if (cached != null) return cached;
+      if (cached != null) return cached.asStale();
       rethrow;
     }
   }
@@ -88,7 +88,7 @@ class SupabaseOverviewServices implements OverviewServices {
       return _playerCache[contextId] = PlayerHomeProjection.fromJson(value);
     } catch (_) {
       final cached = _playerCache[contextId];
-      if (cached != null) return cached;
+      if (cached != null) return cached.asStale();
       rethrow;
     }
   }
@@ -112,7 +112,7 @@ class SupabaseOverviewServices implements OverviewServices {
       return _guardianCache[cacheKey] = GuardianHomeProjection.fromJson(value);
     } catch (_) {
       final cached = _guardianCache[cacheKey];
-      if (cached != null) return cached;
+      if (cached != null) return cached.asStale();
       rethrow;
     }
   }

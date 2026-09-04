@@ -53,4 +53,25 @@ void main() {
     expect(surface, contains('message.id: message'));
     expect(surface, contains('a.revision.compareTo(b.revision)'));
   });
+
+  test(
+    'stale resync and pagination responses cannot overwrite newer state',
+    () {
+      expect(surface, contains('int _messageRequestGeneration = 0'));
+      expect(
+        surface,
+        contains('final requestGeneration = ++_messageRequestGeneration'),
+      );
+      expect(
+        RegExp(
+          r'requestGeneration != _messageRequestGeneration',
+        ).allMatches(surface).length,
+        greaterThanOrEqualTo(2),
+      );
+      expect(
+        surface,
+        contains('final requestGeneration = _messageRequestGeneration'),
+      );
+    },
+  );
 }

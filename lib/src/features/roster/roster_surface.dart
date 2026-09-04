@@ -6,6 +6,7 @@ class _RosterSurface extends StatefulWidget {
     required this.roster,
     required this.membership,
     required this.calendar,
+    this.onContextsChanged,
     this.initialTab,
   });
 
@@ -13,6 +14,7 @@ class _RosterSurface extends StatefulWidget {
   final RosterServices roster;
   final MembershipServices membership;
   final CalendarServices calendar;
+  final Future<void> Function()? onContextsChanged;
   final String? initialTab;
 
   @override
@@ -53,10 +55,13 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     _list.replaceItems(people ?? const []);
   }
 
-  Future<List<RosterPersonSummary>> _reload() => widget.roster.listPeople(
-    clubId: widget.contextValue.clubId,
-    teamId: widget.contextValue.teamId,
-  );
+  Future<List<RosterPersonSummary>> _reload() {
+    if (widget.contextValue.teamId == null) return Future.value(const []);
+    return widget.roster.listPeople(
+      clubId: widget.contextValue.clubId,
+      teamId: widget.contextValue.teamId,
+    );
+  }
 
   Future<void> _acceptGuardianInvite() async {
     final controller = TextEditingController();
@@ -126,6 +131,8 @@ class _RosterSurfaceState extends State<_RosterSurface> {
         );
       }
       if (mounted) {
+        await widget.onContextsChanged?.call();
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -235,6 +242,9 @@ class _RosterSurfaceState extends State<_RosterSurface> {
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
+    if (widget.contextValue.teamId == null) {
+      return _NoTeamMembershipSurface(onUseCode: _acceptGuardianInvite);
+    }
     return DefaultTabController(
       key: ValueKey(_selectedTab),
       length: 3,
@@ -286,8 +296,11 @@ class _RosterSurfaceState extends State<_RosterSurface> {
   }
 
   Widget _buildRoster(BuildContext context) {
-    final canManage = widget.contextValue.can('club.memberships.manage');
+    final canManageClub = widget.contextValue.can('club.memberships.manage');
+    final canManage =
+        canManageClub || widget.contextValue.can('team.roster.manage');
     final canView = widget.contextValue.can('team.roster.view') || canManage;
+    final canOpenPersonDetails = widget.contextValue.rolePackage != 'guardian';
     const supportedRoles = {'player', 'leader', 'guardian', 'club_functionary'};
     if (!canView || !supportedRoles.contains(widget.contextValue.rolePackage)) {
       return _StateCard(
@@ -296,6 +309,11 @@ class _RosterSurfaceState extends State<_RosterSurface> {
         message: AppStrings.of(
           context,
         ).feature('Din roll saknar behörighet att visa den här truppen.'),
+        action: OutlinedButton.icon(
+          onPressed: _acceptGuardianInvite,
+          icon: const Icon(Icons.vpn_key_outlined),
+          label: Text(AppStrings.of(context).feature('Använd kod')),
+        ),
       );
     }
     return ListenableBuilder(
@@ -324,10 +342,22 @@ class _RosterSurfaceState extends State<_RosterSurface> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: SearchBar(
-                leading: const Icon(Icons.search),
-                hintText: strings.feature('Sök i truppen'),
-                onChanged: _list.setQuery,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SearchBar(
+                      leading: const Icon(Icons.search),
+                      hintText: strings.feature('Sök i truppen'),
+                      onChanged: _list.setQuery,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: _acceptGuardianInvite,
+                    icon: const Icon(Icons.vpn_key_outlined),
+                    label: Text(strings.feature('Använd kod')),
+                  ),
+                ],
               ),
             ),
             Padding(
@@ -415,8 +445,12 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                                         _openRosterPersonForm(person: person),
                                     icon: const Icon(Icons.edit_outlined),
                                   )
-                                : const Icon(Icons.chevron_right),
-                            onTap: () => _openPersonDetails(person),
+                                : canOpenPersonDetails
+                                ? const Icon(Icons.chevron_right)
+                                : null,
+                            onTap: canOpenPersonDetails
+                                ? () => _openPersonDetails(person)
+                                : null,
                           );
                         },
                       ),
@@ -458,216 +492,215 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                     );
                   },
                 ),
-          floatingActionButton: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              FloatingActionButton.extended(
-                heroTag: 'guardian-invite',
-                onPressed: _acceptGuardianInvite,
-                icon: const Icon(Icons.family_restroom),
-                label: Text(AppStrings.of(context).feature('Använd kod')),
-              ),
-              if (canManage) ...[
-                const SizedBox(height: 12),
-                FloatingActionButton.extended(
-                  heroTag: 'membership-reviews',
-                  onPressed: () => showModalBottomSheet<void>(
-                    context: context,
-                    isScrollControlled: true,
-                    useSafeArea: true,
-                    builder: (_) => _MembershipReviewSheet(
-                      contextValue: widget.contextValue,
-                      membership: widget.membership,
-                      onApproved: _data.refresh,
-                    ),
-                  ),
-                  icon: const Icon(Icons.how_to_reg_outlined),
-                  label: Text(
-                    AppStrings.of(context).feature('Medlemsansökningar'),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                FloatingActionButton.extended(
-                  heroTag: 'manage-roster',
-                  onPressed: () => showModalBottomSheet<void>(
-                    context: context,
-                    builder: (sheetContext) => SafeArea(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ListTile(
-                              leading: const Icon(
-                                Icons.mark_email_unread_outlined,
-                              ),
-                              title: Text(
-                                AppStrings.of(
-                                  context,
-                                ).feature('Inbjudningar och lagkoder'),
-                              ),
-                              onTap: () {
-                                Navigator.pop(sheetContext);
-                                showModalBottomSheet<void>(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  useSafeArea: true,
-                                  builder: (_) => _InvitationAdminSheet(
-                                    contextValue: widget.contextValue,
-                                    roster: widget.roster,
-                                    people: _data.state.data ?? const [],
-                                  ),
-                                );
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.compare_arrows),
-                              title: Text(
-                                AppStrings.of(
-                                  context,
-                                ).feature('Representation i andra lag'),
-                              ),
-                              onTap: () {
-                                Navigator.pop(sheetContext);
-                                showModalBottomSheet<void>(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  useSafeArea: true,
-                                  builder: (_) => _PlayEligibilitySheet(
-                                    contextValue: widget.contextValue,
-                                    roster: widget.roster,
-                                  ),
-                                );
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.swap_horiz),
-                              title: Text(
-                                AppStrings.of(
-                                  context,
-                                ).feature('Flytta spelare'),
-                              ),
-                              subtitle: Text(
-                                AppStrings.of(context).feature(
-                                  'Flytta inom klubben med bevarad historik.',
-                                ),
-                              ),
-                              onTap: () {
-                                Navigator.pop(sheetContext);
-                                showModalBottomSheet<void>(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  useSafeArea: true,
-                                  builder: (_) => _IntraClubMoveSheet(
-                                    contextValue: widget.contextValue,
-                                    roster: widget.roster,
-                                  ),
-                                ).then((_) => _data.refresh());
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.archive_outlined),
-                              title: Text(
-                                AppStrings.of(
-                                  context,
-                                ).feature('Arkivering och personuppgifter'),
-                              ),
-                              subtitle: Text(
-                                AppStrings.of(context).feature(
-                                  'Avsluta lagtillhörighet eller starta en skyddad raderingsbegäran.',
-                                ),
-                              ),
-                              onTap: () {
-                                Navigator.pop(sheetContext);
-                                showModalBottomSheet<void>(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  useSafeArea: true,
-                                  builder: (_) => _RosterLifecycleSheet(
-                                    contextValue: widget.contextValue,
-                                    roster: widget.roster,
-                                  ),
-                                ).then((_) => _data.refresh());
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.shield_outlined),
-                              title: Text(
-                                AppStrings.of(
-                                  context,
-                                ).feature('Rosteråtgärder'),
-                              ),
-                              subtitle: Text(
-                                AppStrings.of(context).feature(
-                                  'Skapa, invite, guardian och transfer körs som scopeade serverkommandon.',
-                                ),
-                              ),
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.group_add_outlined),
-                              title: Text(
-                                AppStrings.of(
-                                  context,
-                                ).feature('Lägg till person'),
-                              ),
-                              subtitle: Text(
-                                AppStrings.of(context).feature(
-                                  'Skapa en klubbägd rosterprofil i det här laget.',
-                                ),
-                              ),
-                              onTap: () {
-                                Navigator.pop(sheetContext);
-                                _openRosterPersonForm();
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.group_add_outlined),
-                              title: Text(
-                                AppStrings.of(
-                                  context,
-                                ).feature('Skapa ytterligare lag'),
-                              ),
-                              onTap: () {
-                                Navigator.pop(sheetContext);
-                                _createTeam();
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.verified_outlined),
-                              title: Text(
-                                AppStrings.of(
-                                  context,
-                                ).feature('Klubbverifiering'),
-                              ),
-                              subtitle: Text(
-                                AppStrings.of(context).feature(
-                                  'Se officiell status eller skicka underlag till TeamZone.',
-                                ),
-                              ),
-                              onTap: () {
-                                Navigator.pop(sheetContext);
-                                showModalBottomSheet<void>(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  useSafeArea: true,
-                                  builder: (_) => _ClubVerificationSheet(
-                                    clubId: widget.contextValue.clubId,
-                                    membership: widget.membership,
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
+          floatingActionButton: canManage
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    FloatingActionButton.extended(
+                      heroTag: 'membership-reviews',
+                      onPressed: () => showModalBottomSheet<void>(
+                        context: context,
+                        isScrollControlled: true,
+                        useSafeArea: true,
+                        builder: (_) => _MembershipReviewSheet(
+                          contextValue: widget.contextValue,
+                          membership: widget.membership,
+                          onApproved: _data.refresh,
                         ),
                       ),
+                      icon: const Icon(Icons.how_to_reg_outlined),
+                      label: Text(
+                        AppStrings.of(context).feature('Medlemsansökningar'),
+                      ),
                     ),
-                  ),
-                  icon: const Icon(Icons.person_add_alt_1),
-                  label: Text(AppStrings.of(context).feature('Hantera')),
-                ),
-              ],
-            ],
-          ),
+                    const SizedBox(height: 12),
+                    FloatingActionButton.extended(
+                      heroTag: 'manage-roster',
+                      onPressed: () => showModalBottomSheet<void>(
+                        context: context,
+                        builder: (sheetContext) => SafeArea(
+                          child: SingleChildScrollView(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ListTile(
+                                  leading: const Icon(
+                                    Icons.mark_email_unread_outlined,
+                                  ),
+                                  title: Text(
+                                    AppStrings.of(
+                                      context,
+                                    ).feature('Inbjudningar och lagkoder'),
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(sheetContext);
+                                    showModalBottomSheet<void>(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      useSafeArea: true,
+                                      builder: (_) => _InvitationAdminSheet(
+                                        contextValue: widget.contextValue,
+                                        roster: widget.roster,
+                                        people: _data.state.data ?? const [],
+                                      ),
+                                    );
+                                  },
+                                ),
+                                ListTile(
+                                  leading: const Icon(Icons.compare_arrows),
+                                  title: Text(
+                                    AppStrings.of(
+                                      context,
+                                    ).feature('Representation i andra lag'),
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(sheetContext);
+                                    showModalBottomSheet<void>(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      useSafeArea: true,
+                                      builder: (_) => _PlayEligibilitySheet(
+                                        contextValue: widget.contextValue,
+                                        roster: widget.roster,
+                                      ),
+                                    );
+                                  },
+                                ),
+                                ListTile(
+                                  leading: const Icon(Icons.swap_horiz),
+                                  title: Text(
+                                    AppStrings.of(
+                                      context,
+                                    ).feature('Flytta spelare'),
+                                  ),
+                                  subtitle: Text(
+                                    AppStrings.of(context).feature(
+                                      'Flytta inom klubben med bevarad historik.',
+                                    ),
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(sheetContext);
+                                    showModalBottomSheet<void>(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      useSafeArea: true,
+                                      builder: (_) => _IntraClubMoveSheet(
+                                        contextValue: widget.contextValue,
+                                        roster: widget.roster,
+                                      ),
+                                    ).then((_) => _data.refresh());
+                                  },
+                                ),
+                                ListTile(
+                                  leading: const Icon(Icons.archive_outlined),
+                                  title: Text(
+                                    AppStrings.of(
+                                      context,
+                                    ).feature('Arkivering och personuppgifter'),
+                                  ),
+                                  subtitle: Text(
+                                    AppStrings.of(context).feature(
+                                      'Avsluta lagtillhörighet eller starta en skyddad raderingsbegäran.',
+                                    ),
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(sheetContext);
+                                    showModalBottomSheet<void>(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      useSafeArea: true,
+                                      builder: (_) => _RosterLifecycleSheet(
+                                        contextValue: widget.contextValue,
+                                        roster: widget.roster,
+                                      ),
+                                    ).then((_) => _data.refresh());
+                                  },
+                                ),
+                                ListTile(
+                                  leading: const Icon(Icons.shield_outlined),
+                                  title: Text(
+                                    AppStrings.of(
+                                      context,
+                                    ).feature('Rosteråtgärder'),
+                                  ),
+                                  subtitle: Text(
+                                    AppStrings.of(context).feature(
+                                      'Skapa, invite, guardian och transfer körs som scopeade serverkommandon.',
+                                    ),
+                                  ),
+                                ),
+                                ListTile(
+                                  leading: const Icon(Icons.group_add_outlined),
+                                  title: Text(
+                                    AppStrings.of(
+                                      context,
+                                    ).feature('Lägg till person'),
+                                  ),
+                                  subtitle: Text(
+                                    AppStrings.of(context).feature(
+                                      'Skapa en klubbägd rosterprofil i det här laget.',
+                                    ),
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(sheetContext);
+                                    _openRosterPersonForm();
+                                  },
+                                ),
+                                if (canManageClub) ...[
+                                  ListTile(
+                                    leading: const Icon(
+                                      Icons.group_add_outlined,
+                                    ),
+                                    title: Text(
+                                      AppStrings.of(
+                                        context,
+                                      ).feature('Skapa ytterligare lag'),
+                                    ),
+                                    onTap: () {
+                                      Navigator.pop(sheetContext);
+                                      _createTeam();
+                                    },
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(
+                                      Icons.verified_outlined,
+                                    ),
+                                    title: Text(
+                                      AppStrings.of(
+                                        context,
+                                      ).feature('Klubbverifiering'),
+                                    ),
+                                    subtitle: Text(
+                                      AppStrings.of(context).feature(
+                                        'Se officiell status eller skicka underlag till TeamZone.',
+                                      ),
+                                    ),
+                                    onTap: () {
+                                      Navigator.pop(sheetContext);
+                                      showModalBottomSheet<void>(
+                                        context: context,
+                                        isScrollControlled: true,
+                                        useSafeArea: true,
+                                        builder: (_) => _ClubVerificationSheet(
+                                          clubId: widget.contextValue.clubId,
+                                          membership: widget.membership,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      icon: const Icon(Icons.person_add_alt_1),
+                      label: Text(AppStrings.of(context).feature('Hantera')),
+                    ),
+                  ],
+                )
+              : null,
         );
       },
     );
@@ -738,6 +771,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     }
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => SizedBox(
@@ -746,6 +780,26 @@ class _RosterSurfaceState extends State<_RosterSurface> {
       ),
     );
   }
+}
+
+class _NoTeamMembershipSurface extends StatelessWidget {
+  const _NoTeamMembershipSurface({required this.onUseCode});
+
+  final VoidCallback onUseCode;
+
+  @override
+  Widget build(BuildContext context) => _StateCard(
+    icon: Icons.groups_outlined,
+    title: AppStrings.of(context).feature('Du är inte kopplad till något lag'),
+    message: AppStrings.of(context).feature(
+      'När du blir tillagd i ett lag visas lagets översikt, trupp och kalender här.',
+    ),
+    action: FilledButton.icon(
+      onPressed: onUseCode,
+      icon: const Icon(Icons.vpn_key_outlined),
+      label: Text(AppStrings.of(context).feature('Använd kod')),
+    ),
+  );
 }
 
 class _RosterFilterChip extends StatelessWidget {
@@ -1641,38 +1695,48 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
   Future<void> _issueTargeted() async {
     if (widget.people.isEmpty) return;
     var personId = widget.people.first.id;
-    final email = TextEditingController();
+    var address = '';
+    String? emailError;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: Text(AppStrings.of(context).feature('Riktad inbjudan')),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                initialValue: personId,
-                items: widget.people
-                    .map(
-                      (person) => DropdownMenuItem(
-                        value: person.id,
-                        child: Text(person.displayName),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) =>
-                    setDialogState(() => personId = value ?? personId),
-              ),
-              TextField(
-                controller: email,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: AppStrings.of(
-                    context,
-                  ).feature('Mottagarens e-post'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: personId,
+                  items: widget.people
+                      .map(
+                        (person) => DropdownMenuItem(
+                          value: person.id,
+                          child: Text(person.displayName),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setDialogState(() => personId = value ?? personId),
                 ),
-              ),
-            ],
+                TextField(
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.email],
+                  onChanged: (value) {
+                    address = value;
+                    if (emailError != null) {
+                      setDialogState(() => emailError = null);
+                    }
+                  },
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(
+                      context,
+                    ).feature('Mottagarens e-post'),
+                    errorText: emailError,
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -1680,16 +1744,29 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
               child: Text(AppStrings.of(context).feature('Avbryt')),
             ),
             FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
+              onPressed: () {
+                final normalizedAddress = address.trim();
+                final valid = RegExp(
+                  r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                ).hasMatch(normalizedAddress);
+                if (!valid) {
+                  setDialogState(
+                    () => emailError = AppStrings.of(
+                      context,
+                    ).feature('Ange en giltig e-postadress.'),
+                  );
+                  return;
+                }
+                Navigator.pop(dialogContext, true);
+              },
               child: Text(AppStrings.of(context).feature('Skapa')),
             ),
           ],
         ),
       ),
     );
-    final address = email.text.trim();
-    email.dispose();
-    if (confirmed != true || !address.contains('@')) return;
+    if (confirmed != true) return;
+    address = address.trim();
     final token = '${_newUuid()}${_newUuid()}';
     await _runIssue(
       () => widget.roster.issueTargetedInvitation(
@@ -1704,9 +1781,27 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
   }
 
   Future<void> _issueGuardian() async {
-    if (widget.people.length < 2) return;
-    var guardianId = widget.people.first.id;
-    var childId = widget.people[1].id;
+    final children = widget.people
+        .where((person) => person.safeguardingRequired)
+        .toList(growable: false);
+    if (children.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppStrings.of(context).feature(
+              'Markera först ett barn som behöver vårdnadshavarkoppling.',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+    var childId = children.first.id;
+    final guardians = widget.people
+        .where((person) => person.id != childId)
+        .toList(growable: false);
+    if (guardians.isEmpty) return;
+    var guardianId = guardians.first.id;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -1720,7 +1815,7 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
                 decoration: InputDecoration(
                   labelText: AppStrings.of(context).feature('Guardian'),
                 ),
-                items: widget.people
+                items: guardians
                     .map(
                       (person) => DropdownMenuItem(
                         value: person.id,
@@ -1736,7 +1831,7 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
                 decoration: InputDecoration(
                   labelText: AppStrings.of(context).feature('Barn'),
                 ),
-                items: widget.people
+                items: children
                     .map(
                       (person) => DropdownMenuItem(
                         value: person.id,
@@ -1786,13 +1881,30 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
       if (!mounted) return;
       await showDialog<void>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: Text(AppStrings.of(context).feature('Koden är skapad')),
+        builder: (dialogContext) => AlertDialog(
+          title: Text(AppStrings.of(dialogContext).feature('Koden är skapad')),
           content: SelectableText(token),
           actions: [
+            TextButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: token));
+                if (!dialogContext.mounted) return;
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      AppStrings.of(
+                        dialogContext,
+                      ).feature('Inbjudningskoden har kopierats.'),
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.copy_outlined),
+              label: Text(AppStrings.of(dialogContext).feature('Kopiera')),
+            ),
             FilledButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(AppStrings.of(context).feature('Stäng')),
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(AppStrings.of(dialogContext).feature('Stäng')),
             ),
           ],
         ),
@@ -1830,6 +1942,59 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
           SnackBar(
             content: Text(
               AppStrings.of(context).feature('Inbjudan kunde inte återkallas.'),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _pending = false);
+    }
+  }
+
+  Future<void> _showTeamCode(InvitationAdminItem item) async {
+    if (_pending) return;
+    setState(() => _pending = true);
+    try {
+      final code = await widget.roster.revealTeamCode(codeId: item.id);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(AppStrings.of(dialogContext).feature('Lagkod')),
+          content: SelectableText(code),
+          actions: [
+            TextButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: code));
+                if (!dialogContext.mounted) return;
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      AppStrings.of(
+                        dialogContext,
+                      ).feature('Lagkoden har kopierats.'),
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.copy_outlined),
+              label: Text(AppStrings.of(dialogContext).feature('Kopiera')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(AppStrings.of(dialogContext).feature('Stäng')),
+            ),
+          ],
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppStrings.of(context).feature(
+                'Lagkoden kan inte visas. Återkalla den och skapa en ny kod.',
+              ),
             ),
           ),
         );
@@ -1877,7 +2042,7 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
           ),
           subtitle: Text(
             AppStrings.of(context).feature(
-              'Koder visas bara en gång. Status och återkallelse finns kvar här.',
+              'Lagkoder kan visas och kopieras igen. Personliga koder visas bara en gång.',
             ),
           ),
         ),
@@ -1936,7 +2101,31 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
                             ? AppStrings.of(context).domainValue(item.state)
                             : '${AppStrings.of(context).domainValue(item.state)} · ${MaterialLocalizations.of(context).formatMediumDate(item.expiresAt!.toLocal())}',
                       ),
-                      trailing: item.canEndRelation
+                      trailing: item.kind == 'team_code' && item.canRevoke
+                          ? Wrap(
+                              spacing: 0,
+                              children: [
+                                IconButton(
+                                  tooltip: AppStrings.of(
+                                    context,
+                                  ).feature('Visa kod'),
+                                  onPressed: _pending
+                                      ? null
+                                      : () => _showTeamCode(item),
+                                  icon: const Icon(Icons.visibility_outlined),
+                                ),
+                                IconButton(
+                                  tooltip: AppStrings.of(
+                                    context,
+                                  ).feature('Återkalla'),
+                                  onPressed: _pending
+                                      ? null
+                                      : () => _revoke(item),
+                                  icon: const Icon(Icons.block_outlined),
+                                ),
+                              ],
+                            )
+                          : item.canEndRelation
                           ? TextButton(
                               onPressed: _pending
                                   ? null
@@ -2049,6 +2238,7 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
   late final TextEditingController _ageClass = TextEditingController(
     text: widget.initial?.ageClass,
   );
+  late bool _guardianRequired = widget.initial?.safeguardingRequired ?? false;
   String? _error;
 
   bool get _isEditing => widget.initial != null;
@@ -2077,7 +2267,7 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
       final saved = await _submission.run(() async {
         final teamId = widget.contextValue.teamId!;
         if (_isEditing) {
-          await widget.roster.updatePerson(
+          final revision = await widget.roster.updatePerson(
             clubId: widget.contextValue.clubId,
             teamId: teamId,
             personId: widget.initial!.id,
@@ -2086,6 +2276,16 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
             expectedRevision: widget.initial!.personRevision!,
             idempotencyKey: _newUuid(),
           );
+          if (_guardianRequired != widget.initial!.safeguardingRequired) {
+            await widget.roster.setGuardianRequirement(
+              clubId: widget.contextValue.clubId,
+              teamId: teamId,
+              personId: widget.initial!.id,
+              guardianRequired: _guardianRequired,
+              expectedRevision: revision,
+              idempotencyKey: _newUuid(),
+            );
+          }
         } else {
           await widget.roster.createPerson(
             clubId: widget.contextValue.clubId,
@@ -2163,6 +2363,23 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
                           : null;
                     },
                   ),
+                  if (_isEditing)
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        strings.feature('Behöver vårdnadshavarkoppling'),
+                      ),
+                      subtitle: Text(
+                        strings.feature(
+                          'Gör personen valbar som barn i en guardianinbjudan.',
+                        ),
+                      ),
+                      value: _guardianRequired,
+                      onChanged: (value) {
+                        setState(() => _guardianRequired = value);
+                        _submission.markDirty();
+                      },
+                    ),
                   TextFormField(
                     controller: _ageClass,
                     maxLength: 40,
@@ -2360,7 +2577,9 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
       }
       final value = snapshot.data!;
       final showAdmin =
-          value.canManage && widget.contextValue.can('club.memberships.manage');
+          value.canManage &&
+          (widget.contextValue.can('club.memberships.manage') ||
+              widget.contextValue.can('team.roster.manage'));
       return RefreshIndicator(
         onRefresh: () async {
           setState(_reload);
@@ -2430,6 +2649,17 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
               ],
             ),
             if (showAdmin) ...[
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: _editTeamProfile,
+                  icon: const Icon(Icons.edit_outlined),
+                  label: Text(strings.feature('Redigera lagprofil')),
+                ),
+              ),
+            ],
+            if (showAdmin) ...[
               const SizedBox(height: 24),
               Card(
                 child: Padding(
@@ -2477,6 +2707,173 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
       );
     },
   );
+
+  Future<void> _editTeamProfile() async {
+    final teamId = widget.contextValue.teamId;
+    if (teamId == null) return;
+    final strings = AppStrings.of(context);
+    try {
+      final value = await widget.roster
+          .getTeamProfileEdit(teamId: teamId)
+          .timeout(const Duration(seconds: 15));
+      if (!mounted) return;
+      final saved = await showDialog<bool>(
+        context: context,
+        builder: (_) => _TeamProfileEditDialog(
+          value: value,
+          onSave:
+              ({
+                required teamType,
+                required ageClass,
+                required summary,
+                required imageUrl,
+              }) => widget.roster.updateTeamProfile(
+                teamId: teamId,
+                teamType: teamType,
+                ageClass: ageClass,
+                summary: summary,
+                imageUrl: imageUrl,
+                expectedRevision: value.revision,
+                idempotencyKey: _newUuid(),
+              ),
+        ),
+      );
+      if (saved == true && mounted) setState(_reload);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(strings.feature('Lagprofilen kunde inte laddas.')),
+          ),
+        );
+      }
+    }
+  }
+}
+
+class _TeamProfileEditDialog extends StatefulWidget {
+  const _TeamProfileEditDialog({required this.value, required this.onSave});
+  final TeamProfileEditData value;
+  final Future<int> Function({
+    required String teamType,
+    required String ageClass,
+    required String summary,
+    required String imageUrl,
+  })
+  onSave;
+  @override
+  State<_TeamProfileEditDialog> createState() => _TeamProfileEditDialogState();
+}
+
+class _TeamProfileEditDialogState extends State<_TeamProfileEditDialog> {
+  late final _teamType = TextEditingController(text: widget.value.teamType);
+  late final _ageClass = TextEditingController(text: widget.value.ageClass);
+  late final _summary = TextEditingController(text: widget.value.summary);
+  late final _imageUrl = TextEditingController(text: widget.value.imageUrl);
+  final _formKey = GlobalKey<FormState>();
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _teamType.dispose();
+    _ageClass.dispose();
+    _summary.dispose();
+    _imageUrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return AlertDialog(
+      title: Text(strings.feature('Redigera lagprofil')),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _teamType,
+                maxLength: 80,
+                decoration: InputDecoration(
+                  labelText: strings.feature('Lagtyp'),
+                ),
+              ),
+              TextFormField(
+                controller: _ageClass,
+                maxLength: 80,
+                decoration: InputDecoration(
+                  labelText: strings.feature('Åldersklass'),
+                ),
+              ),
+              TextFormField(
+                controller: _summary,
+                maxLength: 1000,
+                minLines: 3,
+                maxLines: 6,
+                decoration: InputDecoration(
+                  labelText: strings.feature('Kort lagpresentation'),
+                ),
+              ),
+              TextFormField(
+                controller: _imageUrl,
+                maxLength: 2048,
+                keyboardType: TextInputType.url,
+                decoration: InputDecoration(
+                  labelText: strings.feature('Lagbildens HTTPS-adress'),
+                  helperText: strings.feature(
+                    'Säker bilduppladdning läggs till separat.',
+                  ),
+                ),
+                validator: (value) {
+                  final url = value?.trim() ?? '';
+                  return url.isEmpty || Uri.tryParse(url)?.scheme == 'https'
+                      ? null
+                      : strings.feature('Ange en giltig HTTPS-adress.');
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.pop(context, false),
+          child: Text(strings.feature('Avbryt')),
+        ),
+        FilledButton(
+          onPressed: _saving ? null : _save,
+          child: Text(strings.save),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
+    try {
+      await widget.onSave(
+        teamType: _teamType.text.trim(),
+        ageClass: _ageClass.text.trim(),
+        summary: _summary.text.trim(),
+        imageUrl: _imageUrl.text.trim(),
+      );
+      if (mounted) Navigator.pop(context, true);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppStrings.of(context).feature('Lagprofilen kunde inte sparas.'),
+            ),
+          ),
+        );
+      }
+    }
+  }
 }
 
 class _TeamImage extends StatelessWidget {

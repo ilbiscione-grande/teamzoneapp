@@ -1,3 +1,5 @@
+import '../../shared/attention/attention_priority.dart';
+
 class MessageThreadSummary {
   const MessageThreadSummary({
     required this.id,
@@ -211,19 +213,21 @@ class NotificationItem {
   final String canonicalKey;
   final int priority;
   final DateTime createdAt;
-  factory NotificationItem.fromJson(Map<String, dynamic> json) =>
-      NotificationItem(
-        id: json['id'] as String,
-        eventType: json['event_type'] as String,
-        category: json['category'] as String,
-        title: json['title'] as String,
-        preview: json['preview'] as String,
-        deepLink: json['deep_link'] as String,
-        unread: json['unread'] as bool? ?? false,
-        canonicalKey: json['canonical_key'] as String,
-        priority: (json['priority'] as num).toInt(),
-        createdAt: DateTime.parse(json['created_at'] as String),
-      );
+  factory NotificationItem.fromJson(Map<String, dynamic> json) {
+    final category = json['category'] as String;
+    return NotificationItem(
+      id: json['id'] as String,
+      eventType: json['event_type'] as String,
+      category: category,
+      title: json['title'] as String,
+      preview: json['preview'] as String,
+      deepLink: json['deep_link'] as String,
+      unread: json['unread'] as bool? ?? false,
+      canonicalKey: json['canonical_key'] as String,
+      priority: attentionPriority(category),
+      createdAt: DateTime.parse(json['created_at'] as String),
+    );
+  }
 }
 
 class NotificationCenter {
@@ -239,14 +243,64 @@ class NotificationCenter {
     if (rows is! List) {
       throw const FormatException('Invalid notification items.');
     }
-    return NotificationCenter(
-      items: rows
-          .whereType<Map<String, dynamic>>()
-          .map(NotificationItem.fromJson)
-          .toList(growable: false),
-      unreadCount: (json['unread_count'] as num?)?.toInt() ?? 0,
+    final parsed = rows
+        .whereType<Map<String, dynamic>>()
+        .map(NotificationItem.fromJson)
+        .toList(growable: false);
+    final blockedUnread = _uniqueNotificationAttention(
+      parsed.where(_isRetiredOrPrematureAttention),
+    ).where((item) => item.unread).length;
+    final items = _uniqueNotificationAttention(
+      parsed.where((item) => !_isRetiredOrPrematureAttention(item)),
     );
+    final serverUnread = (json['unread_count'] as num?)?.toInt() ?? 0;
+    final visibleUnread = serverUnread > blockedUnread
+        ? serverUnread - blockedUnread
+        : 0;
+    return NotificationCenter(items: items, unreadCount: visibleUnread);
   }
+}
+
+bool _isRetiredOrPrematureAttention(NotificationItem item) {
+  final identity = [
+    item.eventType,
+    item.category,
+    item.canonicalKey,
+  ].join('|').toLowerCase();
+  return identity.contains('watchpoint') ||
+      identity.contains('assistant') ||
+      identity.contains('ac_signal') ||
+      identity.contains('workload.future_review') ||
+      identity.contains('high_load') ||
+      identity.contains('health.clearance') ||
+      identity.contains('medical.');
+}
+
+List<NotificationItem> _uniqueNotificationAttention(
+  Iterable<NotificationItem> items,
+) {
+  final byKey = <String, NotificationItem>{};
+  for (final item in items) {
+    final key = item.canonicalKey.trim().isEmpty
+        ? 'id:${item.id}'
+        : item.canonicalKey;
+    final current = byKey[key];
+    if (current == null ||
+        item.priority < current.priority ||
+        (item.priority == current.priority &&
+            item.createdAt.isAfter(current.createdAt))) {
+      byKey[key] = item;
+    }
+  }
+  final result = byKey.values.toList(growable: false)
+    ..sort((left, right) {
+      final priority = left.priority.compareTo(right.priority);
+      if (priority != 0) return priority;
+      final created = right.createdAt.compareTo(left.createdAt);
+      if (created != 0) return created;
+      return left.id.compareTo(right.id);
+    });
+  return result;
 }
 
 List<Map<String, dynamic>> messagingRows(Object? value, String key) {

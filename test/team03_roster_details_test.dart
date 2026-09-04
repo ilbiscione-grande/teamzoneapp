@@ -45,6 +45,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Administrativa uppgifter'), findsOneWidget);
     expect(find.text('Testimport'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Administrativa uppgifter'), findsNothing);
+    expect(find.text('Tidigare 00'), findsOneWidget);
   });
 
   testWidgets('unknown role is fail closed before roster data is shown', (

@@ -4,7 +4,16 @@ import { safeDomainDecision, normalizedHostname, validRoutingInput } from "./lib
 import { publicRpc } from "./lib/public-rpc";
 import { createServerSupabase } from "./lib/supabase-admin";
 
-const bypassPrefixes = ["/_next/", "/api/", "/favicon.ico", "/robots.txt"];
+// Public media tokens are already tenant-independent, opaque and resolved by a
+// service-only lookup. They must retain the route's immutable image cache and
+// must never be rewritten as club HTML on a custom hostname.
+const bypassPrefixes = [
+  "/_next/",
+  "/api/",
+  "/media/public/",
+  "/favicon.ico",
+  "/robots.txt",
+];
 const pageCache = "public, max-age=0, s-maxage=60, must-revalidate";
 
 export async function proxy(request: NextRequest) {

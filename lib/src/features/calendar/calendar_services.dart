@@ -35,6 +35,12 @@ abstract interface class CalendarServices {
     required String teamId,
   });
   Future<SquadDetails> getEventSquad(String eventId);
+  Future<int> setEventCallupVisibility({
+    required String eventId,
+    required bool showToMembers,
+    required int expectedRevision,
+    required String idempotencyKey,
+  });
   Future<List<SquadCandidate>> listSquadCandidates(String eventId);
   Future<void> saveSquadDraft({
     required String eventId,
@@ -106,6 +112,32 @@ abstract interface class CalendarServices {
   Stream<CalendarSyncEvent> watchInvalidations({required Set<String> clubIds});
 }
 
+List<({DateTime from, DateTime to})> buildCalendarQueryWindows({
+  required DateTime from,
+  required DateTime to,
+  required Duration maximumWindow,
+}) {
+  if (!to.isAfter(from)) {
+    throw ArgumentError.value(to, 'to', 'Must be after from.');
+  }
+  if (maximumWindow <= Duration.zero) {
+    throw ArgumentError.value(
+      maximumWindow,
+      'maximumWindow',
+      'Must be positive.',
+    );
+  }
+  final windows = <({DateTime from, DateTime to})>[];
+  var windowStart = from;
+  while (windowStart.isBefore(to)) {
+    final candidateEnd = windowStart.add(maximumWindow);
+    final windowEnd = candidateEnd.isBefore(to) ? candidateEnd : to;
+    windows.add((from: windowStart, to: windowEnd));
+    windowStart = windowEnd;
+  }
+  return windows;
+}
+
 class UnconfiguredCalendarServices implements CalendarServices {
   const UnconfiguredCalendarServices();
   StateError get _error => StateError('Supabase is not configured.');
@@ -132,6 +164,13 @@ class UnconfiguredCalendarServices implements CalendarServices {
   }) async => const [];
   @override
   Future<SquadDetails> getEventSquad(String eventId) => Future.error(_error);
+  @override
+  Future<int> setEventCallupVisibility({
+    required String eventId,
+    required bool showToMembers,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) => Future.error(_error);
   @override
   Future<List<SquadCandidate>> listSquadCandidates(String eventId) =>
       Future.error(_error);
@@ -228,41 +267,53 @@ class UnconfiguredCalendarServices implements CalendarServices {
 class SupabaseCalendarServices implements CalendarServices {
   SupabaseCalendarServices(this._client);
   final SupabaseClient _client;
+
+  static const _maximumQueryWindow = Duration(days: 399);
+
   @override
   Future<List<CalendarEventSummary>> listCalendar({
     required List<String> contextIds,
     required DateTime from,
     required DateTime to,
   }) async {
-    final events = <CalendarEventSummary>[];
-    String? cursor;
-    for (var page = 0; page < 20; page++) {
-      final value = await _client
-          .schema('api')
-          .rpc<Object?>(
-            'list_calendar_page',
-            params: {
-              'context_ids': contextIds,
-              'range_start': from.toUtc().toIso8601String(),
-              'range_end': to.toUtc().toIso8601String(),
-              'page_cursor': cursor,
-              'page_limit': 200,
-            },
-          );
-      if (value is! List) {
-        throw const FormatException('Calendar response is not a list.');
-      }
-      final items = value
-          .whereType<Map<String, dynamic>>()
-          .map(CalendarEventSummary.fromJson)
-          .toList(growable: false);
-      events.addAll(items);
-      if (items.length < 200) break;
-      cursor = items.last.eventCursor;
-      if (cursor == null || cursor.isEmpty) {
-        throw const FormatException('Calendar cursor is missing.');
+    final eventsById = <String, CalendarEventSummary>{};
+    for (final window in buildCalendarQueryWindows(
+      from: from,
+      to: to,
+      maximumWindow: _maximumQueryWindow,
+    )) {
+      String? cursor;
+      for (var page = 0; page < 20; page++) {
+        final value = await _client
+            .schema('api')
+            .rpc<Object?>(
+              'list_calendar_page',
+              params: {
+                'context_ids': contextIds,
+                'range_start': window.from.toUtc().toIso8601String(),
+                'range_end': window.to.toUtc().toIso8601String(),
+                'page_cursor': cursor,
+                'page_limit': 200,
+              },
+            );
+        if (value is! List) {
+          throw const FormatException('Calendar response is not a list.');
+        }
+        final items = value
+            .whereType<Map<String, dynamic>>()
+            .map(CalendarEventSummary.fromJson)
+            .toList(growable: false);
+        for (final item in items) {
+          eventsById[item.id] = item;
+        }
+        if (items.length < 200) break;
+        cursor = items.last.eventCursor;
+        if (cursor == null || cursor.isEmpty) {
+          throw const FormatException('Calendar cursor is missing.');
+        }
       }
     }
+    final events = eventsById.values.toList(growable: false);
     events.sort((left, right) {
       final time = left.startsAt.compareTo(right.startsAt);
       return time == 0 ? left.id.compareTo(right.id) : time;
@@ -354,6 +405,28 @@ class SupabaseCalendarServices implements CalendarServices {
       throw const FormatException('Invalid squad response.');
     }
     return SquadDetails.fromJson(value);
+  }
+
+  @override
+  Future<int> setEventCallupVisibility({
+    required String eventId,
+    required bool showToMembers,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {
+    final value = await _client.schema('api').rpc<Object?>(
+      'set_event_callup_visibility',
+      params: {
+        'event_id': eventId,
+        'show_to_members': showToMembers,
+        'expected_revision': expectedRevision,
+        'idempotency_key': idempotencyKey,
+      },
+    );
+    if (value is! num) {
+      throw const FormatException('Invalid callup visibility revision.');
+    }
+    return value.toInt();
   }
 
   @override

@@ -1,9 +1,9 @@
 -- MSG-07: reversible personal lifecycle, scoped closing and dual-control erasure.
 
-alter table core.messages add column reply_to_message_id uuid references core.messages(id);
-create index messages_reply_to_idx on core.messages(reply_to_message_id)where reply_to_message_id is not null;
+alter table core.messages add column if not exists reply_to_message_id uuid references core.messages(id);
+create index if not exists messages_reply_to_idx on core.messages(reply_to_message_id)where reply_to_message_id is not null;
 
-create table core.thread_personal_visibility(
+create table if not exists core.thread_personal_visibility(
  thread_id uuid not null references core.message_threads(id) on delete cascade,
  profile_id uuid not null references core.profiles(id),
  hidden boolean not null default true,hidden_at timestamptz,updated_at timestamptz not null default now(),
@@ -11,9 +11,15 @@ create table core.thread_personal_visibility(
  check((hidden and hidden_at is not null)or(not hidden and hidden_at is null))
 );
 alter table core.thread_personal_visibility enable row level security;
-create policy thread_personal_visibility_no_direct_access on core.thread_personal_visibility
- for all to authenticated using(false)with check(false);
-create index thread_personal_visibility_profile_idx on core.thread_personal_visibility(profile_id,hidden,thread_id);
+do $$begin
+ if not exists(select 1 from pg_policies where schemaname='core'and tablename='thread_personal_visibility'
+  and policyname='thread_personal_visibility_no_direct_access')then
+  create policy thread_personal_visibility_no_direct_access on core.thread_personal_visibility
+   for all to authenticated using(false)with check(false);
+ end if;
+end$$;
+create index if not exists thread_personal_visibility_profile_idx on core.thread_personal_visibility(profile_id,hidden,thread_id);
+drop trigger if exists visibility_inbox_invalidation on core.thread_personal_visibility;
 create trigger visibility_inbox_invalidation after insert or update on core.thread_personal_visibility
  for each row execute function internal.broadcast_inbox_invalidation();
 

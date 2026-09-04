@@ -45,6 +45,12 @@ const OPERATIONS: Readonly<Record<string, Flow>> = Object.freeze({
   create_board_mandate_change: "critical_commands",
   approve_board_mandate_change: "critical_commands",
   apply_board_mandate_change: "critical_commands",
+  save_editorial_article: "critical_commands",
+  transition_editorial_article: "critical_commands",
+  configure_event_publication: "critical_commands",
+  save_public_partner: "critical_commands",
+  request_publication_domain: "critical_commands",
+  set_canonical_publication_domain: "critical_commands",
 });
 
 const corsHeaders = {

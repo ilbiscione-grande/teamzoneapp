@@ -12,6 +12,17 @@ import 'package:teamzone_app/src/features/membership/membership_models.dart';
 import 'package:teamzone_app/src/features/membership/membership_services.dart';
 
 void main() {
+  test('AUTH-04 runtime patch disambiguates requested membership role', () {
+    final sql = File(
+      'supabase/migrations/20260903103734_auth04_fix_membership_request_role_ambiguity.sql',
+    ).readAsStringSync();
+    expect(sql, contains('#variable_conflict use_column'));
+    expect(
+      sql,
+      contains('request_team_membership_for_actor.requested_role'),
+    );
+  });
+
   test('membership wire models are strict and expose minimal fields', () {
     final result = ClubTeamSearchResult.fromJson(const {
       'club_id': 'club',

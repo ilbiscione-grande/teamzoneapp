@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teamzone_app/src/app/teamzone_app.dart';
+import 'package:teamzone_app/src/app/product_route_contract.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
 import 'package:teamzone_app/src/core/identity/identity_services.dart';
@@ -12,6 +13,19 @@ import 'package:teamzone_app/src/features/roster/roster_models.dart';
 import 'package:teamzone_app/src/features/roster/roster_services.dart';
 
 void main() {
+  test('renamed invitation claim repairs its qualified parameter reference', () {
+    final sql = File(
+      'supabase/migrations/20260903082224_auth03_fix_renamed_invitation_claim_parameter.sql',
+    ).readAsStringSync();
+
+    expect(sql, contains('claim_roster_invitation_v2.idempotency_key'));
+    expect(
+      sql,
+      contains('claim_roster_invitation_link_only_v2.idempotency_key'),
+    );
+    expect(sql, contains('pg_get_functiondef'));
+  });
+
   final token = List.filled(32, 'a').join();
 
   test('invite parser accepts only bounded canonical invite links', () {
@@ -22,6 +36,29 @@ void main() {
     );
     expect(invitationTokenFromUri(Uri.parse('/other?token=$token')), isNull);
     expect(invitationTokenFromUri(Uri.parse('/invite?token=short')), isNull);
+  });
+
+  test('completed web invite normalizes into the product shell', () {
+    expect(
+      ProductRouteContract.canonicalInitialLocation(
+        '/invite?token=${List.filled(32, 'a').join()}',
+      ),
+      ProductRouteContract.home,
+    );
+    final shell = File('lib/src/app/product_shell.dart').readAsStringSync();
+    expect(shell, contains('overridePlatformDefaultLocation: true'));
+  });
+
+  test('a warm invite link reloads preview when its token changes', () {
+    final flow = File(
+      'lib/src/features/auth/invitation_flow.dart',
+    ).readAsStringSync();
+
+    expect(flow, contains('void didUpdateWidget'));
+    expect(flow, contains('if (oldWidget.token == widget.token) return;'));
+    expect(flow, contains('_preview = _loadPreview();'));
+    expect(flow, contains('_result = null;'));
+    expect(flow, contains('_error = null;'));
   });
 
   test('preview and claim models fail closed for unknown states', () {

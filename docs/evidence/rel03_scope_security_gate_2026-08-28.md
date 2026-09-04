@@ -26,6 +26,10 @@ Den första granskade återställningspunkten skapades på `main` som root-commi
 
 REL-01 är grön och den återställningsbara leveransgränsen är nu etablerad. REL-03 står fortsatt som `[~]` enbart eftersom beroendet REL-02 fortfarande har uttryckligen uppskjutna hosted/fysiska slutkontroller.
 
+## Slutlig beroendestängning 2026-09-01
+
+REL-02 är nu grön med 12/12 roll-/enhetsfall, 7/7 avbrottsfall, 5/5 tillgänglighetsområden och `REL02_AUTOMATED_GATE_OK` (44/44). REL-03:s tidigare enda öppna beroende är därmed stängt. Scopegrinden kördes om skrivskyddat och gav `REL03_SCOPE_GATE_OK`; detta innebar ingen produktionsprovisionering, webtools/workspaces-start eller ändring av det gamla TeamZone-projektet.
+
 ## Kontroller
 
 - `tool/release_scope_gate.ps1`: godkänd.

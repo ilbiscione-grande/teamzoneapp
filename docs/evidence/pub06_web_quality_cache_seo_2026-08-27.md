@@ -12,6 +12,7 @@ Status: lokalt genomfört, hosted verifiering återstår
 - Sitemap byggs endast från publicerade klubb-, lag- och nyhetsprojektioner och använder aktiv canonical premiumdomän när sådan finns.
 - `robots.txt`, HSTS, COOP, befintlig CSP/frame/content/referrer/permissions-policy och ett repeterbart syntetiskt smoke-script ingår.
 - Ett negativt kontraktstest säkerställer att live matchrapportering, matchklocka och realtimekanal inte införts.
+- `/media/public/{opaque-token}` undantas uttryckligen från HTML-/tenantproxyn. Därmed skrivs bilden inte om till en ogiltig klubbsökväg på egen domän och dess ettåriga immutable variantcache ersätts inte av HTML:s 60-sekunderscache.
 
 Supabase-skillens säkerhetsgräns påverkade workerdesignen: claim/sitemap är endast `service_role`, inga tabeller exponeras, serverhemligheten går aldrig till klienten och databasjobbet är återtagbart efter avbrott.
 
@@ -22,6 +23,7 @@ Supabase-skillens säkerhetsgräns påverkade workerdesignen: claim/sitemap är 
 - `npm run build`: godkänd.
 - Buildmanifestet innehåller Proxy, `/robots.txt`, `/sitemap.xml` med en minuts revalidate och `/api/internal/cache-invalidation`.
 - SQL har jämnt antal dollar-quotes och service-only grants kontrolleras statiskt.
+- Efter media-/domänintegrationen passerar TypeScript, 26/26 publiksajttester och komplett Next-produktionsbuild den 2026-08-28.
 
 ## Återstår
 
