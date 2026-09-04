@@ -143,7 +143,17 @@ Endast testfiler och en översättningstabellrad (`app_strings.dart`)
 ändrades; ingen produkt-/domänlogik rördes. Flutter web och Android debug
 APK verifierades tidigare i samma session och byggdes inte om efter de sista
 testfixarna eftersom endast testfiler och en konstant strängtabell
-ändrats. Publiksajtens npm-steg (test/lint/build) kördes inte om i den här
-sessionen; senaste bekräftade resultat är 2026-08-28-raden ovan och täcker
-inte veckans PUB-04-mediaworker/proxyändringar. Ingen Supabase-liveändring,
-produktionsprovisionering, webtools eller workspaces utfördes.
+ändrats.
+
+Publiksajtens npm-steg kördes därefter om mot veckans PUB-04-mediaworker/
+proxyändringar:
+
+- `npm test`: 26/26 godkända.
+- `npm run lint` (`tsc --noEmit`): inga fel.
+- `npm run build` (Next.js 16.3.1, Turbopack): godkänt, inklusive den nya
+  `/media/public/[token]`-routen, `/api/public/v1/*`, proxy-middleware och
+  statiska `robots.txt`/`sitemap.xml`.
+
+**REL-01 är därmed grön i samtliga nio steg mot den aktuella sammanslagna
+koden.** Ingen Supabase-liveändring, produktionsprovisionering, webtools
+eller workspaces utfördes.

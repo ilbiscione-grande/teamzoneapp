@@ -877,7 +877,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Hela Flutter-sviten passerar: 349 tester.
 - [x] Flutter-webbbygget passerar och skapar `build/web`.
 - [x] Android-debugbygget passerar och skapar `build/app/outputs/flutter-apk/app-debug.apk`.
-- [x] Publiksajtens typecheck, 22/22 tester och full Next-produktionsbuild passerar i lokal miljö som tillåter child-processer.
+- [x] Publiksajtens typecheck, 26/26 tester och full Next-produktionsbuild passerar i lokal miljö som tillåter child-processer.
 - [x] Secret-, loggredaction-, ACL/RLS- och kontraktskontroller ingår i den gröna Flutter-sviten.
 
 ### REL-02 – Roll-, enhets- och avbrottsmatris
@@ -959,7 +959,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 | Datum | Ändring | Status |
 |---|---|---|
-| 2026-09-04 | Veckans ocommitterade arbete säkrades i git och REL-01 kördes fullständigt för första gången mot den sammanslagna koden (direkt Dart-anrop förbi den hängande Flutter-wrappern). 27 testfel spårades till sex distinkta orsaker (ny kontextetikett, ikonknapp i stället för textknapp, omdöpta SQL-variabler, en verklig saknad engelsk översättning, en knapp utanför testytan och testuppsättning utan locale-delegates) och rättades. Dart-format, statisk analys och hela Flutter-sviten (349/349) passerar rent; Flutter web/APK verifierades tidigare samma session. Publiksajtens npm-steg kördes inte om. Ingen liveändring gjordes. | REL-01 bekräftad grön mot sammanslagen kod |
+| 2026-09-04 | Veckans ocommitterade arbete säkrades i git och REL-01 kördes fullständigt för första gången mot den sammanslagna koden (direkt Dart-anrop förbi den hängande Flutter-wrappern). 27 testfel spårades till sex distinkta orsaker (ny kontextetikett, ikonknapp i stället för textknapp, omdöpta SQL-variabler, en verklig saknad engelsk översättning, en knapp utanför testytan och testuppsättning utan locale-delegates) och rättades. Dart-format, statisk analys och hela Flutter-sviten (349/349) passerar rent; Flutter web/APK verifierades tidigare samma session. Publiksajtens npm-steg kördes därefter om mot veckans PUB-04-mediaworker/proxyändringar: 26/26 tester, ren typecheck och godkänd Next-produktionsbuild. REL-01 är grön i samtliga nio steg. Ingen liveändring gjordes. | REL-01 helt grön mot sammanslagen kod |
 | 2026-09-01 | TEAM-02 kompletterat lokalt med capabilitystyrd redigering av lagtyp, åldersklass, kort presentation och HTTPS-lagbild. Separat läs-RPC hämtar aktuell revision; update har stale-skydd, idempotens, advisory lock och audit. Säker filuppladdning förblir explicit separat. TEAM-01/02 passerar 7/7 och riktad Dart-analys är ren. | TEAM-02 profilredigering lokalt implementerad; migration/live och fysisk grind återstår |
 | 2026-09-01 | REL-02-fixturer städades i godkänd Supabase-testdatabas. Det tomma extralaget togs bort; tillfälliga player-/guardianrelationer avslutades historikbevarande eftersom kallelser, truppsnapshot och meddelanden nu refererar dem. Ordinarie ledar-/funktionärskontexter och testlag är intakta. | REL-02 cleanup godkänd |
 | 2026-09-01 | REL-02 slutstängd efter 12/12 roll-/enhetsfall, 7/7 avbrottsfall, 5/5 tillgänglighetsområden och slutlig automatiserad grind 44/44. Verkliga fel-scope deep links och serveråterkallad testsession passerade fail-closed. REL-03:s enda öppna beroende stängdes. | REL-02 och REL-03 godkända |
