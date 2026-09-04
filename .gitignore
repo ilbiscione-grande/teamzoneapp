@@ -70,4 +70,5 @@ docs/evidence/local/
 
 # Local verification captures, exports and CLI caches
 /.tmp-*
+/.tmp_*
 /.firebase/
