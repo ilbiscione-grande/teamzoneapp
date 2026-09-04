@@ -66,3 +66,48 @@ En loopback-konfigurerad audit-APK byggdes och installerades på Samsung SM-S931
 - Android-loggen innehöll inga Flutter-fel eller `AndroidRuntime`-krascher efter växlingarna.
 
 Inga formulär skickades och ingen nätverks- eller liveverifiering utfördes. Den hosted verifieringsgrinden ovan kvarstår därför oförändrad.
+
+## Hosted Auth REST-verifiering 2026-09-04
+
+Efter att den hosted migrationsbacklogen stängdes (se
+`docs/evidence/hosted_migration_backlog_2026-09-04.md`) återupptogs
+AUTH-01:s hosted-grind genom direkta anrop mot GoTrue REST-API:t
+(`https://hgcshgunvooyudvrcpig.supabase.co/auth/v1/...`) med projektets
+publishable-nyckel. Ingen Flutter-app eller fysisk enhet användes; detta är
+en ren API-nivåverifiering.
+
+- **Svagt lösenord avvisas fortfarande korrekt:** `POST /auth/v1/signup` med
+  ett 5-teckens lösenord gav `HTTP 422`, `error_code:"weak_password"` med
+  samma policybeskrivning (12 tecken, alla fyra teckenklasser) som
+  ursprungligen verifierades 2026-08-07 i `docs/security/s01_auth_policy.md`.
+  Bekräftar att policyn överlevt hela veckans migrationsarbete oförändrad.
+- **Neutralt svar på glömt lösenord bekräftat mot två olika icke-existerande
+  adresser:** `POST /auth/v1/recover` gav `HTTP 200` och tomt `{}` för både
+  en uppenbart påhittad adress och en syntaktiskt giltig men okänd adress —
+  identiskt svar i båda fallen, vilket stödjer kravet att svaret inte får
+  avslöja om ett konto finns.
+- **Domänvalidering vid registrering är aktiv:** reserverade testdomäner
+  (`example.com`, `example.org`, RFC 2606) avvisas med `HTTP 400`,
+  `error_code:"email_address_invalid"` innan något mejl skickas. Positivt
+  fynd, men det innebär att vidare live-signup-tester kräver en verkligt
+  levererbar testdomän/inkorg som den här sessionen inte har tillgång till.
+- **Inbyggd mejl-rate-limit är aktiv:** efter ett fåtal på varandra följande
+  anrop (recover + signup-domänförsök) svarade servern `HTTP 429`,
+  `error_code:"over_email_send_rate_limit"`. Bekräftar att rate limiting
+  finns på plats, men blockerar vidare live-mejltester under resten av det
+  aktuella fönstret (exakt tröskel/återställningstid inte karakteriserad).
+- **Inga hemligheter i svarskropparna:** samtliga infångade API-svar
+  genomsöktes efter `service_role`, `secret`, `access_token`, `refresh_token`
+  och det testade lösenordet i klartext — inga träffar.
+
+### Kvarstår öppet
+
+Full leverans/mottagning av signup-, OTP- och recoverymejl, redirect-
+allowlist på riktig mobil/web-origin, dubblettbeteende för en verkligt
+existerande e-postadress samt kontroll av servrarnas egna loggar (till
+skillnad från API-svaren) kunde inte verifieras i den här sessionen —
+kräver antingen en inkorg denna miljö kan läsa eller fysisk
+enhetsverifiering, plus att vänta ut den triggade rate-limiten. AUTH-01
+kvarstår därför `[~]`, men med en betydligt smalare och mer specifik
+återstående grind än tidigare. Ingen liveändring av Auth-konfigurationen
+gjordes; endast läsande/skapande testanrop mot publika endpoints.

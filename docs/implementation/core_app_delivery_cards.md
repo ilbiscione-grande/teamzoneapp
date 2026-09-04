@@ -128,7 +128,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 ### AUTH-01 – Tydlig start: Logga in och Skapa konto
 
-**Status:** `[~]` – lokalt implementerad och verifierad; hosted Auth/e-postgrind återstår  
+**Status:** `[~]` – lokalt implementerad och verifierad; hosted Auth REST-nivå delvis verifierad 2026-09-04, e-postleverans/dubblett/fysisk grind återstår  
 **Paritet:** AUTH-01–AUTH-04  
 **Beroenden:** FND-02, FND-03, FND-05
 
@@ -138,7 +138,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Glömt lösenord visar neutralt svar och återupptar rätt vy via deep link.
 - [x] OTP/resend har cooldown, expiry, pending och återhämtningsbar fel-UX.
 
-**Verifiering:** widgettest, auth-emulator/hosted godkänd testmiljö, secret/log-redaction och deep-linktest. Live kräver separat godkännande.
+**Verifiering:** widgettest, auth-emulator/hosted godkänd testmiljö, secret/log-redaction och deep-linktest. Live kräver separat godkännande. Hosted GoTrue REST-anrop 2026-09-04 bekräftade svagt-lösenord-avvisning, neutralt recovery-svar för okända adresser, aktiv domänvalidering, aktiv inbyggd mejl-rate-limit och inga läckta hemligheter i API-svaren (`docs/evidence/auth01_entry_flows_2026-08-23.md`). E-postleverans, dubblettbeteende för en verkligt existerande adress, redirect-allowlist och serverloggar kräver fortsatt en läsbar inkorg eller fysisk enhet.
 
 ### AUTH-02 – Session, återkallelse och utloggning
 
@@ -959,6 +959,8 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 | Datum | Ändring | Status |
 |---|---|---|
+| 2026-09-04 | AUTH-01 hosted-grind delvis stängd: direkta GoTrue REST-anrop mot `hgcshgunvooyudvrcpig` bekräftade oförändrad svagt-lösenord-avvisning (422/weak_password), identiskt neutralt recovery-svar (200/{}) för två okända adresser, aktiv domänvalidering mot reserverade testdomäner, en aktiv inbyggd mejl-rate-limit (429/over_email_send_rate_limit) och inga hemligheter i API-svaren. E-postleverans, dubblettbeteende för en verkligt existerande adress och serverloggar kräver fortfarande en läsbar inkorg eller fysisk enhet. Ingen Auth-konfiguration ändrades. | AUTH-01 hosted REST-nivå delvis verifierad |
+| 2026-09-04 | Hosted migrationsbacklog stängd mot `hgcshgunvooyudvrcpig`: fem drivande versionsstämplar reparerades (bokföring endast) och 47 genuint väntande migrationer (`cal02`–`auth04_fix_membership_request_role_ambiguity`) pushades. Pushen hittade och migrationsfilerna rättades för två obalanserade parenteser (`cal02`, `cal03`), en `||`/`->>`-precedensbugg som fick Postgres att felaktigt tolka en textliteral som jsonb (`msg08`), samt idempotens mot redan hosted-applicerat tillstånd i `cal04/cal06/cal07/cal08` och fem funktioner (`cal07/cal08/msg02/msg06/msg08`), allt verifierat read-only mot `information_schema`/`pg_proc` innan ändring. `supabase migration list` visar nu 0 diff (161/161 synkade). Security Advisor: bara den redan kända leaked-password-varningen. Performance Advisor: två nya `auth_rls_initplan`-varningar på `realtime.messages` (MSG-01/08), kvarstår som separat uppföljning. SQL-runtime-delen av grinden är därmed stängd för CAL-02/03/04/06/07/08, PUB-02–06, MSG-01–08, HOME-01–05 och AC-01/03–08; fysisk/hosted enhetsgrind kvarstår separat och korten är inte individuellt omflaggade än. Se `docs/evidence/hosted_migration_backlog_2026-09-04.md`. | SQL-runtime stängd för ~25 kort; fysisk grind kvarstår |
 | 2026-09-04 | Veckans ocommitterade arbete säkrades i git och REL-01 kördes fullständigt för första gången mot den sammanslagna koden (direkt Dart-anrop förbi den hängande Flutter-wrappern). 27 testfel spårades till sex distinkta orsaker (ny kontextetikett, ikonknapp i stället för textknapp, omdöpta SQL-variabler, en verklig saknad engelsk översättning, en knapp utanför testytan och testuppsättning utan locale-delegates) och rättades. Dart-format, statisk analys och hela Flutter-sviten (349/349) passerar rent; Flutter web/APK verifierades tidigare samma session. Publiksajtens npm-steg kördes därefter om mot veckans PUB-04-mediaworker/proxyändringar: 26/26 tester, ren typecheck och godkänd Next-produktionsbuild. REL-01 är grön i samtliga nio steg. Ingen liveändring gjordes. | REL-01 helt grön mot sammanslagen kod |
 | 2026-09-01 | TEAM-02 kompletterat lokalt med capabilitystyrd redigering av lagtyp, åldersklass, kort presentation och HTTPS-lagbild. Separat läs-RPC hämtar aktuell revision; update har stale-skydd, idempotens, advisory lock och audit. Säker filuppladdning förblir explicit separat. TEAM-01/02 passerar 7/7 och riktad Dart-analys är ren. | TEAM-02 profilredigering lokalt implementerad; migration/live och fysisk grind återstår |
 | 2026-09-01 | REL-02-fixturer städades i godkänd Supabase-testdatabas. Det tomma extralaget togs bort; tillfälliga player-/guardianrelationer avslutades historikbevarande eftersom kallelser, truppsnapshot och meddelanden nu refererar dem. Ordinarie ledar-/funktionärskontexter och testlag är intakta. | REL-02 cleanup godkänd |
