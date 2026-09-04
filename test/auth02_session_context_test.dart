@@ -73,14 +73,14 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Ledarlaget'), findsOneWidget);
+    expect(find.textContaining('Ledarlaget'), findsWidgets);
 
     identity.emit(SessionStatus.unauthenticated);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('Sessionen har avslutats'), findsOneWidget);
-    expect(find.text('Ledarlaget'), findsNothing);
+    expect(find.textContaining('Ledarlaget'), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
     await identity.close();

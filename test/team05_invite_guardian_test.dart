@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teamzone_app/src/app/teamzone_app.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
@@ -28,8 +29,8 @@ void main() {
     await tester.tap(find.text('Inbjudningar och lagkoder'));
     await tester.pumpAndSettle();
     expect(find.text('F2012 · player'), findsOneWidget);
-    expect(find.text('Återkalla'), findsOneWidget);
-    await tester.tap(find.text('Återkalla'));
+    expect(find.byTooltip('Återkalla'), findsOneWidget);
+    await tester.tap(find.byTooltip('Återkalla'));
     await tester.pumpAndSettle();
     expect(roster.revokeCalls, 1);
   });
@@ -179,6 +180,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('sv'),
+        supportedLocales: const [Locale('sv'), Locale('en')],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
         home: Builder(
           builder: (value) {
             context = value;
@@ -215,17 +218,20 @@ void main() {
     expect(sql, contains("message = 'not_found'"));
   });
 
-  test('TEAM-05 stores recoverable team codes in Vault behind an audited RPC', () {
-    final sql = File(
-      'supabase/migrations/20260901211827_team05_reveal_encrypted_team_code.sql',
-    ).readAsStringSync().toLowerCase();
-    expect(sql, contains('vault.create_secret'));
-    expect(sql, contains('vault.decrypted_secrets'));
-    expect(sql, contains('roster.team_code.reveal.v1'));
-    expect(sql, contains("'club.memberships.manage'"));
-    expect(sql, contains('revoke all on function'));
-    expect(sql, contains('api.reveal_team_join_code'));
-  });
+  test(
+    'TEAM-05 stores recoverable team codes in Vault behind an audited RPC',
+    () {
+      final sql = File(
+        'supabase/migrations/20260901211827_team05_reveal_encrypted_team_code.sql',
+      ).readAsStringSync().toLowerCase();
+      expect(sql, contains('vault.create_secret'));
+      expect(sql, contains('vault.decrypted_secrets'));
+      expect(sql, contains('roster.team_code.reveal.v1'));
+      expect(sql, contains("'club.memberships.manage'"));
+      expect(sql, contains('revoke all on function'));
+      expect(sql, contains('api.reveal_team_join_code'));
+    },
+  );
 
   test('TEAM-05 repairs the qualified parameter after claim function rename', () {
     final sql = File(
@@ -233,9 +239,7 @@ void main() {
     ).readAsStringSync();
     expect(
       sql,
-      contains(
-        'accept_guardian_invite_and_link_for_actor.idempotency_key',
-      ),
+      contains('accept_guardian_invite_and_link_for_actor.idempotency_key'),
     );
     expect(sql, contains('pg_get_functiondef'));
   });

@@ -42,7 +42,7 @@ void main() {
 
         await tester.pumpWidget(_app(role));
         await tester.pumpAndSettle();
-        expect(find.text('REL-02-laget'), findsOneWidget);
+        expect(find.textContaining('REL-02-laget'), findsWidgets);
 
         for (final destination in const ['Hem', 'Laget', 'Kalender', 'Inbox']) {
           final target = find.text(destination).last;

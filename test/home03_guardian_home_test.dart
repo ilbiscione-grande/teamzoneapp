@@ -20,7 +20,7 @@ void main() {
     expect(migration, contains("context_row.role_package<>'guardian'"));
     expect(
       migration,
-      contains('relation.guardian_person_id=guardian_person_id'),
+      contains('relation.guardian_person_id=guardian_actor_person_id'),
     );
     expect(migration, contains("relation.state='active'"));
     expect(migration, contains('child.id=target_child_person_id'));

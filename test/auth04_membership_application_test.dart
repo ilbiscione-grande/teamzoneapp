@@ -17,10 +17,7 @@ void main() {
       'supabase/migrations/20260903103734_auth04_fix_membership_request_role_ambiguity.sql',
     ).readAsStringSync();
     expect(sql, contains('#variable_conflict use_column'));
-    expect(
-      sql,
-      contains('request_team_membership_for_actor.requested_role'),
-    );
+    expect(sql, contains('request_team_membership_for_actor.requested_role'));
   });
 
   test('membership wire models are strict and expose minimal fields', () {

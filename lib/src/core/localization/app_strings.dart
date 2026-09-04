@@ -430,6 +430,7 @@ class AppStrings {
     'Visa kod': 'Show code',
     'Kopiera': 'Copy',
     'Lagkoden har kopierats.': 'The team code has been copied.',
+    'Inbjudningskoden har kopierats.': 'The invitation code has been copied.',
     'Lagkoden kan inte visas. Återkalla den och skapa en ny kod.':
         'The team code cannot be shown. Revoke it and create a new code.',
     'Inbjudan kunde inte skapas.': 'The invitation could not be created.',

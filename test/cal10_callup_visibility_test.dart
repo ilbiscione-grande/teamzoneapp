@@ -39,9 +39,7 @@ void main() {
     expect(sql, contains('can_manage or show_to_members or'));
     expect(
       sql,
-      contains(
-        'can_manage or internal.actor_represents_club_person',
-      ),
+      contains('can_manage or internal.actor_represents_club_person'),
     );
     expect(sql, contains("'event.callup_visibility.set.v1'"));
     expect(sql, contains("'set_callup_visibility'"));

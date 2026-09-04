@@ -728,9 +728,7 @@ class _ContextBootstrapState extends State<_ContextBootstrap> {
           );
         }
         return _ContextSelector(
-          key: ValueKey(
-            data.contexts.map((context) => context.id).join('|'),
-          ),
+          key: ValueKey(data.contexts.map((context) => context.id).join('|')),
           profile: data.profile,
           contexts: data.contexts,
           identity: widget.services.identity,

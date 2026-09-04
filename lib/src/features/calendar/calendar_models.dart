@@ -399,8 +399,7 @@ class SquadDetails {
     selectionContext:
         json['selection_context'] as Map<String, dynamic>? ?? const {},
     dispatchKind: json['dispatch_kind'] as String? ?? 'initial',
-    showCallupsToMembers:
-        json['show_callups_to_members'] as bool? ?? false,
+    showCallupsToMembers: json['show_callups_to_members'] as bool? ?? false,
     callupVisibilityRevision:
         (json['callup_visibility_revision'] as num?)?.toInt() ?? 0,
   );

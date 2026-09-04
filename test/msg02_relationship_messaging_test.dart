@@ -69,7 +69,9 @@ void main() {
     expect(
       functionaryCapabilityMigration,
       isNot(
-        contains("actor_assignment.role_package in ('leader','club_functionary')"),
+        contains(
+          "actor_assignment.role_package in ('leader','club_functionary')",
+        ),
       ),
     );
     expect(
@@ -78,7 +80,9 @@ void main() {
     );
     expect(
       functionaryCapabilityMigration,
-      contains('revoke all on function internal.messaging_relationship_allowed'),
+      contains(
+        'revoke all on function internal.messaging_relationship_allowed',
+      ),
     );
   });
 
@@ -147,13 +151,12 @@ void main() {
       directThreadReuseMigration,
       contains('count(distinct participant.profile_id) = 2'),
     );
+    expect(directThreadReuseMigration, contains("'message.thread.reused.v1'"));
     expect(
       directThreadReuseMigration,
-      contains("'message.thread.reused.v1'"),
-    );
-    expect(
-      directThreadReuseMigration,
-      contains("jsonb_build_object('thread_id', thread_id, 'reused', true)"),
+      contains(
+        "jsonb_build_object('thread_id', function_body.thread_id, 'reused', true)",
+      ),
     );
   });
 }

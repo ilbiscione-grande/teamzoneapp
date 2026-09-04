@@ -414,15 +414,17 @@ class SupabaseCalendarServices implements CalendarServices {
     required int expectedRevision,
     required String idempotencyKey,
   }) async {
-    final value = await _client.schema('api').rpc<Object?>(
-      'set_event_callup_visibility',
-      params: {
-        'event_id': eventId,
-        'show_to_members': showToMembers,
-        'expected_revision': expectedRevision,
-        'idempotency_key': idempotencyKey,
-      },
-    );
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'set_event_callup_visibility',
+          params: {
+            'event_id': eventId,
+            'show_to_members': showToMembers,
+            'expected_revision': expectedRevision,
+            'idempotency_key': idempotencyKey,
+          },
+        );
     if (value is! num) {
       throw const FormatException('Invalid callup visibility revision.');
     }

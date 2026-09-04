@@ -119,7 +119,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Tillgänglighetslaget'), findsOneWidget);
+      expect(find.textContaining('Tillgänglighetslaget'), findsWidgets);
       if (window.name == 'phone') {
         final navigation = tester.widget<NavigationBar>(
           find.byType(NavigationBar),

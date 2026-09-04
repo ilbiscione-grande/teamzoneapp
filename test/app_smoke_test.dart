@@ -72,7 +72,7 @@ void main() {
     for (final label in ['Hem', 'Laget', 'Kalender', 'Inbox', 'Statistik']) {
       expect(find.text(label), findsWidgets);
     }
-    expect(find.text('F2012'), findsOneWidget);
+    expect(find.textContaining('F2012'), findsWidgets);
   });
 
   test('context parsing rejects missing capability projection', () {

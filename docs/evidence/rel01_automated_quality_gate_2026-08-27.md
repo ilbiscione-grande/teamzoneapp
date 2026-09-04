@@ -78,3 +78,72 @@ Efter webbens canonical path-, Overlay- och detalj-URL-rättningar kördes hela 
 - Säkerhetskontrakt: 20/20 i det separata grindsteget, utöver fullsviten.
 
 Den maskinläsbara rapporten finns lokalt i `docs/evidence/local/rel01_quality_gate_latest.json`. Ingen Supabase-liveändring, produktionsprovisionering, webtools eller workspaces utfördes.
+
+## Regression efter veckans merge 2026-09-04
+
+Mellan 2026-08-28 och 2026-09-04 samlades en veckas arbete (TEAM-05–08, CAL-10,
+PUB-03–06, MSG-01–08-förbättringar, hela AC-04–08 samt routing-utbrytningen)
+ocommitterat i arbetsträdet. Grinden hade inte kunnat köra klart under den
+tiden, så den fulla testsviten hade aldrig körts mot den sammanslagna koden
+förrän nu. Arbetet säkrades i git (`c0454e4`, `6ad57d2`) innan grinden kördes
+om i sin helhet med samma direkta Dart-anrop som den slutliga verifieringen
+2026-08-28.
+
+Första körningen efter merge:
+
+- Dart-format: 8 filer skulle formaterats om (`--output=none` skrev inget till disk).
+- Flutter: **322/349 godkända, 27 fallerande**.
+- Flutter web och Android debug APK: godkända, opåverkade av testfynden.
+
+Samtliga 27 fel spårades till sex distinkta, dokumenterade orsaker i stället
+för 27 separata buggar:
+
+1. **Kontextetikett (21 fall)** – `product_shell.dart` visar sedan AC-07
+   avsiktligt `"lag · roll"` i huvudkontextväljaren i stället för bara
+   lagnamnet. Äldre tester i `app_smoke_test`, `auth02_session_context_test`,
+   `fnd01_fnd03_verification_test`, `fnd05_accessibility_localization_test`
+   och `rel02_automated_release_matrix_test` sökte exakt lagnamn. På
+   tablet/desktop visar dessutom Min assistents integrerade sidopanel samma
+   kontext parallellt med appfältet (två separata, avsiktliga träffar), så
+   `findsOneWidget` byttes till `findsWidgets` samtidigt som sökningen
+   byttes till `find.textContaining(...)`.
+2. **Ikonknapp i stället för textknapp (1 fall)** – `team05`: lagkoders
+   "Återkalla" renderas som en `IconButton` med tooltip sedan "Visa kod"
+   lades till bredvid, konsekvent med samma mönster som redan användes för
+   "Visa kod" i samma test. Testet uppdaterades till `find.byTooltip(...)`.
+3. **Omdöpt lokal variabel i migration (2 fall)** – `home03` och `msg02`
+   kontrollerade exakt SQL-text mot lokala variabler som avsiktligt döptes
+   om (`guardian_person_id` → `guardian_actor_person_id`,
+   `thread_id` → `function_body.thread_id`) för att lösa en tvetydig
+   kolumnreferens. De förväntade substrängarna uppdaterades i testerna.
+4. **Verklig saknad översättning (1 fall)** – `roster_surface.dart` anropar
+   `.feature('Inbjudningskoden har kopierats.')`, men strängen saknades i
+   `_featureEnglish`-tabellen i `app_strings.dart` och hade kastat
+   `StateError` i engelskt körläge. Översättningen lades till.
+5. **Knapp utanför testytan (1 fall)** – `team04`: "Spara person" kunde
+   hamna under vikningen på standardtestytan (800×600); testet saknade det
+   `tester.ensureVisible(...)`-anrop som redan användes för samma flödes
+   skapa-väg i samma fil. Anropet lades till före tap.
+6. **Testuppsättning utan locale-delegates (1 fall)** – `team05`: ett
+   fristående `MaterialApp` i lokaliseringstestet saknade
+   `supportedLocales`/`localizationsDelegates`, så `Locale('sv')` föll
+   tillbaka till engelska. Uppsättningen justerades till samma mönster som
+   `context_selector_role_label_test.dart` redan använder.
+
+Efter fix 1–6 kördes sviten om: 14 kvarvarande fall, samtliga
+tablet/desktop-varianter av orsak 1 (två legitima träffar, `findsOneWidget`
+för strikt). Efter att `findsOneWidget` byttes till `findsWidgets` för de
+fem berörda assertionerna:
+
+- Dart-format: 150 filer, 0 ändringar.
+- Dart-analys: inga anmärkningar (35,4 s).
+- Flutter: **349/349 godkända**.
+
+Endast testfiler och en översättningstabellrad (`app_strings.dart`)
+ändrades; ingen produkt-/domänlogik rördes. Flutter web och Android debug
+APK verifierades tidigare i samma session och byggdes inte om efter de sista
+testfixarna eftersom endast testfiler och en konstant strängtabell
+ändrats. Publiksajtens npm-steg (test/lint/build) kördes inte om i den här
+sessionen; senaste bekräftade resultat är 2026-08-28-raden ovan och täcker
+inte veckans PUB-04-mediaworker/proxyändringar. Ingen Supabase-liveändring,
+produktionsprovisionering, webtools eller workspaces utfördes.

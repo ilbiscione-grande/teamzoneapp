@@ -89,7 +89,7 @@ void main() {
           find.byType(NavigationBar),
           window.usesRail ? findsNothing : findsOneWidget,
         );
-        expect(find.text('Verifieringslaget'), findsOneWidget);
+        expect(find.textContaining('Verifieringslaget'), findsWidgets);
         expect(tester.takeException(), isNull);
       });
     }
@@ -105,14 +105,14 @@ void main() {
       await tester.pumpWidget(_verifiedApp());
       await tester.pumpAndSettle();
       expect(find.text('Översikt'), findsOneWidget);
-      expect(find.text('Verifieringslaget'), findsWidgets);
+      expect(find.textContaining('Verifieringslaget'), findsWidgets);
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
       await tester.pumpWidget(_verifiedApp());
       await tester.pumpAndSettle();
       expect(find.text('Översikt'), findsOneWidget);
-      expect(find.text('Verifieringslaget'), findsWidgets);
+      expect(find.textContaining('Verifieringslaget'), findsWidgets);
     });
 
     testWidgets('system back returns from assistant to the previous surface', (

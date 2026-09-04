@@ -80,6 +80,7 @@ void main() {
       find.widgetWithText(TextFormField, 'Visningsnamn'),
       'Ada Uppdaterad',
     );
+    await tester.ensureVisible(find.text('Spara person'));
     await tester.tap(find.text('Spara person'));
     await tester.pumpAndSettle();
     expect(roster.updateCalls, 1);

@@ -635,6 +635,7 @@ class SupabaseRosterServices implements RosterServices {
     }
     return value;
   }
+
   @override
   Future<String> claimTeamCode({
     required String token,
