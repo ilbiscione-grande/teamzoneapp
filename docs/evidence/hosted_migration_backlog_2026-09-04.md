@@ -101,6 +101,20 @@ deployades, ingen produktionsprovisionering och ingen ändring av
 `Teamzone6`. Reparation och push kördes uteslutande mot det länkade
 greenfield-projektet `hgcshgunvooyudvrcpig`.
 
+## Uppföljning 2026-09-05 – performance-varningen stängd
+
+De två `auth_rls_initplan`-varningarna löstes med en ny migration,
+`20260905000151_perf_wrap_auth_uid_in_realtime_broadcast_policies.sql`, som
+tar om de två policyerna på `realtime.messages`
+(`teamzone_inbox_broadcast_select`, `teamzone_notification_center_broadcast_select`)
+med `auth.uid()` wrappat som `(select auth.uid())`, konsekvent med hur
+`realtime.topic()` redan var skrivet i samma villkor. Ingen ändring av
+predikatets logik eller åtkomstresultat — bara evalueringsfrekvens per rad
+kontra per statement.
+
+`supabase migration list` visar 162/162 synkade efter pushen. Ett omkört
+`supabase db advisors --type performance` gav **"No issues found"**.
+
 ## Konsekvens för delivery cards
 
 Detta stänger SQL-runtime-delen av den återstående grinden för CAL-02, CAL-03,
