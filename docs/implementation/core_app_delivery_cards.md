@@ -368,7 +368,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Redigering väljer förekomst, framtida eller hela serien med revision/conflict-skydd.
 - [x] Sparade platsförslag är tenantsäkra.
 
-**Återstår:** lokal/hosted SQL-runtime, omkörning av Flutter-testsviten när testwrappen svarar samt fysisk phone/tablet/desktop-grind.
+**Återstår:** omkörning av Flutter-testsviten när testwrappen svarar samt fysisk phone/tablet/desktop-grind.
 
 ### CAL-03 – Delade event och audience
 
@@ -380,7 +380,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Audience styr synlighet/mottagare men aldrig redigeringsrätt.
 - [x] Sekundärlagsledare kan bara utföra uttryckligen tillåtna handlingar.
 
-**Återstår:** lokal/hosted SQL-runtime, omkörning av den riktade Flutter-testfilen när testwrappen svarar samt fysisk flerrollsgrind.
+**Återstår:** omkörning av den riktade Flutter-testfilen när testwrappen svarar samt fysisk flerrollsgrind.
 
 ### CAL-04 – Säker eventlivscykel och radering
 
@@ -393,7 +393,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Cancel återkallar relevanta callups och skapar notifieringshändelser atomiskt.
 - [x] Permanent radering finns endast i skyddat admin-/retentionflöde.
 
-**Återstår:** lokal/hosted SQL-runtime, riktad Flutter-testkörning när testwrappen svarar samt fysisk verifiering av delete/cancel/archive.
+**Återstår:** riktad Flutter-testkörning när testwrappen svarar samt fysisk verifiering av delete/cancel/archive.
 
 ### CAL-05 – EventDetails informationsarkitektur
 
@@ -419,7 +419,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Late callup och cancel är explicita och skriver inte över tidigare utskick.
 - [x] Retry/idempotens och stale revision testas.
 
-**Återstår:** lokal/hosted SQL-runtime, riktad Flutter-testkörning när testwrappen svarar samt fysisk draft/lock/send/late-callup-grind.
+**Återstår:** riktad Flutter-testkörning när testwrappen svarar samt fysisk draft/lock/send/late-callup-grind.
 
 ### CAL-07 – Svar, guardian och påminnelse
 
@@ -433,7 +433,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Reminder har cooldown, dedupe och separat leveransstatus.
 - [x] Push-actiontoken är scopead, kortlivad och single-use/idempotent.
 
-**Återstår:** lokal/hosted SQL-runtime, riktad Flutter-testkörning när testwrappen svarar samt fysisk player/guardian/reminder/push-action-grind.
+**Återstår:** riktad Flutter-testkörning när testwrappen svarar samt fysisk player/guardian/reminder/push-action-grind.
 
 ### CAL-08 – Närvaro
 
@@ -446,7 +446,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Batchmutation är atomisk; sen ändring kräver capability och revisionsspår.
 - [x] Mobilregistrering under aktivitet är snabb och har säkert retrybeteende.
 
-**Återstår:** lokal/hosted SQL-runtime, riktad Flutter-testkörning när testwrappen svarar samt fysisk mobil batch-/late-correction-grind.
+**Återstår:** riktad Flutter-testkörning när testwrappen svarar samt fysisk mobil batch-/late-correction-grind.
 
 ### CAL-09 – Förbered gränser för senare planeringsfunktioner
 
@@ -502,7 +502,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Minderårigdata är dold som default.
 - [x] Publik data går via allowlistad projection/API med limits och rate limiting.
 
-**Återstår:** PostgreSQL-runtime/advisors och separat godkänd liveutrullning; publiceringsruntime förblir strukturellt avstängd.
+**Återstår:** separat godkänd liveutrullning; publiceringsruntime förblir strukturellt avstängd.
 
 ### PUB-03 – Nyheter och redaktionellt flöde
 
@@ -515,7 +515,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Avpublicering tar atomiskt bort API-projektionen och köar invalidation för klubb- och artikelväg.
 - [x] Autentiserade redaktörer har en capabilitystyrd Flutter-yta för att lista, skapa och redigera strukturerade artiklar samt schemalägga, publicera och avpublicera dem.
 
-**Återstår:** publik bildvariant i PUB-04, PostgreSQL-runtime, mätning av cache-SLA, fysisk responsivitets- och flerrollsverifiering samt separat godkänd liveutrullning.
+**Återstår:** publik bildvariant i PUB-04, mätning av cache-SLA, fysisk responsivitets- och flerrollsverifiering samt separat godkänd liveutrullning.
 
 ### PUB-04 – Publika event, partners och kontakt
 
@@ -530,7 +530,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Mediaflödet är ärligt fail-closed i klienten: logotypuppladdning erbjuds inte innan den skannande mediaworkern och den publika varianten finns.
 - [x] Privat source-/variantlagring, capabilitystyrd staging, service-only claim/finish, fail-closed skanner-/transformeradapter och opaque publik WebP-leverans finns lokalt utan providerhemligheter eller runtimeaktivering.
 
-**Återstår:** val och konfiguration av faktisk skannings-/transformeringsprovider, upload-UX när providern är godkänd, PostgreSQL/Storage-runtime och advisors, fysisk visuell fixture samt separat godkänd liveutrullning.
+**Återstår:** val och konfiguration av faktisk skannings-/transformeringsprovider, upload-UX när providern är godkänd, Storage-runtime och advisors, fysisk visuell fixture samt separat godkänd liveutrullning.
 
 ### PUB-05 – Domänförberedelse utan manuell klubbdrift
 
@@ -544,7 +544,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Capabilitystyrd Flutter-självbetjäning visar kostnadsfri path-adress, domänstatus och canonical-val samt skapar en egen domän med engångs-DNS-instruktion. Kommersiell, DNS- och TLS-grind visas separat och premiumsubdomänen är synligt låst.
 - [x] PUB-03–PUB-05:s mutationskommandon ingår explicit i den mätta kommandogatewayens allowlist; okända operationer förblir nekade.
 
-**Återstår:** fastställd premium-entitlement, provideradapter/worker, faktisk wildcard- och TLS-provisionering, PostgreSQL-runtime/advisors, hosted redirect/certifikat-smoke samt separat driftgodkännande.
+**Återstår:** fastställd premium-entitlement, provideradapter/worker, faktisk wildcard- och TLS-provisionering, hosted redirect/certifikat-smoke samt separat driftgodkännande.
 
 ### PUB-06 – Webbkvalitet och framtida livegräns
 
@@ -557,7 +557,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Opaque publik media passerar aldrig HTML-/tenant-rewrite och behåller sin egen immutable bildcache även på egna klubbdomäner.
 - [x] Live matchrapportering ligger endast i LATER-03 och kontraktstest blockerar live-/matchklocka-/realtimebegrepp i PUB-06-leveransen.
 
-**Återstår:** hosted synthetic smoke, cache-hit/invalidation-SLA med publicerad fixture, PostgreSQL-runtime/advisors, workerhemlighet/schemaläggning och separat driftgodkännande.
+**Återstår:** hosted synthetic smoke, cache-hit/invalidation-SLA med publicerad fixture, workerhemlighet/schemaläggning och separat driftgodkännande.
 
 ## 9. Våg 5 – Inbox och notiser
 
@@ -572,7 +572,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Ledarchatt kräver aktivt deltagande och aktuell `team.roster.view`-capability vid varje central accesskontroll för både läsning och send.
 - [x] Flytt av kontolänk eller capability-grant reconcilerar både gammalt och nytt lag i samma triggerkörning, så gamla systemtrådar inte behåller inaktuella aktiva deltagare.
 
-**Återstår:** PostgreSQL-runtime/advisors samt fysisk tvårollsverifiering av join/leave, unread, mute och reconnect.
+**Återstår:** fysisk tvårollsverifiering av join/leave, unread, mute och reconnect.
 
 ### MSG-02 – Group, direct och relationsstyrd kontakt
 
@@ -585,7 +585,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Cross-club leader request förblir dataminimerad, rate-limitad till 3/24 timmar och 10/30 dagar samt skapar ingen tråd före mottagarens acceptans.
 - [x] Acceptans återvaliderar båda parters vuxenverifiering, aktuella ledaruppdrag, cross-club-relation och blockstatus innan tråden skapas.
 
-**Återstår:** PostgreSQL-runtime/advisors samt fysisk flerrollsverifiering av tillåten/nekad direktkontakt, gruppskapande, deltagartillägg och accepterad cross-club-förfrågan. Riktade Flutter-tester och analys är gröna. Ingen livepush är gjord.
+**Återstår:** fysisk flerrollsverifiering av tillåten/nekad direktkontakt, gruppskapande, deltagartillägg och accepterad cross-club-förfrågan. Riktade Flutter-tester och analys är gröna.
 
 ### MSG-03 – Announcement och lässtatus
 
@@ -597,7 +597,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Markera läst routas till rätt readmodell; Markera alla är ett idempotent, kontextbundet serverkommando som omfattar både vanliga trådar och announcements.
 - [x] Skapare och mottagare binds till samma aktiva, tidsaktuella klubb-/laguppdrag som auktoriserade tråden; förändrad relation rullar tillbaka hela skapandet.
 
-**Återstår:** PostgreSQL-runtime/advisors samt fysisk flerrollsverifiering av publicering, mottagarens read-only-yta, unread och Markera alla. Riktade Flutter-tester och analys är gröna. Ingen livepush är gjord.
+**Återstår:** fysisk flerrollsverifiering av publicering, mottagarens read-only-yta, unread och Markera alla. Riktade Flutter-tester och analys är gröna.
 
 ### MSG-04 – Historik, send och Realtime-resync
 
@@ -611,7 +611,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Privat tråd-Realtime triggar debouncad ersättning av första sidan både vid subscribe och reconnect; serverhistoriken är fortsatt källa till sanning.
 - [x] Generationsgrind hindrar sena initial-/Realtime-/paginationssvar från att skriva över nyare meddelandestatus och cursor.
 
-**Återstår:** PostgreSQL-runtime/advisors samt fysisk tvåenhetsverifiering av lång historik, offline failure/retry och reconnect. Riktade Flutter-tester och analys är gröna. Ingen livepush är gjord.
+**Återstår:** fysisk tvåenhetsverifiering av lång historik, offline failure/retry och reconnect. Riktade Flutter-tester och analys är gröna.
 
 ### MSG-05 – Mute, pin och pushpreferenser
 
@@ -624,7 +624,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Push/outbox använder endast tråd-ID, meddelande-ID och generisk preview-nyckel; en databastrigger redigerar automatiskt bort övrigt och workern loggar aldrig payload.
 - [x] Pushinställningen är enkelkörd i klienten; mute/pin låser målvärdet före RPC och visar rätt omvänd åtgärd efter serverbekräftelse.
 
-**Återstår:** PostgreSQL-runtime/advisors, provider-/endpointaktivering under separat driftgodkännande, Deno-kontroll samt fysisk tvåenhetsverifiering av mute, pin och push opt-in/out. Riktade Flutter-tester och analys är gröna. Ingen livepush är gjord.
+**Återstår:** provider-/endpointaktivering under separat driftgodkännande, Deno-kontroll samt fysisk tvåenhetsverifiering av mute, pin och push opt-in/out. Riktade Flutter-tester och analys är gröna.
 
 ### MSG-06 – Bilagor, återkallelse och moderation
 
@@ -637,7 +637,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Report kräver strukturerad orsak, blockerar avsändaren och är idempotent; service-only moderation kan dismiss, dölja med tombstone, stänga eller legal-hold med reviewer, reason, evidence hash och immutable auditspår.
 - [x] Bilagesändning kan återspelas efter tappat svar med samma idempotensnyckel/fillista; ändrad fillista avvisas utan ny sändning.
 
-**Återstår:** PostgreSQL/Storage-runtime och advisors, faktisk service-moderatoroperator/arbetskö under separat driftgodkännande samt fysisk tvårollsverifiering av filåtkomst, recall och report/block. Riktade Flutter-tester och analys är gröna. Ingen livepush är gjord.
+**Återstår:** Storage-runtime och advisors, faktisk service-moderatoroperator/arbetskö under separat driftgodkännande samt fysisk tvårollsverifiering av filåtkomst, recall och report/block. Riktade Flutter-tester och analys är gröna.
 
 ### MSG-07 – Trådlivscykel och global radering
 
@@ -652,7 +652,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Vanlig serviceapplicering använder exakt initiativtagare + separat godkännare och är replay-safe; endast TeamZone-review kräver en tredje separat granskare.
 - [x] Tombstones bevarar ordning, replies, read state och notifieringsreferenser.
 
-**Återstår:** PostgreSQL-runtime/advisors och fysisk flerrolls-/serviceoperatorverifiering. Riktade Flutter-tester och analys är gröna. Ingen livepush är gjord.
+**Återstår:** fysisk flerrolls-/serviceoperatorverifiering. Riktade Flutter-tester och analys är gröna.
 
 ### MSG-08 – Notification center utan Watchpoints
 
@@ -665,7 +665,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] AC-signaler introduceras inte här före AC-vågen.
 - [x] Swipe-dismiss är serverbekräftad och rullar tillbaka visuellt vid fel, så klienten inte visar falskt borttagen status.
 
-**Återstår:** PostgreSQL-runtime/advisors och fysisk tvåenhetsverifiering av badge/read/deep links. Riktade Flutter-tester och analys är gröna. Ingen livepush är gjord.
+**Återstår:** fysisk tvåenhetsverifiering av badge/read/deep links. Riktade Flutter-tester och analys är gröna.
 
 ## 10. Våg 6 – rollspecifikt Hem
 
@@ -680,7 +680,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Tablet/desktop kan ge planeringsöverblick; mobil ger snabb handling.
 - [x] Kontextbunden cache för ledar-Hem märks och visas explicit som stale med senaste servergenereringstid.
 
-**Återstår:** PostgreSQL-runtime/advisors och fysisk verifiering med flera ledarkontexter/skärmstorlekar. Riktade Flutter-tester och analys är gröna. Ingen livepush är gjord.
+**Återstår:** fysisk verifiering med flera ledarkontexter/skärmstorlekar. Riktade Flutter-tester och analys är gröna.
 
 ### HOME-02 – Spelarens Hem
 
@@ -693,7 +693,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Inga leader-/guardianadministrativa actions exponeras.
 - [x] Kontextcache märks explicit som stale och gamla kallelser görs skrivskyddade tills färsk serverdata finns.
 
-**Återstår:** PostgreSQL-runtime/advisors och fysisk spelarverifiering av svar/stale revision/deep links. Riktade Flutter-tester och analys är gröna. Ingen livepush är gjord.
+**Återstår:** fysisk spelarverifiering av svar/stale revision/deep links. Riktade Flutter-tester och analys är gröna.
 
 ### HOME-03 – Vårdnadshavarens Hem
 
@@ -705,7 +705,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Acting-as är synligt och bevaras genom hela svarsmutationen.
 - [x] Cachefallback isoleras per lag/barn, märks stale och spärrar barnbyte/kallelsesvar tills relationen verifierats igen.
 
-**Återstår:** PostgreSQL-runtime/advisors och fysisk guardianverifiering med flera barn/lag samt avslutad relation. Riktade Flutter-tester och analys är gröna. Ingen livepush är gjord.
+**Återstår:** fysisk guardianverifiering med flera barn/lag samt avslutad relation. Riktade Flutter-tester och analys är gröna.
 
 ### HOME-04 – Gemensam uppmärksamhetsmodell
 
@@ -718,7 +718,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Mobil och större skärmar prioriterar olika layout men samma rättigheter/data.
 - [x] Notifieringsklienten återberäknar gemensam prioritet och deduplicerar defensivt och deterministiskt på kanonisk domännyckel.
 
-**Återstår:** PostgreSQL-runtime/advisors och fysisk cross-device-/responsivitetsverifiering. Riktade Flutter-tester och analys är gröna. Ingen livepush är gjord.
+**Återstår:** fysisk cross-device-/responsivitetsverifiering. Riktade Flutter-tester och analys är gröna.
 
 ### HOME-05 – Avlägsna Watchpoints och håll AC avvaktande
 
@@ -732,7 +732,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Belastning/skada/high-load förblir senare och fail-closed.
 - [x] Klientens Notification Center fail-stänger pensionerade/förtida Watchpoint-, assistant-, workload-, high-load- och medical-payloads även från gammal cache/API.
 
-**Återstår:** PostgreSQL-runtime/advisors och fysisk kontroll av gamla poster samt HOME-01–04-regression. Riktade Flutter-tester och analys är gröna. Ingen livepush är gjord.
+**Återstår:** fysisk kontroll av gamla poster samt HOME-01–04-regression. Riktade Flutter-tester och analys är gröna.
 
 ## 11. Våg 7 – Min assistent-grund
 
@@ -744,7 +744,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 **Paritet:** HOME-08, HOME-11  
 **Beroenden:** CAL-06–CAL-08, HOME-04
 
-- [~] Datakvalitet, ägande, freshness och behörighet har ett privat, fail-closed register; runtime-verifiering återstår eftersom lokal PostgreSQL-miljö saknas.
+- [x] Datakvalitet, ägande, freshness och behörighet har ett privat, fail-closed register; hosted runtime verifierad 2026-09-04.
 - [x] Första deterministiska signaler: obesvarade callups; nära event utan deltagardraft/callup; avslutat event utan närvaro; positiva planerings-/svarssignaler; framtida planeringsluckor.
 - [x] Varje signal visar källa, tidpunkt, förklaring och möjlig säker handling.
 - [x] Ingen generativ AI aktiveras utan separat parameter-/integritetsbeslut; AC-grinden förblir blockerad.
@@ -767,11 +767,11 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 - [x] AC-kontraktet sammanfattar deterministiskt och navigerar till säker vy; domänkommandon kräver fortfarande explicit användarhandling.
 - [x] Presentationen förbjuder dolda riskpoäng, medicinska slutsatser, otillåtna personjämförelser och generativ AI.
-- [~] Signal har privat, idempotent och auditerad avfärda/återställ-livscykel utan koppling till notifieringshistorik; SQL-runtime och verkligt dataflöde återstår.
+- [~] Signal har privat, idempotent och auditerad avfärda/återställ-livscykel utan koppling till notifieringshistorik; SQL-runtime klar 2026-09-04, verkligt dataflöde återstår.
 
 ### AC-04 – Min assistent-identitet och personligt namn
 
-**Status:** `[~]` – lokalt implementerad och Flutter-verifierad; sportigt standardnamn, PostgreSQL-runtime och fysisk kontosynk-verifiering återstår.
+**Status:** `[~]` – lokalt implementerad och Flutter-verifierad; SQL-runtime klar 2026-09-04, sportigt standardnamn och fysisk kontosynk-verifiering återstår.
 
 **Beroenden:** AC-02
 
@@ -783,7 +783,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 ### AC-05 – Versionshanterat specialistområdesregister
 
-**Status:** `[~]` – lokalt implementerad och Flutter-verifierad; PostgreSQL-runtime och fysisk visuell/tillgänglighetsverifiering återstår.
+**Status:** `[~]` – lokalt implementerad och Flutter-verifierad; SQL-runtime klar 2026-09-04, fysisk visuell/tillgänglighetsverifiering återstår.
 
 **Beroenden:** AC-01, AC-04
 
@@ -795,7 +795,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 ### AC-06 – Gemensam kö, prioritering och notifieringsbudget
 
-**Status:** `[~]` – lokalt implementerad och Flutter-verifierad; PostgreSQL-runtime, faktisk leverans och fysisk cross-area-verifiering återstår.
+**Status:** `[~]` – lokalt implementerad och Flutter-verifierad; SQL-runtime klar 2026-09-04, faktisk leverans och fysisk cross-area-verifiering återstår.
 
 **Beroenden:** AC-05, HOME-04, MSG-08
 
@@ -807,7 +807,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 ### AC-07 – Roll-, kontext- och enhetsanpassad presentation
 
-**Status:** `[~]` – lokalt implementerad och Flutter-verifierad; PostgreSQL-runtime, verklig flerrollsdata och fysisk enhetsverifiering återstår.
+**Status:** `[~]` – lokalt implementerad och Flutter-verifierad; SQL-runtime klar 2026-09-04, verklig flerrollsdata och fysisk enhetsverifiering återstår.
 
 **Beroenden:** AC-05, AC-06
 
@@ -819,14 +819,14 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 ### AC-08 – Specialistpolicy, ansvar och aktiveringsgrind
 
-**Status:** `[~]` – policy och fail-closed-grind lokalt implementerade och Flutter-verifierade; PostgreSQL-runtime/advisors, flerrollsmatris och fysisk enhetsgrind återstår.
+**Status:** `[~]` – policy och fail-closed-grind lokalt implementerade och Flutter-verifierade; SQL-runtime/advisors klara 2026-09-04, flerrollsmatris och fysisk enhetsgrind återstår.
 
 **Beroenden:** AC-05–AC-07
 
 - [x] Navigation får ske direkt men domänmutation kräver preview, explicit bekräftelse, serverauktorisation, idempotens och audit.
 - [x] Rehabstöd får följa beslutad plan men aldrig diagnostisera, ordinera, riskrangordna eller besluta om återgång till spel.
 - [x] Assistenten presenteras tydligt som digital funktion, inte människa eller legitimerad expert.
-- [ ] PostgreSQL-runtime/advisors, flerrollsmatris och fysisk enhetsgrind passerar per aktiverat område.
+- [~] PostgreSQL-runtime/advisors passerar 2026-09-04; flerrollsmatris och fysisk enhetsgrind per aktiverat område återstår.
 - [x] Generativ AI förblir blockerad tills separat produkt-, integritets-, leverantörs- och driftgrind godkänts.
 
 ## 12. Våg 8 – senare funktioner
@@ -906,10 +906,10 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 1. [x] Genomför **FND-01** som en ren extraktion utan produktbeteendeändring.
 2. [x] Genomför **FND-02** ovanpå de extraherade ytorna.
 3. [x] Genomför **FND-03–FND-05** och frys klientgrundens kontrakt.
-4. [~] **AUTH-01** lokalt genomförd; hosted e-post/Auth-verifiering kräver separat livegodkännande.
+4. [~] **AUTH-01** lokalt genomförd; hosted GoTrue REST-nivå delvis verifierad 2026-09-04, e-postleverans/dubblett/fysisk grind kräver separat livegodkännande.
 5. [~] **AUTH-02** lokalt genomförd; fysisk och hosted sessionsverifiering återstår.
 6. [x] **AUTH-03** hosted databas/Edge samt fysisk webb- och Android-deep-linkgrind verifierade; fysisk iOS-kontroll följs upp när iOS-miljö finns.
-7. [~] **AUTH-04** lokalt genomförd; SQL-runtime och fysisk/hosted grind återstår.
+7. [~] **AUTH-04** lokalt genomförd; fysisk/hosted grind återstår.
 8. [~] **AUTH-05** lokalt genomförd; SQL-runtime och fysisk/hosted grind återstår.
 9. [~] **AUTH-06** lokalt genomförd; SQL-runtime och fysisk/hosted grind återstår.
 10. [~] **AUTH-07** lokalt genomförd; juridiskt innehåll, SQL-runtime och fysisk/hosted grind återstår.
@@ -922,38 +922,38 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 17. [~] **TEAM-07** lokalt genomförd; SQL-runtime, fysisk grind och Flutter-testkörning återstår.
 18. [~] **TEAM-08** lokalt genomförd; SQL/Auth-worker-runtime, fysisk grind och Flutter-testkörning återstår.
 19. [~] **CAL-01** lokalt genomförd; Flutter-testkörning och fysisk responsiv grind återstår.
-20. [~] **CAL-02** lokalt genomförd; SQL-runtime, Flutter-testkörning och fysisk grind återstår.
-21. [~] **CAL-03** lokalt genomförd; SQL-runtime, Flutter-testkörning och fysisk flerrollsgrind återstår.
-22. [~] **CAL-04** lokalt genomförd; SQL-runtime, Flutter-testkörning och fysisk livscykelgrind återstår.
+20. [~] **CAL-02** lokalt genomförd; Flutter-testkörning och fysisk grind återstår.
+21. [~] **CAL-03** lokalt genomförd; Flutter-testkörning och fysisk flerrollsgrind återstår.
+22. [~] **CAL-04** lokalt genomförd; Flutter-testkörning och fysisk livscykelgrind återstår.
 23. [~] **CAL-05** lokalt genomförd; Flutter-testkörning och fysisk responsiv/flerrollsgrind återstår.
-24. [~] **CAL-06** lokalt genomförd; SQL-runtime, Flutter-testkörning och fysisk deltagardraftgrind återstår.
-25. [~] **CAL-07** lokalt genomförd; SQL-runtime, Flutter-testkörning och fysisk svar/påminnelsegrind återstår.
-26. [~] **CAL-08** lokalt genomförd; SQL-runtime, Flutter-testkörning och fysisk mobil närvarogrind återstår.
+24. [~] **CAL-06** lokalt genomförd; Flutter-testkörning och fysisk deltagardraftgrind återstår.
+25. [~] **CAL-07** lokalt genomförd; Flutter-testkörning och fysisk svar/påminnelsegrind återstår.
+26. [~] **CAL-08** lokalt genomförd; Flutter-testkörning och fysisk mobil närvarogrind återstår.
 27. [~] **CAL-09** lokalt genomförd; Flutter-testkörning och fysisk responsiv kontroll återstår.
 28. [~] **PUB-01** lokalt genomförd; publicerad fixture, fysisk visuell kontroll och PUB-02/PUB-04-projektioner återstår.
-29. [~] **PUB-02** lokalt genomförd; PostgreSQL-runtime/advisors och separat livegodkännande återstår.
-30. [~] **PUB-03** lokalt genomförd inklusive redaktörsyta; PUB-04-media, PostgreSQL-runtime/cache-SLA, fysisk verifiering och separat livegodkännande återstår.
-31. [~] **PUB-04** lokalt genomförd inklusive publicerings-UX och fail-closed mediaworkergräns; provideraktivering/upload-UX, PostgreSQL/Storage-runtime, fysisk fixture och separat livegodkännande återstår.
-32. [~] **PUB-05** lokalt genomförd inklusive domänsjälvbetjäning; entitlement, providerworker, PostgreSQL-runtime och separat DNS/TLS-/driftgodkännande återstår.
-33. [~] **PUB-06** lokalt genomförd; hosted synthetic/cache-SLA, PostgreSQL-runtime, workerschemaläggning och separat driftgodkännande återstår.
-34. [~] **MSG-01** lokalt genomförd och Flutter-verifierad; PostgreSQL-runtime och fysisk tvårolls-/reconnectgrind återstår.
-35. [~] **MSG-02** lokalt genomförd och Flutter-verifierad; PostgreSQL-runtime/advisors och fysisk flerrollsgrind återstår.
-36. [~] **MSG-03** lokalt genomförd och Flutter-verifierad; PostgreSQL-runtime/advisors och fysisk announcement-/lässtatusgrind återstår.
-37. [~] **MSG-04** lokalt genomförd och Flutter-verifierad; PostgreSQL-runtime/advisors och fysisk pagination-/retry-/reconnectgrind återstår.
-38. [~] **MSG-05** lokalt genomförd och Flutter-verifierad; PostgreSQL-runtime/advisors, provider-/Deno-grind och fysisk tvåenhetspreferencegrind återstår.
-39. [~] **MSG-06** lokalt genomförd och Flutter-verifierad; PostgreSQL/Storage-runtime, moderatoroperator och fysisk fil-/safeguardinggrind återstår.
-40. [~] **MSG-07** lokalt genomförd och Flutter-verifierad; PostgreSQL-runtime/advisors och fysisk flerrolls-/serviceoperatorgrind återstår.
-41. [~] **MSG-08** lokalt genomförd och Flutter-verifierad; PostgreSQL-runtime/advisors och fysisk tvåenhetsgrind återstår.
-42. [~] **HOME-01** lokalt genomförd och Flutter-verifierad; PostgreSQL-runtime/advisors och fysisk fler-kontext-/responsivitetsgrind återstår.
-43. [~] **HOME-02** lokalt genomförd och Flutter-verifierad; PostgreSQL-runtime/advisors och fysisk spelar-/svarsgrind återstår.
-44. [~] **HOME-03** lokalt genomförd och Flutter-verifierad; PostgreSQL-runtime/advisors och fysisk flerbarns-/acting-as-grind återstår.
-45. [~] **HOME-04** lokalt genomförd och Flutter-verifierad; PostgreSQL-runtime/advisors och fysisk dedupe-/cross-device-/responsivitetsgrind återstår.
-46. [~] **HOME-05** lokalt genomförd och Flutter-verifierad; PostgreSQL-runtime/advisors och fysisk legacy-/HOME-regressionsgrind återstår.
-47. [~] **AC-04** lokalt implementerad och Flutter-verifierad; sportigt standardnamn, PostgreSQL-runtime och fysisk kontosynk-verifiering återstår.
-48. [~] **AC-05** lokalt implementerad och Flutter-verifierad; PostgreSQL-runtime och fysisk visuell/tillgänglighetsverifiering återstår.
-49. [~] **AC-06** lokalt implementerad och Flutter-verifierad; PostgreSQL-runtime, faktisk leverans och fysisk cross-area-verifiering återstår.
-50. [~] **AC-07** lokalt implementerad och Flutter-verifierad; PostgreSQL-runtime, verklig flerrollsdata och fysisk enhetsverifiering återstår.
-51. [~] **AC-08** policy och fail-closed-grind lokalt implementerade och Flutter-verifierade; runtime/advisors, flerrollsmatris och fysisk enhetsgrind återstår.
+29. [~] **PUB-02** lokalt genomförd; separat livegodkännande återstår.
+30. [~] **PUB-03** lokalt genomförd inklusive redaktörsyta; PUB-04-media, cache-SLA, fysisk verifiering och separat livegodkännande återstår.
+31. [~] **PUB-04** lokalt genomförd inklusive publicerings-UX och fail-closed mediaworkergräns; provideraktivering/upload-UX, Storage-runtime, fysisk fixture och separat livegodkännande återstår.
+32. [~] **PUB-05** lokalt genomförd inklusive domänsjälvbetjäning; entitlement, providerworker och separat DNS/TLS-/driftgodkännande återstår.
+33. [~] **PUB-06** lokalt genomförd; hosted synthetic/cache-SLA, workerschemaläggning och separat driftgodkännande återstår.
+34. [~] **MSG-01** lokalt genomförd och Flutter-verifierad; fysisk tvårolls-/reconnectgrind återstår.
+35. [~] **MSG-02** lokalt genomförd och Flutter-verifierad; fysisk flerrollsgrind återstår.
+36. [~] **MSG-03** lokalt genomförd och Flutter-verifierad; fysisk announcement-/lässtatusgrind återstår.
+37. [~] **MSG-04** lokalt genomförd och Flutter-verifierad; fysisk pagination-/retry-/reconnectgrind återstår.
+38. [~] **MSG-05** lokalt genomförd och Flutter-verifierad; provider-/Deno-grind och fysisk tvåenhetspreferencegrind återstår.
+39. [~] **MSG-06** lokalt genomförd och Flutter-verifierad; Storage-runtime, moderatoroperator och fysisk fil-/safeguardinggrind återstår.
+40. [~] **MSG-07** lokalt genomförd och Flutter-verifierad; fysisk flerrolls-/serviceoperatorgrind återstår.
+41. [~] **MSG-08** lokalt genomförd och Flutter-verifierad; fysisk tvåenhetsgrind återstår.
+42. [~] **HOME-01** lokalt genomförd och Flutter-verifierad; fysisk fler-kontext-/responsivitetsgrind återstår.
+43. [~] **HOME-02** lokalt genomförd och Flutter-verifierad; fysisk spelar-/svarsgrind återstår.
+44. [~] **HOME-03** lokalt genomförd och Flutter-verifierad; fysisk flerbarns-/acting-as-grind återstår.
+45. [~] **HOME-04** lokalt genomförd och Flutter-verifierad; fysisk dedupe-/cross-device-/responsivitetsgrind återstår.
+46. [~] **HOME-05** lokalt genomförd och Flutter-verifierad; fysisk legacy-/HOME-regressionsgrind återstår.
+47. [~] **AC-04** lokalt implementerad och Flutter-verifierad; sportigt standardnamn och fysisk kontosynk-verifiering återstår.
+48. [~] **AC-05** lokalt implementerad och Flutter-verifierad; fysisk visuell/tillgänglighetsverifiering återstår.
+49. [~] **AC-06** lokalt implementerad och Flutter-verifierad; faktisk leverans och fysisk cross-area-verifiering återstår.
+50. [~] **AC-07** lokalt implementerad och Flutter-verifierad; verklig flerrollsdata och fysisk enhetsverifiering återstår.
+51. [~] **AC-08** policy och fail-closed-grind lokalt implementerade och Flutter-verifierade; flerrollsmatris och fysisk enhetsgrind återstår.
 
 ## 15. Ändringslogg
 
