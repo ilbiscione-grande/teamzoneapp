@@ -493,212 +493,213 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                   },
                 ),
           floatingActionButton: canManage
-              ? Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    FloatingActionButton.extended(
-                      heroTag: 'membership-reviews',
-                      onPressed: () => showModalBottomSheet<void>(
-                        context: context,
-                        isScrollControlled: true,
-                        useSafeArea: true,
-                        builder: (_) => _MembershipReviewSheet(
-                          contextValue: widget.contextValue,
-                          membership: widget.membership,
-                          onApproved: _data.refresh,
-                        ),
-                      ),
-                      icon: const Icon(Icons.how_to_reg_outlined),
-                      label: Text(
-                        AppStrings.of(context).feature('Medlemsansökningar'),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    FloatingActionButton.extended(
-                      heroTag: 'manage-roster',
-                      onPressed: () => showModalBottomSheet<void>(
-                        context: context,
-                        builder: (sheetContext) => SafeArea(
-                          child: SingleChildScrollView(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ListTile(
-                                  leading: const Icon(
-                                    Icons.mark_email_unread_outlined,
+              ? FloatingActionButton.extended(
+                  // A single FAB here, not a stack: this screen used to show
+                  // "Medlemsansökningar" and "Hantera" as two separate
+                  // stacked FloatingActionButtons, which overlapped and
+                  // clipped the persistent Min assistent FAB (fixed
+                  // `bottom: 88` in product_shell.dart) and, on shorter
+                  // rosters, the roster list's own row actions underneath.
+                  // "Medlemsansökningar" is now a menu entry below instead
+                  // of a second floating button.
+                  heroTag: 'manage-roster',
+                  onPressed: () => showModalBottomSheet<void>(
+                    context: context,
+                    builder: (sheetContext) => SafeArea(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.how_to_reg_outlined),
+                              title: Text(
+                                AppStrings.of(
+                                  context,
+                                ).feature('Medlemsansökningar'),
+                              ),
+                              onTap: () {
+                                Navigator.pop(sheetContext);
+                                showModalBottomSheet<void>(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  useSafeArea: true,
+                                  builder: (_) => _MembershipReviewSheet(
+                                    contextValue: widget.contextValue,
+                                    membership: widget.membership,
+                                    onApproved: _data.refresh,
                                   ),
-                                  title: Text(
-                                    AppStrings.of(
-                                      context,
-                                    ).feature('Inbjudningar och lagkoder'),
-                                  ),
-                                  onTap: () {
-                                    Navigator.pop(sheetContext);
-                                    showModalBottomSheet<void>(
-                                      context: context,
-                                      isScrollControlled: true,
-                                      useSafeArea: true,
-                                      builder: (_) => _InvitationAdminSheet(
-                                        contextValue: widget.contextValue,
-                                        roster: widget.roster,
-                                        people: _data.state.data ?? const [],
-                                      ),
-                                    );
-                                  },
-                                ),
-                                ListTile(
-                                  leading: const Icon(Icons.compare_arrows),
-                                  title: Text(
-                                    AppStrings.of(
-                                      context,
-                                    ).feature('Representation i andra lag'),
-                                  ),
-                                  onTap: () {
-                                    Navigator.pop(sheetContext);
-                                    showModalBottomSheet<void>(
-                                      context: context,
-                                      isScrollControlled: true,
-                                      useSafeArea: true,
-                                      builder: (_) => _PlayEligibilitySheet(
-                                        contextValue: widget.contextValue,
-                                        roster: widget.roster,
-                                      ),
-                                    );
-                                  },
-                                ),
-                                ListTile(
-                                  leading: const Icon(Icons.swap_horiz),
-                                  title: Text(
-                                    AppStrings.of(
-                                      context,
-                                    ).feature('Flytta spelare'),
-                                  ),
-                                  subtitle: Text(
-                                    AppStrings.of(context).feature(
-                                      'Flytta inom klubben med bevarad historik.',
-                                    ),
-                                  ),
-                                  onTap: () {
-                                    Navigator.pop(sheetContext);
-                                    showModalBottomSheet<void>(
-                                      context: context,
-                                      isScrollControlled: true,
-                                      useSafeArea: true,
-                                      builder: (_) => _IntraClubMoveSheet(
-                                        contextValue: widget.contextValue,
-                                        roster: widget.roster,
-                                      ),
-                                    ).then((_) => _data.refresh());
-                                  },
-                                ),
-                                ListTile(
-                                  leading: const Icon(Icons.archive_outlined),
-                                  title: Text(
-                                    AppStrings.of(
-                                      context,
-                                    ).feature('Arkivering och personuppgifter'),
-                                  ),
-                                  subtitle: Text(
-                                    AppStrings.of(context).feature(
-                                      'Avsluta lagtillhörighet eller starta en skyddad raderingsbegäran.',
-                                    ),
-                                  ),
-                                  onTap: () {
-                                    Navigator.pop(sheetContext);
-                                    showModalBottomSheet<void>(
-                                      context: context,
-                                      isScrollControlled: true,
-                                      useSafeArea: true,
-                                      builder: (_) => _RosterLifecycleSheet(
-                                        contextValue: widget.contextValue,
-                                        roster: widget.roster,
-                                      ),
-                                    ).then((_) => _data.refresh());
-                                  },
-                                ),
-                                ListTile(
-                                  leading: const Icon(Icons.shield_outlined),
-                                  title: Text(
-                                    AppStrings.of(
-                                      context,
-                                    ).feature('Rosteråtgärder'),
-                                  ),
-                                  subtitle: Text(
-                                    AppStrings.of(context).feature(
-                                      'Skapa, invite, guardian och transfer körs som scopeade serverkommandon.',
-                                    ),
-                                  ),
-                                ),
-                                ListTile(
-                                  leading: const Icon(Icons.group_add_outlined),
-                                  title: Text(
-                                    AppStrings.of(
-                                      context,
-                                    ).feature('Lägg till person'),
-                                  ),
-                                  subtitle: Text(
-                                    AppStrings.of(context).feature(
-                                      'Skapa en klubbägd rosterprofil i det här laget.',
-                                    ),
-                                  ),
-                                  onTap: () {
-                                    Navigator.pop(sheetContext);
-                                    _openRosterPersonForm();
-                                  },
-                                ),
-                                if (canManageClub) ...[
-                                  ListTile(
-                                    leading: const Icon(
-                                      Icons.group_add_outlined,
-                                    ),
-                                    title: Text(
-                                      AppStrings.of(
-                                        context,
-                                      ).feature('Skapa ytterligare lag'),
-                                    ),
-                                    onTap: () {
-                                      Navigator.pop(sheetContext);
-                                      _createTeam();
-                                    },
-                                  ),
-                                  ListTile(
-                                    leading: const Icon(
-                                      Icons.verified_outlined,
-                                    ),
-                                    title: Text(
-                                      AppStrings.of(
-                                        context,
-                                      ).feature('Klubbverifiering'),
-                                    ),
-                                    subtitle: Text(
-                                      AppStrings.of(context).feature(
-                                        'Se officiell status eller skicka underlag till TeamZone.',
-                                      ),
-                                    ),
-                                    onTap: () {
-                                      Navigator.pop(sheetContext);
-                                      showModalBottomSheet<void>(
-                                        context: context,
-                                        isScrollControlled: true,
-                                        useSafeArea: true,
-                                        builder: (_) => _ClubVerificationSheet(
-                                          clubId: widget.contextValue.clubId,
-                                          membership: widget.membership,
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ],
+                                );
+                              },
                             ),
-                          ),
+                            ListTile(
+                              leading: const Icon(
+                                Icons.mark_email_unread_outlined,
+                              ),
+                              title: Text(
+                                AppStrings.of(
+                                  context,
+                                ).feature('Inbjudningar och lagkoder'),
+                              ),
+                              onTap: () {
+                                Navigator.pop(sheetContext);
+                                showModalBottomSheet<void>(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  useSafeArea: true,
+                                  builder: (_) => _InvitationAdminSheet(
+                                    contextValue: widget.contextValue,
+                                    roster: widget.roster,
+                                    people: _data.state.data ?? const [],
+                                  ),
+                                );
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.compare_arrows),
+                              title: Text(
+                                AppStrings.of(
+                                  context,
+                                ).feature('Representation i andra lag'),
+                              ),
+                              onTap: () {
+                                Navigator.pop(sheetContext);
+                                showModalBottomSheet<void>(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  useSafeArea: true,
+                                  builder: (_) => _PlayEligibilitySheet(
+                                    contextValue: widget.contextValue,
+                                    roster: widget.roster,
+                                  ),
+                                );
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.swap_horiz),
+                              title: Text(
+                                AppStrings.of(
+                                  context,
+                                ).feature('Flytta spelare'),
+                              ),
+                              subtitle: Text(
+                                AppStrings.of(context).feature(
+                                  'Flytta inom klubben med bevarad historik.',
+                                ),
+                              ),
+                              onTap: () {
+                                Navigator.pop(sheetContext);
+                                showModalBottomSheet<void>(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  useSafeArea: true,
+                                  builder: (_) => _IntraClubMoveSheet(
+                                    contextValue: widget.contextValue,
+                                    roster: widget.roster,
+                                  ),
+                                ).then((_) => _data.refresh());
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.archive_outlined),
+                              title: Text(
+                                AppStrings.of(
+                                  context,
+                                ).feature('Arkivering och personuppgifter'),
+                              ),
+                              subtitle: Text(
+                                AppStrings.of(context).feature(
+                                  'Avsluta lagtillhörighet eller starta en skyddad raderingsbegäran.',
+                                ),
+                              ),
+                              onTap: () {
+                                Navigator.pop(sheetContext);
+                                showModalBottomSheet<void>(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  useSafeArea: true,
+                                  builder: (_) => _RosterLifecycleSheet(
+                                    contextValue: widget.contextValue,
+                                    roster: widget.roster,
+                                  ),
+                                ).then((_) => _data.refresh());
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.shield_outlined),
+                              title: Text(
+                                AppStrings.of(
+                                  context,
+                                ).feature('Rosteråtgärder'),
+                              ),
+                              subtitle: Text(
+                                AppStrings.of(context).feature(
+                                  'Skapa, invite, guardian och transfer körs som scopeade serverkommandon.',
+                                ),
+                              ),
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.group_add_outlined),
+                              title: Text(
+                                AppStrings.of(
+                                  context,
+                                ).feature('Lägg till person'),
+                              ),
+                              subtitle: Text(
+                                AppStrings.of(context).feature(
+                                  'Skapa en klubbägd rosterprofil i det här laget.',
+                                ),
+                              ),
+                              onTap: () {
+                                Navigator.pop(sheetContext);
+                                _openRosterPersonForm();
+                              },
+                            ),
+                            if (canManageClub) ...[
+                              ListTile(
+                                leading: const Icon(Icons.group_add_outlined),
+                                title: Text(
+                                  AppStrings.of(
+                                    context,
+                                  ).feature('Skapa ytterligare lag'),
+                                ),
+                                onTap: () {
+                                  Navigator.pop(sheetContext);
+                                  _createTeam();
+                                },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.verified_outlined),
+                                title: Text(
+                                  AppStrings.of(
+                                    context,
+                                  ).feature('Klubbverifiering'),
+                                ),
+                                subtitle: Text(
+                                  AppStrings.of(context).feature(
+                                    'Se officiell status eller skicka underlag till TeamZone.',
+                                  ),
+                                ),
+                                onTap: () {
+                                  Navigator.pop(sheetContext);
+                                  showModalBottomSheet<void>(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    useSafeArea: true,
+                                    builder: (_) => _ClubVerificationSheet(
+                                      clubId: widget.contextValue.clubId,
+                                      membership: widget.membership,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ],
                         ),
                       ),
-                      icon: const Icon(Icons.person_add_alt_1),
-                      label: Text(AppStrings.of(context).feature('Hantera')),
                     ),
-                  ],
+                  ),
+                  icon: const Icon(Icons.person_add_alt_1),
+                  label: Text(AppStrings.of(context).feature('Hantera')),
                 )
               : null,
         );

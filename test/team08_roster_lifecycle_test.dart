@@ -24,6 +24,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Hantera'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Arkivering och personuppgifter'));
     await tester.tap(find.text('Arkivering och personuppgifter'));
     await tester.pumpAndSettle();
     expect(find.text('Ada Spelare'), findsWidgets);
