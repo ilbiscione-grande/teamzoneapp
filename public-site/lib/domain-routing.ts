@@ -10,6 +10,21 @@ export function normalizedHostname(value: string): string {
   return value.trim().toLowerCase().split(":", 1)[0].replace(/\.$/, "");
 }
 
+// Behind Firebase App Hosting's edge, the framework-reported request URL
+// hostname is the container's own bind address, not the hostname the visitor
+// requested, and the Host header is rewritten to the internal Cloud Run
+// service hostname. The single trusted edge hop instead forwards the
+// original hostname in X-Forwarded-Host. Falls back to Host, then the
+// framework-reported hostname, only for direct/local requests that never
+// passed through that edge.
+export function requestHostname(headers: { get(name: string): string | null }, frameworkHostname: string): string {
+  const forwardedHost = headers.get("x-forwarded-host");
+  if (forwardedHost) return normalizedHostname(forwardedHost.split(",")[0]);
+  const host = headers.get("host");
+  if (host) return normalizedHostname(host);
+  return normalizedHostname(frameworkHostname);
+}
+
 export function validRoutingInput(hostname: string, path: string): boolean {
   return hostnamePattern.test(hostname) && path.startsWith("/") && !/[?#]/.test(path) && path.length <= 2048;
 }

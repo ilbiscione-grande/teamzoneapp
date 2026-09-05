@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { serverConfig } from "./lib/config";
-import { safeDomainDecision, normalizedHostname, validRoutingInput } from "./lib/domain-routing";
+import { safeDomainDecision, requestHostname, validRoutingInput } from "./lib/domain-routing";
 import { publicRpc } from "./lib/public-rpc";
 import { createServerSupabase } from "./lib/supabase-admin";
 
@@ -23,29 +23,14 @@ export async function proxy(request: NextRequest) {
     if (path.startsWith("/api/")) response.headers.set("Cache-Control", "no-store");
     return response;
   }
-  const hostname = normalizedHostname(request.nextUrl.hostname);
+  const hostname = requestHostname(request.headers, request.nextUrl.hostname);
   if (!validRoutingInput(hostname, path)) {
-    return new NextResponse("Not found", {
-      status: 404,
-      headers: {
-        "x-teamzone-debug": "invalid_routing_input",
-        "x-teamzone-debug-hostname": JSON.stringify(request.nextUrl.hostname),
-        "x-teamzone-debug-normalized": JSON.stringify(hostname),
-        "x-teamzone-debug-host-header": JSON.stringify(request.headers.get("host")),
-      },
-    });
+    return new NextResponse("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
   }
-  // TEMPORARY (remove once the 2026-09-05 fail-closed regression is diagnosed):
-  // a response header survives even if console output from this runtime
-  // never reaches Cloud Logging, so it can be read directly with curl -I.
-  let debugTag = "no_branch_matched";
   try {
     const config = serverConfig();
-    debugTag = "config_ok";
     const raw = await publicRpc(createServerSupabase(config), "resolve_public_hostname", { hostname, path });
-    debugTag = "rpc_ok:" + JSON.stringify(raw).slice(0, 80);
     const decision = safeDomainDecision(raw);
-    debugTag = "decision:" + decision.mode;
     if (decision.mode === "path") {
       const response = NextResponse.next();
       response.headers.set("Cache-Control", pageCache);
@@ -66,15 +51,14 @@ export async function proxy(request: NextRequest) {
     // Server-side only: never included in the client response. Diagnostic
     // aid for the otherwise-silent fail-closed 404 below (e.g. missing
     // server config, unreachable database, unexpected RPC shape).
-    const name = (error as { name?: string } | undefined)?.name;
-    const message = (error as { message?: string } | undefined)?.message;
-    debugTag = "error:" + (name ?? "") + ":" + (message ?? "").slice(0, 120);
-    console.error("proxy_fail_closed", { hostname, path, name, message });
+    console.error("proxy_fail_closed", {
+      hostname,
+      path,
+      name: (error as { name?: string } | undefined)?.name,
+      message: (error as { message?: string } | undefined)?.message,
+    });
   }
-  return new NextResponse("Not found", {
-    status: 404,
-    headers: { "Cache-Control": "no-store", "x-teamzone-debug": debugTag },
-  });
+  return new NextResponse("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
 }
 
 export const config = { matcher: ["/((?!_next/static|_next/image).*)"] };

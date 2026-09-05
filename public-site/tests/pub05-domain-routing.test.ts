@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { normalizedHostname, safeDomainDecision, validRoutingInput } from "../lib/domain-routing.ts";
+import { normalizedHostname, requestHostname, safeDomainDecision, validRoutingInput } from "../lib/domain-routing.ts";
 
 const root = new URL("../../", import.meta.url);
 const sql = readFileSync(new URL("supabase/migrations/20260827135707_pub05_automated_domain_routing.sql", root), "utf8");
@@ -33,4 +33,22 @@ test("hostname routing rejects unsafe input and unsafe decisions", () => {
   assert.equal(safeDomainDecision({ mode: "redirect", status: 308, location: "https://club.example.se/" }).mode, "redirect");
   assert.match(proxy, /x-teamzone-canonical-origin/);
   assert.match(pageData, /url\.protocol !== "https:"/);
+});
+
+test("requestHostname prefers the trusted edge's forwarded host over the framework and Host header", () => {
+  // 2026-09-05 regression: behind Firebase App Hosting's edge, the
+  // framework-reported request URL hostname is the container's own bind
+  // address (e.g. "0.0.0.0"), and the Host header is rewritten to the
+  // internal Cloud Run service hostname rather than the hostname the
+  // visitor actually requested. Only X-Forwarded-Host, set by the single
+  // trusted edge hop, carries the real value.
+  const headers = (values: Record<string, string>) => ({ get: (name: string) => values[name.toLowerCase()] ?? null });
+  assert.equal(
+    requestHostname(headers({ "x-forwarded-host": "public.teamzoneapp.se", host: "teamzoneapp-public--x.run.app" }), "0.0.0.0"),
+    "public.teamzoneapp.se",
+  );
+  assert.equal(requestHostname(headers({ "x-forwarded-host": "Club.Example.SE, other.example" }), "0.0.0.0"), "club.example.se");
+  assert.equal(requestHostname(headers({ host: "club.example.se" }), "0.0.0.0"), "club.example.se");
+  assert.equal(requestHostname(headers({}), "localhost"), "localhost");
+  assert.match(proxy, /requestHostname\(request\.headers/, "proxy.ts must resolve hostname via requestHostname(request.headers, ...)");
 });
