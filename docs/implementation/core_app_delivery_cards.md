@@ -184,7 +184,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 ### AUTH-05 – Skapa klubb och första lag
 
-**Status:** `[~]` – lokalt implementerad och klientverifierad; SQL-runtime/fysisk grind återstår  
+**Status:** `[~]` – lokalt implementerad och klientverifierad; SQL-runtime klar 2026-09-04, fysisk grind återstår  
 **Paritet:** AUTH-08, AUTH-09  
 **Beroenden:** AUTH-01, AUTH-02
 
@@ -197,7 +197,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 ### AUTH-06 – Skyddade namn och officiell klubb
 
-**Status:** `[~]` – lokalt implementerad och klientverifierad; SQL-runtime/fysisk grind återstår  
+**Status:** `[~]` – lokalt implementerad och klientverifierad; SQL-runtime klar 2026-09-04, fysisk grind återstår  
 **Paritet:** AUTH-10, AUTH-11  
 **Beroenden:** AUTH-04, AUTH-05
 
@@ -211,7 +211,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 ### AUTH-07 – Villkor, integritet och frivilliga samtycken
 
-**Status:** `[~]` – lokalt implementerad och klientverifierad; juridiskt innehåll, SQL-runtime och fysisk/hosted grind återstår  
+**Status:** `[~]` – lokalt implementerad och klientverifierad; SQL-runtime klar 2026-09-04, juridiskt innehåll och fysisk/hosted grind återstår  
 **Paritet:** beslut i arbetsplan steg 3A  
 **Beroenden:** AUTH-01
 
@@ -311,7 +311,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Ordinarie lag och historiska fakta ändras inte.
 - [x] Servern validerar representation vid eventtidpunkt.
 
-**Återstår:** lokal/hosted SQL-runtime samt fysisk phone/tablet/desktop-grind.
+**Återstår:** fysisk phone/tablet/desktop-grind (SQL-runtime klar 2026-09-04).
 
 ### TEAM-07 – Flytta spelare med bevarad historik
 
@@ -324,7 +324,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Överlapp, bakdatering och samtidiga flyttar valideras atomiskt.
 - [x] Cross-club använder separat source/target-/guardianflöde.
 
-**Återstår:** lokal/hosted SQL-runtime, fysisk phone/tablet/desktop-grind och omkörning av Flutter-testsviten när den lokala testwrappen svarar.
+**Återstår:** fysisk phone/tablet/desktop-grind och omkörning av Flutter-testsviten när den lokala testwrappen svarar (SQL-runtime klar 2026-09-04).
 
 ### TEAM-08 – Arkivering, borttagning och anonymisering
 
@@ -339,7 +339,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Anonymiserad neutral representation bevarar nödvändiga verksamhetsfakta och obrutna referenser.
 - [x] Raderad identitet kan inte oavsiktligt återkopplas eller återidentifieras.
 
-**Återstår:** lokal/hosted SQL-runtime, Auth Admin-workerintegration, fysisk phone/tablet/desktop-grind och omkörning av Flutter-testsviten när testwrappen svarar.
+**Återstår:** Auth Admin-workerintegration, fysisk phone/tablet/desktop-grind och omkörning av Flutter-testsviten när testwrappen svarar (SQL-runtime klar 2026-09-04).
 
 **Verifiering:** hela appens relevanta historikvyer körs mot anonymiserad fixture utan fel eller identifierande data.
 
@@ -910,17 +910,17 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 5. [~] **AUTH-02** lokalt genomförd; fysisk och hosted sessionsverifiering återstår.
 6. [x] **AUTH-03** hosted databas/Edge samt fysisk webb- och Android-deep-linkgrind verifierade; fysisk iOS-kontroll följs upp när iOS-miljö finns.
 7. [~] **AUTH-04** lokalt genomförd; fysisk/hosted grind återstår.
-8. [~] **AUTH-05** lokalt genomförd; SQL-runtime och fysisk/hosted grind återstår.
-9. [~] **AUTH-06** lokalt genomförd; SQL-runtime och fysisk/hosted grind återstår.
-10. [~] **AUTH-07** lokalt genomförd; juridiskt innehåll, SQL-runtime och fysisk/hosted grind återstår.
+8. [~] **AUTH-05** lokalt genomförd; fysisk/hosted grind återstår.
+9. [~] **AUTH-06** lokalt genomförd; fysisk/hosted grind återstår.
+10. [~] **AUTH-07** lokalt genomförd; juridiskt innehåll och fysisk/hosted grind återstår.
 11. [~] **TEAM-01** lokalt genomförd; fysisk deep-link/navigation-grind återstår.
-12. [~] **TEAM-02** lokalt genomförd; SQL-runtime och fysisk/hosted grind återstår.
-13. [~] **TEAM-03** lokalt genomförd; SQL-runtime och fysisk/hosted grind återstår.
-14. [~] **TEAM-04** lokalt genomförd; SQL-runtime och fysisk/hosted grind återstår.
+12. [~] **TEAM-02** lokalt genomförd; hosted SQL-runtime och webbgrind verifierade; Android-/säker mediagrind återstår.
+13. [~] **TEAM-03** lokalt genomförd; hosted SQL-runtime, Android och desktop/webb verifierade; fysisk tabletgrind återstår.
+14. [~] **TEAM-04** lokalt genomförd; hosted SQL-runtime och webbgrind verifierade; phone/tablet återstår.
 15. [~] **TEAM-05** lokalt genomförd; SQL/Edge-runtime och fysisk/hosted grind återstår.
-16. [~] **TEAM-06** lokalt genomförd; SQL-runtime och fysisk/hosted grind återstår.
-17. [~] **TEAM-07** lokalt genomförd; SQL-runtime, fysisk grind och Flutter-testkörning återstår.
-18. [~] **TEAM-08** lokalt genomförd; SQL/Auth-worker-runtime, fysisk grind och Flutter-testkörning återstår.
+16. [~] **TEAM-06** lokalt genomförd; fysisk/hosted grind återstår.
+17. [~] **TEAM-07** lokalt genomförd; fysisk grind och Flutter-testkörning återstår.
+18. [~] **TEAM-08** lokalt genomförd; Auth-worker-runtime, fysisk grind och Flutter-testkörning återstår.
 19. [~] **CAL-01** lokalt genomförd; Flutter-testkörning och fysisk responsiv grind återstår.
 20. [~] **CAL-02** lokalt genomförd; Flutter-testkörning och fysisk grind återstår.
 21. [~] **CAL-03** lokalt genomförd; Flutter-testkörning och fysisk flerrollsgrind återstår.
@@ -959,6 +959,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 | Datum | Ändring | Status |
 |---|---|---|
+| 2026-09-05 | Ytterligare kortstatusar synkade mot det bekräftat 162/162-synkade hosted-läget: AUTH-05, AUTH-06, AUTH-07 och TEAM-06 hade "SQL-runtime återstår" trots att deras migrationer (från 2026-08-24/27) redan var applicerade före den här sessionens arbete — rättat till fysisk/juridisk grind som enda kvarvarande punkt. TEAM-07/08 fick samma korrigering. Även TEAM-02/03/04:s rader i sammanfattningslistan (avsnitt 14), som felaktigt fortfarande nämnde "SQL-runtime återstår" trots att deras egna kortsektioner redan angav hosted SQL-runtime som verifierad, synkades. Ren dokumentationsrättelse av en förbefintlig inkonsekvens; ingen ny databasändring gjordes. | Kortstatusar helt synkade med hosted-läget |
 | 2026-09-05 | De två `auth_rls_initplan`-performance-varningarna på `realtime.messages` (MSG-01/MSG-08) stängda med en ny migration som wrappar `auth.uid()` som `(select auth.uid())` i båda broadcast-policyerna, samma mönster som redan användes för `realtime.topic()`. Ingen ändring av åtkomstlogik. `supabase db advisors --type performance` ger nu "No issues found". 162/162 migrationer synkade. | Performance advisor helt ren |
 | 2026-09-04 | AUTH-01 hosted-grind delvis stängd: direkta GoTrue REST-anrop mot `hgcshgunvooyudvrcpig` bekräftade oförändrad svagt-lösenord-avvisning (422/weak_password), identiskt neutralt recovery-svar (200/{}) för två okända adresser, aktiv domänvalidering mot reserverade testdomäner, en aktiv inbyggd mejl-rate-limit (429/over_email_send_rate_limit) och inga hemligheter i API-svaren. E-postleverans, dubblettbeteende för en verkligt existerande adress och serverloggar kräver fortfarande en läsbar inkorg eller fysisk enhet. Ingen Auth-konfiguration ändrades. | AUTH-01 hosted REST-nivå delvis verifierad |
 | 2026-09-04 | Hosted migrationsbacklog stängd mot `hgcshgunvooyudvrcpig`: fem drivande versionsstämplar reparerades (bokföring endast) och 47 genuint väntande migrationer (`cal02`–`auth04_fix_membership_request_role_ambiguity`) pushades. Pushen hittade och migrationsfilerna rättades för två obalanserade parenteser (`cal02`, `cal03`), en `||`/`->>`-precedensbugg som fick Postgres att felaktigt tolka en textliteral som jsonb (`msg08`), samt idempotens mot redan hosted-applicerat tillstånd i `cal04/cal06/cal07/cal08` och fem funktioner (`cal07/cal08/msg02/msg06/msg08`), allt verifierat read-only mot `information_schema`/`pg_proc` innan ändring. `supabase migration list` visar nu 0 diff (161/161 synkade). Security Advisor: bara den redan kända leaked-password-varningen. Performance Advisor: två nya `auth_rls_initplan`-varningar på `realtime.messages` (MSG-01/08), kvarstår som separat uppföljning. SQL-runtime-delen av grinden är därmed stängd för CAL-02/03/04/06/07/08, PUB-02–06, MSG-01–08, HOME-01–05 och AC-01/03–08; fysisk/hosted enhetsgrind kvarstår separat och korten är inte individuellt omflaggade än. Se `docs/evidence/hosted_migration_backlog_2026-09-04.md`. | SQL-runtime stängd för ~25 kort; fysisk grind kvarstår |
