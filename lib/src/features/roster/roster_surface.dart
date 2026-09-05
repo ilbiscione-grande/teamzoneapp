@@ -65,66 +65,48 @@ class _RosterSurfaceState extends State<_RosterSurface> {
 
   Future<void> _acceptGuardianInvite() async {
     final controller = TextEditingController();
-    var useTeamCode = false;
     final token = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(
-            AppStrings.of(context).feature('Använd inbjudan eller lagkod'),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<bool>(
-                initialValue: useTeamCode,
-                items: [
-                  DropdownMenuItem(
-                    value: false,
-                    child: Text(
-                      AppStrings.of(context).feature('Guardianinbjudan'),
-                    ),
-                  ),
-                  DropdownMenuItem(
-                    value: true,
-                    child: Text(AppStrings.of(context).feature('Lagkod')),
-                  ),
-                ],
-                onChanged: (value) =>
-                    setDialogState(() => useTeamCode = value ?? false),
-              ),
-              TextField(
-                controller: controller,
-                decoration: InputDecoration(
-                  labelText: AppStrings.of(
-                    context,
-                  ).feature('Säker inbjudningskod'),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(AppStrings.of(context).feature('Avbryt')),
-            ),
-            FilledButton(
-              onPressed: () =>
-                  Navigator.pop(dialogContext, controller.text.trim()),
-              child: Text(AppStrings.of(context).feature('Acceptera')),
-            ),
-          ],
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          AppStrings.of(context).feature('Använd inbjudan eller lagkod'),
         ),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            labelText: AppStrings.of(context).feature('Säker inbjudningskod'),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(AppStrings.of(context).feature('Avbryt')),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
+            child: Text(AppStrings.of(context).feature('Acceptera')),
+          ),
+        ],
       ),
     );
     if (token == null || token.isEmpty || !mounted) return;
+    // Team codes, targeted invites and guardian invites are all issued as
+    // the same opaque two-UUID token shape; nothing about the pasted string
+    // itself says which kind it is. Rather than make the user pick a type
+    // up front (an easy way to trigger the same generic "invalid" error a
+    // valid code would give if claimed as the wrong kind), try both server
+    // commands in turn and only show the neutral failure if neither claims
+    // the token.
+    var claimedAsTeamCode = false;
     try {
-      if (useTeamCode) {
+      try {
         await widget.roster.claimTeamCode(
           token: token,
           idempotencyKey: _newUuid(),
         );
-      } else {
+        claimedAsTeamCode = true;
+      } catch (_) {
         await widget.roster.acceptGuardianInvite(
           token: token,
           idempotencyKey: _newUuid(),
@@ -137,7 +119,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
           SnackBar(
             content: Text(
               AppStrings.of(context).feature(
-                useTeamCode
+                claimedAsTeamCode
                     ? 'Medlemsansökan har skapats.'
                     : 'Guardianrelationen är aktiverad.',
               ),

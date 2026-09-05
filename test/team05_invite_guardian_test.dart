@@ -47,10 +47,6 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Använd kod'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Guardianinbjudan').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Lagkod').last);
-    await tester.pumpAndSettle();
     await tester.enterText(
       _textFieldWithLabel('Säker inbjudningskod'),
       'a' * 40,
