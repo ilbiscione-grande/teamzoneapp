@@ -25,7 +25,15 @@ export async function proxy(request: NextRequest) {
   }
   const hostname = normalizedHostname(request.nextUrl.hostname);
   if (!validRoutingInput(hostname, path)) {
-    return new NextResponse("Not found", { status: 404, headers: { "x-teamzone-debug": "invalid_routing_input" } });
+    return new NextResponse("Not found", {
+      status: 404,
+      headers: {
+        "x-teamzone-debug": "invalid_routing_input",
+        "x-teamzone-debug-hostname": JSON.stringify(request.nextUrl.hostname),
+        "x-teamzone-debug-normalized": JSON.stringify(hostname),
+        "x-teamzone-debug-host-header": JSON.stringify(request.headers.get("host")),
+      },
+    });
   }
   // TEMPORARY (remove once the 2026-09-05 fail-closed regression is diagnosed):
   // a response header survives even if console output from this runtime
