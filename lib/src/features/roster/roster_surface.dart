@@ -466,6 +466,16 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                   message: AppStrings.of(
                     context,
                   ).feature('Rosterposter visas här när de har skapats.'),
+                  // A brand-new team's empty roster used to have no action
+                  // here at all, unlike every other empty/blocked state on
+                  // this screen: the search bar's "Använd kod" button only
+                  // renders once the roster has at least one member. Found
+                  // via a physical walkthrough of a freshly created team.
+                  action: OutlinedButton.icon(
+                    onPressed: _acceptGuardianInvite,
+                    icon: const Icon(Icons.vpn_key_outlined),
+                    label: Text(AppStrings.of(context).feature('Använd kod')),
+                  ),
                 )
               : LayoutBuilder(
                   builder: (context, constraints) {
