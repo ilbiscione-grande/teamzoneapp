@@ -24,11 +24,20 @@ export async function proxy(request: NextRequest) {
     return response;
   }
   const hostname = normalizedHostname(request.nextUrl.hostname);
-  if (!validRoutingInput(hostname, path)) return new NextResponse("Not found", { status: 404 });
+  if (!validRoutingInput(hostname, path)) {
+    return new NextResponse("Not found", { status: 404, headers: { "x-teamzone-debug": "invalid_routing_input" } });
+  }
+  // TEMPORARY (remove once the 2026-09-05 fail-closed regression is diagnosed):
+  // a response header survives even if console output from this runtime
+  // never reaches Cloud Logging, so it can be read directly with curl -I.
+  let debugTag = "no_branch_matched";
   try {
     const config = serverConfig();
+    debugTag = "config_ok";
     const raw = await publicRpc(createServerSupabase(config), "resolve_public_hostname", { hostname, path });
+    debugTag = "rpc_ok:" + JSON.stringify(raw).slice(0, 80);
     const decision = safeDomainDecision(raw);
+    debugTag = "decision:" + decision.mode;
     if (decision.mode === "path") {
       const response = NextResponse.next();
       response.headers.set("Cache-Control", pageCache);
@@ -49,14 +58,15 @@ export async function proxy(request: NextRequest) {
     // Server-side only: never included in the client response. Diagnostic
     // aid for the otherwise-silent fail-closed 404 below (e.g. missing
     // server config, unreachable database, unexpected RPC shape).
-    console.error("proxy_fail_closed", {
-      hostname,
-      path,
-      name: (error as { name?: string } | undefined)?.name,
-      message: (error as { message?: string } | undefined)?.message,
-    });
+    const name = (error as { name?: string } | undefined)?.name;
+    const message = (error as { message?: string } | undefined)?.message;
+    debugTag = "error:" + (name ?? "") + ":" + (message ?? "").slice(0, 120);
+    console.error("proxy_fail_closed", { hostname, path, name, message });
   }
-  return new NextResponse("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+  return new NextResponse("Not found", {
+    status: 404,
+    headers: { "Cache-Control": "no-store", "x-teamzone-debug": debugTag },
+  });
 }
 
 export const config = { matcher: ["/((?!_next/static|_next/image).*)"] };
