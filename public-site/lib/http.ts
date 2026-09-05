@@ -19,6 +19,10 @@ export function requestIpHash(request: Request): { config: ReturnType<typeof ser
 
 export function neutralError(error: unknown): NextResponse {
   const message = typeof error === "object" && error && "message" in error ? String(error.message) : "";
+  // Server-side only: never included in the client response. Diagnostic aid
+  // for otherwise-silent fail-closed responses (e.g. missing server config,
+  // unreachable database) that would be invisible in Cloud Logging otherwise.
+  console.error("neutral_error", { name: (error as { name?: string } | undefined)?.name, message });
   if (message.includes("rate_limited")) return json({ error: "För många försök. Försök senare." }, 429);
   if (message.includes("invalid_request")) return json({ error: "Begäran kunde inte behandlas." }, 400);
   return json({ error: "Tjänsten är tillfälligt otillgänglig." }, 503);

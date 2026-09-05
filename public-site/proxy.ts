@@ -45,7 +45,17 @@ export async function proxy(request: NextRequest) {
       response.headers.set("Cache-Control", pageCache);
       return response;
     }
-  } catch { /* fail closed below */ }
+  } catch (error) {
+    // Server-side only: never included in the client response. Diagnostic
+    // aid for the otherwise-silent fail-closed 404 below (e.g. missing
+    // server config, unreachable database, unexpected RPC shape).
+    console.error("proxy_fail_closed", {
+      hostname,
+      path,
+      name: (error as { name?: string } | undefined)?.name,
+      message: (error as { message?: string } | undefined)?.message,
+    });
+  }
   return new NextResponse("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
 }
 
