@@ -440,7 +440,7 @@ class _InboxSurfaceState extends State<_InboxSurface> {
                                   thread.subject ?? strings.directMessage,
                                 ),
                                 subtitle: Text(
-                                  '${thread.senderName == null ? '' : '${thread.senderName}: '}${thread.preview ?? strings.noMessages}\n${_inboxTime(context, thread.lastAt)}',
+                                  '${(thread.senderName ?? '').trim().isEmpty ? '' : '${thread.senderName}: '}${thread.preview ?? strings.noMessages}\n${_inboxTime(context, thread.lastAt)}',
                                   maxLines: 3,
                                   overflow: TextOverflow.ellipsis,
                                 ),
