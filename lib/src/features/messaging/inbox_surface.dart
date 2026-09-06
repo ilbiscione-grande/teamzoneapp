@@ -26,6 +26,11 @@ class _InboxSurfaceState extends State<_InboxSurface> {
   String _filter = 'all';
   List<MessageThreadSummary>? _syncedThreads;
   bool _initialThreadOpened = false;
+  // The thread id currently showing in _ThreadDialog (or being opened for
+  // it), separate from _initialThreadOpened: this dedupes against the
+  // dialog we already have open, independent of whether widget's route
+  // props have caught up yet.
+  String? _openThreadId;
   bool _settingsPending = false;
   int _notificationUnread = 0;
   Future<List<MessageThreadSummary>> _reload() =>
@@ -93,11 +98,22 @@ class _InboxSurfaceState extends State<_InboxSurface> {
 
   void _syncList() {
     final threads = _data.state.data;
-    if (identical(threads, _syncedThreads)) return;
-    _syncedThreads = threads;
-    _list.replaceItems(threads ?? const []);
+    if (!identical(threads, _syncedThreads)) {
+      _syncedThreads = threads;
+      _list.replaceItems(threads ?? const []);
+    }
+    _tryOpenInitialThread();
+  }
+
+  // Split out from _syncList so a target change alone (e.g. tapping a
+  // different notification while Inbox is already mounted, which changes
+  // initialThreadId but never re-fetches _data) can re-check the
+  // already-loaded thread list without needing a new data notification.
+  void _tryOpenInitialThread() {
+    final threads = _data.state.data;
     final target = widget.initialThreadId;
-    if (!_initialThreadOpened && target != null && threads != null) {
+    if (target == null || target == _openThreadId) return;
+    if (!_initialThreadOpened && threads != null) {
       final matches = threads.where((thread) => thread.id == target);
       if (matches.isNotEmpty) {
         _initialThreadOpened = true;
@@ -212,6 +228,7 @@ class _InboxSurfaceState extends State<_InboxSurface> {
     }
     if (oldWidget.initialThreadId != widget.initialThreadId) {
       _initialThreadOpened = false;
+      _tryOpenInitialThread();
     }
   }
 
@@ -882,6 +899,7 @@ class _InboxSurfaceState extends State<_InboxSurface> {
 
   Future<void> _openThread(MessageThreadSummary thread) async {
     _initialThreadOpened = true;
+    _openThreadId = thread.id;
     if (widget.initialThreadId != thread.id) {
       widget.onNavigate(
         Uri(
@@ -898,8 +916,15 @@ class _InboxSurfaceState extends State<_InboxSurface> {
         contextId: widget.contextValue.id,
       ),
     );
+    _openThreadId = null;
     if (mounted) {
-      _initialThreadOpened = false;
+      // Don't reset _initialThreadOpened here: onNavigate schedules a
+      // route change that hasn't reached widget.initialThreadId yet by
+      // the time _data.refresh() below completes and notifies _syncList,
+      // which would otherwise see the still-stale (just-closed) thread id
+      // as an unopened target and immediately reopen the thread we just
+      // closed. didUpdateWidget already resets the flag once
+      // initialThreadId actually changes on the next rebuild.
       widget.onNavigate(ProductRouteContract.inbox);
       unawaited(_data.refresh());
     }
