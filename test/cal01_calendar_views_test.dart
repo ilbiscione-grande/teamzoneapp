@@ -44,12 +44,20 @@ void main() {
     expect(find.text('Kvällsträning'), findsOneWidget);
     await tester.dragUntilVisible(
       find.text('Extraevent 3'),
-      find.byKey(const Key('calendarMonthDayPanel')),
+      find.byKey(const Key('calendarSelectedDayPanel')),
       const Offset(0, -100),
     );
     expect(find.text('Extraevent 1'), findsOneWidget);
     expect(find.text('Extraevent 2'), findsOneWidget);
     expect(find.text('Extraevent 3'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('Vecka'));
+    await tester.pumpAndSettle();
+    // The week grid shows the 7 selected-week days plus one extra "peek"
+    // box for next week's first day (8 day cells total, each a Card), and
+    // reuses the same fixed-grid/scrolling-day-panel layout as month view.
+    expect(find.byType(Card), findsNWidgets(8));
+    expect(find.byKey(const Key('calendarSelectedDayPanel')), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.tap(find.text('Dag'));
     await tester.pumpAndSettle();

@@ -146,9 +146,25 @@ class _CalendarWorkspace extends StatelessWidget {
             ],
           ),
         ),
+        // The week grid gets its own half of the remaining space (instead
+        // of sizing itself and leaving the rest to the day panel, like the
+        // month grid does) so its 4x2 boxes can be large and full-width.
+        if (mode == CalendarViewMode.week)
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: _CalendarWeekGrid(
+                projection: projection,
+                onDate: onDateChanged,
+              ),
+            ),
+          ),
         Expanded(
-          child: mode == CalendarViewMode.month
-              ? _CalendarMonthDayPanel(projection: projection, onEvent: onEvent)
+          child: mode == CalendarViewMode.month || mode == CalendarViewMode.week
+              ? _CalendarSelectedDayPanel(
+                  projection: projection,
+                  onEvent: onEvent,
+                )
               : SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: projection.visibleEvents.isEmpty
@@ -164,16 +180,13 @@ class _CalendarWorkspace extends StatelessWidget {
                             projection: projection,
                             onEvent: onEvent,
                           ),
-                          CalendarViewMode.week => _CalendarWeek(
-                            projection: projection,
-                            onEvent: onEvent,
-                          ),
                           CalendarViewMode.day => _CalendarDay(
                             date: projection.dayStart,
                             events: projection.visibleEvents,
                             onEvent: onEvent,
                           ),
-                          CalendarViewMode.month => const SizedBox.shrink(),
+                          CalendarViewMode.month ||
+                          CalendarViewMode.week => const SizedBox.shrink(),
                         },
                 ),
         ),
@@ -455,49 +468,180 @@ class _CalendarDay extends StatelessWidget {
   );
 }
 
-class _CalendarWeek extends StatelessWidget {
-  const _CalendarWeek({required this.projection, required this.onEvent});
-  final CalendarProjection projection;
-  final ValueChanged<CalendarEventSummary> onEvent;
+bool _isSameDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
+
+/// One square day cell shared by the month and week grids: a day number, an
+/// optional event-count badge, and a highlighted border when selected.
+class _CalendarGridDayCell extends StatelessWidget {
+  const _CalendarGridDayCell({
+    required this.day,
+    required this.items,
+    required this.dimmed,
+    required this.isSelected,
+    required this.onTap,
+    this.detailed = false,
+  });
+  final DateTime day;
+  final List<CalendarEventSummary> items;
+  final bool dimmed, isSelected;
+  final VoidCallback onTap;
+  // Compact grids (month) only have room for a day number and an
+  // event-count badge; roomier grids (week) can show a couple of small
+  // two-line event previews instead.
+  final bool detailed;
+  static const _maxDetailedEvents = 2;
+
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final days = [
-        for (var offset = 0; offset < 7; offset++)
-          projection.weekStart.add(Duration(days: offset)),
-      ];
-      if (constraints.maxWidth < 840) {
-        return Column(
-          children: [
-            for (final day in days)
-              _CalendarDay(
-                date: day,
-                events: projection.eventsOn(day),
-                onEvent: onEvent,
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      child: Card(
+        color: dimmed ? colorScheme.surfaceContainerLow : null,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: isSelected
+              ? BorderSide(color: colorScheme.primary, width: 2)
+              : BorderSide.none,
+        ),
+        child: detailed ? _buildDetailed(context) : _buildCompact(context),
+      ),
+    );
+  }
+
+  Widget _buildCompact(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Stack(
+      children: [
+        Padding(padding: const EdgeInsets.all(6), child: Text('${day.day}')),
+        if (items.isNotEmpty)
+          Positioned(
+            top: 4,
+            right: 4,
+            child: Container(
+              width: 16,
+              height: 16,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                shape: BoxShape.circle,
               ),
-          ],
-        );
-      }
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (final day in days)
-            Expanded(
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: _CalendarDay(
-                    date: day,
-                    events: projection.eventsOn(day),
-                    onEvent: onEvent,
-                  ),
+              child: Text(
+                items.length > 9 ? '9+' : '${items.length}',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontSize: 9,
+                  height: 1,
+                  color: colorScheme.onPrimaryContainer,
                 ),
               ),
             ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildDetailed(BuildContext context) {
+    final shown = items.take(_maxDetailedEvents).toList();
+    final overflow = items.length - shown.length;
+    return Padding(
+      padding: const EdgeInsets.all(6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('${day.day}'),
+          for (final event in shown) ...[
+            const SizedBox(height: 4),
+            _CalendarGridEventChip(event: event),
+          ],
+          if (overflow > 0) ...[
+            const SizedBox(height: 2),
+            Text('+$overflow', style: Theme.of(context).textTheme.labelSmall),
+          ],
         ],
-      );
-    },
-  );
+      ),
+    );
+  }
+}
+
+IconData _eventTypeIcon(String type) => switch (type) {
+  'match' => Icons.sports_soccer,
+  'training' => Icons.fitness_center,
+  'meeting' => Icons.groups,
+  'activity' => Icons.local_activity,
+  _ => Icons.event,
+};
+
+/// A small two-line preview shown inside a roomy grid day cell: an icon for
+/// the event type plus its time on the first line, and the title (or
+/// opponent, for a match) on the second.
+class _CalendarGridEventChip extends StatelessWidget {
+  const _CalendarGridEventChip({required this.event});
+  final CalendarEventSummary event;
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final start = event.startsAt.toLocal();
+    final time = event.allDay
+        ? strings.feature('Heldag')
+        : TimeOfDay.fromDateTime(start).format(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(_eventTypeIcon(event.type), size: 11),
+              const SizedBox(width: 3),
+              Flexible(
+                child: Text(
+                  time,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(fontSize: 9, height: 1),
+                ),
+              ),
+            ],
+          ),
+          Text(
+            _abbreviateHomeAwaySuffix(event.title),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              fontSize: 9,
+              height: 1.2,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shortens a title's trailing " Borta"/" Hemma" (a common free-text
+/// match-title convention, not a structured field) to " (B)"/" (H)" so it
+/// fits the narrow grid chip. Only a literal trailing word is matched, so
+/// unrelated titles are left untouched.
+String _abbreviateHomeAwaySuffix(String title) {
+  if (title.endsWith(' Borta')) {
+    return '${title.substring(0, title.length - 6)} (B)';
+  }
+  if (title.endsWith(' Hemma')) {
+    return '${title.substring(0, title.length - 6)} (H)';
+  }
+  return title;
 }
 
 class _CalendarMonthGrid extends StatelessWidget {
@@ -509,7 +653,6 @@ class _CalendarMonthGrid extends StatelessWidget {
     final first = projection.rangeStart;
     final gridStart = first.subtract(Duration(days: first.weekday - 1));
     final selected = projection.selectedDate;
-    final colorScheme = Theme.of(context).colorScheme;
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -520,61 +663,76 @@ class _CalendarMonthGrid extends StatelessWidget {
       itemCount: 42,
       itemBuilder: (context, index) {
         final day = gridStart.add(Duration(days: index));
-        final items = projection.eventsOn(day);
-        final inMonth = day.month == projection.selectedDate.month;
-        final isSelected =
-            day.year == selected.year &&
-            day.month == selected.month &&
-            day.day == selected.day;
-        return InkWell(
+        return _CalendarGridDayCell(
+          day: day,
+          items: projection.eventsOn(day),
+          dimmed: day.month != projection.selectedDate.month,
+          isSelected: _isSameDay(day, selected),
           onTap: () => onDate(day),
-          child: Card(
-            color: inMonth ? null : colorScheme.surfaceContainerLow,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: isSelected
-                  ? BorderSide(color: colorScheme.primary, width: 2)
-                  : BorderSide.none,
-            ),
-            child: Stack(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(6),
-                  child: Text('${day.day}'),
-                ),
-                if (items.isNotEmpty)
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: Container(
-                      width: 16,
-                      height: 16,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        items.length > 9 ? '9+' : '${items.length}',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontSize: 9,
-                          height: 1,
-                          color: colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
         );
       },
     );
   }
 }
 
-class _CalendarMonthDayPanel extends StatelessWidget {
-  const _CalendarMonthDayPanel({
+/// The week grid shows the 7 days of the selected week plus one extra "peek"
+/// box for next week's first day, so a leader can see what's coming up
+/// without leaving the current week.
+class _CalendarWeekGrid extends StatelessWidget {
+  const _CalendarWeekGrid({required this.projection, required this.onDate});
+  final CalendarProjection projection;
+  final ValueChanged<DateTime> onDate;
+  @override
+  Widget build(BuildContext context) {
+    final selected = projection.selectedDate;
+    final weekStart = projection.weekStart;
+    // Sized by the parent Expanded to roughly half the available height, so
+    // the aspect ratio is derived from the actual constraints instead of a
+    // fixed value: 4 columns x 2 rows should fill the full width and height
+    // given, not just shrink-wrap to a fixed-size square.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cellWidth = constraints.maxWidth / 4;
+        final cellHeight = constraints.maxHeight / 2;
+        return GridView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            childAspectRatio: cellHeight <= 0 ? 1 : cellWidth / cellHeight,
+          ),
+          itemCount: 8,
+          itemBuilder: (context, index) {
+            final day = weekStart.add(Duration(days: index));
+            // The peek day sits outside this week's range, so its events
+            // are looked up with a one-off day-scoped projection instead
+            // of projection.eventsOn, which is bounded to the selected
+            // week.
+            final items = index < 7
+                ? projection.eventsOn(day)
+                : CalendarProjection(
+                    events: projection.events,
+                    mode: CalendarViewMode.day,
+                    selectedDate: day,
+                    teamId: projection.teamId,
+                    eventType: projection.eventType,
+                  ).eventsOn(day);
+            return _CalendarGridDayCell(
+              day: day,
+              items: items,
+              dimmed: index == 7,
+              isSelected: _isSameDay(day, selected),
+              onTap: () => onDate(day),
+              detailed: true,
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _CalendarSelectedDayPanel extends StatelessWidget {
+  const _CalendarSelectedDayPanel({
     required this.projection,
     required this.onEvent,
   });
@@ -586,7 +744,7 @@ class _CalendarMonthDayPanel extends StatelessWidget {
     final selected = projection.selectedDate;
     final dayEvents = projection.eventsOn(selected);
     return ListView(
-      key: const Key('calendarMonthDayPanel'),
+      key: const Key('calendarSelectedDayPanel'),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       children: [
         Text(
