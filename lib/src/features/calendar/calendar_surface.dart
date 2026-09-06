@@ -37,6 +37,8 @@ class _CalendarWorkspace extends StatelessWidget {
     required this.onEvent,
     required this.showWeekNumbers,
     required this.onShowWeekNumbersChanged,
+    required this.showQuarterHourMarks,
+    required this.onShowQuarterHourMarksChanged,
     this.teamFilter,
     this.eventTypeFilter,
     this.lastUpdated,
@@ -45,13 +47,14 @@ class _CalendarWorkspace extends StatelessWidget {
   final CalendarViewMode mode;
   final DateTime selectedDate;
   final String? teamFilter, eventTypeFilter;
-  final bool stale, reconnecting, showWeekNumbers;
+  final bool stale, reconnecting, showWeekNumbers, showQuarterHourMarks;
   final DateTime? lastUpdated;
   final ValueChanged<CalendarViewMode> onModeChanged;
   final ValueChanged<DateTime> onDateChanged;
   final ValueChanged<String?> onTeamChanged, onTypeChanged;
   final ValueChanged<CalendarEventSummary> onEvent;
-  final ValueChanged<bool> onShowWeekNumbersChanged;
+  final ValueChanged<bool> onShowWeekNumbersChanged,
+      onShowQuarterHourMarksChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -125,6 +128,9 @@ class _CalendarWorkspace extends StatelessWidget {
                     onTypeChanged: onTypeChanged,
                     showWeekNumbers: showWeekNumbers,
                     onShowWeekNumbersChanged: onShowWeekNumbersChanged,
+                    showQuarterHourMarks: showQuarterHourMarks,
+                    onShowQuarterHourMarksChanged:
+                        onShowQuarterHourMarksChanged,
                   ),
                   icon: Badge(
                     isLabelVisible:
@@ -160,35 +166,33 @@ class _CalendarWorkspace extends StatelessWidget {
             ),
           ),
         Expanded(
-          child: mode == CalendarViewMode.month || mode == CalendarViewMode.week
-              ? _CalendarSelectedDayPanel(
-                  projection: projection,
-                  onEvent: onEvent,
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: projection.visibleEvents.isEmpty
-                      ? _StateCard(
-                          icon: Icons.event_busy,
-                          title: strings.feature('Inga event i vald vy'),
-                          message: strings.feature(
-                            'Byt datum eller justera filtren.',
-                          ),
-                        )
-                      : switch (mode) {
-                          CalendarViewMode.agenda => _CalendarAgenda(
-                            projection: projection,
-                            onEvent: onEvent,
-                          ),
-                          CalendarViewMode.day => _CalendarDay(
-                            date: projection.dayStart,
-                            events: projection.visibleEvents,
-                            onEvent: onEvent,
-                          ),
-                          CalendarViewMode.month ||
-                          CalendarViewMode.week => const SizedBox.shrink(),
-                        },
-                ),
+          child: switch (mode) {
+            CalendarViewMode.month ||
+            CalendarViewMode.week => _CalendarSelectedDayPanel(
+              projection: projection,
+              onEvent: onEvent,
+            ),
+            // The day timeline always shows the full 24h grid, event or
+            // not, so it never swaps for the "no events" state card.
+            CalendarViewMode.day => _CalendarDayTimeline(
+              date: projection.dayStart,
+              events: projection.visibleEvents,
+              onEvent: onEvent,
+              showQuarterHours: showQuarterHourMarks,
+            ),
+            CalendarViewMode.agenda => SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: projection.visibleEvents.isEmpty
+                  ? _StateCard(
+                      icon: Icons.event_busy,
+                      title: strings.feature('Inga event i vald vy'),
+                      message: strings.feature(
+                        'Byt datum eller justera filtren.',
+                      ),
+                    )
+                  : _CalendarAgenda(projection: projection, onEvent: onEvent),
+            ),
+          },
         ),
       ],
     );
@@ -308,6 +312,8 @@ Future<void> _showCalendarFilterSheet({
   required ValueChanged<String?> onTypeChanged,
   required bool showWeekNumbers,
   required ValueChanged<bool> onShowWeekNumbersChanged,
+  required bool showQuarterHourMarks,
+  required ValueChanged<bool> onShowQuarterHourMarksChanged,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -317,6 +323,7 @@ Future<void> _showCalendarFilterSheet({
       var localTeam = teamFilter;
       var localType = eventTypeFilter;
       var localShowWeekNumbers = showWeekNumbers;
+      var localShowQuarterHourMarks = showQuarterHourMarks;
       return StatefulBuilder(
         builder: (sheetContext, setSheetState) => Padding(
           padding: EdgeInsets.fromLTRB(
@@ -400,6 +407,22 @@ Future<void> _showCalendarFilterSheet({
                   onShowWeekNumbersChanged(value);
                 },
               ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  AppStrings.of(sheetContext).feature('Visa kvartsmarkeringar'),
+                ),
+                subtitle: Text(
+                  AppStrings.of(
+                    sheetContext,
+                  ).feature('Extra tunna linjer var 15:e minut i dagsvyn.'),
+                ),
+                value: localShowQuarterHourMarks,
+                onChanged: (value) {
+                  setSheetState(() => localShowQuarterHourMarks = value);
+                  onShowQuarterHourMarksChanged(value);
+                },
+              ),
               const SizedBox(height: 8),
               FilledButton(
                 onPressed: () => Navigator.of(sheetContext).pop(),
@@ -470,6 +493,319 @@ class _CalendarDay extends StatelessWidget {
 
 bool _isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
+
+/// A vertical 24-hour timeline for Dag mode: hour gridlines with labels,
+/// thinner half-hour lines, an optional even thinner quarter-hour line, and
+/// events rendered as positioned, readable cards (side-by-side when they
+/// overlap) instead of a plain list.
+class _CalendarDayTimeline extends StatelessWidget {
+  const _CalendarDayTimeline({
+    required this.date,
+    required this.events,
+    required this.onEvent,
+    required this.showQuarterHours,
+  });
+  final DateTime date;
+  final List<CalendarEventSummary> events;
+  final ValueChanged<CalendarEventSummary> onEvent;
+  final bool showQuarterHours;
+
+  static const double _hourHeight = 64;
+  static const double _labelWidth = 44;
+  static const double _minCardHeight = 34;
+
+  @override
+  Widget build(BuildContext context) {
+    final dayStart = DateTime(date.year, date.month, date.day);
+    final allDayEvents = events.where((event) => event.allDay).toList();
+    final positioned = _layoutDayEvents(events, dayStart);
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (allDayEvents.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Column(
+              children: [
+                for (final event in allDayEvents)
+                  _CalendarEventTile(event: event, onTap: () => onEvent(event)),
+              ],
+            ),
+          ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(12, 8, 16, 24),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final eventsWidth = constraints.maxWidth - _labelWidth;
+                return SizedBox(
+                  height: _hourHeight * 24,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: CustomPaint(
+                          painter: _DayGridPainter(
+                            hourHeight: _hourHeight,
+                            labelWidth: _labelWidth,
+                            showQuarterHours: showQuarterHours,
+                            hourColor: colorScheme.outlineVariant,
+                            halfColor: colorScheme.outlineVariant.withValues(
+                              alpha: 0.5,
+                            ),
+                            quarterColor: colorScheme.outlineVariant.withValues(
+                              alpha: 0.25,
+                            ),
+                          ),
+                        ),
+                      ),
+                      for (var hour = 0; hour <= 23; hour++)
+                        Positioned(
+                          top: hour * _hourHeight - 7,
+                          left: 0,
+                          width: _labelWidth - 6,
+                          child: Text(
+                            '${hour.toString().padLeft(2, '0')}:00',
+                            textAlign: TextAlign.right,
+                            style: Theme.of(context).textTheme.labelSmall,
+                          ),
+                        ),
+                      for (final item in positioned)
+                        Positioned(
+                          top: item.startMinutes / 60 * _hourHeight + 1,
+                          left:
+                              _labelWidth +
+                              item.column * (eventsWidth / item.columnCount) +
+                              2,
+                          width: eventsWidth / item.columnCount - 4,
+                          height: max(
+                            (item.endMinutes - item.startMinutes) /
+                                    60 *
+                                    _hourHeight -
+                                2,
+                            _minCardHeight,
+                          ),
+                          child: _DayTimelineEventCard(
+                            event: item.event,
+                            onTap: () => onEvent(item.event),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DayGridPainter extends CustomPainter {
+  const _DayGridPainter({
+    required this.hourHeight,
+    required this.labelWidth,
+    required this.showQuarterHours,
+    required this.hourColor,
+    required this.halfColor,
+    required this.quarterColor,
+  });
+  final double hourHeight, labelWidth;
+  final bool showQuarterHours;
+  final Color hourColor, halfColor, quarterColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final hourPaint = Paint()
+      ..color = hourColor
+      ..strokeWidth = 1;
+    final halfPaint = Paint()
+      ..color = halfColor
+      ..strokeWidth = 1;
+    final quarterPaint = Paint()
+      ..color = quarterColor
+      ..strokeWidth = 1;
+    for (var hour = 0; hour <= 24; hour++) {
+      final y = hour * hourHeight;
+      canvas.drawLine(Offset(labelWidth, y), Offset(size.width, y), hourPaint);
+      if (hour == 24) break;
+      canvas.drawLine(
+        Offset(labelWidth, y + hourHeight / 2),
+        Offset(size.width, y + hourHeight / 2),
+        halfPaint,
+      );
+      if (showQuarterHours) {
+        canvas.drawLine(
+          Offset(labelWidth, y + hourHeight / 4),
+          Offset(size.width, y + hourHeight / 4),
+          quarterPaint,
+        );
+        canvas.drawLine(
+          Offset(labelWidth, y + hourHeight * 3 / 4),
+          Offset(size.width, y + hourHeight * 3 / 4),
+          quarterPaint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DayGridPainter oldDelegate) =>
+      oldDelegate.showQuarterHours != showQuarterHours ||
+      oldDelegate.hourHeight != hourHeight ||
+      oldDelegate.labelWidth != labelWidth ||
+      oldDelegate.hourColor != hourColor;
+}
+
+/// One event card on the day timeline: type icon + title on the first line,
+/// start–end time on the second, sized/positioned by the caller.
+class _DayTimelineEventCard extends StatelessWidget {
+  const _DayTimelineEventCard({required this.event, required this.onTap});
+  final CalendarEventSummary event;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final start = event.startsAt.toLocal();
+    final end = event.endsAt.toLocal();
+    final time =
+        '${TimeOfDay.fromDateTime(start).format(context)}–${TimeOfDay.fromDateTime(end).format(context)}';
+    final colorScheme = Theme.of(context).colorScheme;
+    return Material(
+      color: event.state == 'cancelled'
+          ? colorScheme.surfaceContainerHighest
+          : colorScheme.secondaryContainer,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(_eventTypeIcon(event.type), size: 13),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      _abbreviateHomeAwaySuffix(event.title),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                time,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One event clipped and positioned on a single day's timeline.
+class _PositionedDayEvent {
+  const _PositionedDayEvent({
+    required this.event,
+    required this.startMinutes,
+    required this.endMinutes,
+    required this.column,
+    required this.columnCount,
+  });
+  final CalendarEventSummary event;
+  final double startMinutes, endMinutes;
+  final int column, columnCount;
+}
+
+/// Lays out a day's timed events into columns so overlapping events sit
+/// side by side instead of on top of each other: events are clustered by
+/// transitive time overlap, then greedily assigned the first column whose
+/// previous occupant has already ended (standard interval-graph coloring).
+List<_PositionedDayEvent> _layoutDayEvents(
+  List<CalendarEventSummary> events,
+  DateTime dayStart,
+) {
+  final dayEnd = dayStart.add(const Duration(days: 1));
+  final spans = <(CalendarEventSummary, double, double)>[];
+  for (final event in events) {
+    if (event.allDay) continue;
+    final start = event.startsAt.toLocal();
+    final end = event.endsAt.toLocal();
+    final clippedStart = start.isBefore(dayStart) ? dayStart : start;
+    final clippedEnd = end.isAfter(dayEnd) ? dayEnd : end;
+    if (!clippedEnd.isAfter(clippedStart)) continue;
+    final startMinutes = clippedStart.difference(dayStart).inMinutes.toDouble();
+    final endMinutes = clippedEnd.difference(dayStart).inMinutes.toDouble();
+    spans.add((event, startMinutes, endMinutes));
+  }
+  spans.sort((a, b) => a.$2.compareTo(b.$2));
+
+  final result = <_PositionedDayEvent>[];
+  var clusterIndices = <int>[];
+  var clusterEnd = double.negativeInfinity;
+
+  void flushCluster() {
+    if (clusterIndices.isEmpty) return;
+    final columnEnds = <double>[];
+    final assigned = <int, int>{};
+    for (final index in clusterIndices) {
+      final (_, start, end) = spans[index];
+      var placed = false;
+      for (var column = 0; column < columnEnds.length; column++) {
+        if (columnEnds[column] <= start) {
+          columnEnds[column] = end;
+          assigned[index] = column;
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        columnEnds.add(end);
+        assigned[index] = columnEnds.length - 1;
+      }
+    }
+    final columnCount = columnEnds.length;
+    for (final index in clusterIndices) {
+      final (event, start, end) = spans[index];
+      result.add(
+        _PositionedDayEvent(
+          event: event,
+          startMinutes: start,
+          endMinutes: end,
+          column: assigned[index]!,
+          columnCount: columnCount,
+        ),
+      );
+    }
+    clusterIndices = [];
+  }
+
+  for (var i = 0; i < spans.length; i++) {
+    final (_, start, end) = spans[i];
+    if (clusterIndices.isEmpty || start < clusterEnd) {
+      clusterIndices.add(i);
+      if (end > clusterEnd) clusterEnd = end;
+    } else {
+      flushCluster();
+      clusterIndices.add(i);
+      clusterEnd = end;
+    }
+  }
+  flushCluster();
+  return result;
+}
 
 /// One square day cell shared by the month and week grids: a day number, an
 /// optional event-count badge, and a highlighted border when selected.
@@ -1685,7 +2021,9 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
   DateTime _selectedDate = DateTime.now();
   String? _teamFilter, _eventTypeFilter;
   static const _showWeekNumbersKey = 'calendar.showWeekNumbers';
+  static const _showQuarterHourMarksKey = 'calendar.showQuarterHourMarks';
   bool _showWeekNumbers = true;
+  bool _showQuarterHourMarks = false;
 
   @override
   void initState() {
@@ -1700,6 +2038,7 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
     _listenForInvalidations();
     _openInitialEvent();
     unawaited(_loadShowWeekNumbers());
+    unawaited(_loadShowQuarterHourMarks());
   }
 
   Future<void> _loadShowWeekNumbers() async {
@@ -1712,6 +2051,18 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
     setState(() => _showWeekNumbers = value);
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_showWeekNumbersKey, value);
+  }
+
+  Future<void> _loadShowQuarterHourMarks() async {
+    final preferences = await SharedPreferences.getInstance();
+    final value = preferences.getBool(_showQuarterHourMarksKey) ?? false;
+    if (mounted) setState(() => _showQuarterHourMarks = value);
+  }
+
+  Future<void> _setShowQuarterHourMarks(bool value) async {
+    setState(() => _showQuarterHourMarks = value);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_showQuarterHourMarksKey, value);
   }
 
   String? _openedInitialEventId;
@@ -3450,6 +3801,8 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
               onEvent: _showDetails,
               showWeekNumbers: _showWeekNumbers,
               onShowWeekNumbersChanged: _setShowWeekNumbers,
+              showQuarterHourMarks: _showQuarterHourMarks,
+              onShowQuarterHourMarksChanged: _setShowQuarterHourMarks,
             );
           },
         ),

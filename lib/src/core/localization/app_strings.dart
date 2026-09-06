@@ -729,6 +729,9 @@ class AppStrings {
     'Filtrera kalendern': 'Filter the calendar',
     'Veckonummer': 'Week number',
     'Visa veckonummer': 'Show week number',
+    'Visa kvartsmarkeringar': 'Show quarter-hour marks',
+    'Extra tunna linjer var 15:e minut i dagsvyn.':
+        'Extra thin lines every 15 minutes in the day view.',
     'Nästa period': 'Next period',
     'Inga event i vald vy': 'No events in the selected view',
     'Byt datum eller justera filtren.':

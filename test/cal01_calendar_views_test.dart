@@ -61,7 +61,19 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.tap(find.text('Dag'));
     await tester.pumpAndSettle();
+    // Dag mode is a 24h timeline: hour gridlines with labels...
+    expect(find.text('00:00'), findsOneWidget);
+    expect(find.text('23:00'), findsOneWidget);
+    // ...and events render as cards positioned on it.
     expect(find.text('Kvällsträning'), findsOneWidget);
+    expect(find.text('Extraevent 1'), findsOneWidget);
+    // Kvällsträning (18:00–19:30) and Extraevent 1 (19:00–20:00) overlap
+    // for 30 minutes, so the column layout must place them side by side
+    // instead of stacked on top of each other.
+    final kvallstraningLeft = tester.getTopLeft(find.text('Kvällsträning')).dx;
+    final extraevent1Left = tester.getTopLeft(find.text('Extraevent 1')).dx;
+    expect(kvallstraningLeft, isNot(equals(extraevent1Left)));
+    expect(tester.takeException(), isNull);
   });
 
   test('all modes share team/type filters and local overlap logic', () {
@@ -219,8 +231,11 @@ class _Calendar extends UnconfiguredCalendarServices {
           title: 'Extraevent $index',
           type: 'training',
           state: 'scheduled',
-          startsAt: DateTime(now.year, now.month, now.day, 19 + index),
-          endsAt: DateTime(now.year, now.month, now.day, 20 + index),
+          // Extraevent 1 (19:00–20:00) deliberately overlaps Kvällsträning
+          // (18:00–19:30) for 30 minutes, to exercise the day timeline's
+          // side-by-side overlap layout.
+          startsAt: DateTime(now.year, now.month, now.day, 18 + index),
+          endsAt: DateTime(now.year, now.month, now.day, 19 + index),
           allDay: false,
           timezone: 'Europe/Stockholm',
           revision: 1,
