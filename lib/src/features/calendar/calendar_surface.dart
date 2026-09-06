@@ -35,6 +35,8 @@ class _CalendarWorkspace extends StatelessWidget {
     required this.onTeamChanged,
     required this.onTypeChanged,
     required this.onEvent,
+    required this.showWeekNumbers,
+    required this.onShowWeekNumbersChanged,
     this.teamFilter,
     this.eventTypeFilter,
     this.lastUpdated,
@@ -43,12 +45,13 @@ class _CalendarWorkspace extends StatelessWidget {
   final CalendarViewMode mode;
   final DateTime selectedDate;
   final String? teamFilter, eventTypeFilter;
-  final bool stale, reconnecting;
+  final bool stale, reconnecting, showWeekNumbers;
   final DateTime? lastUpdated;
   final ValueChanged<CalendarViewMode> onModeChanged;
   final ValueChanged<DateTime> onDateChanged;
   final ValueChanged<String?> onTeamChanged, onTypeChanged;
   final ValueChanged<CalendarEventSummary> onEvent;
+  final ValueChanged<bool> onShowWeekNumbersChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -64,134 +67,116 @@ class _CalendarWorkspace extends StatelessWidget {
       for (final event in events) event.owningTeamId: event.teamName,
     };
     final types = events.map((event) => event.type).toSet().toList()..sort();
-    return ListView(
-      padding: const EdgeInsets.all(16),
+    return Column(
       children: [
-        if (stale)
-          ListTile(
-            leading: Icon(reconnecting ? Icons.sync : Icons.cloud_off),
-            title: Text(
-              strings.feature(
-                reconnecting
-                    ? 'Återansluter kalendern'
-                    : 'Kalendern visar sparad data',
-              ),
-            ),
-            subtitle: lastUpdated == null
-                ? null
-                : Text(strings.lastUpdated(lastUpdated!)),
-          ),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final value in CalendarViewMode.values)
-              ChoiceChip(
-                label: Text(
-                  strings.feature(switch (value) {
-                    CalendarViewMode.agenda => 'Agenda',
-                    CalendarViewMode.month => 'Månad',
-                    CalendarViewMode.week => 'Vecka',
-                    CalendarViewMode.day => 'Dag',
-                  }),
-                ),
-                selected: mode == value,
-                onSelected: (_) => onModeChanged(value),
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 8,
-          children: [
-            SizedBox(
-              width: 220,
-              child: DropdownButtonFormField<String?>(
-                isExpanded: true,
-                initialValue: teamFilter,
-                decoration: InputDecoration(labelText: strings.feature('Lag')),
-                items: [
-                  DropdownMenuItem(
-                    value: null,
-                    child: Text(
-                      strings.feature('Alla lag'),
-                      overflow: TextOverflow.ellipsis,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (stale)
+                ListTile(
+                  leading: Icon(reconnecting ? Icons.sync : Icons.cloud_off),
+                  title: Text(
+                    strings.feature(
+                      reconnecting
+                          ? 'Återansluter kalendern'
+                          : 'Kalendern visar sparad data',
                     ),
                   ),
-                  for (final entry in teams.entries)
-                    DropdownMenuItem(
-                      value: entry.key,
-                      child: Text(entry.value, overflow: TextOverflow.ellipsis),
-                    ),
-                ],
-                onChanged: onTeamChanged,
-              ),
-            ),
-            SizedBox(
-              width: 220,
-              child: DropdownButtonFormField<String?>(
-                isExpanded: true,
-                initialValue: eventTypeFilter,
-                decoration: InputDecoration(
-                  labelText: strings.feature('Eventtyp'),
+                  subtitle: lastUpdated == null
+                      ? null
+                      : Text(strings.lastUpdated(lastUpdated!)),
                 ),
-                items: [
-                  DropdownMenuItem(
-                    value: null,
-                    child: Text(
-                      strings.feature('Alla eventtyper'),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  for (final type in types)
-                    DropdownMenuItem(
-                      value: type,
-                      child: Text(
-                        strings.domainValue(type),
-                        overflow: TextOverflow.ellipsis,
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final value in CalendarViewMode.values)
+                    ChoiceChip(
+                      label: Text(
+                        strings.feature(switch (value) {
+                          CalendarViewMode.agenda => 'Agenda',
+                          CalendarViewMode.month => 'Månad',
+                          CalendarViewMode.week => 'Vecka',
+                          CalendarViewMode.day => 'Dag',
+                        }),
                       ),
+                      selected: mode == value,
+                      onSelected: (_) => onModeChanged(value),
                     ),
                 ],
-                onChanged: onTypeChanged,
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              _CalendarDateNavigation(
+                mode: mode,
+                selectedDate: selectedDate,
+                onChanged: onDateChanged,
+                showWeekNumber: showWeekNumbers,
+                leading: IconButton(
+                  tooltip: strings.feature('Filtrera kalendern'),
+                  onPressed: () => _showCalendarFilterSheet(
+                    context: context,
+                    teams: teams,
+                    types: types,
+                    teamFilter: teamFilter,
+                    eventTypeFilter: eventTypeFilter,
+                    onTeamChanged: onTeamChanged,
+                    onTypeChanged: onTypeChanged,
+                    showWeekNumbers: showWeekNumbers,
+                    onShowWeekNumbersChanged: onShowWeekNumbersChanged,
+                  ),
+                  icon: Badge(
+                    isLabelVisible:
+                        teamFilter != null || eventTypeFilter != null,
+                    smallSize: 8,
+                    child: const Icon(Icons.filter_list),
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              if (mode == CalendarViewMode.month)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: _CalendarMonthGrid(
+                    projection: projection,
+                    onDate: onDateChanged,
+                  ),
+                ),
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
-        _CalendarDateNavigation(
-          mode: mode,
-          selectedDate: selectedDate,
-          onChanged: onDateChanged,
+        Expanded(
+          child: mode == CalendarViewMode.month
+              ? _CalendarMonthDayPanel(projection: projection, onEvent: onEvent)
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: projection.visibleEvents.isEmpty
+                      ? _StateCard(
+                          icon: Icons.event_busy,
+                          title: strings.feature('Inga event i vald vy'),
+                          message: strings.feature(
+                            'Byt datum eller justera filtren.',
+                          ),
+                        )
+                      : switch (mode) {
+                          CalendarViewMode.agenda => _CalendarAgenda(
+                            projection: projection,
+                            onEvent: onEvent,
+                          ),
+                          CalendarViewMode.week => _CalendarWeek(
+                            projection: projection,
+                            onEvent: onEvent,
+                          ),
+                          CalendarViewMode.day => _CalendarDay(
+                            date: projection.dayStart,
+                            events: projection.visibleEvents,
+                            onEvent: onEvent,
+                          ),
+                          CalendarViewMode.month => const SizedBox.shrink(),
+                        },
+                ),
         ),
-        const Divider(),
-        if (projection.visibleEvents.isEmpty)
-          _StateCard(
-            icon: Icons.event_busy,
-            title: strings.feature('Inga event i vald vy'),
-            message: strings.feature('Byt datum eller justera filtren.'),
-          )
-        else
-          switch (mode) {
-            CalendarViewMode.agenda => _CalendarAgenda(
-              projection: projection,
-              onEvent: onEvent,
-            ),
-            CalendarViewMode.month => _CalendarMonth(
-              projection: projection,
-              onDate: onDateChanged,
-              onEvent: onEvent,
-            ),
-            CalendarViewMode.week => _CalendarWeek(
-              projection: projection,
-              onEvent: onEvent,
-            ),
-            CalendarViewMode.day => _CalendarDay(
-              date: projection.dayStart,
-              events: projection.visibleEvents,
-              onEvent: onEvent,
-            ),
-          },
       ],
     );
   }
@@ -202,13 +187,19 @@ class _CalendarDateNavigation extends StatelessWidget {
     required this.mode,
     required this.selectedDate,
     required this.onChanged,
+    required this.showWeekNumber,
+    this.leading,
   });
   final CalendarViewMode mode;
   final DateTime selectedDate;
   final ValueChanged<DateTime> onChanged;
+  final bool showWeekNumber;
+  final Widget? leading;
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final localizations = MaterialLocalizations.of(context);
+    final compact = MediaQuery.sizeOf(context).width < 600;
     final start = DateTime(
       selectedDate.year,
       selectedDate.month,
@@ -216,7 +207,10 @@ class _CalendarDateNavigation extends StatelessWidget {
     );
     final weekStart = start.subtract(Duration(days: start.weekday - 1));
     final title = switch (mode) {
-      CalendarViewMode.month => localizations.formatMonthYear(selectedDate),
+      CalendarViewMode.month =>
+        compact
+            ? _compactMonthYear(localizations.formatMonthYear(selectedDate))
+            : localizations.formatMonthYear(selectedDate),
       CalendarViewMode.week =>
         '${localizations.formatMediumDate(weekStart)} – ${localizations.formatMediumDate(weekStart.add(const Duration(days: 6)))}',
       CalendarViewMode.agenda ||
@@ -234,21 +228,36 @@ class _CalendarDateNavigation extends StatelessWidget {
     };
     return Row(
       children: [
+        if (showWeekNumber)
+          Tooltip(
+            message: strings.feature('Veckonummer'),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                '${_isoWeekNumber(selectedDate)}',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ),
+          ),
         IconButton(
           tooltip: AppStrings.of(context).feature('Föregående period'),
           onPressed: () => onChanged(move(-1)),
           icon: const Icon(Icons.chevron_left),
         ),
+        ?leading,
         Expanded(
           child: Text(
             title,
             textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleMedium,
           ),
         ),
-        TextButton(
+        IconButton(
+          tooltip: AppStrings.of(context).feature('Idag'),
           onPressed: () => onChanged(DateTime.now()),
-          child: Text(AppStrings.of(context).feature('Idag')),
+          icon: const Icon(Icons.today_outlined),
         ),
         IconButton(
           tooltip: AppStrings.of(context).feature('Nästa period'),
@@ -258,6 +267,137 @@ class _CalendarDateNavigation extends StatelessWidget {
       ],
     );
   }
+}
+
+/// ISO-8601 week number (weeks start on Monday, week 1 contains the year's
+/// first Thursday).
+int _isoWeekNumber(DateTime date) {
+  final thursday = date.add(Duration(days: 3 - ((date.weekday + 6) % 7)));
+  final firstDayOfYear = DateTime(thursday.year);
+  return (thursday.difference(firstDayOfYear).inDays / 7).floor() + 1;
+}
+
+/// Shortens a localized "month year" string (e.g. "augusti 2026") to its
+/// first three letters (e.g. "aug 2026") to save horizontal space on phones.
+String _compactMonthYear(String monthYear) {
+  final spaceIndex = monthYear.indexOf(' ');
+  if (spaceIndex < 3) return monthYear;
+  return '${monthYear.substring(0, 3)}${monthYear.substring(spaceIndex)}';
+}
+
+Future<void> _showCalendarFilterSheet({
+  required BuildContext context,
+  required Map<String, String> teams,
+  required List<String> types,
+  required String? teamFilter,
+  required String? eventTypeFilter,
+  required ValueChanged<String?> onTeamChanged,
+  required ValueChanged<String?> onTypeChanged,
+  required bool showWeekNumbers,
+  required ValueChanged<bool> onShowWeekNumbersChanged,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (sheetContext) {
+      var localTeam = teamFilter;
+      var localType = eventTypeFilter;
+      var localShowWeekNumbers = showWeekNumbers;
+      return StatefulBuilder(
+        builder: (sheetContext, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            16 + MediaQuery.viewInsetsOf(sheetContext).bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                AppStrings.of(sheetContext).feature('Filtrera kalendern'),
+                style: Theme.of(sheetContext).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String?>(
+                isExpanded: true,
+                initialValue: localTeam,
+                decoration: InputDecoration(
+                  labelText: AppStrings.of(sheetContext).feature('Lag'),
+                ),
+                items: [
+                  DropdownMenuItem(
+                    value: null,
+                    child: Text(
+                      AppStrings.of(sheetContext).feature('Alla lag'),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  for (final entry in teams.entries)
+                    DropdownMenuItem(
+                      value: entry.key,
+                      child: Text(entry.value, overflow: TextOverflow.ellipsis),
+                    ),
+                ],
+                onChanged: (value) {
+                  setSheetState(() => localTeam = value);
+                  onTeamChanged(value);
+                },
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String?>(
+                isExpanded: true,
+                initialValue: localType,
+                decoration: InputDecoration(
+                  labelText: AppStrings.of(sheetContext).feature('Eventtyp'),
+                ),
+                items: [
+                  DropdownMenuItem(
+                    value: null,
+                    child: Text(
+                      AppStrings.of(sheetContext).feature('Alla eventtyper'),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  for (final type in types)
+                    DropdownMenuItem(
+                      value: type,
+                      child: Text(
+                        AppStrings.of(sheetContext).domainValue(type),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: (value) {
+                  setSheetState(() => localType = value);
+                  onTypeChanged(value);
+                },
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  AppStrings.of(sheetContext).feature('Visa veckonummer'),
+                ),
+                value: localShowWeekNumbers,
+                onChanged: (value) {
+                  setSheetState(() => localShowWeekNumbers = value);
+                  onShowWeekNumbersChanged(value);
+                },
+              ),
+              const SizedBox(height: 8),
+              FilledButton(
+                onPressed: () => Navigator.of(sheetContext).pop(),
+                child: Text(AppStrings.of(sheetContext).feature('Klar')),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
 
 class _CalendarAgenda extends StatelessWidget {
@@ -360,66 +500,109 @@ class _CalendarWeek extends StatelessWidget {
   );
 }
 
-class _CalendarMonth extends StatelessWidget {
-  const _CalendarMonth({
-    required this.projection,
-    required this.onDate,
-    required this.onEvent,
-  });
+class _CalendarMonthGrid extends StatelessWidget {
+  const _CalendarMonthGrid({required this.projection, required this.onDate});
   final CalendarProjection projection;
   final ValueChanged<DateTime> onDate;
-  final ValueChanged<CalendarEventSummary> onEvent;
   @override
   Widget build(BuildContext context) {
     final first = projection.rangeStart;
     final gridStart = first.subtract(Duration(days: first.weekday - 1));
-    final compact = MediaQuery.sizeOf(context).width < 600;
-    final visibleEventCount = compact ? 1 : 2;
+    final selected = projection.selectedDate;
+    final colorScheme = Theme.of(context).colorScheme;
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 7,
-        childAspectRatio: compact ? .72 : 1.15,
+        childAspectRatio: 1.3,
       ),
       itemCount: 42,
       itemBuilder: (context, index) {
         final day = gridStart.add(Duration(days: index));
         final items = projection.eventsOn(day);
         final inMonth = day.month == projection.selectedDate.month;
+        final isSelected =
+            day.year == selected.year &&
+            day.month == selected.month &&
+            day.day == selected.day;
         return InkWell(
           onTap: () => onDate(day),
           child: Card(
-            color: inMonth
-                ? null
-                : Theme.of(context).colorScheme.surfaceContainerLow,
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('${day.day}'),
-                  for (final event in items.take(visibleEventCount))
-                    InkWell(
-                      onTap: () => onEvent(event),
+            color: inMonth ? null : colorScheme.surfaceContainerLow,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: isSelected
+                  ? BorderSide(color: colorScheme.primary, width: 2)
+                  : BorderSide.none,
+            ),
+            child: Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: Text('${day.day}'),
+                ),
+                if (items.isNotEmpty)
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer,
+                        shape: BoxShape.circle,
+                      ),
                       child: Text(
-                        event.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelSmall,
+                        items.length > 9 ? '9+' : '${items.length}',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontSize: 9,
+                          height: 1,
+                          color: colorScheme.onPrimaryContainer,
+                        ),
                       ),
                     ),
-                  if (items.length > visibleEventCount)
-                    Text(
-                      '+${items.length - visibleEventCount}',
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                ],
-              ),
+                  ),
+              ],
             ),
           ),
         );
       },
+    );
+  }
+}
+
+class _CalendarMonthDayPanel extends StatelessWidget {
+  const _CalendarMonthDayPanel({
+    required this.projection,
+    required this.onEvent,
+  });
+  final CalendarProjection projection;
+  final ValueChanged<CalendarEventSummary> onEvent;
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final selected = projection.selectedDate;
+    final dayEvents = projection.eventsOn(selected);
+    return ListView(
+      key: const Key('calendarMonthDayPanel'),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      children: [
+        Text(
+          MaterialLocalizations.of(context).formatFullDate(selected),
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const Divider(),
+        if (dayEvents.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(strings.feature('Inga event den här dagen.')),
+          )
+        else
+          for (final event in dayEvents)
+            _CalendarEventTile(event: event, onTap: () => onEvent(event)),
+      ],
     );
   }
 }
@@ -1343,6 +1526,8 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
   CalendarViewMode _viewMode = CalendarViewMode.agenda;
   DateTime _selectedDate = DateTime.now();
   String? _teamFilter, _eventTypeFilter;
+  static const _showWeekNumbersKey = 'calendar.showWeekNumbers';
+  bool _showWeekNumbers = true;
 
   @override
   void initState() {
@@ -1356,6 +1541,19 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
     unawaited(_data.load());
     _listenForInvalidations();
     _openInitialEvent();
+    unawaited(_loadShowWeekNumbers());
+  }
+
+  Future<void> _loadShowWeekNumbers() async {
+    final preferences = await SharedPreferences.getInstance();
+    final value = preferences.getBool(_showWeekNumbersKey) ?? true;
+    if (mounted) setState(() => _showWeekNumbers = value);
+  }
+
+  Future<void> _setShowWeekNumbers(bool value) async {
+    setState(() => _showWeekNumbers = value);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_showWeekNumbersKey, value);
   }
 
   String? _openedInitialEventId;
@@ -3092,6 +3290,8 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
               onTypeChanged: (value) =>
                   setState(() => _eventTypeFilter = value),
               onEvent: _showDetails,
+              showWeekNumbers: _showWeekNumbers,
+              onShowWeekNumbersChanged: _setShowWeekNumbers,
             );
           },
         ),

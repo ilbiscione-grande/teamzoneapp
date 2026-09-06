@@ -25,12 +25,31 @@ void main() {
     for (final label in ['Agenda', 'Månad', 'Vecka', 'Dag']) {
       expect(find.text(label), findsOneWidget);
     }
+    expect(find.text('Kvällsträning'), findsOneWidget);
+    // Team/type filters live behind a compact filter button now, not two
+    // full-width dropdowns.
+    expect(find.byIcon(Icons.filter_list), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.filter_list));
+    await tester.pumpAndSettle();
     expect(find.text('Alla lag'), findsOneWidget);
     expect(find.text('Alla eventtyper'), findsOneWidget);
-    expect(find.text('Kvällsträning'), findsOneWidget);
+    await tester.tap(find.text('Klar'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Månad'));
     await tester.pumpAndSettle();
-    expect(find.text('+3'), findsOneWidget);
+    // Today's cell shows an event-count badge instead of cropped titles...
+    expect(find.text('4'), findsWidgets);
+    // ...while the full list for the selected day scrolls independently
+    // below the fixed month grid, so every event is reachable.
+    expect(find.text('Kvällsträning'), findsOneWidget);
+    await tester.dragUntilVisible(
+      find.text('Extraevent 3'),
+      find.byKey(const Key('calendarMonthDayPanel')),
+      const Offset(0, -100),
+    );
+    expect(find.text('Extraevent 1'), findsOneWidget);
+    expect(find.text('Extraevent 2'), findsOneWidget);
+    expect(find.text('Extraevent 3'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.tap(find.text('Dag'));
     await tester.pumpAndSettle();
