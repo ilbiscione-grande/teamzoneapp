@@ -39,6 +39,7 @@ class _CalendarWorkspace extends StatelessWidget {
     required this.onShowWeekNumbersChanged,
     required this.showQuarterHourMarks,
     required this.onShowQuarterHourMarksChanged,
+    required this.onDismissStale,
     this.teamFilter,
     this.eventTypeFilter,
     this.lastUpdated,
@@ -55,6 +56,7 @@ class _CalendarWorkspace extends StatelessWidget {
   final ValueChanged<CalendarEventSummary> onEvent;
   final ValueChanged<bool> onShowWeekNumbersChanged,
       onShowQuarterHourMarksChanged;
+  final VoidCallback onDismissStale;
 
   @override
   Widget build(BuildContext context) {
@@ -90,6 +92,11 @@ class _CalendarWorkspace extends StatelessWidget {
                   subtitle: lastUpdated == null
                       ? null
                       : Text(strings.lastUpdated(lastUpdated!)),
+                  trailing: IconButton(
+                    tooltip: strings.feature('Stäng'),
+                    onPressed: onDismissStale,
+                    icon: const Icon(Icons.close),
+                  ),
                 ),
               Wrap(
                 spacing: 8,
@@ -2024,6 +2031,11 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
   static const _showQuarterHourMarksKey = 'calendar.showQuarterHourMarks';
   bool _showWeekNumbers = true;
   bool _showQuarterHourMarks = false;
+  // The stale banner can be dismissed manually; it reappears on the next
+  // genuinely new staleness episode (tracked via _wasStale) rather than
+  // staying hidden forever once dismissed.
+  bool _staleBannerDismissed = false;
+  bool _wasStale = false;
 
   @override
   void initState() {
@@ -2034,11 +2046,20 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
       loader: _reload,
       isEmpty: (events) => events.isEmpty,
     );
+    _data.addListener(_trackStaleness);
     unawaited(_data.load());
     _listenForInvalidations();
     _openInitialEvent();
     unawaited(_loadShowWeekNumbers());
     unawaited(_loadShowQuarterHourMarks());
+  }
+
+  void _trackStaleness() {
+    final isStale = _data.state.isStale;
+    if (isStale && !_wasStale) {
+      _staleBannerDismissed = false;
+    }
+    _wasStale = isStale;
   }
 
   Future<void> _loadShowWeekNumbers() async {
@@ -3789,10 +3810,12 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
               selectedDate: _selectedDate,
               teamFilter: _teamFilter,
               eventTypeFilter: _eventTypeFilter,
-              stale: state.isStale,
+              stale: state.isStale && !_staleBannerDismissed,
               reconnecting:
                   state.connection == AppConnectionStatus.reconnecting,
               lastUpdated: state.lastUpdated,
+              onDismissStale: () =>
+                  setState(() => _staleBannerDismissed = true),
               onModeChanged: (value) => setState(() => _viewMode = value),
               onDateChanged: (value) => setState(() => _selectedDate = value),
               onTeamChanged: (value) => setState(() => _teamFilter = value),

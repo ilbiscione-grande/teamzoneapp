@@ -960,9 +960,15 @@ class AppStrings {
   String get offlineData => isSwedish
       ? 'Visar senast verifierade data'
       : 'Showing last verified data';
-  String lastUpdated(DateTime value) => isSwedish
-      ? 'Uppdaterad ${value.toLocal()}'
-      : 'Updated ${value.toLocal()}';
+  String lastUpdated(DateTime value) {
+    final local = value.toLocal();
+    String two(int n) => n.toString().padLeft(2, '0');
+    final formatted =
+        '${local.year}-${two(local.month)}-${two(local.day)} '
+        '${two(local.hour)}:${two(local.minute)}';
+    return isSwedish ? 'Uppdaterad $formatted' : 'Updated $formatted';
+  }
+
   String get upcomingEvents =>
       isSwedish ? 'Kommande aktiviteter' : 'Upcoming events';
   String get pendingCallups =>
