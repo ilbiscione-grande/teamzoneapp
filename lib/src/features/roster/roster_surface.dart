@@ -375,7 +375,13 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                       ),
                       action: TextButton(
                         onPressed: _list.clearQueryAndFilter,
-                        child: Text(strings.feature('Rensa sökning')),
+                        child: Text(
+                          strings.feature(
+                            _list.query.isNotEmpty
+                                ? 'Rensa sökning'
+                                : 'Rensa filter',
+                          ),
+                        ),
                       ),
                     )
                   : RefreshIndicator(

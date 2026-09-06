@@ -783,6 +783,7 @@ class AppStrings {
     'Ändra sökningen eller rensa filtret.':
         'Change the search or clear the filter.',
     'Rensa sökning': 'Clear search',
+    'Rensa filter': 'Clear filter',
     'Olästa': 'Unread',
     'Tystade': 'Muted',
     'Visa fler': 'Show more',

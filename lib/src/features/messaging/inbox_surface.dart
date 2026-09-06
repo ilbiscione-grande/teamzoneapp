@@ -390,7 +390,11 @@ class _InboxSurfaceState extends State<_InboxSurface> {
                         action: TextButton(
                           onPressed: _list.clearQueryAndFilter,
                           child: Text(
-                            AppStrings.of(context).feature('Rensa sökning'),
+                            AppStrings.of(context).feature(
+                              _list.query.isNotEmpty
+                                  ? 'Rensa sökning'
+                                  : 'Rensa filter',
+                            ),
                           ),
                         ),
                       )
