@@ -38,15 +38,20 @@ void main() {
   test('calendar event route preserves opaque event identity', () {
     final location = ProductRouteContract.calendarEvent('event/with spaces');
     final uri = Uri.parse(location);
-    expect(uri.path, ProductRouteContract.calendar);
-    expect(uri.queryParameters['event'], 'event/with spaces');
+    // The id is percent-encoded going in and decoded back out through
+    // Uri.pathSegments — the same decoding GoRouter's state.pathParameters
+    // applies — so it round-trips even though it isn't a plain UUID here.
+    expect(uri.pathSegments, ['calendar', 'event', 'event/with spaces']);
     expect(ProductRouteContract.canonicalInitialLocation(location), location);
   });
 
   test('core calendar surface has no deferred planning affordances', () {
-    final source = File(
-      'lib/src/features/calendar/calendar_surface.dart',
-    ).readAsStringSync();
+    // EventDetails (including preparationActions) lives in its own page
+    // file since the CAL-11 rebuild — checked alongside calendar_surface.dart,
+    // not instead of it, since both are still part of the calendar feature.
+    final source =
+        File('lib/src/features/calendar/calendar_surface.dart').readAsStringSync() +
+        File('lib/src/features/calendar/event_details_page.dart').readAsStringSync();
     for (final deferredLabel in [
       'Importera event',
       'Lägg till anteckning',

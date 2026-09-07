@@ -193,13 +193,22 @@ void main() {
     final calendar = File(
       'lib/src/features/calendar/calendar_surface.dart',
     ).readAsStringSync();
+    // EventDetails is its own page since CAL-11 — navigating to an event's
+    // identity happens in calendar_surface.dart, but returning to the
+    // calendar list is the page's own back button, in event_details_page.dart.
+    final eventDetailsPage = File(
+      'lib/src/features/calendar/event_details_page.dart',
+    ).readAsStringSync();
     final inbox = File(
       'lib/src/features/messaging/inbox_surface.dart',
     ).readAsStringSync();
 
-    expect(calendar, contains("queryParameters: {'event': summary.id}"));
     expect(
       calendar,
+      contains('ProductRouteContract.calendarEvent(summary.id)'),
+    );
+    expect(
+      eventDetailsPage,
       contains('widget.onNavigate(ProductRouteContract.calendar)'),
     );
     expect(inbox, contains("queryParameters: {'thread': thread.id}"));

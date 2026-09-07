@@ -124,6 +124,17 @@ class _ProductShellState extends State<_ProductShell> {
           contextValue: widget.contextValue,
         ),
       ),
+      GoRoute(
+        path: '${ProductRouteContract.calendar}/event/:eventId',
+        builder: (_, state) => _EventDetailsPage(
+          eventId: state.pathParameters['eventId']!,
+          contextValue: widget.contextValue,
+          calendar: widget.calendar,
+          match: widget.match,
+          matchSpaceV2: widget.matchSpaceV2,
+          onNavigate: _router.go,
+        ),
+      ),
       for (final destination in _destinations)
         GoRoute(
           path: destination.path,
@@ -144,7 +155,6 @@ class _ProductShellState extends State<_ProductShell> {
                   match: widget.match,
                   onNavigate: _router.go,
                   matchSpaceV2: widget.matchSpaceV2,
-                  initialEventId: state.uri.queryParameters['event'],
                   initialAction: state.uri.queryParameters['action'],
                 )
               : destination.path == '/inbox'

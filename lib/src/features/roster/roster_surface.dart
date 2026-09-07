@@ -3039,7 +3039,9 @@ class _TeamEventSection extends StatelessWidget {
               '${event.startsAt.toLocal()}${event.locationName == null ? '' : ' · ${event.locationName}'}',
             ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => GoRouter.of(context).go('/calendar?event=${event.id}'),
+            onTap: () => GoRouter.of(
+              context,
+            ).go(ProductRouteContract.calendarEvent(event.id)),
           ),
     ],
   );

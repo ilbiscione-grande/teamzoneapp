@@ -60,9 +60,8 @@ void main() {
       'lib/src/features/calendar/calendar_surface.dart',
     ).readAsStringSync();
     expect(shell, contains("queryParameters['tab']"));
-    expect(roster, contains("'/calendar?event="));
-    expect(shell, contains("queryParameters['event']"));
-    expect(calendar, contains('_showDetailsById(eventId)'));
+    expect(roster, contains('ProductRouteContract.calendarEvent(event.id)'));
+    expect(calendar, contains("void _showDetails(CalendarEventSummary summary)"));
   });
 
   testWidgets('club-only context gets a useful no-team state', (tester) async {

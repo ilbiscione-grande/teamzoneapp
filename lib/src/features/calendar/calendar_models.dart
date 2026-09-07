@@ -347,6 +347,46 @@ class AttendancePermissions {
       );
 }
 
+/// One row of the event's full team roster (every active player/leader
+/// assignment on the event's team(s), from `get_event_squad`'s `roster`
+/// field) — distinct from [SquadMemberView]/[CallupView]/[AttendanceView],
+/// which only list people who are already in the draft, already called,
+/// or already have an attendance record. This is the merged view the
+/// Deltagare tab's roster list renders: everyone, with whichever of
+/// those three states currently applies (if any).
+class EventRosterPerson {
+  const EventRosterPerson({
+    required this.personId,
+    required this.name,
+    required this.teamId,
+    required this.teamName,
+    required this.rolePackage,
+    required this.inDraft,
+    this.callupId,
+    this.callupState,
+    this.attendanceStatus,
+    this.attendanceRevision = 0,
+  });
+  final String personId, name, teamId, teamName, rolePackage;
+  final bool inDraft;
+  final String? callupId, callupState, attendanceStatus;
+  final int attendanceRevision;
+  bool get isCalled => callupId != null;
+  factory EventRosterPerson.fromJson(Map<String, dynamic> json) =>
+      EventRosterPerson(
+        personId: json['person_id'] as String,
+        name: json['name'] as String,
+        teamId: json['team_id'] as String,
+        teamName: json['team_name'] as String,
+        rolePackage: json['role_package'] as String,
+        inDraft: json['in_draft'] as bool? ?? false,
+        callupId: json['callup_id'] as String?,
+        callupState: json['callup_state'] as String?,
+        attendanceStatus: json['attendance_status'] as String?,
+        attendanceRevision: (json['attendance_revision'] as num?)?.toInt() ?? 0,
+      );
+}
+
 class SquadDetails {
   const SquadDetails({
     required this.eventId,
@@ -354,6 +394,7 @@ class SquadDetails {
     required this.members,
     required this.callups,
     required this.attendance,
+    required this.roster,
     required this.callerActions,
     required this.selectionSource,
     required this.selectionContext,
@@ -369,6 +410,7 @@ class SquadDetails {
   final List<SquadMemberView> members;
   final List<CallupView> callups;
   final List<AttendanceView> attendance;
+  final List<EventRosterPerson> roster;
   final Set<String> callerActions;
   final String selectionSource, dispatchKind;
   final Map<String, dynamic> selectionContext;
@@ -392,6 +434,10 @@ class SquadDetails {
         .whereType<Map<String, dynamic>>()
         .map(AttendanceView.fromJson)
         .toList(growable: false),
+    roster: (json['roster'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(EventRosterPerson.fromJson)
+        .toList(growable: false),
     callerActions: (json['caller_actions'] as List? ?? const [])
         .whereType<String>()
         .toSet(),
@@ -410,11 +456,18 @@ class SquadCandidate {
     required this.personId,
     required this.name,
     required this.eligibilityKind,
+    this.teamId,
+    this.teamName,
+    this.rolePackage,
   });
   final String personId, name, eligibilityKind;
+  final String? teamId, teamName, rolePackage;
   factory SquadCandidate.fromJson(Map<String, dynamic> json) => SquadCandidate(
     personId: json['person_id'] as String,
     name: json['name'] as String,
     eligibilityKind: json['eligibility_kind'] as String? ?? 'team_assignment',
+    teamId: json['team_id'] as String?,
+    teamName: json['team_name'] as String?,
+    rolePackage: json['role_package'] as String?,
   );
 }

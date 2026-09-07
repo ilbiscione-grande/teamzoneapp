@@ -33,10 +33,15 @@ class ProductRouteContract {
   };
   static const canonicalPaths = {...primaryPaths, ...auxiliaryPaths};
 
-  /// Stable deep link for EventDetails. Planning sub-features can later add
-  /// their own query parameter without changing the event identity contract.
+  /// Stable deep link for EventDetails — its own page (a real path segment,
+  /// not a ?event= query param on /calendar) since EventDetails stopped
+  /// being a dialog/bottom sheet opened from within the calendar page.
+  /// The id is percent-encoded so it round-trips even if it ever contained
+  /// characters a raw path segment can't hold (a literal '/', say) — real
+  /// event ids are server-generated UUIDs, but the identity contract
+  /// shouldn't quietly depend on that.
   static String calendarEvent(String eventId) =>
-      Uri(path: calendar, queryParameters: {'event': eventId}).toString();
+      '$calendar/event/${Uri.encodeComponent(eventId)}';
 
   /// Deep links that land on a destination and immediately trigger one
   /// specific action there (rather than just opening the page), used by the
@@ -53,6 +58,7 @@ class ProductRouteContract {
   static String canonicalInitialLocation(String platformRoute) {
     final uri = Uri.tryParse(platformRoute);
     final path = uri?.path ?? platformRoute;
+    if (path.startsWith('$calendar/event/')) return path;
     if (!canonicalPaths.contains(path)) return home;
     if (path == team || path == calendar || path == inbox) {
       return uri?.toString() ?? path;
@@ -60,5 +66,6 @@ class ProductRouteContract {
     return path;
   }
 
-  static bool isCanonical(String path) => canonicalPaths.contains(path);
+  static bool isCanonical(String path) =>
+      canonicalPaths.contains(path) || path.startsWith('$calendar/event/');
 }

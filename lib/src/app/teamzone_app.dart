@@ -68,6 +68,7 @@ part '../features/legal/legal_acceptance_surface.dart';
 part '../features/billing/billing_surface.dart';
 part '../features/board/board_surface.dart';
 part '../features/calendar/calendar_surface.dart';
+part '../features/calendar/event_details_page.dart';
 part '../features/development/development_surface.dart';
 part '../features/economy/economy_surface.dart';
 part '../features/match/match_space_dialog.dart';
