@@ -45,6 +45,20 @@ enum AppColorTheme {
     (theme) => theme.id == id,
     orElse: () => AppColorTheme.green,
   );
+
+  /// A deep, dark gradient derived from this theme's accent color — lighter
+  /// at the top, fading toward near-black at the bottom — shared by every
+  /// "accent surface" in the app (the navigation panel, the Home page's
+  /// hero event card) so they read as the same visual language across all
+  /// four color themes.
+  LinearGradient get heroGradient => LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color.lerp(seed, Colors.black, 0.3)!,
+      Color.lerp(seed, Colors.black, 0.8)!,
+    ],
+  );
 }
 
 abstract final class AppTheme {

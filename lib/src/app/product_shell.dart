@@ -159,6 +159,7 @@ class _ProductShellState extends State<_ProductShell> {
                 )
               : _OverviewSurface(
                   destination: destination,
+                  profile: widget.profile,
                   contextValue: widget.contextValue,
                   overview: widget.overview,
                   calendar: widget.calendar,
@@ -285,7 +286,12 @@ class _ProductShellState extends State<_ProductShell> {
                   ),
               ],
             ),
-            drawer: usesSidebar ? null : Drawer(child: navigationPanel),
+            drawer: usesSidebar
+                ? null
+                : Drawer(
+                    backgroundColor: Colors.transparent,
+                    child: navigationPanel,
+                  ),
             body: Row(
               children: [
                 if (usesSidebar)
@@ -293,6 +299,7 @@ class _ProductShellState extends State<_ProductShell> {
                     key: const Key('permanent-navigation-sidebar'),
                     width: 280,
                     child: Drawer(
+                      backgroundColor: Colors.transparent,
                       shape: const RoundedRectangleBorder(),
                       child: navigationPanel,
                     ),
@@ -514,6 +521,32 @@ class _AppNavigationPanel extends StatelessWidget {
         _hasEconomyCapability(contextValue) ||
         _hasBoardCapability(contextValue) ||
         contextValue.can('publication.manage');
+    // The panel always renders in the current theme's accent color rather
+    // than following light/dark system mode: it's a deep, dark gradient in
+    // every color theme (lighter accent at the top fading toward near-black
+    // at the bottom), so its own content is themed dark regardless of the
+    // rest of the app's brightness.
+    final colorTheme = AppColorThemeScope.of(context).colorTheme;
+    final navigationTheme = ThemeData(
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: colorTheme.seed,
+        brightness: Brightness.dark,
+      ),
+      fontFamily: AppTheme.fontFamily,
+      useMaterial3: true,
+    );
+    return DecoratedBox(
+      decoration: BoxDecoration(gradient: colorTheme.heroGradient),
+      child: Theme(data: navigationTheme, child: _buildContent(context, strings, hasAdminLinks)),
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    AppStrings strings,
+    bool hasAdminLinks,
+  ) {
     return SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

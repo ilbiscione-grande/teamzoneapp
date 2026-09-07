@@ -3,6 +3,7 @@ part of '../../app/teamzone_app.dart';
 class _OverviewSurface extends StatefulWidget {
   const _OverviewSurface({
     required this.destination,
+    required this.profile,
     required this.contextValue,
     required this.overview,
     required this.calendar,
@@ -10,6 +11,7 @@ class _OverviewSurface extends StatefulWidget {
   });
 
   final _Destination destination;
+  final TeamZoneProfile profile;
   final TeamZoneContext contextValue;
   final OverviewServices overview;
   final CalendarServices calendar;
@@ -151,10 +153,13 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(
-                strings.destination(widget.destination.path),
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
+              if (widget.destination.path == '/home')
+                _HomeGreetingHeader(displayName: widget.profile.displayName)
+              else
+                Text(
+                  strings.destination(widget.destination.path),
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
               if (data.isStale || state.isStale)
                 Card(
                   child: ListTile(
@@ -336,6 +341,48 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
           ),
         );
       },
+    );
+  }
+}
+
+/// The Home page's personal greeting, replacing the generic page title
+/// used by every other destination: "God förmiddag, {förnamn}" plus
+/// today's date, matching the mockup's "Good afternoon, Thomas" header.
+class _HomeGreetingHeader extends StatelessWidget {
+  const _HomeGreetingHeader({required this.displayName});
+  final String displayName;
+
+  // Common Swedish time-of-day convention: morgon before 10, förmiddag
+  // before noon, eftermiddag before 18, kväll after that.
+  static String _greeting(int hour) => switch (hour) {
+    < 10 => 'God morgon',
+    < 12 => 'God förmiddag',
+    < 18 => 'God eftermiddag',
+    _ => 'God kväll',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final firstName = displayName.trim().split(RegExp(r'\s+')).first;
+    final greeting = _greeting(DateTime.now().hour);
+    final material = MaterialLocalizations.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            firstName.isEmpty ? greeting : '$greeting, $firstName',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          Text(
+            material.formatFullDate(DateTime.now()),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -712,7 +759,7 @@ class _LeaderHomeContent extends StatelessWidget {
       emptyText: 'Inga aktiviteter idag',
       children: [
         for (final event in value.todayEvents)
-          _LeaderEventTile(event: event, onNavigate: onNavigate),
+          _HomeDayEventRow(event: event, onNavigate: onNavigate),
       ],
     );
     final tasks = _LeaderHomeSection(
@@ -751,6 +798,9 @@ class _LeaderHomeContent extends StatelessWidget {
         value.todayEvents.any((event) => event.id == value.nextEvent?.id)
         ? null
         : value.nextEvent;
+    final hero = value.nextEvent == null
+        ? null
+        : _HomeHeroEventCard(event: value.nextEvent!, onNavigate: onNavigate);
     final next = uniqueNext == null
         ? const _LeaderHomeSection(
             title: 'Nästa aktivitet',
@@ -767,7 +817,14 @@ class _LeaderHomeContent extends StatelessWidget {
             ],
           );
     final content = !wide
-        ? Column(children: [tasks, today, next, planning])
+        ? Column(
+            children: [
+              ?hero,
+              tasks,
+              today,
+              planning,
+            ],
+          )
         : Column(
             children: [
               Row(
@@ -856,6 +913,131 @@ class _LeaderEventTile extends StatelessWidget {
         '${place.isEmpty ? '' : '\n$place'}',
       ),
       isThreeLine: place.isNotEmpty,
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => onNavigate(ProductRouteContract.calendarEvent(event.id)),
+    );
+  }
+}
+
+/// The Home page's hero card for the single next upcoming event, styled
+/// after the mockup's "NEXT" card: the current color theme's dark accent
+/// gradient (see AppColorTheme.heroGradient — the same one the navigation
+/// panel uses) with light text, regardless of the rest of the app's
+/// light/dark mode.
+class _HomeHeroEventCard extends StatelessWidget {
+  const _HomeHeroEventCard({required this.event, required this.onNavigate});
+  final LeaderHomeEvent event;
+  final ValueChanged<String> onNavigate;
+
+  @override
+  Widget build(BuildContext context) {
+    final local = event.startsAt.toLocal();
+    final material = MaterialLocalizations.of(context);
+    final place = [
+      event.locationName,
+      event.address,
+    ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' · ');
+    final gradient = AppColorThemeScope.of(context).colorTheme.heroGradient;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () =>
+            onNavigate(ProductRouteContract.calendarEvent(event.id)),
+        child: Ink(
+          decoration: BoxDecoration(gradient: gradient),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'NÄSTA',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: Colors.white70,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  event.title,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${material.formatFullDate(local)} · '
+                  '${material.formatTimeOfDay(TimeOfDay.fromDateTime(local))}',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: Colors.white),
+                ),
+                if (place.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      place,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One row in the Home page's "Idag" list: a compact date badge (weekday +
+/// day of month, matching the mockup's day-strip rows) followed by the
+/// event's title and time.
+class _HomeDayEventRow extends StatelessWidget {
+  const _HomeDayEventRow({required this.event, required this.onNavigate});
+  final LeaderHomeEvent event;
+  final ValueChanged<String> onNavigate;
+
+  @override
+  Widget build(BuildContext context) {
+    final local = event.startsAt.toLocal();
+    final material = MaterialLocalizations.of(context);
+    final colors = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: Container(
+        width: 44,
+        height: 44,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: colors.secondaryContainer,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              material.narrowWeekdays[local.weekday % 7].toUpperCase(),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: colors.onSecondaryContainer,
+              ),
+            ),
+            Text(
+              '${local.day}',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: colors.onSecondaryContainer,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+      title: Text(event.title),
+      subtitle: Text(
+        material.formatTimeOfDay(TimeOfDay.fromDateTime(local)),
+      ),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => onNavigate(ProductRouteContract.calendarEvent(event.id)),
     );
