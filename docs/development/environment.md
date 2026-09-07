@@ -17,6 +17,6 @@ No Docker-compatible runtime or local PostgreSQL server is required for S00. Fut
 
 ## Environment contract
 
-`TEAMZONE_ENV` accepts `local`, `audit`, `staging` or `production`. Unknown values parse fail-safe to `local`. S00 does not wire a Supabase project.
+`TEAMZONE_ENV` accepts `local`, `audit`, `staging` or `production`. Unknown values parse fail-safe to `local`. `local` does not wire a Supabase project — a plain `flutter build`/`flutter run` therefore shows "Backend är inte ansluten" by design, not as a bug. See [command_matrix.md](command_matrix.md) for the exact `--dart-define` flags needed for a backend-connected build against a real (e.g. `audit`) project.
 
-Secrets are supplied outside Git. Flutter/web/mobile clients may only receive a Supabase publishable key; secret/service-role keys remain server-side.
+Secrets are supplied outside Git. Flutter/web/mobile clients may only receive a Supabase publishable key; secret/service-role keys remain server-side. There is no committed `.env` file in this repo (only `.env.example` with placeholders) and no `.vscode/launch.json` — get the real `SUPABASE_URL`/`SUPABASE_PUBLISHABLE_KEY` values from the Supabase dashboard or `supabase projects list`/CLI access to the linked project.

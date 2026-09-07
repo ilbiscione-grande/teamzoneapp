@@ -95,8 +95,17 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Kanoniskt deep-linkkontrakt för huvudytor och definierade detaljvyer.
 - [x] Android back, web refresh samt browser back/forward bevarar rätt behörig kontext.
 - [x] Centrala breakpointtokens används utan lokala konkurrerande gränser.
+- [x] Navigationsskalet (appbar, drawer/sidopanel, bottom nav) byggdes om 2026-09-07 efter en referensbild.
 
 **Verifiering:** phone/tablet/desktop widgetmatris samt navigationstest för cold link, refresh och back.
+
+**Aktuellt navigationsskal** (`lib/src/app/product_shell.dart`, `product_routes.dart`, `lib/src/shared/layout/app_breakpoints.dart`):
+
+- **Appbar:** tvåradig lag-/klubbväljare till vänster (`_ContextTwoLineLabel` — lagnamn fetstil överst, klubbnamn mindre därunder; tryck öppnar `_showContextPicker`-bottom sheeten). På telefon visas dessutom en profilavatar längst till höger som öppnar drawern via `_scaffoldKey.currentState?.openDrawer()`.
+- **Meny-innehåll** delas mellan telefonens drawer och tablet/desktops permanenta sidopanel av samma widget, `_AppNavigationPanel`: profilhuvud (avatar, namn, rollpaket), lagväljarraden, huvuddestinationerna i `_drawerMainOrder` (Hem, Kalender, Laget, Inbox, Statistik), `Utveckling`, ett kluster med capabilitystyrda adminlänkar (Abonnemang/Ekonomi/Styrelse/Nyhetsredaktion — visas bara om rollen har respektive capability) samt Inställningar/Logga ut och en "TeamZone"-vinjett längst ner. Listan har nyckeln `Key('app-navigation-panel-list')` så test kan scrolla dit.
+- **Bottom nav (endast telefon):** exakt fem knappar i ordningen Laget, Kalender, Hem, Inbox, Statistik (`_bottomNavOrder` i `product_routes.dart` — notera att ordningen medvetet skiljer sig från drawerns läsordning för att hålla Hem i mitten).
+- **Brytpunkter** (`AppBreakpoints`): `usesNavigationRail`/sidopanelen slår på vid ≥600 px (tablet+desktop, ersätter drawern med en permanent 280 px `SizedBox(key: Key('permanent-navigation-sidebar'))`). `usesAssistantSidePanel` slår först på vid ≥1024 px (desktop) — vid tablet-bredd (600–1023 px) visas i stället samma rörliga Min assistent-FAB som på telefon, eftersom en 280 px sidopanel plus en 288 px assistentpanel annars lämnar orimligt lite bredd åt innehållet vid realistiska tabletbredder (t.ex. 800 px porträtt).
+- **Medvetet uteslutet:** mockupens "Workspaces" (Planering/Träning/Match/Spelarutveckling/Lagsutveckling) och "Web Tools" (Taktiktavla/IDP) — användarens val, eftersom de flesta av dessa poster inte motsvarar riktiga funktioner i appen än. Lägg till dem i `_AppNavigationPanel` när/om respektive funktion finns på riktigt.
 
 ### FND-04 – Roll- och situationsmatris
 
