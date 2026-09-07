@@ -254,7 +254,9 @@ class _ProductShellState extends State<_ProductShell> {
           onNavigate: _router.go,
           onContextChanged: widget.onContextChanged,
           onSignOut: widget.onSignOut,
-          closeOnNavigate: !usesSidebar,
+          closeDrawer: usesSidebar
+              ? null
+              : () => _scaffoldKey.currentState?.closeDrawer(),
         );
         return PopScope<void>(
           canPop: false,
@@ -481,7 +483,7 @@ class _AppNavigationPanel extends StatelessWidget {
     required this.onNavigate,
     required this.onContextChanged,
     required this.onSignOut,
-    required this.closeOnNavigate,
+    required this.closeDrawer,
   });
 
   final TeamZoneProfile profile;
@@ -491,11 +493,17 @@ class _AppNavigationPanel extends StatelessWidget {
   final ValueChanged<String> onNavigate;
   final ValueChanged<TeamZoneContext> onContextChanged;
   final Future<void> Function() onSignOut;
-  final bool closeOnNavigate;
+  // Null on tablet/desktop, where this panel is a permanent sidebar rather
+  // than a dismissible drawer. Closes via the Scaffold's own ScaffoldState
+  // (see the GlobalKey in _ProductShellState), not Navigator.pop: a
+  // Scaffold's Drawer is not a route on the ambient Navigator, so popping it
+  // that way silently did nothing — found via a physical walkthrough
+  // ("draget stängs inte när man trycker på en meny-rad").
+  final VoidCallback? closeDrawer;
 
-  void _go(BuildContext context, String path) {
+  void _go(String path) {
     onNavigate(path);
-    if (closeOnNavigate) Navigator.of(context).maybePop();
+    closeDrawer?.call();
   }
 
   @override
@@ -563,7 +571,7 @@ class _AppNavigationPanel extends StatelessWidget {
                     icon: _destinationFor(path).icon,
                     label: strings.destination(path),
                     selected: currentLocation.startsWith(path),
-                    onTap: () => _go(context, path),
+                    onTap: () => _go(path),
                   ),
                 _NavPanelRow(
                   icon: _destinationFor(ProductRouteContract.development).icon,
@@ -571,7 +579,7 @@ class _AppNavigationPanel extends StatelessWidget {
                   selected: currentLocation.startsWith(
                     ProductRouteContract.development,
                   ),
-                  onTap: () => _go(context, ProductRouteContract.development),
+                  onTap: () => _go(ProductRouteContract.development),
                 ),
                 if (hasAdminLinks) ...[
                   const Divider(height: 1),
@@ -579,25 +587,25 @@ class _AppNavigationPanel extends StatelessWidget {
                     _NavPanelRow(
                       icon: Icons.payments_outlined,
                       label: strings.feature('Abonnemang'),
-                      onTap: () => _go(context, '/billing'),
+                      onTap: () => _go('/billing'),
                     ),
                   if (_hasEconomyCapability(contextValue))
                     _NavPanelRow(
                       icon: Icons.account_balance_wallet_outlined,
                       label: strings.feature('Ekonomi'),
-                      onTap: () => _go(context, '/economy'),
+                      onTap: () => _go('/economy'),
                     ),
                   if (_hasBoardCapability(contextValue))
                     _NavPanelRow(
                       icon: Icons.badge_outlined,
                       label: strings.feature('Styrelse'),
-                      onTap: () => _go(context, '/board'),
+                      onTap: () => _go('/board'),
                     ),
                   if (contextValue.can('publication.manage'))
                     _NavPanelRow(
                       icon: Icons.newspaper_outlined,
                       label: strings.feature('Nyhetsredaktion'),
-                      onTap: () => _go(context, ProductRouteContract.editorial),
+                      onTap: () => _go(ProductRouteContract.editorial),
                     ),
                 ],
               ],
@@ -610,8 +618,7 @@ class _AppNavigationPanel extends StatelessWidget {
               children: [
                 Expanded(
                   child: TextButton.icon(
-                    onPressed: () =>
-                        _go(context, ProductRouteContract.settings),
+                    onPressed: () => _go(ProductRouteContract.settings),
                     icon: const Icon(Icons.settings_outlined),
                     label: Text(strings.feature('Inställningar')),
                   ),

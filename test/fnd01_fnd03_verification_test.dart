@@ -219,6 +219,33 @@ void main() {
         );
       },
     );
+
+    testWidgets('phone drawer closes after tapping a nav item', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(_verifiedApp());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.person));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('app-navigation-panel-list')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Kalender').last);
+      await tester.pumpAndSettle();
+
+      final scaffoldState = tester.state<ScaffoldState>(
+        find.byType(Scaffold).first,
+      );
+      expect(scaffoldState.isDrawerOpen, isFalse);
+    });
   });
 
   testWidgets('system back warns before discarding unsaved changes', (
