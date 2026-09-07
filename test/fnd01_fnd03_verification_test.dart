@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teamzone_app/src/app/teamzone_app.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
@@ -140,6 +141,84 @@ void main() {
       );
       expect(find.text('Hem'), findsWidgets);
     });
+
+    testWidgets('system back steps through visited pages before exiting', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(_verifiedApp());
+      await tester.pumpAndSettle();
+      expect(find.text('Hem'), findsWidgets);
+
+      // .go()-based navigation (bottom nav, drawer) replaces the current
+      // location rather than pushing a history entry, so without the
+      // shell's own history tracking there would be nothing to pop here.
+      await tester.tap(find.text('Kalender').last);
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Filtrera kalendern'), findsOneWidget);
+
+      final popped = await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(popped, isTrue);
+      expect(find.byTooltip('Filtrera kalendern'), findsNothing);
+      expect(find.text('Hem'), findsWidgets);
+    });
+
+    testWidgets(
+      'system back on the first page opened asks before exiting',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final exitCalls = <MethodCall>[];
+        TestDefaultBinaryMessengerBinding
+            .instance
+            .defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+              exitCalls.add(call);
+              return null;
+            });
+        addTearDown(
+          () => TestDefaultBinaryMessengerBinding.instance
+              .defaultBinaryMessenger
+              .setMockMethodCallHandler(SystemChannels.platform, null),
+        );
+
+        await tester.pumpWidget(_verifiedApp());
+        await tester.pumpAndSettle();
+
+        // Startup already sends unrelated SystemChrome.* calls over this
+        // same channel, so check for the specific exit method rather than
+        // asserting the call log stays empty.
+        bool exitRequested() =>
+            exitCalls.any((call) => call.method == 'SystemNavigator.pop');
+
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.text('Stäng TeamZone?'), findsOneWidget);
+        expect(exitRequested(), isFalse);
+
+        await tester.tap(find.text('Avbryt'));
+        await tester.pumpAndSettle();
+        expect(find.text('Hem'), findsWidgets);
+        expect(exitRequested(), isFalse);
+
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Stäng'));
+        await tester.pumpAndSettle();
+        expect(
+          exitCalls.map((call) => call.method),
+          contains('SystemNavigator.pop'),
+        );
+      },
+    );
   });
 
   testWidgets('system back warns before discarding unsaved changes', (

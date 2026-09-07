@@ -57,6 +57,19 @@ class _ProductShellState extends State<_ProductShell> {
       RootBackButtonDispatcher();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  // Every distinct location the user has navigated to, oldest first, so
+  // system back can step back through previously visited pages instead of
+  // exiting the app immediately (GoRouter's `.go()` — used by the bottom
+  // nav and drawer — replaces the current location rather than pushing a
+  // history entry, so without this there is nothing for the platform back
+  // button to pop once a page has been reached that way). Kept in sync by
+  // `_recordLocation`, which also collapses a location change back to the
+  // second-to-last entry into a pop instead of growing the list, so GoRouter's
+  // own push/pop (e.g. the assistant surface) and this shell's own
+  // `_handleSystemBack` don't leave duplicate entries a user would have to
+  // press back through twice.
+  final List<String> _locationHistory = [];
+
   late final GoRouter _router = GoRouter(
     initialLocation: _initialProductLocation(
       WidgetsBinding.instance.platformDispatcher.defaultRouteName,
@@ -164,7 +177,61 @@ class _ProductShellState extends State<_ProductShell> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _locationHistory.add(_router.routeInformationProvider.value.uri.toString());
+    _router.routeInformationProvider.addListener(_recordLocation);
+  }
+
+  void _recordLocation() {
+    final location = _router.routeInformationProvider.value.uri.toString();
+    if (_locationHistory.isNotEmpty && _locationHistory.last == location) {
+      return;
+    }
+    if (_locationHistory.length >= 2 &&
+        _locationHistory[_locationHistory.length - 2] == location) {
+      // Returned to the entry right before the current one — a pop (either
+      // GoRouter's own, e.g. the assistant surface, or our own
+      // _handleSystemBack going back a step) rather than a new page.
+      _locationHistory.removeLast();
+      return;
+    }
+    _locationHistory.add(location);
+  }
+
+  Future<void> _handleSystemBack(bool didPop, Object? result) async {
+    if (didPop) return;
+    if (_locationHistory.length > 1) {
+      _router.go(_locationHistory[_locationHistory.length - 2]);
+      return;
+    }
+    // Back on the very first page opened this session: ask before exiting
+    // instead of closing immediately.
+    final strings = AppStrings.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(strings.feature('Stäng TeamZone?')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(strings.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(strings.close),
+          ),
+        ],
+      ),
+    );
+    if (confirmed ?? false) {
+      await SystemNavigator.pop();
+    }
+  }
+
+  @override
   void dispose() {
+    _router.routeInformationProvider.removeListener(_recordLocation);
     _router.dispose();
     super.dispose();
   }
@@ -178,9 +245,7 @@ class _ProductShellState extends State<_ProductShell> {
         final location = _router.routeInformationProvider.value.uri.path;
         final width = MediaQuery.sizeOf(context).width;
         final usesSidebar = AppBreakpoints.usesNavigationRail(width);
-        final showAssistantPanel = AppBreakpoints.usesAssistantSidePanel(
-          width,
-        );
+        final showAssistantPanel = AppBreakpoints.usesAssistantSidePanel(width);
         final navigationPanel = _AppNavigationPanel(
           profile: widget.profile,
           contextValue: widget.contextValue,
@@ -191,104 +256,109 @@ class _ProductShellState extends State<_ProductShell> {
           onSignOut: widget.onSignOut,
           closeOnNavigate: !usesSidebar,
         );
-        return Scaffold(
-          key: _scaffoldKey,
-          appBar: AppBar(
-            automaticallyImplyLeading: false,
-            title: InkWell(
-              onTap: () => _showContextPicker(
-                context: context,
-                contexts: widget.contexts,
-                onContextChanged: widget.onContextChanged,
+        return PopScope<void>(
+          canPop: false,
+          onPopInvokedWithResult: _handleSystemBack,
+          child: Scaffold(
+            key: _scaffoldKey,
+            appBar: AppBar(
+              automaticallyImplyLeading: false,
+              title: InkWell(
+                onTap: () => _showContextPicker(
+                  context: context,
+                  contexts: widget.contexts,
+                  onContextChanged: widget.onContextChanged,
+                ),
+                child: _ContextTwoLineLabel(contextValue: widget.contextValue),
               ),
-              child: _ContextTwoLineLabel(contextValue: widget.contextValue),
-            ),
-            actions: [
-              if (!usesSidebar)
-                IconButton(
-                  tooltip: strings.feature('Öppna menyn'),
-                  onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                  icon: const CircleAvatar(
-                    radius: 16,
-                    child: Icon(Icons.person, size: 18),
-                  ),
-                ),
-            ],
-          ),
-          drawer: usesSidebar ? null : Drawer(child: navigationPanel),
-          body: Row(
-            children: [
-              if (usesSidebar)
-                SizedBox(
-                  key: const Key('permanent-navigation-sidebar'),
-                  width: 280,
-                  child: Drawer(
-                    shape: const RoundedRectangleBorder(),
-                    child: navigationPanel,
-                  ),
-                ),
-              Expanded(
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: Router(
-                        routerDelegate: _router.routerDelegate,
-                        routeInformationParser: _router.routeInformationParser,
-                        routeInformationProvider:
-                            _router.routeInformationProvider,
-                        backButtonDispatcher: _backButtonDispatcher,
-                      ),
+              actions: [
+                if (!usesSidebar)
+                  IconButton(
+                    tooltip: strings.feature('Öppna menyn'),
+                    onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                    icon: const CircleAvatar(
+                      radius: 16,
+                      child: Icon(Icons.person, size: 18),
                     ),
-                    if (!showAssistantPanel &&
-                        location != ProductRouteContract.assistant)
-                      Positioned(
-                        right: 16,
-                        // Always cleared above the standard bottom-right FAB
-                        // corner, not just above the phone bottom nav bar:
-                        // several pages (roster, calendar, inbox, editorial,
-                        // domain management) show their own FAB there via
-                        // Scaffold's default endFloat position, and at the
-                        // tablet breakpoint (sidebar shown, no bottom nav) a
-                        // `bottom: 16` value put this FAB exactly on top of
-                        // those, making both untappable. Found via the
-                        // roster "Hantera" FAB failing to hit-test at 800×600
-                        // after it was made icon-only (smaller, so its
-                        // center landed inside the assistant FAB's circle).
-                        bottom: 88,
-                        child: _AssistantCoachMobileFab(
-                          onPressed: () =>
-                              _router.push(ProductRouteContract.assistant),
+                  ),
+              ],
+            ),
+            drawer: usesSidebar ? null : Drawer(child: navigationPanel),
+            body: Row(
+              children: [
+                if (usesSidebar)
+                  SizedBox(
+                    key: const Key('permanent-navigation-sidebar'),
+                    width: 280,
+                    child: Drawer(
+                      shape: const RoundedRectangleBorder(),
+                      child: navigationPanel,
+                    ),
+                  ),
+                Expanded(
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: Router(
+                          routerDelegate: _router.routerDelegate,
+                          routeInformationParser:
+                              _router.routeInformationParser,
+                          routeInformationProvider:
+                              _router.routeInformationProvider,
+                          backButtonDispatcher: _backButtonDispatcher,
                         ),
                       ),
-                  ],
+                      if (!showAssistantPanel &&
+                          location != ProductRouteContract.assistant)
+                        Positioned(
+                          right: 16,
+                          // Always cleared above the standard bottom-right FAB
+                          // corner, not just above the phone bottom nav bar:
+                          // several pages (roster, calendar, inbox, editorial,
+                          // domain management) show their own FAB there via
+                          // Scaffold's default endFloat position, and at the
+                          // tablet breakpoint (sidebar shown, no bottom nav) a
+                          // `bottom: 16` value put this FAB exactly on top of
+                          // those, making both untappable. Found via the
+                          // roster "Hantera" FAB failing to hit-test at 800×600
+                          // after it was made icon-only (smaller, so its
+                          // center landed inside the assistant FAB's circle).
+                          bottom: 88,
+                          child: _AssistantCoachMobileFab(
+                            onPressed: () =>
+                                _router.push(ProductRouteContract.assistant),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              if (showAssistantPanel &&
-                  location != ProductRouteContract.assistant)
-                _AssistantCoachSidePanel(
-                  contextValue: widget.contextValue,
-                  onOpen: () => _router.push(ProductRouteContract.assistant),
-                ),
-            ],
+                if (showAssistantPanel &&
+                    location != ProductRouteContract.assistant)
+                  _AssistantCoachSidePanel(
+                    contextValue: widget.contextValue,
+                    onOpen: () => _router.push(ProductRouteContract.assistant),
+                  ),
+              ],
+            ),
+            bottomNavigationBar: usesSidebar
+                ? null
+                : NavigationBar(
+                    selectedIndex: _indexForBottomNav(location),
+                    onDestinationSelected: (index) =>
+                        _router.go(_bottomNavOrder[index]),
+                    labelBehavior:
+                        MediaQuery.textScalerOf(context).scale(1) >= 1.5
+                        ? NavigationDestinationLabelBehavior.onlyShowSelected
+                        : NavigationDestinationLabelBehavior.alwaysShow,
+                    destinations: [
+                      for (final path in _bottomNavOrder)
+                        NavigationDestination(
+                          icon: Icon(_destinationFor(path).icon),
+                          label: strings.destination(path),
+                        ),
+                    ],
+                  ),
           ),
-          bottomNavigationBar: usesSidebar
-              ? null
-              : NavigationBar(
-                  selectedIndex: _indexForBottomNav(location),
-                  onDestinationSelected: (index) =>
-                      _router.go(_bottomNavOrder[index]),
-                  labelBehavior:
-                      MediaQuery.textScalerOf(context).scale(1) >= 1.5
-                      ? NavigationDestinationLabelBehavior.onlyShowSelected
-                      : NavigationDestinationLabelBehavior.alwaysShow,
-                  destinations: [
-                    for (final path in _bottomNavOrder)
-                      NavigationDestination(
-                        icon: Icon(_destinationFor(path).icon),
-                        label: strings.destination(path),
-                      ),
-                  ],
-                ),
         );
       },
     );
@@ -539,7 +609,8 @@ class _AppNavigationPanel extends StatelessWidget {
               children: [
                 Expanded(
                   child: TextButton.icon(
-                    onPressed: () => _go(context, ProductRouteContract.settings),
+                    onPressed: () =>
+                        _go(context, ProductRouteContract.settings),
                     icon: const Icon(Icons.settings_outlined),
                     label: Text(strings.feature('Inställningar')),
                   ),

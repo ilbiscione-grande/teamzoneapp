@@ -537,6 +537,7 @@ class AppStrings {
     'Acceptera som guardian': 'Accept as guardian',
     'Acceptera': 'Accept',
     'Avbryt': 'Cancel',
+    'Stäng TeamZone?': 'Close TeamZone?',
     'Avvisa': 'Reject',
     'Blockera': 'Block',
     'Frys accepterad matchtrupp': 'Freeze accepted match squad',
