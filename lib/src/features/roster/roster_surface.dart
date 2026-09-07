@@ -7,6 +7,7 @@ class _RosterSurface extends StatefulWidget {
     required this.membership,
     required this.calendar,
     this.initialTab,
+    this.initialAction,
   });
 
   final TeamZoneContext contextValue;
@@ -14,6 +15,10 @@ class _RosterSurface extends StatefulWidget {
   final MembershipServices membership;
   final CalendarServices calendar;
   final String? initialTab;
+  // Set by the swipe-up quick actions sheet's "Bjud in spelare" shortcut
+  // (ProductRouteContract.teamInvite) to open the invitations/team-codes
+  // sheet immediately on arrival — see _openInitialAction.
+  final String? initialAction;
 
   @override
   State<_RosterSurface> createState() => _RosterSurfaceState();
@@ -44,6 +49,38 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     )..setSort((a, b) => a.displayName.compareTo(b.displayName));
     _data.addListener(_syncList);
     unawaited(_data.load());
+    _openInitialAction();
+  }
+
+  bool _openedInitialAction = false;
+
+  /// Handles ?action=invite from the swipe-up quick actions sheet
+  /// (ProductRouteContract.teamInvite): opens the invitations/team-codes
+  /// sheet immediately, same sheet reachable from the page's own "Hantera"
+  /// menu. Re-checks the capability itself rather than trusting the
+  /// shortcut having been gated correctly, since this can be reached via a
+  /// direct deep link.
+  void _openInitialAction() {
+    if (widget.initialAction != 'invite' || _openedInitialAction) return;
+    final canManage =
+        widget.contextValue.can('club.memberships.manage') ||
+        widget.contextValue.can('team.roster.manage');
+    if (!canManage) return;
+    _openedInitialAction = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showModalBottomSheet<void>(
+        context: context,
+        useRootNavigator: true,
+        isScrollControlled: true,
+        useSafeArea: true,
+        builder: (_) => _InvitationAdminSheet(
+          contextValue: widget.contextValue,
+          roster: widget.roster,
+          people: _data.state.data ?? const [],
+        ),
+      );
+    });
   }
 
   void _syncList() {
@@ -129,6 +166,10 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     }
     if (oldWidget.initialTab != widget.initialTab) {
       _selectedTab = _teamTabIndex(widget.initialTab);
+    }
+    if (oldWidget.initialAction != widget.initialAction) {
+      _openedInitialAction = false;
+      _openInitialAction();
     }
   }
 

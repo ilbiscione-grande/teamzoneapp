@@ -269,11 +269,14 @@ void main() {
 
       expect(find.text('Genvägar'), findsOneWidget);
       expect(find.text('Öppna inkorgen'), findsOneWidget);
+      // Send-a-message is offered to everyone, regardless of capability.
+      expect(find.text('Skicka meddelande'), findsOneWidget);
       // The verification identity only holds 'team.read', so the
-      // capability-gated shortcuts (event creation, roster management)
+      // capability-gated shortcuts (event creation, roster invite/manage)
       // stay hidden. ('Statistik' isn't checked for absence here — it's
       // always present as the bottom nav's own destination label.)
-      expect(find.text('Planera aktivitet'), findsNothing);
+      expect(find.text('Skapa nytt event'), findsNothing);
+      expect(find.text('Bjud in spelare'), findsNothing);
       expect(find.text('Hantera laget'), findsNothing);
 
       // Tap the base Kalender shortcut — reuses the same reliable
@@ -333,6 +336,49 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Open editor'), findsOneWidget);
   });
+
+  testWidgets(
+    '"Skapa nytt event" opens the create-event dialog immediately, not '
+    'just the calendar page',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      // Exercised via the real in-app flow (swipe, then tap), not a cold
+      // deep link — matches how a person actually reaches this, and a
+      // leader-capable identity is needed for the shortcut to appear.
+      await tester.pumpWidget(_leaderVerifiedApp());
+      await tester.pumpAndSettle();
+
+      await tester.fling(find.text('Hem'), const Offset(0, -300), 1000);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Skapa nytt event'));
+      await tester.pumpAndSettle();
+      expect(find.text('Skapa event'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    '"Bjud in spelare" opens the invitations sheet immediately, not just '
+    'the team page',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(_leaderVerifiedApp());
+      await tester.pumpAndSettle();
+
+      await tester.fling(find.text('Hem'), const Offset(0, -300), 1000);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Bjud in spelare'));
+      await tester.pumpAndSettle();
+      expect(find.text('Inbjudningar och lagkoder'), findsOneWidget);
+    },
+  );
 }
 
 Widget _verifiedApp() => TeamZoneApp(
@@ -358,6 +404,55 @@ class _VerificationIdentity implements IdentityServices {
       teamName: 'Verifieringslaget',
       rolePackage: 'leader',
       capabilities: {'team.read'},
+    ),
+  ];
+
+  @override
+  Future<TeamZoneProfile> getProfile() async => const TeamZoneProfile(
+    id: 'verification-profile',
+    displayName: 'Verifierare',
+    locale: 'sv',
+  );
+
+  @override
+  Future<void> signIn({
+    required String email,
+    required String password,
+  }) async {}
+
+  @override
+  Future<void> signOut() async {}
+}
+
+Widget _leaderVerifiedApp() => TeamZoneApp(
+  environment: const AppEnvironment(name: 'verification'),
+  locale: const Locale('sv'),
+  services: AppServices(
+    identity: _LeaderVerificationIdentity(),
+    isConfigured: true,
+  ),
+);
+
+/// Like _VerificationIdentity but with the capabilities the quick actions
+/// sheet's "Skapa nytt event" and "Bjud in spelare" shortcuts require, so
+/// their ?action= deep links can be exercised directly.
+class _LeaderVerificationIdentity implements IdentityServices {
+  @override
+  SessionStatus get sessionStatus => SessionStatus.authenticated;
+
+  @override
+  Stream<SessionStatus> get sessionChanges => const Stream.empty();
+
+  @override
+  Future<List<TeamZoneContext>> getContexts() async => const [
+    TeamZoneContext(
+      id: 'verification-context',
+      clubId: 'verification-club',
+      clubName: 'Verifieringsklubben',
+      teamId: 'verification-team',
+      teamName: 'Verifieringslaget',
+      rolePackage: 'leader',
+      capabilities: {'team.read', 'event.manage', 'club.memberships.manage'},
     ),
   ];
 

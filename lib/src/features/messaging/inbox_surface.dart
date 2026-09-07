@@ -5,11 +5,16 @@ class _InboxSurface extends StatefulWidget {
     required this.contextValue,
     required this.messaging,
     this.initialThreadId,
+    this.initialAction,
     required this.onNavigate,
   });
   final TeamZoneContext contextValue;
   final MessagingServices messaging;
   final String? initialThreadId;
+  // Set by the swipe-up quick actions sheet's "Skicka meddelande" shortcut
+  // (ProductRouteContract.inboxCompose) to open the compose dialog
+  // immediately on arrival — see _openInitialAction.
+  final String? initialAction;
   final ValueChanged<String> onNavigate;
   @override
   State<_InboxSurface> createState() => _InboxSurfaceState();
@@ -57,6 +62,20 @@ class _InboxSurfaceState extends State<_InboxSurface> {
     _subscribeToNotifications();
     unawaited(_data.load());
     unawaited(_refreshNotificationBadge());
+    _openInitialAction();
+  }
+
+  bool _openedInitialAction = false;
+
+  /// Handles ?action=compose from the swipe-up quick actions sheet
+  /// (ProductRouteContract.inboxCompose): opens the compose dialog
+  /// immediately, same dialog as the page's own FAB.
+  void _openInitialAction() {
+    if (widget.initialAction != 'compose' || _openedInitialAction) return;
+    _openedInitialAction = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_compose());
+    });
   }
 
   void _subscribeToInbox() {
@@ -229,6 +248,10 @@ class _InboxSurfaceState extends State<_InboxSurface> {
     if (oldWidget.initialThreadId != widget.initialThreadId) {
       _initialThreadOpened = false;
       _tryOpenInitialThread();
+    }
+    if (oldWidget.initialAction != widget.initialAction) {
+      _openedInitialAction = false;
+      _openInitialAction();
     }
   }
 

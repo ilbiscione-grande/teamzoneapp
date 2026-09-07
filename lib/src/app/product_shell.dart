@@ -134,6 +134,7 @@ class _ProductShellState extends State<_ProductShell> {
                   membership: widget.membership,
                   calendar: widget.calendar,
                   initialTab: state.uri.queryParameters['tab'],
+                  initialAction: state.uri.queryParameters['action'],
                 )
               : destination.path == '/calendar'
               ? _CalendarSurface(
@@ -144,12 +145,14 @@ class _ProductShellState extends State<_ProductShell> {
                   onNavigate: _router.go,
                   matchSpaceV2: widget.matchSpaceV2,
                   initialEventId: state.uri.queryParameters['event'],
+                  initialAction: state.uri.queryParameters['action'],
                 )
               : destination.path == '/inbox'
               ? _InboxSurface(
                   contextValue: widget.contextValue,
                   messaging: widget.messaging,
                   initialThreadId: state.uri.queryParameters['thread'],
+                  initialAction: state.uri.queryParameters['action'],
                   onNavigate: _router.go,
                 )
               : destination.path == '/development'
@@ -478,26 +481,44 @@ List<_QuickAction> _quickActionsFor(
   TeamZoneContext contextValue,
 ) {
   final strings = AppStrings.of(context);
-  final actions = <_QuickAction>[
-    (
-      icon: _destinationFor(ProductRouteContract.calendar).icon,
-      label: strings.destination(ProductRouteContract.calendar),
-      route: ProductRouteContract.calendar,
-    ),
-  ];
+  final canManageRoster =
+      contextValue.can('club.memberships.manage') ||
+      contextValue.can('team.roster.manage');
+  final actions = <_QuickAction>[];
+  // Specific actions first — the whole point of this sheet is to skip the
+  // page and land directly in the thing you actually want to do, not just
+  // navigate faster (per feedback: "lite mer specifika genvägar, t ex
+  // skapa nytt event, bjud in spelare, skicka meddelande").
   if (contextValue.can('event.manage')) {
     actions.add((
       icon: Icons.add_circle_outline,
-      label: strings.feature('Planera aktivitet'),
-      route: ProductRouteContract.calendar,
+      label: strings.feature('Skapa nytt event'),
+      route: ProductRouteContract.calendarCreateEvent(),
+    ));
+  }
+  actions.add((
+    icon: _destinationFor(ProductRouteContract.calendar).icon,
+    label: strings.destination(ProductRouteContract.calendar),
+    route: ProductRouteContract.calendar,
+  ));
+  if (canManageRoster) {
+    actions.add((
+      icon: Icons.person_add_alt_1,
+      label: strings.feature('Bjud in spelare'),
+      route: ProductRouteContract.teamInvite(),
     ));
   }
   actions.add((
     icon: _destinationFor(ProductRouteContract.team).icon,
-    label: contextValue.can('club.memberships.manage')
+    label: canManageRoster
         ? strings.feature('Hantera laget')
         : strings.destination(ProductRouteContract.team),
     route: ProductRouteContract.team,
+  ));
+  actions.add((
+    icon: Icons.edit_outlined,
+    label: strings.feature('Skicka meddelande'),
+    route: ProductRouteContract.inboxCompose(),
   ));
   actions.add((
     icon: _destinationFor(ProductRouteContract.inbox).icon,

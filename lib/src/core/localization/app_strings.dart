@@ -216,6 +216,9 @@ class AppStrings {
     'Planera aktivitet': 'Plan an activity',
     'Hantera laget': 'Manage the team',
     'Öppna inkorgen': 'Open the inbox',
+    'Skapa nytt event': 'Create a new event',
+    'Bjud in spelare': 'Invite a player',
+    'Skicka meddelande': 'Send a message',
     'Inställningen kunde inte sparas. Försök igen.':
         'The setting could not be saved. Please try again.',
     'Inställningen kunde inte laddas': 'The setting could not be loaded',

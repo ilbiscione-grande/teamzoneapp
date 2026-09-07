@@ -9,6 +9,7 @@ class _CalendarSurface extends StatefulWidget {
     required this.onNavigate,
     required this.matchSpaceV2,
     this.initialEventId,
+    this.initialAction,
   });
 
   final TeamZoneContext contextValue;
@@ -18,6 +19,10 @@ class _CalendarSurface extends StatefulWidget {
   final ValueChanged<String> onNavigate;
   final bool matchSpaceV2;
   final String? initialEventId;
+  // Set by the swipe-up quick actions sheet's "Skapa nytt event" shortcut
+  // (ProductRouteContract.calendarCreateEvent) to open the create-event
+  // dialog immediately on arrival — see _openInitialAction.
+  final String? initialAction;
 
   @override
   State<_CalendarSurface> createState() => _CalendarSurfaceState();
@@ -1361,6 +1366,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         initialValue: _type,
+                        isExpanded: true,
                         decoration: InputDecoration(
                           labelText: strings.feature('Typ'),
                         ),
@@ -1386,6 +1392,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         initialValue: _state,
+                        isExpanded: true,
                         decoration: InputDecoration(
                           labelText: strings.statusLabel,
                         ),
@@ -1543,6 +1550,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             initialValue: _frequency,
+                            isExpanded: true,
                             decoration: InputDecoration(
                               labelText: strings.feature('Intervalltyp'),
                             ),
@@ -2050,6 +2058,7 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
     unawaited(_data.load());
     _listenForInvalidations();
     _openInitialEvent();
+    _openInitialAction();
     unawaited(_loadShowWeekNumbers());
     unawaited(_loadShowQuarterHourMarks());
   }
@@ -2094,6 +2103,26 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
     _openedInitialEventId = eventId;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(_showDetailsById(eventId));
+    });
+  }
+
+  bool _openedInitialAction = false;
+
+  /// Handles ?action=create from the swipe-up quick actions sheet
+  /// (ProductRouteContract.calendarCreateEvent): opens the create-event
+  /// dialog immediately, same dialog as the page's own FAB. Re-checks the
+  /// same condition that gates that FAB rather than trusting the shortcut
+  /// having been gated correctly, since this can be reached via a direct
+  /// deep link.
+  void _openInitialAction() {
+    if (widget.initialAction != 'create' || _openedInitialAction) return;
+    final canCreate =
+        widget.contextValue.teamId != null &&
+        widget.contextValue.can('event.manage');
+    if (!canCreate) return;
+    _openedInitialAction = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_createEvent());
     });
   }
 
@@ -2156,6 +2185,10 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
       _listenForInvalidations();
     }
     if (oldWidget.initialEventId != widget.initialEventId) _openInitialEvent();
+    if (oldWidget.initialAction != widget.initialAction) {
+      _openedInitialAction = false;
+      _openInitialAction();
+    }
   }
 
   @override
