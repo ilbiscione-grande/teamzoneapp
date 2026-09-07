@@ -6,7 +6,6 @@ class _RosterSurface extends StatefulWidget {
     required this.roster,
     required this.membership,
     required this.calendar,
-    this.onContextsChanged,
     this.initialTab,
   });
 
@@ -14,7 +13,6 @@ class _RosterSurface extends StatefulWidget {
   final RosterServices roster;
   final MembershipServices membership;
   final CalendarServices calendar;
-  final Future<void> Function()? onContextsChanged;
   final String? initialTab;
 
   @override
@@ -61,85 +59,6 @@ class _RosterSurfaceState extends State<_RosterSurface> {
       clubId: widget.contextValue.clubId,
       teamId: widget.contextValue.teamId,
     );
-  }
-
-  Future<void> _acceptGuardianInvite() async {
-    final controller = TextEditingController();
-    final token = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(
-          AppStrings.of(context).feature('Använd inbjudan eller lagkod'),
-        ),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            labelText: AppStrings.of(context).feature('Säker inbjudningskod'),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(AppStrings.of(context).feature('Avbryt')),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext, controller.text.trim()),
-            child: Text(AppStrings.of(context).feature('Acceptera')),
-          ),
-        ],
-      ),
-    );
-    if (token == null || token.isEmpty || !mounted) return;
-    // Team codes, targeted invites and guardian invites are all issued as
-    // the same opaque two-UUID token shape; nothing about the pasted string
-    // itself says which kind it is. Rather than make the user pick a type
-    // up front (an easy way to trigger the same generic "invalid" error a
-    // valid code would give if claimed as the wrong kind), try both server
-    // commands in turn and only show the neutral failure if neither claims
-    // the token.
-    var claimedAsTeamCode = false;
-    try {
-      try {
-        await widget.roster.claimTeamCode(
-          token: token,
-          idempotencyKey: _newUuid(),
-        );
-        claimedAsTeamCode = true;
-      } catch (_) {
-        await widget.roster.acceptGuardianInvite(
-          token: token,
-          idempotencyKey: _newUuid(),
-        );
-      }
-      if (mounted) {
-        await widget.onContextsChanged?.call();
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppStrings.of(context).feature(
-                claimedAsTeamCode
-                    ? 'Medlemsansökan har skapats.'
-                    : 'Guardianrelationen är aktiverad.',
-              ),
-            ),
-          ),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppStrings.of(context).feature(
-                'Inbjudan eller lagkoden är ogiltig eller har gått ut.',
-              ),
-            ),
-          ),
-        );
-      }
-    }
   }
 
   Future<void> _createTeam() async {
@@ -225,7 +144,10 @@ class _RosterSurfaceState extends State<_RosterSurface> {
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     if (widget.contextValue.teamId == null) {
-      return _NoTeamMembershipSurface(onUseCode: _acceptGuardianInvite);
+      return _NoTeamMembershipSurface(
+        onManageConnections: () =>
+            GoRouter.of(context).go(ProductRouteContract.settings),
+      );
     }
     return DefaultTabController(
       key: ValueKey(_selectedTab),
@@ -292,9 +214,10 @@ class _RosterSurfaceState extends State<_RosterSurface> {
           context,
         ).feature('Din roll saknar behörighet att visa den här truppen.'),
         action: OutlinedButton.icon(
-          onPressed: _acceptGuardianInvite,
-          icon: const Icon(Icons.vpn_key_outlined),
-          label: Text(AppStrings.of(context).feature('Använd kod')),
+          onPressed: () =>
+              GoRouter.of(context).go(ProductRouteContract.settings),
+          icon: const Icon(Icons.settings_outlined),
+          label: Text(AppStrings.of(context).feature('Inställningar')),
         ),
       );
     }
@@ -324,22 +247,10 @@ class _RosterSurfaceState extends State<_RosterSurface> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: SearchBar(
-                      leading: const Icon(Icons.search),
-                      hintText: strings.feature('Sök i truppen'),
-                      onChanged: _list.setQuery,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    onPressed: _acceptGuardianInvite,
-                    icon: const Icon(Icons.vpn_key_outlined),
-                    label: Text(strings.feature('Använd kod')),
-                  ),
-                ],
+              child: SearchBar(
+                leading: const Icon(Icons.search),
+                hintText: strings.feature('Sök i truppen'),
+                onChanged: _list.setQuery,
               ),
             ),
             Padding(
@@ -456,13 +367,18 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                   ).feature('Rosterposter visas här när de har skapats.'),
                   // A brand-new team's empty roster used to have no action
                   // here at all, unlike every other empty/blocked state on
-                  // this screen: the search bar's "Använd kod" button only
-                  // renders once the roster has at least one member. Found
-                  // via a physical walkthrough of a freshly created team.
+                  // this screen. Found via a physical walkthrough of a
+                  // freshly created team. Points at Inställningar, not
+                  // straight at the code dialog: "Använd kod" was removed
+                  // from the Trupp tab entirely and consolidated into the
+                  // profile settings page (see profile_settings_surface.dart).
                   action: OutlinedButton.icon(
-                    onPressed: _acceptGuardianInvite,
-                    icon: const Icon(Icons.vpn_key_outlined),
-                    label: Text(AppStrings.of(context).feature('Använd kod')),
+                    onPressed: () =>
+                        GoRouter.of(context).go(ProductRouteContract.settings),
+                    icon: const Icon(Icons.settings_outlined),
+                    label: Text(
+                      AppStrings.of(context).feature('Inställningar'),
+                    ),
                   ),
                 )
               : LayoutBuilder(
@@ -491,7 +407,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                   },
                 ),
           floatingActionButton: canManage
-              ? FloatingActionButton.extended(
+              ? FloatingActionButton(
                   // A single FAB here, not a stack: this screen used to show
                   // "Medlemsansökningar" and "Hantera" as two separate
                   // stacked FloatingActionButtons, which overlapped and
@@ -499,10 +415,21 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                   // `bottom: 88` in product_shell.dart) and, on shorter
                   // rosters, the roster list's own row actions underneath.
                   // "Medlemsansökningar" is now a menu entry below instead
-                  // of a second floating button.
+                  // of a second floating button. Icon-only (no label) keeps
+                  // it visually small next to the persistent assistant FAB.
                   heroTag: 'manage-roster',
+                  tooltip: AppStrings.of(context).feature('Hantera'),
                   onPressed: () => showModalBottomSheet<void>(
                     context: context,
+                    // Every sheet in this flow uses the root navigator: the
+                    // persistent Min assistent FAB lives in a Stack sibling
+                    // of the page Router in product_shell.dart, so a sheet
+                    // pushed on the page's own (nested) navigator paints
+                    // *below* that FAB instead of above it. Pushing on the
+                    // root navigator puts the sheet in the same Overlay as
+                    // the FAB, above it, like _openPersonDetails already
+                    // does for the person-details sheet.
+                    useRootNavigator: true,
                     builder: (sheetContext) => SafeArea(
                       child: SingleChildScrollView(
                         child: Column(
@@ -519,6 +446,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                                 Navigator.pop(sheetContext);
                                 showModalBottomSheet<void>(
                                   context: context,
+                                  useRootNavigator: true,
                                   isScrollControlled: true,
                                   useSafeArea: true,
                                   builder: (_) => _MembershipReviewSheet(
@@ -542,6 +470,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                                 Navigator.pop(sheetContext);
                                 showModalBottomSheet<void>(
                                   context: context,
+                                  useRootNavigator: true,
                                   isScrollControlled: true,
                                   useSafeArea: true,
                                   builder: (_) => _InvitationAdminSheet(
@@ -563,6 +492,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                                 Navigator.pop(sheetContext);
                                 showModalBottomSheet<void>(
                                   context: context,
+                                  useRootNavigator: true,
                                   isScrollControlled: true,
                                   useSafeArea: true,
                                   builder: (_) => _PlayEligibilitySheet(
@@ -588,6 +518,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                                 Navigator.pop(sheetContext);
                                 showModalBottomSheet<void>(
                                   context: context,
+                                  useRootNavigator: true,
                                   isScrollControlled: true,
                                   useSafeArea: true,
                                   builder: (_) => _IntraClubMoveSheet(
@@ -613,6 +544,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                                 Navigator.pop(sheetContext);
                                 showModalBottomSheet<void>(
                                   context: context,
+                                  useRootNavigator: true,
                                   isScrollControlled: true,
                                   useSafeArea: true,
                                   builder: (_) => _RosterLifecycleSheet(
@@ -681,6 +613,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                                   Navigator.pop(sheetContext);
                                   showModalBottomSheet<void>(
                                     context: context,
+                                    useRootNavigator: true,
                                     isScrollControlled: true,
                                     useSafeArea: true,
                                     builder: (_) => _ClubVerificationSheet(
@@ -696,8 +629,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                       ),
                     ),
                   ),
-                  icon: const Icon(Icons.person_add_alt_1),
-                  label: Text(AppStrings.of(context).feature('Hantera')),
+                  child: const Icon(Icons.person_add_alt_1),
                 )
               : null,
         );
@@ -782,9 +714,9 @@ class _RosterSurfaceState extends State<_RosterSurface> {
 }
 
 class _NoTeamMembershipSurface extends StatelessWidget {
-  const _NoTeamMembershipSurface({required this.onUseCode});
+  const _NoTeamMembershipSurface({required this.onManageConnections});
 
-  final VoidCallback onUseCode;
+  final VoidCallback onManageConnections;
 
   @override
   Widget build(BuildContext context) => _StateCard(
@@ -794,9 +726,9 @@ class _NoTeamMembershipSurface extends StatelessWidget {
       'När du blir tillagd i ett lag visas lagets översikt, trupp och kalender här.',
     ),
     action: FilledButton.icon(
-      onPressed: onUseCode,
-      icon: const Icon(Icons.vpn_key_outlined),
-      label: Text(AppStrings.of(context).feature('Använd kod')),
+      onPressed: onManageConnections,
+      icon: const Icon(Icons.settings_outlined),
+      label: Text(AppStrings.of(context).feature('Inställningar')),
     ),
   );
 }

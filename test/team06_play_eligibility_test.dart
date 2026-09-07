@@ -20,7 +20,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Trupp'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Hantera'));
+    await tester.tap(find.byTooltip('Hantera'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Representation i andra lag'));
     await tester.pumpAndSettle();

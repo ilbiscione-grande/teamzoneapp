@@ -418,6 +418,11 @@ class AppStrings {
     'Använd inbjudan eller lagkod': 'Use invitation or team code',
     'Lagkod': 'Team code',
     'Använd kod': 'Use code',
+    'Mina lagkopplingar': 'My team connections',
+    'Här ser du vilka lag och roller du är kopplad till, och kan lägga till en ny koppling med en inbjudan eller lagkod.':
+        'Here you can see which teams and roles you are connected to, and add a new connection with an invitation or team code.',
+    'Du har inga lagkopplingar ännu.': 'You have no team connections yet.',
+    'Dina kopplingar': 'Your connections',
     'Medlemsansökan har skapats.':
         'The membership application has been created.',
     'Inbjudan eller lagkoden är ogiltig eller har gått ut.':
@@ -648,6 +653,7 @@ class AppStrings {
     'Deltagare tillagda': 'Participants added',
     'Skicka kallelser': 'Send call-ups',
     'Spara': 'Save',
+    'Sparat.': 'Saved.',
     'Starta match': 'Start match',
     'Ställ in': 'Cancel event',
     'Stäng': 'Close',

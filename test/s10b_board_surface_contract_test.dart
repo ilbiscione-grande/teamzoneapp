@@ -29,9 +29,8 @@ void main() {
       surface,
       allOf(
         contains("static const board = '/board';"),
-        contains(
-          'auxiliaryPaths = {billing, economy, board, assistant, editorial}',
-        ),
+        contains('auxiliaryPaths = {'),
+        contains(RegExp(r'auxiliaryPaths = \{[^}]*\bboard\b[^}]*\}')),
       ),
       reason: 'A cold Board deep link must survive app bootstrap.',
     );

@@ -22,7 +22,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Trupp'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Hantera'));
+    await tester.tap(find.byTooltip('Hantera'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Lägg till person'));
     await tester.tap(find.text('Lägg till person'));
@@ -50,7 +50,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Trupp'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Hantera'));
+    await tester.tap(find.byTooltip('Hantera'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Lägg till person'));
     await tester.tap(find.text('Lägg till person'));

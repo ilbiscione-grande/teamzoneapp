@@ -82,7 +82,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Du är inte kopplad till något lag'), findsOneWidget);
-    expect(find.text('Använd kod'), findsOneWidget);
+    expect(find.text('Inställningar'), findsWidgets);
     expect(find.text('Lagöversikten kunde inte laddas'), findsNothing);
     expect(find.byType(TabBar), findsNothing);
   });

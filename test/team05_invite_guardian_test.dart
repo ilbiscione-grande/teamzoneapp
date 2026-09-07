@@ -24,7 +24,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Trupp'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Hantera'));
+    await tester.tap(find.byTooltip('Hantera'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Inbjudningar och lagkoder'));
     await tester.pumpAndSettle();
@@ -41,9 +41,7 @@ void main() {
     final roster = _Roster();
     await tester.pumpWidget(_app(roster));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Laget'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Trupp'));
+    await tester.tap(find.text('Inställningar'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Använd kod'));
     await tester.pumpAndSettle();
@@ -67,7 +65,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Trupp'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Hantera'));
+    await tester.tap(find.byTooltip('Hantera'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Inbjudningar och lagkoder'));
     await tester.pumpAndSettle();
@@ -88,7 +86,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Trupp'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Hantera'));
+    await tester.tap(find.byTooltip('Hantera'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Inbjudningar och lagkoder'));
     await tester.pumpAndSettle();
@@ -110,7 +108,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Trupp'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Hantera'));
+      await tester.tap(find.byTooltip('Hantera'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Inbjudningar och lagkoder'));
       await tester.pumpAndSettle();

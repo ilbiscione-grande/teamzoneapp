@@ -95,6 +95,15 @@ class _ProductShellState extends State<_ProductShell> {
         ),
       ),
       GoRoute(
+        path: ProductRouteContract.settings,
+        builder: (_, _) => _ProfileSettingsSurface(
+          contexts: widget.contexts,
+          roster: widget.roster,
+          onContextsChanged: widget.onContextsChanged,
+          legal: widget.legal,
+        ),
+      ),
+      GoRoute(
         path: ProductRouteContract.assistant,
         builder: (_, _) => _AssistantCoachHoldingSurface(
           assistantIdentity: widget.assistantIdentity,
@@ -111,7 +120,6 @@ class _ProductShellState extends State<_ProductShell> {
                   roster: widget.roster,
                   membership: widget.membership,
                   calendar: widget.calendar,
-                  onContextsChanged: widget.onContextsChanged,
                   initialTab: state.uri.queryParameters['tab'],
                 )
               : destination.path == '/calendar'
@@ -181,7 +189,6 @@ class _ProductShellState extends State<_ProductShell> {
           onNavigate: _router.go,
           onContextChanged: widget.onContextChanged,
           onSignOut: widget.onSignOut,
-          legal: widget.legal,
           closeOnNavigate: !usesSidebar,
         );
         return Scaffold(
@@ -236,7 +243,18 @@ class _ProductShellState extends State<_ProductShell> {
                         location != ProductRouteContract.assistant)
                       Positioned(
                         right: 16,
-                        bottom: usesSidebar ? 16 : 88,
+                        // Always cleared above the standard bottom-right FAB
+                        // corner, not just above the phone bottom nav bar:
+                        // several pages (roster, calendar, inbox, editorial,
+                        // domain management) show their own FAB there via
+                        // Scaffold's default endFloat position, and at the
+                        // tablet breakpoint (sidebar shown, no bottom nav) a
+                        // `bottom: 16` value put this FAB exactly on top of
+                        // those, making both untappable. Found via the
+                        // roster "Hantera" FAB failing to hit-test at 800×600
+                        // after it was made icon-only (smaller, so its
+                        // center landed inside the assistant FAB's circle).
+                        bottom: 88,
                         child: _AssistantCoachMobileFab(
                           onPressed: () =>
                               _router.push(ProductRouteContract.assistant),
@@ -392,7 +410,6 @@ class _AppNavigationPanel extends StatelessWidget {
     required this.onNavigate,
     required this.onContextChanged,
     required this.onSignOut,
-    required this.legal,
     required this.closeOnNavigate,
   });
 
@@ -403,7 +420,6 @@ class _AppNavigationPanel extends StatelessWidget {
   final ValueChanged<String> onNavigate;
   final ValueChanged<TeamZoneContext> onContextChanged;
   final Future<void> Function() onSignOut;
-  final LegalServices legal;
   final bool closeOnNavigate;
 
   void _go(BuildContext context, String path) {
@@ -523,11 +539,7 @@ class _AppNavigationPanel extends StatelessWidget {
               children: [
                 Expanded(
                   child: TextButton.icon(
-                    onPressed: () => showModalBottomSheet<void>(
-                      context: context,
-                      useSafeArea: true,
-                      builder: (_) => _MarketingPreferenceSheet(legal: legal),
-                    ),
+                    onPressed: () => _go(context, ProductRouteContract.settings),
                     icon: const Icon(Icons.settings_outlined),
                     label: Text(strings.feature('Inställningar')),
                   ),

@@ -12,6 +12,7 @@ class ProductRouteContract {
   static const economy = '/economy';
   static const board = '/board';
   static const editorial = '/editorial';
+  static const settings = '/settings';
 
   static const primaryPaths = {
     home,
@@ -22,7 +23,14 @@ class ProductRouteContract {
     development,
   };
 
-  static const auxiliaryPaths = {billing, economy, board, assistant, editorial};
+  static const auxiliaryPaths = {
+    billing,
+    economy,
+    board,
+    assistant,
+    editorial,
+    settings,
+  };
   static const canonicalPaths = {...primaryPaths, ...auxiliaryPaths};
 
   /// Stable deep link for EventDetails. Planning sub-features can later add
