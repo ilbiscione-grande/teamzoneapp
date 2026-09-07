@@ -677,12 +677,6 @@ class _PlayerHomeContentState extends State<_PlayerHomeContent> {
                             AppStrings.of(context).feature('Kan inte'),
                           ),
                         ),
-                        OutlinedButton(
-                          onPressed: _pendingCallupId == null
-                              ? () => _respond(callup, 'tentative')
-                              : null,
-                          child: Text(AppStrings.of(context).feature('Kanske')),
-                        ),
                         FilledButton(
                           onPressed: _pendingCallupId == null
                               ? () => _respond(callup, 'accepted')
@@ -823,11 +817,8 @@ class _LeaderHomeContentState extends State<_LeaderHomeContent> {
     final value = widget.value;
     final onNavigate = widget.onNavigate;
     final wide = MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
-    final attentionTasks = uniqueHomeAttention<LeaderHomeTask>(
-      value.tasks,
-      canonicalKey: (task) => task.route,
-      priority: (task) => homeAttentionPriority(task.kind),
-    );
+    // "Behöver din uppmärksamhet" moved to Min assistent — all of that
+    // kind of information goes through the assistant now, not Home.
     final today = _LeaderHomeSection(
       title: 'Idag',
       icon: Icons.today_outlined,
@@ -835,20 +826,6 @@ class _LeaderHomeContentState extends State<_LeaderHomeContent> {
       children: [
         for (final event in value.todayEvents)
           _HomeDayEventRow(event: event, onNavigate: onNavigate),
-      ],
-    );
-    final tasks = _LeaderHomeSection(
-      title: 'Behöver din uppmärksamhet',
-      icon: Icons.task_alt_outlined,
-      emptyText: 'Inga åtgärder väntar',
-      children: [
-        for (final task in attentionTasks)
-          ListTile(
-            leading: Badge(label: Text('${task.count}')),
-            title: Text(task.title),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => onNavigate(task.route),
-          ),
       ],
     );
     final planning = _LeaderHomeSection(
@@ -902,17 +879,10 @@ class _LeaderHomeContentState extends State<_LeaderHomeContent> {
             ],
           );
     final content = !wide
-        ? Column(children: [?hero, tasks, today, planning])
+        ? Column(children: [?hero, today, planning])
         : Column(
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: tasks),
-                  const SizedBox(width: 12),
-                  Expanded(child: today),
-                ],
-              ),
+              today,
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1001,10 +971,6 @@ class _CallupResponseButtons extends StatelessWidget {
         OutlinedButton(
           onPressed: busy ? null : () => onRespond('declined'),
           child: Text(strings.feature('Kan inte')),
-        ),
-        OutlinedButton(
-          onPressed: busy ? null : () => onRespond('tentative'),
-          child: Text(strings.feature('Kanske')),
         ),
         FilledButton(
           onPressed: busy ? null : () => onRespond('accepted'),
@@ -1167,16 +1133,6 @@ class _HomeHeroEventCard extends StatelessWidget {
                                 ? null
                                 : () => onRespond(callup, 'declined'),
                             child: Text(strings.feature('Kan inte')),
-                          ),
-                          OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.white70),
-                            ),
-                            onPressed: busy
-                                ? null
-                                : () => onRespond(callup, 'tentative'),
-                            child: Text(strings.feature('Kanske')),
                           ),
                           FilledButton(
                             style: FilledButton.styleFrom(

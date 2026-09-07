@@ -121,6 +121,7 @@ class _ProductShellState extends State<_ProductShell> {
         builder: (_, _) => _AssistantCoachHoldingSurface(
           assistantIdentity: widget.assistantIdentity,
           assistantPresentation: widget.assistantPresentation,
+          overview: widget.overview,
           contextValue: widget.contextValue,
         ),
       ),

@@ -42,7 +42,11 @@ void main() {
     expect(surface, contains('expectedRevision: callup.revision'));
     expect(surface, contains('declineReasonCode: reasonCode'));
     expect(surface, contains('declineReasonText: reasonText'));
-    expect(surface, contains("_respond(callup, 'tentative')"));
+    expect(surface, contains("_respond(callup, 'declined')"));
+    expect(surface, contains("_respond(callup, 'accepted')"));
+    // "Maybe" was removed as a quick-response option (2026-09-07):
+    // registering for an event is Accept or Decline, nothing in between.
+    expect(surface, isNot(contains("'tentative'")));
     expect(services, contains("'respond_callup'"));
   });
 

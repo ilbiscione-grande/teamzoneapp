@@ -96,11 +96,13 @@ class _AssistantCoachHoldingSurface extends StatefulWidget {
   const _AssistantCoachHoldingSurface({
     required this.assistantIdentity,
     required this.assistantPresentation,
+    required this.overview,
     required this.contextValue,
   });
 
   final AssistantIdentityServices assistantIdentity;
   final AssistantPresentationServices assistantPresentation;
+  final OverviewServices overview;
   final TeamZoneContext contextValue;
 
   @override
@@ -113,6 +115,12 @@ class _AssistantCoachHoldingSurfaceState
   late Future<AssistantIdentityPreference> _preference;
   late Future<List<AssistantAreaPreference>> _areaPreferences;
   late Set<String> _selectedAreaKeys;
+  // "Behöver din uppmärksamhet" moved here from Home — the leader's own
+  // pending-callups/missing-attendance counts, reusing the same
+  // deterministic get_leader_home_for_actor data Home already fetched;
+  // not routed through the (still-inactive) generative signal queue
+  // below, which is a separate, larger, not-yet-launched subsystem.
+  late Future<LeaderHomeProjection?> _leaderHome;
   bool _showHistory = false;
 
   @override
@@ -123,6 +131,16 @@ class _AssistantCoachHoldingSurfaceState
     _selectedAreaKeys = relevantAssistantAreas(
       widget.contextValue,
     ).map((area) => area.key).toSet();
+    _leaderHome = _loadLeaderHome();
+  }
+
+  Future<LeaderHomeProjection?> _loadLeaderHome() async {
+    if (widget.contextValue.rolePackage != 'leader') return null;
+    try {
+      return await widget.overview.loadLeaderHome(widget.contextValue.id);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _editAreaPreferences(
@@ -254,6 +272,51 @@ class _AssistantCoachHoldingSurfaceState
                             AssistantContextBanner(value: presentationContext),
                             const AssistantDigitalFunctionNotice(),
                             const SizedBox(height: 12),
+                            FutureBuilder<LeaderHomeProjection?>(
+                              future: _leaderHome,
+                              builder: (context, leaderSnapshot) {
+                                final tasks =
+                                    uniqueHomeAttention<LeaderHomeTask>(
+                                      leaderSnapshot.data?.tasks ?? const [],
+                                      canonicalKey: (task) => task.route,
+                                      priority: (task) =>
+                                          homeAttentionPriority(task.kind),
+                                    );
+                                if (tasks.isEmpty) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Card(
+                                    key: const Key('assistant-attention-card'),
+                                    margin: EdgeInsets.zero,
+                                    child: Column(
+                                      children: [
+                                        ListTile(
+                                          leading: const Icon(
+                                            Icons.task_alt_outlined,
+                                          ),
+                                          title: const Text(
+                                            'Behöver din uppmärksamhet',
+                                          ),
+                                        ),
+                                        for (final task in tasks)
+                                          ListTile(
+                                            leading: Badge(
+                                              label: Text('${task.count}'),
+                                            ),
+                                            title: Text(task.title),
+                                            trailing: const Icon(
+                                              Icons.chevron_right,
+                                            ),
+                                            onTap: () => context.go(task.route),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                             const Text(
                               _assistantHoldingMessage,
                               textAlign: TextAlign.center,

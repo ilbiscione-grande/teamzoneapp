@@ -16,6 +16,9 @@ void main() {
   final overview = File(
     'lib/src/features/overview/overview_surface.dart',
   ).readAsStringSync();
+  final assistant = File(
+    'lib/src/features/assistant_coach/assistant_coach_entry.dart',
+  ).readAsStringSync();
 
   test('legacy Watchpoint identity is retired at runtime', () {
     expect(migration, contains("signal_key='workload.future_review'"));
@@ -38,11 +41,21 @@ void main() {
   });
 
   test('deterministic home tasks remain independent of AC', () {
-    expect(overview, contains('uniqueHomeAttention'));
-    expect(overview, contains("title: 'Behöver din uppmärksamhet'"));
+    // "Behöver din uppmärksamhet" moved from Home to the assistant page on
+    // 2026-09-07 (product decision, confirmed explicitly after this test's
+    // original intent was raised) — but it still isn't gated by AC-01 or
+    // any generated signal: same direct overview.loadLeaderHome() query
+    // Home used, no assistant_activation_gate/queue involvement. That
+    // independence, not the literal file it lives in, is what this test
+    // protects.
     expect(overview, contains("'Dina kallelser'"));
     expect(overview.toLowerCase(), isNot(contains('watchpoint')));
-    expect(overview, isNot(contains('AssistantCoach')));
+    expect(assistant, contains('uniqueHomeAttention'));
+    expect(assistant, contains("'Behöver din uppmärksamhet'"));
+    expect(assistant.toLowerCase(), isNot(contains('watchpoint')));
+    expect(assistant, isNot(contains('assistant_activation_gate')));
+    expect(assistant, isNot(contains('AssistantQueuePost')));
+    expect(assistant, isNot(contains('generativeAiEnabled')));
   });
 
   test('client rejects retired and premature notification payloads', () {
