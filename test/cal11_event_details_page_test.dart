@@ -116,6 +116,56 @@ void main() {
       expect(find.text('Kallade spelare'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'a called guest not on the roster still shows up, and "Välj alla '
+    'spelare" drafts every uncalled player in one save',
+    (tester) async {
+      final calendar = _Calendar(withGuestAndExtraPlayer: true);
+      await tester.pumpWidget(_app(calendar));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Kalender'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Träning A'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Deltagare'));
+      await tester.pumpAndSettle();
+
+      // squad.callups has a person the roster RPC can't see (no active
+      // assignment on this event's team) — without the guest-bucket fix
+      // they would be invisible on this tab entirely.
+      final scrollable = find.byType(CustomScrollView);
+      await tester.dragUntilVisible(
+        find.text('Gästspelare'),
+        scrollable,
+        const Offset(0, -200),
+      );
+      expect(find.text('Gästspelare'), findsOneWidget);
+      expect(find.text('Gäst Golding'), findsOneWidget);
+
+      // Scroll back up — the search field/bulk-actions button sits above
+      // the roster sections and just scrolled out of view.
+      await tester.dragUntilVisible(
+        find.byTooltip('Fler åtgärder'),
+        scrollable,
+        const Offset(0, 400),
+      );
+
+      // Bulk action: "Välj alla spelare" drafts every uncalled, undrafted
+      // player in one saveSquadDraft call instead of one tap each. Found
+      // by tooltip, not by icon — PopupMenuButton's own default icon is
+      // also more_vert, so several rows could match that.
+      await tester.tap(find.byTooltip('Fler åtgärder'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('Välj alla spelare'));
+      await tester.pumpAndSettle();
+      expect(calendar.savedMemberIds, isNotNull);
+      expect(calendar.savedMemberIds, containsAll(['player-uncalled-1', 'player-uncalled-2']));
+      // Leaders and already-drafted/called players are left untouched by
+      // "select all players".
+      expect(calendar.savedMemberIds, isNot(contains('leader-uncalled-1')));
+    },
+  );
 }
 
 Widget _app(_Calendar calendar) => TeamZoneApp(
@@ -129,6 +179,13 @@ Widget _app(_Calendar calendar) => TeamZoneApp(
 );
 
 class _Calendar extends UnconfiguredCalendarServices {
+  _Calendar({this.withGuestAndExtraPlayer = false});
+
+  // Off by default so the first test's status-header counts stay exactly
+  // as originally verified; the guest/select-all test opts in separately
+  // rather than the two tests silently sharing (and fighting over) one
+  // mutable fixture.
+  final bool withGuestAndExtraPlayer;
   List<String>? savedMemberIds;
 
   final _event = EventDetails(
@@ -188,10 +245,23 @@ class _Calendar extends UnconfiguredCalendarServices {
         source: 'manual',
       ),
     ],
-    callups: const [],
+    callups: withGuestAndExtraPlayer
+        ? const [
+            CallupView(
+              id: 'callup-guest',
+              personId: 'guest-existing',
+              name: 'Gäst Golding',
+              state: 'pending',
+              deliveryState: 'sent',
+              revision: 1,
+              canRespond: false,
+              reminderCount: 0,
+            ),
+          ]
+        : const [],
     attendance: const [],
-    roster: const [
-      EventRosterPerson(
+    roster: [
+      const EventRosterPerson(
         personId: 'accepted-1',
         name: 'Anna Accepterad',
         teamId: 'team',
@@ -201,7 +271,7 @@ class _Calendar extends UnconfiguredCalendarServices {
         callupId: 'callup-accepted',
         callupState: 'accepted',
       ),
-      EventRosterPerson(
+      const EventRosterPerson(
         personId: 'pending-1',
         name: 'Pelle Pending',
         teamId: 'team',
@@ -211,7 +281,7 @@ class _Calendar extends UnconfiguredCalendarServices {
         callupId: 'callup-pending',
         callupState: 'pending',
       ),
-      EventRosterPerson(
+      const EventRosterPerson(
         personId: 'declined-1',
         name: 'Doris Declined',
         teamId: 'team',
@@ -221,7 +291,7 @@ class _Calendar extends UnconfiguredCalendarServices {
         callupId: 'callup-declined',
         callupState: 'declined',
       ),
-      EventRosterPerson(
+      const EventRosterPerson(
         personId: 'leader-called-1',
         name: 'Lasse Ledare',
         teamId: 'team',
@@ -231,7 +301,7 @@ class _Calendar extends UnconfiguredCalendarServices {
         callupId: 'callup-leader',
         callupState: 'accepted',
       ),
-      EventRosterPerson(
+      const EventRosterPerson(
         personId: 'player-uncalled-1',
         name: 'Ulla Uncalled',
         teamId: 'team',
@@ -239,7 +309,16 @@ class _Calendar extends UnconfiguredCalendarServices {
         rolePackage: 'player',
         inDraft: false,
       ),
-      EventRosterPerson(
+      if (withGuestAndExtraPlayer)
+        const EventRosterPerson(
+          personId: 'player-uncalled-2',
+          name: 'Vera Väntande',
+          teamId: 'team',
+          teamName: 'F2012',
+          rolePackage: 'player',
+          inDraft: false,
+        ),
+      const EventRosterPerson(
         personId: 'leader-uncalled-1',
         name: 'Kalle Kallelselös',
         teamId: 'team',

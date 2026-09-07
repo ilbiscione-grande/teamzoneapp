@@ -669,7 +669,24 @@ class AppStrings {
     'Lägg till deltagare': 'Add participants',
     'Deltagare tillagda': 'Participants added',
     'Skicka kallelser': 'Send call-ups',
+    'Skicka sena kallelser': 'Send late call-ups',
     'Spara': 'Save',
+    'Spara närvaro': 'Save attendance',
+    'Aldrig kallad': 'Never called up',
+    'Eventdetaljer kunde inte laddas': 'Event details could not load',
+    'Fler åtgärder': 'More actions',
+    'Gäst': 'Guest',
+    'Gästspelare': 'Guest players',
+    'Kallade': 'Called up',
+    'Kallade ledare': 'Called-up coaches',
+    'Kallade spelare': 'Called-up players',
+    'Kunde inte uppdatera. Försök igen.': 'Could not update. Try again.',
+    'Obesvarade': 'Unanswered',
+    'Okallade ledare': 'Not called-up coaches',
+    'Okallade spelare': 'Not called-up players',
+    'Registrera eller granska närvaro': 'Record or review attendance',
+    'Utkast': 'Draft',
+    'Deltog': 'Attended',
     'Sparat.': 'Saved.',
     'Starta match': 'Start match',
     'Ställ in': 'Cancel event',
@@ -960,6 +977,17 @@ class AppStrings {
   String attendanceSummary(int recorded, int total) => isSwedish
       ? '$recorded av $total närvarostatusar registrerade.'
       : '$recorded of $total attendance statuses recorded.';
+  String selectAllPlayersLabel(int count) => count == 0
+      ? (isSwedish ? 'Alla spelare valda' : 'All players selected')
+      : (isSwedish ? 'Välj alla spelare ($count)' : 'Select all players ($count)');
+  String remindAllUnansweredLabel(int count) => count == 0
+      ? (isSwedish ? 'Alla har svarat' : 'Everyone has answered')
+      : (isSwedish
+            ? 'Påminn alla obesvarade ($count)'
+            : 'Remind everyone unanswered ($count)');
+  String markAllPresentLabel(int count) => isSwedish
+      ? 'Sätt alla accepterade som deltog ($count)'
+      : 'Mark everyone who accepted as attended ($count)';
   String welcome(String name) => name.isEmpty
       ? (isSwedish ? 'Välkommen' : 'Welcome')
       : (isSwedish ? 'Välkommen, $name' : 'Welcome, $name');

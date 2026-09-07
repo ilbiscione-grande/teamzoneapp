@@ -759,6 +759,61 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
   }
 }
 
+/// squad.roster only covers people with an active assignment on the
+/// event's own team(s) — someone added via the club-wide search who isn't
+/// on that roster (a cross-team/guest pick) has no assignment row to join
+/// against, so the roster RPC can't see them at all. Without this, such a
+/// person vanished from the tab (and the status counts) entirely the
+/// moment they were added — nowhere to see their callup status or
+/// un-select them. Synthesized here from squad.members/callups/attendance
+/// instead, and shown as its own "Gästspelare" section — found while
+/// comparing against the reference implementation's older Teamzone
+/// project. Shared between the status header (all tabs) and the
+/// Deltagare tab's roster list so both count/show the same people.
+List<EventRosterPerson> _guestRosterFor(SquadDetails squad) {
+  final rosterIds = squad.roster.map((p) => p.personId).toSet();
+  final guests = <String, EventRosterPerson>{};
+  for (final member in squad.members) {
+    if (rosterIds.contains(member.personId)) continue;
+    guests[member.personId] = EventRosterPerson(
+      personId: member.personId,
+      name: member.name,
+      teamId: '',
+      teamName: '',
+      rolePackage: 'player',
+      inDraft: true,
+      isGuest: true,
+    );
+  }
+  for (final callup in squad.callups) {
+    if (rosterIds.contains(callup.personId)) continue;
+    final existing = guests[callup.personId];
+    guests[callup.personId] = (existing ?? EventRosterPerson(
+      personId: callup.personId,
+      name: callup.name,
+      teamId: '',
+      teamName: '',
+      rolePackage: 'player',
+      inDraft: false,
+      isGuest: true,
+    )).copyWith(
+      callupId: callup.id,
+      callupState: callup.state,
+      callupExpiresAt: callup.expiresAt,
+      callupLastRemindedAt: callup.lastRemindedAt,
+    );
+  }
+  for (final attendance in squad.attendance) {
+    final existing = guests[attendance.personId];
+    if (existing == null || rosterIds.contains(attendance.personId)) continue;
+    guests[attendance.personId] = existing.copyWith(
+      attendanceStatus: attendance.status,
+      attendanceRevision: attendance.revision,
+    );
+  }
+  return guests.values.toList()..sort((a, b) => a.name.compareTo(b.name));
+}
+
 /// The status circle row shown above the tabs, visible regardless of which
 /// tab is active: draft/called/accepted/declined/unanswered counts, plus an
 /// "attended" circle once the event has ended.
@@ -772,7 +827,7 @@ class _StatusHeaderRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
-    final roster = squad.roster;
+    final roster = [...squad.roster, ..._guestRosterFor(squad)];
     final draft = roster.where((p) => p.inDraft).length;
     final called = roster.where((p) => p.isCalled).length;
     final accepted = roster.where((p) => p.callupState == 'accepted').length;
@@ -788,6 +843,11 @@ class _StatusHeaderRow extends StatelessWidget {
               p.attendanceStatus == 'partial',
         )
         .length;
+    // Labels take real width across up to six circles — dropped below the
+    // tablet breakpoint (a phone in portrait can't fit six labeled circles
+    // without wrapping awkwardly), keeping just the numbers, which still
+    // read fine at a glance; a tooltip on each circle covers the rest.
+    final showLabels = MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -796,32 +856,38 @@ class _StatusHeaderRow extends StatelessWidget {
             count: draft,
             label: strings.feature('Utkast'),
             color: Colors.blueGrey,
+            showLabel: showLabels,
           ),
           _StatusCircle(
             count: called,
             label: strings.feature('Kallade'),
             color: Colors.indigo,
+            showLabel: showLabels,
           ),
           _StatusCircle(
             count: accepted,
             label: strings.domainValue('accepted'),
             color: Colors.green,
+            showLabel: showLabels,
           ),
           _StatusCircle(
             count: unanswered,
             label: strings.feature('Obesvarade'),
             color: Colors.amber.shade800,
+            showLabel: showLabels,
           ),
           _StatusCircle(
             count: declined,
             label: strings.domainValue('declined'),
             color: Colors.red,
+            showLabel: showLabels,
           ),
           if (_hasEnded)
             _StatusCircle(
               count: attended,
               label: strings.feature('Deltog'),
               color: Colors.teal,
+              showLabel: showLabels,
             ),
         ],
       ),
@@ -830,27 +896,44 @@ class _StatusHeaderRow extends StatelessWidget {
 }
 
 class _StatusCircle extends StatelessWidget {
-  const _StatusCircle({required this.count, required this.label, required this.color});
+  const _StatusCircle({
+    required this.count,
+    required this.label,
+    required this.color,
+    required this.showLabel,
+  });
   final int count;
   final String label;
   final Color color;
+  final bool showLabel;
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(right: 16),
-    child: Column(
-      children: [
-        CircleAvatar(
-          radius: 20,
-          backgroundColor: color,
-          child: Text(
-            '$count',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+    padding: const EdgeInsets.only(right: 14),
+    child: Tooltip(
+      message: label,
+      child: Column(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+              border: Border.all(color: color.withValues(alpha: 0.4)),
+            ),
+            child: Text(
+              '$count',
+              style: TextStyle(color: color, fontWeight: FontWeight.bold),
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(label, style: Theme.of(context).textTheme.labelSmall),
-      ],
+          if (showLabel) ...[
+            const SizedBox(height: 4),
+            Text(label, style: Theme.of(context).textTheme.labelSmall),
+          ],
+        ],
+      ),
     ),
   );
 }
@@ -899,11 +982,15 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
   final Map<String, String> _stagedStatus = {};
   final Map<String, int> _stagedMinutes = {};
 
+  bool _busyBulk = false;
+
   bool get _canManage => widget.squad.can('save_squad');
   bool get _canRecordAttendance => widget.squad.can('record_attendance');
   bool get _eventEnded => DateTime.now().toUtc().isAfter(widget.event.endsAt.toUtc());
   Set<String> get _draftMemberIds =>
       widget.squad.members.map((member) => member.personId).toSet();
+
+  List<EventRosterPerson> get _guestRoster => _guestRosterFor(widget.squad);
 
   @override
   void initState() {
@@ -1041,9 +1128,10 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       _showError('Ange en orsak till den sena korrigeringen (minst 3 tecken).');
       return;
     }
+    final everyone = [...widget.squad.roster, ..._guestRoster];
     final changes = <Map<String, dynamic>>[];
     for (final entry in _stagedStatus.entries) {
-      final person = widget.squad.roster.where((item) => item.personId == entry.key).firstOrNull;
+      final person = everyone.where((item) => item.personId == entry.key).firstOrNull;
       if (person == null) continue;
       changes.add({
         'person_id': entry.key,
@@ -1073,6 +1161,153 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  // ─── Bulk actions (behind the "..." menu) ──────────────────────────────
+  // Inspired by the reference implementation's "Välj alla"/"Påminn alla"/
+  // "Sätt alla deltog" — one tap instead of one tap per person.
+
+  /// Adds every not-yet-called, not-yet-drafted player (not leaders — a
+  /// coach calls up players to play; leaders are added individually)
+  /// straight to the draft in a single save.
+  Future<void> _selectAllPlayers() async {
+    final toAdd = widget.squad.roster
+        .where((p) => p.rolePackage == 'player' && !p.isCalled && !p.inDraft)
+        .map((p) => p.personId);
+    if (toAdd.isEmpty) return;
+    final ids = _draftMemberIds..addAll(toAdd);
+    setState(() => _busyBulk = true);
+    try {
+      await widget.calendar.saveSquadDraft(
+        eventId: widget.event.id,
+        memberIds: ids.toList(),
+        source: 'manual',
+        expectedRevision: widget.squad.state == 'draft' ? widget.squad.revision : null,
+        idempotencyKey: _newUuid(),
+      );
+      widget.onReload();
+    } catch (_) {
+      if (mounted) _showError('Ändringen kunde inte sparas. Ladda om och försök igen.');
+    } finally {
+      if (mounted) setState(() => _busyBulk = false);
+    }
+  }
+
+  /// Reminds everyone whose callup is actually due one (mirrors
+  /// EventRosterPerson.canRemindAt — pending, not expired, past the 6h
+  /// cooldown) instead of everyone with a pending response.
+  Future<void> _remindAllUnanswered() async {
+    final now = DateTime.now();
+    final eligible = [...widget.squad.roster, ..._guestRoster]
+        .where((person) => person.canRemindAt(now))
+        .toList();
+    if (eligible.isEmpty) return;
+    setState(() => _busyBulk = true);
+    try {
+      await Future.wait(
+        eligible.map(
+          (person) => widget.calendar.manageCallup(
+            callupId: person.callupId!,
+            action: 'remind',
+            expectedRevision:
+                widget.squad.callups
+                    .where((callup) => callup.id == person.callupId)
+                    .map((callup) => callup.revision)
+                    .firstOrNull ??
+                0,
+            idempotencyKey: _newUuid(),
+          ),
+        ),
+      );
+      widget.onReload();
+    } catch (_) {
+      if (mounted) {
+        _showError('Några påminnelser kunde inte skickas. Ladda om och försök igen.');
+      }
+    } finally {
+      if (mounted) setState(() => _busyBulk = false);
+    }
+  }
+
+  /// Stages "present" for everyone whose callup was accepted but has no
+  /// attendance mark yet — never overwrites an existing mark. Saves
+  /// immediately unless a late-correction reason is required, in which
+  /// case it only stages so the leader can fill that in first.
+  Future<void> _markAllAcceptedAsPresent() async {
+    final candidates = [...widget.squad.roster, ..._guestRoster].where(
+      (person) =>
+          person.callupState == 'accepted' &&
+          (person.attendanceStatus == null || person.attendanceStatus == 'unknown'),
+    );
+    if (candidates.isEmpty) return;
+    setState(() {
+      for (final person in candidates) {
+        _stagedStatus[person.personId] = 'present';
+        _stagedMinutes.remove(person.personId);
+      }
+    });
+    if (!(_resolvedPermissions?.lateWindow ?? false)) {
+      await _saveAttendance();
+    }
+  }
+
+  Future<void> _showBulkActionsSheet() async {
+    final strings = AppStrings.of(context);
+    final now = DateTime.now();
+    final everyone = [...widget.squad.roster, ..._guestRoster];
+    final selectableCount = widget.squad.roster
+        .where((person) => person.rolePackage == 'player' && !person.isCalled && !person.inDraft)
+        .length;
+    final remindableCount = everyone.where((person) => person.canRemindAt(now)).length;
+    final attendanceCandidateCount = everyone
+        .where(
+          (person) =>
+              person.callupState == 'accepted' &&
+              (person.attendanceStatus == null || person.attendanceStatus == 'unknown'),
+        )
+        .length;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_canManage)
+              ListTile(
+                leading: const Icon(Icons.library_add_check_outlined),
+                title: Text(strings.selectAllPlayersLabel(selectableCount)),
+                enabled: selectableCount > 0 && !_busyBulk,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  unawaited(_selectAllPlayers());
+                },
+              ),
+            if (!_eventEnded && widget.squad.can('remind_callup'))
+              ListTile(
+                leading: const Icon(Icons.notifications_active_outlined),
+                title: Text(strings.remindAllUnansweredLabel(remindableCount)),
+                enabled: remindableCount > 0 && !_busyBulk,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  unawaited(_remindAllUnanswered());
+                },
+              )
+            else if (_eventEnded && _canRecordAttendance)
+              ListTile(
+                leading: const Icon(Icons.how_to_reg_outlined),
+                title: Text(strings.markAllPresentLabel(attendanceCandidateCount)),
+                enabled: attendanceCandidateCount > 0 && !_busyBulk,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  unawaited(_markAllAcceptedAsPresent());
+                },
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showError(String message) {
@@ -1109,20 +1344,41 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (_canManage) ...[
-                  TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search),
-                      hintText: strings.feature(
-                        'Sök spelare eller lag i hela klubben',
-                      ),
-                      suffixIcon: _query.isEmpty
-                          ? null
-                          : IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () => _searchController.clear(),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            prefixIcon: const Icon(Icons.search),
+                            hintText: strings.feature(
+                              'Sök spelare eller lag i hela klubben',
                             ),
-                    ),
+                            suffixIcon: _query.isEmpty
+                                ? null
+                                : IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () => _searchController.clear(),
+                                  ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Bulk actions ("Välj alla"/"Påminn alla"/"Sätt alla
+                      // deltog") — a coach otherwise has to repeat the same
+                      // tap once per person on the roster.
+                      IconButton.outlined(
+                        tooltip: strings.feature('Fler åtgärder'),
+                        onPressed: _busyBulk ? null : _showBulkActionsSheet,
+                        icon: _busyBulk
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.more_vert),
+                      ),
+                    ],
                   ),
                   if (_matches.isNotEmpty)
                     Card(
@@ -1201,6 +1457,10 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
           strings.feature('Okallade ledare'),
           uncalled('leader'),
         ),
+        _rosterSection(
+          strings.feature('Gästspelare'),
+          _guestRoster,
+        ),
         const SliverToBoxAdapter(child: SizedBox(height: 32)),
       ],
     );
@@ -1223,7 +1483,8 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
             eventEnded: _eventEnded,
             canManage: _canManage,
             canRecordAttendance: _canRecordAttendance,
-            canRemindOrCancel: widget.squad.can('remind_callup') || widget.squad.can('cancel_callup'),
+            canRemind: widget.squad.can('remind_callup'),
+            canCancel: widget.squad.can('cancel_callup'),
             busy: _busy,
             stagedStatus: _stagedStatus[people[index].personId],
             onToggleDraft: () => _toggleDraftMember(people[index].personId),
@@ -1246,7 +1507,8 @@ class _RosterRow extends StatelessWidget {
     required this.eventEnded,
     required this.canManage,
     required this.canRecordAttendance,
-    required this.canRemindOrCancel,
+    required this.canRemind,
+    required this.canCancel,
     required this.busy,
     required this.stagedStatus,
     required this.onToggleDraft,
@@ -1255,7 +1517,7 @@ class _RosterRow extends StatelessWidget {
   });
 
   final EventRosterPerson person;
-  final bool eventEnded, canManage, canRecordAttendance, canRemindOrCancel, busy;
+  final bool eventEnded, canManage, canRecordAttendance, canRemind, canCancel, busy;
   final String? stagedStatus;
   final VoidCallback onToggleDraft;
   final ValueChanged<String> onManageCallup;
@@ -1265,7 +1527,7 @@ class _RosterRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     final subtitle = [
-      person.teamName,
+      if (person.isGuest) strings.feature('Gäst') else person.teamName,
       strings.domainValue(person.rolePackage),
     ].join(' · ');
 
@@ -1309,6 +1571,10 @@ class _RosterRow extends StatelessWidget {
     }
 
     if (person.isCalled) {
+      // Mirrors the server's own remind_callup_for_actor gate (pending,
+      // not expired, 6h since the last reminder) so a doomed-to-fail tap
+      // is never offered in the first place.
+      final canRemindNow = canRemind && person.canRemindAt(DateTime.now());
       return ListTile(
         title: Text(person.name),
         subtitle: Text(subtitle),
@@ -1316,13 +1582,15 @@ class _RosterRow extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             _CallupStateBadge(state: person.callupState ?? 'pending'),
-            if (canRemindOrCancel)
+            if (canRemindNow || canCancel)
               PopupMenuButton<String>(
                 tooltip: strings.feature('Hantera kallelse'),
                 onSelected: busy ? null : onManageCallup,
                 itemBuilder: (_) => [
-                  PopupMenuItem(value: 'remind', child: Text(strings.feature('Påminn'))),
-                  PopupMenuItem(value: 'cancel', child: Text(strings.feature('Återkalla'))),
+                  if (canRemindNow)
+                    PopupMenuItem(value: 'remind', child: Text(strings.feature('Påminn'))),
+                  if (canCancel)
+                    PopupMenuItem(value: 'cancel', child: Text(strings.feature('Återkalla'))),
                 ],
               ),
           ],

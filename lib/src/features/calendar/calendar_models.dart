@@ -287,13 +287,14 @@ class CallupView {
     this.responseRole,
     this.lastRemindedAt,
     this.reminderDeliveryState,
+    this.expiresAt,
   });
   final String id, personId, name, state, deliveryState;
   final int revision;
   final int reminderCount;
   final bool canRespond;
   final String? actingAsPersonId, responseRole, reminderDeliveryState;
-  final DateTime? lastRemindedAt;
+  final DateTime? lastRemindedAt, expiresAt;
   factory CallupView.fromJson(Map<String, dynamic> json) => CallupView(
     id: json['callup_id'] as String,
     personId: json['person_id'] as String,
@@ -309,6 +310,9 @@ class CallupView {
         ? null
         : DateTime.parse(json['last_reminded_at'] as String),
     reminderDeliveryState: json['reminder_delivery_state'] as String?,
+    expiresAt: json['expires_at'] == null
+        ? null
+        : DateTime.parse(json['expires_at'] as String),
   );
 }
 
@@ -364,14 +368,38 @@ class EventRosterPerson {
     required this.inDraft,
     this.callupId,
     this.callupState,
+    this.callupExpiresAt,
+    this.callupLastRemindedAt,
     this.attendanceStatus,
     this.attendanceRevision = 0,
+    this.isGuest = false,
   });
   final String personId, name, teamId, teamName, rolePackage;
   final bool inDraft;
   final String? callupId, callupState, attendanceStatus;
+  final DateTime? callupExpiresAt, callupLastRemindedAt;
   final int attendanceRevision;
+  // True for someone in the draft/called for this event without an active
+  // assignment on any of its teams (a cross-team/guest addition via
+  // search) — the roster RPC only returns team assignments, so these are
+  // synthesized client-side from squad.members/callups instead; see
+  // _ParticipantsTabState._guestRoster.
+  final bool isGuest;
   bool get isCalled => callupId != null;
+
+  /// Mirrors the server's own remind_callup_for_actor gate (pending state,
+  /// not expired, 6h since the last reminder) so the UI can disable
+  /// "Påminn" before a doomed-to-fail round trip rather than after.
+  bool canRemindAt(DateTime now) {
+    if (callupState != 'pending') return false;
+    if (callupExpiresAt != null && !callupExpiresAt!.isAfter(now)) {
+      return false;
+    }
+    final lastReminded = callupLastRemindedAt;
+    if (lastReminded == null) return true;
+    return now.difference(lastReminded) >= const Duration(hours: 6);
+  }
+
   factory EventRosterPerson.fromJson(Map<String, dynamic> json) =>
       EventRosterPerson(
         personId: json['person_id'] as String,
@@ -382,9 +410,39 @@ class EventRosterPerson {
         inDraft: json['in_draft'] as bool? ?? false,
         callupId: json['callup_id'] as String?,
         callupState: json['callup_state'] as String?,
+        callupExpiresAt: json['callup_expires_at'] == null
+            ? null
+            : DateTime.parse(json['callup_expires_at'] as String),
+        callupLastRemindedAt: json['callup_last_reminded_at'] == null
+            ? null
+            : DateTime.parse(json['callup_last_reminded_at'] as String),
         attendanceStatus: json['attendance_status'] as String?,
         attendanceRevision: (json['attendance_revision'] as num?)?.toInt() ?? 0,
       );
+
+  EventRosterPerson copyWith({
+    bool? inDraft,
+    String? callupId,
+    String? callupState,
+    DateTime? callupExpiresAt,
+    DateTime? callupLastRemindedAt,
+    String? attendanceStatus,
+    int? attendanceRevision,
+  }) => EventRosterPerson(
+    personId: personId,
+    name: name,
+    teamId: teamId,
+    teamName: teamName,
+    rolePackage: rolePackage,
+    inDraft: inDraft ?? this.inDraft,
+    callupId: callupId ?? this.callupId,
+    callupState: callupState ?? this.callupState,
+    callupExpiresAt: callupExpiresAt ?? this.callupExpiresAt,
+    callupLastRemindedAt: callupLastRemindedAt ?? this.callupLastRemindedAt,
+    attendanceStatus: attendanceStatus ?? this.attendanceStatus,
+    attendanceRevision: attendanceRevision ?? this.attendanceRevision,
+    isGuest: isGuest,
+  );
 }
 
 class SquadDetails {
