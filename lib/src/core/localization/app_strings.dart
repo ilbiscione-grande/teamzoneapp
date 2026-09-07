@@ -203,6 +203,15 @@ class AppStrings {
     'Sparar…': 'Saving…',
     'Godkänn och fortsätt': 'Accept and continue',
     'Integritetsinställningar': 'Privacy settings',
+    'Färgtema': 'Color theme',
+    'Färgen är själva temat — resten av utseendet är samma '
+            'oavsett vilken du väljer.':
+        "The color is the theme — everything else looks the same no "
+        'matter which you pick.',
+    'Grön': 'Green',
+    'Blå': 'Blue',
+    'Lila': 'Purple',
+    'Orange': 'Orange',
     'Inställningen kunde inte sparas. Försök igen.':
         'The setting could not be saved. Please try again.',
     'Inställningen kunde inte laddas': 'The setting could not be loaded',

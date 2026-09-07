@@ -104,11 +104,13 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
   bool _sessionEnded = false;
   String? _pendingInvitationToken;
   bool _showInvitationSignIn = false;
+  AppColorTheme _colorTheme = AppColorTheme.green;
 
   @override
   void initState() {
     super.initState();
     _sessionStatus = widget.services.identity.sessionStatus;
+    unawaited(_loadColorTheme());
     _pendingInvitationToken = invitationTokenFromUri(
       Uri.tryParse(WidgetsBinding.instance.platformDispatcher.defaultRouteName),
     );
@@ -150,6 +152,17 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
     }, onError: (_) {});
   }
 
+  Future<void> _loadColorTheme() async {
+    final id = await widget.services.themePersistence.readColorThemeId();
+    if (!mounted) return;
+    setState(() => _colorTheme = AppColorTheme.fromId(id));
+  }
+
+  Future<void> _setColorTheme(AppColorTheme colorTheme) async {
+    setState(() => _colorTheme = colorTheme);
+    await widget.services.themePersistence.writeColorThemeId(colorTheme.id);
+  }
+
   @override
   void dispose() {
     unawaited(_sessionSubscription?.cancel());
@@ -160,8 +173,8 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = AppTheme.light();
-    final darkTheme = AppTheme.dark();
+    final theme = AppTheme.light(_colorTheme);
+    final darkTheme = AppTheme.dark(_colorTheme);
     final invitationToken = _pendingInvitationToken;
     final root = _recoveringPassword
         ? _ResetPasswordScreen(
@@ -199,31 +212,36 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
       '${_sessionStatus.name}:$_recoveringPassword:'
       '${invitationToken != null}:$_showInvitationSignIn',
     );
-    if (kIsWeb) {
-      return MaterialApp.router(
-        key: appKey,
-        routerDelegate: _StaticRootRouterDelegate(root),
-        debugShowCheckedModeBanner: false,
-        title: 'TeamZone',
-        theme: theme,
-        darkTheme: darkTheme,
-        themeMode: ThemeMode.system,
-        supportedLocales: const [Locale('sv'), Locale('en')],
-        localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        locale: widget.locale,
-      );
-    }
-    return MaterialApp(
-      key: appKey,
-      debugShowCheckedModeBanner: false,
-      title: 'TeamZone',
-      theme: theme,
-      darkTheme: darkTheme,
-      themeMode: ThemeMode.system,
-      supportedLocales: const [Locale('sv'), Locale('en')],
-      localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      locale: widget.locale,
-      onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => root),
+    final materialApp = kIsWeb
+        ? MaterialApp.router(
+            key: appKey,
+            routerDelegate: _StaticRootRouterDelegate(root),
+            debugShowCheckedModeBanner: false,
+            title: 'TeamZone',
+            theme: theme,
+            darkTheme: darkTheme,
+            themeMode: ThemeMode.system,
+            supportedLocales: const [Locale('sv'), Locale('en')],
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
+            locale: widget.locale,
+          )
+        : MaterialApp(
+            key: appKey,
+            debugShowCheckedModeBanner: false,
+            title: 'TeamZone',
+            theme: theme,
+            darkTheme: darkTheme,
+            themeMode: ThemeMode.system,
+            supportedLocales: const [Locale('sv'), Locale('en')],
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
+            locale: widget.locale,
+            onGenerateRoute: (_) =>
+                MaterialPageRoute<void>(builder: (_) => root),
+          );
+    return AppColorThemeScope(
+      colorTheme: _colorTheme,
+      onColorThemeChanged: _setColorTheme,
+      child: materialApp,
     );
   }
 

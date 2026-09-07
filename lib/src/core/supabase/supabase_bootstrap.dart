@@ -7,6 +7,7 @@ import 'package:teamzone_app/src/core/identity/identity_models.dart';
 import 'package:teamzone_app/src/core/identity/identity_services.dart';
 import 'package:teamzone_app/src/core/identity/auth_entry_services.dart';
 import 'package:teamzone_app/src/core/identity/session_persistence.dart';
+import 'package:teamzone_app/src/core/preferences/theme_persistence.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_services.dart';
 import 'package:teamzone_app/src/features/assistant_coach/assistant_identity.dart';
 import 'package:teamzone_app/src/features/assistant_coach/assistant_presentation.dart';
@@ -28,6 +29,7 @@ class AppServices {
     required this.isConfigured,
     this.authEntry = const UnconfiguredAuthEntryServices(),
     this.contextPersistence = const StatelessContextPersistence(),
+    this.themePersistence = const StatelessThemePersistence(),
     this.roster = const UnconfiguredRosterServices(),
     this.membership = const UnconfiguredMembershipServices(),
     this.legal = const UnconfiguredLegalServices(),
@@ -48,6 +50,7 @@ class AppServices {
   final IdentityServices identity;
   final AuthEntryServices authEntry;
   final ContextPersistence contextPersistence;
+  final ThemePersistence themePersistence;
   final RosterServices roster;
   final MembershipServices membership;
   final LegalServices legal;
@@ -72,6 +75,10 @@ class SupabaseBootstrap {
     if (!environment.hasSupabaseConfiguration) {
       return const AppServices(
         identity: UnconfiguredIdentityServices(),
+        // The color theme is a pure device-local preference with no
+        // dependency on a working backend connection, so it stays real even
+        // in the unconfigured "Backend är inte ansluten" state.
+        themePersistence: SharedPreferencesThemePersistence(),
         isConfigured: false,
       );
     }
@@ -97,6 +104,7 @@ class SupabaseBootstrap {
       identity: identity,
       authEntry: identity,
       contextPersistence: const SharedPreferencesContextPersistence(),
+      themePersistence: const SharedPreferencesThemePersistence(),
       roster: SupabaseRosterServices(Supabase.instance.client),
       membership: SupabaseMembershipServices(Supabase.instance.client),
       legal: SupabaseLegalServices(Supabase.instance.client),

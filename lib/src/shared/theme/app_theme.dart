@@ -22,12 +22,38 @@ abstract final class AppMotion {
       MediaQuery.disableAnimationsOf(context) ? Duration.zero : duration;
 }
 
-abstract final class AppTheme {
-  static const Color lightSeed = Color(0xFF176B46);
-  static const Color darkSeed = Color(0xFF6DDBA7);
+/// A selectable color theme: one seed color, from which both the light and
+/// dark ColorSchemes are derived (`ColorScheme.fromSeed`). The visual
+/// language everything else is built from — typography, spacing, card
+/// shapes — stays identical across themes; only the seed color changes.
+enum AppColorTheme {
+  green('green', 'Grön', Color(0xFF176B46)),
+  blue('blue', 'Blå', Color(0xFF1D4ED8)),
+  purple('purple', 'Lila', Color(0xFF6D28D9)),
+  amber('amber', 'Orange', Color(0xFFB45309));
 
-  static ThemeData light() => _build(Brightness.light, lightSeed);
-  static ThemeData dark() => _build(Brightness.dark, darkSeed);
+  const AppColorTheme(this.id, this.label, this.seed);
+
+  /// Stable identifier persisted to device storage — not the enum name, so
+  /// renaming/reordering the enum later can't silently change what a saved
+  /// preference resolves to.
+  final String id;
+  final String label;
+  final Color seed;
+
+  static AppColorTheme fromId(String? id) => AppColorTheme.values.firstWhere(
+    (theme) => theme.id == id,
+    orElse: () => AppColorTheme.green,
+  );
+}
+
+abstract final class AppTheme {
+  static const String fontFamily = 'Geist';
+
+  static ThemeData light([AppColorTheme colorTheme = AppColorTheme.green]) =>
+      _build(Brightness.light, colorTheme.seed);
+  static ThemeData dark([AppColorTheme colorTheme = AppColorTheme.green]) =>
+      _build(Brightness.dark, colorTheme.seed);
 
   static ThemeData _build(Brightness brightness, Color seed) {
     final colors = ColorScheme.fromSeed(
@@ -37,6 +63,7 @@ abstract final class AppTheme {
     return ThemeData(
       brightness: brightness,
       colorScheme: colors,
+      fontFamily: fontFamily,
       useMaterial3: true,
       materialTapTargetSize: MaterialTapTargetSize.padded,
       visualDensity: VisualDensity.standard,
@@ -73,4 +100,32 @@ abstract final class AppTheme {
       ),
     );
   }
+}
+
+/// Exposes the currently selected [AppColorTheme] and a way to change it to
+/// every descendant of the app root — installed once above MaterialApp in
+/// `TeamZoneApp`, so a deeply nested page (e.g. the profile settings theme
+/// picker) can read and change it without threading a callback through
+/// every constructor in between.
+class AppColorThemeScope extends InheritedWidget {
+  const AppColorThemeScope({
+    required this.colorTheme,
+    required this.onColorThemeChanged,
+    required super.child,
+    super.key,
+  });
+
+  final AppColorTheme colorTheme;
+  final ValueChanged<AppColorTheme> onColorThemeChanged;
+
+  static AppColorThemeScope of(BuildContext context) {
+    final scope = context
+        .dependOnInheritedWidgetOfExactType<AppColorThemeScope>();
+    assert(scope != null, 'No AppColorThemeScope found in context.');
+    return scope!;
+  }
+
+  @override
+  bool updateShouldNotify(AppColorThemeScope oldWidget) =>
+      colorTheme != oldWidget.colorTheme;
 }

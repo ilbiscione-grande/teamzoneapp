@@ -31,8 +31,7 @@ Future<void> _showUseCodeDialog(
           child: Text(strings.feature('Avbryt')),
         ),
         FilledButton(
-          onPressed: () =>
-              Navigator.pop(dialogContext, controller.text.trim()),
+          onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
           child: Text(strings.feature('Acceptera')),
         ),
       ],
@@ -206,6 +205,39 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
             const Divider(),
             const SizedBox(height: 24),
             Text(
+              strings.feature('Färgtema'),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              strings.feature(
+                'Färgen är själva temat — resten av utseendet är samma '
+                'oavsett vilken du väljer.',
+              ),
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            Builder(
+              builder: (context) {
+                final scope = AppColorThemeScope.of(context);
+                return Wrap(
+                  spacing: 16,
+                  runSpacing: 12,
+                  children: [
+                    for (final colorTheme in AppColorTheme.values)
+                      _ColorThemeSwatch(
+                        colorTheme: colorTheme,
+                        selected: scope.colorTheme == colorTheme,
+                        onTap: () => scope.onColorThemeChanged(colorTheme),
+                      ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 24),
+            Text(
               strings.feature('Integritetsinställningar'),
               style: Theme.of(context).textTheme.titleMedium,
             ),
@@ -235,8 +267,7 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
                       value: _marketingOptIn!,
                       onChanged: _pending
                           ? null
-                          : (value) =>
-                                setState(() => _marketingOptIn = value),
+                          : (value) => setState(() => _marketingOptIn = value),
                       title: Text(
                         strings.feature('Marknadsföring från TeamZone'),
                       ),
@@ -259,6 +290,58 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One selectable color swatch in the theme picker: a filled circle in that
+/// theme's seed color, with a check mark overlaid when it's the active
+/// theme.
+class _ColorThemeSwatch extends StatelessWidget {
+  const _ColorThemeSwatch({
+    required this.colorTheme,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final AppColorTheme colorTheme;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return Tooltip(
+      message: strings.feature(colorTheme.label),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Container(
+          width: 48,
+          height: 48,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: colorTheme.seed,
+            shape: BoxShape.circle,
+            border: selected
+                ? Border.all(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    width: 2,
+                  )
+                : null,
+          ),
+          child: selected
+              ? Icon(
+                  Icons.check,
+                  color:
+                      ThemeData.estimateBrightnessForColor(colorTheme.seed) ==
+                          Brightness.dark
+                      ? Colors.white
+                      : Colors.black,
+                )
+              : null,
         ),
       ),
     );

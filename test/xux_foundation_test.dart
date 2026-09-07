@@ -63,8 +63,8 @@ void main() {
       final economyStrings = File(
         'lib/src/core/localization/economy_strings.dart',
       ).readAsStringSync();
-      expect(app, contains('AppTheme.light()'));
-      expect(app, contains('AppTheme.dark()'));
+      expect(app, contains('AppTheme.light('));
+      expect(app, contains('AppTheme.dark('));
       expect(strings, contains('String get loading'));
       for (final commonAction in [
         'cancel',
