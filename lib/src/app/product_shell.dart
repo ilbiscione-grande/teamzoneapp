@@ -352,21 +352,63 @@ class _ProductShellState extends State<_ProductShell> {
             ),
             bottomNavigationBar: usesSidebar
                 ? null
-                : NavigationBar(
-                    selectedIndex: _indexForBottomNav(location),
-                    onDestinationSelected: (index) =>
-                        _router.go(_bottomNavOrder[index]),
-                    labelBehavior:
-                        MediaQuery.textScalerOf(context).scale(1) >= 1.5
-                        ? NavigationDestinationLabelBehavior.onlyShowSelected
-                        : NavigationDestinationLabelBehavior.alwaysShow,
-                    destinations: [
-                      for (final path in _bottomNavOrder)
-                        NavigationDestination(
-                          icon: Icon(_destinationFor(path).icon),
-                          label: strings.destination(path),
-                        ),
-                    ],
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final navigationBar = NavigationBar(
+                        selectedIndex: _indexForBottomNav(location),
+                        onDestinationSelected: (index) =>
+                            _router.go(_bottomNavOrder[index]),
+                        labelBehavior:
+                            MediaQuery.textScalerOf(context).scale(1) >= 1.5
+                            ? NavigationDestinationLabelBehavior
+                                  .onlyShowSelected
+                            : NavigationDestinationLabelBehavior.alwaysShow,
+                        destinations: [
+                          for (final path in _bottomNavOrder)
+                            NavigationDestination(
+                              icon: Icon(_destinationFor(path).icon),
+                              label: strings.destination(path),
+                            ),
+                        ],
+                      );
+                      // A transparent region over just the Home button,
+                      // sized by evenly dividing the bar's width (matching
+                      // NavigationBar's own even item spacing). Swiping up
+                      // opens the role-aware quick actions sheet; an
+                      // ordinary tap is left alone — HitTestBehavior
+                      // .translucent still lets the NavigationBar underneath
+                      // enter the same gesture arena, so a tap (no drag
+                      // beyond touch slop) resolves to its own tap
+                      // recognizer as normal.
+                      final homeIndex = _bottomNavOrder.indexOf(
+                        ProductRouteContract.home,
+                      );
+                      final itemWidth =
+                          constraints.maxWidth / _bottomNavOrder.length;
+                      return Stack(
+                        children: [
+                          navigationBar,
+                          Positioned(
+                            left: itemWidth * homeIndex,
+                            width: itemWidth,
+                            top: 0,
+                            bottom: 0,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.translucent,
+                              onVerticalDragEnd: (details) {
+                                if ((details.primaryVelocity ?? 0) < -250) {
+                                  _showQuickActionsMenu(
+                                    context: context,
+                                    contextValue: widget.contextValue,
+                                    onNavigate: _router.go,
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
           ),
         );
@@ -412,6 +454,125 @@ Future<void> _showContextPicker({
               onTap: () {
                 onContextChanged(item);
                 Navigator.of(sheetContext).pop();
+              },
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// One row in the swipe-up quick actions sheet: an icon, a label and the
+/// route it navigates to.
+typedef _QuickAction = ({IconData icon, String label, String route});
+
+/// Builds the role-aware shortcut list for the swipe-up quick actions
+/// sheet: "a shortcut to every important function for that particular
+/// person" (a coach gets team-management/event shortcuts, a player gets
+/// event/inbox shortcuts, and so on) — driven by the same capabilities
+/// already used to gate the drawer's admin links, not a separate
+/// per-role-package list, so it stays correct for scoped/partial roles
+/// (e.g. a team-only leader) without extra cases.
+List<_QuickAction> _quickActionsFor(
+  BuildContext context,
+  TeamZoneContext contextValue,
+) {
+  final strings = AppStrings.of(context);
+  final actions = <_QuickAction>[
+    (
+      icon: _destinationFor(ProductRouteContract.calendar).icon,
+      label: strings.destination(ProductRouteContract.calendar),
+      route: ProductRouteContract.calendar,
+    ),
+  ];
+  if (contextValue.can('event.manage')) {
+    actions.add((
+      icon: Icons.add_circle_outline,
+      label: strings.feature('Planera aktivitet'),
+      route: ProductRouteContract.calendar,
+    ));
+  }
+  actions.add((
+    icon: _destinationFor(ProductRouteContract.team).icon,
+    label: contextValue.can('club.memberships.manage')
+        ? strings.feature('Hantera laget')
+        : strings.destination(ProductRouteContract.team),
+    route: ProductRouteContract.team,
+  ));
+  actions.add((
+    icon: _destinationFor(ProductRouteContract.inbox).icon,
+    label: strings.feature('Öppna inkorgen'),
+    route: ProductRouteContract.inbox,
+  ));
+  if (contextValue.can('event.manage') ||
+      contextValue.can('event.attendance.manage')) {
+    actions.add((
+      icon: _destinationFor(ProductRouteContract.statistics).icon,
+      label: strings.destination(ProductRouteContract.statistics),
+      route: ProductRouteContract.statistics,
+    ));
+  }
+  if (contextValue.can('club.billing.manage')) {
+    actions.add((
+      icon: Icons.payments_outlined,
+      label: strings.feature('Abonnemang'),
+      route: ProductRouteContract.billing,
+    ));
+  }
+  if (_hasEconomyCapability(contextValue)) {
+    actions.add((
+      icon: Icons.account_balance_wallet_outlined,
+      label: strings.feature('Ekonomi'),
+      route: ProductRouteContract.economy,
+    ));
+  }
+  if (_hasBoardCapability(contextValue)) {
+    actions.add((
+      icon: Icons.badge_outlined,
+      label: strings.feature('Styrelse'),
+      route: ProductRouteContract.board,
+    ));
+  }
+  if (contextValue.can('publication.manage')) {
+    actions.add((
+      icon: Icons.newspaper_outlined,
+      label: strings.feature('Nyhetsredaktion'),
+      route: ProductRouteContract.editorial,
+    ));
+  }
+  return actions;
+}
+
+/// The swipe-up quick actions sheet, opened from the Home button in the
+/// phone bottom nav (see the GestureDetector built alongside NavigationBar
+/// in _ProductShellState.build).
+Future<void> _showQuickActionsMenu({
+  required BuildContext context,
+  required TeamZoneContext contextValue,
+  required ValueChanged<String> onNavigate,
+}) {
+  final strings = AppStrings.of(context);
+  final actions = _quickActionsFor(context, contextValue);
+  return showModalBottomSheet<void>(
+    context: context,
+    useSafeArea: true,
+    builder: (sheetContext) => SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          ListTile(
+            title: Text(
+              strings.feature('Genvägar'),
+              style: Theme.of(sheetContext).textTheme.titleMedium,
+            ),
+          ),
+          for (final action in actions)
+            ListTile(
+              leading: Icon(action.icon),
+              title: Text(action.label),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                onNavigate(action.route);
               },
             ),
         ],

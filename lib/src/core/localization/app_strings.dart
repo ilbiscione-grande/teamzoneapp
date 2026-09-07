@@ -212,6 +212,10 @@ class AppStrings {
     'Blå': 'Blue',
     'Röd': 'Red',
     'Orange': 'Orange',
+    'Genvägar': 'Shortcuts',
+    'Planera aktivitet': 'Plan an activity',
+    'Hantera laget': 'Manage the team',
+    'Öppna inkorgen': 'Open the inbox',
     'Inställningen kunde inte sparas. Försök igen.':
         'The setting could not be saved. Please try again.',
     'Inställningen kunde inte laddas': 'The setting could not be loaded',

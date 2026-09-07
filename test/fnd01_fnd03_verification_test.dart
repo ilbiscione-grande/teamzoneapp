@@ -246,6 +246,45 @@ void main() {
       );
       expect(scaffoldState.isDrawerOpen, isFalse);
     });
+
+    testWidgets('swiping up on Home opens the role-aware quick actions sheet', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(_verifiedApp());
+      await tester.pumpAndSettle();
+
+      // An ordinary tap on Home still just navigates — the overlay only
+      // intercepts an upward drag, not a tap in the same spot.
+      await tester.tap(find.text('Hem'));
+      await tester.pumpAndSettle();
+      expect(find.text('Genvägar'), findsNothing);
+
+      await tester.fling(find.text('Hem'), const Offset(0, -300), 1000);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Genvägar'), findsOneWidget);
+      expect(find.text('Öppna inkorgen'), findsOneWidget);
+      // The verification identity only holds 'team.read', so the
+      // capability-gated shortcuts (event creation, roster management)
+      // stay hidden. ('Statistik' isn't checked for absence here — it's
+      // always present as the bottom nav's own destination label.)
+      expect(find.text('Planera aktivitet'), findsNothing);
+      expect(find.text('Hantera laget'), findsNothing);
+
+      // Tap the base Kalender shortcut — reuses the same reliable
+      // post-navigation marker as the neighboring back-button test, since
+      // the Inbox surface's own AppBar actions only mount once its
+      // (unconfigured-in-this-harness) data has loaded.
+      await tester.tap(find.text('Kalender').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Genvägar'), findsNothing);
+      expect(find.byTooltip('Filtrera kalendern'), findsOneWidget);
+    });
   });
 
   testWidgets('system back warns before discarding unsaved changes', (
