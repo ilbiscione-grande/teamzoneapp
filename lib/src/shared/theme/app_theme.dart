@@ -46,21 +46,10 @@ enum AppColorTheme {
     orElse: () => AppColorTheme.green,
   );
 
-  /// A deep, dark gradient derived from this theme's accent color — lighter
-  /// at the top, fading toward near-black at the bottom — used by the Home
-  /// page's hero event card.
-  LinearGradient get heroGradient => LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [
-      Color.lerp(seed, Colors.black, 0.3)!,
-      Color.lerp(seed, Colors.black, 0.8)!,
-    ],
-  );
-
-  /// The navigation panel's background: a radial gradient starting from a
-  /// point somewhat lighter than this theme's base color, fading out to
-  /// the base color itself.
+  /// The shared "accent surface" background: a radial gradient starting
+  /// from a point somewhat lighter than this theme's base color, fading
+  /// out to the base color itself. Used by both the navigation panel and
+  /// the Home page's hero event card.
   RadialGradient get menuGradient => RadialGradient(
     center: const Alignment(-0.6, -0.2),
     radius: 1.3,

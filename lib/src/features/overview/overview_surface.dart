@@ -920,10 +920,10 @@ class _LeaderEventTile extends StatelessWidget {
 }
 
 /// The Home page's hero card for the single next upcoming event, styled
-/// after the mockup's "NEXT" card: the current color theme's dark accent
-/// gradient (see AppColorTheme.heroGradient — the same one the navigation
+/// after the mockup's "NEXT" card: the current color theme's radial accent
+/// gradient (see AppColorTheme.menuGradient — the same one the navigation
 /// panel uses) with light text, regardless of the rest of the app's
-/// light/dark mode.
+/// light/dark mode. Full width, matching the cards below it.
 class _HomeHeroEventCard extends StatelessWidget {
   const _HomeHeroEventCard({required this.event, required this.onNavigate});
   final LeaderHomeEvent event;
@@ -937,7 +937,7 @@ class _HomeHeroEventCard extends StatelessWidget {
       event.locationName,
       event.address,
     ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' · ');
-    final gradient = AppColorThemeScope.of(context).colorTheme.heroGradient;
+    final gradient = AppColorThemeScope.of(context).colorTheme.menuGradient;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       clipBehavior: Clip.antiAlias,
@@ -946,6 +946,7 @@ class _HomeHeroEventCard extends StatelessWidget {
             onNavigate(ProductRouteContract.calendarEvent(event.id)),
         child: Ink(
           decoration: BoxDecoration(gradient: gradient),
+          width: double.infinity,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
