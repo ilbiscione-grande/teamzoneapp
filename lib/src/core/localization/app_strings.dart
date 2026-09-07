@@ -246,6 +246,10 @@ class AppStrings {
     'Alla': 'All',
     'Kanske': 'Maybe',
     'Kan inte': 'Cannot attend',
+    'Kommer': 'Attending',
+    'Obesvarad': 'Awaiting response',
+    'Din kallelse': 'Your callup',
+    'Svara': 'Respond',
     'Fortsätt': 'Continue',
     'Olästa meddelanden': 'Unread messages',
     'Öppna inkorgen för att läsa': 'Open the inbox to read',
@@ -979,7 +983,9 @@ class AppStrings {
       : '$recorded of $total attendance statuses recorded.';
   String selectAllPlayersLabel(int count) => count == 0
       ? (isSwedish ? 'Alla spelare valda' : 'All players selected')
-      : (isSwedish ? 'Välj alla spelare ($count)' : 'Select all players ($count)');
+      : (isSwedish
+            ? 'Välj alla spelare ($count)'
+            : 'Select all players ($count)');
   String remindAllUnansweredLabel(int count) => count == 0
       ? (isSwedish ? 'Alla har svarat' : 'Everyone has answered')
       : (isSwedish

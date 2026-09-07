@@ -166,6 +166,40 @@ void main() {
       expect(calendar.savedMemberIds, isNot(contains('leader-uncalled-1')));
     },
   );
+
+  testWidgets(
+    'a leader can respond to a teammate\'s pending callup from the '
+    'Deltagare tab',
+    (tester) async {
+      final calendar = _Calendar();
+      await tester.pumpWidget(_app(calendar));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Kalender'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Träning A'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Deltagare'));
+      await tester.pumpAndSettle();
+
+      // Respond buttons only show for a callup this actor can actually
+      // respond to — Pelle's is flagged canRespond/responseRole:'manager'
+      // in the fixture (the actor manages the squad, not Pelle himself).
+      final scrollable = find.byType(CustomScrollView);
+      await tester.dragUntilVisible(
+        find.text('Kommer'),
+        scrollable,
+        const Offset(0, -150),
+      );
+      await tester.tap(find.text('Kommer'));
+      await tester.pumpAndSettle();
+
+      expect(calendar.respondedCallupId, 'callup-pending');
+      expect(calendar.respondedResponse, 'accepted');
+      // Set (not null) since the actor is responding on Pelle's behalf,
+      // not for their own callup.
+      expect(calendar.respondedActingAsPersonId, 'pending-1');
+    },
+  );
 }
 
 Widget _app(_Calendar calendar) => TeamZoneApp(
@@ -187,6 +221,9 @@ class _Calendar extends UnconfiguredCalendarServices {
   // mutable fixture.
   final bool withGuestAndExtraPlayer;
   List<String>? savedMemberIds;
+  String? respondedCallupId;
+  String? respondedResponse;
+  String? respondedActingAsPersonId;
 
   final _event = EventDetails(
     id: 'event-1',
@@ -280,6 +317,11 @@ class _Calendar extends UnconfiguredCalendarServices {
         inDraft: true,
         callupId: 'callup-pending',
         callupState: 'pending',
+        // A leader can respond on a teammate's behalf now (same
+        // capability that already gates remind/cancel) — 'manager'
+        // rather than 'self' since this account isn't Pelle himself.
+        canRespond: true,
+        responseRole: 'manager',
       ),
       const EventRosterPerson(
         personId: 'declined-1',
@@ -362,6 +404,21 @@ class _Calendar extends UnconfiguredCalendarServices {
     required String idempotencyKey,
   }) async {
     savedMemberIds = memberIds;
+  }
+
+  @override
+  Future<void> respondCallup({
+    required String callupId,
+    required String response,
+    String? actingAsPersonId,
+    String? declineReasonCode,
+    String? declineReasonText,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {
+    respondedCallupId = callupId;
+    respondedResponse = response;
+    respondedActingAsPersonId = actingAsPersonId;
   }
 }
 

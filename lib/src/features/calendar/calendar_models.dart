@@ -373,12 +373,21 @@ class EventRosterPerson {
     this.attendanceStatus,
     this.attendanceRevision = 0,
     this.isGuest = false,
+    this.canRespond = false,
+    this.responseRole,
   });
   final String personId, name, teamId, teamName, rolePackage;
   final bool inDraft;
   final String? callupId, callupState, attendanceStatus;
   final DateTime? callupExpiresAt, callupLastRemindedAt;
   final int attendanceRevision;
+  // Whether the CURRENT actor can record a response to this person's
+  // callup — themselves ('self'), as an active guardian ('guardian'), or
+  // as whoever can already manage the squad ('manager', covering the
+  // whole roster the same way remind/cancel already do). Only meaningful
+  // when isCalled is true.
+  final bool canRespond;
+  final String? responseRole;
   // True for someone in the draft/called for this event without an active
   // assignment on any of its teams (a cross-team/guest addition via
   // search) — the roster RPC only returns team assignments, so these are
@@ -418,6 +427,8 @@ class EventRosterPerson {
             : DateTime.parse(json['callup_last_reminded_at'] as String),
         attendanceStatus: json['attendance_status'] as String?,
         attendanceRevision: (json['attendance_revision'] as num?)?.toInt() ?? 0,
+        canRespond: json['can_respond'] as bool? ?? false,
+        responseRole: json['response_role'] as String?,
       );
 
   EventRosterPerson copyWith({
@@ -428,6 +439,8 @@ class EventRosterPerson {
     DateTime? callupLastRemindedAt,
     String? attendanceStatus,
     int? attendanceRevision,
+    bool? canRespond,
+    String? responseRole,
   }) => EventRosterPerson(
     personId: personId,
     name: name,
@@ -442,6 +455,8 @@ class EventRosterPerson {
     attendanceStatus: attendanceStatus ?? this.attendanceStatus,
     attendanceRevision: attendanceRevision ?? this.attendanceRevision,
     isGuest: isGuest,
+    canRespond: canRespond ?? this.canRespond,
+    responseRole: responseRole ?? this.responseRole,
   );
 }
 

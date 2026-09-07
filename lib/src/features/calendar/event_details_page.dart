@@ -229,6 +229,16 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     ..._guestRosterFor(squad),
   ].where((person) => person.inDraft && !person.isCalled).length;
 
+  /// The current actor's own callup for this event, if any — responseRole
+  /// 'self' uniquely identifies it regardless of the actor's role package
+  /// (a leader can be called up too). Read-only here: shown on Info so
+  /// it's visible everywhere, but only actually respondable from the
+  /// Deltagare tab, alongside everyone else's.
+  EventRosterPerson? get _myCallup =>
+      [...squad.roster, ..._guestRosterFor(squad)]
+          .where((person) => person.isCalled && person.responseRole == 'self')
+          .firstOrNull;
+
   Future<void> _sendCallups() async {
     final revisionId = squad.squadRevisionId;
     if (revisionId == null) return;
@@ -394,6 +404,21 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.groups_outlined),
             title: Text(teamNames),
+          ),
+        if (_myCallup != null)
+          Card(
+            margin: const EdgeInsets.only(top: 8),
+            child: ListTile(
+              leading: const Icon(Icons.mail_outline),
+              title: Text(strings.feature('Din kallelse')),
+              subtitle: Text(
+                strings.domainValue(_myCallup!.callupState ?? 'pending'),
+              ),
+              trailing: TextButton(
+                onPressed: () => _tabController.animateTo(1),
+                child: Text(strings.feature('Svara')),
+              ),
+            ),
           ),
         if (event.description != null) ...[
           const SizedBox(height: 8),
@@ -973,6 +998,8 @@ List<EventRosterPerson> _guestRosterFor(SquadDetails squad) {
               callupState: callup.state,
               callupExpiresAt: callup.expiresAt,
               callupLastRemindedAt: callup.lastRemindedAt,
+              canRespond: callup.canRespond,
+              responseRole: callup.responseRole,
             );
   }
   for (final attendance in squad.attendance) {
@@ -1289,6 +1316,51 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
     } catch (_) {
       if (mounted)
         _showError('Åtgärden kunde inte utföras. Ladda om och försök igen.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Responds to a callup — the person's own ('self'), or, for whoever
+  /// can already manage the squad, anyone else's on the roster too
+  /// ('manager' — same capability that already gates remind/cancel,
+  /// covering both spelare and ledare buckets uniformly).
+  Future<void> _respondToCallup(
+    EventRosterPerson person,
+    String response,
+  ) async {
+    final callupId = person.callupId;
+    if (callupId == null) return;
+    String? reasonCode;
+    String? reasonText;
+    if (response == 'declined') {
+      final reason = await _declineCallupReasonDialog(context);
+      if (reason == null || !mounted) return;
+      reasonCode = reason.$1;
+      reasonText = reason.$2;
+    }
+    setState(() => _busy = true);
+    try {
+      await widget.calendar.respondCallup(
+        callupId: callupId,
+        response: response,
+        actingAsPersonId: person.responseRole == 'self'
+            ? null
+            : person.personId,
+        declineReasonCode: reasonCode,
+        declineReasonText: reasonText,
+        expectedRevision:
+            widget.squad.callups
+                .where((callup) => callup.id == callupId)
+                .map((callup) => callup.revision)
+                .firstOrNull ??
+            0,
+        idempotencyKey: _newUuid(),
+      );
+      await widget.onReload();
+    } catch (_) {
+      if (mounted)
+        _showError('Svaret kunde inte sparas. Ladda om och försök igen.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1689,6 +1761,8 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
               stagedStatus: _stagedStatus[people[index].personId],
               onToggleDraft: () => _toggleDraftMember(people[index].personId),
               onManageCallup: (action) => _manageCallup(people[index], action),
+              onRespond: (response) =>
+                  _respondToCallup(people[index], response),
               onSetAttendance: (status) =>
                   _setAttendance(people[index], status),
             ),
@@ -1715,6 +1789,7 @@ class _RosterRow extends StatelessWidget {
     required this.stagedStatus,
     required this.onToggleDraft,
     required this.onManageCallup,
+    required this.onRespond,
     required this.onSetAttendance,
   });
 
@@ -1728,6 +1803,7 @@ class _RosterRow extends StatelessWidget {
   final String? stagedStatus;
   final VoidCallback onToggleDraft;
   final ValueChanged<String> onManageCallup;
+  final ValueChanged<String> onRespond;
   final ValueChanged<String> onSetAttendance;
 
   @override
@@ -1790,35 +1866,52 @@ class _RosterRow extends StatelessWidget {
       // not expired, 6h since the last reminder) so a doomed-to-fail tap
       // is never offered in the first place.
       final canRemindNow = canRemind && person.canRemindAt(DateTime.now());
-      return ListTile(
-        dense: true,
-        visualDensity: VisualDensity.compact,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-        title: Text(person.name, style: textTheme.bodyMedium),
-        subtitle: Text(subtitle, style: textTheme.bodySmall),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _CallupStateBadge(state: person.callupState ?? 'pending'),
-            if (canRemindNow || canCancel)
-              PopupMenuButton<String>(
-                tooltip: strings.feature('Hantera kallelse'),
-                onSelected: busy ? null : onManageCallup,
-                itemBuilder: (_) => [
-                  if (canRemindNow)
-                    PopupMenuItem(
-                      value: 'remind',
-                      child: Text(strings.feature('Påminn')),
-                    ),
-                  if (canCancel)
-                    PopupMenuItem(
-                      value: 'cancel',
-                      child: Text(strings.feature('Återkalla')),
-                    ),
-                ],
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ListTile(
+            dense: true,
+            visualDensity: VisualDensity.compact,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            title: Text(person.name, style: textTheme.bodyMedium),
+            subtitle: Text(subtitle, style: textTheme.bodySmall),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _CallupStateBadge(state: person.callupState ?? 'pending'),
+                if (canRemindNow || canCancel)
+                  PopupMenuButton<String>(
+                    tooltip: strings.feature('Hantera kallelse'),
+                    onSelected: busy ? null : onManageCallup,
+                    itemBuilder: (_) => [
+                      if (canRemindNow)
+                        PopupMenuItem(
+                          value: 'remind',
+                          child: Text(strings.feature('Påminn')),
+                        ),
+                      if (canCancel)
+                        PopupMenuItem(
+                          value: 'cancel',
+                          child: Text(strings.feature('Återkalla')),
+                        ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+          // Respond controls: the person's own callup ('self'), or —
+          // same as remind/cancel above — anyone else's on the roster
+          // for whoever can manage the squad ('manager').
+          if (person.canRespond)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: _CallupResponseButtons(
+                busy: busy,
+                saving: false,
+                onRespond: onRespond,
               ),
-          ],
-        ),
+            ),
+        ],
       );
     }
 

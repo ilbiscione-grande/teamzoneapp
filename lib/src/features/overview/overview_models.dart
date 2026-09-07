@@ -212,10 +212,14 @@ class LeaderHomeEvent {
     required this.endsAt,
     this.locationName,
     this.address,
+    this.myCallup,
   });
   final String id, title, type, state;
   final DateTime startsAt, endsAt;
   final String? locationName, address;
+  // A leader can be called up too (the "kallade ledare" roster bucket) —
+  // only ever the actor's OWN callup for this event, not anyone else's.
+  final LeaderHomeCallup? myCallup;
   factory LeaderHomeEvent.fromJson(Map<String, dynamic> json) =>
       LeaderHomeEvent(
         id: json['event_id'] as String,
@@ -226,6 +230,35 @@ class LeaderHomeEvent {
         endsAt: DateTime.parse(json['ends_at'] as String),
         locationName: json['location_name'] as String?,
         address: json['address'] as String?,
+        myCallup: json['my_callup'] == null
+            ? null
+            : LeaderHomeCallup.fromJson(
+                json['my_callup'] as Map<String, dynamic>,
+              ),
+      );
+}
+
+class LeaderHomeCallup {
+  const LeaderHomeCallup({
+    required this.id,
+    required this.state,
+    required this.revision,
+    required this.canRespond,
+    this.expiresAt,
+  });
+  final String id, state;
+  final int revision;
+  final bool canRespond;
+  final DateTime? expiresAt;
+  factory LeaderHomeCallup.fromJson(Map<String, dynamic> json) =>
+      LeaderHomeCallup(
+        id: json['callup_id'] as String,
+        state: json['state'] as String,
+        revision: (json['revision'] as num).toInt(),
+        canRespond: json['can_respond'] as bool? ?? false,
+        expiresAt: json['expires_at'] == null
+            ? null
+            : DateTime.parse(json['expires_at'] as String),
       );
 }
 

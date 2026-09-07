@@ -198,7 +198,10 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
                       }
                       return _LeaderHomeContent(
                         value: snapshot.data!,
+                        calendar: widget.calendar,
                         onNavigate: widget.onNavigate,
+                        onChanged: () =>
+                            setState(() => _leaderHome = _reloadLeaderHome()),
                       );
                     },
                   )
@@ -479,75 +482,84 @@ class _PlayerHomeContent extends StatefulWidget {
   State<_PlayerHomeContent> createState() => _PlayerHomeContentState();
 }
 
+/// Shared decline-reason dialog for any surface that lets someone respond
+/// "Kan inte" to a callup — the player's own home, a leader's own home,
+/// and (leader-as-manager) the Deltagare tab's roster rows all funnel
+/// through the same respond_callup RPC, which requires this same reason
+/// shape whenever the response is 'declined'.
+Future<(String, String?)?> _declineCallupReasonDialog(
+  BuildContext context,
+) async {
+  final text = TextEditingController();
+  var code = 'illness';
+  final result = await showDialog<(String, String?)>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (context, setDialogState) => AlertDialog(
+        title: Text(
+          AppStrings.of(context).feature('Varför kan du inte delta?'),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              initialValue: code,
+              decoration: const InputDecoration(labelText: 'Anledning'),
+              items:
+                  const [
+                        ('illness', 'Sjukdom'),
+                        ('injury', 'Skada'),
+                        ('unavailable', 'Inte tillgänglig'),
+                        ('transport', 'Transport'),
+                        ('other', 'Annat'),
+                      ]
+                      .map(
+                        (item) => DropdownMenuItem(
+                          value: item.$1,
+                          child: Text(item.$2),
+                        ),
+                      )
+                      .toList(),
+              onChanged: (value) => setDialogState(() => code = value ?? code),
+            ),
+            if (code == 'other')
+              TextField(
+                controller: text,
+                maxLength: 500,
+                decoration: const InputDecoration(
+                  labelText: 'Beskriv anledning',
+                ),
+                onChanged: (_) => setDialogState(() {}),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(AppStrings.of(context).feature('Avbryt')),
+          ),
+          FilledButton(
+            onPressed: code == 'other' && text.text.trim().length < 2
+                ? null
+                : () => Navigator.pop(dialogContext, (
+                    code,
+                    code == 'other' ? text.text.trim() : null,
+                  )),
+            child: Text(AppStrings.of(context).feature('Fortsätt')),
+          ),
+        ],
+      ),
+    ),
+  );
+  text.dispose();
+  return result;
+}
+
 class _PlayerHomeContentState extends State<_PlayerHomeContent> {
   String? _pendingCallupId;
 
-  Future<(String, String?)?> _declineReason() async {
-    final text = TextEditingController();
-    var code = 'illness';
-    final result = await showDialog<(String, String?)>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(
-            AppStrings.of(context).feature('Varför kan du inte delta?'),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                initialValue: code,
-                decoration: const InputDecoration(labelText: 'Anledning'),
-                items:
-                    const [
-                          ('illness', 'Sjukdom'),
-                          ('injury', 'Skada'),
-                          ('unavailable', 'Inte tillgänglig'),
-                          ('transport', 'Transport'),
-                          ('other', 'Annat'),
-                        ]
-                        .map(
-                          (item) => DropdownMenuItem(
-                            value: item.$1,
-                            child: Text(item.$2),
-                          ),
-                        )
-                        .toList(),
-                onChanged: (value) =>
-                    setDialogState(() => code = value ?? code),
-              ),
-              if (code == 'other')
-                TextField(
-                  controller: text,
-                  maxLength: 500,
-                  decoration: const InputDecoration(
-                    labelText: 'Beskriv anledning',
-                  ),
-                  onChanged: (_) => setDialogState(() {}),
-                ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(AppStrings.of(context).feature('Avbryt')),
-            ),
-            FilledButton(
-              onPressed: code == 'other' && text.text.trim().length < 2
-                  ? null
-                  : () => Navigator.pop(dialogContext, (
-                      code,
-                      code == 'other' ? text.text.trim() : null,
-                    )),
-              child: Text(AppStrings.of(context).feature('Fortsätt')),
-            ),
-          ],
-        ),
-      ),
-    );
-    text.dispose();
-    return result;
-  }
+  Future<(String, String?)?> _declineReason() =>
+      _declineCallupReasonDialog(context);
 
   Future<void> _respond(PlayerHomeCallup callup, String response) async {
     String? reasonCode;
@@ -696,7 +708,16 @@ class _PlayerHomeContentState extends State<_PlayerHomeContent> {
             icon: Icons.event_available_outlined,
             emptyText: '',
             children: [
-              _LeaderEventTile(event: next, onNavigate: widget.onNavigate),
+              // The player home's own callup response flow lives in the
+              // callupSection above, driven by own_callups — next.myCallup
+              // is always null here (only the leader home populates it),
+              // so respond is never actually reachable through this tile.
+              _LeaderEventTile(
+                event: next,
+                onNavigate: widget.onNavigate,
+                pendingCallupId: null,
+                onRespond: (callup, response) {},
+              ),
             ],
           );
     final wide = MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
@@ -740,13 +761,67 @@ String _playerCallupSubtitle(BuildContext context, PlayerHomeCallup callup) {
   return '$state · ${material.formatCompactDate(starts)} · ${material.formatTimeOfDay(TimeOfDay.fromDateTime(starts))}';
 }
 
-class _LeaderHomeContent extends StatelessWidget {
-  const _LeaderHomeContent({required this.value, required this.onNavigate});
+class _LeaderHomeContent extends StatefulWidget {
+  const _LeaderHomeContent({
+    required this.value,
+    required this.calendar,
+    required this.onNavigate,
+    required this.onChanged,
+  });
   final LeaderHomeProjection value;
+  final CalendarServices calendar;
   final ValueChanged<String> onNavigate;
+  final VoidCallback onChanged;
+
+  @override
+  State<_LeaderHomeContent> createState() => _LeaderHomeContentState();
+}
+
+class _LeaderHomeContentState extends State<_LeaderHomeContent> {
+  String? _pendingCallupId;
+
+  // A leader can be called up like anyone else (the "kallade ledare"
+  // roster bucket) — this is that same own-callup respond flow the
+  // player home already has, just for the leader's own "nästa" card.
+  Future<void> _respond(LeaderHomeCallup callup, String response) async {
+    String? reasonCode;
+    String? reasonText;
+    if (response == 'declined') {
+      final reason = await _declineCallupReasonDialog(context);
+      if (reason == null || !mounted) return;
+      reasonCode = reason.$1;
+      reasonText = reason.$2;
+    }
+    setState(() => _pendingCallupId = callup.id);
+    try {
+      await widget.calendar.respondCallup(
+        callupId: callup.id,
+        response: response,
+        declineReasonCode: reasonCode,
+        declineReasonText: reasonText,
+        expectedRevision: callup.revision,
+        idempotencyKey: _newUuid(),
+      );
+      widget.onChanged();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Svaret kunde inte sparas. Ladda om och försök igen.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _pendingCallupId = null);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final value = widget.value;
+    final onNavigate = widget.onNavigate;
     final wide = MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
     final attentionTasks = uniqueHomeAttention<LeaderHomeTask>(
       value.tasks,
@@ -800,7 +875,12 @@ class _LeaderHomeContent extends StatelessWidget {
         : value.nextEvent;
     final hero = value.nextEvent == null
         ? null
-        : _HomeHeroEventCard(event: value.nextEvent!, onNavigate: onNavigate);
+        : _HomeHeroEventCard(
+            event: value.nextEvent!,
+            onNavigate: onNavigate,
+            pendingCallupId: _pendingCallupId,
+            onRespond: _respond,
+          );
     final next = uniqueNext == null
         ? const _LeaderHomeSection(
             title: 'Nästa aktivitet',
@@ -813,18 +893,16 @@ class _LeaderHomeContent extends StatelessWidget {
             icon: Icons.event_available_outlined,
             emptyText: '',
             children: [
-              _LeaderEventTile(event: uniqueNext, onNavigate: onNavigate),
+              _LeaderEventTile(
+                event: uniqueNext,
+                onNavigate: onNavigate,
+                pendingCallupId: _pendingCallupId,
+                onRespond: _respond,
+              ),
             ],
           );
     final content = !wide
-        ? Column(
-            children: [
-              ?hero,
-              tasks,
-              today,
-              planning,
-            ],
-          )
+        ? Column(children: [?hero, tasks, today, planning])
         : Column(
             children: [
               Row(
@@ -894,10 +972,62 @@ class _LeaderHomeSection extends StatelessWidget {
   );
 }
 
+String _leaderCallupStatusLabel(String state) => switch (state) {
+  'accepted' => 'Kommer',
+  'declined' => 'Kan inte',
+  _ => 'Obesvarad',
+};
+
+/// The three respond buttons ("Kan inte"/"Kanske"/"Kommer"), shared by
+/// the leader home's own-callup card and the Deltagare tab's roster rows
+/// (both self- and manager-response alike) — same three actions either
+/// way, just a different callup revision/reason behind onRespond.
+class _CallupResponseButtons extends StatelessWidget {
+  const _CallupResponseButtons({
+    required this.busy,
+    required this.saving,
+    required this.onRespond,
+  });
+  final bool busy;
+  final bool saving;
+  final ValueChanged<String> onRespond;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return Wrap(
+      spacing: 8,
+      children: [
+        OutlinedButton(
+          onPressed: busy ? null : () => onRespond('declined'),
+          child: Text(strings.feature('Kan inte')),
+        ),
+        OutlinedButton(
+          onPressed: busy ? null : () => onRespond('tentative'),
+          child: Text(strings.feature('Kanske')),
+        ),
+        FilledButton(
+          onPressed: busy ? null : () => onRespond('accepted'),
+          child: Text(
+            saving ? strings.feature('Sparar…') : strings.feature('Kommer'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _LeaderEventTile extends StatelessWidget {
-  const _LeaderEventTile({required this.event, required this.onNavigate});
+  const _LeaderEventTile({
+    required this.event,
+    required this.onNavigate,
+    required this.pendingCallupId,
+    required this.onRespond,
+  });
   final LeaderHomeEvent event;
   final ValueChanged<String> onNavigate;
+  final String? pendingCallupId;
+  final void Function(LeaderHomeCallup callup, String response) onRespond;
   @override
   Widget build(BuildContext context) {
     final local = event.startsAt.toLocal();
@@ -906,15 +1036,32 @@ class _LeaderEventTile extends StatelessWidget {
       event.locationName,
       event.address,
     ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' · ');
-    return ListTile(
-      title: Text(event.title),
-      subtitle: Text(
-        '${material.formatCompactDate(local)} · ${material.formatTimeOfDay(TimeOfDay.fromDateTime(local))}'
-        '${place.isEmpty ? '' : '\n$place'}',
-      ),
-      isThreeLine: place.isNotEmpty,
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => onNavigate(ProductRouteContract.calendarEvent(event.id)),
+    final callup = event.myCallup;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListTile(
+          title: Text(event.title),
+          subtitle: Text(
+            '${material.formatCompactDate(local)} · ${material.formatTimeOfDay(TimeOfDay.fromDateTime(local))}'
+            '${place.isEmpty ? '' : '\n$place'}'
+            '${callup == null ? '' : '\n${AppStrings.of(context).feature('Din kallelse')}: '
+                      '${AppStrings.of(context).feature(_leaderCallupStatusLabel(callup.state))}'}',
+          ),
+          isThreeLine: place.isNotEmpty || callup != null,
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => onNavigate(ProductRouteContract.calendarEvent(event.id)),
+        ),
+        if (callup != null && callup.canRespond)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: _CallupResponseButtons(
+              busy: pendingCallupId != null,
+              saving: pendingCallupId == callup.id,
+              onRespond: (response) => onRespond(callup, response),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -925,12 +1072,20 @@ class _LeaderEventTile extends StatelessWidget {
 /// panel uses) with light text, regardless of the rest of the app's
 /// light/dark mode. Full width, matching the cards below it.
 class _HomeHeroEventCard extends StatelessWidget {
-  const _HomeHeroEventCard({required this.event, required this.onNavigate});
+  const _HomeHeroEventCard({
+    required this.event,
+    required this.onNavigate,
+    required this.pendingCallupId,
+    required this.onRespond,
+  });
   final LeaderHomeEvent event;
   final ValueChanged<String> onNavigate;
+  final String? pendingCallupId;
+  final void Function(LeaderHomeCallup callup, String response) onRespond;
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final local = event.startsAt.toLocal();
     final material = MaterialLocalizations.of(context);
     final place = [
@@ -938,12 +1093,13 @@ class _HomeHeroEventCard extends StatelessWidget {
       event.address,
     ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' · ');
     final gradient = AppColorThemeScope.of(context).colorTheme.menuGradient;
+    final callup = event.myCallup;
+    final busy = pendingCallupId != null;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () =>
-            onNavigate(ProductRouteContract.calendarEvent(event.id)),
+        onTap: () => onNavigate(ProductRouteContract.calendarEvent(event.id)),
         child: Ink(
           decoration: BoxDecoration(gradient: gradient),
           width: double.infinity,
@@ -985,6 +1141,63 @@ class _HomeHeroEventCard extends StatelessWidget {
                       ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
                     ),
                   ),
+                if (callup != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      '${strings.feature('Din kallelse')}: '
+                      '${strings.feature(_leaderCallupStatusLabel(callup.state))}',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                    ),
+                  ),
+                  if (callup.canRespond)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Wrap(
+                        spacing: 8,
+                        children: [
+                          OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white70),
+                            ),
+                            onPressed: busy
+                                ? null
+                                : () => onRespond(callup, 'declined'),
+                            child: Text(strings.feature('Kan inte')),
+                          ),
+                          OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white70),
+                            ),
+                            onPressed: busy
+                                ? null
+                                : () => onRespond(callup, 'tentative'),
+                            child: Text(strings.feature('Kanske')),
+                          ),
+                          FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                            ),
+                            onPressed: busy
+                                ? null
+                                : () => onRespond(callup, 'accepted'),
+                            child: Text(
+                              pendingCallupId == callup.id
+                                  ? strings.feature('Sparar…')
+                                  : strings.feature('Kommer'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ],
             ),
           ),
@@ -1036,9 +1249,7 @@ class _HomeDayEventRow extends StatelessWidget {
         ),
       ),
       title: Text(event.title),
-      subtitle: Text(
-        material.formatTimeOfDay(TimeOfDay.fromDateTime(local)),
-      ),
+      subtitle: Text(material.formatTimeOfDay(TimeOfDay.fromDateTime(local))),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => onNavigate(ProductRouteContract.calendarEvent(event.id)),
     );
