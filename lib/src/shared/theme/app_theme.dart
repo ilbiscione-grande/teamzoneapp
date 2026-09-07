@@ -62,9 +62,9 @@ enum AppColorTheme {
   /// point somewhat lighter than this theme's base color, fading out to
   /// the base color itself.
   RadialGradient get menuGradient => RadialGradient(
-    center: const Alignment(-0.3, -0.8),
+    center: const Alignment(-0.6, -0.2),
     radius: 1.3,
-    colors: [Color.lerp(seed, Colors.white, 0.22)!, seed],
+    colors: [Color.lerp(seed, Colors.white, 0.12)!, seed],
   );
 }
 
