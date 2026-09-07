@@ -537,7 +537,7 @@ class _AppNavigationPanel extends StatelessWidget {
       useMaterial3: true,
     );
     return DecoratedBox(
-      decoration: BoxDecoration(gradient: colorTheme.heroGradient),
+      decoration: BoxDecoration(gradient: colorTheme.menuGradient),
       child: Theme(data: navigationTheme, child: _buildContent(context, strings, hasAdminLinks)),
     );
   }

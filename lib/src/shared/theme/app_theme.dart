@@ -27,10 +27,10 @@ abstract final class AppMotion {
 /// language everything else is built from — typography, spacing, card
 /// shapes — stays identical across themes; only the seed color changes.
 enum AppColorTheme {
-  green('green', 'Grön', Color(0xFF176B46)),
-  blue('blue', 'Blå', Color(0xFF1D4ED8)),
-  purple('purple', 'Lila', Color(0xFF6D28D9)),
-  amber('amber', 'Orange', Color(0xFFB45309));
+  green('green', 'Grön', Color(0xFF599370)),
+  blue('blue', 'Blå', Color(0xFF16283D)),
+  red('red', 'Röd', Color(0xFF852929)),
+  amber('amber', 'Orange', Color(0xFF724C14));
 
   const AppColorTheme(this.id, this.label, this.seed);
 
@@ -47,10 +47,8 @@ enum AppColorTheme {
   );
 
   /// A deep, dark gradient derived from this theme's accent color — lighter
-  /// at the top, fading toward near-black at the bottom — shared by every
-  /// "accent surface" in the app (the navigation panel, the Home page's
-  /// hero event card) so they read as the same visual language across all
-  /// four color themes.
+  /// at the top, fading toward near-black at the bottom — used by the Home
+  /// page's hero event card.
   LinearGradient get heroGradient => LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
@@ -58,6 +56,15 @@ enum AppColorTheme {
       Color.lerp(seed, Colors.black, 0.3)!,
       Color.lerp(seed, Colors.black, 0.8)!,
     ],
+  );
+
+  /// The navigation panel's background: a radial gradient starting from a
+  /// point somewhat lighter than this theme's base color, fading out to
+  /// the base color itself.
+  RadialGradient get menuGradient => RadialGradient(
+    center: const Alignment(-0.3, -0.8),
+    radius: 1.3,
+    colors: [Color.lerp(seed, Colors.white, 0.22)!, seed],
   );
 }
 

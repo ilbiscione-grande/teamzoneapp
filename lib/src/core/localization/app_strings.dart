@@ -210,7 +210,7 @@ class AppStrings {
         'matter which you pick.',
     'Grön': 'Green',
     'Blå': 'Blue',
-    'Lila': 'Purple',
+    'Röd': 'Red',
     'Orange': 'Orange',
     'Inställningen kunde inte sparas. Försök igen.':
         'The setting could not be saved. Please try again.',
