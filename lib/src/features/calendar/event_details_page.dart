@@ -234,6 +234,20 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     if (revisionId == null) return;
     setState(() => _sendingCallups = true);
     try {
+      // send_callups_for_actor requires the squad to already be 'locked'
+      // (it rejects a 'draft' revision outright) — a step the old
+      // "Hantera urval" flow had its own button for, that this rebuild
+      // never wired up, so every send failed. Skipped when already
+      // locked (a prior send attempt that locked but then failed before
+      // actually sending, say), never re-locked from 'sent'/'empty'.
+      final draftRevision = squad.revision;
+      if (squad.state == 'draft' && draftRevision != null) {
+        await widget.calendar.lockSquad(
+          eventId: widget.eventId,
+          expectedRevision: draftRevision,
+          idempotencyKey: _newUuid(),
+        );
+      }
       await widget.calendar.sendCallups(
         squadRevisionId: revisionId,
         expiry: DateTime.now().add(const Duration(days: 7)),
