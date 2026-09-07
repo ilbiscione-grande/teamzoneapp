@@ -260,6 +260,12 @@ class _ProductShellState extends State<_ProductShell> {
         final width = MediaQuery.sizeOf(context).width;
         final usesSidebar = AppBreakpoints.usesNavigationRail(width);
         final showAssistantPanel = AppBreakpoints.usesAssistantSidePanel(width);
+        // EventDetails is a full page with its own header (centered title,
+        // close button) — showing the shell's own context-picker bar above
+        // it as well would stack two app bars.
+        final hidesShellAppBar = location.startsWith(
+          '${ProductRouteContract.calendar}/event/',
+        );
         final navigationPanel = _AppNavigationPanel(
           profile: widget.profile,
           contextValue: widget.contextValue,
@@ -277,28 +283,33 @@ class _ProductShellState extends State<_ProductShell> {
           onPopInvokedWithResult: _handleSystemBack,
           child: Scaffold(
             key: _scaffoldKey,
-            appBar: AppBar(
-              automaticallyImplyLeading: false,
-              title: InkWell(
-                onTap: () => _showContextPicker(
-                  context: context,
-                  contexts: widget.contexts,
-                  onContextChanged: widget.onContextChanged,
-                ),
-                child: _ContextTwoLineLabel(contextValue: widget.contextValue),
-              ),
-              actions: [
-                if (!usesSidebar)
-                  IconButton(
-                    tooltip: strings.feature('Öppna menyn'),
-                    onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                    icon: const CircleAvatar(
-                      radius: 16,
-                      child: Icon(Icons.person, size: 18),
+            appBar: hidesShellAppBar
+                ? null
+                : AppBar(
+                    automaticallyImplyLeading: false,
+                    title: InkWell(
+                      onTap: () => _showContextPicker(
+                        context: context,
+                        contexts: widget.contexts,
+                        onContextChanged: widget.onContextChanged,
+                      ),
+                      child: _ContextTwoLineLabel(
+                        contextValue: widget.contextValue,
+                      ),
                     ),
+                    actions: [
+                      if (!usesSidebar)
+                        IconButton(
+                          tooltip: strings.feature('Öppna menyn'),
+                          onPressed: () =>
+                              _scaffoldKey.currentState?.openDrawer(),
+                          icon: const CircleAvatar(
+                            radius: 16,
+                            child: Icon(Icons.person, size: 18),
+                          ),
+                        ),
+                    ],
                   ),
-              ],
-            ),
             drawer: usesSidebar
                 ? null
                 : Drawer(
@@ -730,7 +741,10 @@ class _AppNavigationPanel extends StatelessWidget {
     );
     return DecoratedBox(
       decoration: BoxDecoration(gradient: colorTheme.menuGradient),
-      child: Theme(data: navigationTheme, child: _buildContent(context, strings, hasAdminLinks)),
+      child: Theme(
+        data: navigationTheme,
+        child: _buildContent(context, strings, hasAdminLinks),
+      ),
     );
   }
 

@@ -153,7 +153,8 @@ class _EventDetailsBody extends StatefulWidget {
   State<_EventDetailsBody> createState() => _EventDetailsBodyState();
 }
 
-class _EventDetailsBodyState extends State<_EventDetailsBody> {
+class _EventDetailsBodyState extends State<_EventDetailsBody>
+    with SingleTickerProviderStateMixin {
   // Seeded once from the page's initial load, then updated in place by
   // _refresh() after an action — never by tearing this widget down and
   // rebuilding it, which used to reset the active tab back to Info and
@@ -163,12 +164,35 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
   late EventDetails event = widget.initialEvent;
   late SquadDetails squad = widget.initialSquad;
 
+  // An explicit controller (rather than DefaultTabController) so the
+  // "Skicka kallelser" FAB knows which tab is active and the header can
+  // track the swipe animation to shrink itself on every tab but Info.
+  late final TabController _tabController = TabController(
+    length: 4,
+    vsync: this,
+  )..addListener(_handleTabIndexChanged);
+
+  bool _sendingCallups = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => widget.onTitleChanged(event.title),
     );
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_handleTabIndexChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _handleTabIndexChanged() {
+    // Fires once the swipe/tap settles on a new tab — enough to show or
+    // hide the "Skicka kallelser" FAB without rebuilding every frame.
+    if (!_tabController.indexIsChanging) setState(() {});
   }
 
   Future<void> _refresh() async {
@@ -197,20 +221,101 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
     }
   }
 
+  /// People currently drafted but not yet called — the ones a tap on
+  /// "Skicka kallelser" would actually notify. Already-called members
+  /// stay in the draft list too, so counting the raw draft is not enough.
+  int get _pendingCallupCount => [
+    ...squad.roster,
+    ..._guestRosterFor(squad),
+  ].where((person) => person.inDraft && !person.isCalled).length;
+
+  Future<void> _sendCallups() async {
+    final revisionId = squad.squadRevisionId;
+    if (revisionId == null) return;
+    setState(() => _sendingCallups = true);
+    try {
+      await widget.calendar.sendCallups(
+        squadRevisionId: revisionId,
+        expiry: DateTime.now().add(const Duration(days: 7)),
+        idempotencyKey: _newUuid(),
+      );
+      await _refresh();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppStrings.of(context).feature(
+                'Kallelserna kunde inte skickas. Ladda om och försök igen.',
+              ),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sendingCallups = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
-    return DefaultTabController(
-      length: 4,
-      child: Column(
+    final pendingCount = _pendingCallupCount;
+    final showSendFab =
+        _tabController.index == 1 &&
+        squad.can('send_callups') &&
+        pendingCount > 0;
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: !showSendFab
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _sendingCallups ? null : _sendCallups,
+              icon: _sendingCallups
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Badge(
+                      label: Text('$pendingCount'),
+                      child: const Icon(Icons.send_outlined),
+                    ),
+              label: Text(
+                squad.dispatchKind == 'late'
+                    ? strings.feature('Skicka sena kallelser')
+                    : strings.feature('Skicka kallelser'),
+              ),
+            ),
+      floatingActionButtonLocation: _aboveAssistantFabLocation,
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          // Mirrors the reference app's header-collapse: the status
+          // circles shrink and the surrounding padding tightens on every
+          // tab except Info, tracking the swipe itself rather than
+          // snapping once the tab settles.
+          AnimatedBuilder(
+            animation: _tabController.animation!,
+            builder: (context, child) {
+              final expanded =
+                  (1 - _tabController.animation!.value.clamp(0.0, 1.0)).clamp(
+                    0.0,
+                    1.0,
+                  );
+              return Padding(
+                padding: EdgeInsets.fromLTRB(20, 8 + 4 * expanded, 20, 0),
+                child: Transform.scale(
+                  scale: 0.82 + 0.18 * expanded,
+                  alignment: Alignment.topCenter,
+                  child: child,
+                ),
+              );
+            },
             child: _StatusHeaderRow(event: event, squad: squad),
           ),
           const SizedBox(height: 4),
           TabBar(
+            controller: _tabController,
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             tabs: [
@@ -222,6 +327,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
           ),
           Expanded(
             child: TabBarView(
+              controller: _tabController,
               children: [
                 _scroll(_info(context)),
                 _ParticipantsTab(
@@ -353,7 +459,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
           ),
         if (actions.contains(EventPreparationAction.participants))
           OutlinedButton.icon(
-            onPressed: () => DefaultTabController.of(context).animateTo(1),
+            onPressed: () => _tabController.animateTo(1),
             icon: const Icon(Icons.groups_outlined),
             label: Text(strings.feature('Förbered deltagare och kallelser')),
           ),
@@ -385,7 +491,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
         const SizedBox(height: 20),
         if (event.can('manage_roster'))
           OutlinedButton.icon(
-            onPressed: () => DefaultTabController.of(context).animateTo(1),
+            onPressed: () => _tabController.animateTo(1),
             icon: const Icon(Icons.fact_check_outlined),
             label: Text(strings.feature('Registrera eller granska närvaro')),
           ),
@@ -456,7 +562,10 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
       );
       if (mounted) unawaited(_refresh());
     } catch (_) {
-      if (mounted) _showError('Eventet ändrades av någon annan. Ladda om och försök igen.');
+      if (mounted)
+        _showError(
+          'Eventet ändrades av någon annan. Ladda om och försök igen.',
+        );
     }
   }
 
@@ -471,7 +580,10 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
       );
       if (mounted) unawaited(_refresh());
     } catch (_) {
-      if (mounted) _showError('Eventet ändrades av någon annan. Ladda om och försök igen.');
+      if (mounted)
+        _showError(
+          'Eventet ändrades av någon annan. Ladda om och försök igen.',
+        );
     }
   }
 
@@ -504,13 +616,15 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
         idempotencyKey: _newUuid(),
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(strings.feature('Utkastet har tagits bort.'))));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.feature('Utkastet har tagits bort.'))),
+      );
       widget.onDeleted();
     } catch (_) {
       if (mounted) {
-        _showError('Utkastet kan inte tas bort. Det kan ha ändrats eller fått historik.');
+        _showError(
+          'Utkastet kan inte tas bort. Det kan ha ändrats eller fått historik.',
+        );
       }
     }
   }
@@ -556,9 +670,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
         idempotencyKey: _newUuid(),
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(strings.feature('Eventet har arkiverats.'))));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.feature('Eventet har arkiverats.'))),
+      );
       widget.onDeleted();
     } catch (_) {
       if (mounted) _showError('Eventet kunde inte arkiveras.');
@@ -609,7 +723,11 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
           content: SizedBox(
             width: 520,
             child: settings.teams.isEmpty
-                ? Text(strings.feature('Det finns inga andra aktiva lag i klubben.'))
+                ? Text(
+                    strings.feature(
+                      'Det finns inga andra aktiva lag i klubben.',
+                    ),
+                  )
                 : ListView(
                     shrinkWrap: true,
                     children: settings.teams.map((team) {
@@ -627,11 +745,15 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
                               DropdownButtonFormField<String>(
                                 initialValue: level,
                                 isExpanded: true,
-                                decoration: const InputDecoration(labelText: 'Rättighet'),
+                                decoration: const InputDecoration(
+                                  labelText: 'Rättighet',
+                                ),
                                 items: [
                                   DropdownMenuItem(
                                     value: 'none',
-                                    child: Text(strings.feature('Ingen delning')),
+                                    child: Text(
+                                      strings.feature('Ingen delning'),
+                                    ),
                                   ),
                                   DropdownMenuItem(
                                     value: 'view',
@@ -639,11 +761,17 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
                                   ),
                                   DropdownMenuItem(
                                     value: 'manage_roster',
-                                    child: Text(strings.feature('Kan hantera deltagare')),
+                                    child: Text(
+                                      strings.feature('Kan hantera deltagare'),
+                                    ),
                                   ),
                                   DropdownMenuItem(
                                     value: 'co_manage',
-                                    child: Text(strings.feature('Kan samredigera eventet')),
+                                    child: Text(
+                                      strings.feature(
+                                        'Kan samredigera eventet',
+                                      ),
+                                    ),
                                   ),
                                 ],
                                 onChanged: saving
@@ -657,25 +785,35 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
                               ),
                               if (level != 'none') ...[
                                 const SizedBox(height: 8),
-                                Text(strings.feature('Mottagare (ger endast synlighet)')),
+                                Text(
+                                  strings.feature(
+                                    'Mottagare (ger endast synlighet)',
+                                  ),
+                                ),
                                 Wrap(
-                                  children: const {
-                                    'players': 'Spelare',
-                                    'leaders': 'Ledare',
-                                    'guardians': 'Vårdnadshavare',
-                                  }.entries.map((entry) {
-                                    return FilterChip(
-                                      label: Text(entry.value),
-                                      selected: audiences[team.teamId]!.contains(entry.key),
-                                      onSelected: saving
-                                          ? null
-                                          : (selected) => setDialogState(() {
-                                              selected
-                                                  ? audiences[team.teamId]!.add(entry.key)
-                                                  : audiences[team.teamId]!.remove(entry.key);
-                                            }),
-                                    );
-                                  }).toList(),
+                                  children:
+                                      const {
+                                        'players': 'Spelare',
+                                        'leaders': 'Ledare',
+                                        'guardians': 'Vårdnadshavare',
+                                      }.entries.map((entry) {
+                                        return FilterChip(
+                                          label: Text(entry.value),
+                                          selected: audiences[team.teamId]!
+                                              .contains(entry.key),
+                                          onSelected: saving
+                                              ? null
+                                              : (
+                                                  selected,
+                                                ) => setDialogState(() {
+                                                  selected
+                                                      ? audiences[team.teamId]!
+                                                            .add(entry.key)
+                                                      : audiences[team.teamId]!
+                                                            .remove(entry.key);
+                                                }),
+                                        );
+                                      }).toList(),
                                 ),
                               ],
                             ],
@@ -701,7 +839,10 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
                             final level = levels[team.teamId]!;
                             return <String, dynamic>{
                               'team_id': team.teamId,
-                              'capabilities': ['view', if (level != 'view') level],
+                              'capabilities': [
+                                'view',
+                                if (level != 'view') level,
+                              ],
                             };
                           })
                           .toList();
@@ -711,12 +852,19 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
                                 entry['team_id'] == null ||
                                 !levels.containsKey(entry['team_id']),
                           )
-                          .map((entry) => Map<String, dynamic>.from(entry)..remove('team_name'))
+                          .map(
+                            (entry) =>
+                                Map<String, dynamic>.from(entry)
+                                  ..remove('team_name'),
+                          )
                           .toList();
                       for (final entry in audiences.entries) {
                         if (levels[entry.key] == 'none') continue;
                         for (final type in entry.value) {
-                          audienceEntries.add({'type': type, 'team_id': entry.key});
+                          audienceEntries.add({
+                            'type': type,
+                            'team_id': entry.key,
+                          });
                         }
                       }
                       try {
@@ -730,13 +878,20 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
                         if (dialogContext.mounted) Navigator.pop(dialogContext);
                         if (mounted) {
                           ScaffoldMessenger.of(this.context).showSnackBar(
-                            SnackBar(content: Text(strings.feature('Delningen har sparats.'))),
+                            SnackBar(
+                              content: Text(
+                                strings.feature('Delningen har sparats.'),
+                              ),
+                            ),
                           );
                           unawaited(_refresh());
                         }
                       } catch (_) {
                         setDialogState(() => saving = false);
-                        if (mounted) _showError('Delningen kunde inte sparas. Ladda om och försök igen.');
+                        if (mounted)
+                          _showError(
+                            'Delningen kunde inte sparas. Ladda om och försök igen.',
+                          );
                       }
                     },
               child: saving
@@ -753,9 +908,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(AppStrings.of(context).feature(message))));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(AppStrings.of(context).feature(message))),
+    );
   }
 }
 
@@ -788,20 +943,23 @@ List<EventRosterPerson> _guestRosterFor(SquadDetails squad) {
   for (final callup in squad.callups) {
     if (rosterIds.contains(callup.personId)) continue;
     final existing = guests[callup.personId];
-    guests[callup.personId] = (existing ?? EventRosterPerson(
-      personId: callup.personId,
-      name: callup.name,
-      teamId: '',
-      teamName: '',
-      rolePackage: 'player',
-      inDraft: false,
-      isGuest: true,
-    )).copyWith(
-      callupId: callup.id,
-      callupState: callup.state,
-      callupExpiresAt: callup.expiresAt,
-      callupLastRemindedAt: callup.lastRemindedAt,
-    );
+    guests[callup.personId] =
+        (existing ??
+                EventRosterPerson(
+                  personId: callup.personId,
+                  name: callup.name,
+                  teamId: '',
+                  teamName: '',
+                  rolePackage: 'player',
+                  inDraft: false,
+                  isGuest: true,
+                ))
+            .copyWith(
+              callupId: callup.id,
+              callupState: callup.state,
+              callupExpiresAt: callup.expiresAt,
+              callupLastRemindedAt: callup.lastRemindedAt,
+            );
   }
   for (final attendance in squad.attendance) {
     final existing = guests[attendance.personId];
@@ -833,7 +991,12 @@ class _StatusHeaderRow extends StatelessWidget {
     final accepted = roster.where((p) => p.callupState == 'accepted').length;
     final declined = roster.where((p) => p.callupState == 'declined').length;
     final unanswered = roster
-        .where((p) => p.isCalled && p.callupState != 'accepted' && p.callupState != 'declined')
+        .where(
+          (p) =>
+              p.isCalled &&
+              p.callupState != 'accepted' &&
+              p.callupState != 'declined',
+        )
         .length;
     final attended = roster
         .where(
@@ -847,49 +1010,60 @@ class _StatusHeaderRow extends StatelessWidget {
     // tablet breakpoint (a phone in portrait can't fit six labeled circles
     // without wrapping awkwardly), keeping just the numbers, which still
     // read fine at a glance; a tooltip on each circle covers the rest.
-    final showLabels = MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
+    final showLabels =
+        MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
+    final circles = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _StatusCircle(
+          count: draft,
+          label: strings.feature('Utkast'),
+          color: Colors.blueGrey,
+          showLabel: showLabels,
+        ),
+        _StatusCircle(
+          count: called,
+          label: strings.feature('Kallade'),
+          color: Colors.indigo,
+          showLabel: showLabels,
+        ),
+        _StatusCircle(
+          count: accepted,
+          label: strings.domainValue('accepted'),
+          color: Colors.green,
+          showLabel: showLabels,
+        ),
+        _StatusCircle(
+          count: unanswered,
+          label: strings.feature('Obesvarade'),
+          color: Colors.amber.shade800,
+          showLabel: showLabels,
+        ),
+        _StatusCircle(
+          count: declined,
+          label: strings.domainValue('declined'),
+          color: Colors.red,
+          showLabel: showLabels,
+        ),
+        if (_hasEnded)
           _StatusCircle(
-            count: draft,
-            label: strings.feature('Utkast'),
-            color: Colors.blueGrey,
+            count: attended,
+            label: strings.feature('Deltog'),
+            color: Colors.teal,
             showLabel: showLabels,
           ),
-          _StatusCircle(
-            count: called,
-            label: strings.feature('Kallade'),
-            color: Colors.indigo,
-            showLabel: showLabels,
-          ),
-          _StatusCircle(
-            count: accepted,
-            label: strings.domainValue('accepted'),
-            color: Colors.green,
-            showLabel: showLabels,
-          ),
-          _StatusCircle(
-            count: unanswered,
-            label: strings.feature('Obesvarade'),
-            color: Colors.amber.shade800,
-            showLabel: showLabels,
-          ),
-          _StatusCircle(
-            count: declined,
-            label: strings.domainValue('declined'),
-            color: Colors.red,
-            showLabel: showLabels,
-          ),
-          if (_hasEnded)
-            _StatusCircle(
-              count: attended,
-              label: strings.feature('Deltog'),
-              color: Colors.teal,
-              showLabel: showLabels,
-            ),
-        ],
+      ],
+    );
+    // Centered when it fits; the min-width constraint still lets the row
+    // grow past the viewport (and scroll) on a narrow phone with six
+    // labeled circles instead of clipping or wrapping awkwardly.
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: constraints.maxWidth),
+          child: Center(child: circles),
+        ),
       ),
     );
   }
@@ -986,7 +1160,8 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
 
   bool get _canManage => widget.squad.can('save_squad');
   bool get _canRecordAttendance => widget.squad.can('record_attendance');
-  bool get _eventEnded => DateTime.now().toUtc().isAfter(widget.event.endsAt.toUtc());
+  bool get _eventEnded =>
+      DateTime.now().toUtc().isAfter(widget.event.endsAt.toUtc());
   Set<String> get _draftMemberIds =>
       widget.squad.members.map((member) => member.personId).toSet();
 
@@ -1030,7 +1205,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
 
   Future<void> _loadCandidates() async {
     try {
-      final candidates = await widget.calendar.listSquadCandidates(widget.event.id);
+      final candidates = await widget.calendar.listSquadCandidates(
+        widget.event.id,
+      );
       if (mounted) setState(() => _candidates = candidates);
     } catch (_) {
       // Search just stays empty; the roster list below still works.
@@ -1058,30 +1235,15 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         eventId: widget.event.id,
         memberIds: ids.toList(),
         source: 'manual',
-        expectedRevision: widget.squad.state == 'draft' ? widget.squad.revision : null,
+        expectedRevision: widget.squad.state == 'draft'
+            ? widget.squad.revision
+            : null,
         idempotencyKey: _newUuid(),
       );
       widget.onReload();
     } catch (_) {
-      if (mounted) _showError('Ändringen kunde inte sparas. Ladda om och försök igen.');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _sendCallups() async {
-    final revisionId = widget.squad.squadRevisionId;
-    if (revisionId == null) return;
-    setState(() => _busy = true);
-    try {
-      await widget.calendar.sendCallups(
-        squadRevisionId: revisionId,
-        expiry: DateTime.now().add(const Duration(days: 7)),
-        idempotencyKey: _newUuid(),
-      );
-      widget.onReload();
-    } catch (_) {
-      if (mounted) _showError('Kallelserna kunde inte skickas. Ladda om och försök igen.');
+      if (mounted)
+        _showError('Ändringen kunde inte sparas. Ladda om och försök igen.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1096,13 +1258,17 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         callupId: callupId,
         action: action,
         expectedRevision:
-            widget.squad.callups.where((callup) => callup.id == callupId).map((callup) => callup.revision).firstOrNull ??
+            widget.squad.callups
+                .where((callup) => callup.id == callupId)
+                .map((callup) => callup.revision)
+                .firstOrNull ??
             0,
         idempotencyKey: _newUuid(),
       );
       widget.onReload();
     } catch (_) {
-      if (mounted) _showError('Åtgärden kunde inte utföras. Ladda om och försök igen.');
+      if (mounted)
+        _showError('Åtgärden kunde inte utföras. Ladda om och försök igen.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1131,7 +1297,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
     final everyone = [...widget.squad.roster, ..._guestRoster];
     final changes = <Map<String, dynamic>>[];
     for (final entry in _stagedStatus.entries) {
-      final person = everyone.where((item) => item.personId == entry.key).firstOrNull;
+      final person = everyone
+          .where((item) => item.personId == entry.key)
+          .firstOrNull;
       if (person == null) continue;
       changes.add({
         'person_id': entry.key,
@@ -1151,13 +1319,14 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         idempotencyKey: _newUuid(),
       );
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(strings.feature('Närvaron har sparats.'))));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(strings.feature('Närvaron har sparats.'))),
+        );
       }
       widget.onReload();
     } catch (_) {
-      if (mounted) _showError('Närvaron kunde inte sparas. Ladda om och försök igen.');
+      if (mounted)
+        _showError('Närvaron kunde inte sparas. Ladda om och försök igen.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1182,12 +1351,15 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         eventId: widget.event.id,
         memberIds: ids.toList(),
         source: 'manual',
-        expectedRevision: widget.squad.state == 'draft' ? widget.squad.revision : null,
+        expectedRevision: widget.squad.state == 'draft'
+            ? widget.squad.revision
+            : null,
         idempotencyKey: _newUuid(),
       );
       widget.onReload();
     } catch (_) {
-      if (mounted) _showError('Ändringen kunde inte sparas. Ladda om och försök igen.');
+      if (mounted)
+        _showError('Ändringen kunde inte sparas. Ladda om och försök igen.');
     } finally {
       if (mounted) setState(() => _busyBulk = false);
     }
@@ -1198,9 +1370,10 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
   /// cooldown) instead of everyone with a pending response.
   Future<void> _remindAllUnanswered() async {
     final now = DateTime.now();
-    final eligible = [...widget.squad.roster, ..._guestRoster]
-        .where((person) => person.canRemindAt(now))
-        .toList();
+    final eligible = [
+      ...widget.squad.roster,
+      ..._guestRoster,
+    ].where((person) => person.canRemindAt(now)).toList();
     if (eligible.isEmpty) return;
     setState(() => _busyBulk = true);
     try {
@@ -1222,7 +1395,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       widget.onReload();
     } catch (_) {
       if (mounted) {
-        _showError('Några påminnelser kunde inte skickas. Ladda om och försök igen.');
+        _showError(
+          'Några påminnelser kunde inte skickas. Ladda om och försök igen.',
+        );
       }
     } finally {
       if (mounted) setState(() => _busyBulk = false);
@@ -1237,7 +1412,8 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
     final candidates = [...widget.squad.roster, ..._guestRoster].where(
       (person) =>
           person.callupState == 'accepted' &&
-          (person.attendanceStatus == null || person.attendanceStatus == 'unknown'),
+          (person.attendanceStatus == null ||
+              person.attendanceStatus == 'unknown'),
     );
     if (candidates.isEmpty) return;
     setState(() {
@@ -1256,14 +1432,22 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
     final now = DateTime.now();
     final everyone = [...widget.squad.roster, ..._guestRoster];
     final selectableCount = widget.squad.roster
-        .where((person) => person.rolePackage == 'player' && !person.isCalled && !person.inDraft)
+        .where(
+          (person) =>
+              person.rolePackage == 'player' &&
+              !person.isCalled &&
+              !person.inDraft,
+        )
         .length;
-    final remindableCount = everyone.where((person) => person.canRemindAt(now)).length;
+    final remindableCount = everyone
+        .where((person) => person.canRemindAt(now))
+        .length;
     final attendanceCandidateCount = everyone
         .where(
           (person) =>
               person.callupState == 'accepted' &&
-              (person.attendanceStatus == null || person.attendanceStatus == 'unknown'),
+              (person.attendanceStatus == null ||
+                  person.attendanceStatus == 'unknown'),
         )
         .length;
     await showModalBottomSheet<void>(
@@ -1297,7 +1481,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
             else if (_eventEnded && _canRecordAttendance)
               ListTile(
                 leading: const Icon(Icons.how_to_reg_outlined),
-                title: Text(strings.markAllPresentLabel(attendanceCandidateCount)),
+                title: Text(
+                  strings.markAllPresentLabel(attendanceCandidateCount),
+                ),
                 enabled: attendanceCandidateCount > 0 && !_busyBulk,
                 onTap: () {
                   Navigator.pop(sheetContext);
@@ -1311,9 +1497,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(AppStrings.of(context).feature(message))));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(AppStrings.of(context).feature(message))),
+    );
   }
 
   @override
@@ -1326,13 +1512,17 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       _ => 1,
     };
     List<EventRosterPerson> called(String role) =>
-        roster.where((person) => person.isCalled && person.rolePackage == role).toList()
+        roster
+            .where((person) => person.isCalled && person.rolePackage == role)
+            .toList()
           ..sort((a, b) {
             final byPriority = priority(a).compareTo(priority(b));
             return byPriority != 0 ? byPriority : a.name.compareTo(b.name);
           });
     List<EventRosterPerson> uncalled(String role) =>
-        roster.where((person) => !person.isCalled && person.rolePackage == role).toList()
+        roster
+            .where((person) => !person.isCalled && person.rolePackage == role)
+            .toList()
           ..sort((a, b) => a.name.compareTo(b.name));
 
     return CustomScrollView(
@@ -1374,7 +1564,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                         icon: _busyBulk
                             ? const SizedBox.square(
                                 dimension: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Icon(Icons.more_vert),
                       ),
@@ -1392,33 +1584,29 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                               _SelectableRow(
                                 title: candidate.name,
                                 subtitle: [
-                                  if (candidate.teamName != null) candidate.teamName!,
+                                  if (candidate.teamName != null)
+                                    candidate.teamName!,
                                   if (candidate.rolePackage != null)
                                     strings.domainValue(candidate.rolePackage!),
                                 ].join(' · '),
-                                selected: _draftMemberIds.contains(candidate.personId),
+                                selected: _draftMemberIds.contains(
+                                  candidate.personId,
+                                ),
                                 onTap: _busy
                                     ? null
-                                    : () => _toggleDraftMember(candidate.personId),
+                                    : () => _toggleDraftMember(
+                                        candidate.personId,
+                                      ),
                               ),
                           ],
                         ),
                       ),
                     ),
                   const SizedBox(height: 12),
-                  if (widget.squad.can('send_callups') && _draftMemberIds.isNotEmpty)
-                    FilledButton.icon(
-                      onPressed: _busy ? null : _sendCallups,
-                      icon: const Icon(Icons.send_outlined),
-                      label: Text(
-                        widget.squad.dispatchKind == 'late'
-                            ? strings.feature('Skicka sena kallelser')
-                            : strings.feature('Skicka kallelser'),
-                      ),
-                    ),
-                  const SizedBox(height: 8),
                 ],
-                if (_eventEnded && _canRecordAttendance && _stagedStatus.isNotEmpty) ...[
+                if (_eventEnded &&
+                    _canRecordAttendance &&
+                    _stagedStatus.isNotEmpty) ...[
                   if (_resolvedPermissions?.lateWindow ?? false)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
@@ -1426,7 +1614,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                         controller: _reasonController,
                         maxLength: 500,
                         decoration: InputDecoration(
-                          labelText: strings.feature('Orsak till sen korrigering'),
+                          labelText: strings.feature(
+                            'Orsak till sen korrigering',
+                          ),
                         ),
                       ),
                     ),
@@ -1441,33 +1631,19 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
             ),
           ),
         ),
-        _rosterSection(
-          strings.feature('Kallade spelare'),
-          called('player'),
-        ),
-        _rosterSection(
-          strings.feature('Kallade ledare'),
-          called('leader'),
-        ),
-        _rosterSection(
-          strings.feature('Okallade spelare'),
-          uncalled('player'),
-        ),
-        _rosterSection(
-          strings.feature('Okallade ledare'),
-          uncalled('leader'),
-        ),
-        _rosterSection(
-          strings.feature('Gästspelare'),
-          _guestRoster,
-        ),
+        _rosterSection(strings.feature('Kallade spelare'), called('player')),
+        _rosterSection(strings.feature('Kallade ledare'), called('leader')),
+        _rosterSection(strings.feature('Okallade spelare'), uncalled('player')),
+        _rosterSection(strings.feature('Okallade ledare'), uncalled('leader')),
+        _rosterSection(strings.feature('Gästspelare'), _guestRoster),
         const SliverToBoxAdapter(child: SizedBox(height: 32)),
       ],
     );
   }
 
   Widget _rosterSection(String title, List<EventRosterPerson> people) {
-    if (people.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+    if (people.isEmpty)
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
     return SliverMainAxisGroup(
       slivers: [
         SliverToBoxAdapter(
@@ -1478,18 +1654,24 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         ),
         SliverList.builder(
           itemCount: people.length,
-          itemBuilder: (context, index) => _RosterRow(
-            person: people[index],
-            eventEnded: _eventEnded,
-            canManage: _canManage,
-            canRecordAttendance: _canRecordAttendance,
-            canRemind: widget.squad.can('remind_callup'),
-            canCancel: widget.squad.can('cancel_callup'),
-            busy: _busy,
-            stagedStatus: _stagedStatus[people[index].personId],
-            onToggleDraft: () => _toggleDraftMember(people[index].personId),
-            onManageCallup: (action) => _manageCallup(people[index], action),
-            onSetAttendance: (status) => _setAttendance(people[index], status),
+          itemBuilder: (context, index) => Padding(
+            // A little breathing room between rows now that each row's
+            // own padding is tighter.
+            padding: const EdgeInsets.only(bottom: 2),
+            child: _RosterRow(
+              person: people[index],
+              eventEnded: _eventEnded,
+              canManage: _canManage,
+              canRecordAttendance: _canRecordAttendance,
+              canRemind: widget.squad.can('remind_callup'),
+              canCancel: widget.squad.can('cancel_callup'),
+              busy: _busy,
+              stagedStatus: _stagedStatus[people[index].personId],
+              onToggleDraft: () => _toggleDraftMember(people[index].personId),
+              onManageCallup: (action) => _manageCallup(people[index], action),
+              onSetAttendance: (status) =>
+                  _setAttendance(people[index], status),
+            ),
           ),
         ),
       ],
@@ -1517,7 +1699,12 @@ class _RosterRow extends StatelessWidget {
   });
 
   final EventRosterPerson person;
-  final bool eventEnded, canManage, canRecordAttendance, canRemind, canCancel, busy;
+  final bool eventEnded,
+      canManage,
+      canRecordAttendance,
+      canRemind,
+      canCancel,
+      busy;
   final String? stagedStatus;
   final VoidCallback onToggleDraft;
   final ValueChanged<String> onManageCallup;
@@ -1531,11 +1718,16 @@ class _RosterRow extends StatelessWidget {
       strings.domainValue(person.rolePackage),
     ].join(' · ');
 
+    final textTheme = Theme.of(context).textTheme;
+
     if (eventEnded) {
       if (!person.isCalled) {
         return ListTile(
-          title: Text(person.name),
-          subtitle: Text(subtitle),
+          dense: true,
+          visualDensity: VisualDensity.compact,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          title: Text(person.name, style: textTheme.bodyMedium),
+          subtitle: Text(subtitle, style: textTheme.bodySmall),
           trailing: canRecordAttendance
               ? Text(
                   strings.feature('Aldrig kallad'),
@@ -1546,8 +1738,11 @@ class _RosterRow extends StatelessWidget {
       }
       final current = stagedStatus ?? person.attendanceStatus ?? 'unknown';
       return ListTile(
-        title: Text(person.name),
-        subtitle: Text(subtitle),
+        dense: true,
+        visualDensity: VisualDensity.compact,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+        title: Text(person.name, style: textTheme.bodyMedium),
+        subtitle: Text(subtitle, style: textTheme.bodySmall),
         trailing: canRecordAttendance
             ? DropdownButton<String>(
                 value: current,
@@ -1576,8 +1771,11 @@ class _RosterRow extends StatelessWidget {
       // is never offered in the first place.
       final canRemindNow = canRemind && person.canRemindAt(DateTime.now());
       return ListTile(
-        title: Text(person.name),
-        subtitle: Text(subtitle),
+        dense: true,
+        visualDensity: VisualDensity.compact,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+        title: Text(person.name, style: textTheme.bodyMedium),
+        subtitle: Text(subtitle, style: textTheme.bodySmall),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1588,9 +1786,15 @@ class _RosterRow extends StatelessWidget {
                 onSelected: busy ? null : onManageCallup,
                 itemBuilder: (_) => [
                   if (canRemindNow)
-                    PopupMenuItem(value: 'remind', child: Text(strings.feature('Påminn'))),
+                    PopupMenuItem(
+                      value: 'remind',
+                      child: Text(strings.feature('Påminn')),
+                    ),
                   if (canCancel)
-                    PopupMenuItem(value: 'cancel', child: Text(strings.feature('Återkalla'))),
+                    PopupMenuItem(
+                      value: 'cancel',
+                      child: Text(strings.feature('Återkalla')),
+                    ),
                 ],
               ),
           ],
@@ -1610,6 +1814,8 @@ class _RosterRow extends StatelessWidget {
 /// A row selected by tapping anywhere on it — the whole row tints with the
 /// theme's accent color when selected — rather than a separate checkbox,
 /// used both for the search results dropdown and the roster's draft rows.
+/// Built on Material+InkWell (rather than ListTile) so the entire row is
+/// unambiguously one tap target, not just the trailing icon.
 class _SelectableRow extends StatelessWidget {
   const _SelectableRow({
     required this.title,
@@ -1626,15 +1832,34 @@ class _SelectableRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return ListTile(
-      onTap: onTap,
-      selected: selected,
-      selectedTileColor: colors.primaryContainer,
-      title: Text(title),
-      subtitle: Text(subtitle),
-      trailing: selected
-          ? Icon(Icons.check_circle, color: colors.primary)
-          : Icon(Icons.circle_outlined, color: colors.outlineVariant),
+    final textTheme = Theme.of(context).textTheme;
+    return Material(
+      color: selected ? colors.primaryContainer : Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: textTheme.bodyMedium),
+                    Text(subtitle, style: textTheme.bodySmall),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                selected ? Icons.check_circle : Icons.circle_outlined,
+                color: selected ? colors.primary : colors.outlineVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
