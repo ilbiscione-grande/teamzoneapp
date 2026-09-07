@@ -20,7 +20,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Kalender'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Nytt event'));
+    await tester.tap(find.byTooltip('Nytt event'));
     await tester.pumpAndSettle();
     for (final label in [
       'Titel',

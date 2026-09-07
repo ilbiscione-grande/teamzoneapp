@@ -121,6 +121,10 @@ class _DomainManagementSurfaceState extends State<_DomainManagementSurface> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    floatingActionButtonLocation:
+        MediaQuery.sizeOf(context).width < AppBreakpoints.desktop
+        ? _aboveAssistantFabLocation
+        : null,
     appBar: AppBar(
       title: Text(AppStrings.of(context).feature('Domäner')),
       actions: [
@@ -131,10 +135,10 @@ class _DomainManagementSurfaceState extends State<_DomainManagementSurface> {
         ),
       ],
     ),
-    floatingActionButton: FloatingActionButton.extended(
+    floatingActionButton: FloatingActionButton(
       onPressed: _busy ? null : _request,
-      icon: const Icon(Icons.add_link),
-      label: Text(AppStrings.of(context).feature('Egen domän')),
+      tooltip: AppStrings.of(context).feature('Egen domän'),
+      child: const Icon(Icons.add_link),
     ),
     body: FutureBuilder<DomainManagement>(
       future: _load,

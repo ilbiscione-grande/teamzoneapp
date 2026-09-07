@@ -3773,6 +3773,10 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
         widget.contextValue.teamId != null &&
         widget.contextValue.can('event.manage');
     return Scaffold(
+      floatingActionButtonLocation:
+          MediaQuery.sizeOf(context).width < AppBreakpoints.desktop
+          ? _aboveAssistantFabLocation
+          : null,
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: ListenableBuilder(
@@ -3831,10 +3835,10 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
         ),
       ),
       floatingActionButton: canCreate
-          ? FloatingActionButton.extended(
+          ? FloatingActionButton(
               onPressed: _createEvent,
-              icon: const Icon(Icons.add),
-              label: Text(AppStrings.of(context).feature('Nytt event')),
+              tooltip: AppStrings.of(context).feature('Nytt event'),
+              child: const Icon(Icons.add),
             )
           : null,
     );

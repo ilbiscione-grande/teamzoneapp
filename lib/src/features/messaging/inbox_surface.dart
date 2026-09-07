@@ -247,8 +247,12 @@ class _InboxSurfaceState extends State<_InboxSurface> {
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
-    final compact = MediaQuery.sizeOf(context).width < 600;
+    final width = MediaQuery.sizeOf(context).width;
+    final compact = width < 600;
     return Scaffold(
+      floatingActionButtonLocation: width < AppBreakpoints.desktop
+          ? _aboveAssistantFabLocation
+          : null,
       persistentFooterButtons: compact
           ? null
           : [
@@ -277,10 +281,10 @@ class _InboxSurfaceState extends State<_InboxSurface> {
                 label: Text(AppStrings.of(context).feature('Inställningar')),
               ),
             ],
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: _compose,
-        icon: const Icon(Icons.edit),
-        label: Text(strings.newMessage),
+        tooltip: strings.newMessage,
+        child: const Icon(Icons.edit),
       ),
       body: ListenableBuilder(
         listenable: Listenable.merge([_data, _list]),

@@ -122,6 +122,10 @@ class _EditorialSurfaceState extends State<_EditorialSurface> {
       );
     }
     return Scaffold(
+      floatingActionButtonLocation:
+          MediaQuery.sizeOf(context).width < AppBreakpoints.desktop
+          ? _aboveAssistantFabLocation
+          : null,
       appBar: AppBar(
         title: Text(strings.feature('Nyhetsredaktion')),
         actions: [
@@ -145,10 +149,10 @@ class _EditorialSurfaceState extends State<_EditorialSurface> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: _edit,
-        icon: const Icon(Icons.add),
-        label: Text(strings.feature('Ny artikel')),
+        tooltip: strings.feature('Ny artikel'),
+        child: const Icon(Icons.add),
       ),
       body: AnimatedBuilder(
         animation: _data,

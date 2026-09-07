@@ -310,20 +310,21 @@ class _ProductShellState extends State<_ProductShell> {
                       ),
                       if (!showAssistantPanel &&
                           location != ProductRouteContract.assistant)
+                        // Always the standard bottom-right FAB position, not
+                        // conditional on the phone bottom nav bar (Scaffold's
+                        // body already excludes that bar's own area, so this
+                        // never overlaps it). Kept the same position
+                        // regardless of which page is showing, rather than
+                        // moving up only when that page also has its own FAB
+                        // there: pages whose own FAB is reached via a nested
+                        // Navigator.push (e.g. domain management) aren't
+                        // reflected in `location`, so a page-aware height here
+                        // couldn't detect them reliably. Pages that do have
+                        // their own FAB instead move THEIRS up out of the way
+                        // via assistantFabClearanceLocation.
                         Positioned(
                           right: 16,
-                          // Always cleared above the standard bottom-right FAB
-                          // corner, not just above the phone bottom nav bar:
-                          // several pages (roster, calendar, inbox, editorial,
-                          // domain management) show their own FAB there via
-                          // Scaffold's default endFloat position, and at the
-                          // tablet breakpoint (sidebar shown, no bottom nav) a
-                          // `bottom: 16` value put this FAB exactly on top of
-                          // those, making both untappable. Found via the
-                          // roster "Hantera" FAB failing to hit-test at 800×600
-                          // after it was made icon-only (smaller, so its
-                          // center landed inside the assistant FAB's circle).
-                          bottom: 88,
+                          bottom: 16,
                           child: _AssistantCoachMobileFab(
                             onPressed: () =>
                                 _router.push(ProductRouteContract.assistant),
@@ -639,3 +640,28 @@ class _AppNavigationPanel extends StatelessWidget {
     );
   }
 }
+
+/// `Scaffold.floatingActionButtonLocation` for any page with its own FAB
+/// that shares the screen with the persistent Min assistent FAB (below the
+/// desktop breakpoint, where the assistant is a FAB rather than a side
+/// panel — see AppBreakpoints.usesAssistantSidePanel): shifts the page's
+/// FAB up by the assistant FAB's height plus a gap, so it doesn't sit under
+/// the assistant FAB, which always keeps the standard bottom-right spot.
+/// At the desktop breakpoint there is no assistant FAB to clear, so the
+/// caller should pass this only when
+/// `!AppBreakpoints.usesAssistantSidePanel(width)`.
+class _AboveAssistantFabLocation extends FloatingActionButtonLocation {
+  const _AboveAssistantFabLocation();
+
+  static const double _clearance = 72; // FAB height (56) + gap (16)
+
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
+    final standard = FloatingActionButtonLocation.endFloat.getOffset(
+      scaffoldGeometry,
+    );
+    return Offset(standard.dx, standard.dy - _clearance);
+  }
+}
+
+const _aboveAssistantFabLocation = _AboveAssistantFabLocation();

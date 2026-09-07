@@ -27,7 +27,7 @@ void main() {
     await tester.tap(find.byTooltip('Nyhetsredaktion'));
     await tester.pumpAndSettle();
     expect(find.text('Inga artiklar ännu'), findsOneWidget);
-    await tester.tap(find.text('Ny artikel'));
+    await tester.tap(find.byTooltip('Ny artikel'));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Rubrik'),

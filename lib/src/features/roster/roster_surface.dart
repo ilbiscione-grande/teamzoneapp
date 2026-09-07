@@ -358,6 +358,10 @@ class _RosterSurfaceState extends State<_RosterSurface> {
           ],
         );
         return Scaffold(
+          floatingActionButtonLocation:
+              MediaQuery.sizeOf(context).width < AppBreakpoints.desktop
+              ? _aboveAssistantFabLocation
+              : null,
           body: state.phase == AsyncDataPhase.empty
               ? _StateCard(
                   icon: Icons.groups_outlined,
