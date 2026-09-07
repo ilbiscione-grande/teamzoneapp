@@ -286,7 +286,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                     : strings.feature('Skicka kallelser'),
               ),
             ),
-      floatingActionButtonLocation: _aboveAssistantFabLocation,
+      floatingActionButtonLocation: _leftOfAssistantFabLocation,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1137,7 +1137,13 @@ class _ParticipantsTab extends StatefulWidget {
   final EventDetails event;
   final SquadDetails squad;
   final CalendarServices calendar;
-  final VoidCallback onReload;
+  // Future<void>, not VoidCallback: every caller below needs to await this
+  // before clearing its own busy flag. A fire-and-forget reload used to let
+  // a second tap (trivial to land now that a whole row is one tap target)
+  // slip in on the still-stale widget.squad — its member list and revision
+  // hadn't caught up yet — which the server then rightly rejected as a
+  // stale_revision conflict, surfacing as a generic "kunde inte sparas".
+  final Future<void> Function() onReload;
 
   @override
   State<_ParticipantsTab> createState() => _ParticipantsTabState();
@@ -1240,7 +1246,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
             : null,
         idempotencyKey: _newUuid(),
       );
-      widget.onReload();
+      await widget.onReload();
     } catch (_) {
       if (mounted)
         _showError('Ändringen kunde inte sparas. Ladda om och försök igen.');
@@ -1265,7 +1271,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
             0,
         idempotencyKey: _newUuid(),
       );
-      widget.onReload();
+      await widget.onReload();
     } catch (_) {
       if (mounted)
         _showError('Åtgärden kunde inte utföras. Ladda om och försök igen.');
@@ -1323,7 +1329,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
           SnackBar(content: Text(strings.feature('Närvaron har sparats.'))),
         );
       }
-      widget.onReload();
+      await widget.onReload();
     } catch (_) {
       if (mounted)
         _showError('Närvaron kunde inte sparas. Ladda om och försök igen.');
@@ -1356,7 +1362,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
             : null,
         idempotencyKey: _newUuid(),
       );
-      widget.onReload();
+      await widget.onReload();
     } catch (_) {
       if (mounted)
         _showError('Ändringen kunde inte sparas. Ladda om och försök igen.');
@@ -1392,7 +1398,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
           ),
         ),
       );
-      widget.onReload();
+      await widget.onReload();
     } catch (_) {
       if (mounted) {
         _showError(

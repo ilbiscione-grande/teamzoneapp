@@ -911,3 +911,22 @@ class _AboveAssistantFabLocation extends FloatingActionButtonLocation {
 }
 
 const _aboveAssistantFabLocation = _AboveAssistantFabLocation();
+
+/// Same idea as [_AboveAssistantFabLocation], but clears the persistent
+/// Min assistent FAB by sitting to its left on the same row instead of
+/// stacking above it — used by EventDetails' "Skicka kallelser" FAB.
+class _LeftOfAssistantFabLocation extends FloatingActionButtonLocation {
+  const _LeftOfAssistantFabLocation();
+
+  static const double _clearance = 72; // assistant FAB width (56) + gap (16)
+
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
+    final standard = FloatingActionButtonLocation.endFloat.getOffset(
+      scaffoldGeometry,
+    );
+    return Offset(standard.dx - _clearance, standard.dy);
+  }
+}
+
+const _leftOfAssistantFabLocation = _LeftOfAssistantFabLocation();
