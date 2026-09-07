@@ -70,6 +70,14 @@ void main() {
     await tester.pumpAndSettle();
 
     for (final label in ['Hem', 'Laget', 'Kalender', 'Inbox', 'Statistik']) {
+      await tester.scrollUntilVisible(
+        find.text(label),
+        250,
+        scrollable: find.descendant(
+          of: find.byKey(const Key('app-navigation-panel-list')),
+          matching: find.byType(Scrollable),
+        ),
+      );
       expect(find.text(label), findsWidgets);
     }
     expect(find.textContaining('F2012'), findsWidgets);

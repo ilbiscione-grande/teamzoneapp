@@ -1468,6 +1468,7 @@ class _ContextSelectorState extends State<_ContextSelector> {
     }
     return _ProductShell(
       key: ValueKey(activeContext.id),
+      profile: widget.profile,
       contextValue: activeContext,
       contexts: _contexts,
       onContextChanged: _changeContext,

@@ -625,6 +625,8 @@ class AppStrings {
     'Skickar…': 'Sending…',
     'Fästa': 'Pinned',
     'Inställningar': 'Settings',
+    'Öppna menyn': 'Open menu',
+    'Byt lag eller roll': 'Switch team or role',
     'Meddelandeinställningar': 'Message settings',
     'Frivilliga pushnotiser': 'Optional push notifications',
     'Av som standard. Låsskärmen visar bara att ett nytt meddelande finns.':

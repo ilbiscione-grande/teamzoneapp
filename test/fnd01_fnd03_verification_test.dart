@@ -82,7 +82,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.byType(NavigationRail),
+          find.byKey(const Key('permanent-navigation-sidebar')),
           window.usesRail ? findsOneWidget : findsNothing,
         );
         expect(

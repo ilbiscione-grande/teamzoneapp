@@ -16,6 +16,14 @@ void main() {
     final editorial = _Editorial();
     await tester.pumpWidget(_app(editorial, canPublish: true));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byTooltip('Nyhetsredaktion'),
+      250,
+      scrollable: find.descendant(
+        of: find.byKey(const Key('app-navigation-panel-list')),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.byTooltip('Nyhetsredaktion'));
     await tester.pumpAndSettle();
     expect(find.text('Inga artiklar ännu'), findsOneWidget);

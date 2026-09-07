@@ -53,7 +53,7 @@ void main() {
         }
 
         expect(
-          find.byType(NavigationRail),
+          find.byKey(const Key('permanent-navigation-sidebar')),
           viewport.key == 'phone' ? findsNothing : findsOneWidget,
         );
         expect(
