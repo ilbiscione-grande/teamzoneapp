@@ -21,9 +21,15 @@ void main() {
       await tester.tap(find.text('Träning A'));
       await tester.pumpAndSettle();
 
-      // A real page — an AppBar with a back arrow, not a dialog/bottom
-      // sheet — with the four tabs still present.
-      expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+      // A real page — an AppBar with a centered title and a close (X)
+      // action, not a back arrow, not a dialog/bottom sheet — with the
+      // four tabs still present.
+      expect(find.byIcon(Icons.close), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_back), findsNothing);
+      expect(
+        find.descendant(of: find.byType(AppBar), matching: find.text('Träning A')),
+        findsOneWidget,
+      );
       expect(find.text('Info'), findsOneWidget);
       expect(find.text('Deltagare'), findsOneWidget);
       expect(find.text('Förberedelser'), findsOneWidget);
@@ -97,9 +103,17 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Gäst Spelarsson'), findsOneWidget);
-      await tester.tap(find.byType(CheckboxListTile));
+      // Selection is the whole row now, not a separate checkbox.
+      await tester.tap(find.text('Gäst Spelarsson'));
       await tester.pumpAndSettle();
       expect(calendar.savedMemberIds, contains('guest-1'));
+
+      // The reported bug: toggling a selection used to reload the whole
+      // page and reset back to the Info tab. Still on Deltagare, with the
+      // search field (and its state) intact, not bounced back to Info.
+      expect(find.text('Sök spelare eller lag i hela klubben'), findsOneWidget);
+      expect(find.text('Info'), findsOneWidget);
+      expect(find.text('Kallade spelare'), findsOneWidget);
     },
   );
 }

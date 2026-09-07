@@ -33,11 +33,19 @@ class _EventDetailsPage extends StatefulWidget {
 
 class _EventDetailsPageState extends State<_EventDetailsPage> {
   Future<(EventDetails, SquadDetails)>? _load;
+  // Kept separately from _load's snapshot so the AppBar title stays correct
+  // after _EventDetailsBody refreshes the event in place (a rename via
+  // "Redigera", say) without this page itself reloading.
+  String? _title;
 
   @override
   void initState() {
     super.initState();
     _reload();
+  }
+
+  void _updateTitle(String title) {
+    if (_title != title) setState(() => _title = title);
   }
 
   void _reload() {
@@ -63,11 +71,16 @@ class _EventDetailsPageState extends State<_EventDetailsPage> {
     final strings = AppStrings.of(context);
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-          onPressed: _goBackToCalendar,
-          icon: const Icon(Icons.arrow_back),
-        ),
+        automaticallyImplyLeading: false,
+        centerTitle: true,
+        title: _title == null ? null : Text(_title!),
+        actions: [
+          IconButton(
+            tooltip: strings.close,
+            onPressed: _goBackToCalendar,
+            icon: const Icon(Icons.close),
+          ),
+        ],
       ),
       body: FutureBuilder<(EventDetails, SquadDetails)>(
         future: _load,
@@ -89,15 +102,22 @@ class _EventDetailsPageState extends State<_EventDetailsPage> {
             );
           }
           final (event, squad) = snapshot.requireData;
+          // A stable key (not just position) so a future rebuild of this
+          // FutureBuilder for an unrelated reason (theme/locale change,
+          // say) can never be mistaken for a fresh load and reset
+          // _EventDetailsBodyState — only _reload() (a real retry) does
+          // that, by replacing _load itself.
           return _EventDetailsBody(
-            event: event,
-            squad: squad,
+            key: const ValueKey('event-details-body'),
+            initialEvent: event,
+            initialSquad: squad,
+            eventId: widget.eventId,
             contextValue: widget.contextValue,
             calendar: widget.calendar,
             match: widget.match,
             matchSpaceV2: widget.matchSpaceV2,
-            onReload: _reload,
             onDeleted: _goBackToCalendar,
+            onTitleChanged: _updateTitle,
           );
         },
       ),
@@ -107,32 +127,75 @@ class _EventDetailsPageState extends State<_EventDetailsPage> {
 
 class _EventDetailsBody extends StatefulWidget {
   const _EventDetailsBody({
-    required this.event,
-    required this.squad,
+    required this.initialEvent,
+    required this.initialSquad,
+    required this.eventId,
     required this.contextValue,
     required this.calendar,
     required this.match,
     required this.matchSpaceV2,
-    required this.onReload,
     required this.onDeleted,
+    required this.onTitleChanged,
+    super.key,
   });
 
-  final EventDetails event;
-  final SquadDetails squad;
+  final EventDetails initialEvent;
+  final SquadDetails initialSquad;
+  final String eventId;
   final TeamZoneContext contextValue;
   final CalendarServices calendar;
   final MatchServices match;
   final bool matchSpaceV2;
-  final VoidCallback onReload;
   final VoidCallback onDeleted;
+  final ValueChanged<String> onTitleChanged;
 
   @override
   State<_EventDetailsBody> createState() => _EventDetailsBodyState();
 }
 
 class _EventDetailsBodyState extends State<_EventDetailsBody> {
-  EventDetails get event => widget.event;
-  SquadDetails get squad => widget.squad;
+  // Seeded once from the page's initial load, then updated in place by
+  // _refresh() after an action — never by tearing this widget down and
+  // rebuilding it, which used to reset the active tab back to Info and
+  // lose the Deltagare tab's search/staged-edit state on every single
+  // draft toggle ("varje gång jag trycker på en checkbox så laddar sidan
+  // om och jag måste gå in på deltagare igen").
+  late EventDetails event = widget.initialEvent;
+  late SquadDetails squad = widget.initialSquad;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => widget.onTitleChanged(event.title),
+    );
+  }
+
+  Future<void> _refresh() async {
+    try {
+      final event = await widget.calendar.getEventDetails(widget.eventId);
+      final squad = await widget.calendar.getEventSquad(widget.eventId);
+      if (mounted) {
+        setState(() {
+          this.event = event;
+          this.squad = squad;
+        });
+        widget.onTitleChanged(event.title);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppStrings.of(
+                context,
+              ).feature('Kunde inte uppdatera. Försök igen.'),
+            ),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -142,21 +205,6 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  event.title,
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                Text(
-                  '${strings.domainValue(event.type)} · ${strings.domainValue(event.state)}',
-                ),
-              ],
-            ),
-          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
             child: _StatusHeaderRow(event: event, squad: squad),
@@ -180,7 +228,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
                   event: event,
                   squad: squad,
                   calendar: widget.calendar,
-                  onReload: widget.onReload,
+                  onReload: _refresh,
                 ),
                 _scroll(_preparation(context)),
                 _scroll(_followUp(context)),
@@ -406,7 +454,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
         expectedRevision: event.revision,
         idempotencyKey: _newUuid(),
       );
-      if (mounted) widget.onReload();
+      if (mounted) unawaited(_refresh());
     } catch (_) {
       if (mounted) _showError('Eventet ändrades av någon annan. Ladda om och försök igen.');
     }
@@ -421,7 +469,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
         reason: AppStrings.of(context).feature('Ändrad i kalendern'),
         idempotencyKey: _newUuid(),
       );
-      if (mounted) widget.onReload();
+      if (mounted) unawaited(_refresh());
     } catch (_) {
       if (mounted) _showError('Eventet ändrades av någon annan. Ladda om och försök igen.');
     }
@@ -684,7 +732,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody> {
                           ScaffoldMessenger.of(this.context).showSnackBar(
                             SnackBar(content: Text(strings.feature('Delningen har sparats.'))),
                           );
-                          widget.onReload();
+                          unawaited(_refresh());
                         }
                       } catch (_) {
                         setDialogState(() => saving = false);
@@ -1085,19 +1133,17 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                           shrinkWrap: true,
                           children: [
                             for (final candidate in _matches)
-                              CheckboxListTile(
-                                value: _draftMemberIds.contains(candidate.personId),
-                                onChanged: _busy
+                              _SelectableRow(
+                                title: candidate.name,
+                                subtitle: [
+                                  if (candidate.teamName != null) candidate.teamName!,
+                                  if (candidate.rolePackage != null)
+                                    strings.domainValue(candidate.rolePackage!),
+                                ].join(' · '),
+                                selected: _draftMemberIds.contains(candidate.personId),
+                                onTap: _busy
                                     ? null
-                                    : (_) => _toggleDraftMember(candidate.personId),
-                                title: Text(candidate.name),
-                                subtitle: Text(
-                                  [
-                                    if (candidate.teamName != null) candidate.teamName!,
-                                    if (candidate.rolePackage != null)
-                                      strings.domainValue(candidate.rolePackage!),
-                                  ].join(' · '),
-                                ),
+                                    : () => _toggleDraftMember(candidate.personId),
                               ),
                           ],
                         ),
@@ -1284,15 +1330,43 @@ class _RosterRow extends StatelessWidget {
       );
     }
 
+    return _SelectableRow(
+      title: person.name,
+      subtitle: subtitle,
+      selected: person.inDraft,
+      onTap: canManage && !busy ? onToggleDraft : null,
+    );
+  }
+}
+
+/// A row selected by tapping anywhere on it — the whole row tints with the
+/// theme's accent color when selected — rather than a separate checkbox,
+/// used both for the search results dropdown and the roster's draft rows.
+class _SelectableRow extends StatelessWidget {
+  const _SelectableRow({
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return ListTile(
-      title: Text(person.name),
+      onTap: onTap,
+      selected: selected,
+      selectedTileColor: colors.primaryContainer,
+      title: Text(title),
       subtitle: Text(subtitle),
-      trailing: canManage
-          ? Checkbox(
-              value: person.inDraft,
-              onChanged: busy ? null : (_) => onToggleDraft(),
-            )
-          : null,
+      trailing: selected
+          ? Icon(Icons.check_circle, color: colors.primary)
+          : Icon(Icons.circle_outlined, color: colors.outlineVariant),
     );
   }
 }
