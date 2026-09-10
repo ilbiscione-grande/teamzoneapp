@@ -508,11 +508,16 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] "Skicka kallelser" är dold tills minst en faktisk osänd utkastmedlem finns (inte bara "någon i utkastet", vilket tidigare kunde vara sant även när alla redan var kallade) och flyttad till en flytande knapp längst ner (samma position som assistent-faben) med en räknare för hur många som väljs.
 - [x] Statuscirklarna i headern är centrerade i stället för vänsterjusterade.
 - [x] Headern krymper (mindre padding, mindre cirklar) på Deltagare/Förberedelser/Uppföljning-flikarna och är full storlek bara på Info-fliken, kopplat till själva svepanimationen mellan flikar (inspirerat av det äldre projektets `_EventHeader`, inte rakt kopierat).
-- [x] Nya widgettester kör hela flödet (öppna sida, statusrad, hinksortering, sök och lägg till klubbövergripande kandidat, gästroster, massval).
+- [x] "Skicka kallelser" låser truppen (`lock_squad`) precis innan sändning när den är i `draft` — `send_callups_for_actor` kräver `state='locked'`, ett steg den gamla "Hantera urval"-vyn hade men som cal11-ombyggnaden tappade (elfte/tionde omgången).
+- [x] Spar-tidens behörighetskontroll (`person_eligibility_at_event`) läser samma `core.assignments`-tabell som rosterprojektionen, inte den parallella `core.team_assignments` — annars avvisades personer som visades som valbara (nionde omgången, migration `cal11d`).
+- [x] En kallad person kan svaras för från Deltagare-fliken: sig själv ('self'), eller — för den som redan får hantera truppen — vem som helst på rostret ('manager', spelare och ledare lika, samma behörighet som påminn/återkalla). Info-fliken visar egen kallelsestatus (read-only) med en "Svara"-genväg till Deltagare; ledarhemmets "nästa"-kort visar och besvarar egen kallelse. Backend: 'manager'-gren i `actor_callup_response_context`/`respond_callup_for_actor`, `can_respond`/`response_role` i rosterprojektionen, `my_callup` i `get_leader_home_for_actor` (migration `cal11e`).
+- [x] Svarsalternativen är bara Kommer/Kan inte — "Kanske" (tentative) är borttaget ur alla UI-ytor.
+- [x] `onReload` väntas in (`Future<void> Function()`, inte `VoidCallback`) i alla fem åtgärdsmetoder så `busy`-spärren håller under omladdningen — annars kunde ett snabbt andratryck skicka en inaktuell `expected_revision` (åttonde omgången).
+- [x] Nya widgettester kör hela flödet (öppna sida, statusrad, hinksortering, sök och lägg till klubbövergripande kandidat, gästroster, massval, manager-svar på en lagkamrats kallelse).
 
-**Medvetet avgränsat:** grupper (spara/återanvända spelarurval) är en separat, ännu obyggd funktion — inget backend-stöd finns; användarens egna produktbeslut var att göra sida/statusrad/deltagarflik i ett svep och grupper som ett senare steg. Realtidsuppdatering (live när någon annan svarar på en kallelse) övervägdes efter jämförelse med det äldre projektet men kräver en ny broadcast-trigger på `core.callups`/`attendance_facts` (den befintliga `calendar:club:`-kanalen sänder bara på `core.events`-ändringar) — inte byggd än.
+**Medvetet avgränsat:** grupper (spara/återanvända spelarurval) är en separat, ännu obyggd funktion — inget backend-stöd finns; användarens egna produktbeslut var att göra sida/statusrad/deltagarflik i ett svep och grupper som ett senare steg. Realtidsuppdatering (live när någon annan svarar på en kallelse) övervägdes efter jämförelse med det äldre projektet men kräver en ny broadcast-trigger på `core.callups`/`attendance_facts` (den befintliga `calendar:club:`-kanalen sänder bara på `core.events`-ändringar) — inte byggd än. Backendens `respond_callup_for_actor` accepterar fortfarande `tentative` som värde (token-svarsflödet via e-post inte genomgånget) — bara app-UI:t erbjuder det inte.
 
-**Återstår:** fysisk verifiering på enhet av själva sidnavigeringen och sök/väljflödet (byggt och installerat, men kräver användarens egen touch); delad-event-fixen är verifierad genom kodgranskning och SQL-simulering men inte mot ett riktigt delat event, eftersom inget sådant fanns i testdatan.
+**Återstår:** fysisk verifiering på enhet av Deltagare-flikens svarsknappar (självsvar och manager-svar — verifierade via widgettest + SQL-simulering, men kräver användarens egen touch eftersom MIUI blockerar syntetiska tryck); delad-event-fixen är verifierad genom kodgranskning och SQL-simulering men inte mot ett riktigt delat event, eftersom inget sådant fanns i testdatan. Hem- och Info-ytornas kallelsestatus/svar är liveverifierade på Mi 9:an.
 
 ## 8. Våg 4 – Publik klubbsajt
 
@@ -718,8 +723,10 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Visar obesvarade callups/saknad närvaro endast för behörig kontext.
 - [x] Tablet/desktop kan ge planeringsöverblick; mobil ger snabb handling.
 - [x] Kontextbunden cache för ledar-Hem märks och visas explicit som stale med senaste servergenereringstid.
+- [x] En ledare kan bli kallad som alla andra: "nästa"-kortet visar egen kallelsestatus ("Din kallelse: …") och Kommer/Kan inte-knappar (2026-09-07, `get_leader_home_for_actor.next_event.my_callup`).
+- [x] "Behöver din uppmärksamhet"-listan (obesvarade kallelser/saknad närvaro) är flyttad från Hem till Min assistent — samma deterministiska `get_leader_home_for_actor.tasks`-data, inte via AC-01-spärren eller genererade signaler (2026-09-07, se HOME-05 och Våg 7). Hem visar nu bara hjältekort → Idag → snabbåtgärder.
 
-**Återstår:** fysisk verifiering med flera ledarkontexter/skärmstorlekar (endast en mobil ledarkontext genomgången 2026-09-06, se ändringsloggen). Riktade Flutter-tester och analys är gröna.
+**Återstår:** fysisk verifiering med flera ledarkontexter/skärmstorlekar. En mobil ledarkontext är genomgången (2026-09-06) och egen-kallelse på "nästa"-kortet är liveverifierad (2026-09-07). Riktade Flutter-tester och analys är gröna.
 
 ### HOME-02 – Spelarens Hem
 
@@ -728,7 +735,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 **Beroenden:** CAL-07, MSG-08
 
 - [x] Egna kallelser, nästa aktivitet, laginformation och meddelanden.
-- [x] Snabbt svar bevarar korrekt callupstatus och decline reason.
+- [x] Snabbt svar bevarar korrekt callupstatus och decline reason. Alternativen är bara Kommer/Kan inte — "Kanske" (tentative) borttaget 2026-09-07 (att anmäla sig är Acceptera eller Avböj).
 - [x] Inga leader-/guardianadministrativa actions exponeras.
 - [x] Kontextcache märks explicit som stale och gamla kallelser görs skrivskyddade tills färsk serverdata finns.
 
@@ -766,7 +773,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 **Beroenden:** HOME-04
 
 - [x] Watchpoints-namn, separat UI och notification-items avlägsnas.
-- [x] Deterministiska uppgifter fortsätter fungera utan AC.
+- [x] Deterministiska uppgifter fortsätter fungera oberoende av AC. Sedan 2026-09-07 renderas "Behöver din uppmärksamhet"-listan på Min assistent-sidan (användarens beslut: "all den sortens information ska gå genom assistenten") — men fortfarande via samma direkta `get_leader_home_for_actor.tasks`-fråga, **inte** via AC-01-spärren, `assistant_activation_gate` eller någon genererad signal. Testet (`home05_remove_watchpoints_hold_ac_test.dart`) bevakar nu det oberoendet på den nya platsen. Oberoendet av AC-1/genererade signaler är kontraktet, inte vilken fil texten ligger i.
 - [x] AC-02/03 får endast vara en transparent, icke-generativ hållningsyta; datadriven aktivering förblir blockerad tills AC-01:s runtimegrind passerar.
 - [x] Belastning/skada/high-load förblir senare och fail-closed.
 - [x] Klientens Notification Center fail-stänger pensionerade/förtida Watchpoint-, assistant-, workload-, high-load- och medical-payloads även från gammal cache/API.
@@ -796,7 +803,8 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 - [x] Mobil använder FAB nere till höger, placerad ovanför sidornas primära FAB-zon och navigation.
 - [x] Tablet/desktop använder en integrerad, inaktiv sidopanel där utrymme finns.
-- [~] Fokus, semantik, back och deep link har strukturella kontrakt; fysisk responsiv verifiering och dataflöde återstår tills AC har verifierad data.
+- [x] `_AssistantCoachHoldingSurface` renderar sedan 2026-09-07 HOME-05:s deterministiska "Behöver din uppmärksamhet"-lista (obesvarade kallelser/saknad närvaro) som ett eget kort högst upp, hämtat direkt via `OverviewServices.loadLeaderHome` — tydligt avskilt från den fortfarande blockerade "Min kö"/signalkö-sektionen nedanför (se HOME-05). Detta är inte AC-01-signaler; det är samma icke-generativa data som tidigare låg på Hem.
+- [~] Fokus, semantik, back och deep link har strukturella kontrakt; fysisk responsiv verifiering och dataflöde återstår tills AC har verifierad data. Den flyttade uppmärksamhetslistan är liveverifierad på Mi 9:an (2026-09-07).
 
 ### AC-03 – Transparent assistent, inte Watchpoints i ny kostym
 
