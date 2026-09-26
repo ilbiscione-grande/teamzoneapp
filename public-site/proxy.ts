@@ -3,6 +3,7 @@ import { serverConfig } from "./lib/config";
 import { safeDomainDecision, requestHostname, validRoutingInput } from "./lib/domain-routing";
 import { publicRpc } from "./lib/public-rpc";
 import { createServerSupabase } from "./lib/supabase-admin";
+import { isLocalPublicView } from "./lib/local-public-view";
 
 // Public media tokens are already tenant-independent, opaque and resolved by a
 // service-only lookup. They must retain the route's immutable image cache and
@@ -18,6 +19,12 @@ const pageCache = "public, max-age=0, s-maxage=60, must-revalidate";
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
+  if (isLocalPublicView(request.headers.get("host"))) {
+    const response = NextResponse.next();
+    response.headers.set("Cache-Control", "no-store");
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+    return response;
+  }
   if (bypassPrefixes.some((prefix) => path.startsWith(prefix))) {
     const response = NextResponse.next();
     if (path.startsWith("/api/")) response.headers.set("Cache-Control", "no-store");

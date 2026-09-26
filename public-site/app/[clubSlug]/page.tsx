@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ContactForm } from "../../components/contact-form";
 import { InactiveState } from "../../components/inactive-state";
 import { SiteHeader } from "../../components/site-header";
+import { FollowButton } from "../../components/follow-button";
 import { canonicalUrl, getClubEvents, getClubPage, getPublications } from "../../lib/page-data";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const club = await getClubPage(clubSlug);
     if (club?.not_found) return {};
     if (club?.available === false) return { title: "Klubbsida", robots: { index: false, follow: false } };
-    const description = club.description || `${club.name}s officiella webbplats på TeamZone.`;
+    const description = club.description || `${club.name}s klubbsida på TeamZone.`;
     const canonical = await canonicalUrl(`/${club.slug}`);
     return { title: club.name, description, alternates: { canonical }, openGraph: { title: club.name, description, type: "website", url: canonical } };
   } catch { return { title: "Klubbsida", robots: { index: false, follow: false } }; }
@@ -41,8 +42,9 @@ export default async function ClubPage({ params }: Props) {
         <SiteHeader />
         <section className="hero-card club-hero">
           {club.profile_media_path && <img className="club-badge" src={club.profile_media_path} alt={`${club.name}s klubbmärke`} />}
-          <div><p className="eyebrow">Officiell klubbsida</p><h1>{club.name}</h1><div className="hero-meta">{club.locality && <span className="pill">{club.locality}</span>}<span className="verified-pill">Verifierad publicering</span></div></div>
+          <div><p className="eyebrow">Klubbsida</p><h1>{club.name}</h1><div className="hero-meta">{club.locality && <span className="pill">{club.locality}</span>}<span className="verified-pill">{club.official ? "Officiellt verifierad klubb" : "Inofficiell klubb"}</span></div></div>
         </section>
+        <div className="home-section"><FollowButton channel={{ kind: "club", id: club.id, name: club.name, slug: club.slug }} /></div>
         <nav className="section-nav" aria-label="Klubbsidan"><a href="#om">Om klubben</a><a href="#nyheter">Nyheter</a><a href="#lag">Lag</a><a href="#handelser">Händelser</a><a href="#partners">Partners</a><a href="#kontakt">Kontakt</a></nav>
         <section id="om" className="panel feature-panel"><p className="eyebrow">Klubben</p><h2>Välkommen till {club.name}</h2><p>{club.description || "Klubben har inte publicerat någon presentation ännu."}</p></section>
         <div className="content-grid">

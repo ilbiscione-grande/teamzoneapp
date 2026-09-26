@@ -121,8 +121,7 @@ class _DomainManagementSurfaceState extends State<_DomainManagementSurface> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    floatingActionButtonLocation:
-        MediaQuery.sizeOf(context).width < AppBreakpoints.desktop
+    floatingActionButtonLocation: _assistantUsesFab(context)
         ? _aboveAssistantFabLocation
         : null,
     appBar: AppBar(

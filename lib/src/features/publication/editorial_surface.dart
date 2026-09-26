@@ -63,6 +63,22 @@ class _EditorialSurfaceState extends State<_EditorialSurface> {
   }
 
   Future<void> _transition(EditorialArticle article, String state) async {
+    if (state == 'published' || state == 'scheduled') {
+      try {
+        final domain = await widget.editorial.getDomainManagement(
+          widget.contextValue.clubId,
+        );
+        if (!mounted) return;
+        if (!domain.clubPublished) {
+          _showEditorialPublicationPrerequisite(context);
+          return;
+        }
+      } catch (_) {
+        if (!mounted) return;
+        _showEditorialPublicationFailure(context);
+        return;
+      }
+    }
     DateTime? publishAt;
     if (state == 'scheduled') {
       final date = await showDatePicker(
@@ -97,9 +113,7 @@ class _EditorialSurfaceState extends State<_EditorialSurface> {
       await _data.refresh();
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppStrings.of(context).safeError)),
-        );
+        _showEditorialPublicationFailure(context);
       }
     } finally {
       if (mounted) setState(() => _pendingId = null);
@@ -122,8 +136,7 @@ class _EditorialSurfaceState extends State<_EditorialSurface> {
       );
     }
     return Scaffold(
-      floatingActionButtonLocation:
-          MediaQuery.sizeOf(context).width < AppBreakpoints.desktop
+      floatingActionButtonLocation: _assistantUsesFab(context)
           ? _aboveAssistantFabLocation
           : null,
       appBar: AppBar(
@@ -198,7 +211,7 @@ class _EditorialSurfaceState extends State<_EditorialSurface> {
                   title: Text(article.title),
                   subtitle: Text(
                     '${strings.domainValue(article.state)} · /${article.slug}\n'
-                    '${article.publishToClub ? strings.feature('Klubbkanal') : strings.feature('Endast lagkanaler')}',
+                    '${[if (article.publishToClub) strings.feature('Klubbens publika sida'), for (final teamId in article.teamIds) widget.contexts.where((value) => value.teamId == teamId).map((value) => value.teamName).firstOrNull ?? strings.feature('Vald publik lagsida')].join(' · ')}',
                   ),
                   isThreeLine: true,
                   onTap: pending || article.state == 'published'
@@ -254,6 +267,30 @@ IconData _articleIcon(String state) => switch (state) {
   _ => Icons.edit_note,
 };
 
+void _showEditorialPublicationPrerequisite(BuildContext context) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        AppStrings.of(context).feature(
+          'Klubbsidan är inte publicerad. Aktivera klubbens publika sida innan du publicerar nyheter.',
+        ),
+      ),
+    ),
+  );
+}
+
+void _showEditorialPublicationFailure(BuildContext context) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        AppStrings.of(context).feature(
+          'Publiceringen kunde inte genomföras. Ladda om och försök igen.',
+        ),
+      ),
+    ),
+  );
+}
+
 class _EditorialEditor extends StatefulWidget {
   const _EditorialEditor({
     required this.clubId,
@@ -288,10 +325,63 @@ class _EditorialEditorState extends State<_EditorialEditor> {
   );
   late bool _club = widget.article?.publishToClub ?? true;
   late final Set<String> _teams = {...?widget.article?.teamIds};
+  late bool _automaticSlug = widget.article == null;
   bool _saving = false;
+
+  bool get _hasUnsavedChanges {
+    final article = widget.article;
+    if (article == null) return true;
+    return _title.text.trim() != article.title ||
+        _slug.text.trim().toLowerCase() != article.slug ||
+        _summary.text.trim() != (article.summary ?? '') ||
+        _author.text.trim() != (article.authorLabel ?? '') ||
+        _body.text.trim() !=
+            article.blocks.map((block) => block.text).join('\n\n').trim() ||
+        _club != article.publishToClub ||
+        _teams.length != article.teamIds.length ||
+        !_teams.containsAll(article.teamIds);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _title.addListener(_updateSuggestedSlug);
+  }
+
+  void _updateSuggestedSlug() {
+    if (!_automaticSlug) return;
+    final suggestion = _suggestArticleSlug(_title.text);
+    if (_slug.text == suggestion) return;
+    _slug.value = TextEditingValue(
+      text: suggestion,
+      selection: TextSelection.collapsed(offset: suggestion.length),
+    );
+  }
+
+  void _preview() {
+    FocusScope.of(context).unfocus();
+    Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _EditorialDraftPreview(
+          title: _title.text.trim(),
+          summary: _summary.text.trim(),
+          body: _body.text.trim(),
+          author: _author.text.trim(),
+          slug: _slug.text.trim(),
+          publishToClub: _club,
+          teams: [
+            for (final entry in widget.teams.entries)
+              if (_teams.contains(entry.key)) entry.value,
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   void dispose() {
+    _title.removeListener(_updateSuggestedSlug);
     _title.dispose();
     _slug.dispose();
     _summary.dispose();
@@ -327,9 +417,72 @@ class _EditorialEditorState extends State<_EditorialEditor> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppStrings.of(context).safeError)),
+          SnackBar(
+            content: Text(
+              AppStrings.of(context).feature(
+                'Utkastet kunde inte sparas. Försök igen eller kontakta support.',
+              ),
+            ),
+          ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _publish() async {
+    final article = widget.article;
+    if (article == null || _saving) return;
+    if (_hasUnsavedChanges) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppStrings.of(
+              context,
+            ).feature('Spara ändringarna i utkastet innan du publicerar.'),
+          ),
+        ),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final domain = await widget.editorial.getDomainManagement(widget.clubId);
+      if (!mounted) return;
+      if (!domain.clubPublished) {
+        _showEditorialPublicationPrerequisite(context);
+        return;
+      }
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(
+            AppStrings.of(dialogContext).feature('Publicera nyheten?'),
+          ),
+          content: Text(article.title),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(AppStrings.of(dialogContext).cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(AppStrings.of(dialogContext).feature('Publicera nu')),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+      await widget.editorial.transition(
+        articleId: article.id,
+        state: 'published',
+        expectedRevision: article.revision,
+        idempotencyKey: _newUuid(),
+      );
+      if (mounted) Navigator.pop(context, true);
+    } catch (_) {
+      if (mounted) _showEditorialPublicationFailure(context);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -345,6 +498,13 @@ class _EditorialEditorState extends State<_EditorialEditor> {
             widget.article == null ? 'Ny artikel' : 'Redigera artikel',
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: strings.feature('Förhandsgranska utkast'),
+            onPressed: _preview,
+            icon: const Icon(Icons.preview_outlined),
+          ),
+        ],
       ),
       body: Form(
         key: _formKey,
@@ -361,8 +521,20 @@ class _EditorialEditorState extends State<_EditorialEditor> {
               controller: _slug,
               decoration: InputDecoration(
                 labelText: strings.feature('Adressnamn'),
+                helperText: strings.feature(
+                  'Föreslås från rubriken. Du kan ändra adressen.',
+                ),
+                suffixIcon: IconButton(
+                  tooltip: strings.feature('Föreslå adress från rubriken'),
+                  onPressed: () {
+                    setState(() => _automaticSlug = true);
+                    _updateSuggestedSlug();
+                  },
+                  icon: const Icon(Icons.auto_fix_high_outlined),
+                ),
               ),
               maxLength: 100,
+              onChanged: (_) => _automaticSlug = false,
               validator: _slugValidator,
             ),
             TextFormField(
@@ -393,7 +565,10 @@ class _EditorialEditorState extends State<_EditorialEditor> {
             SwitchListTile(
               value: _club,
               onChanged: (value) => setState(() => _club = value),
-              title: Text(strings.feature('Visa i klubbkanalen')),
+              title: Text(strings.feature('Visa på klubbens publika sida')),
+              subtitle: Text(
+                strings.feature('Nyheten kan läsas utan inloggning.'),
+              ),
             ),
             for (final team in widget.teams.entries)
               CheckboxListTile(
@@ -404,14 +579,24 @@ class _EditorialEditorState extends State<_EditorialEditor> {
                       : _teams.remove(team.key),
                 ),
                 title: Text(team.value),
-                subtitle: Text(strings.feature('Visa i lagkanalen')),
+                subtitle: Text(
+                  strings.feature(
+                    'Visa på lagets publika sida och i följarnas flöde',
+                  ),
+                ),
               ),
             if (!_club && _teams.isEmpty)
               Text(
-                strings.feature('Välj minst en klubb- eller lagkanal.'),
+                strings.feature('Välj minst en publik klubb- eller lagsida.'),
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: _preview,
+              icon: const Icon(Icons.preview_outlined),
+              label: Text(strings.feature('Förhandsgranska utkast')),
+            ),
+            const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: _saving ? null : _save,
               icon: _saving
@@ -422,6 +607,15 @@ class _EditorialEditorState extends State<_EditorialEditor> {
                   : const Icon(Icons.save),
               label: Text(strings.feature('Spara utkast')),
             ),
+            if (widget.article != null &&
+                widget.article!.state != 'published') ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _saving ? null : _publish,
+                icon: const Icon(Icons.public),
+                label: Text(strings.feature('Publicera nu')),
+              ),
+            ],
             const SizedBox(height: 12),
             Text(
               strings.feature(
@@ -440,10 +634,110 @@ class _EditorialEditorState extends State<_EditorialEditor> {
       : null;
   String? _slugValidator(String? value) =>
       RegExp(
-        r'^[a-z0-9]+(?:-[a-z0-9]+)*$',
-      ).hasMatch(value?.trim().toLowerCase() ?? '')
+            r'^[a-z0-9]+(?:-[a-z0-9]+)*$',
+          ).hasMatch(value?.trim().toLowerCase() ?? '') &&
+          (value?.trim().length ?? 0) >= 2
       ? null
-      : AppStrings.of(
-          context,
-        ).feature('Använd små bokstäver, siffror och bindestreck.');
+      : AppStrings.of(context).feature(
+          'Använd 2–100 tecken: små bokstäver, siffror och bindestreck.',
+        );
+}
+
+String _suggestArticleSlug(String title) {
+  final folded = title.toLowerCase().trim().replaceAllMapped(
+    RegExp(r'[åäöéèü]'),
+    (match) => switch (match.group(0)) {
+      'å' || 'ä' => 'a',
+      'ö' => 'o',
+      'é' || 'è' => 'e',
+      'ü' => 'u',
+      _ => '',
+    },
+  );
+  final slug = folded
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+      .replaceAll(RegExp(r'^-+|-+$'), '');
+  if (slug.length <= 100) return slug;
+  return slug.substring(0, 100).replaceAll(RegExp(r'-+$'), '');
+}
+
+class _EditorialDraftPreview extends StatelessWidget {
+  const _EditorialDraftPreview({
+    required this.title,
+    required this.summary,
+    required this.body,
+    required this.author,
+    required this.slug,
+    required this.publishToClub,
+    required this.teams,
+  });
+
+  final String title, summary, body, author, slug;
+  final bool publishToClub;
+  final List<String> teams;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final paragraphs = body
+        .split(RegExp(r'\n\s*\n'))
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty);
+    return Scaffold(
+      appBar: AppBar(title: Text(strings.feature('Förhandsgranska utkast'))),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760),
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    strings.feature(
+                      'Endast förhandsgranskning i appen. Inget har sparats eller publicerats.',
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                title.isEmpty ? strings.feature('Rubrik saknas') : title,
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              if (summary.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(summary, style: Theme.of(context).textTheme.titleMedium),
+              ],
+              if (author.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(author, style: Theme.of(context).textTheme.bodySmall),
+              ],
+              const SizedBox(height: 24),
+              for (final paragraph in paragraphs) ...[
+                Text(paragraph, style: Theme.of(context).textTheme.bodyLarge),
+                const SizedBox(height: 16),
+              ],
+              if (body.isEmpty) Text(strings.feature('Artikeltext saknas')),
+              const Divider(height: 40),
+              Text(
+                strings.feature('Nyheten visas på dessa publika sidor'),
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              if (publishToClub) Text(strings.feature('Klubbens publika sida')),
+              for (final team in teams) Text(team),
+              if (!publishToClub && teams.isEmpty)
+                Text(strings.feature('Ingen kanal vald')),
+              const SizedBox(height: 12),
+              Text(
+                '${strings.feature('Adressnamn')}: ${slug.isEmpty ? strings.feature('Saknas') : slug}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

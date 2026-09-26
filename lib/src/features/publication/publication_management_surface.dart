@@ -18,7 +18,11 @@ class _PublicationManagementSurfaceState
   bool _busy = false;
   Future<PublicationManagement> _reload() =>
       widget.editorial.getPublicationManagement(widget.clubId);
-  void _refresh() => setState(() => _load = _reload());
+  void _refresh() {
+    setState(() {
+      _load = _reload();
+    });
+  }
 
   Future<void> _run(Future<void> Function() action) async {
     if (_busy) {
@@ -40,12 +44,13 @@ class _PublicationManagementSurfaceState
   }
 
   Future<void> _event(PublicEventItem item) async {
-    final title = TextEditingController(text: item.publicTitle ?? item.title);
+    var title = item.publicTitle ?? item.title;
     var publishLocation = item.publishLocation;
     final publish = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialog) => AlertDialog(
+          scrollable: true,
           title: Text(
             AppStrings.of(context).feature('Förhandsgranska händelse'),
           ),
@@ -54,8 +59,9 @@ class _PublicationManagementSurfaceState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
-                  controller: title,
+                TextFormField(
+                  initialValue: title,
+                  onChanged: (value) => title = value,
                   maxLength: 160,
                   decoration: InputDecoration(
                     labelText: AppStrings.of(context).feature('Publik titel'),
@@ -70,11 +76,15 @@ class _PublicationManagementSurfaceState
                 ),
                 ListTile(
                   leading: const Icon(Icons.preview_outlined),
-                  title: Text(title.text),
+                  title: Text(title),
                   subtitle: Text(
                     '${item.teamName} · ${item.startsAt.toLocal()}',
                   ),
                 ),
+                if (item.eventType == 'match' || item.eventType == 'training')
+                  const Text(
+                    'Matchresultat och träningstider styrs för hela laget under Inställningar → Laginställningar.',
+                  ),
               ],
             ),
           ),
@@ -91,8 +101,7 @@ class _PublicationManagementSurfaceState
         ),
       ),
     );
-    final value = title.text.trim();
-    title.dispose();
+    final value = title.trim();
     if (publish == null) return;
     await _run(
       () => widget.editorial.configureEvent(
@@ -100,6 +109,7 @@ class _PublicationManagementSurfaceState
         state: publish ? 'published' : 'private',
         publicTitle: value.isEmpty ? null : value,
         publishLocation: publishLocation,
+        publishResult: publish && item.publishResult,
         expectedRevision: item.revision,
         idempotencyKey: _newUuid(),
       ),
@@ -259,7 +269,7 @@ class _PublicationManagementSurfaceState
             ),
             Text(
               AppStrings.of(context).feature(
-                'Endast titel, tid, typ och uttryckligt vald plats publiceras.',
+                'Titel, tid och typ publiceras. Plats och slutresultat kräver separata val.',
               ),
             ),
             if (data.events.isEmpty) ...[

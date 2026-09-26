@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { serverConfig } from "./config";
 import { hmacHex, resolveClientIp } from "./request-security";
+import { isLocalPublicView } from "./local-public-view";
 
 export const noStoreHeaders = {
   "Cache-Control": "no-store, max-age=0",
@@ -13,7 +14,8 @@ export function json(data: unknown, status = 200): NextResponse {
 
 export function requestIpHash(request: Request): { config: ReturnType<typeof serverConfig>; ipHash: string; rawIp: string } {
   const config = serverConfig();
-  const rawIp = resolveClientIp(request.headers.get("x-forwarded-for"), config.trustedProxyHops);
+  const rawIp = isLocalPublicView(request.headers.get("host"))
+    ? "::1" : resolveClientIp(request.headers.get("x-forwarded-for"), config.trustedProxyHops);
   return { config, rawIp, ipHash: hmacHex(config.ipHmacSecret, rawIp) };
 }
 

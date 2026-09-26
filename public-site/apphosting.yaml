@@ -24,6 +24,15 @@ env:
   - variable: SUPABASE_URL
     value: https://hgcshgunvooyudvrcpig.supabase.co
     availability:
+      - BUILD
+      - RUNTIME
+  - variable: SUPABASE_PUBLISHABLE_KEY
+    value: sb_publishable_lOnfOqPc-jBxRE28IXmEhQ_sRKFNw8O
+    availability:
+      - RUNTIME
+  - variable: PUBLIC_PERSONAL_HOME_ENABLED
+    value: "1"
+    availability:
       - RUNTIME
   - variable: SUPABASE_SECRET_KEY
     secret: teamzoneapp-supabase-secret-key

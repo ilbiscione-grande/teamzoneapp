@@ -99,12 +99,18 @@ class PublicEventItem {
     required this.revision,
     this.publicTitle,
     this.publishLocation = false,
+    this.publishResult = false,
+    this.resultAvailable = false,
+    this.scoreUs,
+    this.scoreOpponent,
   });
   final String id, teamName, title, eventType, publicationState;
   final DateTime startsAt;
   final int revision;
   final String? publicTitle;
   final bool publishLocation;
+  final bool publishResult, resultAvailable;
+  final int? scoreUs, scoreOpponent;
   factory PublicEventItem.fromJson(Map<String, dynamic> json) =>
       PublicEventItem(
         id: json['id'] as String,
@@ -116,6 +122,10 @@ class PublicEventItem {
         revision: (json['revision'] as num).toInt(),
         publicTitle: json['public_title'] as String?,
         publishLocation: json['publish_location'] as bool? ?? false,
+        publishResult: json['publish_result'] as bool? ?? false,
+        resultAvailable: json['result_available'] as bool? ?? false,
+        scoreUs: (json['score_us'] as num?)?.toInt(),
+        scoreOpponent: (json['score_opponent'] as num?)?.toInt(),
       );
 }
 

@@ -4,11 +4,14 @@ import { serverConfig } from "./config";
 import { hmacHex, resolveClientIp } from "./request-security";
 import { createServerSupabase } from "./supabase-admin";
 import { publicRpc } from "./public-rpc";
+import { isLocalPublicView } from "./local-public-view";
 
 async function context() {
   const config = serverConfig();
   const requestHeaders = await headers();
-  const rawIp = resolveClientIp(requestHeaders.get("x-forwarded-for"), config.trustedProxyHops);
+  const rawIp = isLocalPublicView(requestHeaders.get("host"))
+    ? "::1"
+    : resolveClientIp(requestHeaders.get("x-forwarded-for"), config.trustedProxyHops);
   return { client: createServerSupabase(config), ipHash: hmacHex(config.ipHmacSecret, rawIp) };
 }
 
@@ -48,6 +51,12 @@ export const getTeamEvents = cache(async (teamId: string) => {
     team_id: teamId, before_starts_at: null, before_id: null,
     ip_hash: ipHash, page_limit: 8,
   });
+});
+
+export const getTeamResults = cache(async (teamId: string) => {
+  if (process.env.PUBLIC_PERSONAL_HOME_ENABLED !== "1") return { items: [] };
+  const { client, ipHash } = await context();
+  return publicRpc(client, "public_list_team_results", { team_id: teamId, ip_hash: ipHash });
 });
 
 export const getClubEvents = cache(async (clubId: string) => {
