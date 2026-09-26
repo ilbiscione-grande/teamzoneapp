@@ -9,8 +9,10 @@ import {
 
 const allowedWebOrigins = new Set([
   "https://app.teamzoneapp.se",
+  "https://public.teamzoneapp.se",
   "http://localhost",
   "http://localhost:5000",
+  "http://localhost:5001",
 ]);
 
 function corsHeaders(origin: string | null): Record<string, string> {

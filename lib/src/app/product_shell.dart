@@ -7,6 +7,7 @@ class _ProductShell extends StatefulWidget {
     required this.contexts,
     required this.onContextChanged,
     required this.onContextsChanged,
+    required this.onTeamCreated,
     required this.onSignOut,
     required this.roster,
     required this.membership,
@@ -31,6 +32,7 @@ class _ProductShell extends StatefulWidget {
   final List<TeamZoneContext> contexts;
   final ValueChanged<TeamZoneContext> onContextChanged;
   final Future<void> Function() onContextsChanged;
+  final Future<void> Function(String teamId) onTeamCreated;
   final Future<void> Function() onSignOut;
   final RosterServices roster;
   final MembershipServices membership;
@@ -56,6 +58,8 @@ class _ProductShellState extends State<_ProductShell> {
   final RootBackButtonDispatcher _backButtonDispatcher =
       RootBackButtonDispatcher();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final GlobalKey<NavigatorState> _productNavigatorKey =
+      GlobalKey<NavigatorState>();
 
   // Every distinct location the user has navigated to, oldest first, so
   // system back can step back through previously visited pages instead of
@@ -69,8 +73,11 @@ class _ProductShellState extends State<_ProductShell> {
   // `_handleSystemBack` don't leave duplicate entries a user would have to
   // press back through twice.
   final List<String> _locationHistory = [];
+  late final Future<bool> _supportAdminAccess;
+  late Future<int> _pendingTeamRequests;
 
   late final GoRouter _router = GoRouter(
+    navigatorKey: _productNavigatorKey,
     initialLocation: _initialProductLocation(
       WidgetsBinding.instance.platformDispatcher.defaultRouteName,
     ),
@@ -108,13 +115,25 @@ class _ProductShellState extends State<_ProductShell> {
         ),
       ),
       GoRoute(
+        path: ProductRouteContract.publication,
+        builder: (_, _) => _PublicationSelfServiceSurface(
+          clubId: widget.contextValue.clubId,
+          editorial: widget.editorial,
+        ),
+      ),
+      GoRoute(
         path: ProductRouteContract.settings,
         builder: (_, _) => _ProfileSettingsSurface(
+          editorial: widget.editorial,
           contexts: widget.contexts,
           roster: widget.roster,
           onContextsChanged: widget.onContextsChanged,
           legal: widget.legal,
         ),
+      ),
+      GoRoute(
+        path: ProductRouteContract.support,
+        builder: (_, _) => _SupportAdminSurface(membership: widget.membership),
       ),
       GoRoute(
         path: ProductRouteContract.assistant,
@@ -123,6 +142,7 @@ class _ProductShellState extends State<_ProductShell> {
           assistantPresentation: widget.assistantPresentation,
           overview: widget.overview,
           contextValue: widget.contextValue,
+          onNavigate: _navigateFromSurface,
         ),
       ),
       GoRoute(
@@ -133,7 +153,19 @@ class _ProductShellState extends State<_ProductShell> {
           calendar: widget.calendar,
           match: widget.match,
           matchSpaceV2: widget.matchSpaceV2,
-          onNavigate: _router.go,
+          onNavigate: (fallback) =>
+              _router.canPop() ? _router.pop() : _router.go(fallback),
+        ),
+      ),
+      GoRoute(
+        path: '${ProductRouteContract.team}/member/:personId',
+        builder: (_, state) => _RosterPersonDetailsPage(
+          personId: state.pathParameters['personId']!,
+          contextValue: widget.contextValue,
+          roster: widget.roster,
+          onBack: () => _router.canPop()
+              ? _router.pop()
+              : _router.go('${ProductRouteContract.team}?tab=roster'),
         ),
       ),
       for (final destination in _destinations)
@@ -145,6 +177,10 @@ class _ProductShellState extends State<_ProductShell> {
                   roster: widget.roster,
                   membership: widget.membership,
                   calendar: widget.calendar,
+                  onTeamCreated: (teamId) async {
+                    _router.go('/home');
+                    await widget.onTeamCreated(teamId);
+                  },
                   initialTab: state.uri.queryParameters['tab'],
                   initialAction: state.uri.queryParameters['action'],
                 )
@@ -154,17 +190,23 @@ class _ProductShellState extends State<_ProductShell> {
                   contexts: widget.contexts,
                   calendar: widget.calendar,
                   match: widget.match,
-                  onNavigate: _router.go,
+                  // EventDetails is a child page of the current calendar
+                  // workspace. Push it so closing/back reveals the same
+                  // view, date and filters instead of rebuilding Agenda.
+                  onNavigate: (path) {
+                    _router.push(path);
+                  },
                   matchSpaceV2: widget.matchSpaceV2,
                   initialAction: state.uri.queryParameters['action'],
                 )
               : destination.path == '/inbox'
               ? _InboxSurface(
                   contextValue: widget.contextValue,
+                  contexts: widget.contexts,
                   messaging: widget.messaging,
                   initialThreadId: state.uri.queryParameters['thread'],
                   initialAction: state.uri.queryParameters['action'],
-                  onNavigate: _router.go,
+                  onNavigate: _navigateFromSurface,
                 )
               : destination.path == '/development'
               ? _DevelopmentSurface(
@@ -177,12 +219,25 @@ class _ProductShellState extends State<_ProductShell> {
                   contextValue: widget.contextValue,
                   overview: widget.overview,
                   calendar: widget.calendar,
-                  onNavigate: _router.go,
+                  messaging: widget.messaging,
+                  // Event details are a child of the page that opened them.
+                  // Push preserves Home (and its current team context) for X
+                  // and browser back; other shortcuts remain destinations.
+                  onNavigate: _navigateFromSurface,
                 ),
         ),
     ],
     errorBuilder: (_, _) => const _NotFoundSurface(),
   );
+
+  void _navigateFromSurface(String path) {
+    final location = ProductRouteContract.canonicalizeLocation(path);
+    if (location.startsWith('${ProductRouteContract.calendar}/event/')) {
+      _router.push(location);
+    } else {
+      _router.go(location);
+    }
+  }
 
   int _indexForBottomNav(String location) {
     final index = _bottomNavOrder.indexWhere(
@@ -194,8 +249,42 @@ class _ProductShellState extends State<_ProductShell> {
   @override
   void initState() {
     super.initState();
+    // All imperative pages in this shell have standalone GoRoutes. Reflect
+    // their top-most URI on web so pushed event/member pages can be copied
+    // and opened directly without sacrificing return-to-origin on close.
+    if (kIsWeb) GoRouter.optionURLReflectsImperativeAPIs = true;
+    _supportAdminAccess = widget.membership
+        .isSupportAdmin()
+        .timeout(const Duration(seconds: 15))
+        .catchError((_) => false);
+    _pendingTeamRequests = _loadPendingTeamRequests();
     _locationHistory.add(_router.routeInformationProvider.value.uri.toString());
     _router.routeInformationProvider.addListener(_recordLocation);
+  }
+
+  Future<int> _loadPendingTeamRequests() async {
+    if (!widget.contextValue.can('club.memberships.manage')) return 0;
+    try {
+      final requests = await widget.membership
+          .listTeamCreationRequests(clubId: widget.contextValue.clubId)
+          .timeout(const Duration(seconds: 15));
+      return requests.where((item) => item.state == 'pending').length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  void _refreshPendingTeamRequests() => setState(() {
+    _pendingTeamRequests = _loadPendingTeamRequests();
+  });
+
+  @override
+  void didUpdateWidget(covariant _ProductShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.contextValue.clubId != widget.contextValue.clubId ||
+        oldWidget.contextValue.id != widget.contextValue.id) {
+      _pendingTeamRequests = _loadPendingTeamRequests();
+    }
   }
 
   void _recordLocation() {
@@ -216,12 +305,32 @@ class _ProductShellState extends State<_ProductShell> {
 
   Future<void> _handleSystemBack(bool didPop, Object? result) async {
     if (didPop) return;
+    // A pushed detail page has a real navigator entry. Pop that before the
+    // synthetic history used by `.go()` destinations so browser/system back
+    // restores the exact originating URI and keeps the page state alive.
+    if (_router.canPop()) {
+      // Respect the active route's PopScope (for example an editor with
+      // unsaved changes) instead of forcibly removing the route.
+      await _productNavigatorKey.currentState?.maybePop();
+      return;
+    }
     if (_locationHistory.length > 1) {
       _router.go(_locationHistory[_locationHistory.length - 2]);
       return;
     }
-    // Back on the very first page opened this session: ask before exiting
-    // instead of closing immediately.
+    // A cold deep link has no in-app history. Treat Home as the stable root
+    // instead of asking to exit from whichever destination happened to be
+    // opened externally.
+    final currentPath = _router.routeInformationProvider.value.uri.path;
+    if (currentPath != ProductRouteContract.home) {
+      // The external entry point must not remain behind the stable Home root,
+      // otherwise repeated back presses would loop between the two pages.
+      _locationHistory.clear();
+      _router.go(ProductRouteContract.home);
+      return;
+    }
+    // Back on Home with no earlier page: ask before exiting instead of
+    // closing immediately.
     final strings = AppStrings.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
@@ -258,15 +367,16 @@ class _ProductShellState extends State<_ProductShell> {
       builder: (context, _) {
         final strings = AppStrings.of(context);
         final location = _router.routeInformationProvider.value.uri.path;
-        final width = MediaQuery.sizeOf(context).width;
+        final mediaSize = MediaQuery.sizeOf(context);
+        final width = mediaSize.width;
         final usesSidebar = AppBreakpoints.usesNavigationRail(width);
-        final showAssistantPanel = AppBreakpoints.usesAssistantSidePanel(width);
+        final showAssistantPanel = !_assistantUsesFab(context);
         // EventDetails is a full page with its own header (centered title,
         // close button) — showing the shell's own context-picker bar above
         // it as well would stack two app bars.
-        final hidesShellAppBar = location.startsWith(
-          '${ProductRouteContract.calendar}/event/',
-        );
+        final hidesShellAppBar =
+            location.startsWith('${ProductRouteContract.calendar}/event/') ||
+            location.startsWith('${ProductRouteContract.team}/member/');
         final navigationPanel = _AppNavigationPanel(
           profile: widget.profile,
           contextValue: widget.contextValue,
@@ -274,6 +384,12 @@ class _ProductShellState extends State<_ProductShell> {
           currentLocation: location,
           onNavigate: _router.go,
           onContextChanged: widget.onContextChanged,
+          membership: widget.membership,
+          supportAdminAccess: _supportAdminAccess,
+          onContextsChanged: widget.onContextsChanged,
+          onTeamCreated: widget.onTeamCreated,
+          pendingTeamRequests: _pendingTeamRequests,
+          onTeamRequestsChanged: _refreshPendingTeamRequests,
           onSignOut: widget.onSignOut,
           closeDrawer: usesSidebar
               ? null
@@ -292,10 +408,24 @@ class _ProductShellState extends State<_ProductShell> {
                       onTap: () => _showContextPicker(
                         context: context,
                         contexts: widget.contexts,
+                        activeContext: widget.contextValue,
+                        pendingTeamRequests: _pendingTeamRequests,
                         onContextChanged: widget.onContextChanged,
+                        membership: widget.membership,
+                        onContextsChanged: widget.onContextsChanged,
+                        onTeamCreated: widget.onTeamCreated,
+                        onTeamRequestsChanged: _refreshPendingTeamRequests,
                       ),
-                      child: _ContextTwoLineLabel(
-                        contextValue: widget.contextValue,
+                      child: FutureBuilder<int>(
+                        future: _pendingTeamRequests,
+                        initialData: 0,
+                        builder: (context, snapshot) => Badge.count(
+                          count: snapshot.data ?? 0,
+                          isLabelVisible: (snapshot.data ?? 0) > 0,
+                          child: _ContextTwoLineLabel(
+                            contextValue: widget.contextValue,
+                          ),
+                        ),
                       ),
                     ),
                     actions: [
@@ -317,62 +447,71 @@ class _ProductShellState extends State<_ProductShell> {
                     backgroundColor: Colors.transparent,
                     child: navigationPanel,
                   ),
-            body: Row(
+            body: Column(
               children: [
-                if (usesSidebar)
-                  SizedBox(
-                    key: const Key('permanent-navigation-sidebar'),
-                    width: 280,
-                    child: Drawer(
-                      backgroundColor: Colors.transparent,
-                      shape: const RoundedRectangleBorder(),
-                      child: navigationPanel,
-                    ),
-                  ),
+                const BrowserOfflineNotice(),
                 Expanded(
-                  child: Stack(
+                  child: Row(
                     children: [
-                      Positioned.fill(
-                        child: Router(
-                          routerDelegate: _router.routerDelegate,
-                          routeInformationParser:
-                              _router.routeInformationParser,
-                          routeInformationProvider:
-                              _router.routeInformationProvider,
-                          backButtonDispatcher: _backButtonDispatcher,
+                      if (usesSidebar)
+                        SizedBox(
+                          key: const Key('permanent-navigation-sidebar'),
+                          width: 280,
+                          child: Drawer(
+                            backgroundColor: Colors.transparent,
+                            shape: const RoundedRectangleBorder(),
+                            child: navigationPanel,
+                          ),
+                        ),
+                      Expanded(
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: Router(
+                                routerDelegate: _router.routerDelegate,
+                                routeInformationParser:
+                                    _router.routeInformationParser,
+                                routeInformationProvider:
+                                    _router.routeInformationProvider,
+                                backButtonDispatcher: _backButtonDispatcher,
+                              ),
+                            ),
+                            if (!showAssistantPanel &&
+                                location != ProductRouteContract.assistant)
+                              // Always the standard bottom-right FAB position, not
+                              // conditional on the phone bottom nav bar (Scaffold's
+                              // body already excludes that bar's own area, so this
+                              // never overlaps it). Kept the same position
+                              // regardless of which page is showing, rather than
+                              // moving up only when that page also has its own FAB
+                              // there: pages whose own FAB is reached via a nested
+                              // Navigator.push (e.g. domain management) aren't
+                              // reflected in `location`, so a page-aware height here
+                              // couldn't detect them reliably. Pages that do have
+                              // their own FAB instead move THEIRS up out of the way
+                              // via assistantFabClearanceLocation.
+                              Positioned(
+                                right: 16,
+                                bottom: 16,
+                                child: _AssistantCoachMobileFab(
+                                  onPressed: () => _router.push(
+                                    ProductRouteContract.assistant,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                      if (!showAssistantPanel &&
+                      if (showAssistantPanel &&
                           location != ProductRouteContract.assistant)
-                        // Always the standard bottom-right FAB position, not
-                        // conditional on the phone bottom nav bar (Scaffold's
-                        // body already excludes that bar's own area, so this
-                        // never overlaps it). Kept the same position
-                        // regardless of which page is showing, rather than
-                        // moving up only when that page also has its own FAB
-                        // there: pages whose own FAB is reached via a nested
-                        // Navigator.push (e.g. domain management) aren't
-                        // reflected in `location`, so a page-aware height here
-                        // couldn't detect them reliably. Pages that do have
-                        // their own FAB instead move THEIRS up out of the way
-                        // via assistantFabClearanceLocation.
-                        Positioned(
-                          right: 16,
-                          bottom: 16,
-                          child: _AssistantCoachMobileFab(
-                            onPressed: () =>
-                                _router.push(ProductRouteContract.assistant),
-                          ),
+                        _AssistantCoachSidePanel(
+                          contextValue: widget.contextValue,
+                          onOpen: () =>
+                              _router.push(ProductRouteContract.assistant),
                         ),
                     ],
                   ),
                 ),
-                if (showAssistantPanel &&
-                    location != ProductRouteContract.assistant)
-                  _AssistantCoachSidePanel(
-                    contextValue: widget.contextValue,
-                    onOpen: () => _router.push(ProductRouteContract.assistant),
-                  ),
               ],
             ),
             bottomNavigationBar: usesSidebar
@@ -445,9 +584,18 @@ class _ProductShellState extends State<_ProductShell> {
 Future<void> _showContextPicker({
   required BuildContext context,
   required List<TeamZoneContext> contexts,
+  required TeamZoneContext activeContext,
+  required Future<int> pendingTeamRequests,
   required ValueChanged<TeamZoneContext> onContextChanged,
+  required MembershipServices membership,
+  required Future<void> Function() onContextsChanged,
+  required Future<void> Function(String teamId) onTeamCreated,
+  required VoidCallback onTeamRequestsChanged,
 }) {
   final strings = AppStrings.of(context);
+  final otherContexts = contexts
+      .where((item) => item.id != activeContext.id)
+      .toList(growable: false);
   return showModalBottomSheet<void>(
     context: context,
     useSafeArea: true,
@@ -461,9 +609,31 @@ Future<void> _showContextPicker({
               style: Theme.of(sheetContext).textTheme.titleMedium,
             ),
           ),
-          for (final item in contexts)
+          ListTile(
+            leading: const Icon(Icons.check_circle),
+            title: Text(
+              activeContext.teamName ?? activeContext.clubName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(
+              '${strings.feature('Aktivt lag')} · ${activeContext.clubName} · ${strings.domainValue(activeContext.rolePackage)}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            selected: true,
+          ),
+          if (otherContexts.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Text(
+                strings.feature('Byt till'),
+                style: Theme.of(sheetContext).textTheme.labelLarge,
+              ),
+            ),
+          for (final item in otherContexts)
             ListTile(
-              leading: const Icon(Icons.shield_outlined),
+              leading: const Icon(Icons.swap_horiz),
               title: Text(
                 item.teamName ?? item.clubName,
                 maxLines: 1,
@@ -481,7 +651,271 @@ Future<void> _showContextPicker({
                 Navigator.of(sheetContext).pop();
               },
             ),
+          const Divider(height: 1),
+          if (activeContext.rolePackage == 'leader' ||
+              activeContext.can('club.memberships.manage'))
+            ListTile(
+              leading: const Icon(Icons.add_circle_outline),
+              title: Text(strings.feature('Skapa ytterligare lag')),
+              subtitle: Text(
+                strings.feature(
+                  activeContext.can('club.memberships.manage')
+                      ? 'Lägg till ett nytt lag i den aktiva klubben.'
+                      : 'Skicka en förfrågan till klubbens administratör.',
+                ),
+              ),
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await Future<void>.delayed(Duration.zero);
+                if (!context.mounted) return;
+                await _createTeamFromContextPicker(
+                  context: context,
+                  activeContext: activeContext,
+                  membership: membership,
+                  onTeamCreated: onTeamCreated,
+                );
+              },
+            ),
+          if (activeContext.can('club.memberships.manage'))
+            ListTile(
+              leading: const Icon(Icons.approval_outlined),
+              title: Text(strings.feature('Förfrågningar om nya lag')),
+              trailing: FutureBuilder<int>(
+                future: pendingTeamRequests,
+                initialData: 0,
+                builder: (context, snapshot) => Badge.count(
+                  count: snapshot.data ?? 0,
+                  isLabelVisible: (snapshot.data ?? 0) > 0,
+                ),
+              ),
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await Future<void>.delayed(Duration.zero);
+                if (!context.mounted) return;
+                await _showTeamCreationRequests(
+                  context: context,
+                  activeContext: activeContext,
+                  membership: membership,
+                  onContextsChanged: onContextsChanged,
+                  onRequestsChanged: onTeamRequestsChanged,
+                );
+              },
+            ),
+          ListTile(
+            leading: const Icon(Icons.group_add_outlined),
+            title: Text(strings.feature('Hitta klubb eller lag')),
+            subtitle: Text(
+              strings.feature('Sök, ansök eller hantera väntande ansökningar.'),
+            ),
+            onTap: () async {
+              Navigator.of(sheetContext).pop();
+              await Future<void>.delayed(Duration.zero);
+              if (!context.mounted) return;
+              await showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                useSafeArea: true,
+                builder: (_) => _MembershipJoinSheet(
+                  membership: membership,
+                  onApproved: () => onContextsChanged(),
+                ),
+              );
+            },
+          ),
         ],
+      ),
+    ),
+  );
+}
+
+Future<void> _createTeamFromContextPicker({
+  required BuildContext context,
+  required TeamZoneContext activeContext,
+  required MembershipServices membership,
+  required Future<void> Function(String teamId) onTeamCreated,
+}) async {
+  final strings = AppStrings.of(context);
+  var draftName = '';
+  final teamName = await showDialog<String>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(strings.feature('Skapa ytterligare lag')),
+      content: TextField(
+        autofocus: true,
+        textCapitalization: TextCapitalization.words,
+        maxLength: 120,
+        onChanged: (value) => draftName = value,
+        decoration: InputDecoration(
+          labelText: strings.feature('Lagnamn'),
+          helperText: activeContext.clubName,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: Text(strings.feature('Avbryt')),
+        ),
+        FilledButton(
+          onPressed: () {
+            final value = draftName.trim();
+            if (value.isNotEmpty && value.length <= 120) {
+              Navigator.pop(dialogContext, value);
+            }
+          },
+          child: Text(strings.feature('Skapa lag')),
+        ),
+      ],
+    ),
+  );
+  if (teamName == null || !context.mounted) return;
+  try {
+    if (activeContext.can('club.memberships.manage')) {
+      final teamId = await membership
+          .createTeam(
+            clubId: activeContext.clubId,
+            teamName: teamName,
+            idempotencyKey: _newUuid(),
+          )
+          .timeout(const Duration(seconds: 15));
+      await onTeamCreated(teamId);
+    } else {
+      await membership
+          .requestTeamCreation(
+            clubId: activeContext.clubId,
+            sourceAssignmentId: activeContext.id,
+            teamName: teamName,
+            idempotencyKey: _newUuid(),
+          )
+          .timeout(const Duration(seconds: 15));
+    }
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            strings.feature(
+              activeContext.can('club.memberships.manage')
+                  ? 'Laget har skapats.'
+                  : 'Förfrågan är skickad till klubbens administratör.',
+            ),
+          ),
+        ),
+      );
+    }
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            strings.feature('Laget kunde inte skapas. Försök igen.'),
+          ),
+        ),
+      );
+    }
+  }
+}
+
+Future<void> _showTeamCreationRequests({
+  required BuildContext context,
+  required TeamZoneContext activeContext,
+  required MembershipServices membership,
+  required Future<void> Function() onContextsChanged,
+  required VoidCallback onRequestsChanged,
+}) async {
+  final strings = AppStrings.of(context);
+  List<TeamCreationRequest> requests;
+  try {
+    requests = await membership
+        .listTeamCreationRequests(clubId: activeContext.clubId)
+        .timeout(const Duration(seconds: 15));
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(strings.feature('Förfrågningarna kunde inte laddas.')),
+        ),
+      );
+    }
+    return;
+  }
+  if (!context.mounted) return;
+  await showModalBottomSheet<void>(
+    context: context,
+    useSafeArea: true,
+    isScrollControlled: true,
+    builder: (sheetContext) => StatefulBuilder(
+      builder: (context, setSheetState) => SizedBox(
+        height: MediaQuery.sizeOf(context).height * .75,
+        child: Column(
+          children: [
+            ListTile(title: Text(strings.feature('Förfrågningar om nya lag'))),
+            Expanded(
+              child: requests.isEmpty
+                  ? Center(child: Text(strings.feature('Inga förfrågningar.')))
+                  : ListView(
+                      children: [
+                        for (final request in requests)
+                          ListTile(
+                            title: Text(request.teamName),
+                            subtitle: Text(
+                              '${request.requesterName} · ${strings.domainValue(request.state)}',
+                            ),
+                            trailing: request.state != 'pending'
+                                ? null
+                                : Wrap(
+                                    children: [
+                                      TextButton(
+                                        onPressed: () async {
+                                          await membership
+                                              .decideTeamCreationRequest(
+                                                requestId: request.id,
+                                                approve: false,
+                                                expectedRevision:
+                                                    request.revision,
+                                                idempotencyKey: _newUuid(),
+                                              );
+                                          onRequestsChanged();
+                                          setSheetState(
+                                            () => requests = requests
+                                                .where(
+                                                  (item) =>
+                                                      item.id != request.id,
+                                                )
+                                                .toList(),
+                                          );
+                                        },
+                                        child: Text(strings.feature('Avslå')),
+                                      ),
+                                      FilledButton(
+                                        onPressed: () async {
+                                          await membership
+                                              .decideTeamCreationRequest(
+                                                requestId: request.id,
+                                                approve: true,
+                                                expectedRevision:
+                                                    request.revision,
+                                                idempotencyKey: _newUuid(),
+                                              );
+                                          await onContextsChanged();
+                                          onRequestsChanged();
+                                          setSheetState(
+                                            () => requests = requests
+                                                .where(
+                                                  (item) =>
+                                                      item.id != request.id,
+                                                )
+                                                .toList(),
+                                          );
+                                        },
+                                        child: Text(strings.feature('Godkänn')),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
       ),
     ),
   );
@@ -581,6 +1015,14 @@ List<_QuickAction> _quickActionsFor(
       icon: Icons.newspaper_outlined,
       label: strings.feature('Nyhetsredaktion'),
       route: ProductRouteContract.editorial,
+    ));
+  }
+  if (contextValue.can('publication.manage') ||
+      contextValue.can('team.roster.manage')) {
+    actions.add((
+      icon: Icons.public_outlined,
+      label: strings.feature('Publika sidor'),
+      route: ProductRouteContract.publication,
     ));
   }
   return actions;
@@ -693,6 +1135,12 @@ class _AppNavigationPanel extends StatelessWidget {
     required this.currentLocation,
     required this.onNavigate,
     required this.onContextChanged,
+    required this.membership,
+    required this.supportAdminAccess,
+    required this.onContextsChanged,
+    required this.onTeamCreated,
+    required this.pendingTeamRequests,
+    required this.onTeamRequestsChanged,
     required this.onSignOut,
     required this.closeDrawer,
   });
@@ -703,6 +1151,12 @@ class _AppNavigationPanel extends StatelessWidget {
   final String currentLocation;
   final ValueChanged<String> onNavigate;
   final ValueChanged<TeamZoneContext> onContextChanged;
+  final MembershipServices membership;
+  final Future<bool> supportAdminAccess;
+  final Future<void> Function() onContextsChanged;
+  final Future<void> Function(String teamId) onTeamCreated;
+  final Future<int> pendingTeamRequests;
+  final VoidCallback onTeamRequestsChanged;
   final Future<void> Function() onSignOut;
   // Null on tablet/desktop, where this panel is a permanent sidebar rather
   // than a dismissible drawer. Closes via the Scaffold's own ScaffoldState
@@ -724,7 +1178,8 @@ class _AppNavigationPanel extends StatelessWidget {
         contextValue.can('club.billing.manage') ||
         _hasEconomyCapability(contextValue) ||
         _hasBoardCapability(contextValue) ||
-        contextValue.can('publication.manage');
+        contextValue.can('publication.manage') ||
+        contextValue.can('team.roster.manage');
     // The panel always renders in the current theme's accent color rather
     // than following light/dark system mode: it's a deep, dark gradient in
     // every color theme (lighter accent at the top fading toward near-black
@@ -778,7 +1233,13 @@ class _AppNavigationPanel extends StatelessWidget {
               onPressed: () => _showContextPicker(
                 context: context,
                 contexts: contexts,
+                activeContext: contextValue,
+                pendingTeamRequests: pendingTeamRequests,
                 onContextChanged: onContextChanged,
+                membership: membership,
+                onContextsChanged: onContextsChanged,
+                onTeamCreated: onTeamCreated,
+                onTeamRequestsChanged: onTeamRequestsChanged,
               ),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(
@@ -792,7 +1253,15 @@ class _AppNavigationPanel extends StatelessWidget {
                   const Icon(Icons.shield_outlined, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: _ContextTwoLineLabel(contextValue: contextValue),
+                    child: FutureBuilder<int>(
+                      future: pendingTeamRequests,
+                      initialData: 0,
+                      builder: (context, snapshot) => Badge.count(
+                        count: snapshot.data ?? 0,
+                        isLabelVisible: (snapshot.data ?? 0) > 0,
+                        child: _ContextTwoLineLabel(contextValue: contextValue),
+                      ),
+                    ),
                   ),
                   const Icon(Icons.expand_more),
                 ],
@@ -847,7 +1316,27 @@ class _AppNavigationPanel extends StatelessWidget {
                       label: strings.feature('Nyhetsredaktion'),
                       onTap: () => _go(ProductRouteContract.editorial),
                     ),
+                  if (contextValue.can('publication.manage') ||
+                      contextValue.can('team.roster.manage'))
+                    _NavPanelRow(
+                      icon: Icons.public_outlined,
+                      label: strings.feature('Publika sidor'),
+                      onTap: () => _go(ProductRouteContract.publication),
+                    ),
                 ],
+                FutureBuilder<bool>(
+                  future: supportAdminAccess,
+                  builder: (context, snapshot) => snapshot.data == true
+                      ? _NavPanelRow(
+                          icon: Icons.support_agent_outlined,
+                          label: strings.feature('Supportärenden'),
+                          selected: currentLocation.startsWith(
+                            ProductRouteContract.support,
+                          ),
+                          onTap: () => _go(ProductRouteContract.support),
+                        )
+                      : const SizedBox.shrink(),
+                ),
               ],
             ),
           ),
@@ -912,6 +1401,16 @@ class _AboveAssistantFabLocation extends FloatingActionButtonLocation {
 }
 
 const _aboveAssistantFabLocation = _AboveAssistantFabLocation();
+
+bool _assistantUsesFab(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  final isNativeTablet =
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS) &&
+      size.shortestSide >= AppBreakpoints.tablet;
+  return isNativeTablet || !AppBreakpoints.usesAssistantSidePanel(size.width);
+}
 
 /// Same idea as [_AboveAssistantFabLocation], but clears the persistent
 /// Min assistent FAB by sitting to its left on the same row instead of

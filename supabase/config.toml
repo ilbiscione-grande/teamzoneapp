@@ -394,6 +394,9 @@ verify_jwt = false
 [functions.invitation-preview]
 verify_jwt = false
 
+[functions.person-erasure-worker]
+verify_jwt = true
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

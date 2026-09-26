@@ -19,6 +19,9 @@ class AppStrings {
       isSwedish ? 'Miljö: $name' : 'Environment: $name';
   String get backendNotConnected =>
       isSwedish ? 'Backend är inte ansluten' : 'Backend is not connected';
+  String get offlineNotice => isSwedish
+      ? 'Du är offline. Nytt innehåll kan inte hämtas.'
+      : 'You are offline. New content cannot be loaded.';
   String get backendInstructions => isSwedish
       ? 'Starta med SUPABASE_URL och SUPABASE_PUBLISHABLE_KEY. Secret- och service-role-nycklar får aldrig användas i klienten.'
       : 'Start with SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY. Secret and service-role keys must never be used in the client.';
@@ -56,6 +59,63 @@ class AppStrings {
       : 'Up to $teams teams and $people people';
   String matchFinishedClock(String value) =>
       isSwedish ? 'Sluttid $value' : 'Full time $value';
+  String peopleCount(int count) =>
+      isSwedish ? '$count personer' : '$count people';
+  String participantCount(int count) =>
+      isSwedish ? 'Antal deltagare: $count' : 'Participants: $count';
+  String calendarFrom(String period) =>
+      isSwedish ? 'Från $period' : 'From $period';
+  String contactPerson(String name) =>
+      isSwedish ? 'Kontakta $name' : 'Contact $name';
+  String contactRequestFrom(String name) =>
+      isSwedish ? 'Kontaktförfrågan från $name' : 'Contact request from $name';
+  String contactIssue(String reason) =>
+      isSwedish ? 'Ärende: $reason' : 'Subject: $reason';
+  String contactExpires(String date) =>
+      isSwedish ? 'Gäller till $date' : 'Valid until $date';
+  String contactReasonLabel(String code) => switch (code) {
+    'match' => feature('Match'),
+    'event' => feature('Event'),
+    'transfer' => feature('Spelarövergång'),
+    'club_business' => feature('Klubbärende'),
+    'other' => feature('Annat'),
+    _ => feature('Övrigt ärende'),
+  };
+  String selectedRecipients(int count) =>
+      isSwedish ? 'Valda mottagare: $count' : 'Selected recipients: $count';
+  String inboxGroupTitle(String title) => switch (title) {
+    'Flera lag' || 'Övriga konversationer' => feature(title),
+    _ => title,
+  };
+  String movePlayersAction(int count) =>
+      isSwedish ? 'Flytta $count spelare' : 'Move $count players';
+  String playerMoveResult(int moved, int failed) {
+    if (failed == 0) {
+      if (moved == 1) return feature('Spelaren är flyttad.');
+      return isSwedish
+          ? '$moved spelare är flyttade.'
+          : '$moved players have been moved.';
+    }
+    if (moved == 0) {
+      return feature(
+        'Ingen spelare kunde flyttas. Ladda om och kontrollera datum och lag.',
+      );
+    }
+    return isSwedish
+        ? '$moved spelare flyttades. $failed kunde inte flyttas.'
+        : '$moved players were moved. $failed could not be moved.';
+  }
+
+  String eligibilityKind(String value) => switch (value) {
+    'team_assignment' =>
+      isSwedish ? 'Ordinarie lagtrupp' : 'Regular team roster',
+    'development' => isSwedish ? 'Utvecklingsspelare' : 'Development player',
+    'dispensation' => isSwedish ? 'Dispens' : 'Dispensation',
+    'loan' => isSwedish ? 'Lån' : 'Loan',
+    'guest' => isSwedish ? 'Gäst' : 'Guest',
+    'cross_team' => isSwedish ? 'Annat lag' : 'Other team',
+    _ => value,
+  };
   String matchPausedClock(String value) =>
       isSwedish ? 'Pausad $value' : 'Paused $value';
   String startPeriod(int period) =>
@@ -74,6 +134,8 @@ class AppStrings {
     'active' => isSwedish ? 'Aktiv' : 'Active',
     'locked' => isSwedish ? 'Låst' : 'Locked',
     'pending' => isSwedish ? 'Väntar' : 'Pending',
+    'in_review' => isSwedish ? 'Granskas' : 'In review',
+    'resolved' => isSwedish ? 'Löst' : 'Resolved',
     'approved' => isSwedish ? 'Godkänd' : 'Approved',
     'rejected' => isSwedish ? 'Avslagen' : 'Rejected',
     'withdrawn' => isSwedish ? 'Återkallad' : 'Withdrawn',
@@ -131,6 +193,59 @@ class AppStrings {
   }
 
   static const Map<String, String> _featureEnglish = {
+    'Återaktivera i laget': 'Reactivate in team',
+    'Event': 'Event',
+    'Spelarövergång': 'Player transfer',
+    'Klubbärende': 'Club matter',
+    'Övrigt ärende': 'Other matter',
+    'Arkiverade': 'Archived',
+    'Flytta till lag': 'Move to team',
+    'Åtgärder': 'Actions',
+    'Flytta till ett annat lag': 'Move to another team',
+    'Medlemsuppgifter': 'Member details',
+    'Medlemsdetaljen är inte tillgänglig': 'Member details are unavailable',
+    'Spelaren är arkiverad.': 'The player is archived.',
+    'Vald dag': 'Selected day',
+    'Hela månaden': 'Entire month',
+    'Inga event denna månad': 'No events this month',
+    'Kommande event': 'Upcoming events',
+    'Inga kommande event': 'No upcoming events',
+    'Byt kalendervy': 'Change calendar view',
+    'Välj datum': 'Select date',
+    'Välj startdatum för agendan': 'Select agenda start date',
+    'Träningstema': 'Training theme',
+    'Träningsplan': 'Training plan',
+    'Motståndare *': 'Opponent *',
+    'Hemmaplan eller bortaplan': 'Home or away',
+    'Hemma': 'Home',
+    'Borta': 'Away',
+    'Matchanteckningar': 'Match notes',
+    'Syfte': 'Purpose',
+    'Mötesagenda': 'Meeting agenda',
+    'Typ av event': 'Event type',
+    'Samling före start (minuter)': 'Meet before start (minutes)',
+    'Serien börjar': 'Series starts',
+    'Serien slutar': 'Series ends',
+    'Hitta extern kontakt': 'Find external contact',
+    'Klubb, lag eller ledare': 'Club, team or leader',
+    'Lämna tomt för att visa alla tillåtna kontakter.':
+        'Leave blank to show all permitted contacts.',
+    'Verifierade ledarkontakter': 'Verified leader contacts',
+    'Anledning till kontakt': 'Reason for contact',
+    'Ytterligare information (valfritt)': 'Additional information (optional)',
+    'Beskriv kort vad du vill kontakta ledaren om.':
+        'Briefly explain why you want to contact the leader.',
+    'Verifierad ledare': 'Verified leader',
+    'Ange en rubrik.': 'Enter a subject.',
+    'Välj minst en mottagare.': 'Select at least one recipient.',
+    'Flera lag': 'Multiple teams',
+    'Övriga konversationer': 'Other conversations',
+    'Byte av ordinarie lag': 'Change of regular team',
+    'Åldersanpassning': 'Age-group adjustment',
+    'Omorganisation inom klubben': 'Club reorganization',
+    'Flytt beslutad av lagansvarig': 'Move decided by team manager',
+    'Ingen spelare kunde flyttas. Ladda om och kontrollera datum och lag.':
+        'No player could be moved. Reload and check the date and teams.',
     'Ansök': 'Apply',
     'Ansök som': 'Apply as',
     'Ange ett klubbnamn med 2–120 tecken.':
@@ -139,6 +254,8 @@ class AppStrings {
         'Enter a team name containing 1–120 characters.',
     'Ansökan kunde inte skickas.': 'The application could not be sent.',
     'Ansökan kunde inte återkallas.': 'The application could not be withdrawn.',
+    'Du har redan en väntande ansökan för den rollen. Vänta på svar eller dra tillbaka ansökan.':
+        'You already have a pending application for that role. Wait for a response or withdraw the application.',
     'Ansökningarna kunde inte hämtas.': 'The applications could not be loaded.',
     'Ansökningarna kunde inte hämtas': 'The applications could not be loaded',
     'Avslå': 'Reject',
@@ -146,7 +263,11 @@ class AppStrings {
     'Beslutet kunde inte sparas. Ladda om och försök igen.':
         'The decision could not be saved. Reload and try again.',
     'Godkänn medlemsansökan?': 'Approve membership application?',
+    'Godkänn som': 'Approve as',
+    'Ansökt som: {role}': 'Applied as: {role}',
     'Hitta klubb eller lag': 'Find a club or team',
+    'Sök, ansök eller hantera väntande ansökningar.':
+        'Search, apply, or manage pending applications.',
     'Hämtar medlemsansökningar': 'Loading membership applications',
     'Inga väntande medlemsansökningar': 'No pending membership applications',
     'Inofficiell klubb': 'Unofficial club',
@@ -178,6 +299,60 @@ class AppStrings {
     'Skicka för granskning': 'Submit for review',
     'Namnet är skyddat eller används redan. Välj ett tydligt alternativt namn eller kontakta TeamZone för granskning.':
         'The name is protected or already in use. Choose a clearly different name or contact TeamZone for review.',
+    'Kontakta TeamZone': 'Contact TeamZone',
+    'Ärendet skickas till TeamZones supportadministratörer.':
+        'The case is sent to TeamZone support administrators.',
+    'Meddelande': 'Message',
+    'Nytt anslag': 'New announcement',
+    'Anslag': 'Announcement',
+    'Behöver din uppmärksamhet': 'Needs your attention',
+    'Viktigt anslag': 'Important announcement',
+    'Information': 'Information',
+    'Arkiverade anslag': 'Archived announcements',
+    'Anslaget är avslutat och kan inte få fler meddelanden.':
+        'The announcement is complete and cannot receive more messages.',
+    'Skriv ett meddelande.': 'Write a message.',
+    'Välj minst en målgrupp.': 'Select at least one audience.',
+    'Målgrupp': 'Audience',
+    'Omfattning': 'Scope',
+    'Laget': 'The team',
+    'Hela klubben': 'Entire club',
+    'Anslaget skickas till laget.':
+        'The announcement will be sent to the team.',
+    'Det finns inga aktiva mottagare i den valda målgruppen.':
+        'There are no active recipients in the selected audience.',
+    'Du saknar behörighet att skicka anslaget i vald omfattning.':
+        'You do not have permission to send the announcement to the selected scope.',
+    'Kontrollera rubrik, meddelande och målgrupp och försök igen.':
+        'Check the subject, message and audience and try again.',
+    'Anslaget kunde inte skickas. Serverkod: {code}':
+        'The announcement could not be sent. Server code: {code}',
+    'Anslaget kunde inte skickas. Kontrollera anslutningen och försök igen.':
+        'The announcement could not be sent. Check the connection and try again.',
+    'Skicka': 'Send',
+    'Ange ett meddelande med 20–1000 tecken.':
+        'Enter a message containing 20–1000 characters.',
+    'Skicka ärende': 'Submit case',
+    'Ärendet kunde inte skickas. Försök igen.':
+        'The case could not be submitted. Please try again.',
+    'Ärendet är skickat. TeamZone granskar uppgifterna och återkommer i appen.':
+        'The case has been submitted. TeamZone will review the details and respond in the app.',
+    'Supportärenden': 'Support cases',
+    'Kontoradering · hög risk': 'Account erasure · high risk',
+    'Skyddat klubbnamn': 'Protected club name',
+    'Påbörja granskning': 'Start review',
+    'Lös ärende': 'Resolve case',
+    'Avslå ärende': 'Reject case',
+    'Beslutsanteckning': 'Decision note',
+    'Ange minst 5 tecken.': 'Enter at least 5 characters.',
+    'Spara beslut': 'Save decision',
+    'Ärendet kunde inte uppdateras. Läs om kön och försök igen.':
+        'The case could not be updated. Reload the queue and try again.',
+    'Supportkön är inte tillgänglig': 'The support queue is unavailable',
+    'Du saknar supportbehörighet eller så kunde kön inte laddas.':
+        'You do not have support access or the queue could not be loaded.',
+    'Inga supportärenden i vald status.':
+        'There are no support cases with the selected status.',
     'Klubbnamnet kan inte användas. Kontrollera namnet och försök igen.':
         'The club name cannot be used. Check the name and try again.',
     'Villkor kunde inte kontrolleras': 'Terms could not be checked',
@@ -188,6 +363,13 @@ class AppStrings {
     'Godkännandet kunde inte sparas. Läs in den aktuella versionen och försök igen.':
         'The acceptance could not be saved. Load the current version and try again.',
     'Villkor och integritet': 'Terms and privacy',
+    'Användarvillkor': 'Terms of service',
+    'Integritetspolicy': 'Privacy policy',
+    'Filtrera händelser': 'Filter events',
+    'Alla händelser': 'All events',
+    'Kommande händelser': 'Upcoming events',
+    'Tidigare händelser': 'Previous events',
+    'Resultat': 'Result',
     'Läs och godkänn för att fortsätta': 'Read and accept to continue',
     'Obligatoriska dokument är separerade från frivillig marknadsföring.':
         'Mandatory documents are separate from optional marketing.',
@@ -232,6 +414,13 @@ class AppStrings {
     'Redigera lagprofil': 'Edit team profile',
     'Lagtyp': 'Team type',
     'Kort lagpresentation': 'Short team presentation',
+    'Lagbild': 'Team image',
+    'Välj lagbild': 'Choose team image',
+    'Byt lagbild': 'Change team image',
+    'Ta bort lagbild': 'Remove team image',
+    'JPG, PNG eller WebP. Max 5 MB. Originalet lagras privat.':
+        'JPG, PNG or WebP. Max 5 MB. The original is stored privately.',
+    'Bilden måste vara högst 5 MB.': 'The image must be no larger than 5 MB.',
     'Lagbildens HTTPS-adress': 'Team image HTTPS address',
     'Säker bilduppladdning läggs till separat.':
         'Secure image upload will be added separately.',
@@ -263,6 +452,17 @@ class AppStrings {
     'Fler alternativ': 'More options',
     'Dölj för mig': 'Hide for me',
     'Dela med andra lag': 'Share with other teams',
+    'Ägande lag': 'Owning team',
+    'Delat med detta lag': 'Shared with this team',
+    'Ägande lag – eventet administreras härifrån':
+        'Owning team – the event is managed from here',
+    'Lag som eventet kan delas med': 'Teams this event can be shared with',
+    'Du kan dela eventet med flera lag samtidigt.':
+        'You can share the event with several teams at the same time.',
+    'Delat event': 'Shared event',
+    'Dela med laget': 'Share with this team',
+    'Standard: Kan se': 'Default: Can view',
+    'Rättighet': 'Permission',
     'Ta bort utkast': 'Delete draft',
     'Arkivera event': 'Archive event',
     'Urval': 'Selection',
@@ -301,6 +501,28 @@ class AppStrings {
         'Your current club mandate does not include publishing access.',
     'Uppdatera': 'Refresh',
     'Ny artikel': 'New article',
+    'Förhandsgranska utkast': 'Preview draft',
+    'Föreslås från rubriken. Du kan ändra adressen.':
+        'Suggested from the headline. You can change the address.',
+    'Föreslå adress från rubriken': 'Suggest address from headline',
+    'Endast förhandsgranskning i appen. Inget har sparats eller publicerats.':
+        'Preview in the app only. Nothing has been saved or published.',
+    'Rubrik saknas': 'Headline missing',
+    'Artikeltext saknas': 'Article text missing',
+    'Valda publiceringskanaler': 'Selected publishing channels',
+    'Ingen kanal vald': 'No channel selected',
+    'Saknas': 'Missing',
+    'Utkastet kunde inte sparas. Försök igen eller kontakta support.':
+        'The draft could not be saved. Try again or contact support.',
+    'Klubbsidan är inte publicerad. Aktivera klubbens publika sida innan du publicerar nyheter.':
+        'The club page is not published. Activate the public club page before publishing news.',
+    'Publiceringen kunde inte genomföras. Ladda om och försök igen.':
+        'Publishing could not be completed. Reload and try again.',
+    'Spara ändringarna i utkastet innan du publicerar.':
+        'Save your draft changes before publishing.',
+    'Publicera nyheten?': 'Publish this article?',
+    'Använd 2–100 tecken: små bokstäver, siffror och bindestreck.':
+        'Use 2–100 characters: lowercase letters, numbers and hyphens.',
     'Redigera artikel': 'Edit article',
     'Laddar artiklar': 'Loading articles',
     'Artiklarna kunde inte laddas': 'Articles could not be loaded',
@@ -412,6 +634,19 @@ class AppStrings {
         'Check your permission and try again.',
     'Lag': 'Team',
     'Åldersklass': 'Age group',
+    'Födelseår': 'Birth year',
+    'Födelsedatum': 'Date of birth',
+    'Välj födelsedatum': 'Select date of birth',
+    'Välj år, månad och dag': 'Select year, month and day',
+    'Välj ett födelsedatum.': 'Select a date of birth.',
+    'Välj ett födelseår.': 'Select a birth year.',
+    'Lägg till fullständigt datum': 'Add full date of birth',
+    'Ta bort exakt datum': 'Remove exact date',
+    'Tillbaka till truppen': 'Back to roster',
+    'Spelare från andra lag kunde inte laddas. Försök igen.':
+        'Players from other teams could not be loaded. Try again.',
+    'Det finns inga aktiva spelare i klubbens andra lag.':
+        'There are no active players in the club’s other teams.',
     'Status': 'Status',
     'Administrativa uppgifter': 'Administrative details',
     'Ursprung': 'Source',
@@ -518,6 +753,7 @@ class AppStrings {
     'Öppna Inbox': 'Open Inbox',
     'Kräver åtgärd': 'Requires action',
     'Aktiva inbjudningar': 'Active invitations',
+    'Tidigare inbjudningar': 'Previous invitations',
     'Väntande ansökningar': 'Pending applications',
     'Totalt {count} ärenden kräver åtgärd.':
         'A total of {count} items require action.',
@@ -543,6 +779,17 @@ class AppStrings {
     'Skapa klubb och lag': 'Create club and team',
     'Skapa lag': 'Create team',
     'Skapa ytterligare lag': 'Create another team',
+    'Aktivt lag': 'Active team',
+    'Byt till': 'Switch to',
+    'Lägg till ett nytt lag i den aktiva klubben.':
+        'Add a new team to the active club.',
+    'Skicka en förfrågan till klubbens administratör.':
+        'Send a request to the club administrator.',
+    'Förfrågningar om nya lag': 'New team requests',
+    'Förfrågan är skickad till klubbens administratör.':
+        'The request was sent to the club administrator.',
+    'Förfrågningarna kunde inte laddas.': 'The requests could not be loaded.',
+    'Inga förfrågningar.': 'No requests.',
     'Första lagets namn': 'First team name',
     'Personen får den valda rollen i laget.':
         'The person receives the selected role in the team.',
@@ -648,6 +895,8 @@ class AppStrings {
     'Markera alla som lästa': 'Mark all as read',
     'Visa äldre meddelanden': 'Show older messages',
     'Försök skicka igen': 'Try sending again',
+    'Meddelandet skickades inte eftersom du inte längre har tillgång till konversationen. Kopiera texten innan du stänger.':
+        'The message was not sent because you no longer have access to this conversation. Copy the text before closing.',
     'Skickar…': 'Sending…',
     'Fästa': 'Pinned',
     'Inställningar': 'Settings',
@@ -729,6 +978,40 @@ class AppStrings {
     'Betalningen är mottagen': 'The payment was received',
     'Detta och framåt': 'This and following occurrences',
     'Eventdetaljer kunde inte laddas.': 'Event details could not be loaded.',
+    'Eventet är inställt': 'The event is cancelled',
+    'Information och historik finns kvar, men eventet genomförs inte.':
+        'Information and history remain available, but the event will not take place.',
+    'Eventet måste vara inställt eller genomfört innan det kan arkiveras.':
+        'The event must be cancelled or completed before it can be archived.',
+    'Arkiverade event': 'Archived events',
+    'Visa arkiverade event': 'Show archived events',
+    'Döljer aktiva event och visar den bevarade historiken.':
+        'Hides active events and shows the retained history.',
+    'Historiken är bevarad. Öppna ett event för att visa eller återställa det.':
+        'The history is retained. Open an event to view or restore it.',
+    'Inga arkiverade event': 'No archived events',
+    'Arkiverade event för det valda laget visas här.':
+        'Archived events for the selected team appear here.',
+    'Arkiverad': 'Archived',
+    'Eventet är arkiverat': 'The event is archived',
+    'Eventet är skrivskyddat men historiken finns kvar.':
+        'The event is read-only, but its history remains available.',
+    'Återställ från arkiv': 'Restore from archive',
+    'Eventet återgår till kalendern med samma status som före arkiveringen.':
+        'The event returns to the calendar with the same status it had before archiving.',
+    'Eventet har återställts.': 'The event has been restored.',
+    'Eventet kunde inte återställas.': 'The event could not be restored.',
+    'Välj behörighetsgrupp': 'Select eligibility group',
+    'Generera deltagarurval': 'Generate participant selection',
+    'Ordinarie spelare prioriteras och urvalet blir alltid reproducerbart.':
+        'Regular players are prioritized and the selection is always reproducible.',
+    'Använd urval': 'Use selection',
+    'Alla behöriga': 'All eligible people',
+    'Behörighetsgrupp': 'Eligibility group',
+    'Skapa ett balanserat, reproducerbart urval':
+        'Create a balanced, reproducible selection',
+    'Deltagarurvalet kunde inte sparas. Ladda om och försök igen.':
+        'The participant selection could not be saved. Reload and try again.',
     'Eventet kunde inte skapas. Försök igen.':
         'The event could not be created. Please try again.',
     'Frånvarande': 'Absent',
@@ -805,6 +1088,13 @@ class AppStrings {
     'Planen kunde inte skapas. Försök igen.':
         'The plan could not be created. Please try again.',
     'Påminn': 'Remind',
+    'Påmind': 'Reminded',
+    'Avböjt': 'Declined',
+    'Svara som vårdnadshavare': 'Respond as guardian',
+    'Svara som ledare': 'Respond as leader',
+    'Minuter': 'Minutes',
+    'Påminnelsen är skickad.': 'The reminder has been sent.',
+    'Kallelsen är återkallad.': 'The call-up has been withdrawn.',
     'Rosteråtgärder': 'Roster actions',
     'Truppen kunde inte laddas.': 'The squad could not be loaded.',
     'Träning': 'Training',
@@ -814,6 +1104,11 @@ class AppStrings {
     'Åtgärden kunde inte sparas. Försök igen.':
         'The action could not be saved. Please try again.',
     'Ändringen är sparad.': 'The change was saved.',
+    'Ansökan är skickad till klubben och väntar på beslut.':
+        'The request was sent to the club and is awaiting a decision.',
+    'Ansökan är godkänd. Välj lagets synlighet för att publicera sidan.':
+        'The request was approved. Select the team visibility to publish the page.',
+    'Ansökan är avslagen.': 'The request was rejected.',
     'Abonnemang': 'Subscription',
     'Abonnemang kunde inte laddas': 'The subscription could not be loaded',
     'Inga event i perioden': 'No events in this period',
@@ -874,28 +1169,41 @@ class AppStrings {
     'Det behövs en aktiv spelare och minst ett annat aktivt lag i klubben.':
         'An active player and at least one other active team in the club are required.',
     'Arkivering och personuppgifter': 'Archiving and personal data',
-    'Avsluta lagtillhörighet eller starta en skyddad raderingsbegäran.':
-        'End a team assignment or start a protected erasure request.',
+    'Avsluta en lagtillhörighet med namngiven historik eller begär skyddad anonymisering.':
+        'End a team assignment with named history or request protected anonymization.',
     'Arkivera från laget': 'Archive from team',
+    'Avsluta i laget': 'End team membership',
     'Personen flyttas till Tidigare. Historiska fakta bevaras.':
         'The person is moved to Previous. Historical facts are preserved.',
+    'Personen flyttas till Arkiverade. Namn, matcher, närvaro och annan historik bevaras.':
+        'The person is moved to Archived. Their name, matches, attendance and other history are preserved.',
     'Begär radering av klubbuppgifter': 'Request erasure of club data',
+    'Begär anonymisering': 'Request anonymization',
     'En annan klubbansvarig måste godkänna. Namn och lokala personuppgifter anonymiseras, men verksamhetshistorik bevaras.':
         'Another club administrator must approve. The name and local personal data are anonymized, while operational history is preserved.',
     'Raderingsbegäran kunde inte skapas.':
         'The erasure request could not be created.',
+    'Anonymiseringsbegäran kunde inte skapas. Kontrollera om det redan finns en väntande begäran för personen.':
+        'The anonymization request could not be created. Check whether a pending request already exists for this person.',
     'Godkänn anonymisering': 'Approve anonymization',
     'Du måste vara en annan klubbansvarig än den som startade begäran. Åtgärden kan inte ångras i appen.':
         'You must be a different club administrator from the requester. The action cannot be undone in the app.',
+    'Du måste vara en annan klubbansvarig än den som startade begäran. Namnet och personens egna rekord anonymiseras permanent. Lagets historiska fakta bevaras.':
+        'You must be a different club administrator from the requester. The name and personal records are permanently anonymized. The team historical facts are preserved.',
     'Godkännandet nekades. Kontrollera behörighet och att initiatorn är en annan användare.':
         'Approval was denied. Check permission and that the requester is another user.',
     'Laddar livscykel': 'Loading lifecycle',
     'Livscykeln kunde inte laddas': 'The lifecycle could not be loaded',
     'Arkivering döljer inte historik. Personuppgiftsradering kräver två separata ansvariga. Global radering granskas alltid av TeamZone.':
         'Archiving does not hide history. Personal data erasure requires two separate administrators. Global erasure is always reviewed by TeamZone.',
+    'Avsluta i laget bevarar namn och historik. Anonymisering tar bort identiteten och kräver två separata ansvariga. Global kontoradering granskas alltid av TeamZone.':
+        'Ending team membership preserves the name and history. Anonymization removes the identity and requires two separate administrators. Global account erasure is always reviewed by TeamZone.',
     'Personer': 'People',
     'Raderingsbegäranden': 'Erasure requests',
+    'Anonymiseringsbegäranden': 'Anonymization requests',
     'Inga pågående raderingsbegäranden.': 'No pending erasure requests.',
+    'Inga pågående anonymiseringsbegäranden.':
+        'No pending anonymization requests.',
     'Godkänn': 'Approve',
     'Matchöversikt': 'Match overview',
     'Välj alla behöriga': 'Select all eligible people',

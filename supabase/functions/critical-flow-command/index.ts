@@ -13,6 +13,7 @@ const OPERATIONS: Readonly<Record<string, Flow>> = Object.freeze({
   create_thread: "messaging",
   add_thread_participants: "messaging",
   create_announcement: "messaging",
+  create_role_group_announcement: "messaging",
   send_message: "messaging",
   mark_thread_read: "messaging",
   mark_all_threads_read: "messaging",
@@ -36,6 +37,8 @@ const OPERATIONS: Readonly<Record<string, Flow>> = Object.freeze({
   transition_match_period_v2: "critical_commands",
   record_match_event_v2: "critical_commands",
   complete_match_v2: "critical_commands",
+  register_match_result: "critical_commands",
+  save_match_report: "critical_commands",
   unlock_match_v2: "critical_commands",
   create_economy_account: "critical_commands",
   create_economy_entry: "critical_commands",
@@ -51,6 +54,9 @@ const OPERATIONS: Readonly<Record<string, Flow>> = Object.freeze({
   save_public_partner: "critical_commands",
   request_publication_domain: "critical_commands",
   set_canonical_publication_domain: "critical_commands",
+  configure_publication_v2: "critical_commands",
+  request_team_publication: "critical_commands",
+  decide_team_publication: "critical_commands",
 });
 
 const corsHeaders = {

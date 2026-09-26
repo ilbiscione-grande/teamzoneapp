@@ -98,12 +98,14 @@ class _AssistantCoachHoldingSurface extends StatefulWidget {
     required this.assistantPresentation,
     required this.overview,
     required this.contextValue,
+    required this.onNavigate,
   });
 
   final AssistantIdentityServices assistantIdentity;
   final AssistantPresentationServices assistantPresentation;
   final OverviewServices overview;
   final TeamZoneContext contextValue;
+  final ValueChanged<String> onNavigate;
 
   @override
   State<_AssistantCoachHoldingSurface> createState() =>
@@ -309,7 +311,8 @@ class _AssistantCoachHoldingSurfaceState
                                             trailing: const Icon(
                                               Icons.chevron_right,
                                             ),
-                                            onTap: () => context.go(task.route),
+                                            onTap: () =>
+                                                widget.onNavigate(task.route),
                                           ),
                                       ],
                                     ),

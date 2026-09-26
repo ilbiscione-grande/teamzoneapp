@@ -96,12 +96,14 @@ class _ProfileSettingsSurface extends StatefulWidget {
     required this.roster,
     required this.onContextsChanged,
     required this.legal,
+    required this.editorial,
   });
 
   final List<TeamZoneContext> contexts;
   final RosterServices roster;
   final Future<void> Function() onContextsChanged;
   final LegalServices legal;
+  final EditorialServices editorial;
 
   @override
   State<_ProfileSettingsSurface> createState() =>
@@ -111,6 +113,7 @@ class _ProfileSettingsSurface extends StatefulWidget {
 class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
   late final Future<LegalStatus> _load;
   bool _pending = false;
+  bool _erasurePending = false;
   bool? _marketingOptIn;
   String? _error;
 
@@ -149,6 +152,148 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
           );
         });
       }
+    }
+  }
+
+  Future<void> _openLegalDocument(String value) async {
+    final uri = Uri.tryParse(value);
+    if (uri != null &&
+        await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      return;
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          AppStrings.of(
+            context,
+          ).feature('Dokumentet kunde inte öppnas. Försök igen.'),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _requestGlobalErasure() async {
+    final strings = AppStrings.of(context);
+    var reason = '';
+    var acknowledged = false;
+    final formKey = GlobalKey<FormState>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      useRootNavigator: true,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(strings.feature('Begär radering av mitt konto')),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    strings.feature(
+                      'TeamZone granskar begäran innan kontot tas bort. Verksamhetshistorik bevaras i anonymiserad form så att lagets event, närvaro och statistik fortsätter fungera.',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    autofocus: true,
+                    minLines: 3,
+                    maxLines: 6,
+                    maxLength: 500,
+                    decoration: InputDecoration(
+                      labelText: strings.feature('Anledning'),
+                    ),
+                    onChanged: (value) => reason = value,
+                    validator: (value) => (value?.trim().length ?? 0) < 2
+                        ? strings.feature('Ange minst 2 tecken.')
+                        : null,
+                  ),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: acknowledged,
+                    title: Text(
+                      strings.feature(
+                        'Jag förstår att kontot inte kan återställas efter godkänd radering.',
+                      ),
+                    ),
+                    onChanged: (value) =>
+                        setDialogState(() => acknowledged = value ?? false),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(strings.cancel),
+            ),
+            FilledButton(
+              onPressed: !acknowledged
+                  ? null
+                  : () {
+                      if (formKey.currentState?.validate() ?? false) {
+                        Navigator.pop(dialogContext, true);
+                      }
+                    },
+              child: Text(strings.feature('Skicka begäran')),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _erasurePending = true);
+    try {
+      await widget.roster
+          .requestGlobalPersonErasure(
+            reason: reason.trim(),
+            idempotencyKey: _newUuid(),
+          )
+          .timeout(const Duration(seconds: 15));
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        useRootNavigator: true,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(strings.feature('Begäran är skickad')),
+          content: Text(
+            strings.feature(
+              'TeamZone granskar ärendet. Kontot fungerar tills begäran har godkänts och slutförts.',
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(strings.feature('Stäng')),
+            ),
+          ],
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        useRootNavigator: true,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(strings.feature('Begäran kunde inte skickas')),
+          content: Text(
+            strings.feature(
+              'Det kan redan finnas ett öppet ärende. Försök igen senare eller kontakta TeamZone.',
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(strings.feature('Stäng')),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _erasurePending = false);
     }
   }
 
@@ -203,6 +348,32 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
                 ),
             const SizedBox(height: 24),
             const Divider(),
+            Text(
+              'Laginställningar',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            for (final item in {
+              for (final item in widget.contexts)
+                if (item.teamId != null &&
+                    (item.capabilities.contains('publication.manage') ||
+                        item.capabilities.contains('team.roster.manage')))
+                  item.teamId!: item,
+            }.values)
+              ListTile(
+                leading: const Icon(Icons.public),
+                title: Text(item.teamName ?? item.clubName),
+                subtitle: const Text('Publika matchresultat och träningstider'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => _TeamEventVisibilitySurface(
+                      teamId: item.teamId!,
+                      teamName: item.teamName ?? item.clubName,
+                      editorial: widget.editorial,
+                    ),
+                  ),
+                ),
+              ),
             const SizedBox(height: 24),
             Text(
               strings.feature('Färgtema'),
@@ -238,7 +409,7 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
             const Divider(),
             const SizedBox(height: 24),
             Text(
-              strings.feature('Integritetsinställningar'),
+              strings.feature('Villkor och integritet'),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
@@ -259,9 +430,39 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
                   );
                 }
                 _marketingOptIn ??= snapshot.data!.marketingOptIn;
+                final status = snapshot.data!;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.description_outlined),
+                      title: Text(strings.feature('Användarvillkor')),
+                      subtitle: Text(
+                        strings
+                            .feature('Version {version}')
+                            .replaceFirst('{version}', status.termsVersion),
+                      ),
+                      trailing: const Icon(Icons.open_in_new),
+                      onTap: () => _openLegalDocument(status.termsUrl),
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.privacy_tip_outlined),
+                      title: Text(strings.feature('Integritetspolicy')),
+                      subtitle: Text(
+                        strings
+                            .feature('Version {version}')
+                            .replaceFirst('{version}', status.privacyVersion),
+                      ),
+                      trailing: const Icon(Icons.open_in_new),
+                      onTap: () => _openLegalDocument(status.privacyUrl),
+                    ),
+                    const Divider(height: 32),
+                    Text(
+                      strings.feature('Integritetsinställningar'),
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       value: _marketingOptIn!,
@@ -288,6 +489,30 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
                   ],
                 );
               },
+            ),
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 24),
+            Text(
+              strings.feature('Radera konto'),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              strings.feature(
+                'Du kan begära global radering av din identitet. TeamZone granskar alltid begäran innan kontot tas bort.',
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _erasurePending ? null : _requestGlobalErasure,
+              icon: _erasurePending
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.person_remove_outlined),
+              label: Text(strings.feature('Begär radering av mitt konto')),
             ),
           ],
         ),

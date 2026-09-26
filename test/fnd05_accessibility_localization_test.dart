@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teamzone_app/src/app/teamzone_app.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
+import 'package:teamzone_app/src/core/localization/app_strings.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
 import 'package:teamzone_app/src/core/identity/identity_services.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
@@ -168,7 +169,7 @@ void main() {
     for (final path in paths) {
       final source = File(path).readAsStringSync();
       for (final match in RegExp(
-        r"\.feature\('([^']+)'\)",
+        r"\.feature\(\s*'([^']+)'\s*\)",
       ).allMatches(source)) {
         expect(
           strings,
@@ -184,6 +185,34 @@ void main() {
         );
       }
     }
+  });
+
+  testWidgets('dynamic inbox and player-move labels work in English', (
+    tester,
+  ) async {
+    late AppStrings strings;
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        home: Builder(
+          builder: (context) {
+            strings = AppStrings.of(context);
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
+    expect(strings.feature('Återaktivera i laget'), 'Reactivate in team');
+    expect(strings.inboxGroupTitle('F2014'), 'F2014');
+    expect(strings.inboxGroupTitle('Flera lag'), 'Multiple teams');
+    expect(strings.movePlayersAction(2), 'Move 2 players');
+    expect(
+      strings.playerMoveResult(2, 1),
+      '2 players were moved. 1 could not be moved.',
+    );
+    expect(strings.contactPerson('Ada'), 'Contact Ada');
+    expect(strings.selectedRecipients(3), 'Selected recipients: 3');
+    expect(strings.calendarFrom('Monday'), 'From Monday');
   });
 }
 

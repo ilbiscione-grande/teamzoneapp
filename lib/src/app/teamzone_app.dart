@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:file_picker/file_picker.dart';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -52,18 +53,22 @@ import 'package:teamzone_app/src/features/roster/roster_models.dart';
 import 'package:teamzone_app/src/features/roster/roster_services.dart';
 import 'package:teamzone_app/src/shared/layout/app_breakpoints.dart';
 import 'package:teamzone_app/src/shared/async/async_data_controller.dart';
+import 'package:teamzone_app/src/shared/connectivity/browser_online_signals.dart';
 import 'package:teamzone_app/src/shared/forms/app_form_controller.dart';
 import 'package:teamzone_app/src/shared/lists/app_list_controller.dart';
 import 'package:teamzone_app/src/shared/theme/app_theme.dart';
 import 'package:teamzone_app/src/shared/widgets/app_states.dart';
+import 'package:teamzone_app/src/shared/widgets/browser_offline_notice.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 part 'product_shell.dart';
 part 'product_routes.dart';
 part '../features/account/profile_settings_surface.dart';
+part '../features/publication/team_event_visibility_surface.dart';
 part '../features/assistant_coach/assistant_coach_entry.dart';
 part '../features/auth/auth_surfaces.dart';
 part '../features/auth/invitation_flow.dart';
+part '../features/auth/support_admin_surface.dart';
 part '../features/legal/legal_acceptance_surface.dart';
 part '../features/billing/billing_surface.dart';
 part '../features/board/board_surface.dart';
@@ -72,10 +77,13 @@ part '../features/calendar/event_details_page.dart';
 part '../features/development/development_surface.dart';
 part '../features/economy/economy_surface.dart';
 part '../features/match/match_space_dialog.dart';
+part '../features/match/match_result_card.dart';
+part '../features/match/written_report_card.dart';
 part '../features/messaging/inbox_surface.dart';
 part '../features/overview/overview_surface.dart';
 part '../features/publication/editorial_surface.dart';
 part '../features/publication/publication_management_surface.dart';
+part '../features/publication/publication_self_service_surface.dart';
 part '../features/publication/domain_management_surface.dart';
 part '../features/roster/roster_surface.dart';
 
@@ -225,6 +233,7 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
             supportedLocales: const [Locale('sv'), Locale('en')],
             localizationsDelegates: GlobalMaterialLocalizations.delegates,
             locale: widget.locale,
+            scrollBehavior: const _TeamZoneScrollBehavior(),
           )
         : MaterialApp(
             key: appKey,
@@ -236,6 +245,7 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
             supportedLocales: const [Locale('sv'), Locale('en')],
             localizationsDelegates: GlobalMaterialLocalizations.delegates,
             locale: widget.locale,
+            scrollBehavior: const _TeamZoneScrollBehavior(),
             onGenerateRoute: (_) =>
                 MaterialPageRoute<void>(builder: (_) => root),
           );
@@ -255,6 +265,18 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
       if (mounted) setState(() => _signingOut = false);
     }
   }
+}
+
+class _TeamZoneScrollBehavior extends MaterialScrollBehavior {
+  const _TeamZoneScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => const {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.trackpad,
+  };
 }
 
 class _StaticRootRouterDelegate extends RouterDelegate<Object>
