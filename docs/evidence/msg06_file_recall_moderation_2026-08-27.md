@@ -31,6 +31,11 @@
 - Uppföljningsmigrationens strukturgrind verifierade balanserade funktionsblock, authgrind, exakt replay-payload och transaktionssäker filaktivering.
 - Riktade MSG-05–07-tester passerade 14/14.
 - `dart analyze lib test` passerade utan anmärkning.
+- 2026-09-23: produktägaren skickade ett ofarligt testmeddelande i webbappen och återkallade det inom 15 minuter via meddelandemenyn. Texten ersattes av återkallelsemarkeringen i avsändarens vy. Mottagarens resync, tidsgräns, bilagor och rapportering återstår att kontrollera fysiskt.
+- 2026-09-23: produktägaren bifogade en JPG i en testkonversation. Bilagan syntes i det skickade meddelandet och gick att öppna som avsändare. Mottagarens åtkomst och åtkomst efter återkallelse återstår.
+- 2026-09-23: produktägaren öppnade samma konversation som mottagare i en separat session. JPG-bilagan syntes och gick att öppna även där. Återkallelse av just den bilagan återstår.
+- 2026-09-23: efter att avsändaren återkallat meddelandet försvann JPG-bilagan ur mottagarens redan öppna konversation utan sidomladdning. Mottagarens Realtime-resync av bilagevyn är därmed webbverifierad. Direkt återanvändning av en tidigare signerad fil-URL har inte testats.
+- 2026-09-23: produktägaren bekräftade att båda sessionerna visar **Återkallat meddelande** där JPG-meddelandet låg. Bilagan visas inte längre i någon av vyerna. Rapport/block har ännu inte testats, eftersom det blockerar avsändaren och någon avblockeringsåtgärd inte finns i den aktuella klienten; testet bör använda en separat disponibel relation.
 
 ## Kvarvarande grindar
 

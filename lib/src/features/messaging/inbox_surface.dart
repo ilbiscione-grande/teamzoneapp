@@ -3,12 +3,14 @@ part of '../../app/teamzone_app.dart';
 class _InboxSurface extends StatefulWidget {
   const _InboxSurface({
     required this.contextValue,
+    required this.contexts,
     required this.messaging,
     this.initialThreadId,
     this.initialAction,
     required this.onNavigate,
   });
   final TeamZoneContext contextValue;
+  final List<TeamZoneContext> contexts;
   final MessagingServices messaging;
   final String? initialThreadId;
   // Set by the swipe-up quick actions sheet's "Skicka meddelande" shortcut
@@ -20,11 +22,14 @@ class _InboxSurface extends StatefulWidget {
   State<_InboxSurface> createState() => _InboxSurfaceState();
 }
 
-class _InboxSurfaceState extends State<_InboxSurface> {
+class _InboxSurfaceState extends State<_InboxSurface>
+    with WidgetsBindingObserver {
   late final AsyncDataController<List<MessageThreadSummary>> _data;
   late final AppListController<MessageThreadSummary> _list;
   StreamSubscription<void>? _inboxSync;
   StreamSubscription<void>? _notificationSync;
+  VoidCallback? _refreshOpenNotifications;
+  StreamSubscription<void>? _browserOnlineSync;
   Timer? _resyncDebounce;
   Timer? _staleResync;
   int _staleResyncAttempt = 0;
@@ -36,16 +41,83 @@ class _InboxSurfaceState extends State<_InboxSurface> {
   // dialog we already have open, independent of whether widget's route
   // props have caught up yet.
   String? _openThreadId;
+  // Closing a deep-linked thread and clearing `?thread=` are two separate
+  // asynchronous operations. Remember the dismissed id until the route has
+  // caught up, otherwise a list refresh can immediately reopen the dialog and
+  // make the close button appear to do nothing.
+  String? _dismissedThreadId;
   bool _settingsPending = false;
+  bool _announcementArchiveExpanded = false;
   int _notificationUnread = 0;
+  List<String> get _contextIds => widget.contexts
+      .map((context) => context.id)
+      .toSet()
+      .toList(growable: false);
+
+  String get _scopeKey => (_contextIds..sort()).join('|');
+
   Future<List<MessageThreadSummary>> _reload() =>
-      widget.messaging.listThreads([widget.contextValue.id]);
+      widget.messaging.listThreads(_contextIds);
+
+  String get _activeScopeLabel => widget.contextValue.teamName == null
+      ? widget.contextValue.clubName
+      : '${widget.contextValue.teamName} · ${widget.contextValue.clubName}';
+
+  List<({String title, String? subtitle, List<MessageThreadSummary> threads})>
+  _groupThreads(List<MessageThreadSummary> threads) {
+    final grouped = <String, List<MessageThreadSummary>>{};
+    for (final thread in threads) {
+      final key = thread.scopeLabels.isEmpty
+          ? ''
+          : thread.scopeLabels.length == 1
+          ? thread.scopeLabels.single
+          : thread.scopeLabels.join('|');
+      (grouped[key] ??= []).add(thread);
+    }
+    final result = grouped.entries
+        .map((entry) {
+          if (entry.key.isEmpty) {
+            return (
+              title: 'Övriga konversationer',
+              subtitle: null,
+              threads: entry.value,
+            );
+          }
+          final labels = entry.key.split('|');
+          if (labels.length > 1) {
+            return (
+              title: 'Flera lag',
+              subtitle: labels.join(', '),
+              threads: entry.value,
+            );
+          }
+          final parts = labels.single.split(' · ');
+          return (
+            title: parts.first,
+            subtitle: parts.length > 1 ? parts.sublist(1).join(' · ') : 'Klubb',
+            threads: entry.value,
+          );
+        })
+        .toList(growable: false);
+    result.sort((left, right) {
+      final leftActive = left.threads.any(
+        (thread) => thread.scopeLabels.contains(_activeScopeLabel),
+      );
+      final rightActive = right.threads.any(
+        (thread) => thread.scopeLabels.contains(_activeScopeLabel),
+      );
+      if (leftActive != rightActive) return leftActive ? -1 : 1;
+      return left.title.toLowerCase().compareTo(right.title.toLowerCase());
+    });
+    return result;
+  }
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _data = AsyncDataController<List<MessageThreadSummary>>(
-      scopeKey: widget.contextValue.id,
+      scopeKey: _scopeKey,
       loader: _reload,
       isEmpty: (threads) => threads.isEmpty,
     );
@@ -60,6 +132,9 @@ class _InboxSurfaceState extends State<_InboxSurface> {
     _data.addListener(_syncList);
     _subscribeToInbox();
     _subscribeToNotifications();
+    _browserOnlineSync = browserOnlineSignals().listen(
+      (_) => unawaited(_resyncFromSignal()),
+    );
     unawaited(_data.load());
     unawaited(_refreshNotificationBadge());
     _openInitialAction();
@@ -90,14 +165,28 @@ class _InboxSurfaceState extends State<_InboxSurface> {
 
   Future<void> _resyncFromSignal() async {
     final succeeded = await _data.refresh();
-    if (succeeded) _clearStaleResync();
+    if (succeeded) {
+      _clearStaleResync();
+    } else if (_data.state.isStale) {
+      _scheduleStaleResync();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      unawaited(_resyncFromSignal());
+    }
   }
 
   void _subscribeToNotifications() {
     unawaited(_notificationSync?.cancel());
     _notificationSync = widget.messaging
         .watchNotificationInvalidations()
-        .listen((_) => unawaited(_refreshNotificationBadge()), onError: (_) {});
+        .listen((_) {
+          unawaited(_refreshNotificationBadge());
+          _refreshOpenNotifications?.call();
+        }, onError: (_) {});
   }
 
   void _setFilter(String value) {
@@ -131,7 +220,11 @@ class _InboxSurfaceState extends State<_InboxSurface> {
   void _tryOpenInitialThread() {
     final threads = _data.state.data;
     final target = widget.initialThreadId;
-    if (target == null || target == _openThreadId) return;
+    if (target == null ||
+        target == _openThreadId ||
+        target == _dismissedThreadId) {
+      return;
+    }
     if (!_initialThreadOpened && threads != null) {
       final matches = threads.where((thread) => thread.id == target);
       if (matches.isNotEmpty) {
@@ -238,8 +331,11 @@ class _InboxSurfaceState extends State<_InboxSurface> {
   @override
   void didUpdateWidget(covariant _InboxSurface oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.contextValue.id != widget.contextValue.id) {
-      _data.replaceScope(scopeKey: widget.contextValue.id, loader: _reload);
+    final oldContextIds =
+        oldWidget.contexts.map((context) => context.id).toSet().toList()
+          ..sort();
+    if (oldContextIds.join('|') != _scopeKey) {
+      _data.replaceScope(scopeKey: _scopeKey, loader: _reload);
     }
     if (!identical(oldWidget.messaging, widget.messaging)) {
       _subscribeToInbox();
@@ -247,6 +343,10 @@ class _InboxSurfaceState extends State<_InboxSurface> {
     }
     if (oldWidget.initialThreadId != widget.initialThreadId) {
       _initialThreadOpened = false;
+      if (widget.initialThreadId == null ||
+          widget.initialThreadId != _dismissedThreadId) {
+        _dismissedThreadId = null;
+      }
       _tryOpenInitialThread();
     }
     if (oldWidget.initialAction != widget.initialAction) {
@@ -257,11 +357,13 @@ class _InboxSurfaceState extends State<_InboxSurface> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _data.removeListener(_syncList);
     _resyncDebounce?.cancel();
     _clearStaleResync();
     unawaited(_inboxSync?.cancel());
     unawaited(_notificationSync?.cancel());
+    unawaited(_browserOnlineSync?.cancel());
     _data.dispose();
     _list.dispose();
     super.dispose();
@@ -273,7 +375,7 @@ class _InboxSurfaceState extends State<_InboxSurface> {
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 600;
     return Scaffold(
-      floatingActionButtonLocation: width < AppBreakpoints.desktop
+      floatingActionButtonLocation: _assistantUsesFab(context)
           ? _aboveAssistantFabLocation
           : null,
       persistentFooterButtons: compact
@@ -330,6 +432,22 @@ class _InboxSurfaceState extends State<_InboxSurface> {
             );
           }
           final threads = _list.visibleItems;
+          final attentionAnnouncements = threads
+              .where(
+                (thread) =>
+                    thread.type == 'announcement' && thread.unreadCount > 0,
+              )
+              .toList(growable: false);
+          final archivedAnnouncements = threads
+              .where(
+                (thread) =>
+                    thread.type == 'announcement' && thread.unreadCount == 0,
+              )
+              .toList(growable: false);
+          final conversations = threads
+              .where((thread) => thread.type != 'announcement')
+              .toList(growable: false);
+          final groups = _groupThreads(conversations);
           if (state.phase == AsyncDataPhase.empty) {
             return Center(
               child: _StateCard(
@@ -444,15 +562,11 @@ class _InboxSurfaceState extends State<_InboxSurface> {
                       )
                     : RefreshIndicator(
                         onRefresh: _refresh,
-                        child: ListView.builder(
+                        child: ListView(
                           padding: const EdgeInsets.all(12),
-                          itemCount:
-                              threads.length +
-                              (state.isStale ? 1 : 0) +
-                              (_list.hasMore ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (state.isStale && index == 0) {
-                              return Card(
+                          children: [
+                            if (state.isStale)
+                              Card(
                                 child: ListTile(
                                   leading: const Icon(Icons.cloud_off),
                                   title: Text(strings.offlineData),
@@ -464,49 +578,203 @@ class _InboxSurfaceState extends State<_InboxSurface> {
                                           ),
                                         ),
                                 ),
-                              );
-                            }
-                            final dataIndex = index - (state.isStale ? 1 : 0);
-                            if (dataIndex == threads.length) {
-                              return TextButton.icon(
+                              ),
+                            if (attentionAnnouncements.isNotEmpty) ...[
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.tertiaryContainer,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.tertiary,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.campaign),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        strings.feature(
+                                          'Behöver din uppmärksamhet',
+                                        ),
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleMedium,
+                                      ),
+                                    ),
+                                    Badge(
+                                      label: Text(
+                                        '${attentionAnnouncements.length}',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              for (final thread in attentionAnnouncements)
+                                Card(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.tertiaryContainer,
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  child: ListTile(
+                                    leading: const Icon(Icons.campaign),
+                                    title: Text(
+                                      thread.subject ??
+                                          strings.feature('Viktigt anslag'),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      '${thread.preview ?? strings.noMessages}\n${_inboxTime(context, thread.lastAt)}',
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    trailing: const Icon(
+                                      Icons.priority_high_rounded,
+                                    ),
+                                    onTap: () => _openThread(thread),
+                                  ),
+                                ),
+                            ],
+                            for (final group in groups) ...[
+                              Container(
+                                margin: const EdgeInsets.only(
+                                  top: 8,
+                                  bottom: 4,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.secondaryContainer,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      group.title == 'Flera lag'
+                                          ? Icons.hub_outlined
+                                          : Icons.groups_outlined,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            AppStrings.of(
+                                              context,
+                                            ).inboxGroupTitle(group.title),
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.titleSmall,
+                                          ),
+                                          if (group.subtitle != null)
+                                            Text(
+                                              group.subtitle!,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: Theme.of(
+                                                context,
+                                              ).textTheme.bodySmall,
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    Badge(
+                                      label: Text('${group.threads.length}'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              for (final thread in group.threads)
+                                Card(
+                                  margin: const EdgeInsets.only(bottom: 6),
+                                  child: ListTile(
+                                    leading: Icon(
+                                      thread.muted
+                                          ? Icons.notifications_off_outlined
+                                          : Icons.forum_outlined,
+                                    ),
+                                    title: Text(
+                                      thread.subject ?? strings.directMessage,
+                                    ),
+                                    subtitle: Text(
+                                      '${(thread.senderName ?? '').trim().isEmpty ? '' : '${thread.senderName}: '}${thread.preview ?? strings.noMessages}\n${_inboxTime(context, thread.lastAt)}',
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (thread.pinned)
+                                          const Icon(Icons.push_pin, size: 18),
+                                        if (thread.unreadCount > 0)
+                                          Badge(
+                                            label: Text(
+                                              '${thread.unreadCount}',
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    onTap: () => _openThread(thread),
+                                  ),
+                                ),
+                            ],
+                            if (archivedAnnouncements.isNotEmpty)
+                              Card(
+                                margin: const EdgeInsets.only(top: 8),
+                                child: ExpansionTile(
+                                  initiallyExpanded:
+                                      _announcementArchiveExpanded,
+                                  onExpansionChanged: (expanded) => setState(
+                                    () =>
+                                        _announcementArchiveExpanded = expanded,
+                                  ),
+                                  leading: const Icon(Icons.archive_outlined),
+                                  title: Text(
+                                    '${strings.feature('Arkiverade anslag')} (${archivedAnnouncements.length})',
+                                  ),
+                                  children: [
+                                    for (final thread in archivedAnnouncements)
+                                      ListTile(
+                                        leading: const Icon(
+                                          Icons.campaign_outlined,
+                                        ),
+                                        title: Text(
+                                          thread.subject ??
+                                              strings.feature('Anslag'),
+                                        ),
+                                        subtitle: Text(
+                                          '${thread.preview ?? strings.noMessages}\n${_inboxTime(context, thread.lastAt)}',
+                                          maxLines: 3,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        onTap: () => _openThread(thread),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            if (_list.hasMore)
+                              TextButton.icon(
                                 onPressed: _list.loadMore,
                                 icon: const Icon(Icons.expand_more),
                                 label: Text(
                                   AppStrings.of(context).feature('Visa fler'),
                                 ),
-                              );
-                            }
-                            final thread = threads[dataIndex];
-                            return Card(
-                              child: ListTile(
-                                leading: Icon(
-                                  thread.muted
-                                      ? Icons.notifications_off_outlined
-                                      : Icons.forum_outlined,
-                                ),
-                                title: Text(
-                                  thread.subject ?? strings.directMessage,
-                                ),
-                                subtitle: Text(
-                                  '${(thread.senderName ?? '').trim().isEmpty ? '' : '${thread.senderName}: '}${thread.preview ?? strings.noMessages}\n${_inboxTime(context, thread.lastAt)}',
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (thread.pinned)
-                                      const Icon(Icons.push_pin, size: 18),
-                                    if (thread.unreadCount > 0)
-                                      Badge(
-                                        label: Text('${thread.unreadCount}'),
-                                      ),
-                                  ],
-                                ),
-                                onTap: () => _openThread(thread),
                               ),
-                            );
-                          },
+                          ],
                         ),
                       ),
               ),
@@ -514,6 +782,34 @@ class _InboxSurfaceState extends State<_InboxSurface> {
           );
         },
       ),
+    );
+  }
+
+  String _announcementSendError(AppStrings strings, Object error) {
+    if (error is PostgrestException) {
+      final message = error.message.toLowerCase();
+      if (message.contains('no_recipients')) {
+        return strings.feature(
+          'Det finns inga aktiva mottagare i den valda målgruppen.',
+        );
+      }
+      if (message.contains('not_found') || error.code == '42501') {
+        return strings.feature(
+          'Du saknar behörighet att skicka anslaget i vald omfattning.',
+        );
+      }
+      if (message.contains('invalid_announcement') ||
+          message.contains('invalid_audience')) {
+        return strings.feature(
+          'Kontrollera rubrik, meddelande och målgrupp och försök igen.',
+        );
+      }
+      return strings
+          .feature('Anslaget kunde inte skickas. Serverkod: {code}')
+          .replaceFirst('{code}', error.code ?? 'okänd');
+    }
+    return strings.feature(
+      'Anslaget kunde inte skickas. Kontrollera anslutningen och försök igen.',
     );
   }
 
@@ -564,24 +860,39 @@ class _InboxSurfaceState extends State<_InboxSurface> {
       return;
     }
     if (!mounted) return;
-    if (recipients.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(strings.noAllowedRecipients)));
-      return;
+    TeamZoneContext? clubMessagingContext;
+    for (final candidate in widget.contexts) {
+      if (candidate.clubId == widget.contextValue.clubId &&
+          candidate.teamId == null &&
+          candidate.can('club.messaging.manage')) {
+        clubMessagingContext = candidate;
+        break;
+      }
     }
     final draft = await showDialog<_ComposeDraft>(
       context: context,
-      builder: (context) => _ComposeDialog(recipients: recipients),
+      builder: (context) => _ComposeDialog(
+        recipients: recipients,
+        hasTeamScope: widget.contextValue.teamId != null,
+        canUseClubScope: clubMessagingContext != null,
+        teamName: widget.contextValue.teamName,
+        clubName: widget.contextValue.clubName,
+        canCreateAnnouncement:
+            widget.contextValue.rolePackage == 'leader' ||
+            clubMessagingContext != null,
+      ),
     );
     if (draft == null || !mounted) return;
     String id;
     try {
       id = draft.type == 'announcement'
           ? await widget.messaging.createAnnouncement(
-              contextId: widget.contextValue.id,
+              contextId: draft.scope == 'club'
+                  ? clubMessagingContext!.id
+                  : widget.contextValue.id,
               subject: draft.subject,
-              recipientIds: draft.recipientIds,
+              body: draft.body,
+              audienceRoles: draft.audienceRoles,
               idempotencyKey: _newUuid(),
             )
           : await widget.messaging.createThread(
@@ -591,11 +902,14 @@ class _InboxSurfaceState extends State<_InboxSurface> {
               recipientIds: draft.recipientIds,
               idempotencyKey: _newUuid(),
             );
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
+        final message = draft.type == 'announcement'
+            ? _announcementSendError(strings, error)
+            : strings.safeError;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(strings.safeError)));
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
       return;
     }
@@ -608,10 +922,10 @@ class _InboxSurfaceState extends State<_InboxSurface> {
         id: id,
         type: draft.type,
         subject: draft.subject.isEmpty ? null : draft.subject,
-        revision: 1,
+        revision: draft.type == 'announcement' ? 2 : 1,
         unreadCount: 0,
         muted: false,
-        canSend: true,
+        canSend: draft.type != 'announcement',
         lastAt: DateTime.now(),
       ),
     );
@@ -621,6 +935,8 @@ class _InboxSurfaceState extends State<_InboxSurface> {
     try {
       final requests = await widget.messaging.listRequests();
       if (!mounted) return;
+      String? acceptedThreadId;
+      String? acceptedRequesterName;
       await showDialog<void>(
         context: context,
         builder: (dialogContext) => AlertDialog(
@@ -640,15 +956,60 @@ class _InboxSurfaceState extends State<_InboxSurface> {
                   ),
                 for (final request in requests)
                   Card(
+                    margin: const EdgeInsets.only(bottom: 12),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         ListTile(
-                          title: Text(request.requesterName),
-                          subtitle: Text(
-                            '${request.reasonCode}${request.text == null ? '' : ' · ${request.text}'}',
+                          leading: const CircleAvatar(
+                            child: Icon(Icons.person_outline),
+                          ),
+                          title: Text(
+                            AppStrings.of(
+                              context,
+                            ).contactRequestFrom(request.requesterName),
+                          ),
+                          subtitle: Text(request.requesterAffiliation),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                          child: Text(
+                            AppStrings.of(context).contactIssue(
+                              _contactReasonLabel(request.reasonCode),
+                            ),
+                          ),
+                        ),
+                        if (request.text?.trim().isNotEmpty ?? false)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                            child: Text(
+                              request.text!.trim(),
+                              style: Theme.of(context).textTheme.bodyLarge,
+                            ),
+                          ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                          child: Text(
+                            AppStrings.of(context).feature(
+                              'Om du accepterar kan ni starta en privat konversation i TeamZone.',
+                            ),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                          child: Text(
+                            AppStrings.of(context).contactExpires(
+                              MaterialLocalizations.of(
+                                context,
+                              ).formatShortDate(request.expiresAt.toLocal()),
+                            ),
+                            style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ),
                         Wrap(
+                          alignment: WrapAlignment.end,
+                          spacing: 4,
                           children: [
                             TextButton(
                               onPressed: () async {
@@ -682,11 +1043,13 @@ class _InboxSurfaceState extends State<_InboxSurface> {
                             ),
                             FilledButton(
                               onPressed: () async {
-                                await widget.messaging.decideRequest(
-                                  request.id,
-                                  'accepted',
-                                  _newUuid(),
-                                );
+                                acceptedThreadId = await widget.messaging
+                                    .decideRequest(
+                                      request.id,
+                                      'accepted',
+                                      _newUuid(),
+                                    );
+                                acceptedRequesterName = request.requesterName;
                                 if (dialogContext.mounted) {
                                   Navigator.pop(dialogContext);
                                 }
@@ -711,7 +1074,21 @@ class _InboxSurfaceState extends State<_InboxSurface> {
           ],
         ),
       );
-      if (mounted) unawaited(_data.refresh());
+      if (!mounted) return;
+      await _data.refresh();
+      if (!mounted || acceptedThreadId == null) return;
+      await _openThread(
+        MessageThreadSummary(
+          id: acceptedThreadId!,
+          type: 'cross_club_direct',
+          subject: acceptedRequesterName,
+          revision: 1,
+          unreadCount: 0,
+          muted: false,
+          canSend: true,
+          lastAt: DateTime.now(),
+        ),
+      );
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -721,7 +1098,11 @@ class _InboxSurfaceState extends State<_InboxSurface> {
     }
   }
 
+  String _contactReasonLabel(String reasonCode) =>
+      AppStrings.of(context).contactReasonLabel(reasonCode);
+
   Future<void> _showNotifications() async {
+    var sheetRefreshGeneration = 0;
     try {
       var center = await widget.messaging.listNotifications();
       if (!mounted) return;
@@ -729,111 +1110,143 @@ class _InboxSurfaceState extends State<_InboxSurface> {
         context: context,
         showDragHandle: true,
         builder: (sheetContext) => StatefulBuilder(
-          builder: (context, setSheetState) => SafeArea(
-            child: ListView(
-              shrinkWrap: true,
-              children: [
-                ListTile(
-                  title: Text(AppStrings.of(context).feature('Notiser')),
-                  subtitle: Text(
-                    AppStrings.of(context).feature(
-                      'Säkra förhandsvisningar utan meddelandetext eller personuppgifter.',
-                    ),
-                  ),
-                  trailing: TextButton(
-                    onPressed: center.unreadCount == 0
-                        ? null
-                        : () async {
-                            await widget.messaging.markAllNotificationsRead(
-                              _newUuid(),
-                            );
-                            center = await widget.messaging.listNotifications();
-                            if (sheetContext.mounted) setSheetState(() {});
-                          },
-                    child: Text(AppStrings.of(context).feature('Läs alla')),
-                  ),
-                ),
-                if (center.items.isEmpty)
+          builder: (context, setSheetState) {
+            _refreshOpenNotifications = () {
+              final generation = ++sheetRefreshGeneration;
+              unawaited(() async {
+                try {
+                  final updated = await widget.messaging.listNotifications();
+                  if (sheetContext.mounted &&
+                      generation == sheetRefreshGeneration) {
+                    setSheetState(() => center = updated);
+                  }
+                } catch (_) {
+                  // Keep the last known list; the next invalidation can retry.
+                }
+              }());
+            };
+            return SafeArea(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
                   ListTile(
-                    title: Text(AppStrings.of(context).feature('Inga notiser')),
-                  ),
-                for (final item in center.items)
-                  Dismissible(
-                    key: ValueKey(item.id),
-                    direction: DismissDirection.endToStart,
-                    background: Container(
-                      color: Theme.of(context).colorScheme.errorContainer,
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.only(right: 24),
-                      child: const Icon(Icons.delete_outline),
+                    title: Text(AppStrings.of(context).feature('Notiser')),
+                    subtitle: Text(
+                      AppStrings.of(context).feature(
+                        'Meddelandeförhandsvisningar visas bara här för chattar du har tillgång till.',
+                      ),
                     ),
-                    confirmDismiss: (_) async {
-                      try {
-                        await widget.messaging.setNotificationState(
-                          item.id,
-                          'dismissed',
-                          _newUuid(),
-                        );
-                        return true;
-                      } catch (_) {
-                        if (sheetContext.mounted) {
-                          ScaffoldMessenger.of(sheetContext).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                AppStrings.of(sheetContext).safeError,
-                              ),
-                            ),
-                          );
-                        }
-                        return false;
-                      }
-                    },
-                    onDismissed: (_) {
-                      setSheetState(() {
-                        center = NotificationCenter(
-                          items: center.items
-                              .where((value) => value.id != item.id)
-                              .toList(growable: false),
-                          unreadCount:
-                              center.unreadCount - (item.unread ? 1 : 0),
-                        );
-                      });
-                    },
-                    child: ListTile(
-                      leading: Icon(
-                        item.category == 'message'
-                            ? Icons.forum_outlined
-                            : item.category.startsWith('callup')
-                            ? Icons.how_to_reg_outlined
-                            : Icons.notifications_none,
-                      ),
+                    trailing: TextButton(
+                      onPressed: center.unreadCount == 0
+                          ? null
+                          : () async {
+                              await widget.messaging.markAllNotificationsRead(
+                                _newUuid(),
+                              );
+                              center = await widget.messaging
+                                  .listNotifications();
+                              if (sheetContext.mounted) setSheetState(() {});
+                            },
+                      child: Text(AppStrings.of(context).feature('Läs alla')),
+                    ),
+                  ),
+                  if (center.items.isEmpty)
+                    ListTile(
                       title: Text(
-                        item.title,
-                        style: item.unread
-                            ? const TextStyle(fontWeight: FontWeight.w700)
-                            : null,
+                        AppStrings.of(context).feature('Inga notiser'),
                       ),
-                      subtitle: Text(
-                        '${item.preview}\n${_inboxTime(context, item.createdAt)}',
+                    ),
+                  for (final item in center.items)
+                    Dismissible(
+                      key: ValueKey(item.id),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        color: Theme.of(context).colorScheme.errorContainer,
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 24),
+                        child: const Icon(Icons.delete_outline),
                       ),
-                      isThreeLine: true,
-                      trailing: item.unread ? const Badge() : null,
-                      onTap: () async {
-                        if (item.unread) {
+                      confirmDismiss: (_) async {
+                        try {
                           await widget.messaging.setNotificationState(
                             item.id,
-                            'read',
+                            'dismissed',
                             _newUuid(),
                           );
+                          return true;
+                        } catch (_) {
+                          if (sheetContext.mounted) {
+                            ScaffoldMessenger.of(sheetContext).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  AppStrings.of(sheetContext).safeError,
+                                ),
+                              ),
+                            );
+                          }
+                          return false;
                         }
-                        if (sheetContext.mounted) Navigator.pop(sheetContext);
-                        widget.onNavigate(item.deepLink);
                       },
+                      onDismissed: (_) {
+                        setSheetState(() {
+                          center = NotificationCenter(
+                            items: center.items
+                                .where((value) => value.id != item.id)
+                                .toList(growable: false),
+                            unreadCount:
+                                center.unreadCount - (item.unread ? 1 : 0),
+                          );
+                        });
+                      },
+                      child: ListTile(
+                        leading: Icon(
+                          item.category == 'message'
+                              ? Icons.forum_outlined
+                              : item.category.startsWith('callup')
+                              ? Icons.how_to_reg_outlined
+                              : Icons.notifications_none,
+                        ),
+                        title: Text(
+                          item.category == 'message' && item.chatName != null
+                              ? item.chatName!
+                              : item.title,
+                          style: item.unread
+                              ? const TextStyle(fontWeight: FontWeight.w700)
+                              : null,
+                        ),
+                        subtitle: Text(
+                          _notificationSubtitle(context, item),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        isThreeLine: true,
+                        trailing: item.unread ? const Badge() : null,
+                        onTap: () async {
+                          if (item.unread) {
+                            await widget.messaging.setNotificationState(
+                              item.id,
+                              'read',
+                              _newUuid(),
+                            );
+                          }
+                          if (sheetContext.mounted) Navigator.pop(sheetContext);
+                          final target = Uri.tryParse(item.deepLink);
+                          if (target?.scheme == 'https' &&
+                              target?.host == 'public.teamzoneapp.se') {
+                            await launchUrl(
+                              target!,
+                              mode: LaunchMode.externalApplication,
+                            );
+                          } else {
+                            widget.onNavigate(item.deepLink);
+                          }
+                        },
+                      ),
                     ),
-                  ),
-              ],
-            ),
-          ),
+                ],
+              ),
+            );
+          },
         ),
       );
       await _refreshNotificationBadge();
@@ -843,6 +1256,8 @@ class _InboxSurfaceState extends State<_InboxSurface> {
           SnackBar(content: Text(AppStrings.of(context).safeError)),
         );
       }
+    } finally {
+      _refreshOpenNotifications = null;
     }
   }
 
@@ -851,12 +1266,17 @@ class _InboxSurfaceState extends State<_InboxSurface> {
     final query = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(AppStrings.of(context).feature('Verifierad ledarkontakt')),
+        title: Text(AppStrings.of(context).feature('Hitta extern kontakt')),
         content: TextField(
           controller: search,
           maxLength: 80,
           decoration: InputDecoration(
-            labelText: AppStrings.of(context).feature('Ledarnamn'),
+            labelText: AppStrings.of(
+              context,
+            ).feature('Klubb, lag eller ledare'),
+            helperText: AppStrings.of(
+              context,
+            ).feature('Lämna tomt för att visa alla tillåtna kontakter.'),
           ),
         ),
         actions: [
@@ -879,7 +1299,7 @@ class _InboxSurfaceState extends State<_InboxSurface> {
         context: context,
         builder: (context) => SimpleDialog(
           title: Text(
-            AppStrings.of(context).feature('Tillåtna verifierade ledare'),
+            AppStrings.of(context).feature('Verifierade ledarkontakter'),
           ),
           children: [
             if (leaders.isEmpty)
@@ -888,22 +1308,110 @@ class _InboxSurfaceState extends State<_InboxSurface> {
                   AppStrings.of(context).feature('Inga tillåtna träffar'),
                 ),
               ),
-            for (final leader in leaders)
-              SimpleDialogOption(
-                onPressed: () => Navigator.pop(context, leader),
-                child: ListTile(
-                  title: Text(leader.displayName),
-                  subtitle: Text('${leader.clubName} · ${leader.teamName}'),
-                ),
-              ),
+            ..._leaderDirectoryEntries(context, leaders),
           ],
         ),
       );
       if (selected == null || !mounted) return;
+
+      final message = TextEditingController();
+      String reason = 'match';
+      final request = await showDialog<_CrossClubRequestDraft>(
+        context: context,
+        builder: (context) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text(
+              AppStrings.of(context).contactPerson(selected.displayName),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: reason,
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(
+                      context,
+                    ).feature('Anledning till kontakt'),
+                  ),
+                  items: [
+                    DropdownMenuItem(
+                      value: 'match',
+                      child: Text(
+                        AppStrings.of(context).contactReasonLabel('match'),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: 'event',
+                      child: Text(
+                        AppStrings.of(context).contactReasonLabel('event'),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: 'transfer',
+                      child: Text(
+                        AppStrings.of(context).contactReasonLabel('transfer'),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: 'club_business',
+                      child: Text(
+                        AppStrings.of(
+                          context,
+                        ).contactReasonLabel('club_business'),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: 'other',
+                      child: Text(
+                        AppStrings.of(context).contactReasonLabel('other'),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) =>
+                      setDialogState(() => reason = value ?? 'match'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: message,
+                  maxLength: 160,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(
+                      context,
+                    ).feature('Ytterligare information (valfritt)'),
+                    hintText: AppStrings.of(
+                      context,
+                    ).feature('Beskriv kort vad du vill kontakta ledaren om.'),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(AppStrings.of(context).feature('Avbryt')),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(
+                  context,
+                  _CrossClubRequestDraft(
+                    reason: reason,
+                    message: message.text.trim(),
+                  ),
+                ),
+                child: Text(AppStrings.of(context).feature('Skicka')),
+              ),
+            ],
+          ),
+        ),
+      );
+      message.dispose();
+      if (request == null || !mounted) return;
       await widget.messaging.requestContact(
         selected.profileId,
-        'club_business',
-        AppStrings.of(context).feature('Kontaktförfrågan från TeamZone'),
+        request.reason,
+        request.message,
         _newUuid(),
       );
       if (mounted) {
@@ -924,8 +1432,56 @@ class _InboxSurfaceState extends State<_InboxSurface> {
     }
   }
 
+  List<Widget> _leaderDirectoryEntries(
+    BuildContext context,
+    List<CrossClubLeader> leaders,
+  ) {
+    final entries = <Widget>[];
+    String? currentClub;
+    String? currentTeam;
+    for (final leader in leaders) {
+      if (leader.clubName != currentClub) {
+        currentClub = leader.clubName;
+        currentTeam = null;
+        entries.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
+            child: Text(
+              leader.clubName,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+        );
+      }
+      if (leader.teamName != currentTeam) {
+        currentTeam = leader.teamName;
+        entries.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 2),
+            child: Text(
+              leader.teamName,
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+          ),
+        );
+      }
+      entries.add(
+        SimpleDialogOption(
+          onPressed: () => Navigator.pop(context, leader),
+          child: ListTile(
+            leading: const Icon(Icons.verified_user_outlined),
+            title: Text(leader.displayName),
+            subtitle: Text(AppStrings.of(context).feature('Verifierad ledare')),
+          ),
+        ),
+      );
+    }
+    return entries;
+  }
+
   Future<void> _openThread(MessageThreadSummary thread) async {
     _initialThreadOpened = true;
+    _dismissedThreadId = null;
     _openThreadId = thread.id;
     if (widget.initialThreadId != thread.id) {
       widget.onNavigate(
@@ -943,6 +1499,7 @@ class _InboxSurfaceState extends State<_InboxSurface> {
         contextId: widget.contextValue.id,
       ),
     );
+    _dismissedThreadId = thread.id;
     _openThreadId = null;
     if (mounted) {
       // Don't reset _initialThreadOpened here: onNavigate schedules a
@@ -963,10 +1520,22 @@ class _ComposeDraft {
     required this.type,
     required this.subject,
     required this.recipientIds,
+    this.body = '',
+    this.audienceRoles = const [],
+    this.scope = 'team',
   });
   final String type;
   final String subject;
   final List<String> recipientIds;
+  final String body;
+  final List<String> audienceRoles;
+  final String scope;
+}
+
+class _CrossClubRequestDraft {
+  const _CrossClubRequestDraft({required this.reason, required this.message});
+  final String reason;
+  final String message;
 }
 
 class _MessagingSettingsDialog extends StatefulWidget {
@@ -1011,25 +1580,46 @@ class _MessagingSettingsDialogState extends State<_MessagingSettingsDialog> {
 }
 
 class _ComposeDialog extends StatefulWidget {
-  const _ComposeDialog({required this.recipients});
+  const _ComposeDialog({
+    required this.recipients,
+    required this.hasTeamScope,
+    required this.canUseClubScope,
+    required this.canCreateAnnouncement,
+    required this.teamName,
+    required this.clubName,
+  });
   final List<AllowedRecipient> recipients;
+  final bool hasTeamScope;
+  final bool canUseClubScope;
+  final bool canCreateAnnouncement;
+  final String? teamName;
+  final String clubName;
   @override
   State<_ComposeDialog> createState() => _ComposeDialogState();
 }
 
 class _ComposeDialogState extends State<_ComposeDialog> {
   final _subject = TextEditingController();
+  final _body = TextEditingController();
   final Set<String> _selected = {};
+  final Set<String> _audienceRoles = {};
   String _type = 'direct';
+  late String _scope = widget.hasTeamScope ? 'team' : 'club';
+  String? _validationError;
+
+  String get _selectedScopeName =>
+      _scope == 'club' ? widget.clubName : (widget.teamName ?? widget.clubName);
 
   @override
   void dispose() {
     _subject.dispose();
+    _body.dispose();
     super.dispose();
   }
 
   void _toggle(AllowedRecipient recipient) {
     setState(() {
+      _validationError = null;
       if (_type == 'direct') _selected.clear();
       if (!_selected.add(recipient.profileId)) {
         _selected.remove(recipient.profileId);
@@ -1037,14 +1627,71 @@ class _ComposeDialogState extends State<_ComposeDialog> {
     });
   }
 
+  void _submit() {
+    final strings = AppStrings.of(context);
+    if (_type == 'announcement') {
+      if (_subject.text.trim().isEmpty) {
+        setState(() => _validationError = strings.feature('Ange en rubrik.'));
+        return;
+      }
+      if (_body.text.trim().isEmpty) {
+        setState(
+          () => _validationError = strings.feature('Skriv ett meddelande.'),
+        );
+        return;
+      }
+      if (_audienceRoles.isEmpty) {
+        setState(
+          () => _validationError = strings.feature('Välj minst en målgrupp.'),
+        );
+        return;
+      }
+      Navigator.pop(
+        context,
+        _ComposeDraft(
+          type: _type,
+          subject: _subject.text.trim(),
+          recipientIds: const [],
+          body: _body.text.trim(),
+          audienceRoles: _audienceRoles.toList(growable: false),
+          scope: _scope,
+        ),
+      );
+      return;
+    }
+    if (_selected.isEmpty) {
+      setState(() {
+        _validationError = strings.feature('Välj minst en mottagare.');
+      });
+      return;
+    }
+    if (_type != 'direct' && _subject.text.trim().isEmpty) {
+      setState(() {
+        _validationError = strings.feature(
+          _type == 'announcement' ? 'Ange en rubrik.' : 'Ange ett gruppnamn.',
+        );
+      });
+      return;
+    }
+    Navigator.pop(
+      context,
+      _ComposeDraft(
+        type: _type,
+        subject: _subject.text.trim(),
+        recipientIds: _selected.toList(growable: false),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
-    final valid =
-        _selected.isNotEmpty &&
-        (_type == 'direct' || _subject.text.trim().isNotEmpty);
     return AlertDialog(
-      title: Text(strings.feature('Ny konversation')),
+      title: Text(
+        strings.feature(
+          _type == 'announcement' ? 'Nytt anslag' : 'Ny konversation',
+        ),
+      ),
       content: SizedBox(
         width: 480,
         child: Column(
@@ -1060,20 +1707,25 @@ class _ComposeDialogState extends State<_ComposeDialog> {
                   value: 'group',
                   label: Text(strings.feature('Grupp')),
                 ),
-                ButtonSegment(
-                  value: 'announcement',
-                  label: Text(strings.feature('Info')),
-                  icon: const Icon(Icons.campaign_outlined),
-                ),
+                if (widget.canCreateAnnouncement)
+                  ButtonSegment(
+                    value: 'announcement',
+                    label: Text(strings.feature('Anslag')),
+                    icon: const Icon(Icons.campaign_outlined),
+                  ),
               ],
               selected: {_type},
               onSelectionChanged: (value) => setState(() {
                 _type = value.single;
+                _validationError = null;
                 if (_type == 'direct' && _selected.length > 1) {
                   final first = _selected.first;
                   _selected
                     ..clear()
                     ..add(first);
+                }
+                if (_type == 'announcement') {
+                  _selected.clear();
                 }
               }),
             ),
@@ -1086,24 +1738,132 @@ class _ComposeDialogState extends State<_ComposeDialog> {
                       ? strings.feature('Rubrik')
                       : strings.feature('Gruppnamn'),
                 ),
-                onChanged: (_) => setState(() {}),
+                onChanged: (_) => setState(() => _validationError = null),
               ),
             ],
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 320,
-              child: ListView(
+            if (_type == 'announcement') ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _body,
+                minLines: 4,
+                maxLines: 8,
+                maxLength: 4000,
+                decoration: InputDecoration(
+                  labelText: strings.feature('Meddelande'),
+                  alignLabelWithHint: true,
+                ),
+                onChanged: (_) => setState(() => _validationError = null),
+              ),
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${strings.feature('Målgrupp')} · $_selectedScopeName',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
                 children: [
-                  for (final item in widget.recipients)
-                    CheckboxListTile(
-                      value: _selected.contains(item.profileId),
-                      onChanged: (_) => _toggle(item),
-                      title: Text(item.displayName),
-                      subtitle: Text(item.rolePackage),
+                  for (final audience in const [
+                    ('player', 'Spelare'),
+                    ('leader', 'Ledare'),
+                    ('guardian', 'Vårdnadshavare'),
+                    ('all', 'Alla'),
+                  ])
+                    FilterChip(
+                      selected: _audienceRoles.contains(audience.$1),
+                      label: Text(
+                        audience.$1 == 'all'
+                            ? '${strings.feature(audience.$2)} i $_selectedScopeName'
+                            : strings.feature(audience.$2),
+                      ),
+                      onSelected: (_) => setState(() {
+                        _validationError = null;
+                        if (audience.$1 == 'all') {
+                          _audienceRoles
+                            ..clear()
+                            ..add('all');
+                        } else {
+                          _audienceRoles.remove('all');
+                          if (!_audienceRoles.add(audience.$1)) {
+                            _audienceRoles.remove(audience.$1);
+                          }
+                        }
+                      }),
                     ),
                 ],
               ),
-            ),
+              if (widget.canUseClubScope) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    strings.feature('Omfattning'),
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                SegmentedButton<String>(
+                  segments: [
+                    if (widget.hasTeamScope)
+                      ButtonSegment(
+                        value: 'team',
+                        label: Text(
+                          widget.teamName ?? strings.feature('Laget'),
+                        ),
+                      ),
+                    ButtonSegment(value: 'club', label: Text(widget.clubName)),
+                  ],
+                  selected: {_scope},
+                  onSelectionChanged: (value) =>
+                      setState(() => _scope = value.single),
+                ),
+              ] else
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '${strings.feature('Omfattning')}: $_selectedScopeName',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+            ] else ...[
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  strings.selectedRecipients(_selected.length),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ],
+            if (_validationError != null) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _validationError!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+            ],
+            const SizedBox(height: 8),
+            if (_type != 'announcement')
+              SizedBox(
+                height: 320,
+                child: ListView(
+                  children: [
+                    for (final item in widget.recipients)
+                      CheckboxListTile(
+                        value: _selected.contains(item.profileId),
+                        onChanged: (_) => _toggle(item),
+                        title: Text(item.displayName),
+                        subtitle: Text(item.rolePackage),
+                      ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -1113,17 +1873,10 @@ class _ComposeDialogState extends State<_ComposeDialog> {
           child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
         ),
         FilledButton(
-          onPressed: valid
-              ? () => Navigator.pop(
-                  context,
-                  _ComposeDraft(
-                    type: _type,
-                    subject: _subject.text.trim(),
-                    recipientIds: _selected.toList(growable: false),
-                  ),
-                )
-              : null,
-          child: Text(strings.feature('Skapa')),
+          onPressed: _submit,
+          child: Text(
+            strings.feature(_type == 'announcement' ? 'Skicka' : 'Skapa'),
+          ),
         ),
       ],
     );
@@ -1134,6 +1887,31 @@ String _inboxTime(BuildContext context, DateTime value) {
   final local = value.toLocal();
   final material = MaterialLocalizations.of(context);
   return '${material.formatCompactDate(local)} · ${material.formatTimeOfDay(TimeOfDay.fromDateTime(local))}';
+}
+
+String _notificationPreview(NotificationItem item) {
+  if (item.category == 'message' &&
+      item.messagePreview != null &&
+      item.messagePreview!.trim().isNotEmpty) {
+    return item.messagePreview!.trim();
+  }
+  if (item.category != 'message' || item.messageCount <= 0) {
+    return item.preview;
+  }
+  if (item.messageCount == 1) {
+    return '1 nytt meddelande i konversationen.';
+  }
+  return '${item.messageCount} nya meddelanden i konversationen.';
+}
+
+String _notificationSubtitle(BuildContext context, NotificationItem item) {
+  final sender = item.category == 'message' && item.senderName != null
+      ? 'Från ${item.senderName} · '
+      : '';
+  final count = item.category == 'message' && item.messageCount > 1
+      ? '${item.messageCount} nya · '
+      : '';
+  return '$sender${_notificationPreview(item)}\n$count${_inboxTime(context, item.createdAt)}';
 }
 
 class _ThreadDialog extends StatefulWidget {
@@ -1159,9 +1937,11 @@ class _PendingMessage {
   final String idempotencyKey;
   final List<String> stagedFileIds;
   bool failed = false;
+  bool accessLost = false;
 }
 
-class _ThreadDialogState extends State<_ThreadDialog> {
+class _ThreadDialogState extends State<_ThreadDialog>
+    with WidgetsBindingObserver {
   final _body = TextEditingController();
   late Future<List<MessageFile>> _filesLoad = widget.messaging.listFiles(
     widget.thread.id,
@@ -1169,10 +1949,16 @@ class _ThreadDialogState extends State<_ThreadDialog> {
   final List<_PendingMessage> _pending = [];
   List<ThreadMessage>? _messages;
   StreamSubscription<void>? _threadSync;
+  StreamSubscription<void>? _browserOnlineSync;
   Timer? _threadResyncDebounce;
-  int _messageRequestGeneration = 0;
+  Timer? _reconnectRetry;
+  int _reconnectAttempt = 0;
+  bool _retryAfterReconnect = false;
+  final MessageHistoryRequestGate _historyRequestGate =
+      MessageHistoryRequestGate();
   int? _nextBeforeRevision;
   bool _hasMore = false;
+  bool _hasLoadedOlderMessages = false;
   bool _loadingMessages = true;
   bool _loadingOlder = false;
   bool _messageLoadFailed = false;
@@ -1186,8 +1972,43 @@ class _ThreadDialogState extends State<_ThreadDialog> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _browserOnlineSync = browserOnlineSignals().listen(
+      (_) => _resyncAfterReconnect(),
+    );
     _subscribeToThread();
     unawaited(_replaceMessages());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      _resyncAfterReconnect();
+    }
+  }
+
+  void _resyncAfterReconnect() {
+    _retryAfterReconnect = true;
+    _reconnectRetry?.cancel();
+    _reconnectRetry = null;
+    _reconnectAttempt = 0;
+    unawaited(_replaceMessages());
+  }
+
+  void _scheduleReconnectRetry() {
+    if (!mounted || !_retryAfterReconnect || _reconnectRetry != null) return;
+    final seconds = switch (_reconnectAttempt) {
+      0 => 3,
+      1 => 5,
+      2 => 10,
+      _ => 30,
+    };
+    _reconnectRetry = Timer(Duration(seconds: seconds), () {
+      _reconnectRetry = null;
+      if (!mounted || !_retryAfterReconnect) return;
+      _reconnectAttempt++;
+      unawaited(_replaceMessages());
+    });
   }
 
   void _subscribeToThread() {
@@ -1204,37 +2025,62 @@ class _ThreadDialogState extends State<_ThreadDialog> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _threadResyncDebounce?.cancel();
+    _reconnectRetry?.cancel();
     unawaited(_threadSync?.cancel());
+    unawaited(_browserOnlineSync?.cancel());
     _body.dispose();
     super.dispose();
   }
 
   Future<void> _replaceMessages() async {
-    final requestGeneration = ++_messageRequestGeneration;
+    final requestGeneration = _historyRequestGate.startLatest();
     try {
       final page = await widget.messaging.listMessagePage(widget.thread.id);
-      if (!mounted || requestGeneration != _messageRequestGeneration) return;
+      if (!mounted || !_historyRequestGate.isCurrent(requestGeneration)) {
+        return;
+      }
+      final mergedPage = mergeNewestMessagePage(
+        page,
+        current: _messages,
+        hasLoadedOlder: _hasLoadedOlderMessages,
+        olderHasMore: _hasMore,
+        olderCursor: _nextBeforeRevision,
+      );
+      _retryAfterReconnect = false;
+      _reconnectRetry?.cancel();
+      _reconnectRetry = null;
+      _reconnectAttempt = 0;
+      final replayOlder = _historyRequestGate.finishLatest(
+        hasMore: mergedPage.hasMore,
+      );
       setState(() {
-        _messages = page.messages;
-        _nextBeforeRevision = page.nextBeforeRevision;
-        _hasMore = page.hasMore;
+        _messages = mergedPage.messages;
+        _nextBeforeRevision = mergedPage.nextBeforeRevision;
+        _hasMore = mergedPage.hasMore;
         _loadingMessages = false;
         _loadingOlder = false;
         _messageLoadFailed = false;
         _filesLoad = widget.messaging.listFiles(widget.thread.id);
       });
+      if (replayOlder) unawaited(_loadOlder());
       if (page.messages.isNotEmpty) {
-        unawaited(
-          widget.messaging.markRead(
+        try {
+          await widget.messaging.markRead(
             widget.thread.id,
             page.messages.last.revision,
             _newUuid(),
-          ),
-        );
+          );
+        } catch (_) {
+          // Reading the message still succeeds if the receipt cannot be
+          // persisted. A later open or mark-all action can retry it.
+        }
       }
     } catch (_) {
-      if (mounted && requestGeneration == _messageRequestGeneration) {
+      if (mounted && _historyRequestGate.isCurrent(requestGeneration)) {
+        _historyRequestGate.failLatest();
+        _scheduleReconnectRetry();
         setState(() {
           _loadingMessages = false;
           _loadingOlder = false;
@@ -1247,28 +2093,28 @@ class _ThreadDialogState extends State<_ThreadDialog> {
   Future<void> _loadOlder() async {
     final cursor = _nextBeforeRevision;
     if (_loadingOlder || !_hasMore || cursor == null) return;
-    final requestGeneration = _messageRequestGeneration;
+    final requestGeneration = _historyRequestGate.startOlder();
     setState(() => _loadingOlder = true);
     try {
       final page = await widget.messaging.listMessagePage(
         widget.thread.id,
         beforeRevision: cursor,
       );
-      if (!mounted || requestGeneration != _messageRequestGeneration) return;
-      final byId = {
-        for (final message in [...?_messages, ...page.messages])
-          message.id: message,
-      };
-      final merged = byId.values.toList()
-        ..sort((a, b) => a.revision.compareTo(b.revision));
+      if (!mounted || !_historyRequestGate.isCurrent(requestGeneration)) {
+        return;
+      }
+      final mergedPage = mergeOlderMessagePage(_messages ?? const [], page);
+      _historyRequestGate.finishOlder();
       setState(() {
-        _messages = merged;
-        _nextBeforeRevision = page.nextBeforeRevision;
-        _hasMore = page.hasMore;
+        _messages = mergedPage.messages;
+        _nextBeforeRevision = mergedPage.nextBeforeRevision;
+        _hasMore = mergedPage.hasMore;
+        _hasLoadedOlderMessages = true;
         _loadingOlder = false;
       });
     } catch (_) {
-      if (mounted && requestGeneration == _messageRequestGeneration) {
+      if (mounted && _historyRequestGate.isCurrent(requestGeneration)) {
+        _historyRequestGate.finishOlder();
         setState(() => _loadingOlder = false);
       }
     }
@@ -1379,7 +2225,10 @@ class _ThreadDialogState extends State<_ThreadDialog> {
   }
 
   Future<void> _deliver(_PendingMessage pending) async {
-    setState(() => pending.failed = false);
+    setState(() {
+      pending.failed = false;
+      pending.accessLost = false;
+    });
     try {
       await widget.messaging.send(
         threadId: widget.thread.id,
@@ -1392,9 +2241,20 @@ class _ThreadDialogState extends State<_ThreadDialog> {
         debugPrint('Message send failed: ${error.runtimeType}');
         return true;
       }());
+      var accessLost = false;
+      if (browserIsOnline()) {
+        try {
+          await widget.messaging.listMessagePage(widget.thread.id);
+        } on PostgrestException catch (readError) {
+          accessLost = readError.code == '42501';
+        } catch (_) {
+          // A failed access probe cannot distinguish a network failure.
+        }
+      }
       if (mounted) {
         setState(() {
           pending.failed = true;
+          pending.accessLost = accessLost;
           _sending = false;
         });
       }
@@ -1631,8 +2491,77 @@ class _ThreadDialogState extends State<_ThreadDialog> {
       future: _filesLoad,
       builder: (context, fileSnapshot) {
         final files = fileSnapshot.data ?? const <MessageFile>[];
+        if (widget.thread.type == 'announcement') {
+          final first = messages.first;
+          return ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 760),
+                  child: Card(
+                    color: Theme.of(context).colorScheme.tertiaryContainer,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.campaign,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onTertiaryContainer,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                strings.feature('Information'),
+                                style: Theme.of(context).textTheme.labelLarge,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${first.senderName} · ${_inboxTime(context, first.createdAt)}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          const Divider(height: 32),
+                          for (
+                            var index = 0;
+                            index < messages.length;
+                            index++
+                          ) ...[
+                            if (index > 0) const Divider(height: 28),
+                            SelectableText(
+                              messages[index].body ?? strings.recalledMessage,
+                              style: Theme.of(context).textTheme.bodyLarge,
+                            ),
+                            for (final file in files.where(
+                              (item) => item.messageId == messages[index].id,
+                            )) ...[
+                              const SizedBox(height: 12),
+                              _InlineMessageFile(
+                                file: file,
+                                messaging: widget.messaging,
+                              ),
+                            ],
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+        final bubbleMaxWidth = min(
+          360.0,
+          MediaQuery.sizeOf(context).width * 0.78,
+        );
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           children: [
             if (_hasMore)
               Center(
@@ -1647,36 +2576,102 @@ class _ThreadDialogState extends State<_ThreadDialog> {
                   label: Text(strings.feature('Visa äldre meddelanden')),
                 ),
               ),
-            for (final message in messages)
+            for (final group in groupMessagesForDisplay(messages))
               Align(
-                alignment: message.mine
+                alignment: group.first.mine
                     ? Alignment.centerRight
                     : Alignment.centerLeft,
-                child: Card(
-                  clipBehavior: Clip.antiAlias,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: bubbleMaxWidth),
                   child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: InkWell(
-                      onLongPress: () => _messageAction(message),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            message.senderName,
-                            style: Theme.of(context).textTheme.labelMedium,
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: group.first.mine
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            left: 8,
+                            right: 8,
+                            bottom: 2,
                           ),
-                          Text(message.body ?? strings.recalledMessage),
-                          for (final file in files.where(
-                            (item) => item.messageId == message.id,
-                          )) ...[
-                            const SizedBox(height: 8),
-                            _InlineMessageFile(
-                              file: file,
-                              messaging: widget.messaging,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (!group.first.mine) ...[
+                                Text(
+                                  group.first.senderName,
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                      ),
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              Text(
+                                _inboxTime(context, group.first.createdAt),
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        for (final message in group.messages) ...[
+                          if (message != group.first) const SizedBox(height: 6),
+                          Card(
+                            margin: EdgeInsets.zero,
+                            color: message.mine
+                                ? Theme.of(context).colorScheme.primaryContainer
+                                : Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHigh,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                          ],
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onLongPress: () => _messageAction(message),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: message.mine
+                                      ? CrossAxisAlignment.end
+                                      : CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      message.body ?? strings.recalledMessage,
+                                      textAlign: message.mine
+                                          ? TextAlign.right
+                                          : TextAlign.left,
+                                    ),
+                                    for (final file in files.where(
+                                      (item) => item.messageId == message.id,
+                                    )) ...[
+                                      const SizedBox(height: 6),
+                                      _InlineMessageFile(
+                                        file: file,
+                                        messaging: widget.messaging,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
-                      ),
+                      ],
                     ),
                   ),
                 ),
@@ -1684,43 +2679,63 @@ class _ThreadDialogState extends State<_ThreadDialog> {
             for (final pending in _pending)
               Align(
                 alignment: Alignment.centerRight,
-                child: Card(
-                  color: pending.failed
-                      ? Theme.of(context).colorScheme.errorContainer
-                      : Theme.of(context).colorScheme.secondaryContainer,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(pending.body),
-                        const SizedBox(height: 4),
-                        if (pending.failed)
-                          TextButton.icon(
-                            onPressed: _sending
-                                ? null
-                                : () {
-                                    setState(() => _sending = true);
-                                    unawaited(_deliver(pending));
-                                  },
-                            icon: const Icon(Icons.refresh),
-                            label: Text(strings.feature('Försök skicka igen')),
-                          )
-                        else
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SizedBox.square(
-                                dimension: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: bubbleMaxWidth),
+                  child: Card(
+                    margin: const EdgeInsets.symmetric(vertical: 2),
+                    color: pending.failed
+                        ? Theme.of(context).colorScheme.errorContainer
+                        : Theme.of(context).colorScheme.secondaryContainer,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          SelectableText(pending.body),
+                          const SizedBox(height: 4),
+                          if (pending.accessLost)
+                            Text(
+                              strings.feature(
+                                'Meddelandet skickades inte eftersom du inte längre har tillgång till konversationen. Kopiera texten innan du stänger.',
                               ),
-                              const SizedBox(width: 8),
-                              Text(strings.feature('Skickar…')),
-                            ],
-                          ),
-                      ],
+                              style: Theme.of(context).textTheme.bodySmall,
+                            )
+                          else if (pending.failed)
+                            TextButton.icon(
+                              onPressed: _sending
+                                  ? null
+                                  : () {
+                                      setState(() => _sending = true);
+                                      unawaited(_deliver(pending));
+                                    },
+                              icon: const Icon(Icons.refresh),
+                              label: Text(
+                                strings.feature('Försök skicka igen'),
+                              ),
+                            )
+                          else
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox.square(
+                                  dimension: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(strings.feature('Skickar…')),
+                              ],
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1739,7 +2754,7 @@ class _ThreadDialogState extends State<_ThreadDialog> {
         appBar: AppBar(
           title: Text(widget.thread.subject ?? strings.directMessage),
           leading: IconButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
             tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
             icon: const Icon(Icons.close),
           ),
@@ -1794,8 +2809,9 @@ class _ThreadDialogState extends State<_ThreadDialog> {
         ),
         body: Column(
           children: [
+            const BrowserOfflineNotice(),
             Expanded(child: _buildMessageHistory(strings)),
-            if (!widget.thread.canSend)
+            if (!widget.thread.canSend && widget.thread.type != 'announcement')
               Material(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 child: ListTile(
@@ -1803,12 +2819,14 @@ class _ThreadDialogState extends State<_ThreadDialog> {
                   title: Text(strings.feature('Endast information')),
                   subtitle: Text(
                     strings.feature(
-                      'Bara avsändaren kan skriva i den här konversationen.',
+                      widget.thread.type == 'announcement'
+                          ? 'Anslaget är avslutat och kan inte få fler meddelanden.'
+                          : 'Bara avsändaren kan skriva i den här konversationen.',
                     ),
                   ),
                 ),
               ),
-            if (widget.thread.canSend)
+            if (widget.thread.canSend && widget.thread.type != 'announcement')
               SafeArea(
                 top: false,
                 child: Padding(

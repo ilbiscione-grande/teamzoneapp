@@ -67,6 +67,38 @@ void main() {
     expect(surface, contains('_clearStaleResync'));
   });
 
+  test('closing a deep-linked thread cannot immediately reopen it', () {
+    expect(surface, contains('String? _dismissedThreadId;'));
+    expect(surface, contains('target == _dismissedThreadId'));
+    expect(surface, contains('_dismissedThreadId = thread.id;'));
+    expect(surface, contains('rootNavigator: true'));
+    expect(surface, contains('widget.onNavigate(ProductRouteContract.inbox)'));
+  });
+
+  test('capability revoke fixture is isolated to the dedicated leader', () {
+    final sql = File(
+      'supabase/migrations/20260920175000_msg01_revoke_test_leader_roster_view.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(sql, contains('coach.emilson+tzleader@gmail.com'));
+    expect(sql, contains("team.name = 'thomas lag'"));
+    expect(sql, contains("grant_row.capability = 'team.roster.view'"));
+    expect(sql, contains('affected <> 1'));
+    expect(sql, isNot(contains("grant_row.capability = 'team.roster.manage'")));
+    expect(sql, isNot(contains("grant_row.capability = 'event.manage'")));
+  });
+
+  test('capability fixture restores the existing grant after verification', () {
+    final sql = File(
+      'supabase/migrations/20260920180500_msg01_restore_test_leader_roster_view.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(sql, contains('coach.emilson+tzleader@gmail.com'));
+    expect(sql, contains("grant_row.capability = 'team.roster.view'"));
+    expect(sql, contains('set starts_at = now()'));
+    expect(sql, contains('ends_at = null'));
+    expect(sql, contains('grant_row.revision + 1'));
+    expect(sql, isNot(contains('insert into core.capability_grants')));
+  });
+
   test('shared list controller supports inbox search and unread filter', () {
     final now = DateTime.utc(2026, 8, 27);
     final controller = AppListController<MessageThreadSummary>(

@@ -31,6 +31,13 @@
 - Deno finns inte installerat lokalt, så separat TypeScript/Deno-kontroll återstår.
 - Riktade MSG-04–06-tester passerade 14/14, inklusive dubbelklicks-/stale-toggle-grinden.
 - `dart analyze lib test` passerade utan anmärkning.
+- 2026-09-23: produktägaren verifierade i den lokala webbappen att en fäst konversation hamnar överst i inkorgen och visas under filtret **Fästa**. Kontroll av kontosynk efter återanslutning och avfästning återstår.
+- 2026-09-23: produktägaren verifierade att tystning placerar samma konversation under **Tystade** och byter åtgärden till **Slå på notiser**. Återaktivering och avfästning återstår.
+- 2026-09-23: produktägaren verifierade också att **Slå på notiser** och **Lossa tråd** tar bort konversationen ur respektive filter. Den lokala webbkontrollen av pin/unpin och mute/unmute är därmed klar; separat återanslutnings-/tvåenhetskontroll återstår.
+- 2026-09-23: produktägaren aktiverade **Frivilliga pushnotiser**, laddade om webbappen och bekräftade att reglaget fortfarande var på. Detta verifierar sparad preferens, inte faktisk pushleverans. Avstängning återstår att kontrollera.
+- 2026-09-23: produktägaren slog av **Frivilliga pushnotiser**, laddade om och bekräftade att reglaget förblev av. Både opt-in och opt-out med persistens är webbverifierade. Testkontot lämnades med preferensen avstängd.
+- 2026-09-23: produktägaren öppnade samma konto i två webbläsarsessioner. När en tråd fästes i den ena flyttades den överst i den andra utan omladdning. Kontosynkad pin och inbox-resync är därmed fysiskt webbverifierade. Mute-synk återstår.
+- 2026-09-23: produktägaren tystade samma tråd i första sessionen. Den visades under **Tystade** i den andra utan omladdning; därefter slogs notiser på igen. Pin- och mute-synk mellan två webbläsarsessioner är verifierade. Faktisk pushleverans/provideraktivering och separat tvåenhetstest återstår.
 
 ## Kvarvarande grindar
 

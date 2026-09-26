@@ -1,7 +1,7 @@
 # MSG-01 – Inbox och automatiska systemtrådar
 
 Datum: 2026-08-27  
-Status: lokalt genomfört; Inboxens mobilgrund och footerregression fysiskt verifierade, runtime/tvåkonto/reconnect återstår
+Status: genomfört och godkänt; lokalt, hosted samt fysiskt verifierat inklusive tvåkontoflöde, join/leave och capability revoke/restore
 
 ## Levererat
 
@@ -46,10 +46,22 @@ Supabase-skillens säkerhetschecklista styrde gränsen: systembindningstabellen 
 - Riktat MSG-01-test passerade 5/5 och analysen var ren.
 - Build `998F0AC65B70C1EF4F8FF0E89712972EE646163D8C5B46B17E68BC96C8F333A2` verifierades på Mi 9: stale-kortet försvann automatiskt efter återanslutning, exakt tre trådar kvarstod och lagkontexten bevarades.
 
-## Återstår
+### Webbregression 2026-09-20
 
-- PostgreSQL-runtime och Security/Performance Advisors.
-- Fortsatt fysisk verifiering med minst leader och player: send/unread/read, mute, join/leave och capability revoke. Reconnect/resync är godkänd för leader-kontot.
-- Separat godkännande före eventuell Supabase-liveändring.
+- Produktägaren verifierade sök samt filtren Alla, Olästa, Lag, Ledare och Tystade i den hostade testdatabasen via den lokala webbbuilden.
+- Ett meddelandes X-knapp såg först ut att inte göra någonting: dialogen stängdes men den ännu inte uppdaterade `?thread=`-parametern öppnade samma tråd omedelbart igen.
+- Klienten minns nu ett nyss avvisat tråd-id tills inkorgsroutern har tagit bort parametern. X stänger explicit den översta dialognavigatorn och återgången kan därför inte tävla med en samtidig listresync.
+- Riktat MSG-01-test passerade 6/6 och analysen var ren. Produktägaren bekräftade därefter att X återgår till inkorgen och att en tystad konversation visas under filtret Tystade.
+- Tvåkontogrinden kördes med ledarkontot och `coach.emilson+tzplayer@gmail.com`: ett nytt ledarmeddelande gav korrekt olästmarkering och preview hos spelaren, öppning markerade tråden som läst och tog bort den ur Olästa. Ett svar från spelaren gav därefter motsvarande oläst/preview/läst-flöde hos ledaren.
+- Join/leave-grinden hittade först en verklig åtkomstläcka: historikbevarande `Avsluta i laget` avslutade `core.team_assignments`, men lämnade spelarens approll i `core.assignments` aktiv. Spelaren behöll därför Hem, lagöversikt samt läs- och skrivrätt i lagchatten.
+- Migration `20260920163500_team08_sync_player_context_with_roster.sql` inför en central trigger som synkroniserar rosterperioder med exakt motsvarande `player`-roll, utan att ändra kontolänken eller separata leader-/guardian-/club-functionary-roller. Befintliga avvikelser reconcilerades och systemtrådens vanliga assignment-trigger tog bort inaktuella deltagare.
+- Efter hosted migration och ny inloggning hamnade den avslutade spelaren korrekt i väntrummet. Återaktivering gav tillbaka lagkontexten och samma lagchatt med bevarad historik; ingen dubbletttråd skapades.
+- Ett medlemskap som godkänts som ledare saknade först explicita capability-grants trots korrekt rollvisning. Migration `20260920172500_auth04_materialize_leader_capability_bundle.sql` materialiserar därför standardpaketet för aktiva lagledare och backfillade befintliga avvikelser.
+- En avgränsad fysisk revoke-fixture (`20260920175000_msg01_revoke_test_leader_roster_view.sql`) avslutade endast `team.roster.view` för testledaren i Thomas lag. Efter ny inloggning försvann ledarchatten, en gammal direktlänk nekades och vanlig lagchatt samt andra ledarfunktioner fanns kvar.
+- Den uttryckligen godkända återställningen `20260920180500_msg01_restore_test_leader_roster_view.sql` återaktiverade samma grant. Ledarchatten och dess tidigare historik kom tillbaka utan att en dubblett skapades.
+- Riktat MSG-01-test passerade slutligen 8/8. Lokal och hosted migrationshistorik är synkroniserad till och med `20260920180500`.
 
-Ingen Supabase-liveändring, driftsättning, webtools eller workspace utfördes.
+## Slutstatus
+
+- MSG-01 är godkänt. Tvårolls send/unread/read, mute, reconnect/resync, join/leave och capability revoke/restore är fysiskt verifierade.
+- De ovan namngivna migrationerna applicerades efter separata uttryckliga godkännanden i den aktuella Supabase-testdatabasen. Ingen produktionsprovisionering, webtools eller workspace utfördes.

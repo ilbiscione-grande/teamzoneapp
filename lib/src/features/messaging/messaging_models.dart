@@ -1,5 +1,38 @@
 import '../../shared/attention/attention_priority.dart';
 
+/// Keeps an older-page request from being silently lost to a newer resync.
+class MessageHistoryRequestGate {
+  int _generation = 0;
+  bool _olderInFlight = false;
+  bool _replayOlder = false;
+
+  int startLatest() {
+    if (_olderInFlight) _replayOlder = true;
+    return ++_generation;
+  }
+
+  int startOlder() {
+    _olderInFlight = true;
+    return _generation;
+  }
+
+  bool isCurrent(int generation) => generation == _generation;
+
+  bool finishLatest({required bool hasMore}) {
+    _olderInFlight = false;
+    final replay = _replayOlder && hasMore;
+    _replayOlder = false;
+    return replay;
+  }
+
+  void failLatest() => _olderInFlight = false;
+
+  void finishOlder() {
+    _olderInFlight = false;
+    _replayOlder = false;
+  }
+}
+
 class MessageThreadSummary {
   const MessageThreadSummary({
     required this.id,
@@ -15,6 +48,7 @@ class MessageThreadSummary {
     this.subject,
     this.preview,
     this.senderName,
+    this.scopeLabels = const [],
   });
   final String id, type;
   final String? subject, preview, senderName;
@@ -24,6 +58,7 @@ class MessageThreadSummary {
   final bool canSend;
   final bool canManage, canLeave;
   final DateTime lastAt;
+  final List<String> scopeLabels;
   factory MessageThreadSummary.fromJson(Map<String, dynamic> json) =>
       MessageThreadSummary(
         id: json['id'] as String,
@@ -39,6 +74,13 @@ class MessageThreadSummary {
         lastAt: DateTime.parse(json['last_at'] as String),
         preview: json['last_message_preview'] as String?,
         senderName: json['sender_name'] as String?,
+        scopeLabels:
+            (json['scope_labels'] as List?)
+                ?.whereType<String>()
+                .map((label) => label.trim())
+                .where((label) => label.isNotEmpty)
+                .toList(growable: false) ??
+            const [],
       );
 }
 
@@ -61,10 +103,11 @@ class ThreadMessage {
     required this.createdAt,
     required this.senderName,
     required this.mine,
+    this.senderProfileId,
     this.body,
   });
   final String id, state, senderName;
-  final String? body;
+  final String? body, senderProfileId;
   final int revision;
   final DateTime createdAt;
   final bool mine;
@@ -75,8 +118,43 @@ class ThreadMessage {
     body: json['body'] as String?,
     createdAt: DateTime.parse(json['created_at'] as String),
     senderName: json['sender_name'] as String,
+    senderProfileId: json['sender_profile_id'] as String?,
     mine: json['mine'] as bool,
   );
+}
+
+class MessageDisplayGroup {
+  const MessageDisplayGroup(this.messages);
+
+  final List<ThreadMessage> messages;
+  ThreadMessage get first => messages.first;
+  ThreadMessage get last => messages.last;
+}
+
+List<MessageDisplayGroup> groupMessagesForDisplay(
+  List<ThreadMessage> messages,
+) {
+  const window = Duration(minutes: 3);
+  final groups = <MessageDisplayGroup>[];
+  var current = <ThreadMessage>[];
+  for (final message in messages) {
+    final first = current.isEmpty ? null : current.first;
+    final elapsed = first == null
+        ? Duration.zero
+        : message.createdAt.difference(first.createdAt);
+    final sameSender =
+        first != null &&
+        first.senderProfileId != null &&
+        first.senderProfileId == message.senderProfileId;
+    if (current.isNotEmpty &&
+        (!sameSender || elapsed.isNegative || elapsed > window)) {
+      groups.add(MessageDisplayGroup(current));
+      current = <ThreadMessage>[];
+    }
+    current.add(message);
+  }
+  if (current.isNotEmpty) groups.add(MessageDisplayGroup(current));
+  return groups;
 }
 
 class MessagePage {
@@ -107,6 +185,53 @@ class MessagePage {
       nextBeforeRevision: (json['next_before_revision'] as num?)?.toInt(),
     );
   }
+}
+
+List<ThreadMessage> _mergeMessagesById(
+  Iterable<ThreadMessage> current,
+  Iterable<ThreadMessage> incoming,
+) {
+  final byId = <String, ThreadMessage>{
+    for (final message in current) message.id: message,
+    for (final message in incoming) message.id: message,
+  };
+  return byId.values.toList(growable: false)..sort((a, b) {
+    final revisionOrder = a.revision.compareTo(b.revision);
+    return revisionOrder != 0 ? revisionOrder : a.id.compareTo(b.id);
+  });
+}
+
+MessagePage mergeOlderMessagePage(
+  List<ThreadMessage> current,
+  MessagePage older,
+) => MessagePage(
+  messages: _mergeMessagesById(current, older.messages),
+  hasMore: older.hasMore,
+  nextBeforeRevision: older.nextBeforeRevision,
+);
+
+MessagePage mergeNewestMessagePage(
+  MessagePage newest, {
+  required List<ThreadMessage>? current,
+  required bool hasLoadedOlder,
+  required bool olderHasMore,
+  required int? olderCursor,
+}) {
+  if (!hasLoadedOlder ||
+      current == null ||
+      !newest.hasMore ||
+      newest.messages.isEmpty) {
+    return newest;
+  }
+  final oldestNewestRevision = newest.messages.first.revision;
+  return MessagePage(
+    messages: _mergeMessagesById(
+      current.where((message) => message.revision < oldestNewestRevision),
+      newest.messages,
+    ),
+    hasMore: olderHasMore,
+    nextBeforeRevision: olderCursor,
+  );
 }
 
 class AllowedRecipient {
@@ -166,29 +291,33 @@ class CrossClubLeader {
     required this.teamName,
   });
   final String profileId, displayName, clubName, teamName;
-  factory CrossClubLeader.fromJson(Map<String, dynamic> json) =>
-      CrossClubLeader(
-        profileId: json['profile_id'] as String,
-        displayName: json['display_name'] as String,
-        clubName: json['club_name'] as String,
-        teamName: json['team_name'] as String,
-      );
+  factory CrossClubLeader.fromJson(Map<String, dynamic> json) {
+    final displayName = (json['display_name'] as String?)?.trim() ?? '';
+    return CrossClubLeader(
+      profileId: json['profile_id'] as String,
+      displayName: displayName.isEmpty ? 'Ledare' : displayName,
+      clubName: json['club_name'] as String,
+      teamName: json['team_name'] as String,
+    );
+  }
 }
 
 class ContactRequest {
   const ContactRequest({
     required this.id,
     required this.requesterName,
+    required this.requesterAffiliation,
     required this.reasonCode,
     required this.expiresAt,
     this.text,
   });
-  final String id, requesterName, reasonCode;
+  final String id, requesterName, requesterAffiliation, reasonCode;
   final String? text;
   final DateTime expiresAt;
   factory ContactRequest.fromJson(Map<String, dynamic> json) => ContactRequest(
     id: json['id'] as String,
     requesterName: json['requester_name'] as String,
+    requesterAffiliation: json['requester_affiliation'] as String,
     reasonCode: json['reason_code'] as String,
     text: json['request_text'] as String?,
     expiresAt: DateTime.parse(json['expires_at'] as String),
@@ -207,11 +336,17 @@ class NotificationItem {
     required this.unread,
     required this.canonicalKey,
     required this.priority,
+    this.messageCount = 0,
+    this.senderName,
+    this.chatName,
+    this.messagePreview,
   });
   final String id, eventType, category, title, preview, deepLink;
   final bool unread;
   final String canonicalKey;
   final int priority;
+  final int messageCount;
+  final String? senderName, chatName, messagePreview;
   final DateTime createdAt;
   factory NotificationItem.fromJson(Map<String, dynamic> json) {
     final category = json['category'] as String;
@@ -225,6 +360,10 @@ class NotificationItem {
       unread: json['unread'] as bool? ?? false,
       canonicalKey: json['canonical_key'] as String,
       priority: attentionPriority(category),
+      messageCount: (json['message_count'] as num?)?.toInt() ?? 0,
+      senderName: json['sender_name'] as String?,
+      chatName: json['chat_name'] as String?,
+      messagePreview: json['message_preview'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }

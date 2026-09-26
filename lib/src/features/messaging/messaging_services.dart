@@ -30,7 +30,8 @@ abstract interface class MessagingServices {
   Future<String> createAnnouncement({
     required String contextId,
     required String subject,
-    required List<String> recipientIds,
+    required String body,
+    required List<String> audienceRoles,
     required String idempotencyKey,
   });
   Future<void> markAllRead(List<String> contextIds, String idempotencyKey);
@@ -79,7 +80,7 @@ abstract interface class MessagingServices {
     String idempotencyKey,
   );
   Future<List<ContactRequest>> listRequests();
-  Future<void> decideRequest(
+  Future<String?> decideRequest(
     String requestId,
     String decision,
     String idempotencyKey,
@@ -134,7 +135,8 @@ class UnconfiguredMessagingServices implements MessagingServices {
   Future<String> createAnnouncement({
     required String contextId,
     required String subject,
-    required List<String> recipientIds,
+    required String body,
+    required List<String> audienceRoles,
     required String idempotencyKey,
   }) => _fail();
   @override
@@ -191,7 +193,7 @@ class UnconfiguredMessagingServices implements MessagingServices {
   @override
   Future<List<ContactRequest>> listRequests() => _fail();
   @override
-  Future<void> decideRequest(String a, String b, String c) => _fail();
+  Future<String?> decideRequest(String a, String b, String c) => _fail();
   @override
   Future<NotificationCenter> listNotifications() => _fail();
   @override
@@ -381,7 +383,7 @@ class SupabaseMessagingServices implements MessagingServices {
       operation: 'add_thread_participants',
       params: {
         'thread_id': threadId,
-        'participant_profile_ids': profileIds,
+        'profile_ids': profileIds,
         'idempotency_key': idempotencyKey,
       },
     );
@@ -391,20 +393,34 @@ class SupabaseMessagingServices implements MessagingServices {
   Future<String> createAnnouncement({
     required String contextId,
     required String subject,
-    required List<String> recipientIds,
+    required String body,
+    required List<String> audienceRoles,
     required String idempotencyKey,
-  }) async =>
-      (await measuredRpc(
+  }) async {
+    final params = <String, Object?>{
+      'context_id': contextId,
+      'subject': subject,
+      'body': body,
+      'audience_roles': audienceRoles,
+      'idempotency_key': idempotencyKey,
+    };
+    try {
+      return (await measuredRpc(
             _client,
-            operation: 'create_announcement',
-            params: {
-              'context_id': contextId,
-              'subject': subject,
-              'participant_profile_ids': recipientIds,
-              'idempotency_key': idempotencyKey,
-            },
+            operation: 'create_role_group_announcement',
+            params: params,
           ))
           as String;
+    } catch (_) {
+      // The command is replay-safe. Reusing the exact idempotency key makes
+      // this a safe recovery path for any rejected or interrupted gateway
+      // call, including FunctionException thrown before measuredRpc can map
+      // a non-2xx response.
+      return await _client
+          .schema('api')
+          .rpc<String>('create_role_group_announcement', params: params);
+    }
+  }
 
   @override
   Future<void> markAllRead(
@@ -667,12 +683,14 @@ class SupabaseMessagingServices implements MessagingServices {
           .map(ContactRequest.fromJson)
           .toList();
   @override
-  Future<void> decideRequest(String id, String decision, String key) async {
-    await measuredRpc(
+  Future<String?> decideRequest(String id, String decision, String key) async {
+    final result = await measuredRpc(
       _client,
       operation: 'decide_contact_request',
       params: {'request_id': id, 'decision': decision, 'idempotency_key': key},
     );
+    if (result is! Map) return null;
+    return result['thread_id'] as String?;
   }
 
   @override
@@ -685,12 +703,16 @@ class SupabaseMessagingServices implements MessagingServices {
   Stream<void> watchNotificationInvalidations() {
     late final StreamController<void> controller;
     RealtimeChannel? channel;
+    Timer? teamUpdatesPoll;
     Future<void> start() async {
       try {
         final profileId = _client.auth.currentUser?.id;
         if (profileId == null) {
           throw StateError('Unauthenticated notification center.');
         }
+        teamUpdatesPoll = Timer.periodic(const Duration(seconds: 45), (_) {
+          if (!controller.isClosed) controller.add(null);
+        });
         await _client.realtime.setAuth(
           _client.auth.currentSession?.accessToken,
         );
@@ -714,6 +736,7 @@ class SupabaseMessagingServices implements MessagingServices {
     }
 
     Future<void> stop() async {
+      teamUpdatesPoll?.cancel();
       final current = channel;
       if (current != null) await _client.removeChannel(current);
     }
