@@ -1,7 +1,7 @@
 # CAL-05 – EventDetails informationsarkitektur
 
-Datum: 2026-08-27  
-Status: lokalt genomförd; grundlayout och lokaliserad tid fysiskt telefonverifierade, tablet/desktop och flerroll återstår
+Datum: 2026-08-27, slutverifierad 2026-09-20  
+Status: slutförd – regressionstestad och fysiskt verifierad responsivt och för flera roller
 
 ## Levererat
 
@@ -16,8 +16,9 @@ Status: lokalt genomförd; grundlayout och lokaliserad tid fysiskt telefonverifi
 
 ## Responsivitet
 
-- Telefon: 90 procent högt bottom sheet med fullständiga horisontellt rullbara fliknamn.
-- Tablet/desktop: centrerad dialog på 760 × 680 logiska pixlar.
+- EventDetails öppnas som en egen sida på telefon, tablet och desktop/webb.
+- Fullständiga fliknamn används och flikraden kan dras horisontellt med touch, mus, stylus och trackpad när den inte ryms.
+- Appskalet växlar korrekt till bottom navigation vid mobilbrytpunkten.
 - Inga otydliga förkortningar används för flikarna.
 - Allt flikinnehåll kan rullas vertikalt och åtgärder använder `Wrap` där bredden varierar.
 
@@ -31,10 +32,15 @@ Status: lokalt genomförd; grundlayout och lokaliserad tid fysiskt telefonverifi
 - Telefonens Info-layout och fullständiga fliknamn är fysiskt godkända. Tablet/desktop, heldag/flerdag och fysisk flerrollsgrind återstår.
 - EventDetails-flikar, ägarmarkering, deltagar-/kallelsesammanfattningar, förberedelsecopy och uppföljning flyttades därefter helt bakom localegränsen. Kombinerad CAL-05/FND-05-körning passerade 11/11 och analysen var ren.
 - Samlad efterföljande audit-debugbuild `A8C081E47E8409B4B72E22882FA5964C1439E941BFB53555C5D3767A42C8B92F` installerades; svensk Kalender kallstartade med status, navigation och åtgärder intakta.
+- Desktop-ledarvy, smalt webb-/mobilbrytpunktsläge, spelarvy och guardian-vy är fysiskt godkända 2026-09-20.
+- Ett delat event med `Kan se` är fysiskt verifierat skrivskyddat för event, deltagare, kallelseadministration, förberedelser och uppföljning. Användaren kan fortfarande svara på sin egen personliga kallelse, vilket är avsiktligt och personbundet.
+- Musdragning för horisontella flikar lades till i appens scrollbeteende. Analys är ren och 9/9 riktade CAL-05/EventDetails-tester passerar.
 
 ## Ändrade huvudfiler
 
 - `lib/src/features/calendar/calendar_surface.dart`
+- `lib/src/features/calendar/event_details_page.dart`
+- `lib/src/app/teamzone_app.dart`
 - `test/cal05_event_details_information_architecture_test.dart`
 
 Ingen Supabase-liveändring, produktionsprovisionering, webtool eller workspace har genomförts. Paketidentiteten är fortsatt `com.teamzone.teamzone`.

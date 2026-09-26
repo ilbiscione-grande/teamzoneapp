@@ -19,7 +19,7 @@ void main() {
     expect(source, contains('_eventDateTimeLabel(context, event)'));
     expect(source, contains('localizations.formatFullDate(start)'));
     expect(source, contains('localizations.formatTimeOfDay('));
-    expect(source, contains('strings.eventOwner(name)'));
+    expect(source, contains("strings.feature('Ägande lag')"));
     expect(source, contains('strings.preparationTitle(event.type)'));
     expect(source, isNot(contains("'\${widget.event.startsAt.toLocal()} –")));
   });
@@ -43,5 +43,17 @@ void main() {
     expect(source, contains("strings.feature('Okallade ledare')"));
     expect(source, contains("widget.squad.can('save_squad')"));
     expect(source, contains("widget.squad.can('record_attendance')"));
+  });
+
+  test('web allows mouse dragging of the horizontally scrollable tab row', () {
+    final appSource = File('lib/src/app/teamzone_app.dart').readAsStringSync();
+
+    expect(
+      appSource,
+      contains('scrollBehavior: const _TeamZoneScrollBehavior()'),
+    );
+    expect(appSource, contains('PointerDeviceKind.mouse'));
+    expect(appSource, contains('PointerDeviceKind.touch'));
+    expect(appSource, contains('PointerDeviceKind.trackpad'));
   });
 }

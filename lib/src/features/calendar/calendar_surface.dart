@@ -29,6 +29,7 @@ class _CalendarSurface extends StatefulWidget {
 class _CalendarWorkspace extends StatelessWidget {
   const _CalendarWorkspace({
     required this.events,
+    required this.teams,
     required this.mode,
     required this.selectedDate,
     required this.stale,
@@ -37,6 +38,8 @@ class _CalendarWorkspace extends StatelessWidget {
     required this.onDateChanged,
     required this.onTeamChanged,
     required this.onTypeChanged,
+    required this.showArchived,
+    required this.onShowArchivedChanged,
     required this.onEvent,
     required this.showWeekNumbers,
     required this.onShowWeekNumbersChanged,
@@ -48,14 +51,17 @@ class _CalendarWorkspace extends StatelessWidget {
     this.lastUpdated,
   });
   final List<CalendarEventSummary> events;
+  final Map<String, String> teams;
   final CalendarViewMode mode;
   final DateTime selectedDate;
   final String? teamFilter, eventTypeFilter;
   final bool stale, reconnecting, showWeekNumbers, showQuarterHourMarks;
+  final bool showArchived;
   final DateTime? lastUpdated;
   final ValueChanged<CalendarViewMode> onModeChanged;
   final ValueChanged<DateTime> onDateChanged;
   final ValueChanged<String?> onTeamChanged, onTypeChanged;
+  final ValueChanged<bool> onShowArchivedChanged;
   final ValueChanged<CalendarEventSummary> onEvent;
   final ValueChanged<bool> onShowWeekNumbersChanged,
       onShowQuarterHourMarksChanged;
@@ -64,16 +70,13 @@ class _CalendarWorkspace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
+    final size = MediaQuery.sizeOf(context);
     final projection = CalendarProjection(
       events: events,
       mode: mode,
       selectedDate: selectedDate,
-      teamId: teamFilter,
       eventType: eventTypeFilter,
     );
-    final teams = <String, String>{
-      for (final event in events) event.owningTeamId: event.teamName,
-    };
     final types = events.map((event) => event.type).toSet().toList()..sort();
     return Column(
       children: [
@@ -101,110 +104,405 @@ class _CalendarWorkspace extends StatelessWidget {
                     icon: const Icon(Icons.close),
                   ),
                 ),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+              Row(
                 children: [
-                  for (final value in CalendarViewMode.values)
-                    ChoiceChip(
-                      label: Text(
-                        strings.feature(switch (value) {
-                          CalendarViewMode.agenda => 'Agenda',
-                          CalendarViewMode.month => 'Månad',
-                          CalendarViewMode.week => 'Vecka',
-                          CalendarViewMode.day => 'Dag',
-                        }),
-                      ),
-                      selected: mode == value,
-                      onSelected: (_) => onModeChanged(value),
+                  _CalendarViewModeMenu(
+                    mode: mode,
+                    showLabel: size.width >= 600,
+                    onChanged: onModeChanged,
+                  ),
+                  IconButton(
+                    tooltip: strings.feature('Filtrera kalendern'),
+                    onPressed: () => _showCalendarFilterSheet(
+                      context: context,
+                      teams: teams,
+                      types: types,
+                      teamFilter: teamFilter,
+                      eventTypeFilter: eventTypeFilter,
+                      showArchived: showArchived,
+                      onShowArchivedChanged: onShowArchivedChanged,
+                      onTeamChanged: onTeamChanged,
+                      onTypeChanged: onTypeChanged,
+                      showWeekNumbers: showWeekNumbers,
+                      onShowWeekNumbersChanged: onShowWeekNumbersChanged,
+                      showQuarterHourMarks: showQuarterHourMarks,
+                      onShowQuarterHourMarksChanged:
+                          onShowQuarterHourMarksChanged,
                     ),
+                    icon: Badge(
+                      isLabelVisible:
+                          teamFilter != null ||
+                          eventTypeFilter != null ||
+                          showArchived,
+                      smallSize: 8,
+                      child: const Icon(Icons.filter_list),
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 8),
-              _CalendarDateNavigation(
-                mode: mode,
-                selectedDate: selectedDate,
-                onChanged: onDateChanged,
-                showWeekNumber: showWeekNumbers,
-                leading: IconButton(
-                  tooltip: strings.feature('Filtrera kalendern'),
-                  onPressed: () => _showCalendarFilterSheet(
-                    context: context,
-                    teams: teams,
-                    types: types,
-                    teamFilter: teamFilter,
-                    eventTypeFilter: eventTypeFilter,
-                    onTeamChanged: onTeamChanged,
-                    onTypeChanged: onTypeChanged,
-                    showWeekNumbers: showWeekNumbers,
-                    onShowWeekNumbersChanged: onShowWeekNumbersChanged,
-                    showQuarterHourMarks: showQuarterHourMarks,
-                    onShowQuarterHourMarksChanged:
-                        onShowQuarterHourMarksChanged,
-                  ),
-                  icon: Badge(
-                    isLabelVisible:
-                        teamFilter != null || eventTypeFilter != null,
-                    smallSize: 8,
-                    child: const Icon(Icons.filter_list),
+              if (!showArchived)
+                _CalendarDateNavigation(
+                  mode: mode,
+                  selectedDate: selectedDate,
+                  onChanged: onDateChanged,
+                  showWeekNumber: showWeekNumbers,
+                )
+              else
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.archive_outlined),
+                  title: Text(strings.feature('Arkiverade event')),
+                  subtitle: Text(
+                    strings.feature(
+                      'Historiken är bevarad. Öppna ett event för att visa eller återställa det.',
+                    ),
                   ),
                 ),
-              ),
               const Divider(height: 1),
-              if (mode == CalendarViewMode.month)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: _CalendarMonthGrid(
-                    projection: projection,
-                    onDate: onDateChanged,
-                  ),
-                ),
             ],
           ),
         ),
-        // The week grid gets its own half of the remaining space (instead
-        // of sizing itself and leaving the rest to the day panel, like the
-        // month grid does) so its 4x2 boxes can be large and full-width.
-        if (mode == CalendarViewMode.week)
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: _CalendarWeekGrid(
-                projection: projection,
-                onDate: onDateChanged,
-              ),
-            ),
-          ),
         Expanded(
-          child: switch (mode) {
-            CalendarViewMode.month ||
-            CalendarViewMode.week => _CalendarSelectedDayPanel(
-              projection: projection,
-              onEvent: onEvent,
-            ),
-            // The day timeline always shows the full 24h grid, event or
-            // not, so it never swaps for the "no events" state card.
-            CalendarViewMode.day => _CalendarDayTimeline(
-              date: projection.dayStart,
-              events: projection.visibleEvents,
-              onEvent: onEvent,
-              showQuarterHours: showQuarterHourMarks,
-            ),
-            CalendarViewMode.agenda => SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: projection.visibleEvents.isEmpty
-                  ? _StateCard(
-                      icon: Icons.event_busy,
-                      title: strings.feature('Inga event i vald vy'),
-                      message: strings.feature(
-                        'Byt datum eller justera filtren.',
-                      ),
-                    )
-                  : _CalendarAgenda(projection: projection, onEvent: onEvent),
-            ),
-          },
+          child: showArchived
+              ? _ArchivedEventList(
+                  events: projection.events
+                      .where(
+                        (event) =>
+                            eventTypeFilter == null ||
+                            event.type == eventTypeFilter,
+                      )
+                      .toList(growable: false),
+                  onEvent: onEvent,
+                )
+              : _CalendarModeBody(
+                  projection: projection,
+                  onDate: onDateChanged,
+                  onEvent: onEvent,
+                  showQuarterHourMarks: showQuarterHourMarks,
+                ),
         ),
       ],
+    );
+  }
+}
+
+class _CalendarModeBody extends StatelessWidget {
+  const _CalendarModeBody({
+    required this.projection,
+    required this.onDate,
+    required this.onEvent,
+    required this.showQuarterHourMarks,
+  });
+
+  final CalendarProjection projection;
+  final ValueChanged<DateTime> onDate;
+  final ValueChanged<CalendarEventSummary> onEvent;
+  final bool showQuarterHourMarks;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final twoColumns = constraints.maxWidth >= AppBreakpoints.tablet;
+        final selectedEvents = _CalendarSelectedDayPanel(
+          projection: projection,
+          onEvent: onEvent,
+        );
+        final monthEvents = _CalendarMonthEventsPanel(
+          projection: projection,
+          onEvent: onEvent,
+        );
+
+        Widget split(Widget primary, Widget secondary) => Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(flex: 3, child: primary),
+            const VerticalDivider(width: 1),
+            Expanded(flex: 2, child: secondary),
+          ],
+        );
+
+        return switch (projection.mode) {
+          CalendarViewMode.month =>
+            twoColumns
+                ? split(
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: _CalendarMonthGrid(
+                        projection: projection,
+                        onDate: onDate,
+                        fillHeight: true,
+                      ),
+                    ),
+                    monthEvents,
+                  )
+                : Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                        child: _CalendarMonthGrid(
+                          projection: projection,
+                          onDate: onDate,
+                        ),
+                      ),
+                      Expanded(child: monthEvents),
+                    ],
+                  ),
+          CalendarViewMode.week =>
+            twoColumns
+                ? split(
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: _CalendarWeekGrid(
+                        projection: projection,
+                        onDate: onDate,
+                      ),
+                    ),
+                    selectedEvents,
+                  )
+                : Column(
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                          child: _CalendarWeekGrid(
+                            projection: projection,
+                            onDate: onDate,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: selectedEvents),
+                    ],
+                  ),
+          CalendarViewMode.day =>
+            twoColumns
+                ? split(
+                    _CalendarDayTimeline(
+                      date: projection.dayStart,
+                      events: projection.visibleEvents,
+                      onEvent: onEvent,
+                      showQuarterHours: showQuarterHourMarks,
+                    ),
+                    _CalendarUpcomingAgenda(
+                      projection: projection,
+                      onDate: onDate,
+                      onEvent: onEvent,
+                    ),
+                  )
+                : _CalendarDayTimeline(
+                    date: projection.dayStart,
+                    events: projection.visibleEvents,
+                    onEvent: onEvent,
+                    showQuarterHours: showQuarterHourMarks,
+                  ),
+          CalendarViewMode.agenda => SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: projection.visibleEvents.isEmpty
+                ? _StateCard(
+                    icon: Icons.event_busy,
+                    title: strings.feature('Inga event i vald vy'),
+                    message: strings.feature(
+                      'Byt datum eller justera filtren.',
+                    ),
+                  )
+                : _CalendarAgenda(projection: projection, onEvent: onEvent),
+          ),
+        };
+      },
+    );
+  }
+}
+
+enum _MonthEventScope { selectedDay, wholeMonth }
+
+class _CalendarMonthEventsPanel extends StatefulWidget {
+  const _CalendarMonthEventsPanel({
+    required this.projection,
+    required this.onEvent,
+  });
+
+  final CalendarProjection projection;
+  final ValueChanged<CalendarEventSummary> onEvent;
+
+  @override
+  State<_CalendarMonthEventsPanel> createState() =>
+      _CalendarMonthEventsPanelState();
+}
+
+class _CalendarMonthEventsPanelState extends State<_CalendarMonthEventsPanel> {
+  _MonthEventScope _scope = _MonthEventScope.selectedDay;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final monthStart = DateTime(
+      widget.projection.selectedDate.year,
+      widget.projection.selectedDate.month,
+    );
+    final wholeMonthProjection = CalendarProjection(
+      events: widget.projection.events,
+      mode: CalendarViewMode.month,
+      selectedDate: monthStart,
+      teamId: widget.projection.teamId,
+      eventType: widget.projection.eventType,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: SegmentedButton<_MonthEventScope>(
+            segments: [
+              ButtonSegment(
+                value: _MonthEventScope.selectedDay,
+                label: Text(strings.feature('Vald dag')),
+              ),
+              ButtonSegment(
+                value: _MonthEventScope.wholeMonth,
+                label: Text(strings.feature('Hela månaden')),
+              ),
+            ],
+            selected: {_scope},
+            onSelectionChanged: (value) => setState(() => _scope = value.first),
+          ),
+        ),
+        Expanded(
+          child: _scope == _MonthEventScope.selectedDay
+              ? _CalendarSelectedDayPanel(
+                  projection: widget.projection,
+                  onEvent: widget.onEvent,
+                )
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: wholeMonthProjection.visibleEvents.isEmpty
+                      ? _StateCard(
+                          icon: Icons.event_busy,
+                          title: strings.feature('Inga event denna månad'),
+                          message: strings.feature(
+                            'Byt månad eller justera filtren.',
+                          ),
+                        )
+                      : _CalendarAgenda(
+                          projection: wholeMonthProjection,
+                          onEvent: widget.onEvent,
+                        ),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CalendarUpcomingAgenda extends StatelessWidget {
+  const _CalendarUpcomingAgenda({
+    required this.projection,
+    required this.onDate,
+    required this.onEvent,
+  });
+
+  final CalendarProjection projection;
+  final ValueChanged<DateTime> onDate;
+  final ValueChanged<CalendarEventSummary> onEvent;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final agenda = CalendarProjection(
+      events: projection.events,
+      mode: CalendarViewMode.agenda,
+      selectedDate: projection.selectedDate,
+      teamId: projection.teamId,
+      eventType: projection.eventType,
+    );
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            strings.feature('Kommande event'),
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          if (agenda.visibleEvents.isEmpty)
+            _StateCard(
+              icon: Icons.event_busy,
+              title: strings.feature('Inga kommande event'),
+              message: strings.feature('Byt datum eller justera filtren.'),
+            )
+          else
+            _CalendarAgenda(
+              projection: agenda,
+              onEvent: (event) {
+                final localStart = event.startsAt.toLocal();
+                onDate(
+                  DateTime(localStart.year, localStart.month, localStart.day),
+                );
+                onEvent(event);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+String _calendarViewModeLabel(CalendarViewMode mode) => switch (mode) {
+  CalendarViewMode.agenda => 'Agenda',
+  CalendarViewMode.month => 'Månad',
+  CalendarViewMode.week => 'Vecka',
+  CalendarViewMode.day => 'Dag',
+};
+
+class _CalendarViewModeMenu extends StatelessWidget {
+  const _CalendarViewModeMenu({
+    required this.mode,
+    required this.showLabel,
+    required this.onChanged,
+  });
+
+  final CalendarViewMode mode;
+  final bool showLabel;
+  final ValueChanged<CalendarViewMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return PopupMenuButton<CalendarViewMode>(
+      tooltip: strings.feature('Byt kalendervy'),
+      initialValue: mode,
+      onSelected: onChanged,
+      itemBuilder: (context) => [
+        for (final value in CalendarViewMode.values)
+          PopupMenuItem(
+            value: value,
+            child: Row(
+              children: [
+                if (value == mode) ...[
+                  const Icon(Icons.check, size: 18),
+                  const SizedBox(width: 8),
+                ] else
+                  const SizedBox(width: 26),
+                Text(strings.feature(_calendarViewModeLabel(value))),
+              ],
+            ),
+          ),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.view_agenda_outlined),
+            if (showLabel) ...[
+              const SizedBox(width: 6),
+              Text(strings.feature(_calendarViewModeLabel(mode))),
+              const Icon(Icons.arrow_drop_down),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -215,13 +513,11 @@ class _CalendarDateNavigation extends StatelessWidget {
     required this.selectedDate,
     required this.onChanged,
     required this.showWeekNumber,
-    this.leading,
   });
   final CalendarViewMode mode;
   final DateTime selectedDate;
   final ValueChanged<DateTime> onChanged;
   final bool showWeekNumber;
-  final Widget? leading;
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
@@ -233,7 +529,7 @@ class _CalendarDateNavigation extends StatelessWidget {
       selectedDate.day,
     );
     final weekStart = start.subtract(Duration(days: start.weekday - 1));
-    final title = switch (mode) {
+    final periodTitle = switch (mode) {
       CalendarViewMode.month =>
         compact
             ? _compactMonthYear(localizations.formatMonthYear(selectedDate))
@@ -243,6 +539,9 @@ class _CalendarDateNavigation extends StatelessWidget {
       CalendarViewMode.agenda ||
       CalendarViewMode.day => localizations.formatFullDate(selectedDate),
     };
+    final title = mode == CalendarViewMode.agenda
+        ? strings.calendarFrom(periodTitle)
+        : periodTitle;
     DateTime move(int direction) => switch (mode) {
       CalendarViewMode.month => DateTime(
         selectedDate.year,
@@ -271,14 +570,30 @@ class _CalendarDateNavigation extends StatelessWidget {
           onPressed: () => onChanged(move(-1)),
           icon: const Icon(Icons.chevron_left),
         ),
-        ?leading,
         Expanded(
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium,
+          child: Tooltip(
+            message: strings.feature('Välj datum'),
+            child: TextButton(
+              onPressed: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: selectedDate,
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100),
+                  helpText: mode == CalendarViewMode.agenda
+                      ? strings.feature('Välj startdatum för agendan')
+                      : strings.feature('Välj datum'),
+                );
+                if (picked != null) onChanged(picked);
+              },
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
           ),
         ),
         IconButton(
@@ -320,6 +635,8 @@ Future<void> _showCalendarFilterSheet({
   required String? eventTypeFilter,
   required ValueChanged<String?> onTeamChanged,
   required ValueChanged<String?> onTypeChanged,
+  required bool showArchived,
+  required ValueChanged<bool> onShowArchivedChanged,
   required bool showWeekNumbers,
   required ValueChanged<bool> onShowWeekNumbersChanged,
   required bool showQuarterHourMarks,
@@ -334,6 +651,7 @@ Future<void> _showCalendarFilterSheet({
       var localType = eventTypeFilter;
       var localShowWeekNumbers = showWeekNumbers;
       var localShowQuarterHourMarks = showQuarterHourMarks;
+      var localShowArchived = showArchived;
       return StatefulBuilder(
         builder: (sheetContext, setSheetState) => Padding(
           padding: EdgeInsets.fromLTRB(
@@ -409,6 +727,22 @@ Future<void> _showCalendarFilterSheet({
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(
+                  AppStrings.of(sheetContext).feature('Visa arkiverade event'),
+                ),
+                subtitle: Text(
+                  AppStrings.of(sheetContext).feature(
+                    'Döljer aktiva event och visar den bevarade historiken.',
+                  ),
+                ),
+                value: localShowArchived,
+                onChanged: (value) {
+                  setSheetState(() => localShowArchived = value);
+                  onShowArchivedChanged(value);
+                },
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
                   AppStrings.of(sheetContext).feature('Visa veckonummer'),
                 ),
                 value: localShowWeekNumbers,
@@ -444,6 +778,60 @@ Future<void> _showCalendarFilterSheet({
       );
     },
   );
+}
+
+class _ArchivedEventList extends StatelessWidget {
+  const _ArchivedEventList({required this.events, required this.onEvent});
+
+  final List<CalendarEventSummary> events;
+  final ValueChanged<CalendarEventSummary> onEvent;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    if (events.isEmpty) {
+      return Center(
+        child: _StateCard(
+          icon: Icons.archive_outlined,
+          title: strings.feature('Inga arkiverade event'),
+          message: strings.feature(
+            'Arkiverade event för det valda laget visas här.',
+          ),
+        ),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: events.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final event = events[index];
+        final archivedAt = event.archivedAt?.toLocal();
+        return Card(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: ListTile(
+            leading: const Icon(Icons.archive_outlined),
+            title: Text(
+              event.title,
+              style: const TextStyle(decoration: TextDecoration.lineThrough),
+            ),
+            subtitle: Text(
+              <String?>[
+                event.teamName,
+                strings.domainValue(event.state),
+                archivedAt == null
+                    ? null
+                    : '${strings.feature('Arkiverad')} ${MaterialLocalizations.of(context).formatShortDate(archivedAt)}',
+                event.archiveReason,
+              ].whereType<String>().join(' · '),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => onEvent(event),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _CalendarAgenda extends StatelessWidget {
@@ -681,43 +1069,58 @@ class _DayTimelineEventCard extends StatelessWidget {
     final time =
         '${TimeOfDay.fromDateTime(start).format(context)}–${TimeOfDay.fromDateTime(end).format(context)}';
     final colorScheme = Theme.of(context).colorScheme;
-    return Material(
-      color: event.state == 'cancelled'
-          ? colorScheme.surfaceContainerHighest
-          : colorScheme.secondaryContainer,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
+    final cancelled = event.state == 'cancelled';
+    return Opacity(
+      opacity: cancelled ? 0.68 : 1,
+      child: Material(
+        color: cancelled
+            ? colorScheme.surfaceContainerHighest
+            : colorScheme.secondaryContainer,
         borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Icon(_eventTypeIcon(event.type), size: 13),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      _abbreviateHomeAwaySuffix(event.title),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      cancelled ? Icons.event_busy : _eventTypeIcon(event.type),
+                      size: 13,
+                    ),
+                    const SizedBox(width: 4),
+                    if (event.isShared) ...[
+                      _sharedEventMarker(context, 13),
+                      const SizedBox(width: 4),
+                    ],
+                    Expanded(
+                      child: Text(
+                        _abbreviateHomeAwaySuffix(event.title),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              decoration: cancelled
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              Text(
-                time,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
-            ],
+                  ],
+                ),
+                Text(
+                  time,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -932,45 +1335,59 @@ class _CalendarGridEventChip extends StatelessWidget {
     final time = event.allDay
         ? strings.feature('Heldag')
         : TimeOfDay.fromDateTime(start).format(context);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(_eventTypeIcon(event.type), size: 11),
-              const SizedBox(width: 3),
-              Flexible(
-                child: Text(
-                  time,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(fontSize: 9, height: 1),
+    final cancelled = event.state == 'cancelled';
+    return Opacity(
+      opacity: cancelled ? 0.68 : 1,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+        decoration: BoxDecoration(
+          color: cancelled
+              ? Theme.of(context).colorScheme.surfaceContainerHighest
+              : Theme.of(context).colorScheme.secondaryContainer,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  cancelled ? Icons.event_busy : _eventTypeIcon(event.type),
+                  size: 11,
                 ),
-              ),
-            ],
-          ),
-          Text(
-            _abbreviateHomeAwaySuffix(event.title),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              fontSize: 9,
-              height: 1.2,
-              fontWeight: FontWeight.w600,
+                const SizedBox(width: 3),
+                if (event.isShared) ...[
+                  _sharedEventMarker(context, 11),
+                  const SizedBox(width: 3),
+                ],
+                Flexible(
+                  child: Text(
+                    time,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(fontSize: 9, height: 1),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+            Text(
+              _abbreviateHomeAwaySuffix(event.title),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                fontSize: 9,
+                height: 1.2,
+                fontWeight: FontWeight.w600,
+                decoration: cancelled ? TextDecoration.lineThrough : null,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -991,30 +1408,47 @@ String _abbreviateHomeAwaySuffix(String title) {
 }
 
 class _CalendarMonthGrid extends StatelessWidget {
-  const _CalendarMonthGrid({required this.projection, required this.onDate});
+  const _CalendarMonthGrid({
+    required this.projection,
+    required this.onDate,
+    this.fillHeight = false,
+  });
   final CalendarProjection projection;
   final ValueChanged<DateTime> onDate;
+  final bool fillHeight;
+
   @override
   Widget build(BuildContext context) {
     final first = projection.rangeStart;
     final gridStart = first.subtract(Duration(days: first.weekday - 1));
     final selected = projection.selectedDate;
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 7,
-        childAspectRatio: 1.3,
-      ),
-      itemCount: 42,
-      itemBuilder: (context, index) {
-        final day = gridStart.add(Duration(days: index));
-        return _CalendarGridDayCell(
-          day: day,
-          items: projection.eventsOn(day),
-          dimmed: day.month != projection.selectedDate.month,
-          isSelected: _isSameDay(day, selected),
-          onTap: () => onDate(day),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cellWidth = constraints.maxWidth / 7;
+        final cellHeight = constraints.maxHeight / 6;
+        final aspectRatio = fillHeight && cellHeight > 0
+            ? cellWidth / cellHeight
+            : MediaQuery.sizeOf(context).width >= 600
+            ? 1.7
+            : 1.3;
+        return GridView.builder(
+          shrinkWrap: !fillHeight,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 7,
+            childAspectRatio: aspectRatio,
+          ),
+          itemCount: 42,
+          itemBuilder: (context, index) {
+            final day = gridStart.add(Duration(days: index));
+            return _CalendarGridDayCell(
+              day: day,
+              items: projection.eventsOn(day),
+              dimmed: day.month != projection.selectedDate.month,
+              isSelected: _isSameDay(day, selected),
+              onTap: () => onDate(day),
+            );
+          },
         );
       },
     );
@@ -1123,19 +1557,52 @@ class _CalendarEventTile extends StatelessWidget {
     final time = event.allDay
         ? strings.feature('Heldag')
         : '${TimeOfDay.fromDateTime(start).format(context)}–${TimeOfDay.fromDateTime(end).format(context)}';
-    return ListTile(
-      leading: Icon(
-        event.state == 'cancelled' ? Icons.event_busy : Icons.event,
+    final cancelled = event.state == 'cancelled';
+    return ColoredBox(
+      color: cancelled
+          ? Theme.of(context).colorScheme.surfaceContainerLowest
+          : Colors.transparent,
+      child: Opacity(
+        opacity: cancelled ? 0.68 : 1,
+        child: ListTile(
+          leading: Icon(cancelled ? Icons.event_busy : Icons.event),
+          title: Text(
+            event.title,
+            style: TextStyle(
+              decoration: cancelled ? TextDecoration.lineThrough : null,
+            ),
+          ),
+          subtitle: Text(
+            '$time · ${event.teamName} · ${strings.domainValue(event.type)}${event.locationName == null ? '' : ' · ${event.locationName}'}',
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (event.isShared) ...[
+                _sharedEventMarker(context, 20),
+                const SizedBox(width: 8),
+              ],
+              if (cancelled)
+                Chip(
+                  avatar: const Icon(Icons.event_busy, size: 16),
+                  label: Text(strings.domainValue(event.state)),
+                  visualDensity: VisualDensity.compact,
+                )
+              else
+                Text(strings.domainValue(event.state)),
+            ],
+          ),
+          onTap: onTap,
+        ),
       ),
-      title: Text(event.title),
-      subtitle: Text(
-        '$time · ${event.teamName} · ${strings.domainValue(event.type)}${event.locationName == null ? '' : ' · ${event.locationName}'}',
-      ),
-      trailing: Text(strings.domainValue(event.state)),
-      onTap: onTap,
     );
   }
 }
+
+Widget _sharedEventMarker(BuildContext context, double size) => Tooltip(
+  message: AppStrings.of(context).feature('Delat event'),
+  child: Icon(Icons.share_outlined, size: size),
+);
 
 class _EventEditorValue {
   const _EventEditorValue({
@@ -1154,6 +1621,15 @@ class _EventEditorValue {
     required this.scope,
     this.description,
     this.locationName,
+    this.trainingTheme,
+    this.trainingFocus,
+    this.trainingPlan,
+    this.opponentName,
+    this.homeAway,
+    this.matchNotes,
+    this.meetingPurpose,
+    this.meetingAgenda,
+    required this.assemblyMinutesBefore,
   });
   final String title, type, state, timezone, frequency, scope;
   final String? description, locationName;
@@ -1161,6 +1637,10 @@ class _EventEditorValue {
   final bool allDay, recurring;
   final List<String> audiences;
   final int interval, count;
+  final int assemblyMinutesBefore;
+  final String? trainingTheme, trainingFocus, trainingPlan;
+  final String? opponentName, homeAway, matchNotes;
+  final String? meetingPurpose, meetingAgenda;
 }
 
 class _EventEditorDialog extends StatefulWidget {
@@ -1178,9 +1658,6 @@ class _EventEditorDialog extends StatefulWidget {
 
 class _EventEditorDialogState extends State<_EventEditorDialog> {
   final _draft = AppFormController();
-  late final TextEditingController _title = TextEditingController(
-    text: widget.initial?.title,
-  );
   late final TextEditingController _description = TextEditingController(
     text: widget.initial?.description,
   );
@@ -1191,14 +1668,42 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     text: widget.initial?.timezone ?? 'Europe/Stockholm',
   );
   late final TextEditingController _interval = TextEditingController(text: '1');
-  late final TextEditingController _count = TextEditingController(text: '4');
   late String _type = widget.initial?.type ?? 'training';
+  late final TextEditingController _assembly = TextEditingController(
+    text: (widget.initial?.assemblyMinutesBefore ?? _defaultAssembly(_type))
+        .toString(),
+  );
+  late final TextEditingController _trainingTheme = TextEditingController(
+    text: widget.initial?.trainingTheme,
+  );
+  late final TextEditingController _trainingFocus = TextEditingController(
+    text: widget.initial?.trainingFocus,
+  );
+  late final TextEditingController _trainingPlan = TextEditingController(
+    text: widget.initial?.trainingPlan,
+  );
+  late final TextEditingController _opponent = TextEditingController(
+    text: widget.initial?.opponentName,
+  );
+  late final TextEditingController _matchNotes = TextEditingController(
+    text: widget.initial?.matchNotes,
+  );
+  late final TextEditingController _meetingPurpose = TextEditingController(
+    text: widget.initial?.meetingPurpose,
+  );
+  late final TextEditingController _meetingAgenda = TextEditingController(
+    text: widget.initial?.meetingAgenda,
+  );
+  late String _homeAway = widget.initial?.homeAway ?? 'home';
   late String _state = widget.initial?.state ?? 'scheduled';
   late DateTime _startsAt =
       widget.initial?.startsAt.toLocal() ?? _defaultStart();
   late DateTime _endsAt =
       widget.initial?.endsAt.toLocal() ??
       _defaultStart().add(const Duration(hours: 2));
+  late DateTime _seriesEndsOn = DateUtils.dateOnly(
+    _startsAt.add(const Duration(days: 28)),
+  );
   late bool _allDay = widget.initial?.allDay ?? false;
   late final Set<String> _audiences = widget.initial == null
       ? {'players', 'leaders'}
@@ -1209,6 +1714,13 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
   bool _recurring = false;
   String _frequency = 'weekly', _scope = 'one';
   String? _error;
+  bool _assemblyWasEdited = false;
+
+  static int _defaultAssembly(String type) => switch (type) {
+    'match' => 75,
+    'meeting' => 5,
+    _ => 15,
+  };
 
   static DateTime _defaultStart() {
     final tomorrow = DateTime.now().add(const Duration(days: 1));
@@ -1220,30 +1732,48 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     super.initState();
     if (_audiences.isEmpty) _audiences.addAll({'players', 'leaders'});
     for (final controller in [
-      _title,
       _description,
       _location,
       _timezone,
       _interval,
-      _count,
+      _trainingTheme,
+      _trainingFocus,
+      _trainingPlan,
+      _opponent,
+      _matchNotes,
+      _meetingPurpose,
+      _meetingAgenda,
     ]) {
       controller.addListener(_draft.markDirty);
     }
+    _assembly.addListener(_assemblyChanged);
+  }
+
+  void _assemblyChanged() {
+    _assemblyWasEdited = true;
+    _draft.markDirty();
   }
 
   @override
   void dispose() {
     for (final controller in [
-      _title,
       _description,
       _location,
       _timezone,
       _interval,
-      _count,
+      _trainingTheme,
+      _trainingFocus,
+      _trainingPlan,
+      _opponent,
+      _matchNotes,
+      _meetingPurpose,
+      _meetingAgenda,
     ]) {
       controller.removeListener(_draft.markDirty);
       controller.dispose();
     }
+    _assembly.removeListener(_assemblyChanged);
+    _assembly.dispose();
     _draft.dispose();
     super.dispose();
   }
@@ -1267,12 +1797,17 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
 
   void _save() {
     final interval = int.tryParse(_interval.text);
-    final count = int.tryParse(_count.text);
-    if (_title.text.trim().isEmpty ||
-        _title.text.trim().length > 160 ||
+    final count = interval == null ? null : _seriesCount(interval);
+    final assembly = int.tryParse(_assembly.text);
+    final generatedTitle = _generatedTitle();
+    if (generatedTitle.length > 160 ||
         _timezone.text.trim().isEmpty ||
         !_endsAt.isAfter(_startsAt) ||
         _audiences.isEmpty ||
+        assembly == null ||
+        assembly < 0 ||
+        assembly > 1440 ||
+        (_type == 'match' && _opponent.text.trim().isEmpty) ||
         (_recurring &&
             (interval == null ||
                 interval < 1 ||
@@ -1281,9 +1816,9 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
                 count < 2 ||
                 count > 104))) {
       setState(() {
-        _error = AppStrings.of(
-          context,
-        ).feature('Kontrollera titel, tid, audience och serieinställningar.');
+        _error = AppStrings.of(context).feature(
+          'Kontrollera obligatoriska uppgifter, tider och serieinställningar.',
+        );
       });
       return;
     }
@@ -1291,7 +1826,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     Navigator.pop(
       context,
       _EventEditorValue(
-        title: _title.text.trim(),
+        title: generatedTitle,
         description: _description.text.trim().isEmpty
             ? null
             : _description.text.trim(),
@@ -1310,6 +1845,208 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
         interval: interval ?? 1,
         count: count ?? 4,
         scope: _scope,
+        assemblyMinutesBefore: assembly,
+        trainingTheme: _optional(_trainingTheme),
+        trainingFocus: _optional(_trainingFocus),
+        trainingPlan: _optional(_trainingPlan),
+        opponentName: _optional(_opponent),
+        homeAway: _type == 'match' ? _homeAway : null,
+        matchNotes: _optional(_matchNotes),
+        meetingPurpose: _optional(_meetingPurpose),
+        meetingAgenda: _optional(_meetingAgenda),
+      ),
+    );
+  }
+
+  int _seriesCount(int interval) {
+    final start = DateUtils.dateOnly(_startsAt);
+    final stepDays = (_frequency == 'daily' ? 1 : 7) * interval;
+    if (_seriesEndsOn.isBefore(start) || stepDays < 1) return 0;
+    return _seriesEndsOn.difference(start).inDays ~/ stepDays + 1;
+  }
+
+  Future<void> _pickSeriesEnd() async {
+    final firstDate = DateUtils.dateOnly(_startsAt);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _seriesEndsOn.isBefore(firstDate)
+          ? firstDate
+          : _seriesEndsOn,
+      firstDate: firstDate,
+      lastDate: firstDate.add(const Duration(days: 3650)),
+    );
+    if (picked == null) return;
+    setState(() {
+      _seriesEndsOn = DateUtils.dateOnly(picked);
+      _draft.markDirty();
+    });
+  }
+
+  Future<void> _pickSeriesStart() async {
+    final currentDate = DateUtils.dateOnly(_startsAt);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: currentDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 730)),
+      lastDate: DateTime.now().add(const Duration(days: 3650)),
+    );
+    if (picked == null) return;
+    setState(() {
+      final duration = _endsAt.difference(_startsAt);
+      _startsAt = DateTime(
+        picked.year,
+        picked.month,
+        picked.day,
+        _startsAt.hour,
+        _startsAt.minute,
+      );
+      _endsAt = _startsAt.add(duration);
+      if (_seriesEndsOn.isBefore(DateUtils.dateOnly(_startsAt))) {
+        _seriesEndsOn = DateUtils.dateOnly(
+          _startsAt.add(const Duration(days: 28)),
+        );
+      }
+      _draft.markDirty();
+    });
+  }
+
+  String? _optional(TextEditingController controller) {
+    final value = controller.text.trim();
+    return value.isEmpty ? null : value;
+  }
+
+  String _generatedTitle() => switch (_type) {
+    'training' => 'Träning',
+    'match' => 'vs ${_opponent.text.trim()}',
+    'meeting' => 'Möte',
+    _ => 'Aktivitet',
+  };
+
+  Widget _typedFields(AppStrings strings) {
+    final fields = <Widget>[];
+    switch (_type) {
+      case 'training':
+        fields.addAll([
+          TextFormField(
+            controller: _trainingTheme,
+            maxLength: 160,
+            decoration: InputDecoration(
+              labelText: strings.feature('Träningstema'),
+            ),
+          ),
+          TextFormField(
+            controller: _trainingFocus,
+            minLines: 2,
+            maxLines: 4,
+            decoration: InputDecoration(labelText: strings.feature('Fokus')),
+          ),
+          TextFormField(
+            controller: _trainingPlan,
+            minLines: 3,
+            maxLines: 8,
+            decoration: InputDecoration(
+              labelText: strings.feature('Träningsplan'),
+            ),
+          ),
+        ]);
+      case 'match':
+        fields.addAll([
+          TextFormField(
+            controller: _opponent,
+            maxLength: 157,
+            decoration: InputDecoration(
+              labelText: strings.feature('Motståndare *'),
+            ),
+          ),
+          DropdownButtonFormField<String>(
+            initialValue: _homeAway,
+            decoration: InputDecoration(
+              labelText: strings.feature('Hemmaplan eller bortaplan'),
+            ),
+            items: [
+              DropdownMenuItem(
+                value: 'home',
+                child: Text(strings.feature('Hemma')),
+              ),
+              DropdownMenuItem(
+                value: 'away',
+                child: Text(strings.feature('Borta')),
+              ),
+            ],
+            onChanged: (value) => setState(() {
+              _homeAway = value ?? _homeAway;
+              _draft.markDirty();
+            }),
+          ),
+          TextFormField(
+            controller: _matchNotes,
+            minLines: 2,
+            maxLines: 6,
+            decoration: InputDecoration(
+              labelText: strings.feature('Matchanteckningar'),
+            ),
+          ),
+        ]);
+      case 'meeting':
+        fields.addAll([
+          TextFormField(
+            controller: _meetingPurpose,
+            minLines: 1,
+            maxLines: 3,
+            decoration: InputDecoration(labelText: strings.feature('Syfte')),
+          ),
+          TextFormField(
+            controller: _meetingAgenda,
+            minLines: 3,
+            maxLines: 8,
+            decoration: InputDecoration(
+              labelText: strings.feature('Mötesagenda'),
+            ),
+          ),
+        ]);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: fields,
+    );
+  }
+
+  Widget _dateTile(AppStrings strings, bool start) {
+    final value = start ? _startsAt : _endsAt;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: ListTile(
+        title: Text(strings.feature(start ? 'Start' : 'Slut')),
+        subtitle: Text(_formatDateTime(context, value, _allDay)),
+        trailing: const Icon(Icons.edit_calendar_outlined),
+        onTap: () async {
+          final picked = await _pickDateTime(value);
+          if (picked == null) return;
+          setState(() {
+            if (start) {
+              final duration = _endsAt.difference(_startsAt);
+              _startsAt = picked;
+              _endsAt = picked.add(duration);
+            } else {
+              _endsAt = picked;
+            }
+            _draft.markDirty();
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _seriesDateTile(String label, DateTime value, VoidCallback onTap) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: ListTile(
+        title: Text(label),
+        subtitle: Text(
+          MaterialLocalizations.of(context).formatMediumDate(value),
+        ),
+        trailing: const Icon(Icons.edit_calendar_outlined),
+        onTap: onTap,
       ),
     );
   }
@@ -1336,14 +2073,65 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextFormField(
-                  controller: _title,
-                  autofocus: widget.initial == null,
-                  maxLength: 160,
-                  decoration: InputDecoration(
-                    labelText: strings.feature('Titel'),
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _type,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: strings.feature('Typ av event'),
+                        ),
+                        items: [
+                          for (final value in [
+                            'training',
+                            'match',
+                            'meeting',
+                            'activity',
+                          ])
+                            DropdownMenuItem(
+                              value: value,
+                              child: Text(strings.domainValue(value)),
+                            ),
+                        ],
+                        onChanged: (value) => setState(() {
+                          final next = value ?? _type;
+                          if (!_assemblyWasEdited) {
+                            _assembly.text = _defaultAssembly(next).toString();
+                            _assemblyWasEdited = false;
+                          }
+                          _type = next;
+                          _draft.markDirty();
+                        }),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: strings.feature(
+                        widget.initial == null
+                            ? 'Status: ${strings.domainValue(_state)}. Klicka för att byta.'
+                            : 'Status: ${strings.domainValue(_state)}',
+                      ),
+                      child: IconButton.filledTonal(
+                        onPressed: widget.initial == null
+                            ? () => setState(() {
+                                _state = _state == 'scheduled'
+                                    ? 'draft'
+                                    : 'scheduled';
+                                _draft.markDirty();
+                              })
+                            : null,
+                        icon: Icon(
+                          _state == 'scheduled'
+                              ? Icons.event_available_outlined
+                              : Icons.edit_note_outlined,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 12),
                 TextFormField(
                   controller: _description,
                   minLines: 2,
@@ -1359,66 +2147,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
                     labelText: strings.feature('Lag'),
                   ),
                 ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _type,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          labelText: strings.feature('Typ'),
-                        ),
-                        items: [
-                          for (final value in [
-                            'training',
-                            'match',
-                            'meeting',
-                            'activity',
-                          ])
-                            DropdownMenuItem(
-                              value: value,
-                              child: Text(strings.domainValue(value)),
-                            ),
-                        ],
-                        onChanged: (value) => setState(() {
-                          _type = value ?? _type;
-                          _draft.markDirty();
-                        }),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _state,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          labelText: strings.statusLabel,
-                        ),
-                        items: [
-                          for (final value
-                              in widget.initial == null
-                                  ? ['draft', 'scheduled']
-                                  : [
-                                      'draft',
-                                      'scheduled',
-                                      'cancelled',
-                                      'completed',
-                                    ])
-                            DropdownMenuItem(
-                              value: value,
-                              child: Text(strings.domainValue(value)),
-                            ),
-                        ],
-                        onChanged: widget.initial == null
-                            ? (value) => setState(() {
-                                _state = value ?? _state;
-                                _draft.markDirty();
-                              })
-                            : null,
-                      ),
-                    ),
-                  ],
-                ),
+                _typedFields(strings),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(strings.feature('Heldag')),
@@ -1443,37 +2172,33 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
                     _draft.markDirty();
                   }),
                 ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(strings.feature('Start')),
-                  subtitle: Text(_formatDateTime(context, _startsAt, _allDay)),
-                  trailing: const Icon(Icons.edit_calendar_outlined),
-                  onTap: () async {
-                    final value = await _pickDateTime(_startsAt);
-                    if (value != null) {
-                      setState(() {
-                        final duration = _endsAt.difference(_startsAt);
-                        _startsAt = value;
-                        _endsAt = value.add(duration);
-                        _draft.markDirty();
-                      });
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final fields = [
+                      _dateTile(strings, true),
+                      _dateTile(strings, false),
+                    ];
+                    if (constraints.maxWidth < 480) {
+                      return Column(children: fields);
                     }
+                    return Row(
+                      children: [
+                        Expanded(child: fields[0]),
+                        const SizedBox(width: 12),
+                        Expanded(child: fields[1]),
+                      ],
+                    );
                   },
                 ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(strings.feature('Slut')),
-                  subtitle: Text(_formatDateTime(context, _endsAt, _allDay)),
-                  trailing: const Icon(Icons.edit_calendar_outlined),
-                  onTap: () async {
-                    final value = await _pickDateTime(_endsAt);
-                    if (value != null) {
-                      setState(() {
-                        _endsAt = value;
-                        _draft.markDirty();
-                      });
-                    }
-                  },
+                TextFormField(
+                  controller: _assembly,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: strings.feature('Samling före start (minuter)'),
+                    helperText: strings.feature(
+                      'Samlingstiden räknas automatiskt från eventets start.',
+                    ),
+                  ),
                 ),
                 TextFormField(
                   controller: _timezone,
@@ -1542,7 +2267,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
                       _draft.markDirty();
                     }),
                   ),
-                  if (_recurring)
+                  if (_recurring) ...[
                     Row(
                       children: [
                         Expanded(
@@ -1578,18 +2303,36 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _count,
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              labelText: strings.feature('Antal'),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
+                    const SizedBox(height: 8),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final start = _seriesDateTile(
+                          strings.feature('Serien börjar'),
+                          DateUtils.dateOnly(_startsAt),
+                          _pickSeriesStart,
+                        );
+                        final end = _seriesDateTile(
+                          strings.feature('Serien slutar'),
+                          _seriesEndsOn,
+                          _pickSeriesEnd,
+                        );
+                        if (constraints.maxWidth < 420) {
+                          return Column(
+                            children: [start, const SizedBox(height: 8), end],
+                          );
+                        }
+                        return Row(
+                          children: [
+                            Expanded(child: start),
+                            const SizedBox(width: 8),
+                            Expanded(child: end),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
                 ],
                 if (widget.initial?.recurrenceId != null)
                   DropdownButtonFormField<String>(
@@ -1653,7 +2396,6 @@ String _formatDateTime(BuildContext context, DateTime value, bool allDay) {
   return '$date · ${TimeOfDay.fromDateTime(value).format(context)}';
 }
 
-
 class _CalendarSurfaceState extends State<_CalendarSurface>
     with WidgetsBindingObserver {
   late final AsyncDataController<List<CalendarEventSummary>> _data;
@@ -1662,6 +2404,7 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
   CalendarViewMode _viewMode = CalendarViewMode.agenda;
   DateTime _selectedDate = DateTime.now();
   String? _teamFilter, _eventTypeFilter;
+  bool _showArchived = false;
   static const _showWeekNumbersKey = 'calendar.showWeekNumbers';
   static const _showQuarterHourMarksKey = 'calendar.showQuarterHourMarks';
   bool _showWeekNumbers = true;
@@ -1675,6 +2418,7 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
   @override
   void initState() {
     super.initState();
+    _teamFilter = widget.contextValue.teamId;
     WidgetsBinding.instance.addObserver(this);
     _data = AsyncDataController<List<CalendarEventSummary>>(
       scopeKey: _scopeKey,
@@ -1743,7 +2487,18 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
 
   String get _scopeKey {
     final ids = widget.contexts.map((item) => item.id).toList()..sort();
-    return '${widget.contextValue.id}:${ids.join(',')}';
+    return '${widget.contextValue.id}:${_teamFilter ?? 'all'}:${_showArchived ? 'archived' : 'active'}:${ids.join(',')}';
+  }
+
+  List<String> get _filteredContextIds {
+    final teamId = _teamFilter;
+    if (teamId == null) {
+      return widget.contexts.map((item) => item.id).toList(growable: false);
+    }
+    return widget.contexts
+        .where((item) => item.teamId == teamId)
+        .map((item) => item.id)
+        .toList(growable: false);
   }
 
   @override
@@ -1795,7 +2550,7 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
     );
     if (oldWidget.contextValue.id != widget.contextValue.id ||
         contextsChanged) {
-      _teamFilter = null;
+      _teamFilter = widget.contextValue.teamId;
       _data.replaceScope(scopeKey: _scopeKey, loader: _reload);
       _listenForInvalidations();
     }
@@ -1813,9 +2568,14 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
   }
 
   Future<List<CalendarEventSummary>> _reload() {
+    if (_showArchived) {
+      return widget.calendar.listArchivedEvents(
+        contextIds: _filteredContextIds,
+      );
+    }
     final now = DateTime.now();
     return widget.calendar.listCalendar(
-      contextIds: widget.contexts.map((item) => item.id).toList(),
+      contextIds: _filteredContextIds,
       from: DateTime(now.year, now.month - 1),
       to: DateTime(now.year, now.month + 11),
     );
@@ -1875,6 +2635,15 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
           recurrenceFrequency: value.recurring ? value.frequency : null,
           recurrenceInterval: value.recurring ? value.interval : null,
           recurrenceCount: value.recurring ? value.count : null,
+          assemblyMinutesBefore: value.assemblyMinutesBefore,
+          trainingTheme: value.trainingTheme,
+          trainingFocus: value.trainingFocus,
+          trainingPlan: value.trainingPlan,
+          opponentName: value.opponentName,
+          homeAway: value.homeAway,
+          matchNotes: value.matchNotes,
+          meetingPurpose: value.meetingPurpose,
+          meetingAgenda: value.meetingAgenda,
         ),
         _newUuid(),
       );
@@ -1907,8 +2676,7 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
         widget.contextValue.teamId != null &&
         widget.contextValue.can('event.manage');
     return Scaffold(
-      floatingActionButtonLocation:
-          MediaQuery.sizeOf(context).width < AppBreakpoints.desktop
+      floatingActionButtonLocation: _assistantUsesFab(context)
           ? _aboveAssistantFabLocation
           : null,
       body: RefreshIndicator(
@@ -1944,10 +2712,16 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
             final events = state.data ?? const [];
             return _CalendarWorkspace(
               events: events,
+              teams: {
+                for (final item in widget.contexts)
+                  if (item.teamId != null && item.teamName != null)
+                    item.teamId!: item.teamName!,
+              },
               mode: _viewMode,
               selectedDate: _selectedDate,
               teamFilter: _teamFilter,
               eventTypeFilter: _eventTypeFilter,
+              showArchived: _showArchived,
               stale: state.isStale && !_staleBannerDismissed,
               reconnecting:
                   state.connection == AppConnectionStatus.reconnecting,
@@ -1956,9 +2730,18 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
                   setState(() => _staleBannerDismissed = true),
               onModeChanged: (value) => setState(() => _viewMode = value),
               onDateChanged: (value) => setState(() => _selectedDate = value),
-              onTeamChanged: (value) => setState(() => _teamFilter = value),
+              onTeamChanged: (value) {
+                if (value == _teamFilter) return;
+                setState(() => _teamFilter = value);
+                _data.replaceScope(scopeKey: _scopeKey, loader: _reload);
+              },
               onTypeChanged: (value) =>
                   setState(() => _eventTypeFilter = value),
+              onShowArchivedChanged: (value) {
+                if (value == _showArchived) return;
+                setState(() => _showArchived = value);
+                _data.replaceScope(scopeKey: _scopeKey, loader: _reload);
+              },
               onEvent: _showDetails,
               showWeekNumbers: _showWeekNumbers,
               onShowWeekNumbersChanged: _setShowWeekNumbers,

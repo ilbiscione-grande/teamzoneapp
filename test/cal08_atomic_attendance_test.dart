@@ -42,4 +42,34 @@ void main() {
     expect(attendance.status, 'unknown');
     expect(attendance.revision, 0);
   });
+
+  test('attendance minutes are restored onto the rendered roster row', () {
+    final squad = SquadDetails.fromJson({
+      'event_id': 'event-1',
+      'squad_state': 'sent',
+      'attendance': [
+        {
+          'person_id': 'person-1',
+          'name': 'Kim Andersson',
+          'status': 'late',
+          'minutes': 12,
+          'revision': 2,
+        },
+      ],
+      'roster': [
+        {
+          'person_id': 'person-1',
+          'name': 'Kim Andersson',
+          'team_id': 'team-1',
+          'team_name': 'F2012',
+          'role_package': 'player',
+          'in_draft': true,
+          'attendance_status': 'late',
+          'attendance_revision': 2,
+        },
+      ],
+    });
+
+    expect(squad.roster.single.attendanceMinutes, 12);
+  });
 }

@@ -11,6 +11,28 @@ import 'package:teamzone_app/src/features/calendar/calendar_models.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_services.dart';
 
 void main() {
+  testWidgets('calendar requests only the active team context by default', (
+    tester,
+  ) async {
+    final calendar = _RecordingCalendar();
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'cal01-context'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: const _TwoTeamIdentity(),
+          calendar: calendar,
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kalender'));
+    await tester.pumpAndSettle();
+
+    expect(calendar.requestedContextIds, ['context-a']);
+  });
+
   testWidgets('calendar exposes agenda, month, week and day on mobile', (
     tester,
   ) async {
@@ -22,21 +44,33 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Kalender'));
     await tester.pumpAndSettle();
-    for (final label in ['Agenda', 'Månad', 'Vecka', 'Dag']) {
-      expect(find.text(label), findsOneWidget);
+    expect(find.byTooltip('Byt kalendervy'), findsOneWidget);
+    Future<void> selectView(String label) async {
+      await tester.tap(find.byTooltip('Byt kalendervy'));
+      await tester.pumpAndSettle();
+      for (final option in ['Agenda', 'Månad', 'Vecka', 'Dag']) {
+        expect(find.text(option), findsWidgets);
+      }
+      await tester.tap(find.text(label).last);
+      await tester.pumpAndSettle();
     }
+
     expect(find.text('Kvällsträning'), findsOneWidget);
     // Team/type filters live behind a compact filter button now, not two
     // full-width dropdowns.
     expect(find.byIcon(Icons.filter_list), findsOneWidget);
     await tester.tap(find.byIcon(Icons.filter_list));
     await tester.pumpAndSettle();
+    expect(find.text('F2012'), findsWidgets);
+    await tester.tap(find.text('F2012').first);
+    await tester.pumpAndSettle();
     expect(find.text('Alla lag'), findsOneWidget);
+    await tester.tap(find.text('Alla lag'));
+    await tester.pumpAndSettle();
     expect(find.text('Alla eventtyper'), findsOneWidget);
     await tester.tap(find.text('Klar'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Månad'));
-    await tester.pumpAndSettle();
+    await selectView('Månad');
     // Today's cell shows an event-count badge instead of cropped titles...
     expect(find.text('4'), findsWidgets);
     // ...while the full list for the selected day scrolls independently
@@ -51,16 +85,14 @@ void main() {
     expect(find.text('Extraevent 2'), findsOneWidget);
     expect(find.text('Extraevent 3'), findsOneWidget);
     expect(tester.takeException(), isNull);
-    await tester.tap(find.text('Vecka'));
-    await tester.pumpAndSettle();
+    await selectView('Vecka');
     // The week grid shows the 7 selected-week days plus one extra "peek"
     // box for next week's first day (8 day cells total, each a Card), and
     // reuses the same fixed-grid/scrolling-day-panel layout as month view.
     expect(find.byType(Card), findsNWidgets(8));
     expect(find.byKey(const Key('calendarSelectedDayPanel')), findsOneWidget);
     expect(tester.takeException(), isNull);
-    await tester.tap(find.text('Dag'));
-    await tester.pumpAndSettle();
+    await selectView('Dag');
     // Dag mode is a 24h timeline: hour gridlines with labels...
     expect(find.text('00:00'), findsOneWidget);
     expect(find.text('23:00'), findsOneWidget);
@@ -74,6 +106,28 @@ void main() {
     final extraevent1Left = tester.getTopLeft(find.text('Extraevent 1')).dx;
     expect(kvallstraningLeft, isNot(equals(extraevent1Left)));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('archive filter swaps active events for retained history', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kalender'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Kvällsträning'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.filter_list));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Visa arkiverade event'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Klar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Arkiverade event'), findsOneWidget);
+    expect(find.text('Arkiverad match'), findsOneWidget);
+    expect(find.textContaining('Säsongen avslutad'), findsOneWidget);
+    expect(find.text('Kvällsträning'), findsNothing);
   });
 
   test('all modes share team/type filters and local overlap logic', () {
@@ -242,6 +296,45 @@ class _Calendar extends UnconfiguredCalendarServices {
         ),
     ];
   }
+
+  @override
+  Future<List<CalendarEventSummary>> listArchivedEvents({
+    required List<String> contextIds,
+  }) async {
+    final now = DateTime.now();
+    return [
+      CalendarEventSummary(
+        id: 'archived-event',
+        clubId: 'club',
+        owningTeamId: 'team-a',
+        teamName: 'F2012',
+        title: 'Arkiverad match',
+        type: 'match',
+        state: 'completed',
+        startsAt: DateTime(now.year, now.month - 1, 1, 18),
+        endsAt: DateTime(now.year, now.month - 1, 1, 20),
+        allDay: false,
+        timezone: 'Europe/Stockholm',
+        revision: 3,
+        archivedAt: DateTime(now.year, now.month, 1),
+        archiveReason: 'Säsongen avslutad',
+      ),
+    ];
+  }
+}
+
+class _RecordingCalendar extends UnconfiguredCalendarServices {
+  List<String> requestedContextIds = const [];
+
+  @override
+  Future<List<CalendarEventSummary>> listCalendar({
+    required List<String> contextIds,
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    requestedContextIds = List.of(contextIds);
+    return const [];
+  }
 }
 
 class _Identity implements IdentityServices {
@@ -272,4 +365,30 @@ class _Identity implements IdentityServices {
   }) async {}
   @override
   Future<void> signOut() async {}
+}
+
+class _TwoTeamIdentity extends _Identity {
+  const _TwoTeamIdentity();
+
+  @override
+  Future<List<TeamZoneContext>> getContexts() async => const [
+    TeamZoneContext(
+      id: 'context-a',
+      clubId: 'club',
+      clubName: 'Testklubben',
+      teamId: 'team-a',
+      teamName: 'F2012',
+      rolePackage: 'player',
+      capabilities: {'team.read'},
+    ),
+    TeamZoneContext(
+      id: 'context-b',
+      clubId: 'club',
+      clubName: 'Testklubben',
+      teamId: 'team-b',
+      teamName: 'F2011',
+      rolePackage: 'player',
+      capabilities: {'team.read'},
+    ),
+  ];
 }

@@ -23,12 +23,11 @@ void main() {
     await tester.tap(find.byTooltip('Nytt event'));
     await tester.pumpAndSettle();
     for (final label in [
-      'Titel',
       'Beskrivning',
-      'Typ',
-      'Status',
+      'Typ av event',
       'Start',
       'Slut',
+      'Samling före start (minuter)',
       'Tidszon',
       'Plats',
       'Audience',
@@ -37,18 +36,17 @@ void main() {
       expect(find.text(label), findsWidgets);
     }
     expect(find.text('Arena A'), findsOneWidget);
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Titel'),
-      'Träning A',
-    );
+    expect(find.byIcon(Icons.event_available_outlined), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Titel'), findsNothing);
     await tester.ensureVisible(find.text('Arena A'));
     await tester.tap(find.text('Arena A'));
     await tester.ensureVisible(find.text('Skapa').last);
     await tester.tap(find.text('Skapa').last);
     await tester.pumpAndSettle();
-    expect(calendar.created?.title, 'Träning A');
+    expect(calendar.created?.title, 'Träning');
     expect(calendar.created?.locationName, 'Arena A');
     expect(calendar.created?.audiences, containsAll(['players', 'leaders']));
+    expect(calendar.created?.assemblyMinutesBefore, 15);
   });
 
   test('CAL-02 SQL scopes saved places and shifts series relatively', () {
@@ -66,6 +64,14 @@ void main() {
     expect(sql, contains("'event_type'"));
     expect(sql, contains("'location_name'"));
     expect(sql, contains('revoke all on function'));
+    final typedSql = File(
+      'supabase/migrations/20260915104026_cal02_typed_event_fields_and_assembly.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(typedSql, contains('assembly_minutes_before'));
+    expect(typedSql, contains('opponent_name'));
+    expect(typedSql, contains('training_plan'));
+    expect(typedSql, contains('meeting_agenda'));
+    expect(typedSql, contains('revise_event_v3_for_actor'));
   });
 
   test('create input retains explicit state, audience and recurrence', () {

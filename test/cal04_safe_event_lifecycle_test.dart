@@ -48,4 +48,44 @@ void main() {
       ),
     );
   });
+
+  test('archived summary keeps retention metadata', () {
+    final event = CalendarEventSummary.fromJson({
+      'event_id': 'event-1',
+      'club_id': 'club-1',
+      'owning_team_id': 'team-1',
+      'team_name': 'F2012',
+      'title': 'Träning',
+      'event_type': 'training',
+      'state': 'cancelled',
+      'starts_at': '2026-08-27T17:00:00Z',
+      'ends_at': '2026-08-27T18:30:00Z',
+      'all_day': false,
+      'timezone': 'Europe/Stockholm',
+      'revision': 4,
+      'archived_at': '2026-09-19T18:00:00Z',
+      'archive_reason': 'Säsongen avslutad',
+    });
+
+    expect(event.archivedAt, DateTime.utc(2026, 9, 19, 18));
+    expect(event.archiveReason, 'Säsongen avslutad');
+  });
+
+  test('CAL-04 recovery migration is scoped, audited and reversible', () {
+    final sql = File(
+      'supabase/migrations/20260919211602_cal04_archived_event_recovery.sql',
+    ).readAsStringSync();
+
+    expect(sql, contains('internal.actor_can_read_event(event_row.id)'));
+    expect(sql, contains('internal.get_my_contexts_for_actor()'));
+    expect(sql, contains('internal.actor_can_manage_event_sharing'));
+    expect(sql, contains("event_row.state not in('cancelled','completed')"));
+    expect(
+      sql,
+      contains('archived_at=null,archived_by=null,archive_reason=null'),
+    );
+    expect(sql, contains("'event.event.archive_restore.v1'"));
+    expect(sql, contains("'event.event.archive_restored.v1'"));
+    expect(sql, contains('to authenticated'));
+  });
 }

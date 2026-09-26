@@ -48,4 +48,63 @@ void main() {
     expect(sql, contains("state='consumed',consumed_at=now()"));
     expect(sql, contains("state='revoked'"));
   });
+
+  test('decline reasons are projected only for managers or representatives', () {
+    final sql = File(
+      'supabase/migrations/20260920125856_cal07_visible_decline_reasons.sql',
+    ).readAsStringSync();
+
+    expect(sql, contains('internal.actor_can_manage_squad(target_event_id)'));
+    expect(sql, contains('internal.actor_represents_club_person'));
+    expect(sql, contains("callup.state='declined'"));
+    expect(sql, contains("response.response='declined'"));
+    expect(sql, contains("'decline_reasons'"));
+    expect(
+      sql,
+      contains(
+        'revoke all on function internal.get_visible_decline_reasons_for_actor(uuid)',
+      ),
+    );
+  });
+
+  test('squad model joins a visible decline reason onto its roster row', () {
+    final squad = SquadDetails.fromJson({
+      'event_id': 'event-1',
+      'squad_state': 'sent',
+      'callups': [
+        {
+          'callup_id': 'callup-1',
+          'person_id': 'person-1',
+          'name': 'Kim',
+          'state': 'declined',
+          'delivery_state': 'sent',
+          'revision': 2,
+          'can_respond': false,
+        },
+      ],
+      'roster': [
+        {
+          'person_id': 'person-1',
+          'name': 'Kim',
+          'team_id': 'team-1',
+          'team_name': 'F2012',
+          'role_package': 'player',
+          'in_draft': true,
+          'callup_id': 'callup-1',
+          'callup_state': 'declined',
+        },
+      ],
+      'decline_reasons': [
+        {
+          'person_id': 'person-1',
+          'decline_reason_code': 'other',
+          'decline_reason_text': 'Skolresa',
+        },
+      ],
+    });
+
+    expect(squad.roster.single.declineReasonCode, 'other');
+    expect(squad.roster.single.declineReasonText, 'Skolresa');
+    expect(squad.callups.single.declineReasonCode, 'other');
+  });
 }

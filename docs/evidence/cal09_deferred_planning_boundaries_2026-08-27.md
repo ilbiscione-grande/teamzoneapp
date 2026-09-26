@@ -1,7 +1,7 @@
 # CAL-09 – gränser för senare planeringsfunktioner
 
-Datum: 2026-08-27  
-Omfattning: lokal app och kontrakt; ingen Supabase-liveändring.
+Datum: 2026-08-27, slutverifierad 2026-09-20  
+Status: genomförd och verifierad
 
 ## Genomfört
 
@@ -13,8 +13,8 @@ Omfattning: lokal app och kontrakt; ingen Supabase-liveändring.
 ## Verifiering
 
 - `test/cal09_deferred_planning_boundaries_test.dart` verifierar action-allowlist, behörighetsstyrning, opaque event-id i route och frånvaro av uppskjutna affordances i kalenderytan.
-- `flutter analyze --no-pub` startade men stannade efter `Analyzing TeamzoneApp...` utan diagnos och avbröts kontrollerat; analysresultat är därför inte godkänt för detta kort.
-- Riktad Flutter-testkörning och fysisk responsiv kontroll kvarstår på grund av den observerade Flutter-verktygsblockeringen.
+- Senare samlad Flutter-analys och riktade EventDetails-/kalendertester är gröna.
+- Fysisk telefon-, tabletresponsiv och desktop/webb-kontroll är dokumenterad i REL-02-matrisen och senare CAL-01/CAL-05-genomgångar. EventDetails, fliknavigation, rollgränser och responsiv layout fungerade utan att uppskjutna import-/antecknings-/bilage-/workspaceytor exponerades.
 
 ## Avgränsning
 

@@ -43,4 +43,30 @@ void main() {
       isNot(contains('actor_can_read_event(target_event_id) or')),
     );
   });
+
+  test('calendar projection exposes only the neutral shared marker', () {
+    final event = CalendarEventSummary.fromJson({
+      'event_id': 'event-1',
+      'club_id': 'club-1',
+      'owning_team_id': 'team-1',
+      'team_name': 'Juniorlaget',
+      'title': 'Träning',
+      'event_type': 'training',
+      'state': 'scheduled',
+      'starts_at': '2026-09-20T16:00:00Z',
+      'ends_at': '2026-09-20T18:00:00Z',
+      'all_day': false,
+      'timezone': 'Europe/Stockholm',
+      'revision': 1,
+      'is_shared': true,
+    });
+    expect(event.isShared, isTrue);
+
+    final migration = File(
+      'supabase/migrations/20260919160416_cal03_calendar_shared_marker.sql',
+    ).readAsStringSync();
+    expect(migration, contains("relation.relation='shared'"));
+    expect(migration, contains('is_shared boolean'));
+    expect(migration, isNot(contains('team_name text[]')));
+  });
 }

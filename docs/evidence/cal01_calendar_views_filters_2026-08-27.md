@@ -1,7 +1,7 @@
 # CAL-01 – kalenderns vyer och filter
 
 Datum: 2026-08-27  
-Status: lokalt genomförd; samtliga fyra mobilvyer och overflow-regression fysiskt verifierade, tablet/desktop och eventfylld Vecka/Dag återstår
+Status: slutförd; hosted och fysiskt verifierad på mobil, Android-tablet samt desktop/webb
 
 ## Levererat
 
@@ -47,6 +47,22 @@ Status: lokalt genomförd; samtliga fyra mobilvyer och overflow-regression fysis
 - Fysisk omkörning visade fullständigt 6×7-rutnät utan röd overflow; den 16 augusti visade en ellipsiserad titel och `+2`, medan semantiken behöll hela titeln.
 - Vecka och Dag renderade korrekta svenska datumintervall, periodnavigation, filter, tomläge och separata event-/assistentåtgärder utan overflow på samma build.
 
-## Kvarstående grindar
+## Slutstatus
 
-- Eventfylld Vecka/Dag på telefon och samtliga vyer på tablet/desktop återstår.
+- Samtliga CAL-01-grindar är godkända.
+
+### Fysisk Android-tablet 2026-09-14
+
+- Agenda, Månad, Vecka och Dag verifierades med gemensam vy-dropdown, filter, datum-/periodnavigation och öppning av EventDetails.
+- EventDetails använder push/pop; X och tillbaka återställer föregående vy, datum och filter i samtliga kalenderlägen.
+- Månad fyller vänsterkolumnens återstående höjd och visar vald dags event i högerkolumnen.
+- Vecka visar veckoöversikten till vänster och vald dags event till höger; dagval uppdaterar högerkolumnen direkt.
+- Dag visar tidslinjen till vänster och kommande agenda från vald dag till höger. Event kan öppnas från båda kolumnerna.
+- Native tablet använder Min assistent som FAB oavsett orientering. Högerkolumnen reserveras för den aktuella sidans information.
+
+### Desktop/webb 2026-09-15
+
+- Agenda, Månad, Vecka och Dag verifierades i releasewebb på localhost.
+- Månad kan växla mellan `Vald dag` och `Hela månaden`; hela månaden omfattar alltid månadens första till sista dag oberoende av markerat datum.
+- EventDetails återställer samma vy, datum och filter.
+- Ett event som väljs i Dag-vyns högra kommande agenda gör eventets lokala startdag till valt kalenderdatum före öppning och återgår därför till rätt dag.

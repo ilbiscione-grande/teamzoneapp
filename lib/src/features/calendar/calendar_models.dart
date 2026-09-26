@@ -14,12 +14,23 @@ class CalendarEventSummary {
     required this.revision,
     this.locationName,
     this.eventCursor,
+    this.matchState,
+    this.scoreUs,
+    this.scoreOpponent,
+    this.isShared = false,
+    this.archivedAt,
+    this.archiveReason,
   });
   final String id, clubId, owningTeamId, teamName, title, type, state, timezone;
   final DateTime startsAt, endsAt;
   final bool allDay;
   final String? locationName;
   final String? eventCursor;
+  final String? matchState;
+  final int? scoreUs, scoreOpponent;
+  final bool isShared;
+  final DateTime? archivedAt;
+  final String? archiveReason;
   final int revision;
   factory CalendarEventSummary.fromJson(Map<String, dynamic> json) =>
       CalendarEventSummary(
@@ -36,6 +47,14 @@ class CalendarEventSummary {
         timezone: json['timezone'] as String,
         locationName: json['location_name'] as String?,
         eventCursor: json['event_cursor'] as String?,
+        matchState: json['match_state'] as String?,
+        scoreUs: (json['score_us'] as num?)?.toInt(),
+        scoreOpponent: (json['score_opponent'] as num?)?.toInt(),
+        isShared: json['is_shared'] as bool? ?? false,
+        archivedAt: json['archived_at'] == null
+            ? null
+            : DateTime.parse(json['archived_at'] as String),
+        archiveReason: json['archive_reason'] as String?,
         revision: (json['revision'] as num).toInt(),
       );
 }
@@ -132,9 +151,22 @@ class EventDetails {
     this.recurrenceId,
     this.archivedAt,
     this.archiveReason,
+    this.assemblyMinutesBefore,
+    this.trainingTheme,
+    this.trainingFocus,
+    this.trainingPlan,
+    this.opponentName,
+    this.homeAway,
+    this.matchNotes,
+    this.meetingPurpose,
+    this.meetingAgenda,
   });
   final String id, title, type, state, timezone;
   final String? description, locationName;
+  final int? assemblyMinutesBefore;
+  final String? trainingTheme, trainingFocus, trainingPlan;
+  final String? opponentName, homeAway, matchNotes;
+  final String? meetingPurpose, meetingAgenda;
   final String? recurrenceId;
   final DateTime? archivedAt;
   final String? archiveReason;
@@ -180,6 +212,15 @@ class EventDetails {
           ? null
           : DateTime.parse(json['archived_at'] as String),
       archiveReason: json['archive_reason'] as String?,
+      assemblyMinutesBefore: (json['assembly_minutes_before'] as num?)?.toInt(),
+      trainingTheme: json['training_theme'] as String?,
+      trainingFocus: json['training_focus'] as String?,
+      trainingPlan: json['training_plan'] as String?,
+      opponentName: json['opponent_name'] as String?,
+      homeAway: json['home_away'] as String?,
+      matchNotes: json['match_notes'] as String?,
+      meetingPurpose: json['meeting_purpose'] as String?,
+      meetingAgenda: json['meeting_agenda'] as String?,
     );
   }
 }
@@ -247,6 +288,15 @@ class CreateEventInput {
     this.recurrenceFrequency,
     this.recurrenceInterval,
     this.recurrenceCount,
+    this.assemblyMinutesBefore = 15,
+    this.trainingTheme,
+    this.trainingFocus,
+    this.trainingPlan,
+    this.opponentName,
+    this.homeAway,
+    this.matchNotes,
+    this.meetingPurpose,
+    this.meetingAgenda,
   });
   final String clubId, teamId, title, type, state, timezone;
   final String? description, locationName, recurrenceFrequency;
@@ -254,6 +304,10 @@ class CreateEventInput {
   final bool allDay;
   final List<String> audiences;
   final int? recurrenceInterval, recurrenceCount;
+  final int assemblyMinutesBefore;
+  final String? trainingTheme, trainingFocus, trainingPlan;
+  final String? opponentName, homeAway, matchNotes;
+  final String? meetingPurpose, meetingAgenda;
 }
 
 class SquadMemberView {
@@ -288,12 +342,18 @@ class CallupView {
     this.lastRemindedAt,
     this.reminderDeliveryState,
     this.expiresAt,
+    this.declineReasonCode,
+    this.declineReasonText,
   });
   final String id, personId, name, state, deliveryState;
   final int revision;
   final int reminderCount;
   final bool canRespond;
-  final String? actingAsPersonId, responseRole, reminderDeliveryState;
+  final String? actingAsPersonId,
+      responseRole,
+      reminderDeliveryState,
+      declineReasonCode,
+      declineReasonText;
   final DateTime? lastRemindedAt, expiresAt;
   factory CallupView.fromJson(Map<String, dynamic> json) => CallupView(
     id: json['callup_id'] as String,
@@ -313,6 +373,8 @@ class CallupView {
     expiresAt: json['expires_at'] == null
         ? null
         : DateTime.parse(json['expires_at'] as String),
+    declineReasonCode: json['decline_reason_code'] as String?,
+    declineReasonText: json['decline_reason_text'] as String?,
   );
 }
 
@@ -371,15 +433,23 @@ class EventRosterPerson {
     this.callupExpiresAt,
     this.callupLastRemindedAt,
     this.attendanceStatus,
+    this.attendanceMinutes,
     this.attendanceRevision = 0,
     this.isGuest = false,
     this.canRespond = false,
     this.responseRole,
+    this.declineReasonCode,
+    this.declineReasonText,
   });
   final String personId, name, teamId, teamName, rolePackage;
   final bool inDraft;
-  final String? callupId, callupState, attendanceStatus;
+  final String? callupId,
+      callupState,
+      attendanceStatus,
+      declineReasonCode,
+      declineReasonText;
   final DateTime? callupExpiresAt, callupLastRemindedAt;
+  final int? attendanceMinutes;
   final int attendanceRevision;
   // Whether the CURRENT actor can record a response to this person's
   // callup — themselves ('self'), as an active guardian ('guardian'), or
@@ -426,9 +496,12 @@ class EventRosterPerson {
             ? null
             : DateTime.parse(json['callup_last_reminded_at'] as String),
         attendanceStatus: json['attendance_status'] as String?,
+        attendanceMinutes: (json['attendance_minutes'] as num?)?.toInt(),
         attendanceRevision: (json['attendance_revision'] as num?)?.toInt() ?? 0,
         canRespond: json['can_respond'] as bool? ?? false,
         responseRole: json['response_role'] as String?,
+        declineReasonCode: json['decline_reason_code'] as String?,
+        declineReasonText: json['decline_reason_text'] as String?,
       );
 
   EventRosterPerson copyWith({
@@ -438,9 +511,12 @@ class EventRosterPerson {
     DateTime? callupExpiresAt,
     DateTime? callupLastRemindedAt,
     String? attendanceStatus,
+    int? attendanceMinutes,
     int? attendanceRevision,
     bool? canRespond,
     String? responseRole,
+    String? declineReasonCode,
+    String? declineReasonText,
   }) => EventRosterPerson(
     personId: personId,
     name: name,
@@ -453,10 +529,13 @@ class EventRosterPerson {
     callupExpiresAt: callupExpiresAt ?? this.callupExpiresAt,
     callupLastRemindedAt: callupLastRemindedAt ?? this.callupLastRemindedAt,
     attendanceStatus: attendanceStatus ?? this.attendanceStatus,
+    attendanceMinutes: attendanceMinutes ?? this.attendanceMinutes,
     attendanceRevision: attendanceRevision ?? this.attendanceRevision,
     isGuest: isGuest,
     canRespond: canRespond ?? this.canRespond,
     responseRole: responseRole ?? this.responseRole,
+    declineReasonCode: declineReasonCode ?? this.declineReasonCode,
+    declineReasonText: declineReasonText ?? this.declineReasonText,
   );
 }
 
@@ -490,38 +569,102 @@ class SquadDetails {
   final bool showCallupsToMembers;
   final int callupVisibilityRevision;
   bool can(String action) => callerActions.contains(action);
-  factory SquadDetails.fromJson(Map<String, dynamic> json) => SquadDetails(
-    eventId: json['event_id'] as String,
-    state: json['squad_state'] as String? ?? 'empty',
-    squadRevisionId: json['squad_revision_id'] as String?,
-    revision: (json['squad_revision'] as num?)?.toInt(),
-    members: (json['members'] as List? ?? const [])
+  factory SquadDetails.fromJson(Map<String, dynamic> json) {
+    final state = json['squad_state'] as String? ?? 'empty';
+    final declineReasons = <String, Map<String, dynamic>>{
+      for (final reason
+          in (json['decline_reasons'] as List? ?? const [])
+              .whereType<Map<String, dynamic>>())
+        if (reason['person_id'] is String)
+          reason['person_id'] as String: reason,
+    };
+    final callups = (json['callups'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map((callup) {
+          final reason = declineReasons[callup['person_id']];
+          return CallupView.fromJson({...callup, ...?reason});
+        })
+        .toList(growable: false);
+    final activeCallupPeople = callups
+        .where((callup) => callup.state != 'cancelled')
+        .map((callup) => callup.personId)
+        .toSet();
+    final cancelledOnlyPeople = callups
+        .where((callup) => callup.state == 'cancelled')
+        .map((callup) => callup.personId)
+        .where((personId) => !activeCallupPeople.contains(personId))
+        .toSet();
+    final revisionMembers = (json['members'] as List? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(SquadMemberView.fromJson)
-        .toList(growable: false),
-    callups: (json['callups'] as List? ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map(CallupView.fromJson)
-        .toList(growable: false),
-    attendance: (json['attendance'] as List? ?? const [])
+        .toList(growable: false);
+    final attendance = (json['attendance'] as List? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(AttendanceView.fromJson)
-        .toList(growable: false),
-    roster: (json['roster'] as List? ?? const [])
+        .toList(growable: false);
+    final attendanceByPerson = {
+      for (final item in attendance) item.personId: item,
+    };
+    final roster = (json['roster'] as List? ?? const [])
         .whereType<Map<String, dynamic>>()
-        .map(EventRosterPerson.fromJson)
-        .toList(growable: false),
-    callerActions: (json['caller_actions'] as List? ?? const [])
-        .whereType<String>()
-        .toSet(),
-    selectionSource: json['selection_source'] as String? ?? 'manual',
-    selectionContext:
-        json['selection_context'] as Map<String, dynamic>? ?? const {},
-    dispatchKind: json['dispatch_kind'] as String? ?? 'initial',
-    showCallupsToMembers: json['show_callups_to_members'] as bool? ?? false,
-    callupVisibilityRevision:
-        (json['callup_visibility_revision'] as num?)?.toInt() ?? 0,
-  );
+        .map((person) {
+          final reason = declineReasons[person['person_id']];
+          final attendanceItem = attendanceByPerson[person['person_id']];
+          return EventRosterPerson.fromJson({
+            ...person,
+            ...?reason,
+            if (attendanceItem != null)
+              'attendance_minutes': attendanceItem.minutes,
+          });
+        })
+        .map(
+          (person) =>
+              state == 'sent' && cancelledOnlyPeople.contains(person.personId)
+              ? person.copyWith(inDraft: false)
+              : person,
+        );
+    return SquadDetails(
+      eventId: json['event_id'] as String,
+      state: state,
+      squadRevisionId: json['squad_revision_id'] as String?,
+      revision: (json['squad_revision'] as num?)?.toInt(),
+      // Sent revisions remain immutable history. A person whose only callup
+      // was cancelled is nevertheless no longer part of the active working
+      // selection and must not reappear as a ready-to-send draft member.
+      members: state == 'sent'
+          ? revisionMembers
+                .where(
+                  (member) => !cancelledOnlyPeople.contains(member.personId),
+                )
+                .toList(growable: false)
+          : revisionMembers,
+      callups: callups,
+      attendance: attendance,
+      roster: _uniqueEventRoster(roster),
+      callerActions: (json['caller_actions'] as List? ?? const [])
+          .whereType<String>()
+          .toSet(),
+      selectionSource: json['selection_source'] as String? ?? 'manual',
+      selectionContext:
+          json['selection_context'] as Map<String, dynamic>? ?? const {},
+      dispatchKind: json['dispatch_kind'] as String? ?? 'initial',
+      showCallupsToMembers: json['show_callups_to_members'] as bool? ?? false,
+      callupVisibilityRevision:
+          (json['callup_visibility_revision'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+List<EventRosterPerson> _uniqueEventRoster(Iterable<EventRosterPerson> roster) {
+  final unique = <String, EventRosterPerson>{};
+  for (final person in roster) {
+    // A person can have assignments in several teams participating in the
+    // same shared event. The roster projection may consequently contain one
+    // row per assignment, but selection, callups and attendance are all
+    // person/event scoped and must only be represented once.
+    unique.putIfAbsent(person.personId, () => person);
+  }
+  return unique.values.toList(growable: false);
 }
 
 class SquadCandidate {

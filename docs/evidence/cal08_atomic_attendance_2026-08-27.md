@@ -1,7 +1,7 @@
 # CAL-08 – atomisk närvaro
 
-Datum: 2026-08-27  
-Status: lokalt genomförd, runtimegrindar återstår
+Datum: 2026-08-27, kompletterad 2026-09-20  
+Status: genomförd och verifierad
 
 ## Levererat
 
@@ -28,17 +28,18 @@ Status: lokalt genomförd, runtimegrindar återstår
 ## Verifiering
 
 - `flutter analyze`: godkänd utan problem.
-- Kontraktstest tillagt i `test/cal08_atomic_attendance_test.dart`.
-- SQL-runtime återstår eftersom lokal Docker/PostgreSQL saknas och Supabase live inte får ändras utan separat godkännande.
-- Flutter-testwrapper och fysisk mobil batch-/late-correction-grind återstår.
+- 13/13 riktade CAL-08/CAL-11-tester passerar. Modelltest verifierar att sparat minutantal återställs till den renderade rosterraden.
+- CAL-08:s SQL-runtime ingår i testprojektets synkade migrationshistorik.
+- Fysisk webbgrind 2026-09-20 verifierade atomisk sparning av flera olika statusar, bestående status efter omladdning, synligt inlinefält för minuter vid `late`/`partial`, bestående minutantal samt efterföljande korrigering.
+- Smal fysisk mobilkontroll verifierade att statusväljare och minutfält får plats och förblir användbara utan overflow eller klippning.
 
 ## Ändrade huvudfiler
 
 - `supabase/migrations/20260827075525_cal08_atomic_attendance.sql`
 - `lib/src/features/calendar/calendar_models.dart`
 - `lib/src/features/calendar/calendar_services.dart`
-- `lib/src/features/calendar/calendar_surface.dart`
+- `lib/src/features/calendar/event_details_page.dart`
 - `lib/src/core/localization/app_strings.dart`
 - `test/cal08_atomic_attendance_test.dart`
 
-Ingen Supabase-liveändring, produktionsprovisionering, webtool eller workspace har genomförts. Paketidentiteten är fortsatt `com.teamzone.teamzone`.
+Ingen ny Supabaseändring krävdes för 2026-09-20-fixen. Ingen produktionsprovisionering, webtool eller workspace har genomförts. Paketidentiteten är fortsatt `com.teamzone.teamzone`.

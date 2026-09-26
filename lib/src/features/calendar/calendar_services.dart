@@ -21,6 +21,9 @@ abstract interface class CalendarServices {
     required DateTime from,
     required DateTime to,
   });
+  Future<List<CalendarEventSummary>> listArchivedEvents({
+    required List<String> contextIds,
+  });
   Future<EventDetails> getEventDetails(String eventId);
   Future<EventSharingSettings> getEventSharing(String eventId);
   Future<int> updateEventSharing({
@@ -106,6 +109,11 @@ abstract interface class CalendarServices {
     required String eventId,
     required int expectedRevision,
     required String reason,
+    required String idempotencyKey,
+  });
+  Future<int> restoreArchivedEvent({
+    required String eventId,
+    required int expectedRevision,
     required String idempotencyKey,
   });
 
@@ -229,6 +237,10 @@ class UnconfiguredCalendarServices implements CalendarServices {
     required DateTime to,
   }) async => const [];
   @override
+  Future<List<CalendarEventSummary>> listArchivedEvents({
+    required List<String> contextIds,
+  }) async => const [];
+  @override
   Future<int> reviseEvent({
     required String eventId,
     required String scope,
@@ -255,6 +267,12 @@ class UnconfiguredCalendarServices implements CalendarServices {
     required String eventId,
     required int expectedRevision,
     required String reason,
+    required String idempotencyKey,
+  }) => Future.error(_error);
+  @override
+  Future<int> restoreArchivedEvent({
+    required String eventId,
+    required int expectedRevision,
     required String idempotencyKey,
   }) => Future.error(_error);
 
@@ -287,7 +305,7 @@ class SupabaseCalendarServices implements CalendarServices {
         final value = await _client
             .schema('api')
             .rpc<Object?>(
-              'list_calendar_page',
+              'list_calendar_page_v2',
               params: {
                 'context_ids': contextIds,
                 'range_start': window.from.toUtc().toIso8601String(),
@@ -319,6 +337,25 @@ class SupabaseCalendarServices implements CalendarServices {
       return time == 0 ? left.id.compareTo(right.id) : time;
     });
     return events;
+  }
+
+  @override
+  Future<List<CalendarEventSummary>> listArchivedEvents({
+    required List<String> contextIds,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'list_archived_events',
+          params: {'context_ids': contextIds, 'page_limit': 200},
+        );
+    if (value is! List) {
+      throw const FormatException('Archived calendar response is not a list.');
+    }
+    return value
+        .whereType<Map<String, dynamic>>()
+        .map(CalendarEventSummary.fromJson)
+        .toList(growable: false);
   }
 
   @override
@@ -579,7 +616,7 @@ class SupabaseCalendarServices implements CalendarServices {
     final value = await _client
         .schema('api')
         .rpc<Object?>(
-          'create_event',
+          'create_event_v2',
           params: {
             'target_club_id': input.clubId,
             'target_team_id': input.teamId,
@@ -596,6 +633,17 @@ class SupabaseCalendarServices implements CalendarServices {
             'recurrence_frequency': input.recurrenceFrequency,
             'recurrence_interval': input.recurrenceInterval,
             'recurrence_count': input.recurrenceCount,
+            'typed_fields': {
+              'assembly_minutes_before': input.assemblyMinutesBefore,
+              'training_theme': input.trainingTheme,
+              'training_focus': input.trainingFocus,
+              'training_plan': input.trainingPlan,
+              'opponent_name': input.opponentName,
+              'home_away': input.homeAway,
+              'match_notes': input.matchNotes,
+              'meeting_purpose': input.meetingPurpose,
+              'meeting_agenda': input.meetingAgenda,
+            },
             'idempotency_key': idempotencyKey,
           },
         );
@@ -614,7 +662,7 @@ class SupabaseCalendarServices implements CalendarServices {
     final value = await _client
         .schema('api')
         .rpc<Object?>(
-          'revise_event_v2',
+          'revise_event_v3',
           params: {
             'target_event_id': eventId,
             'change_scope': scope,
@@ -687,6 +735,28 @@ class SupabaseCalendarServices implements CalendarServices {
         );
     if (value is! num) {
       throw const FormatException('Event archive response is invalid.');
+    }
+    return value.toInt();
+  }
+
+  @override
+  Future<int> restoreArchivedEvent({
+    required String eventId,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'restore_archived_event',
+          params: {
+            'target_event_id': eventId,
+            'expected_revision': expectedRevision,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+    if (value is! num) {
+      throw const FormatException('Event restore response is invalid.');
     }
     return value.toInt();
   }

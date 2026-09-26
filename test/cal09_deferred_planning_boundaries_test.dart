@@ -45,13 +45,39 @@ void main() {
     expect(ProductRouteContract.canonicalInitialLocation(location), location);
   });
 
+  test('legacy event query opens EventDetails, including a cold deep link', () {
+    const legacy = '/calendar?event=event%2Fwith%20spaces';
+    final canonical = ProductRouteContract.calendarEvent('event/with spaces');
+    expect(ProductRouteContract.canonicalizeLocation(legacy), canonical);
+    expect(ProductRouteContract.canonicalInitialLocation(legacy), canonical);
+    expect(ProductRouteContract.canonicalizeLocation(canonical), canonical);
+    expect(
+      ProductRouteContract.canonicalizeLocation('/calendar?view=month'),
+      '/calendar?view=month',
+    );
+    expect(
+      ProductRouteContract.canonicalizeLocation('/calendar?event='),
+      '/calendar?event=',
+    );
+    expect(
+      ProductRouteContract.canonicalizeLocation(
+        'https://example.com/calendar?event=some-id',
+      ),
+      'https://example.com/calendar?event=some-id',
+    );
+  });
+
   test('core calendar surface has no deferred planning affordances', () {
     // EventDetails (including preparationActions) lives in its own page
     // file since the CAL-11 rebuild — checked alongside calendar_surface.dart,
     // not instead of it, since both are still part of the calendar feature.
     final source =
-        File('lib/src/features/calendar/calendar_surface.dart').readAsStringSync() +
-        File('lib/src/features/calendar/event_details_page.dart').readAsStringSync();
+        File(
+          'lib/src/features/calendar/calendar_surface.dart',
+        ).readAsStringSync() +
+        File(
+          'lib/src/features/calendar/event_details_page.dart',
+        ).readAsStringSync();
     for (final deferredLabel in [
       'Importera event',
       'Lägg till anteckning',
