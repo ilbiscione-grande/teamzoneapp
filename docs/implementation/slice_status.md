@@ -1,6 +1,6 @@
 # TeamZone implementation slice status
 
-Updated: 2026-08-22
+Updated: 2026-09-20
 
 This is the mutable execution status for the rebuild. The approved specification
 under `docs/specification/source/` is an immutable snapshot and is not edited to
@@ -29,7 +29,7 @@ database are greenfield, with no backfill or compatibility path from Teamzone6.
 | S07 | `[x]` | [Hosted, client and physical Match Space evidence](../evidence/s07_match_v2_baseline_2026-08-15.md) |
 | S08 | `[x]` | [Development signals evidence](../evidence/s08_development_signals_baseline_2026-08-15.md) |
 | S09 | `[x]` | [Publication and custom-domain evidence](../evidence/s09_publication_fail_closed_baseline_2026-08-15.md) |
-| S10 | `[~]` | PAR-BILL-02 approved 2026-08-16; entitlement foundation unlocked, checkout remains gated |
+| S10 | `[x]` | Implemented and verified within the approved scope; PAR-FIN-03 remains deliberately closed and separate production provisioning is deferred |
 | S11 | `[ ]` | Workspaces/webtools explicitly deferred |
 
 ## Cross-cutting stabilization
@@ -221,7 +221,20 @@ initiator separation. PAR-FIN-03 remains closed.
 | Status | Task | Current result |
 |---|---|---|
 | `[x]` | S10B-DB-01 | Deny-by-default scoped accounts, append-only ledger/reversal, approvals, obligations, pledge snapshots and board mandates are deployed and rollback-verified. |
-| `[~]` | S10B-API-01 | Entitlement/capability-scoped account, post, approve, reverse and minimized query APIs are deployed with idempotency and SEK 10,000 dual control. Board mandate request/approve/apply/query APIs now enforce initiator separation and 2-of-2 approval. PAR-FIN-03 fee/payment/settlement commands remain absent. |
+| `[x]` | S10B-API-01 | All APIs in the approved S10B scope are deployed and verified: entitlement/capability-scoped account, post, approve, reverse and minimized queries plus board mandates with initiator separation and 2-of-2 approval. PAR-FIN-03 fee/payment/settlement commands remain deliberately absent and do not block closure. |
 | `[n/a]` | S10B-MIG-01 | Greenfield decision: no legacy economy or board import. |
 | `[x]` | S10B-CLI-01 | Responsive Economy and Board routes are deployed with neutral locks and capability-adapted API-only controls. Physical multi-account walkthroughs passed Economy posting/reversal and Board mandate grant/revoke with initiator separation and 2-of-2 approval. |
 | `[x]` | S10B-TEST-01 | Hosted rollback plus physical walkthrough verify Economy entitlement denial, idempotency, high-risk posting/reversal, initiator separation, 2-of-2 approvals, direct-table denial and immutable history. Board rollback and physical walkthrough verify creator denial, one-of-two denial, grant, apply, revocation and time-derived scheduled/active/ended boundaries. Exact pilot grants and hosted client bundle are verified. PAR-FIN-03 remains closed. |
+
+S10 is closed within its approved scope. PAR-FIN-03 and separate production
+provisioning remain explicit later decisions rather than unfinished S10 work.
+
+## Core application delivery programme
+
+Detailed progress for authentication, Team, Calendar, Inbox, role-specific
+Home, public club pages and Min assistent is maintained in
+[`core_app_delivery_cards.md`](core_app_delivery_cards.md). As of 2026-09-13,
+FND-01–05, AUTH-03–05, TEAM-01–08, CAL-01–06, CAL-10–11 and REL-01–03 are closed. Other cards
+remain partial only for the explicit gates stated on each card; deferred
+imports, workspaces/webtools, generative AI and production provisioning are not
+silently counted as current implementation work.

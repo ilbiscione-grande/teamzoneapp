@@ -104,7 +104,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - **Appbar:** tvåradig lag-/klubbväljare till vänster (`_ContextTwoLineLabel` — lagnamn fetstil överst, klubbnamn mindre därunder; tryck öppnar `_showContextPicker`-bottom sheeten). På telefon visas dessutom en profilavatar längst till höger som öppnar drawern via `_scaffoldKey.currentState?.openDrawer()` — och stängs sedan 2026-09-07 via samma nyckels `.closeDrawer()` när en meny-rad trycks (`_AppNavigationPanel.closeDrawer`), inte `Navigator.pop` som tidigare tyst gjorde ingenting eftersom en Scaffold-drawer inte är en route på den yttre Navigatorn.
 - **Meny-innehåll** delas mellan telefonens drawer och tablet/desktops permanenta sidopanel av samma widget, `_AppNavigationPanel`: profilhuvud (avatar, namn, rollpaket), lagväljarraden, huvuddestinationerna i `_drawerMainOrder` (Hem, Kalender, Laget, Inbox, Statistik), `Utveckling`, ett kluster med capabilitystyrda adminlänkar (Abonnemang/Ekonomi/Styrelse/Nyhetsredaktion — visas bara om rollen har respektive capability) samt Inställningar/Logga ut och en "TeamZone"-vinjett längst ner. Listan har nyckeln `Key('app-navigation-panel-list')` så test kan scrolla dit. **Inställningar** öppnar sedan 2026-09-07 inte längre en liten bottom sheet utan en egen sida, `_ProfileSettingsSurface` (`lib/src/features/account/profile_settings_surface.dart`, route `ProductRouteContract.settings` = `/settings`), med sektioner för "Mina lagkopplingar" (lista över lag-/rollkopplingar plus en "Använd kod"-åtgärd), "Färgtema" (välj mellan Grön/Blå/Lila/Orange, se nedan) och "Integritetsinställningar" (marknadsföringstogglen, tidigare `_MarketingPreferenceSheet`). Panelens **bakgrund** är sedan 2026-09-07 en mörk toning i det valda temats accentfärg (`AppColorTheme.heroGradient`, ljusare upptill mot nästan svart nedtill) i stället för Materials vanliga ljusa `Drawer`-yta, med panelens eget innehåll omkopplat till ett lokalt mörkt `Theme` så text/ikoner förblir läsbara oavsett appens ljus/mörkt-läge.
 - **Bottom nav (endast telefon):** exakt fem knappar i ordningen Laget, Kalender, Hem, Inbox, Statistik (`_bottomNavOrder` i `product_routes.dart` — notera att ordningen medvetet skiljer sig från drawerns läsordning för att hålla Hem i mitten).
-- **Brytpunkter** (`AppBreakpoints`): `usesNavigationRail`/sidopanelen slår på vid ≥600 px (tablet+desktop, ersätter drawern med en permanent 280 px `SizedBox(key: Key('permanent-navigation-sidebar'))`). `usesAssistantSidePanel` slår först på vid ≥1024 px (desktop) — vid tablet-bredd (600–1023 px) visas i stället samma rörliga Min assistent-FAB som på telefon, eftersom en 280 px sidopanel plus en 288 px assistentpanel annars lämnar orimligt lite bredd åt innehållet vid realistiska tabletbredder (t.ex. 800 px porträtt).
+- **Brytpunkter** (`AppBreakpoints`): `usesNavigationRail`/sidopanelen slår på vid ≥600 px (tablet+desktop, ersätter drawern med en permanent 280 px `SizedBox(key: Key('permanent-navigation-sidebar'))`). Native tablet använder alltid Min assistent-FAB oavsett orientering eller rapporterad bredd; sidans högra kolumn reserveras för funktionens egen kontextuella information. En permanent assistentpanel kräver en verklig desktopyta på ≥1024 px.
 - **Medvetet uteslutet:** mockupens "Workspaces" (Planering/Träning/Match/Spelarutveckling/Lagsutveckling) och "Web Tools" (Taktiktavla/IDP) — användarens val, eftersom de flesta av dessa poster inte motsvarar riktiga funktioner i appen än. Lägg till dem i `_AppNavigationPanel` när/om respektive funktion finns på riktigt.
 - **Systemets tillbaka-knapp** (Android): `_ProductShellState` håller sedan 2026-09-07 en `_locationHistory`-lista (synkad via en listener på `_router.routeInformationProvider`, eftersom `.go()` — bottom nav/drawer — ersätter aktuell plats i stället för att lägga till ett historikposet) och en `PopScope` som stegar tillbaka genom besökta sidor en i taget; på den allra första sidan som öppnades den här sessionen visas i stället en "Stäng TeamZone?"-bekräftelse. Dialoger och `_router.push`-ytor (Min assistent) poppas fortsatt av GoRouters egen back-button-dispatcher innan `PopScope` någonsin nås.
 
@@ -179,7 +179,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 ### AUTH-04 – Sök klubb/lag och medlemsansökan
 
-**Status:** `[~]`  
+**Status:** `[x]` – hosted runtime samt fysisk Android-grind för sökande och reviewer verifierade
 **Paritet:** AUTH-07, AUTH-10, AUTH-14  
 **Beroenden:** AUTH-01, FND-03
 
@@ -188,13 +188,15 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Ansökan väljer klubb, lag och avsedd relation/roll.
 - [x] Vänteläge visar status, återkallelse och nästa steg.
 - [x] Behörig mottagare kan godkänna/avslå med audit i serverkontraktet och
-  capabilityanpassad reviewer-UI; fysisk neutral sökande-UX återstår som grind.
+  capabilityanpassad reviewer-UI.
+- [x] Reviewer kan godkänna med korrigerad roll; ansökt och tilldelad roll
+  bevaras separat och en avvikelse auditloggas.
 
 **Verifiering:** enumerationsskydd, outsider/cross-club, dubblettansökan och avstängd relation.
 
 ### AUTH-05 – Skapa klubb och första lag
 
-**Status:** `[~]` – lokalt implementerad och klientverifierad; SQL-runtime klar 2026-09-04, fysisk grind återstår  
+**Status:** `[x]` – hosted runtime samt fysisk Android-grind verifierade 2026-09-10
 **Paritet:** AUTH-08, AUTH-09  
 **Beroenden:** AUTH-01, AUTH-02
 
@@ -207,7 +209,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 ### AUTH-06 – Skyddade namn och officiell klubb
 
-**Status:** `[~]` – lokalt implementerad och klientverifierad; SQL-runtime klar 2026-09-04, fysisk grind återstår  
+**Status:** `[x]` – hosted, automatiskt och fysiskt Android-verifierad inklusive supportärenden
 **Paritet:** AUTH-10, AUTH-11  
 **Beroenden:** AUTH-04, AUTH-05
 
@@ -221,7 +223,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 ### AUTH-07 – Villkor, integritet och frivilliga samtycken
 
-**Status:** `[~]` – lokalt implementerad och klientverifierad; SQL-runtime klar 2026-09-04, juridiskt innehåll och fysisk/hosted grind återstår  
+**Status:** `[~]` – tekniskt hosted-verifierad och publika placeholderroutes driftsatta; juridiskt slutligt innehåll och fysisk slutgrind återstår och blockerar extern publik lansering
 **Paritet:** beslut i arbetsplan steg 3A  
 **Beroenden:** AUTH-01
 
@@ -236,18 +238,18 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 ### TEAM-01 – Lagets tre grundflikar
 
-**Status:** `[~]` – lokalt implementerad och klientverifierad; fysisk deep-link/navigation-grind återstår  
+**Status:** `[x]` – hosted, 367/367 regression samt fysiskt verifierad på mobil, tabletresponsiv webb och desktop/webb inklusive deep link/refresh/back  
 **Paritet:** TEAM-01, TEAM-17, TEAM-18  
 **Beroenden:** FND-03, FND-04
 
 - [x] Exakt `Översikt`, `Trupp`, `Kalender`.
-- [x] Kalenderfliken är lista med tidigare/kommande och eventtypfilter.
+- [x] Kalenderfliken visar kommande som standard, växlar till tidigare, samlar eventtyp bakom filterknapp och visar färdiga matchresultat.
 - [x] Listpost öppnar samma EventDetails som huvudkalendern.
 - [x] Deep link, refresh och mobilnavigation bevarar vald flik.
 
 ### TEAM-02 – Rollstyrd lagöversikt
 
-**Status:** `[~]` – hosted SQL-runtime och fysisk webbgrind verifierade; Android-/säker mediagrind återstår  
+**Status:** `[x]` – hosted SQL/privat Storage och räknarfixture, 369/369 regression samt fysisk webb- och Androidgrind inklusive upload/byte/borttagning/fallback och 200 % text verifierade  
 **Paritet:** TEAM-02, HOME-06  
 **Beroenden:** TEAM-01, AUTH-03, AUTH-04
 
@@ -255,35 +257,37 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Behöriga ledare ser aktiva invites, väntande ansökningar och åtgärdsbehov.
 - [x] Player/guardian ser inte administrativa ärenden utan capability.
 - [x] Tom lagbild/information har professionellt fallbackläge.
-- [x] Behörig användare kan redigera lagtyp, åldersklass, presentation och en validerad HTTPS-lagbild; kommandot är revisionerat, idempotent och auditloggat.
+- [x] Behörig användare kan redigera lagtyp, åldersklass och presentation samt välja, förhandsvisa, byta och ta bort en privat lagbild; staging, upload och profilaktivering är capabilitystyrda, revisionerade, idempotenta och auditloggade.
 
-**Mediagräns:** klienten accepterar tills vidare endast en befintlig HTTPS-bildadress. Säker filuppladdning kräver en separat privat staging-, skanning- och variantgrind och visas inte som aktiv funktion.
+**Mediagräns:** privat lagbilduppladdning är aktiv med JPG/PNG/WebP, 5 MB-gräns, exakt stagingnyckel, privat bucket, aktiv-profilbunden SELECT-RLS och signerad läsning. Originalet blir aldrig automatiskt publikt; skanning/transformering och publik variant tillhör fortfarande PUB-04.
 
 ### TEAM-03 – Trupplista och medlemsdetalj
 
-**Status:** `[~]` – hosted SQL-runtime, Android och desktop/webb verifierade; fysisk tabletgrind återstår  
+**Status:** `[x]` – hosted SQL-runtime, 22/22 riktad regression samt ny enhetlig detaljsida fysiskt verifierad på webb och Android  
 **Paritet:** TEAM-03, TEAM-06, TEAM-09  
 **Beroenden:** TEAM-01, FND-02–FND-05
 
 - [x] Sök/filter/status och pagination fungerar i stora trupper.
 - [x] Detalj visar endast rolltillåtna lag- och spelaruppgifter; kontaktfält saknas i nuvarande schema och exponeras därför inte.
 - [x] Guest/okänd roll får begriplig fail-closed upplevelse.
-- [x] Telefon prioriterar snabb lookup; tablet/desktop ger administrativ överblick.
+- [x] Mobil, tablet, desktop och webb använder samma egna detaljsida med kopierbar route och säker bakåtnavigering till Trupp.
 
-**Återstår:** fysisk tabletverifiering av tvåpanelsvyn.
+**Verifierat:** releasewebb öppnar kopierbar medlemsroute; Xiaomi Mi 9 öppnar samma helsida och Android-back återgår till Trupp. Den tidigare tvåpanels-/sheetpresentationen är ersatt och utgör ingen kvarstående grind.
 
 ### TEAM-04 – Skapa och redigera rosterperson
 
-**Status:** `[~]` – hosted SQL-runtime, 6/6 regression och fysisk webbgrind verifierade; phone/tablet återstår  
+**Status:** `[x]` – hosted SQL-runtime samt fysisk webb-, Android- och tabletgrind verifierade  
 **Paritet:** TEAM-04, TEAM-05  
 **Beroenden:** TEAM-03
 
 - [x] Person, klubbpost och lagrepresentation skapas atomiskt och dubblettsäkert.
+- [x] Namn och åldersklass används inte som personidentitet; flera verkliga personer får dela båda värdena och tekniska retries dedupliceras enbart med idempotensnyckeln.
+- [x] Personer har obligatoriskt födelseår och valfritt exakt födelsedatum som kan kompletteras senare; generell trupp visar endast år och exakt datum är privat managementdata.
 - [x] Klubben redigerar endast sin tenantägda rosterinformation.
 - [x] Global identitet skrivs inte över av lokal lagredigering.
 - [x] Formulär har pending, safe validation och osparade ändringar.
 
-**Återstår:** fysisk phone/tablet-verifiering; webbens create/edit/osparat-flöde är godkänt.
+**Verifierat:** webb, Xiaomi Mi 9 och fysisk Android-tablet är godkända för create/edit, samma namn+år, osparat-skydd, årsväljare samt valfri senare komplettering av exakt datum.
 
 ### TEAM-05 – Guardian och riktad inbjudan
 
@@ -311,7 +315,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 ### TEAM-06 – Behörighet att representera andra lag
 
-**Status:** `[~]`  
+**Status:** `[x]` – hosted runtime och fysisk Android-tabletgrind verifierade  
 **Paritet:** TEAM-10  
 **Beroenden:** TEAM-03, säsongskontrakt
 
@@ -321,11 +325,11 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Ordinarie lag och historiska fakta ändras inte.
 - [x] Servern validerar representation vid eventtidpunkt.
 
-**Återstår:** fysisk phone/tablet/desktop-grind (SQL-runtime klar 2026-09-04).
+**Verifierat:** fysisk Android-tablet har skapat, listat och avslutat en säsongsbunden representation. Spelarens ordinarie lag låg kvar oförändrat. Responsiv klient och samma serverkommandon används för phone/tablet/desktop; separat formfaktorsomtest är inte en blockerande produktgrind.
 
 ### TEAM-07 – Flytta spelare med bevarad historik
 
-**Status:** `[~]`  
+**Status:** `[x]`  
 **Paritet:** TEAM-11  
 **Beroenden:** TEAM-03, TEAM-06
 
@@ -333,23 +337,26 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Gamla event, närvaro och statistik ligger kvar på historisk representation.
 - [x] Överlapp, bakdatering och samtidiga flyttar valideras atomiskt.
 - [x] Cross-club använder separat source/target-/guardianflöde.
+- [x] Ledare kan markera och flytta flera spelare till samma lag i ett sammanhållet flöde.
+- [x] Samma flyttflöde nås från truppverktygen och den enskilda spelarprofilen.
 
-**Återstår:** fysisk phone/tablet/desktop-grind och omkörning av Flutter-testsviten när den lokala testwrappen svarar (SQL-runtime klar 2026-09-04).
+**Verifierat:** hosted rollback-runtime och full Flutter-svit är gröna. På fysisk Android-tablet har en ledare flyttat spelare mellan två lag och tillbaka, verifierat att gammalt lag tappar den aktiva representationen medan mållaget får den, samt godkänt profilgenväg, flerval, samlad resultatdialog och omladdning efter avslutad flytt. Samma responsiva klient och serverkommando används för phone/tablet/desktop; separat formfaktorsomtest är inte en blockerande produktgrind.
 
-### TEAM-08 – Arkivering, borttagning och anonymisering
+### TEAM-08 – Avslutad lagtillhörighet, anonymisering och kontoradering
 
-**Status:** `[~]`  
+**Status:** `[x]`  
 **Paritet:** TEAM-12  
 **Beroenden:** TEAM-03, retention-/integritetspolicy
 
-- [x] Ledare kan arkivera eller avsluta aktiv lagrepresentation.
+- [x] **Avsluta i laget** är normalflödet: aktiv lagrepresentation avslutas medan namn, personliga rekord och verksamhetshistorik bevaras.
 - [x] Arkiverade/tidigare spelare kan hittas i separat filtrerad vy.
-- [x] Klubbens PII-radering kräver separat laginitiator och klubbapprover.
-- [x] Global radering kräver TeamZone-granskning och initiator får inte själv godkänna.
+- [x] **Begär anonymisering** är integritetsflödet: identitet och personliga rekord anonymiseras medan neutral laghistorik bevaras; separat laginitiator och klubbapprover krävs.
+- [x] **Radera hela kontot** är ett separat globalt flöde som kräver TeamZone-granskning och där initiatorn inte får godkänna själv.
 - [x] Anonymiserad neutral representation bevarar nödvändiga verksamhetsfakta och obrutna referenser.
 - [x] Raderad identitet kan inte oavsiktligt återkopplas eller återidentifieras.
+- [ ] Separata regler för intern namngiven historik och eventuell publicering av arkiverade spelares namn fastställs före extern lansering, med särskild restriktivitet för minderåriga.
 
-**Återstår:** Auth Admin-workerintegration, fysisk phone/tablet/desktop-grind och omkörning av Flutter-testsviten när testwrappen svarar (SQL-runtime klar 2026-09-04).
+**Verifierat:** hosted SQL-runtime, profilomfattande anonymisering och Auth Admin-worker är driftsatta i testprojektet. På fysisk Android-tablet har normal avslutning/återaktivering, dual-control-anonymisering och global kontoradering verifierats med separata användare. Historiken bevaras som en neutral `Tidigare spelare` i rätt lagkontext och det raderade Auth-kontot kan inte längre logga in. Separata regler för eventuell publik namngiven historik är fortsatt en lanserings-/juridikgrind, inte en blockerare för TEAM-08.
 
 **Verifiering:** hela appens relevanta historikvyer körs mot anonymiserad fixture utan fel eller identifierande data.
 
@@ -357,7 +364,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 ### CAL-01 – Kalenderns vyer och filter
 
-**Status:** `[~]`  
+**Status:** `[x]`  
 **Paritet:** CAL-01, CAL-02  
 **Beroenden:** FND-02–FND-05
 
@@ -366,11 +373,11 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] DST, nattpass, heldag och timezonegränser testas.
 - [x] Mobil/tablet/desktop prioriterar om utan capabilityskillnad.
 
-**Återstår:** fysisk tablet/desktop-grind (endast mobil, Xiaomi Mi 9, fysiskt verifierad 2026-09-06).
+**Verifierat:** mobil, fysisk Android-tablet och desktop/webb är godkända. Tablet/desktop visar Månad och Vecka till vänster med eventkolumn till höger; Dag visar tidslinje och kommande agenda. Månad kan växla mellan `Vald dag` och hela kalendermånaden. EventDetails återställer vy, datum och filter, och event från Dag-vyns kommande agenda flyttar först kalendern till eventets dag. Native tablet reserverar högerkolumnen för sidan och visar Min assistent som FAB.
 
 ### CAL-02 – Skapa och redigera event/serie
 
-**Status:** `[~]`  
+**Status:** `[x]`  
 **Paritet:** CAL-03–CAL-05, CAL-08  
 **Beroenden:** CAL-01, FND-03
 
@@ -378,11 +385,11 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Redigering väljer förekomst, framtida eller hela serien med revision/conflict-skydd.
 - [x] Sparade platsförslag är tenantsäkra.
 
-**Återstår:** omkörning av Flutter-testsviten när testwrappen svarar samt fysisk phone/tablet/desktop-grind.
+**Verifierat:** typstyrda formulär för träning, match, möte och aktivitet; automatiska titlar; samlingstid med typstandard; start-/slutdatumbaserad serie; samt revisionssäker redigering av `Bara detta`, `Detta och framåt` och `Hela serien`. Hosted SQL, riktade Fluttertester, rollbacktest mot riktig PostgreSQL och fysisk webbgrind är godkända.
 
 ### CAL-03 – Delade event och audience
 
-**Status:** `[~]`  
+**Status:** `[x]`  
 **Paritet:** CAL-06, CAL-07  
 **Beroenden:** CAL-02, TEAM-06
 
@@ -390,11 +397,17 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Audience styr synlighet/mottagare men aldrig redigeringsrätt.
 - [x] Sekundärlagsledare kan bara utföra uttryckligen tillåtna handlingar.
 
-**Återstår:** omkörning av den riktade Flutter-testfilen när testwrappen svarar samt fysisk flerrollsgrind.
+**Verifierat:** fysisk webbgrind 2026-09-19 med riktigt delat event och byte
+mellan huvudlag och mottagarlag. `Kan se` visar endast event som tillhör eller
+är delade med det aktiva laget och ger inga mutationer för deltagare,
+kallelser, förberedelser eller uppföljning. Flerlagsdelning, neutral
+delningsmarkör och explicit `Alla lag`-filter är verifierade. En person med
+uppdrag i flera deltagande lag visas med en enda person-/eventbunden kallelse.
+Riktade CAL-01/CAL-03/CAL-06/CAL-11-tester är gröna.
 
 ### CAL-04 – Säker eventlivscykel och radering
 
-**Status:** `[~]`  
+**Status:** `[x]`  
 **Paritet:** CAL-09  
 **Beroenden:** CAL-02
 
@@ -402,12 +415,13 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Event med publicering, callups, svar, närvaro eller historik ställs in/arkiveras.
 - [x] Cancel återkallar relevanta callups och skapar notifieringshändelser atomiskt.
 - [x] Permanent radering finns endast i skyddat admin-/retentionflöde.
+- [x] Arkiverade event listas separat med orsak och datum, öppnas skrivskyddat och kan återställas med bevarad ursprungsstatus.
 
-**Återstår:** riktad Flutter-testkörning när testwrappen svarar samt fysisk verifiering av delete/cancel/archive.
+**Verifierat 2026-09-20:** delete, cancel, återställning från cancel, archive, separat arkivlista, skrivskyddad arkivdetalj och återställning från arkiv. Hosted recovery-migration och 15 riktade regressionstester är gröna.
 
 ### CAL-05 – EventDetails informationsarkitektur
 
-**Status:** `[~]`  
+**Status:** `[x]`  
 **Paritet:** CAL-10, CAL-11  
 **Beroenden:** CAL-01, FND-04
 
@@ -416,24 +430,24 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Innehåll/actions anpassas efter eventtyp och roll.
 - [x] Mobil visar begripliga fulla namn via rullning/sekundär navigation, inte otydliga förkortningar.
 
-**Återstår:** riktad Flutter-testkörning när testwrappen svarar samt fysisk phone/tablet/desktop- och flerrollsgrind.
+**Verifierat 2026-09-20:** egen responsiv EventDetails-sida, fullständiga horisontellt rullbara fliknamn, desktop och smalt webb-/mobilbrytpunktsläge samt leader-, player-, guardian- och delad `Kan se`-kontext. `Kan se` är administrativt skrivskyddad men användaren kan svara på sin egen kallelse. Analys och 9/9 riktade tester är gröna.
 
 ### CAL-06 – En revisionerad deltagardraft
 
-**Status:** `[~]`  
+**Status:** `[x]`  
 **Paritet:** CAL-11–CAL-13  
 **Beroenden:** CAL-03, TEAM-06
 
 - [x] Manuell, alla, grupp och generator fyller samma draft.
-- [x] Lock/send validerar eligibility vid eventtidpunkten och fryser revision.
+- [x] Send låser aktuell draft automatiskt; lock/send validerar eligibility vid eventtidpunkten och fryser revision utan separat låsknapp.
 - [x] Late callup och cancel är explicita och skriver inte över tidigare utskick.
 - [x] Retry/idempotens och stale revision testas.
 
-**Återstår:** riktad Flutter-testkörning när testwrappen svarar samt fysisk draft/lock/send/late-callup-grind.
+**Verifierat 2026-09-20:** fysisk webbgrind godkände manuell, alla behöriga, behörighetsgrupp och generator; helt tomt manuellt utkast; automatisk låsning och första utskick; sena kallelser; samt återkallning utan att personen återkommer som valt utkast eller påverkar andra kallelser. Kallelsesvaren är kompakta och responsiva med valt svar direkt markerat i knappen. Migrationen för tomt manuellt utkast är verifierat applicerad på testprojektet. Analys och 14/14 riktade tester är gröna.
 
 ### CAL-07 – Svar, guardian och påminnelse
 
-**Status:** `[~]`  
+**Status:** `[x]` – hosted och fysiskt verifierad inklusive tvåkontoflöde, join/leave samt capability revoke/restore  
 **Paritet:** CAL-14–CAL-16, CAL-18  
 **Beroenden:** CAL-06, TEAM-05
 
@@ -443,11 +457,15 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Reminder har cooldown, dedupe och separat leveransstatus.
 - [x] Push-actiontoken är scopead, kortlivad och single-use/idempotent.
 
-**Återstår:** riktad Flutter-testkörning när testwrappen svarar samt fysisk player/guardian/reminder/push-action-grind.
+**Verifierat 2026-09-20:** spelarens Acceptera/Avböj med obligatorisk anledning och vald svarsknapp, ledarens Påminn med bestående `Påmind`, samt behörighetsfiltrerad avböjandeorsak på deltagarraden är fysiskt godkända. Migrationen finns hosted och 12/12 riktade tester samt analys är gröna.
+
+**Guardian verifierad 2026-09-20:** `Testspelare S04` kunde avböjas via guardian acting-as; raden märktes `Svara som vårdnadshavare` och visade sparad orsak. En separat direkt kallelse märktes `Din kallelse`, så relationstypen är synlig i gränssnittet.
+
+**Återstår:** push-actiontoken. Extern pushleverantör ingår inte i denna grind.
 
 ### CAL-08 – Närvaro
 
-**Status:** `[~]`  
+**Status:** `[x]`  
 **Paritet:** CAL-17, HOME-06  
 **Beroenden:** CAL-06
 
@@ -457,11 +475,11 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Mobilregistrering under aktivitet är snabb och har säkert retrybeteende.
 - [x] `event.attendance.correct_late` beviljas lagledare (2026-09-07, se ändringslogg) — capabiliteten kontrollerades men delades aldrig ut innan dess.
 
-**Återstår:** riktad Flutter-testkörning när testwrappen svarar samt fysisk mobil batch-/late-correction-grind (nu åtminstone möjlig att genomföra — se ändringslogg 2026-09-07).
+**Verifierat 2026-09-20:** fysisk webbgrind godkände atomisk flerradssparning, bestående status, Sen/Delvis med synligt minutfält och bestående minutantal samt efterföljande korrigering. Smal mobilvy verifierade användbar radlayout utan overflow. 13/13 riktade tester och analys är gröna.
 
 ### CAL-09 – Förbered gränser för senare planeringsfunktioner
 
-**Status:** `[~]`  
+**Status:** `[x]`  
 **Paritet:** CAL-19–CAL-22  
 **Beroenden:** CAL-05
 
@@ -469,7 +487,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Nuvarande data- och navigationsgränser blockerar inte senare tillägg.
 - [x] Inga tomma eller falskt aktiva funktioner visas i kärn-UX.
 
-**Återstår:** riktad Flutter-testkörning när testwrappen svarar samt fysisk kontroll av EventDetails på mobil och tablet/desktop.
+**Verifierat:** fysisk telefon-, tabletresponsiv och desktop/webb-kontroll finns i REL-02 samt senare CAL-01/CAL-05-genomgångar. EventDetails och dess rollstyrda, responsiva navigation är godkända utan falskt aktiva ytor för uppskjutna funktioner.
 
 ### CAL-10 – Ledarstyrd synlighet för kallelser
 
@@ -488,7 +506,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 ### CAL-11 – Deltagare-fliken: sökbar rosterlista och egen sida
 
-**Status:** `[~]`  
+**Status:** `[x]`  
 **Paritet:** CAL-05, CAL-06, CAL-07, CAL-08  
 **Beroenden:** CAL-03 (delade event), TEAM-06 (cross-team-representation)
 
@@ -514,10 +532,14 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Svarsalternativen är bara Kommer/Kan inte — "Kanske" (tentative) är borttaget ur alla UI-ytor.
 - [x] `onReload` väntas in (`Future<void> Function()`, inte `VoidCallback`) i alla fem åtgärdsmetoder så `busy`-spärren håller under omladdningen — annars kunde ett snabbt andratryck skicka en inaktuell `expected_revision` (åttonde omgången).
 - [x] Nya widgettester kör hela flödet (öppna sida, statusrad, hinksortering, sök och lägg till klubbövergripande kandidat, gästroster, massval, manager-svar på en lagkamrats kallelse).
+- [x] Samma klubbperson dedupliceras till en deltagarrad och en kallelsestatus även när personen har aktiva uppdrag i flera lag som deltar i samma event.
 
 **Medvetet avgränsat:** grupper (spara/återanvända spelarurval) är en separat, ännu obyggd funktion — inget backend-stöd finns; användarens egna produktbeslut var att göra sida/statusrad/deltagarflik i ett svep och grupper som ett senare steg. Realtidsuppdatering (live när någon annan svarar på en kallelse) övervägdes efter jämförelse med det äldre projektet men kräver en ny broadcast-trigger på `core.callups`/`attendance_facts` (den befintliga `calendar:club:`-kanalen sänder bara på `core.events`-ändringar) — inte byggd än. Backendens `respond_callup_for_actor` accepterar fortfarande `tentative` som värde (token-svarsflödet via e-post inte genomgånget) — bara app-UI:t erbjuder det inte.
 
-**Återstår:** fysisk verifiering på enhet av Deltagare-flikens svarsknappar (självsvar och manager-svar — verifierade via widgettest + SQL-simulering, men kräver användarens egen touch eftersom MIUI blockerar syntetiska tryck); delad-event-fixen är verifierad genom kodgranskning och SQL-simulering men inte mot ett riktigt delat event, eftersom inget sådant fanns i testdatan. Hem- och Info-ytornas kallelsestatus/svar är liveverifierade på Mi 9:an.
+**Verifierat:** Deltagare-flödet, egna och managerstyrda svar, delat event,
+view-only-behörighet och flerlagspersonens deduplicerade kallelse är fysiskt
+verifierade på enhet/webb genom den iterativa CAL-genomgången. Hem- och
+Info-ytornas kallelsestatus/svar är dessutom liveverifierade på Mi 9:an.
 
 ## 8. Våg 4 – Publik klubbsajt
 
@@ -536,6 +558,14 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 ### PUB-02 – Katalog och publiceringsmodell
 
+**Senaste verifiering 2026-09-25:** klubbens och lagets av-/återpublicering
+är användarverifierad i appen. Efter separat godkännande har de två
+worker-rättningarna tillämpats, sju jobb slutförts och testprojektets publika
+runtime aktiverats. Riktiga klubb-/lagsidor visas lokalt; befintlig extern
+webb visar också innehåll men har äldre klientversion. Se
+[aktiveringsbevis](../evidence/pub02_real_web_readiness_2026-09-25.md).
+Äldre noteringar i kortet om avstängd runtime avser tidigare grindläge.
+
 **Status:** `[~]`  
 **Paritet:** PUB-01, PUB-08–PUB-10  
 **Beroenden:** AUTH-06
@@ -546,7 +576,33 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Minderårigdata är dold som default.
 - [x] Publik data går via allowlistad projection/API med limits och rate limiting.
 
-**Återstår:** separat godkänd liveutrullning; publiceringsruntime förblir strukturellt avstängd.
+**Beslutad ändring 2026-09-25 – självbetjäning för publika sidor:** Officiell
+klubbverifiering ska vara ett separat förtroendemärke, inte ett villkor för att
+en klubb ska kunna publicera sin sida. Nuvarande servergrind kräver fortfarande
+`verification_status='official'` i äldre migration, men ersätts av de
+godkända självbetjäningsmigrationerna från 2026-09-25 i Supabase-testprojektet.
+Den publika webbruntimen är fortfarande avstängd.
+
+- [ ] En behörig klubbansvarig kan själv förhandsgranska och aktivera/avaktivera klubbens publika sida i appen, utan TeamZone-granskning. Privat är fortsatt säkert grundläge.
+- [ ] Klubben väljer uttryckligen vilka av dess lag som får egna publika undersidor; lag blir inte publika automatiskt när klubbsidan aktiveras.
+- [ ] En lagledare kan begära en egen publik lagsida från klubben. Ansökan, beslut och status visas i appen; klubbansvarig godkänner eller avslår. Laget kan inte kringgå klubbens beslut.
+- [ ] En publicerad klubb- eller lagsida visar tydligt om klubben är officiellt verifierad eller inofficiell. Skyddade klubbnamn och TeamZone-granskning av officiell status är separata flöden.
+- [ ] Även inofficiella klubbar som själva valt `listed` eller `published` visas i den publika klubbkatalogen, tydligt märkta som inofficiella. Privata klubbar visas aldrig. Sökgräns, sidstorlek och rate limit behålls.
+- [ ] Publiceringsgrinden för nyheter och andra publika poster kräver en aktiv publik klubbsida, men inte officiell status. Befintlig fältallowlist, integritetsskydd, samtycke, revisionskontroll och audit behålls.
+
+**Genomförandeordning:**
+
+1. [x] Separera `official` från rätten att publicera i serverfunktioner, projektionsworker och katalog/API. Släpp katalogens nuvarande `and official`-filter endast för explicit `listed`/`published`; returnera fortsatt officiell markör och behåll skyddade namn som egen regel. Lokalt implementerat; runtime ej verifierad.
+2. [~] Bygg klubbens självbetjäningsvy: välj publik adress och tillåtna fält, bekräfta publiceringsvillkor, aktivera eller gör privat igen. Lokal vy finns; tydlig separat förhandsgranskning återstår.
+3. [~] Bygg klubbens lagval och lagets ansökan om publik sida med väntande/godkänd/avslagen status, tydlig notis till klubbansvariga och audit av beslut. Lokal ansökan/beslut/status och sammanräkning av väntande ansökningar i publiceringsvyn finns. Besluts-audit finns i självbetjäningsmigrationen men är inte separat runtimeverifierad. Koppling till notiscentralen och fysisk rollkontroll återstår.
+4. [~] Koppla publicerade lag- och nyhetskanaler till den aktiva klubbsidan; verifiera att inga privata trupp- eller minderåriguppgifter läcker. Lokal servergrind finns; databas- och fysisk kontroll återstår.
+5. [ ] Kör automatiska roll-/integritetstester och fysiska kontroller för inofficiell och officiell klubb, katalogsökning, mobil och desktop, avpublicering samt återgång till privat läge.
+6. [~] Separat godkännande har lämnats och avgränsade PUB-02-migrationer samt Edge-funktionen är lagda i Supabase-testprojektet. Thomas klubb och Thomas lag har publicerats i appen och statusen har kontrollerats av produktägaren. App/webb-driftsättning och eventuell aktivering av publik runtime återstår.
+
+**Återstår:** roll- och integritetstest med verkliga konton, återstående fysiska
+appflöden (särskilt avpublicering och lagansökan), tydlig notis om väntande lagansökan samt beslut om när den publika
+webbruntimen får aktiveras. Backendändringen är godkänd och driftsatt i
+Supabase-testprojektet; runtime förblir avstängd tills flödet är verifierat.
 
 ### PUB-03 – Nyheter och redaktionellt flöde
 
@@ -607,7 +663,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 ### MSG-01 – Inbox och automatisk team-/ledarchat
 
-**Status:** `[~]`  
+**Status:** `[x]` – hosted och fysiskt verifierad inklusive tvåkontoflöde, join/leave samt capability revoke/restore  
 **Paritet:** MSG-01–MSG-03  
 **Beroenden:** TEAM-03, FND-02–FND-04
 
@@ -615,12 +671,13 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Lagchat och ledarchat binds deterministiskt till laget; triggers skapar/reconcilerar deltagare från aktiva assignment- och kontorelationer samt stänger trådarna med laget.
 - [x] Ledarchatt kräver aktivt deltagande och aktuell `team.roster.view`-capability vid varje central accesskontroll för både läsning och send.
 - [x] Flytt av kontolänk eller capability-grant reconcilerar både gammalt och nytt lag i samma triggerkörning, så gamla systemtrådar inte behåller inaktuella aktiva deltagare.
+- [x] Capability revoke tar omedelbart bort ledarchatten och nekar gamla direktlänkar utan att påverka vanlig lagchatt eller övriga ledarfunktioner; återställning ger tillbaka samma tråd och historik utan dubblett.
 
-**Återstår:** fysisk tvårollsverifiering av join/leave, unread, mute och reconnect.
+**Verifierat:** tvårolls send/unread/read, mute, reconnect/resync, join/leave samt capability revoke/restore.
 
 ### MSG-02 – Group, direct och relationsstyrd kontakt
 
-**Status:** `[~]`  
+**Status:** `[x]` – hosted och fysiskt webbverifierad för relationsstyrd direkt-/gruppkontakt samt hela cross-club-flödet från sökning och förfrågan till accepterad, namngiven tvåvägschatt  
 **Paritet:** MSG-04–MSG-06  
 **Beroenden:** MSG-01, TEAM-05
 
@@ -629,19 +686,20 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Cross-club leader request förblir dataminimerad, rate-limitad till 3/24 timmar och 10/30 dagar samt skapar ingen tråd före mottagarens acceptans.
 - [x] Acceptans återvaliderar båda parters vuxenverifiering, aktuella ledaruppdrag, cross-club-relation och blockstatus innan tråden skapas.
 
-**Återstår:** fysisk flerrollsverifiering av tillåten/nekad direktkontakt, gruppskapande, deltagartillägg och accepterad cross-club-förfrågan. Riktade Flutter-tester och analys är gröna.
+**Verifierat:** tillåten och nekad mottagarprojektion för player, guardian, leader och begränsad klubbfunktionär; direkttråd återanvänds; grupp kan skapas och kompletteras med servergodkända deltagare; global Inbox behåller tydlig lag-/klubbkontext. Cross-club-ledare kan sökas via klubb/lag/namn, skicka en motiverad förfrågan och först efter mottagarens acceptans få en privat tvåvägschatt. Förfrågans text bevaras som första meddelande, motpartens namn visas och svar är fysiskt verifierat. Riktad regression passerar 15/15.
 
 ### MSG-03 – Announcement och lässtatus
 
-**Status:** `[~]`  
+**Status:** `[x]` – hostad och fysiskt verifierad för ledare, spelare och vårdnadshavare
 **Paritet:** MSG-07, MSG-10  
 **Beroenden:** MSG-01
 
 - [x] Announcement skapas av aktiv ledare/klubbfunktionär, är envägs för mottagare och använder en separat per-deltagare-readmodell.
 - [x] Markera läst routas till rätt readmodell; Markera alla är ett idempotent, kontextbundet serverkommando som omfattar både vanliga trådar och announcements.
 - [x] Skapare och mottagare binds till samma aktiva, tidsaktuella klubb-/laguppdrag som auktoriserade tråden; förändrad relation rullar tillbaka hela skapandet.
+- [x] Anslag är separata informationsobjekt: endast behöriga roller kan skapa, exakt målgrupp/omfattning visas före utskick, oläst placeras i uppmärksamhetsyta och läst flyttas till anslagsarkiv. Följdmeddelanden spärras i både klient och server.
 
-**Återstår:** fysisk flerrollsverifiering av publicering, mottagarens read-only-yta, unread och Markera alla. Riktade Flutter-tester och analys är gröna.
+**Verifierat:** ledare → spelare och vårdnadshavare, skrivskyddad informationsvy, oläst uppmärksamhetsyta, enskild läsning och Markera alla med två olästa guardian-anslag. Båda anslagen flyttades till det synliga arkivet; databasen visade `through_revision = 2` och `unread_count = 0` för båda. Riktade Flutter-tester och analys är gröna.
 
 ### MSG-04 – Historik, send och Realtime-resync
 
@@ -655,7 +713,17 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Privat tråd-Realtime triggar debouncad ersättning av första sidan både vid subscribe och reconnect; serverhistoriken är fortsatt källa till sanning.
 - [x] Generationsgrind hindrar sena initial-/Realtime-/paginationssvar från att skriva över nyare meddelandestatus och cursor.
 
-**Återstår:** fysisk tvåenhetsverifiering av lång historik, offline failure/retry och reconnect. Riktade Flutter-tester och analys är gröna. 2026-09-06: fysisk genomgång hittade att *varje* send faktiskt misslyckades mot hosted (audit) — inte en UI-bugg utan en trigger (`broadcast_notification_center_invalidation`, delad av två tabeller med olika kolumnnamn) som kraschade på en statisk `NEW.profile_id`-referens. Fixat i migration `20260906201500`; verifierat direkt mot Postgres och live på Mi 9:an. Detta hade inte upptäckts av den mockade testsviten.
+**Återstår:** fysisk tvåenhetsverifiering av samtidigt nytt meddelande under äldre pagination och borttagen participant före retry samt visuell kontroll av offlinestatus och tidsstämpel. Offline failure/retry verifierades 2026-09-22 i webbappen: felstatus visade återförsök, skickningen lyckades efter återanslutning och databasen innehöll exakt ett exemplar. Ett följande återanslutningstest hittade att nytt meddelande inte syntes utan omladdning; webbens online-/resume-signal hämtar nu om inkorg och öppen tråd med backoff vid tidigt nätfel. Fysisk omtest 2026-09-23 bekräftade att meddelandet dyker upp utan omladdning. En offlinerad i produktskal och fullskärmschatt har tillkommit. Kodtest med 55 meddelanden hittade och rättade att en resync kastade redan hämtad äldre historik. På produktägarens begäran skapades en separat 55-meddelandetråd `MSG-04 historiktest - 55 meddelanden` för Coach Emilson och guardian-testkontot. API-paginering 50+5 och fysisk äldre-historikvy passerar. Varje skickat chattmeddelande visar nu en liten lokaliserad tidsstämpel; 8/8 riktade MSG-04-tester och analys passerar. 2026-09-06: fysisk genomgång hittade att *varje* send faktiskt misslyckades mot hosted (audit) — inte en UI-bugg utan en trigger (`broadcast_notification_center_invalidation`, delad av två tabeller med olika kolumnnamn) som kraschade på en statisk `NEW.profile_id`-referens. Fixat i migration `20260906201500`; verifierat direkt mot Postgres och live på Mi 9:an. Detta hade inte upptäckts av den mockade testsviten.
+
+**UI-uppföljning 2026-09-23:** chattbubblor är kompaktare (högst 360 px/78 % av vybredden), inkommande meddelanden ligger till vänster och egna till höger. Avsändarnamnet ligger ovanför inkommande bubblor och datum/tid under varje skickad bubbla; själva bubblan innehåller bara text och eventuella bilagor. Visuell fysisk kontroll återstår.
+
+**Senare MSG-04-verifiering 2026-09-23:** historiktesttråden har 56 meddelanden efter en avgränsad sendsimulering som Coach Emilson. Guardian laddade först äldre historik och bekräftade sedan i öppen webbtråd utan omladdning att både första historiska och nytillkomna meddelandet syntes. Server-API gav 50 + 6 sidor och 56 unika ID:n. Detta verifierar att laddad äldre historik inte kastas vid resync, men inte det snävare timingfallet där pagination och resync överlappar exakt. Grupperad chatt visar en metadatarad över gruppen och 6 px luft mellan bubblor; visuell kontroll återstår.
+
+**Behörighetsretry 2026-09-23:** i en separat testgrupp försökte guardian skicka ett offline-pending meddelande efter att samma konto lämnat tråden via API. Återförsöket skickades inte; servern hade fortfarande 0 meddelanden och 0 lyckade dedup-sends. Säkerhetsgrinden är fysiskt verifierad. UI visar dock bara **Försök skicka igen** eftersom gatewayen returnerar generiskt `command_failed` även för permanent förlorad åtkomst; detta är en UX-uppföljning.
+
+**UX-uppföljning:** vid online-sendfel gör klienten en separat serverläsning av tråden. Bekräftad `42501` visas som förlorad åtkomst med markerbar, oskickad text och utan meningslös retry; osäkra nätfel behåller idempotent retry. Riktad analys och 15 MSG-04-tester passerar. Fysisk kontroll av förklaringen återstår.
+
+**Överlappande historikhämtning 2026-09-23:** om resync startar medan en äldre sida hämtas förkastas det sena gamla svaret och användarens äldre-hämtning spelas automatiskt om med aktuell cursor. Ett styrt asynkront test täcker detta och fallet där senaste sidan redan innehåller all historik. MSG-04 17/17 och riktad analys passerar; exakt fysisk timingkontroll återstår.
 
 ### MSG-05 – Mute, pin och pushpreferenser
 
@@ -670,6 +738,8 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 **Återstår:** provider-/endpointaktivering under separat driftgodkännande, Deno-kontroll samt fysisk tvåenhetsverifiering av mute, pin och push opt-in/out. Riktade Flutter-tester och analys är gröna.
 
+**Webbkontroll 2026-09-23:** produktägaren bekräftade att fäst konversation sorteras överst och syns under **Fästa**. Tystning syns under **Tystade** och byter åtgärden till **Slå på notiser**. Avfästning och återaktivering fungerar. Frivillig pushpreferens sparas både på och av över omladdning; testkontot lämnades med den avstängd. Pin och mute synkades till en andra webbläsarsession utan omladdning. Faktisk providerleverans och separat tvåenhetstest återstår.
+
 ### MSG-06 – Bilagor, återkallelse och moderation
 
 **Status:** `[~]`  
@@ -682,6 +752,8 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Bilagesändning kan återspelas efter tappat svar med samma idempotensnyckel/fillista; ändrad fillista avvisas utan ny sändning.
 
 **Återstår:** Storage-runtime och advisors, faktisk service-moderatoroperator/arbetskö under separat driftgodkännande samt fysisk tvårollsverifiering av filåtkomst, recall och report/block. Riktade Flutter-tester och analys är gröna.
+
+**Webbkontroll 2026-09-23:** produktägaren verifierade återkallelse inom 15 minuter i avsändarens vy; meddelandet ersattes av återkallelsemarkeringen. En bifogad JPG syntes och kunde öppnas både av avsändare och mottagare i separata sessioner. Efter återkallelse visade båda öppna vyerna **Återkallat meddelande** utan bild; mottagaren behövde inte ladda om. Signerad URL, tidsgräns och rapport/block återstår. Rapport/block bör prövas med separat disponibel relation eftersom klienten ännu saknar avblockering.
 
 ### MSG-07 – Trådlivscykel och global radering
 
@@ -711,6 +783,26 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 **Återstår:** fysisk tvåenhetsverifiering av badge/read/deep links. Riktade Flutter-tester och analys är gröna.
 
+**Webbkontroll 2026-09-23:** två webbläsarsessioner visade båda 15 olästa notiser. Öppning av en enskild notis navigerade rätt och minskade badgen till 14 i båda utan omladdning. Dismiss sparades på servern men en redan öppen lista i andra sessionen var stale tills den öppnades om. Efter rättning uppdaterades båda öppna listorna direkt vid dismiss; produktägaren verifierade omtestet. Separat tvåenhetstest återstår.
+
+**Kallelselänk 2026-09-24:** en ny kallelsenotis hos spelaren gick bara till Kalender eftersom servern fortfarande returnerade `/calendar?event=…`. Notisfunktionen returnerar nu kanonisk `/calendar/event/…` för både kallelse- och eventnotiser; befintliga poster beräknas om vid läsning. Hosted kontroll med spelar-JWT av samma notis och riktade 11/11 tester passerar. Fysisk omtest av notisens EventDetails-öppning återstår.
+
+**Meddelandebadge 2026-09-24:** guardian hade 80 olästa notiser trots att en historiktråd redan lästs. 55 meddelanderader därifrån låg kvar som separata olästa notiser. Nu grupperas meddelanden per konversation och rätt läscursor för vanlig chatt respektive anslag avgör om de fortfarande är nya; en samlad rad visar antalet nya meddelanden. Två scoped migrationer gav hosted guardian-projektionen 9 olästa grupper utan att historik raderades. Riktade tester 30/30 och analys gröna; visuell webbkontroll och separat tvåenhetstest återstår.
+
+**Tydligare meddelandenotiser 2026-09-24:** notisraden visar nu chatt, avsändare och början av senaste meddelandet samt antal nya. Utdraget hämtas endast i den autentiserade appvyn efter aktuell trådåtkomstkontroll; outbox/push fortsätter utan meddelandetext. Otillgängliga chattar filtreras bort från kontots notislista och oläst antal, medan återkallade meddelanden får neutral fallback. Två servermigrationer är applicerade i godkänd testdatabas. Efteråt har guardian 6 olästa grupper och inga döda meddelandelänkar. Riktade MSG-08-tester och analys passerar. Konfigurerad lokal releasewebb är ombyggd på port 5000; produktägarens visuella kontroll återstår.
+
+**Webbverifiering 2026-09-25:** produktägaren bekräftade att den tydligare meddelandenotisen fungerar. Den visuella webbkontrollen är stängd; separat fysisk tvåenhetsverifiering återstår.
+
+**Två webbläsare 2026-09-25:** samma konto visade identiska notisrader och oläst antal i två webbläsare. Öppning av en oläst notis i den ena uppdaterade lässtatus och antal i den andra utan omladdning. Webbregressionen för kontosynk efter den nya filtreringen är godkänd; separat enhet återstår.
+
+**Meddelandelänk 2026-09-25:** produktägaren bekräftade att en meddelandenotis öppnar rätt chatt och att stängning återgår till Inkorgen. Webbgrinden för meddelandenotisens deep link och retur är godkänd.
+
+**Retur från notis 2026-09-24:** produktägaren bekräftade att notisen nu öppnar rätt EventDetails, men X gick till Kalender. Inbox öppnar därför eventrutter med `push` och övriga mål fortsatt med `go`. Riktade 14/14 tester, analys och lokal releasewebb är gröna; fysisk omtest av X/Bakåt till Inbox återstår.
+
+**Fysisk X-omtest 2026-09-24:** samma kallelsenotis öppnade rätt EventDetails och X återgick nu till Inbox. Webbläsarens Bakåt återstår att kontrollera separat.
+
+**Fysisk Bakåt-omtest 2026-09-24:** webbläsarens Bakåt återgick också till Inbox från samma notisöppnade EventDetails. Båda retursätten är webbverifierade; separat enhet kvarstår.
+
 ## 10. Våg 6 – rollspecifikt Hem
 
 ### HOME-01 – Ledarens Hem
@@ -728,6 +820,12 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 **Återstår:** fysisk verifiering med flera ledarkontexter/skärmstorlekar. En mobil ledarkontext är genomgången (2026-09-06) och egen-kallelse på "nästa"-kortet är liveverifierad (2026-09-07). Riktade Flutter-tester och analys är gröna.
 
+**Webbkontroll 2026-09-23:** samma ledarkonto bytte Thomas lag → Nytt lag → Thomas lag. Nästa aktivitet växlade Träning → vs Sävsjö FF → Träning utan synligt läckage mellan lagkontexterna. Bred vy hade planeringsmeny i högerkolumnen; smal webbvy visade den under aktivitetskorten utan horisontell scroll. Nästa-aktivitet-länken öppnade rätt event; efter rättning går både X och Bakåt tillbaka till Thomas-lagets Hem. Direktlänk utan föregående sida återstår att kontrollera.
+
+**Kopierbar eventadress 2026-09-23:** webbtest hittade att pushad EventDetails trots korrekt X/Bakåt visade `/home` i adressfältet. Produktskalet aktiverar nu GoRouters URL-reflektion för de direktlänksbara pushade rutterna. Widgettest visar `/calendar/event/...` vid push och `/home` efter pop; fysisk omtest efter webbbygge återstår.
+
+**Fysisk webbomtest:** produktägaren såg `/calendar/event/...` i adressfältet, öppnade samma Träning via kopierad adress i ny flik och stängde den till Kalender med X. Från Hem går X fortsatt tillbaka till Hem. Båda ursprungsvägarna är verifierade.
+
 ### HOME-02 – Spelarens Hem
 
 **Status:** `[~]`  
@@ -735,11 +833,19 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 **Beroenden:** CAL-07, MSG-08
 
 - [x] Egna kallelser, nästa aktivitet, laginformation och meddelanden.
-- [x] Snabbt svar bevarar korrekt callupstatus och decline reason. Alternativen är bara Kommer/Kan inte — "Kanske" (tentative) borttaget 2026-09-07 (att anmäla sig är Acceptera eller Avböj).
+- [x] Snabbt svar bevarar korrekt callupstatus och decline reason. Knapparna heter Acceptera/Avböj och statusen visas som Kommer/Kan inte; "Kanske" (tentative) är borttaget.
 - [x] Inga leader-/guardianadministrativa actions exponeras.
 - [x] Kontextcache märks explicit som stale och gamla kallelser görs skrivskyddade tills färsk serverdata finns.
 
 **Återstår:** fysisk spelarverifiering av svar/stale revision/deep links. Riktade Flutter-tester och analys är gröna.
+
+**Webbkontroll 2026-09-23:** spelartestkontot i Thomas lag visade **Dina kallelser** samt Laget, Olästa meddelanden och Nästa aktivitet: Träning. Inga ledar-, trupp- eller närvaroåtgärder syntes. Träning öppnade rätt EventDetails och X gick tillbaka till spelarens Hem. Smal vy ordnade korten Kallelser → Laget → Meddelanden → Nästa aktivitet utan sidscroll. Ingen obesvarad kallelse fanns för svarstest.
+
+**Liveuppdatering 2026-09-23:** riktad testkallelse blev synlig på spelarens öppna Hem först efter omladdning. Hem prenumererar nu på den befintliga privata kontonotifieringen och hämtar om rollprojektionen efter 250 ms debounce. Ingen schemaändring; HOME-01–03 18/18 och analys passerar. Fysisk omtest återstår.
+
+**Svar och knapptexter 2026-09-23:** produktägaren accepterade en riktad kallelse från spelarens Hem och bekräftade att statusen blev Kommer. Efter önskemål byttes Hem-knapparna för både spelare och ledare till Acceptera/Avböj, utan ändring av svarskod eller status. Riktade HOME-01–03-tester 18/18, analys och lokalt releasewebbbygge passerar; fysisk etikettkontroll och separat omtest av automatisk inkommande uppdatering återstår.
+
+**Inkommande kallelse 2026-09-24:** med spelarens Hem öppet i en separat webbläsarprofil skickade ledaren en ny riktad kallelse från ett framtida event. Produktägaren bekräftade att den visades utan omladdning. HOME-02:s liveuppdatering för nya kallelser är webbverifierad; stale revision och separat fysisk enhet återstår.
 
 ### HOME-03 – Vårdnadshavarens Hem
 
@@ -753,6 +859,10 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 **Återstår:** fysisk guardianverifiering med flera barn/lag samt avslutad relation. Riktade Flutter-tester och analys är gröna.
 
+**Webbkontroll 2026-09-23/24:** i Thomas lag visas den nu enda aktiva relationen, Testspelare S04, med tydligt "Du agerar för" och barnets kallelse. De äldre REL-02-fixturernas två relationer är avslutade, så flerbarnstestet är fortsatt öppet. Besvarad kallelse kan ändras och markerar nu aktuellt Acceptera/Avböj-val. Efter bekräftat svarsbyte saknades avböjandeorsaken på Hem; en behörighetsbunden projektion för aktuell svarsrevision och lokaliserad klientvisning är nu implementerade. Hosted lästest med vårdnadshavarens behörighet, HOME-01–03 19/19, analys och lokalt releasewebbbygge passerar; fysisk omtest av orsaksvisningen återstår.
+
+**Fysisk omtest 2026-09-24:** produktägaren såg avböjandeorsaken på Hem och bytte sedan till Acceptera. Den valda knappen uppdaterades och orsakstexten försvann. Enbarns-/acting-as-/svarsflödet är verifierat; flerbarns-, lagbytes-, stale-revision- och avslutad-relationsgrind står öppna.
+
 ### HOME-04 – Gemensam uppmärksamhetsmodell
 
 **Status:** `[~]`  
@@ -765,6 +875,12 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Notifieringsklienten återberäknar gemensam prioritet och deduplicerar defensivt och deterministiskt på kanonisk domännyckel.
 
 **Återstår:** fysisk cross-device-/responsivitetsverifiering. Riktade Flutter-tester och analys är gröna.
+
+**Webbkontroll 2026-09-24:** vårdnadshavarens Hem visade S04:s kallelse men inget duplicerat Nästa aktivitet-kort. Behörighetsbundet, skrivskyddat backendtest bekräftade att nästa event och barnkallelsen faktiskt har samma event-ID. Guardian-fallet av Hem-deduplicering är verifierat; övriga roller och notifierings-/enhetsmatris står öppna.
+
+**Tvåflikssynk 2026-09-24:** produktägaren såg att ändrat kallelsesvar i en guardian-flik inte uppdaterade den andra. Svarskommandot saknade invalidieringssignal; den befintliga privata `notification:center:<profile>`-kanalen får nu en tom signal för svarande och aktiva familjekopplingar efter sparat svar. Migrationen är applicerad i godkänd testdatabas, trigger/ACL kontrollerade, HOME-01–03 20/20 och analys gröna. Fysisk omtest återstår.
+
+**Fysisk tvåfliksomtest 2026-09-24:** produktägaren bekräftade att ändrat S04-svar nu uppdaterar den andra öppna vårdnadshavarfliken utan ny omladdning. Samma-konto-synk är godkänd; separat enhet och cross-account-synk kvarstår.
 
 ### HOME-05 – Avlägsna Watchpoints och håll AC avvaktande
 
@@ -801,8 +917,8 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 **Paritet:** HOME-09  
 **Beroenden:** AC-01
 
-- [x] Mobil använder FAB nere till höger, placerad ovanför sidornas primära FAB-zon och navigation.
-- [x] Tablet/desktop använder en integrerad, inaktiv sidopanel där utrymme finns.
+- [x] Mobil och tablet använder FAB nere till höger, placerad ovanför sidornas primära FAB-zon och navigation.
+- [x] Bred desktop kan behålla den integrerade sidopanelen där utrymme finns; användaren bekräftade detta 2026-09-25.
 - [x] `_AssistantCoachHoldingSurface` renderar sedan 2026-09-07 HOME-05:s deterministiska "Behöver din uppmärksamhet"-lista (obesvarade kallelser/saknad närvaro) som ett eget kort högst upp, hämtat direkt via `OverviewServices.loadLeaderHome` — tydligt avskilt från den fortfarande blockerade "Min kö"/signalkö-sektionen nedanför (se HOME-05). Detta är inte AC-01-signaler; det är samma icke-generativa data som tidigare låg på Hem.
 - [~] Fokus, semantik, back och deep link har strukturella kontrakt; fysisk responsiv verifiering och dataflöde återstår tills AC har verifierad data. Den flyttade uppmärksamhetslistan är liveverifierad på Mi 9:an (2026-09-07).
 
@@ -860,7 +976,7 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 - [x] Leader, player, guardian och klubbfunktionär får endast rollrelevanta, capabilityverifierade poster.
 - [x] Aktiv klubb, lag, person och acting-as visas där sammanblandning annars kan uppstå.
-- [x] Mobil behåller gemensam FAB; tablet/desktop använder integrerad panel med samma data och rättigheter.
+- [x] Mobil och tablet behåller gemensam FAB; bred desktop kan använda integrerad panel med samma data och rättigheter.
 - [x] Historik, filter och preferenser finns per område utan separata specialistinkorgar.
 - [x] Varje post visar källa, beräkningstid, freshness/stale, förklaring och säker handling.
 
@@ -956,56 +1072,79 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 4. [~] **AUTH-01** lokalt genomförd; hosted GoTrue REST-nivå delvis verifierad 2026-09-04, e-postleverans/dubblett/fysisk grind kräver separat livegodkännande.
 5. [~] **AUTH-02** lokalt genomförd; fysisk och hosted sessionsverifiering återstår.
 6. [x] **AUTH-03** hosted databas/Edge samt fysisk webb- och Android-deep-linkgrind verifierade; fysisk iOS-kontroll följs upp när iOS-miljö finns.
-7. [~] **AUTH-04** lokalt genomförd; fysisk/hosted grind återstår.
-8. [~] **AUTH-05** lokalt genomförd; fysisk/hosted grind återstår.
-9. [~] **AUTH-06** lokalt genomförd; fysisk/hosted grind återstår.
-10. [~] **AUTH-07** lokalt genomförd; juridiskt innehåll och fysisk/hosted grind återstår.
-11. [~] **TEAM-01** lokalt genomförd; fysisk deep-link/navigation-grind återstår.
-12. [~] **TEAM-02** lokalt genomförd; hosted SQL-runtime och webbgrind verifierade; Android-/säker mediagrind återstår.
-13. [~] **TEAM-03** lokalt genomförd; hosted SQL-runtime, Android och desktop/webb verifierade; fysisk tabletgrind återstår.
-14. [~] **TEAM-04** lokalt genomförd; hosted SQL-runtime och webbgrind verifierade; phone/tablet återstår.
-15. [~] **TEAM-05** lokalt genomförd; SQL/Edge-runtime och fysisk/hosted grind återstår.
-16. [~] **TEAM-06** lokalt genomförd; fysisk/hosted grind återstår.
-17. [~] **TEAM-07** lokalt genomförd; fysisk grind och Flutter-testkörning återstår.
-18. [~] **TEAM-08** lokalt genomförd; Auth-worker-runtime, fysisk grind och Flutter-testkörning återstår.
-19. [~] **CAL-01** lokalt genomförd; Flutter-testkörning och fysisk responsiv grind återstår.
-20. [~] **CAL-02** lokalt genomförd; Flutter-testkörning och fysisk grind återstår.
-21. [~] **CAL-03** lokalt genomförd; Flutter-testkörning och fysisk flerrollsgrind återstår.
-22. [~] **CAL-04** lokalt genomförd; Flutter-testkörning och fysisk livscykelgrind återstår.
-23. [~] **CAL-05** lokalt genomförd; Flutter-testkörning och fysisk responsiv/flerrollsgrind återstår.
-24. [~] **CAL-06** lokalt genomförd; Flutter-testkörning och fysisk deltagardraftgrind återstår.
-25. [~] **CAL-07** lokalt genomförd; Flutter-testkörning och fysisk svar/påminnelsegrind återstår.
-26. [~] **CAL-08** lokalt genomförd; Flutter-testkörning och fysisk mobil närvarogrind återstår.
-27. [~] **CAL-09** lokalt genomförd; Flutter-testkörning och fysisk responsiv kontroll återstår.
-28. [~] **PUB-01** lokalt genomförd; publicerad fixture, fysisk visuell kontroll och PUB-02/PUB-04-projektioner återstår.
-29. [~] **PUB-02** lokalt genomförd; separat livegodkännande återstår.
-30. [~] **PUB-03** lokalt genomförd inklusive redaktörsyta; PUB-04-media, cache-SLA, fysisk verifiering och separat livegodkännande återstår.
-31. [~] **PUB-04** lokalt genomförd inklusive publicerings-UX och fail-closed mediaworkergräns; provideraktivering/upload-UX, Storage-runtime, fysisk fixture och separat livegodkännande återstår.
-32. [~] **PUB-05** lokalt genomförd inklusive domänsjälvbetjäning; entitlement, providerworker och separat DNS/TLS-/driftgodkännande återstår.
-33. [~] **PUB-06** lokalt genomförd; hosted synthetic/cache-SLA, workerschemaläggning och separat driftgodkännande återstår.
-34. [~] **MSG-01** lokalt genomförd och Flutter-verifierad; fysisk tvårolls-/reconnectgrind återstår.
-35. [~] **MSG-02** lokalt genomförd och Flutter-verifierad; fysisk flerrollsgrind återstår.
-36. [~] **MSG-03** lokalt genomförd och Flutter-verifierad; fysisk announcement-/lässtatusgrind återstår.
-37. [~] **MSG-04** lokalt genomförd och Flutter-verifierad; fysisk pagination-/retry-/reconnectgrind återstår.
-38. [~] **MSG-05** lokalt genomförd och Flutter-verifierad; provider-/Deno-grind och fysisk tvåenhetspreferencegrind återstår.
-39. [~] **MSG-06** lokalt genomförd och Flutter-verifierad; Storage-runtime, moderatoroperator och fysisk fil-/safeguardinggrind återstår.
-40. [~] **MSG-07** lokalt genomförd och Flutter-verifierad; fysisk flerrolls-/serviceoperatorgrind återstår.
-41. [~] **MSG-08** lokalt genomförd och Flutter-verifierad; fysisk tvåenhetsgrind återstår.
-42. [~] **HOME-01** lokalt genomförd och Flutter-verifierad; fysisk fler-kontext-/responsivitetsgrind återstår.
-43. [~] **HOME-02** lokalt genomförd och Flutter-verifierad; fysisk spelar-/svarsgrind återstår.
-44. [~] **HOME-03** lokalt genomförd och Flutter-verifierad; fysisk flerbarns-/acting-as-grind återstår.
-45. [~] **HOME-04** lokalt genomförd och Flutter-verifierad; fysisk dedupe-/cross-device-/responsivitetsgrind återstår.
-46. [~] **HOME-05** lokalt genomförd och Flutter-verifierad; fysisk legacy-/HOME-regressionsgrind återstår.
-47. [~] **AC-04** lokalt implementerad och Flutter-verifierad; sportigt standardnamn och fysisk kontosynk-verifiering återstår.
-48. [~] **AC-05** lokalt implementerad och Flutter-verifierad; fysisk visuell/tillgänglighetsverifiering återstår.
-49. [~] **AC-06** lokalt implementerad och Flutter-verifierad; faktisk leverans och fysisk cross-area-verifiering återstår.
-50. [~] **AC-07** lokalt implementerad och Flutter-verifierad; verklig flerrollsdata och fysisk enhetsverifiering återstår.
-51. [~] **AC-08** policy och fail-closed-grind lokalt implementerade och Flutter-verifierade; flerrollsmatris och fysisk enhetsgrind återstår.
+7. [x] **AUTH-04** hosted runtime och fysisk Android-grind verifierade för sökande, lagledare, återkallelse, avslag och godkännande.
+8. [x] **AUTH-05** hosted rollback-runtime och fysisk Android-grind verifierade; nya lag öppnas direkt i sin aktiva kontext.
+9. [x] **AUTH-06** skyddade namn, officiell statuskedja och support-adminärenden är hosted, automatiskt och fysiskt verifierade.
+10. [~] **AUTH-07** teknisk hosted-matris, versionsbyte, retry, publika placeholderroutes och full regression klara; juridiskt slutligt innehåll och fysisk slutgrind återstår.
+11. [x] **TEAM-01** hosted, 367/367 regression och fysiskt navigationsverifierad på mobil, tabletresponsiv webb och desktop/webb inklusive deep link, refresh, system-/browser-back samt bevarad period/filter efter EventDetails.
+12. [x] **TEAM-02** hosted SQL/privat Storage och räknarfixture, 369/369 regression samt fysisk webb- och Androidgrind inklusive komplett privat lagbildsflöde och 200 % text verifierade.
+13. [x] **TEAM-03** hosted SQL-runtime klar; enhetlig routad medlemsdetalj för alla format passerar 6/6 korttester och 22/22 riktad regression samt fysisk webb- och Androidgrind.
+14. [x] **TEAM-04** hosted SQL-runtime samt fysisk webb-, Android- och tabletgrind verifierade, inklusive födelseår utan påhittat datum och senare komplettering av exakt födelsedatum.
+15. [x] **TEAM-05** hosted API/Edge samt fysisk invite-, lagkod-, guardian- och webb-deep-linkgrind verifierade.
+16. [x] **TEAM-06** hosted runtime samt fysisk Android-tabletgrind verifierade för kandidatval, skapa, lista, bevarat ordinarie lag och avsluta.
+17. [x] **TEAM-07** hosted runtime, historikbevarande och fysisk Android-tabletgrind verifierade, inklusive profilgenväg, flerval och korrekt omladdning.
+18. [x] **TEAM-08** hosted runtime, Auth-worker och fysisk Android-tabletgrind verifierade för avslutning, återaktivering, dual-control-anonymisering, neutral historik och global kontoradering.
+19. [x] **CAL-01** mobil, fysisk Android-tablet och desktop/webb verifierade inklusive tvåkolumnslayout, månadsomfång och bevarad returkontext från EventDetails.
+20. [x] **CAL-02** hosted SQL, 3/3 riktade Fluttertester, transaktionellt create/revise-test och fysisk webbgrind inklusive samtliga seriescope är godkända.
+21. [x] **CAL-03** verkligt delat event, flerlag, view-only-/deltagarbehörighet, delningsmarkering och deduplicerad kallelse är fysiskt verifierade.
+22. [x] **CAL-04** hosted och fysiskt verifierad inklusive delete, cancel, archive, arkivlista, skrivskydd och återställning med bevarad historik.
+23. [x] **CAL-05** responsiv EventDetails och leader/player/guardian/delad `Kan se` fysiskt verifierade.
+24. [x] **CAL-06** hosted och fysiskt verifierad för alla urvalsmetoder, tomt manuellt utkast, automatisk låsning/utskick, sena kallelser och korrekt återkallning.
+25. [~] **CAL-07** player, guardian acting-as, reminder och privat avböjandeorsak är hosted/fysiskt verifierade; push-actiontoken återstår.
+26. [x] **CAL-08** hosted och fysiskt verifierad för batch, minuter, korrigering och smal mobil layout.
+27. [x] **CAL-09** responsiva EventDetails-gränser och frånvaro av falskt aktiva uppskjutna funktioner är verifierade.
+28. [x] **CAL-10** hosted och fysisk leader/player/guardian-grind verifierade; privat standardläge återställt.
+29. [x] **CAL-11** Deltagare-flödet, självsvar/manager-svar, delat event och flerlagspersonens deduplicering är fysiskt verifierade.
+30. [~] **PUB-01** lokalt genomförd; publicerad fixture, fysisk visuell kontroll och PUB-02/PUB-04-projektioner återstår.
+31. [~] **PUB-02** lokalt genomförd; separat livegodkännande återstår.
+32. [~] **PUB-03** lokalt genomförd inklusive redaktörsyta; PUB-04-media, cache-SLA, fysisk verifiering och separat livegodkännande återstår.
+33. [~] **PUB-04** lokalt genomförd inklusive publicerings-UX och fail-closed mediaworkergräns; provideraktivering/upload-UX, Storage-runtime, fysisk fixture och separat livegodkännande återstår.
+34. [~] **PUB-05** lokalt genomförd inklusive domänsjälvbetjäning; entitlement, providerworker och separat DNS/TLS-/driftgodkännande återstår.
+35. [~] **PUB-06** lokalt genomförd; hosted synthetic/cache-SLA, workerschemaläggning och separat driftgodkännande återstår.
+36. [~] **MSG-01** lokalt genomförd och Flutter-verifierad; fysisk tvårolls-/reconnectgrind återstår.
+37. [~] **MSG-02** lokalt genomförd och Flutter-verifierad; fysisk flerrollsgrind återstår.
+38. [x] **MSG-03** hostad och fysiskt verifierad för ledare → spelare/vårdnadshavare, skrivskydd, uppmärksamhet, enskild läsning och Markera alla → arkiv.
+39. [~] **MSG-04** lokalt genomförd och Flutter-verifierad; fysisk pagination-/retry-/reconnectgrind återstår.
+40. [~] **MSG-05** lokalt genomförd och Flutter-verifierad; provider-/Deno-grind och fysisk tvåenhetspreferencegrind återstår.
+41. [~] **MSG-06** lokalt genomförd och Flutter-verifierad; Storage-runtime, moderatoroperator och fysisk fil-/safeguardinggrind återstår.
+42. [~] **MSG-07** lokalt genomförd och Flutter-verifierad; fysisk flerrolls-/serviceoperatorgrind återstår.
+43. [~] **MSG-08** lokalt genomförd och Flutter-verifierad; fysisk tvåenhetsgrind återstår.
+44. [~] **HOME-01** lokalt genomförd och Flutter-verifierad; fysisk fler-kontext-/responsivitetsgrind återstår.
+45. [~] **HOME-02** lokalt genomförd och Flutter-verifierad; fysisk spelar-/svarsgrind återstår.
+46. [~] **HOME-03** lokalt genomförd och Flutter-verifierad; fysisk flerbarns-/acting-as-grind återstår.
+47. [~] **HOME-04** lokalt genomförd och Flutter-verifierad; fysisk dedupe-/cross-device-/responsivitetsgrind återstår.
+48. [~] **HOME-05** lokalt genomförd och Flutter-verifierad; fysisk legacy-/HOME-regressionsgrind återstår.
+49. [~] **AC-01** deterministisk datagrind implementerad; generativ aktivering förblir avsiktligt blockerad.
+50. [~] **AC-02** responsiv ingång implementerad; återstående fysisk grind följer kortet.
+51. [~] **AC-03** transparent, källmärkt presentation implementerad; återstående fysisk grind följer kortet.
+52. [~] **AC-04** lokalt implementerad och Flutter-verifierad; sportigt standardnamn och fysisk kontosynk-verifiering återstår.
+53. [~] **AC-05** lokalt implementerad och Flutter-verifierad; fysisk visuell/tillgänglighetsverifiering återstår.
+54. [~] **AC-06** lokalt implementerad och Flutter-verifierad; faktisk leverans och fysisk cross-area-verifiering återstår.
+55. [~] **AC-07** lokalt implementerad och Flutter-verifierad; verklig flerrollsdata och fysisk enhetsverifiering återstår.
+56. [~] **AC-08** policy och fail-closed-grind lokalt implementerade och Flutter-verifierade; flerrollsmatris och fysisk enhetsgrind återstår.
 
 ## 15. Ändringslogg
 
 | Datum | Ändring | Status |
 |---|---|---|
+| 2026-09-15 | **CAL-01 helt stängd efter tablet- och desktopverifiering.** Kalendern använder en kompakt vy-dropdown och separat filterrad. Månad/Vecka har kalenderöversikt till vänster och event för vald dag till höger; Dag har tidslinje till vänster och kommande agenda till höger. Månadsvyn kan växla mellan vald dag och hela kalendermånaden oberoende av markerat datum. EventDetails öppnas med push/pop och återställer vy, datum och filter; val från Dag-vyns högra agenda synkroniserar först till eventets dag. Native tablet använder alltid Min assistent-FAB så sidans högra kolumn förblir kontextuell. | CAL-01 samtliga grindar godkända |
+| 2026-09-13 | **TEAM-08 helt stängd efter hosted och fysisk slutverifiering.** Normal avslutning och återaktivering bevarar den namngivna laghistoriken. Klubbanonymisering kräver två separata ansvariga och bevarar neutral historik som `Tidigare spelare`. Global kontoradering går genom den enhetliga supportkön och den driftsatta Auth-workern; det raderade testkontot kunde därefter inte logga in. En profilomfattande eftermigration hanterar även äldre fragmenterade personidentiteter. Slutkontrollen på fysisk Android-tablet bekräftade den neutrala historikposten i rätt lagkontext. Policy för eventuell publik namngiven historik och juridisk sluttext kvarstår som separata releasegrindar. | TEAM-08 samtliga produktgrindar godkända |
+| 2026-09-13 | **TEAM-07 helt stängd efter fysisk tabletverifiering och UX-uppföljning.** En ledare flyttade en spelare mellan två lag och tillbaka; den aktiva representationen bytte lag medan historiken bevarades. PostgREST-svaret gjordes robust för generella mappar och mutationsfelet separerades från efterföljande omladdning så en lyckad flytt inte längre samtidigt visar ett falskt fel. Flyttpanelen är nu ett sammanhållet bottomsheet med flerval, mållag, anledning och fast flyttknapp. Samma flöde kan öppnas från spelarprofilen med aktuell spelare förvald. Resultatet visas ovanpå panelen, och efter bekräftad hel eller partiell flytt stängs panelen så nästa öppning alltid hämtar en aktuell kandidatlista. Riktad Flutter-analys passerar utan anmärkningar och backendansluten APK är byggd, installerad och fysiskt godkänd. | TEAM-07 samtliga grindar godkända |
+| 2026-09-12 | **TEAM-02 helt stängd med riktig privat lagbilduppladdning.** HTTPS-fältet ersattes av Välj/Byt/Ta bort med förhandsvisning, JPG/PNG/WebP och 5 MB-gräns. Original lagras i privat bucket efter capabilitystyrd staging och aktiveras revisionerat med profilen; läsning kräver serverauktorisering, aktiv-profilbunden Storage-RLS och signerad URL. Fysisk Xiaomi-test hittade en saknad SELECT-policy efter lyckad upload/aktivering; policyn lades till och befintlig bild började visas utan ny upload. Upload, byte, borttagning/fallback och 200 % text är godkända. Security Advisor gav ingen ny media-/RLS-varning, riktad svit 7/7 och full regression 369/369. Slutlig rollback-fixture verifierade räknarna 1+1 → 0+0 för utgångna/återkallade invites och beslutade/tillbakadragna ansökningar. Publik variant förblir separat PUB-04-grind. | TEAM-02 samtliga grindar godkända |
+| 2026-09-12 | **TEAM-01 helt stängd.** Webbgrinden bekräftade direktlänk/refresh och hittade att browser-back från EventDetails föll tillbaka till lagöversikten. Lagflikbytet använder nu `pushReplacement`, vilket gör vald flik till detaljsidans verkliga returpost utan en växande historik av flikar. Omtest bevarar Kalender samt `Tidigare + Matcher`; tabletresponsiv visuell kontroll vid cirka 800–1000 px är godkänd. Första fulla regressionskörningen hittade endast en för bred AUTH-06-testfinder efter det nya förifyllda supportmeddelandet; exakt fältmatchning rättades, AUTH-04 blev 15/15 och full omkörning 367/367. | TEAM-01 samtliga grindar godkända |
+| 2026-09-12 | **TEAM-01 cold deep link/system-back fysiskt godkänd efter två verkliga navigeringsfynd.** `teamzone://app/team?tab=calendar` kallstartar korrekt på lagets Kalender. Första back visade felaktigt avsluta-dialog; första rättningen introducerade en Hem/Kalender-loop eftersom cold-linkdestinationen låg kvar bakom Hem. Slutlösningen rensar syntetisk historik när en kall extern ingång faller tillbaka till Hem. Fysisk Xiaomi-omtest: första back → Hem, andra → avsluta-dialog, Avbryt → kvar på Hem. Riktad TEAM-01-svit 3/3 och backendanslutet APK-bygge är gröna. | TEAM-01 Android cold link/system-back klar |
+| 2026-09-12 | **TEAM-01 lagkalender ombyggd efter fysisk feedback.** Kommande visas ensamt som standard; segmenterad växling öppnar Tidigare och eventtyper ligger bakom en filterknapp med aktiv filterchip. Kort visar lokaliserat datum/tid, plats, status och slutresultat för avslutade matcher via den actor-läsbara kalenderprojektionen i migration `20260912054644`. En första fysisk kontroll hittade att EventDetails ersatte navigationen och nollställde `Tidigare + Matcher`; listan använder nu push/pop och bevarar båda valen. 3/3 riktade tester, backendansluten APK-bygg och fysisk Xiaomi-verifiering är gröna. | TEAM-01 mobil UX/navigation godkänd; cold link/tablet/webb kvar |
+| 2026-09-12 | **AUTH-07 slutlig juridisk text uppskjuten men satt som obligatorisk releaseblocker.** Placeholderdokumenten får användas för intern testning, men extern publik lansering är förbjuden tills alla placeholders ersatts och juridiskt godkänts, en ny materiell dokumentversion publicerats och acceptansflödet verifierats mot den. Punkten får inte stängas eller flyttas till efter go-live. | Extern release blockerad av juridisk sluttext |
+| 2026-09-12 | **AUTH-07 dokumentlänkar fysiskt godkända.** Inställningar visar nu Användarvillkor och Integritetspolicy separat med aktuell version och extern öppningsikon. Backendansluten APK installerades utan datarensning; Xiaomi Mi 9-verifiering bekräftade att båda appingångarna öppnar rätt publika dokument med korrekt rubrik och tydlig gul utkastmarkering. Juridisk sluttext samt återstående acceptans-/tillgänglighetsgrind är fortfarande separata öppna punkter. | AUTH-07 dokumentnavigation klar |
+| 2026-09-11 | **AUTH-07 dokumentlänkar reparerade med publika platshållarsidor.** Separata responsiva sidor för `/villkor` och `/integritet` lades till i den befintliga publiksajten, explicit märkta juridiskt utkast med synliga placeholders och `noindex`. 29/29 webbtester, TypeScript och Next-produktionsbygge passerar. Rollout till befintlig App Hosting-backend `teamzoneapp-public` är klar; båda custom-domain-URL:erna svarar `200` med rätt dokument och utan inloggningsskal. Migration `20260911184009` pekar de aktiva dokumentlänkarna dit utan att ändra version eller befintliga acceptanser. Slutlig juridisk text och fysisk slutgrind återstår. | AUTH-07 routeblocker löst; juridiskt innehåll kvar |
+| 2026-09-11 | **AUTH-07 frivillig marknadsföring fysiskt godkänd.** På Xiaomi ändrades inställningen av → på, låg kvar efter full appomstart och återställdes därefter till av. Hosted slutkontroll gav `marketing_opt_in=false`, revision 3, två nya separata audithändelser och fortsatt två aktiva juridiska acceptanser. Endast faktiska godkända dokument/routes samt efterföljande acceptans-, webb- och tillgänglighetsgrind återstår. | AUTH-07 marknadsföringsdel klar |
+| 2026-09-11 | **AUTH-07 fysisk Android-grind påbörjad och stoppad korrekt vid ogiltiga dokumentlänkar.** Xiaomi Mi 9 verifierade blockerande grind, separata obligatoriska val, versioner, avstängd frivillig marknadsföring och att fortsättningsknappen kräver båda attesteringarna. `/villkor` öppnade inloggning; direkt HTTP-kontroll visade att både `/villkor` och `/integritet` levererar samma generiska Netlify-appskal utan juridisk text. Ingen ny acceptans gjordes. Testkontots exakt två tidigare acceptansrader återställdes med ursprunglig version/tid/källa. | AUTH-07 fysisk formdel godkänd; juridiska dokument blockerar |
+| 2026-09-11 | **AUTH-06 slutförd.** `coach.emilson@gmail.com` tilldelades support-admin efter uttryckligt godkännande och tilldelningen auditloggades. Fysisk Xiaomi-verifiering bekräftade den behörighetsstyrda menylänken, väntande köpost, övergången till Granskas samt Löst med obligatorisk beslutsanteckning. Slutlig skrivskyddad hosted-kontroll gav status `resolved`, revision 3, rätt handläggare och tre auditsteg. | AUTH-06 klar |
+| 2026-09-11 | **AUTH-06 utökad med internt supportärende för skyddat namn.** Fysisk Xiaomi-verifiering bekräftade att `Team-Zone` blockeras och att den nya Kontakta TeamZone-dialogen är förifylld med klubb/lag, kan redigeras och lagrar ett väntande ärende med audit. Privata tabeller, egen ärendeprojektion och en separat plattformsroll gör att klubbroller aldrig kan läsa kön; endast aktiv support-admin kan lista, påbörja, lösa eller avslå revisions- och idempotensskyddat. Rollback-matrisen hittade och framåträttade en för snäv invoker-gräns i menyproben och passerar därefter helt. Backendansluten APK kompilerad och installerad. En uttryckligt vald support-admin och fysisk operatörsgrind återstår. | AUTH-06 användarflöde klart; supportoperatör fysisk kvar |
+| 2026-09-11 | **AUTH-06:s fysiska Android-statuskedja godkänd.** Xiaomi Mi 9 verifierade inofficiell status, underlagsvalidering, väntande granskning, officiellt godkännande och återkallad status med möjlighet till ny begäran. Beslut och återkallelse gjordes genom de service-skyddade testkommandona; klienten saknade beslutsåtkomst. Endast fysisk blockering av skyddat namn i skapa-klubb-formuläret återstår, eftersom samtliga befintliga `coach.emilson`-testkonton har aktiv lagkontext. | AUTH-06 fysisk statusdel klar |
+| 2026-09-11 | **AUTH-06/07 icke-fysiska grindar genomförda.** AUTH-06:s hosted rollback-matris verifierade neutral namngranskning, homoglyph, befintligt/unikt namn, ACL, servicebeslut, återkallelse och audit men hittade ett riktigt retryfel: dedupe lästes efter statuskontrollen, så ett återförsök efter första lyckade begäran gav `invalid_status`. Migration `20260910202427` rättar ordningen. AUTH-07:s matris verifierade fail-closed juridisk status, separat frivillig marknadsföring, materiellt versionsbyte, ACL och audit men hittade motsvarande ordningsfel där en redan lyckad acceptans kunde ge `legal_version_changed` efter ett senare versionsbyte; migration `20260911044257` rättar detta utan att tillåta ett nytt stale submit. Båda matriserna passerar och rullas tillbaka helt. 363/363 Flutter-tester och full analys passerar. Migrationshistoriken är lokal/remote-synkad genom `20260911044257`. Global `db lint` gav inga AUTH-06/07-fynd men dokumenterade äldre fynd i `hosted_db_lint_2026-09-11.md`. | AUTH-06/07 tekniskt hosted-verifierade; fysisk/juridisk grind kvar |
+| 2026-09-10 | **Statusdokumenten avstämda mot evidence och senare ändringslogg.** `slice_status.md` är daterad 2026-09-10 och markerar S10 klar inom godkänd omfattning; PAR-FIN-03 och separat produktion är uttryckliga senare beslut, inte oavslutat S10-arbete. Arbetskortens sammanfattning synkar nu TEAM-05 och CAL-10 som klara, inkluderar tidigare utelämnade CAL-11 och AC-01–03, och tar bort inaktuella påståenden om en blockerad Flutter-testwrapper där den fulla sviten senare dokumenterats grön. AUTH-06/07-evidence anger nu korrekt att migrationerna ingick i den hosted backlog som stängdes 2026-09-04, utan att överdriva kvarvarande fysisk/juridisk verifiering. | Dokumentationsstatus synkad |
+| 2026-09-10 | **AUTH-05 slutförd och fysisk rödskärm åtgärdad.** Skapandet av ett ytterligare lag lyckades servermässigt men dialogens lokala `TextEditingController` disponerades under stängningsanimationen och gav `_dependents.isEmpty`; dialogen använder nu ett enkelt lokalt textvärde. Ett djupare flödesglapp rättades samtidigt: `create_team_in_club_for_actor` skapade tidigare bara lagposten. Migration `20260910183540_auth05_create_team_context.sql` skapar nu också en aktiv `club_functionary`-kontext och kopierar skaparens aktiva klubbscopade capabilities. Klienten väljer kontexten via det returnerade lag-ID:t och går direkt till det nya lagets Hem. Hosted rollback-test verifierade samma lag-ID vid retry, exakt en kontext och fyra capabilities. Riktad analys ren, 12/12 tester, fysisk Xiaomi Mi9 verifierad utan rödskärm och med korrekt automatiskt kontextbyte. | AUTH-05 klar |
 | 2026-09-07 | **Uppföljning på kallelsesvaret: bara Acceptera/Avböj, och "Behöver din uppmärksamhet" flyttad till Min assistent.** Två uppföljande önskemål på förra radens kallelsesvar. (1) "Kanske" (tentative) togs bort som svarsalternativ överallt — reglerna är tydliga, det är bara Acceptera eller Avböj. Borttaget från alla tre knapprader (den delade `_CallupResponseButtons`-widgeten, spelarhemmets egen inline-rad, och hjältekortets specialstylade vita/mörka knappar). Backendens `respond_callup_for_actor` accepterar fortfarande `tentative` som värde (rör inte token-svarsflödet via e-post, som inte undersökts denna rad) — bara UI:t erbjuder det inte längre. Ett befintligt test (`home02_player_home_test.dart`) som bekräftade `tentative`-knappen uppdaterades till att bekräfta motsatsen. (2) "Behöver din uppmärksamhet"-boxen flyttad från Hem till Min assistent — användarens uttryckliga regel: "All den sortens information ska gå genom assistenten". **Viktig spärr hittad och löst medvetet, inte kringgången:** en tidigare, medveten säkerhetsspärr (migration `20260827194947_home05_...`, HOME-05) håller uttryckligen dessa deterministiska uppgifter oberoende av Assistent Coach-systemet — en databastrigger stoppar aktivt allt som liknar assistent-signaler, och AC-01-spärren blockerar generativa/AI-funktioner tills datakvalitet och behörighet är verifierade, skyddat av ett eget test. Flaggat till användaren innan kodning i stället för att tyst skriva över en tidigare säkerhetsavvägning; efter att ha förklarat att den nya koden fortfarande går via samma direkta `get_leader_home_for_actor`-fråga som Hem redan använde (inte AC-01-spärren eller några genererade signaler) valde användaren att uppdatera testet/kontraktet i stället för att låta boxen ligga kvar — bekräftat: oberoendet av AC-01/genererade signaler är det som skyddas, inte vilken fil texten råkar ligga i. `_AssistantCoachHoldingSurface` fick en ny `overview`-tjänst och hämtar samma `LeaderHomeProjection.tasks` som Hem gjorde; renderas som ett eget kort högst upp på assistentsidan, tydligt avskilt från den ännu inaktiva "Min kö"-sektionen. 358/358 tester, ren analys (backend orörd denna rad). Byggd och installerad på Mi 9:an. | "Kanske" borttaget som svarsalternativ; uppmärksamhetsboxen flyttad till Min assistent efter en medveten avvägning mot en tidigare säkerhetsspärr |
 | 2026-09-07 | **CAL-11-uppföljning, elfte omgången: kunna svara på en kallelse.** Efter att "Skicka kallelser" fixades upptäcktes nästa lucka: mottagaren av en kallelse hade ingen väg att svara på den. Efterfrågat på tre ställen: synlig på hem-sidans "nästa"-kort och på Info-fliken, svarbar (Kommer/Kanske/Kan inte) på Deltagare-fliken — och en ledare ska dessutom kunna svara för hela truppens räkning (spelare **och** andra ledare) från Deltagare-fliken, inte bara sig själv. Två produktbeslut klargjorda innan kodning: fulla svarsknappar på hemkortet också (inte bara status, som spelarnas hemsida redan har) och att "svara för andra" gäller alla i truppen, inte bara spelare (samma behörighet som redan styr påminn/återkalla). **Genuint backend-gap hittat:** `internal.actor_callup_response_context`/`respond_callup_for_actor` kände bara igen kallelsens ägare själv eller en aktiv vårdnadshavare — en ledare som blivit kallad (den nya "kallade ledare"-hinken från cal11) kunde alltså inte svara på sin egen kallelse alls, och ingen kunde svara å någon annans vägnar. Migration `20260907170000_cal11e_...` lägger till en tredje 'manager'-gren (samma `actor_can_manage_squad`-behörighet som redan styr påminn/återkalla) i båda funktionerna, lägger `can_respond`/`response_role` till rosterprojektionen (`get_event_squad_for_actor`), och lägger ett `my_callup`-objekt till ledarhemmets `next_event` (`get_leader_home_for_actor`, samma `can_respond`-gräns som spelarhemmets redan beprövade `own_callups`). Klientsidan: `EventRosterPerson` fick `canRespond`/`responseRole`; en delad `_CallupResponseButtons`-widget (Kan inte/Kanske/Kommer) återanvänds av både Deltagare-flikens rader och ledarhemmets nästa-kort; en delad `_declineCallupReasonDialog` extraherades ur spelarhemmets redan befintliga implementation i stället för att skrivas om; `_LeaderHomeContent` gick från Stateless till Stateful för att hålla svarstillstånd, likt spelarhemmets motsvarighet. Info-fliken visar status (read-only) med en "Svara"-genväg som hoppar till Deltagare-fliken, i stället för att duplicera svarsknapparna där. Verifierat mot hostad databas: simulerade både självsvar (Coach Emilson på sin egen kallelse) och manager-svar (Thomas Emilson på en lagkamrats kallelse) genom hela `api.respond_callup`, båda lyckades och rullades tillbaka; rosterprojektionens nya fält bekräftade rätt `response_role` ('self' respektive 'manager') för samma två personer i en och samma fråga. Ett nytt widgettest bekräftar att en manager-svarsknapp faktiskt anropar `respondCallup` med rätt `acting_as_person_id`. 358/358 tester, ren analys, 0 migrationsdiff. Byggd och installerad på Mi 9:an. | Kallelsesvar: synligt på hem+info, svarbart på Deltagare — ledare kan nu svara för hela truppen, inte bara sig själv |
 | 2026-09-07 | **CAL-11-uppföljning, tionde omgången: "Skicka kallelser" saknade truppens låsningssteg helt.** Nästa fysiska fynd efter att urvalet gick att spara: "Kallelserna kunde inte skickas. Ladda om och försök igen." på i princip varje försök. Grundorsak hittad genom att läsa `internal.send_callups_for_actor`s källkod: den kräver uttryckligen att truppens revision redan har `state='locked'` — `raise invalid_parameter_value using message='invalid_state'` annars — men `_EventDetailsBodyState._sendCallups()` anropade `sendCallups` direkt på ett utkast (`state='draft'`), utan att någonsin anropa `lockSquad` först. Den gamla "Hantera urval"-vyn (som cal11-ombyggnaden ersatte helt) hade tydligen ett eget låsningssteg som aldrig flyttades med in i den nya, inline:a Deltagare-fliken — en riktig lucka i själva ombyggnaden, inte en regression. `lockSquad` fanns redan definierad i `CalendarServices`-gränssnittet (från tidigare arbete) men anropades ingenstans i klientkoden. Fixat: `_sendCallups()` låser nu truppen (`squad.revision` som `expected_revision`) precis innan sändning, men bara när `squad.state=='draft'` — hoppas över om truppen redan är låst (t.ex. ett tidigare försök som låste men kraschade innan själva sändningen), aldrig omlåst från `sent`/`empty`. Verifierat med en fullständig simulering av båda anropen i rätt ordning som den riktiga aktören mot det riktiga eventet — lyckades (3 nya kallelser skapade, state→`sent`), sedan `rollback` så det verkliga utkastet lämnades orört. 357/357 tester, ren analys efter en null-säkerhetsfix (`squad.revision` är `int?`, `lockSquad` kräver `int`). Byggd och installerad på Mi 9:an. | "Skicka kallelser" saknade truppens låsningssteg — cal11-ombyggnaden tappade det när den gamla vyn togs bort |

@@ -54,6 +54,12 @@ Kontrollen gällde den lokala fail-closed-vyn eftersom ingen livebackend fick an
 - Färg var inte ensam informationsbärare, ingen namnlös kontroll eller fokusfälla rapporterades och Android-back från assistenten återgick korrekt.
 - Inget meddelande skickades och ingen live-data ändrades under kontrollen.
 
+### Kompletterande språk- och regressionskontroll 2026-09-25
+
+- Nya Trupp-, Kalender- och Inbox-etiketter fick saknade engelska översättningar. Dynamisk text för kontaktförfrågningar (avsändare, anledning och giltighetstid), mottagarantal, kalenderperiod och spelarflytt använder nu parametriserade strängar i stället för att slå upp ett helt sammansatt värde som översättningsnyckel.
+- Kontaktorsaker i dialogen använder samma lokaliserade etiketter som den mottagna förfrågan. Testet för prioriterade ytor fångar även flerradiga statiska `feature(...)`-anrop och kontrollerar dynamiska hjälpsträngar.
+- Full Flutter-regression passerade 438/438; statisk analys av de berörda filerna gav inga anmärkningar. Ingen fysisk engelsk språkgranskning utfördes i denna omgång och ingen databas ändrades.
+
 ## Kontrakt
 
 - `docs/implementation/accessibility_localization_contract.md`
