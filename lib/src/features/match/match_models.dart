@@ -1,3 +1,24 @@
+class WrittenMatchReport {
+  const WrittenMatchReport({
+    this.body = '',
+    this.published = false,
+    this.revision = 0,
+    this.canEdit = false,
+    this.canPublish = false,
+  });
+  final String body;
+  final bool published, canEdit, canPublish;
+  final int revision;
+  factory WrittenMatchReport.fromJson(Map<String, dynamic> value) =>
+      WrittenMatchReport(
+        body: value['body'] as String? ?? '',
+        published: value['published'] == true,
+        revision: (value['revision'] as num? ?? 0).toInt(),
+        canEdit: value['can_edit'] == true,
+        canPublish: value['can_publish'] == true,
+      );
+}
+
 class MatchSnapshot {
   const MatchSnapshot({
     required this.eventId,

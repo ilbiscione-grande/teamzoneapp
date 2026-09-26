@@ -3,6 +3,23 @@ import 'package:teamzone_app/src/core/supabase/measured_rpc.dart';
 import 'package:teamzone_app/src/features/match/match_models.dart';
 
 abstract interface class MatchServices {
+  Future<WrittenMatchReport> getReport(String eventId);
+  Future<void> saveReport(
+    String commandId,
+    String eventId,
+    int revision,
+    String body,
+    bool publish,
+  );
+  Future<void> registerResult(
+    String commandId,
+    String eventId, {
+    required int expectedRevision,
+    required int expectedEventRevision,
+    required int scoreUs,
+    required int scoreOpponent,
+    String? reason,
+  });
   Future<MatchSnapshot?> getSnapshot(String eventId);
   Future<void> freezeRoster(String commandId, String eventId, String reason);
   Future<void> transition(String commandId, String eventId, String action);
@@ -23,6 +40,26 @@ abstract interface class MatchServices {
 
 class UnconfiguredMatchServices implements MatchServices {
   const UnconfiguredMatchServices();
+  @override
+  Future<WrittenMatchReport> getReport(String eventId) => _fail();
+  @override
+  Future<void> saveReport(
+    String commandId,
+    String eventId,
+    int revision,
+    String body,
+    bool publish,
+  ) => _fail();
+  @override
+  Future<void> registerResult(
+    String commandId,
+    String eventId, {
+    required int expectedRevision,
+    required int expectedEventRevision,
+    required int scoreUs,
+    required int scoreOpponent,
+    String? reason,
+  }) => _fail();
   Future<T> _fail<T>() =>
       Future.error(StateError('Supabase is not configured.'));
   @override
@@ -44,6 +81,57 @@ class UnconfiguredMatchServices implements MatchServices {
 class SupabaseMatchServices implements MatchServices {
   SupabaseMatchServices(this._client);
   final SupabaseClient _client;
+  @override
+  Future<WrittenMatchReport> getReport(String eventId) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Map<String, dynamic>>(
+          'get_match_report',
+          params: {'p_event_id': eventId},
+        );
+    return WrittenMatchReport.fromJson(value);
+  }
+
+  @override
+  Future<void> saveReport(
+    String commandId,
+    String eventId,
+    int revision,
+    String body,
+    bool publish,
+  ) async => measuredRpc(
+    _client,
+    operation: 'save_match_report',
+    params: {
+      'p_command_id': commandId,
+      'p_event_id': eventId,
+      'p_expected_revision': revision,
+      'p_body': body,
+      'p_publish': publish,
+    },
+  );
+  @override
+  Future<void> registerResult(
+    String commandId,
+    String eventId, {
+    required int expectedRevision,
+    required int expectedEventRevision,
+    required int scoreUs,
+    required int scoreOpponent,
+    String? reason,
+  }) async => measuredRpc(
+    _client,
+    operation: 'register_match_result',
+    params: {
+      'p_command_id': commandId,
+      'p_event_id': eventId,
+      'p_expected_revision': expectedRevision,
+      'p_expected_event_revision': expectedEventRevision,
+      'p_score_us': scoreUs,
+      'p_score_opponent': scoreOpponent,
+      'p_reason': reason,
+    },
+  );
   @override
   Future<MatchSnapshot?> getSnapshot(String eventId) async {
     final value = await _client

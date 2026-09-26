@@ -1,0 +1,34 @@
+do $$
+declare team uuid:='20000000-0000-4000-8000-000000000001';event uuid:='30000000-0000-4000-8000-000000000001';training uuid:=gen_random_uuid();r jsonb;
+begin
+ perform set_config('request.jwt.claim.sub','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',true);
+ begin perform api.set_team_event_visibility(team,true,true,0);raise exception 'Unauthorized write';exception when insufficient_privilege then null;end;
+ perform set_config('request.jwt.claim.sub','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true);
+ r:=api.get_team_event_visibility(team);
+ if r->>'revision'<>'0' or (r->>'show_results')::boolean then raise exception 'Unsafe defaults';end if;
+ perform api.set_team_event_visibility(team,true,true,0);
+ if (select score_opponent from public_api.match_result_projections where event_public_id=event) is distinct from 2 then raise exception 'Existing result missing';end if;
+ insert into core.events(id,club_id,owning_team_id,state,event_type,title,starts_at,location_id) values(training,'10000000-0000-4000-8000-000000000001',team,'scheduled','training','Private training notes',now()+interval '1 day',null);
+ if (select title from public_api.event_projections where public_id=training) is distinct from 'Träning' then raise exception 'Future training missing/private notes leaked';end if;
+ update core.match_projections set score_us=3,revision=2 where event_id=event;
+ if (select score_us from public_api.match_result_projections where event_public_id=event) is distinct from 3 then raise exception 'Correction missing';end if;
+ update core.match_workspaces set state='live' where event_id=event;
+ if exists(select 1 from public_api.match_result_projections where event_public_id=event) then raise exception 'Live score exposed';end if;
+ update core.match_workspaces set state='completed' where event_id=event;
+ if not exists(select 1 from public_api.match_result_projections where event_public_id=event) then raise exception 'Completion not automatic';end if;
+ begin perform api.set_team_event_visibility(team,false,false,0);raise exception 'Stale revision accepted';exception when serialization_failure then null;end;
+ perform api.set_team_event_visibility(team,false,false,1);
+ if exists(select 1 from public_api.event_projections where public_id in(event,training)) then raise exception 'Disable did not hide existing events';end if;
+ perform api.configure_event_publication(event,'published',null,false,0,gen_random_uuid(),true);
+ if exists(select 1 from public_api.match_result_projections where event_public_id=event) then raise exception 'Old client bypassed team choice';end if;
+ perform api.set_team_event_visibility(team,true,true,2);
+ update core.events set state='cancelled' where id=training;
+ if exists(select 1 from public_api.event_projections where public_id=training) then raise exception 'Cancelled training still visible';end if;
+ delete from public_api.team_projections where public_id=team;
+ update core.match_projections set score_us=4,revision=3 where event_id=event;
+ if exists(select 1 from public_api.event_projections where public_id=event) then raise exception 'Private team republished';end if;
+ insert into public_api.team_projections(public_id,club_public_id,club_slug,slug,name,source_revision,projected_at,visibility) values(team,'10000000-0000-4000-8000-000000000001','testklubb','testlag','Testlag',1,now(),'published');
+ if (select score_us from public_api.match_result_projections where event_public_id=event) is distinct from 4 then raise exception 'Republish lost saved choice';end if;
+ if has_function_privilege('anon','api.set_team_event_visibility(uuid,boolean,boolean,bigint)','execute') or has_table_privilege('authenticated','core.team_event_visibility','select') then raise exception 'Direct access leak';end if;
+end;$$;
+rollback;

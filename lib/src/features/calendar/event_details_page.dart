@@ -173,6 +173,43 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
   )..addListener(_handleTabIndexChanged);
 
   bool _sendingCallups = false;
+  int _resultRefresh = 0;
+
+  Map<String, dynamic>? get _activeTeamRelation {
+    final teamId = widget.contextValue.teamId;
+    if (teamId == null) return null;
+    return event.teams.cast<Map<String, dynamic>?>().firstWhere(
+      (team) => team?['team_id'] == teamId,
+      orElse: () => null,
+    );
+  }
+
+  bool get _activeContextIsPrimary =>
+      _activeTeamRelation?['relation'] == 'primary';
+
+  Set<String> get _activeSharedCapabilities =>
+      (_activeTeamRelation?['capabilities'] as List? ?? const [])
+          .whereType<String>()
+          .toSet();
+
+  // A user's stronger role in another team must not leak into the event
+  // while a shared recipient team is the active context.
+  bool get _contextCanManageRoster =>
+      event.archivedAt == null &&
+      (widget.contextValue.teamId == null ||
+          _activeContextIsPrimary ||
+          _activeSharedCapabilities.contains('manage_roster') ||
+          _activeSharedCapabilities.contains('co_manage'));
+
+  bool get _contextCanCoManage =>
+      event.archivedAt == null &&
+      (widget.contextValue.teamId == null ||
+          _activeContextIsPrimary ||
+          _activeSharedCapabilities.contains('co_manage'));
+
+  bool get _contextCanRestoreArchive =>
+      event.archivedAt != null &&
+      (widget.contextValue.teamId == null || _activeContextIsPrimary);
 
   @override
   void initState() {
@@ -287,6 +324,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     final pendingCount = _pendingCallupCount;
     final showSendFab =
         _tabController.index == 1 &&
+        _contextCanManageRoster &&
         squad.can('send_callups') &&
         pendingCount > 0;
     return Scaffold(
@@ -359,6 +397,8 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                   squad: squad,
                   calendar: widget.calendar,
                   onReload: _refresh,
+                  allowManage: _contextCanManageRoster,
+                  allowAttendance: _contextCanManageRoster,
                 ),
                 _scroll(_preparation(context)),
                 _scroll(_followUp(context)),
@@ -375,18 +415,49 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
 
   Widget _info(BuildContext context) {
     final strings = AppStrings.of(context);
-    final teamNames = event.teams
-        .map((team) {
-          final name = team['name'] as String? ?? '';
-          return team['relation'] == 'primary'
-              ? strings.eventOwner(name)
-              : name;
-        })
-        .where((name) => name.isNotEmpty)
-        .join(' · ');
+    final ownerTeam = event.teams.cast<Map<String, dynamic>?>().firstWhere(
+      (team) => team?['relation'] == 'primary',
+      orElse: () => null,
+    );
+    final sharedTeams = event.teams.where(
+      (team) => team['relation'] != 'primary',
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (event.archivedAt != null) ...[
+          Card(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: ListTile(
+              leading: const Icon(Icons.archive_outlined),
+              title: Text(strings.feature('Eventet är arkiverat')),
+              subtitle: Text(
+                [
+                  if (event.archiveReason != null) event.archiveReason!,
+                  strings.feature(
+                    'Eventet är skrivskyddat men historiken finns kvar.',
+                  ),
+                ].join('\n'),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        if (event.state == 'cancelled') ...[
+          Card(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: ListTile(
+              leading: const Icon(Icons.event_busy),
+              title: Text(strings.feature('Eventet är inställt')),
+              subtitle: Text(
+                strings.feature(
+                  'Information och historik finns kvar, men eventet genomförs inte.',
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.schedule_outlined),
@@ -399,11 +470,37 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
             leading: const Icon(Icons.place_outlined),
             title: Text(event.locationName!),
           ),
-        if (teamNames.isNotEmpty)
+        if (event.assemblyMinutesBefore != null)
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.groups_outlined),
-            title: Text(teamNames),
+            leading: const Icon(Icons.group_outlined),
+            title: Text(strings.feature('Samling')),
+            subtitle: Text(
+              '${_formatMoment(context, event.startsAt.toLocal().subtract(Duration(minutes: event.assemblyMinutesBefore!)))} · ${event.assemblyMinutesBefore} min före start',
+            ),
+          ),
+        ..._typedInfoTiles(context, event),
+        if (event.type == 'match')
+          _MatchResultCard(
+            key: ValueKey(_resultRefresh),
+            event: event,
+            match: widget.match,
+            canManage: _contextCanCoManage && event.can('complete'),
+            onSaved: _refresh,
+          ),
+        if (ownerTeam != null)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.shield_outlined),
+            title: Text(ownerTeam['name'] as String? ?? ''),
+            subtitle: Text(strings.feature('Ägande lag')),
+          ),
+        for (final team in sharedTeams)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.group_outlined),
+            title: Text(team['name'] as String? ?? ''),
+            subtitle: Text(strings.feature('Delat med detta lag')),
           ),
         if (_myCallup != null)
           Card(
@@ -429,52 +526,165 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
           spacing: 8,
           runSpacing: 8,
           children: [
-            if (event.can('revise'))
+            if (_contextCanRestoreArchive)
+              FilledButton.tonalIcon(
+                onPressed: _restoreArchive,
+                icon: const Icon(Icons.unarchive_outlined),
+                label: Text(strings.feature('Återställ från arkiv')),
+              ),
+            if (_contextCanCoManage && event.can('revise'))
               OutlinedButton.icon(
                 onPressed: _revise,
                 icon: const Icon(Icons.edit_outlined),
                 label: Text(strings.feature('Redigera')),
               ),
-            if (event.can('manage_sharing'))
+            if ((widget.contextValue.teamId == null ||
+                    _activeContextIsPrimary) &&
+                event.can('manage_sharing'))
               OutlinedButton.icon(
                 onPressed: _showSharing,
                 icon: const Icon(Icons.share_outlined),
                 label: Text(strings.feature('Dela med andra lag')),
               ),
-            if (event.can('cancel') && event.state == 'draft')
+            if (_contextCanCoManage &&
+                event.can('cancel') &&
+                event.state == 'draft')
               FilledButton.tonalIcon(
                 onPressed: () => _transition('scheduled'),
                 icon: const Icon(Icons.publish_outlined),
                 label: Text(strings.feature('Publicera event')),
               ),
-            if (event.can('cancel') && event.state == 'cancelled')
+            if (_contextCanCoManage &&
+                event.can('cancel') &&
+                event.state == 'cancelled')
               FilledButton.tonalIcon(
                 onPressed: () => _transition('scheduled'),
                 icon: const Icon(Icons.restore),
                 label: Text(strings.feature('Återställ event')),
               ),
-            if (event.can('cancel') && event.state != 'cancelled')
+            if (_contextCanCoManage &&
+                event.can('cancel') &&
+                event.state != 'cancelled')
               TextButton.icon(
                 onPressed: () => _transition('cancelled'),
                 icon: const Icon(Icons.event_busy),
                 label: Text(strings.feature('Ställ in')),
               ),
-            if (event.can('delete'))
+            if (_contextCanCoManage && event.can('delete'))
               TextButton.icon(
                 onPressed: _deleteDraft,
                 icon: const Icon(Icons.delete_outline),
                 label: Text(strings.feature('Ta bort utkast')),
               ),
-            if (event.can('archive'))
-              TextButton.icon(
-                onPressed: _archive,
-                icon: const Icon(Icons.archive_outlined),
-                label: Text(strings.feature('Arkivera event')),
+            if (_contextCanCoManage &&
+                (event.can('archive') || event.can('cancel')))
+              Semantics(
+                button: true,
+                enabled: event.can('archive'),
+                child: Tooltip(
+                  message: event.can('archive')
+                      ? strings.feature('Arkivera event')
+                      : strings.feature(
+                          'Eventet måste vara inställt eller genomfört innan det kan arkiveras.',
+                        ),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: event.can('archive')
+                        ? null
+                        : () => ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                strings.feature(
+                                  'Eventet måste vara inställt eller genomfört innan det kan arkiveras.',
+                                ),
+                              ),
+                            ),
+                          ),
+                    child: TextButton.icon(
+                      onPressed: event.can('archive') ? _archive : null,
+                      icon: const Icon(Icons.archive_outlined),
+                      label: Text(strings.feature('Arkivera event')),
+                    ),
+                  ),
+                ),
               ),
           ],
         ),
       ],
     );
+  }
+
+  List<Widget> _typedInfoTiles(BuildContext context, EventDetails event) {
+    final strings = AppStrings.of(context);
+    final rows = <(IconData, String, String?)>[];
+    switch (event.type) {
+      case 'training':
+        rows.addAll([
+          (
+            Icons.flag_outlined,
+            strings.feature('Träningstema'),
+            event.trainingTheme,
+          ),
+          (
+            Icons.center_focus_strong_outlined,
+            strings.feature('Fokus'),
+            event.trainingFocus,
+          ),
+          (
+            Icons.assignment_outlined,
+            strings.feature('Träningsplan'),
+            event.trainingPlan,
+          ),
+        ]);
+      case 'match':
+        rows.addAll([
+          (
+            Icons.sports_soccer,
+            strings.feature('Motståndare'),
+            event.opponentName,
+          ),
+          (
+            Icons.stadium_outlined,
+            strings.feature('Matchplats'),
+            event.homeAway == null
+                ? null
+                : strings.feature(event.homeAway == 'home' ? 'Hemma' : 'Borta'),
+          ),
+          (
+            Icons.notes_outlined,
+            strings.feature('Matchanteckningar'),
+            event.matchNotes,
+          ),
+        ]);
+      case 'meeting':
+        rows.addAll([
+          (
+            Icons.lightbulb_outline,
+            strings.feature('Syfte'),
+            event.meetingPurpose,
+          ),
+          (
+            Icons.format_list_bulleted,
+            strings.feature('Mötesagenda'),
+            event.meetingAgenda,
+          ),
+        ]);
+    }
+    return [
+      for (final row in rows)
+        if (row.$3 != null && row.$3!.isNotEmpty)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(row.$1),
+            title: Text(row.$2),
+            subtitle: Text(row.$3!),
+          ),
+    ];
+  }
+
+  String _formatMoment(BuildContext context, DateTime value) {
+    final localizations = MaterialLocalizations.of(context);
+    return '${localizations.formatMediumDate(value)} · ${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(value))}';
   }
 
   Widget _preparation(BuildContext context) {
@@ -490,19 +700,22 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         const SizedBox(height: 8),
         Text(strings.preparationDescription(event.type)),
         const SizedBox(height: 20),
-        if (actions.contains(EventPreparationAction.matchSpace))
+        if (_contextCanCoManage &&
+            actions.contains(EventPreparationAction.matchSpace))
           FilledButton.tonalIcon(
             onPressed: _showMatchSpace,
             icon: const Icon(Icons.sports_soccer),
             label: Text(strings.matchSpaceAction(widget.matchSpaceV2)),
           ),
-        if (actions.contains(EventPreparationAction.participants))
+        if (_contextCanManageRoster &&
+            actions.contains(EventPreparationAction.participants))
           OutlinedButton.icon(
             onPressed: () => _tabController.animateTo(1),
             icon: const Icon(Icons.groups_outlined),
             label: Text(strings.feature('Förbered deltagare och kallelser')),
           ),
-        if (actions.contains(EventPreparationAction.editEvent))
+        if (_contextCanCoManage &&
+            actions.contains(EventPreparationAction.editEvent))
           OutlinedButton.icon(
             onPressed: _revise,
             icon: const Icon(Icons.edit_calendar_outlined),
@@ -528,7 +741,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         const SizedBox(height: 8),
         Text(strings.attendanceSummary(recorded, attendance.length)),
         const SizedBox(height: 20),
-        if (event.can('manage_roster'))
+        if (_contextCanManageRoster && event.can('manage_roster'))
           OutlinedButton.icon(
             onPressed: () => _tabController.animateTo(1),
             icon: const Icon(Icons.fact_check_outlined),
@@ -595,16 +808,26 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
           'timezone': value.timezone,
           'location_name': value.locationName,
           'audience_types': value.audiences,
+          'assembly_minutes_before': value.assemblyMinutesBefore,
+          'training_theme': value.trainingTheme,
+          'training_focus': value.trainingFocus,
+          'training_plan': value.trainingPlan,
+          'opponent_name': value.opponentName,
+          'home_away': value.homeAway,
+          'match_notes': value.matchNotes,
+          'meeting_purpose': value.meetingPurpose,
+          'meeting_agenda': value.meetingAgenda,
         },
         expectedRevision: event.revision,
         idempotencyKey: _newUuid(),
       );
       if (mounted) unawaited(_refresh());
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         _showError(
           'Eventet ändrades av någon annan. Ladda om och försök igen.',
         );
+      }
     }
   }
 
@@ -619,10 +842,11 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
       );
       if (mounted) unawaited(_refresh());
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         _showError(
           'Eventet ändrades av någon annan. Ladda om och försök igen.',
         );
+      }
     }
   }
 
@@ -718,14 +942,61 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     }
   }
 
-  Future<void> _showMatchSpace() => showDialog<void>(
-    context: context,
-    builder: (_) => _MatchSpaceDialog(
-      event: event,
-      match: widget.match,
-      compactFallback: !widget.matchSpaceV2,
-    ),
-  );
+  Future<void> _restoreArchive() async {
+    final strings = AppStrings.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(strings.feature('Återställ från arkiv')),
+        content: Text(
+          strings.feature(
+            'Eventet återgår till kalendern med samma status som före arkiveringen.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(strings.feature('Avbryt')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(strings.feature('Återställ')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await widget.calendar.restoreArchivedEvent(
+        eventId: event.id,
+        expectedRevision: event.revision,
+        idempotencyKey: _newUuid(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.feature('Eventet har återställts.'))),
+      );
+      widget.onDeleted();
+    } catch (_) {
+      if (mounted) _showError('Eventet kunde inte återställas.');
+    }
+  }
+
+  Future<void> _showMatchSpace() async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _MatchSpaceDialog(
+        event: event,
+        match: widget.match,
+        compactFallback: !widget.matchSpaceV2,
+      ),
+    );
+    if (!mounted) return;
+    setState(() {
+      _resultRefresh++;
+    });
+    await _refresh();
+  }
 
   Future<void> _showSharing() async {
     final strings = AppStrings.of(context);
@@ -754,6 +1025,11 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
           .toSet();
     }
     var saving = false;
+    final ownerName = event.teams
+        .where((team) => team['relation'] == 'primary')
+        .map((team) => team['name'])
+        .whereType<String>()
+        .firstOrNull;
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -769,97 +1045,149 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                   )
                 : ListView(
                     shrinkWrap: true,
-                    children: settings.teams.map((team) {
-                      final level = levels[team.teamId]!;
-                      return Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(
-                                team.name,
-                                style: Theme.of(context).textTheme.titleMedium,
+                    children: [
+                      Text(
+                        strings.feature(
+                          'Du kan dela eventet med flera lag samtidigt.',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (ownerName != null) ...[
+                        Card(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          child: ListTile(
+                            leading: const Icon(Icons.shield_outlined),
+                            title: Text(ownerName),
+                            subtitle: Text(
+                              strings.feature(
+                                'Ägande lag – eventet administreras härifrån',
                               ),
-                              DropdownButtonFormField<String>(
-                                initialValue: level,
-                                isExpanded: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'Rättighet',
-                                ),
-                                items: [
-                                  DropdownMenuItem(
-                                    value: 'none',
-                                    child: Text(
-                                      strings.feature('Ingen delning'),
-                                    ),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'view',
-                                    child: Text(strings.feature('Kan se')),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'manage_roster',
-                                    child: Text(
-                                      strings.feature('Kan hantera deltagare'),
-                                    ),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'co_manage',
-                                    child: Text(
-                                      strings.feature(
-                                        'Kan samredigera eventet',
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                                onChanged: saving
-                                    ? null
-                                    : (value) => setDialogState(() {
-                                        levels[team.teamId] = value!;
-                                        if (value == 'none') {
-                                          audiences[team.teamId]!.clear();
-                                        }
-                                      }),
-                              ),
-                              if (level != 'none') ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  strings.feature(
-                                    'Mottagare (ger endast synlighet)',
-                                  ),
-                                ),
-                                Wrap(
-                                  children:
-                                      const {
-                                        'players': 'Spelare',
-                                        'leaders': 'Ledare',
-                                        'guardians': 'Vårdnadshavare',
-                                      }.entries.map((entry) {
-                                        return FilterChip(
-                                          label: Text(entry.value),
-                                          selected: audiences[team.teamId]!
-                                              .contains(entry.key),
-                                          onSelected: saving
-                                              ? null
-                                              : (
-                                                  selected,
-                                                ) => setDialogState(() {
-                                                  selected
-                                                      ? audiences[team.teamId]!
-                                                            .add(entry.key)
-                                                      : audiences[team.teamId]!
-                                                            .remove(entry.key);
-                                                }),
-                                        );
-                                      }).toList(),
-                                ),
-                              ],
-                            ],
+                            ),
                           ),
                         ),
-                      );
-                    }).toList(),
+                        const SizedBox(height: 8),
+                        Text(
+                          strings.feature('Lag som eventet kan delas med'),
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+                      ...settings.teams.map((team) {
+                        final level = levels[team.teamId]!;
+                        return Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  team.name,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
+                                ),
+                                CheckboxListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  controlAffinity:
+                                      ListTileControlAffinity.leading,
+                                  title: Text(
+                                    strings.feature('Dela med laget'),
+                                  ),
+                                  subtitle: level == 'none'
+                                      ? null
+                                      : Text(
+                                          strings.feature('Standard: Kan se'),
+                                        ),
+                                  value: level != 'none',
+                                  onChanged: saving
+                                      ? null
+                                      : (selected) => setDialogState(() {
+                                          levels[team.teamId] = selected == true
+                                              ? 'view'
+                                              : 'none';
+                                          if (selected != true) {
+                                            audiences[team.teamId]!.clear();
+                                          }
+                                        }),
+                                ),
+                                if (level != 'none') ...[
+                                  DropdownButtonFormField<String>(
+                                    initialValue: level,
+                                    isExpanded: true,
+                                    decoration: InputDecoration(
+                                      labelText: strings.feature('Rättighet'),
+                                    ),
+                                    items: [
+                                      DropdownMenuItem(
+                                        value: 'view',
+                                        child: Text(strings.feature('Kan se')),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 'manage_roster',
+                                        child: Text(
+                                          strings.feature(
+                                            'Kan hantera deltagare',
+                                          ),
+                                        ),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 'co_manage',
+                                        child: Text(
+                                          strings.feature(
+                                            'Kan samredigera eventet',
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    onChanged: saving
+                                        ? null
+                                        : (value) => setDialogState(() {
+                                            levels[team.teamId] =
+                                                value ?? 'view';
+                                          }),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    strings.feature(
+                                      'Mottagare (ger endast synlighet)',
+                                    ),
+                                  ),
+                                  Wrap(
+                                    children:
+                                        const {
+                                          'players': 'Spelare',
+                                          'leaders': 'Ledare',
+                                          'guardians': 'Vårdnadshavare',
+                                        }.entries.map((entry) {
+                                          return FilterChip(
+                                            label: Text(entry.value),
+                                            selected: audiences[team.teamId]!
+                                                .contains(entry.key),
+                                            onSelected: saving
+                                                ? null
+                                                : (selected) => setDialogState(
+                                                    () {
+                                                      selected
+                                                          ? audiences[team
+                                                                    .teamId]!
+                                                                .add(entry.key)
+                                                          : audiences[team
+                                                                    .teamId]!
+                                                                .remove(
+                                                                  entry.key,
+                                                                );
+                                                    },
+                                                  ),
+                                          );
+                                        }).toList(),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
                   ),
           ),
           actions: [
@@ -927,10 +1255,11 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                         }
                       } catch (_) {
                         setDialogState(() => saving = false);
-                        if (mounted)
+                        if (mounted) {
                           _showError(
                             'Delningen kunde inte sparas. Ladda om och försök igen.',
                           );
+                        }
                       }
                     },
               child: saving
@@ -1000,6 +1329,8 @@ List<EventRosterPerson> _guestRosterFor(SquadDetails squad) {
               callupLastRemindedAt: callup.lastRemindedAt,
               canRespond: callup.canRespond,
               responseRole: callup.responseRole,
+              declineReasonCode: callup.declineReasonCode,
+              declineReasonText: callup.declineReasonText,
             );
   }
   for (final attendance in squad.attendance) {
@@ -1007,6 +1338,7 @@ List<EventRosterPerson> _guestRosterFor(SquadDetails squad) {
     if (existing == null || rosterIds.contains(attendance.personId)) continue;
     guests[attendance.personId] = existing.copyWith(
       attendanceStatus: attendance.status,
+      attendanceMinutes: attendance.minutes,
       attendanceRevision: attendance.revision,
     );
   }
@@ -1173,11 +1505,14 @@ class _ParticipantsTab extends StatefulWidget {
     required this.squad,
     required this.calendar,
     required this.onReload,
+    required this.allowManage,
+    required this.allowAttendance,
   });
 
   final EventDetails event;
   final SquadDetails squad;
   final CalendarServices calendar;
+  final bool allowManage, allowAttendance;
   // Future<void>, not VoidCallback: every caller below needs to await this
   // before clearing its own busy flag. A fire-and-forget reload used to let
   // a second tap (trivial to land now that a whole row is one tap target)
@@ -1205,8 +1540,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
 
   bool _busyBulk = false;
 
-  bool get _canManage => widget.squad.can('save_squad');
-  bool get _canRecordAttendance => widget.squad.can('record_attendance');
+  bool get _canManage => widget.allowManage && widget.squad.can('save_squad');
+  bool get _canRecordAttendance =>
+      widget.allowAttendance && widget.squad.can('record_attendance');
   bool get _eventEnded =>
       DateTime.now().toUtc().isAfter(widget.event.endsAt.toUtc());
   Set<String> get _draftMemberIds =>
@@ -1289,8 +1625,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       );
       await widget.onReload();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         _showError('Ändringen kunde inte sparas. Ladda om och försök igen.');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1313,9 +1650,23 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         idempotencyKey: _newUuid(),
       );
       await widget.onReload();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppStrings.of(context).feature(
+                action == 'remind'
+                    ? 'Påminnelsen är skickad.'
+                    : 'Kallelsen är återkallad.',
+              ),
+            ),
+          ),
+        );
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         _showError('Åtgärden kunde inte utföras. Ladda om och försök igen.');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1359,8 +1710,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       );
       await widget.onReload();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         _showError('Svaret kunde inte sparas. Ladda om och försök igen.');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1370,11 +1722,20 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
     setState(() {
       _stagedStatus[person.personId] = status;
       if (status == 'late' || status == 'partial') {
-        _stagedMinutes.putIfAbsent(person.personId, () => 1);
+        _stagedMinutes.putIfAbsent(
+          person.personId,
+          () => person.attendanceMinutes ?? 1,
+        );
       } else {
         _stagedMinutes.remove(person.personId);
       }
     });
+  }
+
+  void _setAttendanceMinutes(EventRosterPerson person, String value) {
+    final minutes = int.tryParse(value);
+    if (minutes == null || minutes < 1 || minutes > 1440) return;
+    setState(() => _stagedMinutes[person.personId] = minutes);
   }
 
   Future<void> _saveAttendance() async {
@@ -1417,8 +1778,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       }
       await widget.onReload();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         _showError('Närvaron kunde inte sparas. Ladda om och försök igen.');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1450,11 +1812,157 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       );
       await widget.onReload();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         _showError('Ändringen kunde inte sparas. Ladda om och försök igen.');
+      }
     } finally {
       if (mounted) setState(() => _busyBulk = false);
     }
+  }
+
+  Future<void> _saveBulkDraft({
+    required List<String> memberIds,
+    required String source,
+    Map<String, dynamic> selectionContext = const {},
+  }) async {
+    if (memberIds.isEmpty) return;
+    setState(() => _busyBulk = true);
+    try {
+      await widget.calendar.saveSquadDraft(
+        eventId: widget.event.id,
+        memberIds: memberIds,
+        source: source,
+        selectionContext: selectionContext,
+        expectedRevision: widget.squad.state == 'draft'
+            ? widget.squad.revision
+            : null,
+        idempotencyKey: _newUuid(),
+      );
+      await widget.onReload();
+    } catch (_) {
+      if (mounted) {
+        _showError(
+          'Deltagarurvalet kunde inte sparas. Ladda om och försök igen.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busyBulk = false);
+    }
+  }
+
+  Future<void> _selectAllEligible() => _saveBulkDraft(
+    memberIds: _candidates.map((candidate) => candidate.personId).toList(),
+    source: 'all',
+  );
+
+  Future<void> _selectEligibilityGroup() async {
+    final strings = AppStrings.of(context);
+    final groups =
+        _candidates
+            .map((candidate) => candidate.eligibilityKind)
+            .toSet()
+            .toList()
+          ..sort();
+    if (groups.isEmpty) return;
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text(strings.feature('Välj behörighetsgrupp')),
+        children: [
+          for (final group in groups)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, group),
+              child: Text(
+                '${strings.eligibilityKind(group)} (${_candidates.where((candidate) => candidate.eligibilityKind == group).length})',
+              ),
+            ),
+        ],
+      ),
+    );
+    if (selected == null || !mounted) return;
+    await _saveBulkDraft(
+      memberIds: _candidates
+          .where((candidate) => candidate.eligibilityKind == selected)
+          .map((candidate) => candidate.personId)
+          .toList(),
+      source: 'group',
+      selectionContext: {'eligibility_kind': selected},
+    );
+  }
+
+  Future<void> _selectGeneratedDraft() async {
+    final strings = AppStrings.of(context);
+    if (_candidates.isEmpty) return;
+    var count =
+        (_draftMemberIds.isEmpty
+                ? _candidates.length.clamp(1, 18)
+                : _draftMemberIds.length.clamp(1, _candidates.length))
+            .toInt();
+    final selectedCount = await showDialog<int>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(strings.feature('Generera deltagarurval')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                strings.feature(
+                  'Ordinarie spelare prioriteras och urvalet blir alltid reproducerbart.',
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(strings.participantCount(count)),
+              Slider(
+                value: count.toDouble(),
+                min: 1,
+                max: _candidates.length.toDouble(),
+                divisions: _candidates.length > 1
+                    ? _candidates.length - 1
+                    : null,
+                label: '$count',
+                onChanged: (value) =>
+                    setDialogState(() => count = value.round()),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(strings.feature('Avbryt')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, count),
+              child: Text(strings.feature('Använd urval')),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (selectedCount == null || !mounted) return;
+    final generated = List<SquadCandidate>.of(_candidates)
+      ..sort((left, right) {
+        final leftPriority = left.eligibilityKind == 'team_assignment' ? 0 : 1;
+        final rightPriority = right.eligibilityKind == 'team_assignment'
+            ? 0
+            : 1;
+        final priority = leftPriority.compareTo(rightPriority);
+        if (priority != 0) return priority;
+        final name = left.name.compareTo(right.name);
+        return name != 0 ? name : left.personId.compareTo(right.personId);
+      });
+    await _saveBulkDraft(
+      memberIds: generated
+          .take(selectedCount)
+          .map((candidate) => candidate.personId)
+          .toList(),
+      source: 'generator',
+      selectionContext: {
+        'generator': 'balanced_v1',
+        'target_count': selectedCount,
+      },
+    );
   }
 
   /// Reminds everyone whose callup is actually due one (mirrors
@@ -1547,8 +2055,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       showDragHandle: true,
       builder: (sheetContext) => SafeArea(
         top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: ListView(
+          shrinkWrap: true,
+          padding: EdgeInsets.zero,
           children: [
             if (_canManage)
               ListTile(
@@ -1560,7 +2069,43 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                   unawaited(_selectAllPlayers());
                 },
               ),
-            if (!_eventEnded && widget.squad.can('remind_callup'))
+            if (_canManage)
+              ListTile(
+                leading: const Icon(Icons.done_all),
+                title: Text(strings.feature('Alla behöriga')),
+                subtitle: Text(strings.peopleCount(_candidates.length)),
+                enabled: _candidates.isNotEmpty && !_busyBulk,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  unawaited(_selectAllEligible());
+                },
+              ),
+            if (_canManage)
+              ListTile(
+                leading: const Icon(Icons.filter_alt_outlined),
+                title: Text(strings.feature('Behörighetsgrupp')),
+                enabled: _candidates.isNotEmpty && !_busyBulk,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  unawaited(_selectEligibilityGroup());
+                },
+              ),
+            if (_canManage)
+              ListTile(
+                leading: const Icon(Icons.auto_awesome_outlined),
+                title: Text(strings.feature('Generator')),
+                subtitle: Text(
+                  strings.feature('Skapa ett balanserat, reproducerbart urval'),
+                ),
+                enabled: _candidates.isNotEmpty && !_busyBulk,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  unawaited(_selectGeneratedDraft());
+                },
+              ),
+            if (!_eventEnded &&
+                widget.allowManage &&
+                widget.squad.can('remind_callup'))
               ListTile(
                 leading: const Icon(Icons.notifications_active_outlined),
                 title: Text(strings.remindAllUnansweredLabel(remindableCount)),
@@ -1734,8 +2279,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
   }
 
   Widget _rosterSection(String title, List<EventRosterPerson> people) {
-    if (people.isEmpty)
+    if (people.isEmpty) {
       return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
     return SliverMainAxisGroup(
       slivers: [
         SliverToBoxAdapter(
@@ -1755,16 +2301,21 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
               eventEnded: _eventEnded,
               canManage: _canManage,
               canRecordAttendance: _canRecordAttendance,
-              canRemind: widget.squad.can('remind_callup'),
-              canCancel: widget.squad.can('cancel_callup'),
+              canRemind:
+                  widget.allowManage && widget.squad.can('remind_callup'),
+              canCancel:
+                  widget.allowManage && widget.squad.can('cancel_callup'),
               busy: _busy,
               stagedStatus: _stagedStatus[people[index].personId],
+              stagedMinutes: _stagedMinutes[people[index].personId],
               onToggleDraft: () => _toggleDraftMember(people[index].personId),
               onManageCallup: (action) => _manageCallup(people[index], action),
               onRespond: (response) =>
                   _respondToCallup(people[index], response),
               onSetAttendance: (status) =>
                   _setAttendance(people[index], status),
+              onSetAttendanceMinutes: (value) =>
+                  _setAttendanceMinutes(people[index], value),
             ),
           ),
         ),
@@ -1787,10 +2338,12 @@ class _RosterRow extends StatelessWidget {
     required this.canCancel,
     required this.busy,
     required this.stagedStatus,
+    required this.stagedMinutes,
     required this.onToggleDraft,
     required this.onManageCallup,
     required this.onRespond,
     required this.onSetAttendance,
+    required this.onSetAttendanceMinutes,
   });
 
   final EventRosterPerson person;
@@ -1801,17 +2354,29 @@ class _RosterRow extends StatelessWidget {
       canCancel,
       busy;
   final String? stagedStatus;
+  final int? stagedMinutes;
   final VoidCallback onToggleDraft;
   final ValueChanged<String> onManageCallup;
   final ValueChanged<String> onRespond;
   final ValueChanged<String> onSetAttendance;
+  final ValueChanged<String> onSetAttendanceMinutes;
 
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
+    final declineReason = _localizedDeclineReason(strings, person);
+    final responseRoleLabel = switch (person.responseRole) {
+      'self' => strings.feature('Din kallelse'),
+      'guardian' => strings.feature('Svara som vårdnadshavare'),
+      'manager' => strings.feature('Svara som ledare'),
+      _ => null,
+    };
     final subtitle = [
       if (person.isGuest) strings.feature('Gäst') else person.teamName,
       strings.domainValue(person.rolePackage),
+      if (person.canRespond && responseRoleLabel != null) responseRoleLabel,
+      if (person.callupLastRemindedAt != null) strings.feature('Påmind'),
+      if (declineReason != null) '${strings.feature('Avböjt')}: $declineReason',
     ].join(' · ');
 
     final textTheme = Theme.of(context).textTheme;
@@ -1833,6 +2398,8 @@ class _RosterRow extends StatelessWidget {
         );
       }
       final current = stagedStatus ?? person.attendanceStatus ?? 'unknown';
+      final needsMinutes = current == 'late' || current == 'partial';
+      final currentMinutes = stagedMinutes ?? person.attendanceMinutes ?? 1;
       return ListTile(
         dense: true,
         visualDensity: VisualDensity.compact,
@@ -1840,21 +2407,47 @@ class _RosterRow extends StatelessWidget {
         title: Text(person.name, style: textTheme.bodyMedium),
         subtitle: Text(subtitle, style: textTheme.bodySmall),
         trailing: canRecordAttendance
-            ? DropdownButton<String>(
-                value: current,
-                onChanged: busy ? null : (value) => onSetAttendance(value!),
-                items: [
-                  for (final status in const [
-                    'unknown',
-                    'present',
-                    'late',
-                    'partial',
-                    'absent',
-                  ])
-                    DropdownMenuItem(
-                      value: status,
-                      child: Text(strings.domainValue(status)),
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButton<String>(
+                    value: current,
+                    onChanged: busy ? null : (value) => onSetAttendance(value!),
+                    items: [
+                      for (final status in const [
+                        'unknown',
+                        'present',
+                        'late',
+                        'partial',
+                        'absent',
+                      ])
+                        DropdownMenuItem(
+                          value: status,
+                          child: Text(strings.domainValue(status)),
+                        ),
+                    ],
+                  ),
+                  if (needsMinutes) ...[
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 76,
+                      child: TextFormField(
+                        key: ValueKey(
+                          'attendance-minutes-${person.personId}-$currentMinutes',
+                        ),
+                        initialValue: '$currentMinutes',
+                        enabled: !busy,
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.done,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          labelText: strings.feature('Minuter'),
+                          suffixText: 'min',
+                        ),
+                        onChanged: onSetAttendanceMinutes,
+                      ),
                     ),
+                  ],
                 ],
               )
             : Text(strings.domainValue(current)),
@@ -1866,52 +2459,47 @@ class _RosterRow extends StatelessWidget {
       // not expired, 6h since the last reminder) so a doomed-to-fail tap
       // is never offered in the first place.
       final canRemindNow = canRemind && person.canRemindAt(DateTime.now());
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          ListTile(
-            dense: true,
-            visualDensity: VisualDensity.compact,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-            title: Text(person.name, style: textTheme.bodyMedium),
-            subtitle: Text(subtitle, style: textTheme.bodySmall),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _CallupStateBadge(state: person.callupState ?? 'pending'),
-                if (canRemindNow || canCancel)
-                  PopupMenuButton<String>(
-                    tooltip: strings.feature('Hantera kallelse'),
-                    onSelected: busy ? null : onManageCallup,
-                    itemBuilder: (_) => [
-                      if (canRemindNow)
-                        PopupMenuItem(
-                          value: 'remind',
-                          child: Text(strings.feature('Påminn')),
-                        ),
-                      if (canCancel)
-                        PopupMenuItem(
-                          value: 'cancel',
-                          child: Text(strings.feature('Återkalla')),
-                        ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-          // Respond controls: the person's own callup ('self'), or —
-          // same as remind/cancel above — anyone else's on the roster
-          // for whoever can manage the squad ('manager').
-          if (person.canRespond)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: _CallupResponseButtons(
+      final canRespond =
+          person.canRespond && (person.responseRole != 'manager' || canManage);
+      final compact = MediaQuery.sizeOf(context).width < 600;
+      return ListTile(
+        dense: true,
+        visualDensity: VisualDensity.compact,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+        title: Text(person.name, style: textTheme.bodyMedium),
+        subtitle: Text(subtitle, style: textTheme.bodySmall),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (canRespond)
+              _CallupResponseButtons(
                 busy: busy,
                 saving: false,
+                response: person.callupState,
+                compact: compact,
                 onRespond: onRespond,
+              )
+            else
+              _CallupStateBadge(state: person.callupState ?? 'pending'),
+            if (canRemindNow || canCancel)
+              PopupMenuButton<String>(
+                tooltip: strings.feature('Hantera kallelse'),
+                onSelected: busy ? null : onManageCallup,
+                itemBuilder: (_) => [
+                  if (canRemindNow)
+                    PopupMenuItem(
+                      value: 'remind',
+                      child: Text(strings.feature('Påminn')),
+                    ),
+                  if (canCancel)
+                    PopupMenuItem(
+                      value: 'cancel',
+                      child: Text(strings.feature('Återkalla')),
+                    ),
+                ],
               ),
-            ),
-        ],
+          ],
+        ),
       );
     }
 
@@ -1922,6 +2510,21 @@ class _RosterRow extends StatelessWidget {
       onTap: canManage && !busy ? onToggleDraft : null,
     );
   }
+}
+
+String? _localizedDeclineReason(AppStrings strings, EventRosterPerson person) {
+  if (person.callupState != 'declined') return null;
+  final label = switch (person.declineReasonCode) {
+    'illness' => strings.feature('Sjukdom'),
+    'injury' => strings.feature('Skada'),
+    'unavailable' => strings.feature('Inte tillgänglig'),
+    'transport' => strings.feature('Transport'),
+    'other' => strings.feature('Annat'),
+    _ => null,
+  };
+  if (label == null) return null;
+  final detail = person.declineReasonText?.trim();
+  return detail == null || detail.isEmpty ? label : '$label – $detail';
 }
 
 /// A row selected by tapping anywhere on it — the whole row tints with the

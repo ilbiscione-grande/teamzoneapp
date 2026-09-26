@@ -1,0 +1,74 @@
+import assert from 'node:assert/strict';
+// node supabase/tests/pub07_personal_home.local.mjs --direct-result --written-reports --team-notifications
+export async function testTeamNotifications(db,read) {
+ const team='20000000-0000-4000-8000-000000000001',event='30000000-0000-4000-8000-000000000001';
+ const actor='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',follower='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ const as=async id=>db.query("select set_config('request.jwt.claim.sub',$1,true)",[id]);
+ await as(actor);
+ await db.exec(`alter table core.events add column ends_at timestamptz default now();
+  update internal.publication_runtime_state set enabled=true;
+  create function internal.list_notification_center_for_actor(timestamptz default null,integer default 50) returns jsonb language plpgsql as $$begin
+   if auth.uid() is null then raise insufficient_privilege;end if;
+   return '{"unread_count":1,"items":[{"id":"legacy","title":"Legacy","priority":40,"created_at":"2026-09-26T00:00:00Z"}]}'::jsonb;end$$;
+  create function internal.set_notification_state_for_actor(uuid,text,uuid) returns bigint language sql as $$select 99::bigint$$;
+  create function internal.mark_all_notifications_read_for_actor(uuid) returns integer language plpgsql as $$begin if auth.uid() is null then raise insufficient_privilege;end if;return 1;end$$;`);
+ await db.exec(read('supabase/migrations/20260926154246_team_follow_notifications.sql'));
+ const load=async()=> (await db.query('select api.get_team_notifications() value')).rows[0].value;
+ const reject=async(fn,code)=>{await db.exec('savepoint denied_notification');try{await assert.rejects(fn,e=>e.code===code);}finally{await db.exec('rollback to denied_notification');}};
+ const prefs=(rev,news=true,results=true,reports=true,schedule=true)=>db.query('select api.set_team_notification_preferences($1,$2,$3,$4,$5,$6)',[team,news,results,reports,schedule,rev]);
+ assert.equal((await load()).unread_count,0,'no historical alert backfill');
+ await as(follower);
+ await db.query("select api.set_public_channel_follow('team',$1,true)",[team]);
+ assert.equal((await load()).teams[0].is_own,false);
+ await as(actor);
+ const news='80000000-0000-4000-8000-000000000001';
+ await db.exec(`insert into public_api.content_projections(public_id,club_public_id,content_type,title,published_at,source_revision,projected_at,slug,club_channel)
+  values('${news}','10000000-0000-4000-8000-000000000001','news','Ny lagnyhet',now(),1,now(),'ny-lagnyhet',false);
+  insert into public_api.content_team_channels values('${news}','${team}');`);
+ assert.equal((await load()).unread_count,1);
+ const newId=(await load()).items[0].id;
+ await as(follower);
+ assert.equal((await load()).unread_count,1,'follower sees only public news');
+ await db.query("select api.set_notification_state($1,'read',gen_random_uuid())",[newId]);
+ assert.equal((await load()).unread_count,0);
+ await as(actor);
+ assert.equal((await load()).unread_count,1,'read state isolated between accounts');
+ await prefs(0,false);
+ assert.equal((await load()).unread_count,0,'muted category also excluded from count');
+ await reject(()=>prefs(0,true),'40001');
+ await prefs(1,true);
+ assert.equal((await load()).unread_count,1);
+ // New report becomes public once. Score re-projection must not duplicate it.
+ await db.query('select api.save_match_report(gen_random_uuid(),$1,6,$2,true)',[event,'Ny matchrapport']);
+ assert.equal((await load()).unread_count,2);
+ await db.exec('update core.match_projections set revision=revision+1');
+ assert.equal((await load()).unread_count,2);
+ await db.exec(`update core.events set state='scheduled',starts_at=starts_at+interval '1 hour',revision=revision+1 where id='${event}'`);
+ assert.equal((await load()).unread_count,3,'own team calendar change visible');
+ await as(follower);
+ assert.equal((await load()).items.some(x=>x.event_type==='team.schedule.v1'),false,'following is not calendar access');
+ await prefs(0,true,true,false);
+ assert.equal((await load()).unread_count,0,'read news and muted report');
+ await as(actor);
+ const center=(await db.query('select api.list_notification_center() value')).rows[0].value;
+ assert.equal(center.unread_count,4,'legacy unread included');
+ assert.equal(center.items[0].id,'legacy','legacy priority preserved');
+ const key='90000000-0000-4000-8000-000000000001';
+ await db.query('select api.mark_team_notifications_read($1)',[key]);
+ assert.equal((await load()).unread_count,0);
+ await db.exec(`update core.events set starts_at=starts_at+interval '1 hour',revision=revision+1 where id='${event}'`);
+ assert.equal((await load()).unread_count,1);
+ await db.query('select api.mark_team_notifications_read($1)',[key]);
+ assert.equal((await load()).unread_count,1,'retry must not mark later arrivals read');
+ await db.exec("update internal.publication_runtime_state set enabled=false");
+ assert.equal((await load()).items.every(x=>x.event_type==='team.schedule.v1'),true,'runtime gates public notifications');
+ await as(follower);assert.equal((await load()).items.length,0);
+ await db.exec("update internal.publication_runtime_state set enabled=true");
+ await db.query("select api.set_public_channel_follow('team',$1,false)",[team]);
+ assert.equal((await load()).items.length,0,'unfollow hides previous notifications');
+ await reject(()=>prefs(1),'42501');
+ await reject(()=>db.query("select api.set_notification_state($1,'read',gen_random_uuid())",[newId]),'42501');
+ await as('');await reject(load,'42501');
+ assert.equal((await db.query("select has_table_privilege('authenticated','internal.team_updates','select') allowed")).rows[0].allowed,false);
+ console.log('PASS: own/followed notifications, publication/runtime gates, no historical spam, deduplication, account read state, mute settings, revision conflicts, legacy count integration and retry safety');
+}
