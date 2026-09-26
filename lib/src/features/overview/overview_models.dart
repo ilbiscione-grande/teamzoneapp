@@ -374,12 +374,15 @@ class PlayerHomeCallup {
     this.locationName,
     this.address,
     this.actingAsPersonId,
+    this.declineReasonCode,
+    this.declineReasonText,
   });
   final String id, eventId, state, eventTitle, eventType, responseRole;
   final int revision;
   final DateTime startsAt, endsAt;
   final DateTime? expiresAt;
   final String? locationName, address, actingAsPersonId;
+  final String? declineReasonCode, declineReasonText;
   final bool canRespond;
   factory PlayerHomeCallup.fromJson(Map<String, dynamic> json) =>
       PlayerHomeCallup(
@@ -398,6 +401,8 @@ class PlayerHomeCallup {
         address: json['address'] as String?,
         canRespond: json['can_respond'] as bool? ?? false,
         actingAsPersonId: json['acting_as_person_id'] as String?,
+        declineReasonCode: json['decline_reason_code'] as String?,
+        declineReasonText: json['decline_reason_text'] as String?,
         responseRole: json['response_role'] as String,
       );
 }

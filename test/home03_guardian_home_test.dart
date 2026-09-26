@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teamzone_app/src/features/overview/overview_models.dart';
 
 void main() {
   final migration = File(
@@ -14,6 +15,12 @@ void main() {
   ).readAsStringSync();
   final models = File(
     'lib/src/features/overview/overview_models.dart',
+  ).readAsStringSync();
+  final reasonMigration = File(
+    'supabase/migrations/20260924102411_home03_visible_own_decline_reason.sql',
+  ).readAsStringSync();
+  final responseInvalidationMigration = File(
+    'supabase/migrations/20260924105355_home_callup_response_invalidation.sql',
   ).readAsStringSync();
 
   test('guardian and selected child require active relation and team', () {
@@ -49,6 +56,78 @@ void main() {
     expect(surface, contains('declineReasonCode: reasonCode'));
     expect(surface, contains('declineReasonText: reasonText'));
   });
+
+  test('only the current own or selected-child decline reason reaches Home', () {
+    expect(
+      reasonMigration,
+      contains('internal.get_player_home_for_actor(target_context_id)'),
+    );
+    expect(
+      reasonMigration,
+      contains(
+        'internal.get_guardian_home_for_actor(target_context_id,target_child_person_id)',
+      ),
+    );
+    expect(
+      reasonMigration,
+      contains("response.revision=(item.value->>'revision')::bigint"),
+    );
+    expect(
+      reasonMigration,
+      contains("case when item.value->>'state'='declined'"),
+    );
+    expect(
+      reasonMigration,
+      contains('revoke all on function internal.home_with_own_decline_reasons'),
+    );
+    expect(surface, contains('_playerCallupDeclineReason(context, callup)'));
+
+    final callup = PlayerHomeCallup.fromJson({
+      'callup_id': 'callup-1',
+      'event_id': 'event-1',
+      'state': 'declined',
+      'revision': 2,
+      'event_title': 'Träning',
+      'event_type': 'training',
+      'starts_at': '2026-09-25T12:00:00Z',
+      'ends_at': '2026-09-25T13:00:00Z',
+      'can_respond': true,
+      'response_role': 'guardian',
+      'decline_reason_code': 'other',
+      'decline_reason_text': 'Skolresa',
+    });
+    expect(callup.declineReasonCode, 'other');
+    expect(callup.declineReasonText, 'Skolresa');
+  });
+
+  test(
+    'response sends data-free private resync to actor and linked family',
+    () {
+      expect(
+        responseInvalidationMigration,
+        contains('after insert on core.callup_responses'),
+      );
+      expect(
+        responseInvalidationMigration,
+        contains('select new.actor_profile_id as profile_id'),
+      );
+      expect(responseInvalidationMigration, contains("link.state='active'"));
+      expect(
+        responseInvalidationMigration,
+        contains("relation.state='active'"),
+      );
+      expect(
+        responseInvalidationMigration,
+        contains("guardian_link.state='active'"),
+      );
+      expect(responseInvalidationMigration, contains("'{}'::jsonb"));
+      expect(
+        responseInvalidationMigration,
+        contains("'notification:center:'||target_profile_id::text"),
+      );
+      expect(surface, contains('.watchNotificationInvalidations()'));
+    },
+  );
 
   test('child event and messages stay in selected team context', () {
     expect(migration, contains('team_relation.team_id=context_row.team_id'));

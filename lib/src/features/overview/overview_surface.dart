@@ -7,6 +7,7 @@ class _OverviewSurface extends StatefulWidget {
     required this.contextValue,
     required this.overview,
     required this.calendar,
+    required this.messaging,
     required this.onNavigate,
   });
 
@@ -15,6 +16,7 @@ class _OverviewSurface extends StatefulWidget {
   final TeamZoneContext contextValue;
   final OverviewServices overview;
   final CalendarServices calendar;
+  final MessagingServices messaging;
   final ValueChanged<String> onNavigate;
 
   @override
@@ -26,6 +28,8 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
   late Future<LeaderHomeProjection?> _leaderHome;
   late Future<PlayerHomeProjection?> _playerHome;
   late Future<GuardianHomeProjection?> _guardianHome;
+  StreamSubscription<void>? _notificationSync;
+  Timer? _homeRefreshDebounce;
   String? _guardianChildId;
   Future<MainSurfacesProjection> _reload() =>
       widget.overview.load(contextIds: [widget.contextValue.id]);
@@ -42,6 +46,23 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
     _playerHome = _reloadPlayerHome();
     _guardianHome = _reloadGuardianHome();
     unawaited(_data.load());
+    _subscribeHomeSignals();
+  }
+
+  void _subscribeHomeSignals() {
+    unawaited(_notificationSync?.cancel());
+    _notificationSync = null;
+    if (widget.destination.path != '/home') return;
+    _notificationSync = widget.messaging
+        .watchNotificationInvalidations()
+        .listen((_) {
+          _homeRefreshDebounce?.cancel();
+          _homeRefreshDebounce = Timer(const Duration(milliseconds: 250), () {
+            if (mounted && widget.destination.path == '/home') {
+              unawaited(_refresh(showError: false));
+            }
+          });
+        }, onError: (_) {});
   }
 
   Future<LeaderHomeProjection?> _reloadLeaderHome() async {
@@ -83,7 +104,7 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
     }
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh({bool showError = true}) async {
     final leaderHome = _reloadLeaderHome();
     final playerHome = _reloadPlayerHome();
     final guardianHome = _reloadGuardianHome();
@@ -95,7 +116,7 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
       });
     }
     final succeeded = await _data.refresh();
-    if (!succeeded && mounted) {
+    if (!succeeded && mounted && showError) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(AppStrings.of(context).safeError)));
@@ -105,6 +126,11 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
   @override
   void didUpdateWidget(covariant _OverviewSurface oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.destination.path != widget.destination.path ||
+        oldWidget.messaging != widget.messaging) {
+      _homeRefreshDebounce?.cancel();
+      _subscribeHomeSignals();
+    }
     if (oldWidget.contextValue.id != widget.contextValue.id ||
         oldWidget.destination.path != widget.destination.path) {
       _data.replaceScope(
@@ -120,6 +146,8 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
 
   @override
   void dispose() {
+    _homeRefreshDebounce?.cancel();
+    unawaited(_notificationSync?.cancel());
     _data.dispose();
     super.dispose();
   }
@@ -651,6 +679,8 @@ class _PlayerHomeContentState extends State<_PlayerHomeContent> {
                 ListTile(
                   title: Text(callup.eventTitle),
                   subtitle: Text(_playerCallupSubtitle(context, callup)),
+                  isThreeLine:
+                      _playerCallupDeclineReason(context, callup) != null,
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => widget.onNavigate(
                     ProductRouteContract.calendarEvent(callup.eventId),
@@ -669,23 +699,12 @@ class _PlayerHomeContentState extends State<_PlayerHomeContent> {
                               'Svarar som vårdnadshavare för ${widget.actingAsName}',
                             ),
                           ),
-                        OutlinedButton(
-                          onPressed: _pendingCallupId == null
-                              ? () => _respond(callup, 'declined')
-                              : null,
-                          child: Text(
-                            AppStrings.of(context).feature('Kan inte'),
-                          ),
-                        ),
-                        FilledButton(
-                          onPressed: _pendingCallupId == null
-                              ? () => _respond(callup, 'accepted')
-                              : null,
-                          child: Text(
-                            _pendingCallupId == callup.id
-                                ? 'Sparar…'
-                                : 'Kommer',
-                          ),
+                        _CallupResponseButtons(
+                          busy: _pendingCallupId != null,
+                          saving: _pendingCallupId == callup.id,
+                          response: callup.state,
+                          compact: false,
+                          onRespond: (response) => _respond(callup, response),
                         ),
                       ],
                     ),
@@ -752,7 +771,31 @@ String _playerCallupSubtitle(BuildContext context, PlayerHomeCallup callup) {
     'declined' => 'Kan inte',
     _ => 'Obesvarad',
   };
-  return '$state · ${material.formatCompactDate(starts)} · ${material.formatTimeOfDay(TimeOfDay.fromDateTime(starts))}';
+  final summary =
+      '$state · ${material.formatCompactDate(starts)} · ${material.formatTimeOfDay(TimeOfDay.fromDateTime(starts))}';
+  final reason = _playerCallupDeclineReason(context, callup);
+  return reason == null
+      ? summary
+      : '$summary\n${AppStrings.of(context).feature('Anledning')}: $reason';
+}
+
+String? _playerCallupDeclineReason(
+  BuildContext context,
+  PlayerHomeCallup callup,
+) {
+  if (callup.state != 'declined') return null;
+  final strings = AppStrings.of(context);
+  final label = switch (callup.declineReasonCode) {
+    'illness' => strings.feature('Sjukdom'),
+    'injury' => strings.feature('Skada'),
+    'unavailable' => strings.feature('Inte tillgänglig'),
+    'transport' => strings.feature('Transport'),
+    'other' => strings.feature('Annat'),
+    _ => null,
+  };
+  if (label == null) return null;
+  final detail = callup.declineReasonText?.trim();
+  return detail == null || detail.isEmpty ? label : '$label – $detail';
 }
 
 class _LeaderHomeContent extends StatefulWidget {
@@ -948,7 +991,7 @@ String _leaderCallupStatusLabel(String state) => switch (state) {
   _ => 'Obesvarad',
 };
 
-/// The three respond buttons ("Kan inte"/"Kanske"/"Kommer"), shared by
+/// The compact response buttons ("Acceptera"/"Avböj"), shared by
 /// the leader home's own-callup card and the Deltagare tab's roster rows
 /// (both self- and manager-response alike) — same three actions either
 /// way, just a different callup revision/reason behind onRespond.
@@ -956,27 +999,97 @@ class _CallupResponseButtons extends StatelessWidget {
   const _CallupResponseButtons({
     required this.busy,
     required this.saving,
+    required this.response,
+    required this.compact,
     required this.onRespond,
   });
   final bool busy;
   final bool saving;
+  final String? response;
+  final bool compact;
   final ValueChanged<String> onRespond;
 
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
-    return Wrap(
+    final disabled = busy || saving;
+    final accepted = response == 'accepted';
+    final declined = response == 'declined';
+    Widget button({
+      required String value,
+      required String label,
+      required IconData icon,
+      required bool selected,
+      required Color selectedColor,
+    }) {
+      final onPressed = disabled ? null : () => onRespond(value);
+      if (compact) {
+        return Tooltip(
+          message: label,
+          child: selected
+              ? IconButton.filled(
+                  visualDensity: VisualDensity.compact,
+                  style: IconButton.styleFrom(
+                    backgroundColor: selectedColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: onPressed,
+                  icon: Icon(icon),
+                )
+              : IconButton.outlined(
+                  visualDensity: VisualDensity.compact,
+                  onPressed: onPressed,
+                  icon: Icon(icon),
+                ),
+        );
+      }
+      final style = selected
+          ? FilledButton.styleFrom(
+              backgroundColor: selectedColor,
+              foregroundColor: Colors.white,
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            )
+          : OutlinedButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            );
+      return selected
+          ? FilledButton.icon(
+              style: style,
+              onPressed: onPressed,
+              icon: Icon(icon, size: 18),
+              label: Text(label),
+            )
+          : OutlinedButton.icon(
+              style: style,
+              onPressed: onPressed,
+              icon: Icon(icon, size: 18),
+              label: Text(label),
+            );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       spacing: 8,
       children: [
-        OutlinedButton(
-          onPressed: busy ? null : () => onRespond('declined'),
-          child: Text(strings.feature('Kan inte')),
+        button(
+          value: 'accepted',
+          label: saving
+              ? strings.feature('Sparar…')
+              : strings.feature('Acceptera'),
+          icon: Icons.check,
+          selected: accepted,
+          selectedColor: Colors.green.shade700,
         ),
-        FilledButton(
-          onPressed: busy ? null : () => onRespond('accepted'),
-          child: Text(
-            saving ? strings.feature('Sparar…') : strings.feature('Kommer'),
-          ),
+        button(
+          value: 'declined',
+          label: strings.feature('Avböj'),
+          icon: Icons.close,
+          selected: declined,
+          selectedColor: Colors.red.shade700,
         ),
       ],
     );
@@ -1024,6 +1137,8 @@ class _LeaderEventTile extends StatelessWidget {
             child: _CallupResponseButtons(
               busy: pendingCallupId != null,
               saving: pendingCallupId == callup.id,
+              response: callup.state,
+              compact: MediaQuery.sizeOf(context).width < 600,
               onRespond: (response) => onRespond(callup, response),
             ),
           ),
@@ -1132,7 +1247,7 @@ class _HomeHeroEventCard extends StatelessWidget {
                             onPressed: busy
                                 ? null
                                 : () => onRespond(callup, 'declined'),
-                            child: Text(strings.feature('Kan inte')),
+                            child: Text(strings.feature('Avböj')),
                           ),
                           FilledButton(
                             style: FilledButton.styleFrom(
@@ -1147,7 +1262,7 @@ class _HomeHeroEventCard extends StatelessWidget {
                             child: Text(
                               pendingCallupId == callup.id
                                   ? strings.feature('Sparar…')
-                                  : strings.feature('Kommer'),
+                                  : strings.feature('Acceptera'),
                             ),
                           ),
                         ],

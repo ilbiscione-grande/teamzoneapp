@@ -18,6 +18,10 @@ void main() {
   final models = File(
     'lib/src/features/overview/overview_models.dart',
   ).readAsStringSync();
+  final shell = File('lib/src/app/product_shell.dart').readAsStringSync();
+  final notificationMigration = File(
+    'supabase/migrations/20260827160606_msg08_notification_center.sql',
+  ).readAsStringSync();
 
   test('player projection is restricted to own linked person and team', () {
     expect(migration, contains("context_row.role_package<>'player'"));
@@ -37,13 +41,30 @@ void main() {
     expect(surface, contains("widget.onNavigate('/inbox')"));
   });
 
+  test('open Home resyncs after a private callup notification', () {
+    expect(
+      notificationMigration,
+      contains('notification_outbox_center_invalidation'),
+    );
+    expect(shell, contains('messaging: widget.messaging'));
+    expect(surface, contains('.watchNotificationInvalidations()'));
+    expect(surface, contains('const Duration(milliseconds: 250)'));
+    expect(surface, contains('_refresh(showError: false)'));
+    expect(surface, contains('unawaited(_notificationSync?.cancel())'));
+  });
+
   test('quick response reuses revision and decline reason contract', () {
     expect(surface, contains('widget.calendar.respondCallup('));
     expect(surface, contains('expectedRevision: callup.revision'));
     expect(surface, contains('declineReasonCode: reasonCode'));
     expect(surface, contains('declineReasonText: reasonText'));
-    expect(surface, contains("_respond(callup, 'declined')"));
-    expect(surface, contains("_respond(callup, 'accepted')"));
+    expect(surface, contains('response: callup.state'));
+    expect(
+      surface,
+      contains('onRespond: (response) => _respond(callup, response)'),
+    );
+    expect(surface, contains("strings.feature('Avböj')"));
+    expect(surface, contains("strings.feature('Acceptera')"));
     // "Maybe" was removed as a quick-response option (2026-09-07):
     // registering for an event is Accept or Decline, nothing in between.
     expect(surface, isNot(contains("'tentative'")));
