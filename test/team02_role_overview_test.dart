@@ -54,6 +54,27 @@ void main() {
     expect(find.text('Redigera lagprofil'), findsNothing);
   });
 
+  testWidgets('leader chooses a private upload instead of entering an URL', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app(canManage: true));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Laget'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Redigera lagprofil'),
+      250,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('Redigera lagprofil'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Lagbild'), findsOneWidget);
+    expect(find.text('Välj lagbild'), findsOneWidget);
+    expect(find.text('Lagbildens HTTPS-adress'), findsNothing);
+    expect(find.textContaining('Originalet lagras privat'), findsOneWidget);
+  });
+
   test('TEAM-02 projection minimizes admin data behind capability', () {
     final sql = File(
       'supabase/migrations/20260824151510_team02_role_based_overview.sql',
@@ -97,6 +118,36 @@ void main() {
     expect(sql, contains('team_row.id'));
     expect(sql, contains('revoke all on function'));
   });
+
+  test('TEAM-02 image upload is private, scoped and separately authorized', () {
+    final sql = File(
+      'supabase/migrations/20260912134327_team02_private_team_image_upload.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(sql, contains("'team-profile-images','team-profile-images',false"));
+    expect(
+      sql,
+      contains(
+        'alter table core.team_profile_images enable row level security',
+      ),
+    );
+    expect(sql, contains('revoke all on table core.team_profile_images'));
+    expect(sql, contains('internal.actor_can_upload_team_profile_image'));
+    expect(sql, contains("image.state='staged'"));
+    expect(sql, contains("'team.roster.manage'"));
+    expect(sql, contains('api.authorize_team_profile_image'));
+    expect(sql, contains("'expires_in_seconds',3600"));
+    expect(sql, isNot(contains('public=true')));
+    final readPolicy = File(
+      'supabase/migrations/20260912140450_team02_team_image_signed_read_policy.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(readPolicy, contains('for select to authenticated'));
+    expect(readPolicy, contains("image.state='active'"));
+    expect(readPolicy, contains('profile.image_asset_id=image.id'));
+    expect(
+      readPolicy,
+      contains('internal.actor_has_club_access(image.club_id)'),
+    );
+  });
 }
 
 Widget _app({required bool canManage}) => TeamZoneApp(
@@ -129,6 +180,11 @@ class _Roster extends UnconfiguredRosterServices {
         activeInvitationCount: 2,
         pendingApplicationCount: 3,
       );
+
+  @override
+  Future<TeamProfileEditData> getTeamProfileEdit({
+    required String teamId,
+  }) async => const TeamProfileEditData(teamId: 'team', revision: 1);
 }
 
 class _Identity implements IdentityServices {

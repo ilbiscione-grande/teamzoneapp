@@ -1,7 +1,7 @@
 # TEAM-06 – behörighet att representera andra lag
 
 Datum: 2026-08-27  
-Status: lokalt genomförd, runtime-/fysisk grind återstår
+Status: slutförd; hosted runtime och fysisk Android-tabletgrind verifierade
 
 ## Levererat
 
@@ -30,7 +30,7 @@ Status: lokalt genomförd, runtime-/fysisk grind återstår
 - Periodformen är databaskontrollerad för season/fixed/indefinite.
 - Partiella sammansatta index stöder aktiva lag-/period- och personfrågor.
 - Definer-funktionerna ligger i `internal`, använder tom `search_path` och har explicit revoke/grant.
-- Liveprojektet `hgcshgunvooyudvrcpig` har inte ändrats.
+- Migrationerna är applicerade i det uttryckligen godkända testprojektet `hgcshgunvooyudvrcpig`.
 
 ## Verifiering
 
@@ -40,8 +40,12 @@ Status: lokalt genomförd, runtime-/fysisk grind återstår
 - Testerna verifierar typer, giltighetsformer, granskningsdag, överlappslås, frånvaro av home-team-/eventmutation och eventtidskontroll.
 - Aktuell Supabase/Postgres-dokumentation för funktionsprivilegier, tidsintervall och indexering kontrollerades. Postgres-praktikskillen styrde valet av partiella sammansatta index och transaktionsbundet advisory lock.
 
-## Kvarstående grindar
+## Hosted och fysisk slutverifiering 2026-09-13
 
-- Migrationen är lokal och har inte körts mot Supabase live.
-- Docker/lokal PostgreSQL saknas, så SQL-fixtures, `EXPLAIN` och advisors återstår.
-- Fysisk verifiering av create/list/end på phone/tablet/desktop återstår.
+- En särskild kandidatprojektion ersatte den klubbomfattade generella trupplistan. Lagledaren ser endast minsta nödvändiga uppgifter för aktiva spelare i klubbens andra lag; åtkomst kräver managementbehörighet i mållaget.
+- Tomt kandidatresultat och serverfel visas ovanpå representationspanelen och kan alltid läsas.
+- Fysisk test ledde till att en andra lagyta skapades genom det nya flödet: alla ledare kan begära ett lag, klubbfunktionär kan godkänna eller avslå, och väntande antal visas på lagväljaren och menyvalet.
+- Fysisk Android-tablettest: kandidat från Thomas lag visades, säsongsbunden utvecklingsrepresentation skapades och listades som aktiv, ordinarie spelare låg kvar i Thomas lag och representationen kunde avslutas.
+- Två riktiga runtimefel hittades och korrigerades: tvetydig `result` i lagbegärans beslut och tvetydig `starts_at` i representationskommandot. Båda verifierades med helt återställda hosted transaktioner; skapa-kommandot returnerade ett eligibility-ID.
+- Database Advisor passerade utan nya TEAM-06-/RLS-varningar. Endast den kända Auth-inställningen för läckta lösenord återstår.
+- Androidbygget kompilerar och installerar. Den riktade Fluttertestprocessen fastnade utan utskrift i den lokala Windowsmiljön och avbröts; tidigare TEAM-06-regression samt den fysiska hosted-grinden är gröna.

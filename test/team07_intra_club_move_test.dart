@@ -12,9 +12,7 @@ import 'package:teamzone_app/src/features/roster/roster_models.dart';
 import 'package:teamzone_app/src/features/roster/roster_services.dart';
 
 void main() {
-  testWidgets('leader moves a player to another team with an explicit date', (
-    tester,
-  ) async {
+  testWidgets('leader moves a selected player to another team', (tester) async {
     final roster = _Roster();
     await tester.pumpWidget(_app(roster));
     await tester.pumpAndSettle();
@@ -27,17 +25,17 @@ void main() {
     await tester.tap(find.text('Flytta spelare'));
     await tester.pumpAndSettle();
     expect(find.text('Ada Spelare'), findsOneWidget);
-    await tester.tap(find.text('Flytta'));
+    await tester.tap(find.text('Ada Spelare'));
     await tester.pumpAndSettle();
-    expect(
-      find.text('Det tidigare laget och all historik bevaras.'),
-      findsOneWidget,
-    );
-    await tester.tap(find.text('Flytta').last);
+    await tester.tap(find.widgetWithText(FilledButton, 'Flytta spelare').last);
     await tester.pumpAndSettle();
     expect(roster.moveCalls, 1);
     expect(roster.targetTeam, 'target');
+    expect(roster.effectiveAt, isNotNull);
+    expect(roster.effectiveAt!.difference(DateTime.now()).abs().inMinutes, 0);
     expect(find.text('Spelaren är flyttad.'), findsOneWidget);
+    await tester.tap(find.text('Stäng'));
+    await tester.pumpAndSettle();
   });
 
   test('TEAM-07 SQL moves atomically and preserves historical rows', () {
@@ -92,6 +90,7 @@ Widget _app(_Roster roster) => TeamZoneApp(
 class _Roster extends UnconfiguredRosterServices {
   int moveCalls = 0;
   String? targetTeam;
+  DateTime? effectiveAt;
   @override
   Future<IntraClubMoveOptions> getIntraClubMoveOptions({
     required String clubId,
@@ -124,6 +123,7 @@ class _Roster extends UnconfiguredRosterServices {
   }) async {
     moveCalls++;
     targetTeam = targetTeamId;
+    this.effectiveAt = effectiveAt;
   }
 }
 

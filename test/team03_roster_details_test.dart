@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teamzone_app/src/app/product_route_contract.dart';
 import 'package:teamzone_app/src/app/teamzone_app.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
@@ -12,7 +13,7 @@ import 'package:teamzone_app/src/features/roster/roster_models.dart';
 import 'package:teamzone_app/src/features/roster/roster_services.dart';
 
 void main() {
-  testWidgets('roster supports status filter, pagination and mobile details', (
+  testWidgets('roster opens member details as its own routed page', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -43,6 +44,7 @@ void main() {
     expect(find.text('Person 00'), findsNothing);
     await tester.tap(find.text('Tidigare 00'));
     await tester.pumpAndSettle();
+    expect(find.text('Medlemsuppgifter'), findsOneWidget);
     expect(find.text('Administrativa uppgifter'), findsOneWidget);
     expect(find.text('Testimport'), findsOneWidget);
 
@@ -50,6 +52,35 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Administrativa uppgifter'), findsNothing);
     expect(find.text('Tidigare 00'), findsOneWidget);
+  });
+
+  testWidgets('desktop uses the same routed member details page', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(_app(role: 'leader', canView: true));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Laget'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Trupp'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Person 00'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Medlemsuppgifter'), findsOneWidget);
+    expect(find.text('Administrativa uppgifter'), findsOneWidget);
+    expect(find.text('Välj en person'), findsNothing);
+  });
+
+  test('member details has a stable canonical deep link', () {
+    const id = 'person/with space';
+    final route = ProductRouteContract.teamMember(id);
+    expect(route, '/team/member/person%2Fwith%20space');
+    expect(ProductRouteContract.isCanonical(route), isTrue);
+    expect(ProductRouteContract.canonicalInitialLocation(route), route);
   });
 
   testWidgets('unknown role is fail closed before roster data is shown', (

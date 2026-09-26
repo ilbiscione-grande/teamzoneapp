@@ -1,12 +1,12 @@
 # TEAM-02 – Rollstyrd lagöversikt
 
 **Datum:** 2026-08-24  
-**Status:** IMPLEMENTERAD; HOSTED SQL-RUNTIME OCH FYSISK WEBBGRIND VERIFIERADE, ANDROID-/MEDIAGRIND ÅTERSTÅR  
-**Livepåverkan:** TEAM-02:s profil- och ledarbehörighetsmigreringar är applicerade på den uttryckligen godkända testdatabasen `hgcshgunvooyudvrcpig`.
+**Status:** SLUTFÖRD – IMPLEMENTERAD, HOSTED SQL/STORAGE, 369/369 REGRESSION SAMT FYSISKT VERIFIERAD PÅ WEBB OCH ANDROID INKLUSIVE HELA PRIVATA BILDFLÖDET OCH STÖRRE TEXT  
+**Livepåverkan:** TEAM-02:s profil-, ledarbehörighets- och privata lagbildsmigreringar är applicerade på den uttryckligen godkända testdatabasen `hgcshgunvooyudvrcpig`.
 
 ## Implementerat
 
-- En privat `core.team_profiles`-modell lagrar kort laginformation, lagtyp, åldersklass och godkänd HTTPS-adress till lagbild.
+- En privat `core.team_profiles`-modell lagrar kort laginformation, lagtyp, åldersklass och referens till lagets aktiva privata bildobjekt. Äldre godkända HTTPS-adresser kan fortfarande läsas, men kan inte längre matas in i klienten.
 - En minimerad RPC returnerar endast lagets identitet, profilfält, aktiva ledarnamn och sammanfattande medlemsantal till en användare med klubbåtkomst.
 - Aktiva inbjudningar och väntande medlemsansökningar räknas endast när servern bekräftar `club.memberships.manage`; annars returneras noll.
 - Klienten kräver dessutom samma capability innan det administrativa åtgärdskortet över huvud taget byggs.
@@ -18,6 +18,11 @@
 - Behörig ledare ser aktiva inbjudningar, väntande ansökningar och totalsumma för ärenden som kräver åtgärd.
 - Player/guardian utan capability ser inte det administrativa kortet, även om en felaktig klientfixture skulle innehålla administrativa räknare.
 - All ny användartext har svensk och engelsk lokalisering.
+- Lagprofilformuläret har `Välj lagbild`, förhandsvisning, `Byt lagbild` och `Ta bort lagbild` i stället för ett URL-fält. JPG, PNG och WebP tillåts upp till 5 MB.
+- Originalet ligger i den privata bucketen `team-profile-images`. Ett capabilitykontrollerat, idempotent staging-anrop måste skapa exakt objektnyckel innan Storage accepterar upload. Upsert är avstängt.
+- Aktivering sker atomiskt tillsammans med profilrevisionen. Ersatta/borttagna bilder blir omedelbart oläsbara men behålls privat för en senare explicit retention-/rensningsrutin.
+- Läsning kräver både en serverauktorisering och Storage SELECT-RLS mot en aktiv bild som fortfarande är kopplad till profilen och en klubb aktören har åtkomst till. Klienten använder endast en signerad URL på 60 minuter och har 15 sekunders timeout.
+- Privat original blir inte automatiskt den publika klubbsajtens bild. Publik transformation/skanning/variant förblir PUB-04:s separata grind.
 
 ## Verifiering
 
@@ -28,12 +33,16 @@
 - Källkontrakt verifierar privat tabell, klubbåtkomst, capabilitygrind, nollad adminprojektion och avsaknad av direkta grants till ansökningstabellen.
 - Säkerhetsutformningen följer aktuell Supabase-vägledning med explicit RLS/revoke, privat definer-funktion, tom `search_path` och explicit RPC-grant.
 - Hosted RPC-signaturer, execute-grants och nekad `anon`/`PUBLIC`-åtkomst verifierades 2026-09-01.
+- Migrationerna `20260912134327_team02_private_team_image_upload.sql` och `20260912140450_team02_team_image_signed_read_policy.sql` rollbackvaliderades med riktig Postgres innan push och är remote-registrerade. Security Advisor visar ingen ny media-/RLS-varning; endast den tidigare kända Auth-varningen för läckta lösenord kvarstår.
+- Riktad TEAM-02-svit efter uppladdningsändringen: **7/7 passerar**.
+- Full Flutter-regression efter det nya RosterServices-/Storage-kontraktet: **369/369 passerar**.
+- Fysisk Xiaomi Mi 9-verifiering bekräftade filval, lokal förhandsvisning, privat upload, sparad profil, signerad återläsning, bildvisning och efterföljande bildbyte. Första försöket hittade en verklig saknad Storage SELECT-policy: objektet och profilaktiveringen var korrekta men signerad URL kunde inte skapas och sidan fortsatte ladda. Den medlemsbundna policyn lades till och omtest passerade utan att bilden behövde laddas upp igen.
+- Slutlig Xiaomi-kontroll bekräftade även `Ta bort lagbild`, neutral fallback och att både översikten och redigeringsdialogen förblir läsbara/skrollbara med cirka 200 % textstorlek. Bilden kunde därefter laddas upp igen.
+- Hosted rollback-fixturen `team02_overview_counts_rollback.sql` skapade ett isolerat lag med aktiv, utgången och återkallad invite samt väntande och avslagen ansökan. Actorprojektionen räknade exakt **1 aktiv invite + 1 väntande ansökan**. Efter statusändring till återkallad respektive tillbakadragen räknade nästa projektion **0 + 0**. Hela fixturen avslutades med `ROLLBACK` och markören `TEAM02_OVERVIEW_COUNTS_ROLLBACK_OK`.
 
 ## Kvarvarande grind
 
-1. Slutför kvarvarande Androidgranskning av profilredigering, större text och bildfallback.
-2. Verifiera invite-/ansökningsräknare, utgångna invites och samtidiga statusändringar mot SQL-fixtures.
-3. Fastställ senare redigerings-/uppladdningsflöde och Storage-policy för lagbild; TEAM-02 läser endast en redan godkänd HTTPS-bildadress.
+Ingen kvarvarande grind för TEAM-02. Publik transformerad bildvariant hör till PUB-04 och påverkar inte stängningen av den privata lagöversikten.
 
 ## Lokal profilredigering 2026-09-01
 

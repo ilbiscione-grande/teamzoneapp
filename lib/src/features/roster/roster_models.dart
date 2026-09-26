@@ -55,10 +55,11 @@ class TeamOverview {
     this.ageClass,
     this.summary,
     this.imageUrl,
+    this.imageAssetId,
   });
 
   final String teamId, clubId, teamName, clubName;
-  final String? teamType, ageClass, summary, imageUrl;
+  final String? teamType, ageClass, summary, imageUrl, imageAssetId;
   final List<TeamLeaderSummary> leaders;
   final int memberCount, activeInvitationCount, pendingApplicationCount;
   final bool canManage;
@@ -73,6 +74,7 @@ class TeamOverview {
     ageClass: json['age_class'] as String?,
     summary: json['summary'] as String?,
     imageUrl: json['image_url'] as String?,
+    imageAssetId: json['image_asset_id'] as String?,
     leaders: (json['leaders'] as List? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(TeamLeaderSummary.fromJson)
@@ -94,11 +96,12 @@ class TeamProfileEditData {
     this.ageClass,
     this.summary,
     this.imageUrl,
+    this.imageAssetId,
   });
 
   final String teamId;
   final int revision;
-  final String? teamType, ageClass, summary, imageUrl;
+  final String? teamType, ageClass, summary, imageUrl, imageAssetId;
 
   factory TeamProfileEditData.fromJson(Map<String, dynamic> json) =>
       TeamProfileEditData(
@@ -108,6 +111,24 @@ class TeamProfileEditData {
         ageClass: json['age_class'] as String?,
         summary: json['summary'] as String?,
         imageUrl: json['image_url'] as String?,
+        imageAssetId: json['image_asset_id'] as String?,
+      );
+}
+
+class StagedTeamImage {
+  const StagedTeamImage({
+    required this.imageId,
+    required this.bucketId,
+    required this.objectKey,
+  });
+
+  final String imageId, bucketId, objectKey;
+
+  factory StagedTeamImage.fromJson(Map<String, dynamic> json) =>
+      StagedTeamImage(
+        imageId: json['image_id'] as String,
+        bucketId: json['bucket_id'] as String,
+        objectKey: json['object_key'] as String,
       );
 }
 
@@ -119,6 +140,8 @@ class RosterPersonDetails {
     required this.teamName,
     required this.assignmentState,
     this.ageClass,
+    this.birthDate,
+    this.birthYear,
     this.safeguardingRequired,
     this.provenance,
     this.assignmentStartsAt,
@@ -128,6 +151,8 @@ class RosterPersonDetails {
   });
   final String id, displayName, teamId, teamName, assignmentState;
   final String? ageClass, provenance;
+  final DateTime? birthDate;
+  final int? birthYear;
   final bool? safeguardingRequired;
   final DateTime? assignmentStartsAt, assignmentEndsAt;
   final int? assignmentRevision;
@@ -137,7 +162,9 @@ class RosterPersonDetails {
 
   factory RosterPersonDetails.fromJson(Map<String, dynamic> json) {
     final management = json['management'];
-    final manager = management is Map<String, dynamic> ? management : null;
+    final manager = management is Map
+        ? Map<String, dynamic>.from(management)
+        : null;
     return RosterPersonDetails(
       id: json['club_person_id'] as String,
       displayName: json['display_name'] as String,
@@ -145,6 +172,8 @@ class RosterPersonDetails {
       teamName: json['team_name'] as String,
       assignmentState: json['assignment_state'] as String,
       ageClass: json['age_class'] as String?,
+      birthDate: DateTime.tryParse(manager?['birth_date'] as String? ?? ''),
+      birthYear: (manager?['birth_year'] as num?)?.toInt(),
       safeguardingRequired: json['safeguarding_required'] as bool?,
       provenance: manager?['provenance'] as String?,
       assignmentStartsAt: DateTime.tryParse(
@@ -171,12 +200,18 @@ class InvitationAdminItem {
   final String id, kind, subjectName, state;
   final DateTime? expiresAt;
   final int revision;
+  bool get isExpired =>
+      state == 'issued' &&
+      expiresAt != null &&
+      !expiresAt!.isAfter(DateTime.now());
+  String get displayState => isExpired ? 'expired' : state;
   bool get canRevoke =>
       kind != 'guardian_relation' &&
       state == 'issued' &&
       expiresAt != null &&
       expiresAt!.isAfter(DateTime.now());
   bool get canEndRelation => kind == 'guardian_relation' && state == 'active';
+  bool get isActive => canRevoke || canEndRelation;
 
   factory InvitationAdminItem.fromJson(Map<String, dynamic> json) =>
       InvitationAdminItem(
@@ -297,9 +332,11 @@ class RosterLifecyclePerson {
     required this.assignmentId,
     required this.assignmentState,
     required this.assignmentRevision,
+    this.canReactivate = false,
   });
   final String personId, personName, assignmentId, assignmentState;
   final int assignmentRevision;
+  final bool canReactivate;
   bool get canArchive => assignmentState == 'active';
   factory RosterLifecyclePerson.fromJson(Map<String, dynamic> json) =>
       RosterLifecyclePerson(
@@ -308,6 +345,7 @@ class RosterLifecyclePerson {
         assignmentId: json['assignment_id'] as String,
         assignmentState: json['assignment_state'] as String,
         assignmentRevision: (json['assignment_revision'] as num).toInt(),
+        canReactivate: json['can_reactivate'] as bool? ?? false,
       );
 }
 

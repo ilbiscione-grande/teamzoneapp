@@ -1,11 +1,12 @@
 # TEAM-07 – flytta spelare med bevarad historik
 
 Datum: 2026-08-27  
-Status: lokalt genomförd, runtime-/fysisk/testgrind återstår
+Status: helt genomförd och fysiskt verifierad 2026-09-13
 
 ## Levererat
 
-- Behörig ledare kan välja en aktiv spelare, ett annat aktivt lag i samma klubb, flyttdatum och anledning.
+- Behörig ledare kan välja en eller flera aktiva spelare, ett annat aktivt lag i samma klubb och anledning i ett sammanhållet bottomsheet.
+- Samma flöde kan öppnas från truppverktygen eller från en spelarprofil, där aktuell spelare är förvald.
 - Flytten avslutar den befintliga `team_assignments`-raden exakt vid ikraftträdandet och skapar en ny rad i samma transaktion.
 - Den tidigare assignment-raden raderas eller skrivs inte om utöver slutstatus, slutdatum, revision och aktör.
 - Event, närvaro och statistik muteras inte och kan därför fortsätta peka på sin historiska klubb-/lagkontext.
@@ -30,17 +31,18 @@ Status: lokalt genomförd, runtime-/fysisk/testgrind återstår
 - Security-definer-funktionerna ligger i `internal`, använder tom `search_path`, autentiseringskontroll och explicita revoke/grant.
 - Ett partiellt sammansatt index stöder den återkommande aktiva person-/lagfrågan.
 - Postgres-praktikskillen styrde valet av transaktionsbundet advisory lock och partiellt index.
-- Liveprojektet `hgcshgunvooyudvrcpig` har inte ändrats.
+- Migrationen är applicerad i det godkända testprojektet `hgcshgunvooyudvrcpig`.
 
 ## Verifiering
 
-- `flutter analyze`: inga problem.
+- Riktad `flutter analyze lib/src/features/roster/roster_surface.dart`: inga problem 2026-09-13.
 - Ett widgettest, ett SQL-kontraktstest och ett modelltest har lagts till.
-- Flutter-testwrappen startade upprepade gånger utan output eller kvarvarande synlig testprocess och avbröts efter begränsad väntan; testresultat får därför inte anges som godkänt ännu.
+- Den fulla Flutter-sviten var grön 2026-09-07 och hosted rollback-testet för TEAM-07 passerar.
+- Backendansluten debug-APK byggdes, installerades och startades på fysisk Android-tablet.
+- En verklig spelare flyttades mellan två lag och tillbaka. Källagets aktiva lista och mållagets aktiva lista uppdaterades korrekt utan att historiken skrevs om.
+- Fysisk uppföljning godkände flerval, profilgenväg, synlig resultatdialog och att hela flyttpanelen stängs efter en genomförd eller delvis genomförd flytt så nästa öppning hämtar färska kandidater.
 
-## Kvarstående grindar
+## Slutbedömning
 
-- Migrationen är lokal och har inte körts mot Supabase live.
-- Docker/lokal PostgreSQL saknas, så SQL-fixtures, `EXPLAIN` och advisors återstår.
-- TEAM-07-testet och rosterregressionen ska köras när Flutter-testwrappen svarar.
-- Fysisk verifiering på phone/tablet/desktop återstår.
+- TEAM-07 är stängd. Tabletgrinden täcker den responsiva klienten och samma capabilitystyrda serverkommando används i samtliga formfaktorer.
+- Flytt mellan klubbar förblir medvetet ett separat flerpartsflöde och ingår inte i TEAM-07.

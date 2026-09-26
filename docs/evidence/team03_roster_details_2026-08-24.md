@@ -1,12 +1,12 @@
 # TEAM-03 – trupplista och medlemsdetalj
 
 Datum: 2026-08-24  
-Status: genomförd; hosted runtime, mobil och desktop/webb verifierade, fysisk tabletgrind återstår
+Status: slutförd; hosted runtime, enhetlig detaljsida, regression samt fysisk webb- och Androidgrind verifierade
 
 ## Levererat
 
 - Trupplistan har textsökning, statusfiltren Alla/Aktiva/Övriga och befintlig sidindelning för stora trupper.
-- Telefon öppnar medlemsdetaljen i en snabb bottom sheet. Tablet/desktop använder en tvåpanelsvy där listan ligger kvar.
+- Alla format öppnar medlemsdetaljen som en egen routad sida (`/team/member/:personId`) med stabil webbadress och fungerande tillbakaåtgärd till Trupp.
 - Klienten stänger fail-closed för guest, okänd roll eller saknad roster-capability.
 - Ny API-projektion returnerar grundläggande lag- och spelaruppgifter till tillåtna roller. Administrativ provenance, assignmentdatum, revision och safeguarding-flagga returneras endast med `club.memberships.manage`.
 - Kontaktuppgifter har inte lagts till eftersom nuvarande schema saknar verifierade kontaktfält. Inga fält har uppfunnits eller härletts.
@@ -52,5 +52,8 @@ Status: genomförd; hosted runtime, mobil och desktop/webb verifierade, fysisk t
 
 ## Kvarstående grindar
 
-- Fysisk tablet/desktop-verifiering av tvåpanelsvyn återstår.
-- En separat fysisk tabletpassering krävs innan TEAM-03 markeras helt klar.
+- Produktägaren valde 2026-09-12 bort den tidigare mobil-sheeten och tablet/desktops tvåpanelsvy till förmån för en konsekvent egen detaljsida i alla format.
+- Den nya routade sidan är verifierad av 6/6 TEAM-03-tester samt 22/22 riktade trupp-, skal- och navigationsregressioner för mobil, tablet och desktop.
+- Lokal releasewebb verifierades fysiskt av produktägaren: tryck på en person öppnar den egna routen `/team/member/:personId`.
+- Samma build installerades på Xiaomi Mi 9, Android 10. Produktägaren verifierade att persondetaljen öppnas som en egen helsida och att Android-back återgår till Trupp.
+- Ingen separat tvåpanels- eller bottom-sheet-grind återstår eftersom dessa presentationer avsiktligt har ersatts av den gemensamma detaljsidan.

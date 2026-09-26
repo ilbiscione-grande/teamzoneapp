@@ -1,17 +1,19 @@
 # TEAM-04 – skapa och redigera rosterperson
 
 Datum: 2026-08-26  
-Status: genomförd och hosted runtimeverifierad; fysisk create/edit-grind återstår
+Status: slutförd; hosted runtime samt fysisk webb-, Android- och tabletgrind verifierade
 
 ## Levererat
 
 - Behörig användare kan lägga till en person från truppens Hantera-meny.
 - Befintlig person kan öppnas i ett förifyllt redigeringsformulär direkt från trupplistan.
 - Formulären har längdvalidering, pending-/double-submit-skydd, neutralt fel och varning innan osparade ändringar kastas.
+- Personformuläret kräver födelseår via årsväljare. Exakt födelsedatum är en valfri komplettering via kalender och kan läggas till eller tas bort senare utan att ett påhittat datum lagras.
 - Create skapar `core.persons`, klubbprofil och lagrepresentation i samma databastransaktion.
-- Normaliserat namn plus åldersklass skyddas mot samtidiga dubbletter i samma lag med transaktionslås.
+- Namn och åldersklass är beskrivande uppgifter, inte personidentitet. Flera personer i samma lag får därför ha samma värden och särskiljs av egna person-ID:n.
 - Update kräver aktuell klubbpersonsrevision och ändrar endast `core.club_people`.
 - `core.persons`, `core.profiles` och kontots globala identitet skrivs aldrig över.
+- Exakt födelsedatum lagras som privat `date` på klubbpersonen och exponeras endast i capabilityskyddad managementprojektion; generell trupplista visar bara födelseår.
 
 ## Filer
 
@@ -53,4 +55,12 @@ Status: genomförd och hosted runtimeverifierad; fysisk create/edit-grind åters
 
 ## Kvarstående grindar
 
-- Fysisk phone/tablet-verifiering återstår; webbflödet för create/edit och osparade ändringar är godkänt.
+- Webb, telefon och tablet är fysiskt godkända för create/edit och osparat-skydd.
+- Produktkorrigering 2026-09-12: den felaktiga unikhetsregeln för normaliserat namn + åldersklass tas bort genom `20260912183346_team04_allow_same_name_and_age_class.sql`. Retry-säkerhet behålls genom befintlig kommandospecifik idempotens.
+- Migrationen är applicerad i den godkända testdatabasen och lokal/fjärr migrationshistorik matchar. Produktägaren verifierade därefter fysiskt på Xiaomi Mi 9 att en andra separat spelare med exakt samma namn och åldersklass kan skapas.
+- Mobilens create- och editflöde är verifierat på Xiaomi Mi 9: en person skapades, en av två personer med samma namn/år redigerades utan att den andra ändrades och sparad data visades i truppen.
+- Fysisk test hittade att Android-back kunde kringgå formulärets `PopScope`. Produktskalet använder nu `Navigator.maybePop()` i stället för en tvingad router-pop, så den aktiva sidan får stoppa navigeringen. 26/26 riktade TEAM-03/04-, skal- och navigationsregressioner passerade; produktägaren verifierade därefter både **Avbryt** och **Kasta** på Mi 9.
+- Efter lokal rosterredigering verifierade produktägaren att profildrawern fortfarande visade kontots ursprungliga globala namn. Den lokala klubb-/lagprofilen skriver alltså inte över användarens globala identitet.
+- På fysisk Android-tablet verifierade produktägaren först skapande med endast födelseår och därefter komplettering med månad och dag. Trupplistan fortsatte visa endast året medan exakt datum hölls i behörig detalj-/redigeringsvy.
+- Den slutliga riktade TEAM-04-sviten passerade 16/16. Full Flutter-regression passerade 372 tester och identifierade endast en saknad engelsk översättning för den redan testade TEAM-03-texten `Tillbaka till truppen`; översättningsposten lades till utan ändring av TEAM-04-flödet.
+- Supabase Database Advisor passerade utan TEAM-04-/schemavarningar. Endast den sedan tidigare kända projektinställningen för läckta lösenord återstår.

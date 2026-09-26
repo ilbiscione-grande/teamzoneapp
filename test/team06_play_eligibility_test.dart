@@ -84,6 +84,20 @@ Widget _app(_Roster roster) => TeamZoneApp(
 class _Roster extends UnconfiguredRosterServices {
   int endCalls = 0;
   @override
+  Future<List<RosterPersonSummary>> listPlayEligibilityCandidates({
+    required String clubId,
+    required String teamId,
+  }) async => const [
+    RosterPersonSummary(
+      id: 'person',
+      displayName: 'Ada Spelare',
+      safeguardingRequired: false,
+      teamId: 'source',
+      teamName: 'F2012',
+      assignmentState: 'active',
+    ),
+  ];
+  @override
   Future<List<PlayEligibilitySummary>> listPlayEligibilities({
     required String clubId,
     required String teamId,

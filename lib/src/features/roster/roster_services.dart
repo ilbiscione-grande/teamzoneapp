@@ -1,15 +1,24 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/roster/roster_models.dart';
 
 abstract interface class RosterServices {
   Future<TeamOverview> getTeamOverview({required String teamId});
   Future<TeamProfileEditData> getTeamProfileEdit({required String teamId});
+  Future<String> uploadTeamImage({
+    required String teamId,
+    required String mimeType,
+    required Uint8List bytes,
+    required String idempotencyKey,
+  });
   Future<int> updateTeamProfile({
     required String teamId,
     required String teamType,
     required String ageClass,
     required String summary,
-    required String imageUrl,
+    required String imageAction,
+    String? stagedImageId,
     required int expectedRevision,
     required String idempotencyKey,
   });
@@ -26,7 +35,8 @@ abstract interface class RosterServices {
     required String clubId,
     required String teamId,
     required String displayName,
-    required String ageClass,
+    required int birthYear,
+    DateTime? birthDate,
     required DateTime startsAt,
     required String idempotencyKey,
   });
@@ -35,7 +45,8 @@ abstract interface class RosterServices {
     required String teamId,
     required String personId,
     required String displayName,
-    required String ageClass,
+    required int birthYear,
+    DateTime? birthDate,
     required int expectedRevision,
     required String idempotencyKey,
   });
@@ -94,6 +105,10 @@ abstract interface class RosterServices {
     required String clubId,
     required String teamId,
   });
+  Future<List<RosterPersonSummary>> listPlayEligibilityCandidates({
+    required String clubId,
+    required String teamId,
+  });
   Future<String> createPlayEligibility({
     required String clubId,
     required String teamId,
@@ -132,6 +147,15 @@ abstract interface class RosterServices {
     required String teamId,
   });
   Future<int> archiveTeamAssignment({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required String assignmentId,
+    required int expectedRevision,
+    required String reason,
+    required String idempotencyKey,
+  });
+  Future<String> restoreArchivedTeamAssignment({
     required String clubId,
     required String teamId,
     required String personId,
@@ -185,12 +209,21 @@ class UnconfiguredRosterServices implements RosterServices {
       Future.error(StateError('Supabase is not configured.'));
 
   @override
+  Future<String> uploadTeamImage({
+    required String teamId,
+    required String mimeType,
+    required Uint8List bytes,
+    required String idempotencyKey,
+  }) => Future.error(StateError('Supabase is not configured.'));
+
+  @override
   Future<int> updateTeamProfile({
     required String teamId,
     required String teamType,
     required String ageClass,
     required String summary,
-    required String imageUrl,
+    required String imageAction,
+    String? stagedImageId,
     required int expectedRevision,
     required String idempotencyKey,
   }) => Future.error(StateError('Supabase is not configured.'));
@@ -213,7 +246,8 @@ class UnconfiguredRosterServices implements RosterServices {
     required String clubId,
     required String teamId,
     required String displayName,
-    required String ageClass,
+    required int birthYear,
+    DateTime? birthDate,
     required DateTime startsAt,
     required String idempotencyKey,
   }) => Future.error(StateError('Supabase is not configured.'));
@@ -224,7 +258,8 @@ class UnconfiguredRosterServices implements RosterServices {
     required String teamId,
     required String personId,
     required String displayName,
-    required String ageClass,
+    required int birthYear,
+    DateTime? birthDate,
     required int expectedRevision,
     required String idempotencyKey,
   }) => Future.error(StateError('Supabase is not configured.'));
@@ -296,6 +331,11 @@ class UnconfiguredRosterServices implements RosterServices {
     required String teamId,
   }) => Future.error(StateError('Supabase is not configured.'));
   @override
+  Future<List<RosterPersonSummary>> listPlayEligibilityCandidates({
+    required String clubId,
+    required String teamId,
+  }) => Future.error(StateError('Supabase is not configured.'));
+  @override
   Future<String> createPlayEligibility({
     required String clubId,
     required String teamId,
@@ -339,6 +379,17 @@ class UnconfiguredRosterServices implements RosterServices {
   }) => Future.error(StateError('Supabase is not configured.'));
   @override
   Future<int> archiveTeamAssignment({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required String assignmentId,
+    required int expectedRevision,
+    required String reason,
+    required String idempotencyKey,
+  }) => Future.error(StateError('Supabase is not configured.'));
+
+  @override
+  Future<String> restoreArchivedTeamAssignment({
     required String clubId,
     required String teamId,
     required String personId,
@@ -404,7 +455,9 @@ class SupabaseRosterServices implements RosterServices {
     if (value is! Map<String, dynamic>) {
       throw const FormatException('Team overview response is invalid.');
     }
-    return TeamOverview.fromJson(value);
+    final json = Map<String, dynamic>.from(value);
+    await _resolveTeamImage(json);
+    return TeamOverview.fromJson(json);
   }
 
   @override
@@ -420,7 +473,66 @@ class SupabaseRosterServices implements RosterServices {
     if (value is! Map<String, dynamic>) {
       throw const FormatException('Team profile response is invalid.');
     }
-    return TeamProfileEditData.fromJson(value);
+    final json = Map<String, dynamic>.from(value);
+    await _resolveTeamImage(json);
+    return TeamProfileEditData.fromJson(json);
+  }
+
+  Future<void> _resolveTeamImage(Map<String, dynamic> json) async {
+    final assetId = json['image_asset_id'];
+    if (assetId is! String || assetId.isEmpty) return;
+    final authorization = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'authorize_team_profile_image',
+          params: {'target_image_id': assetId},
+        )
+        .timeout(const Duration(seconds: 15));
+    if (authorization is! Map ||
+        authorization['bucket_id'] != 'team-profile-images' ||
+        authorization['object_key'] is! String ||
+        authorization['expires_in_seconds'] != 3600) {
+      throw const FormatException('Invalid team image authorization.');
+    }
+    json['image_url'] = await _client.storage
+        .from(authorization['bucket_id']! as String)
+        .createSignedUrl(authorization['object_key']! as String, 3600)
+        .timeout(const Duration(seconds: 15));
+  }
+
+  @override
+  Future<String> uploadTeamImage({
+    required String teamId,
+    required String mimeType,
+    required Uint8List bytes,
+    required String idempotencyKey,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'stage_team_profile_image',
+          params: {
+            'target_team_id': teamId,
+            'target_mime_type': mimeType,
+            'target_size_bytes': bytes.length,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+    if (value is! Map<String, dynamic>) {
+      throw const FormatException('Invalid staged team image response.');
+    }
+    final staged = StagedTeamImage.fromJson(value);
+    if (staged.bucketId != 'team-profile-images') {
+      throw const FormatException('Unexpected team image bucket.');
+    }
+    await _client.storage
+        .from(staged.bucketId)
+        .uploadBinary(
+          staged.objectKey,
+          bytes,
+          fileOptions: FileOptions(contentType: mimeType, upsert: false),
+        );
+    return staged.imageId;
   }
 
   @override
@@ -429,20 +541,22 @@ class SupabaseRosterServices implements RosterServices {
     required String teamType,
     required String ageClass,
     required String summary,
-    required String imageUrl,
+    required String imageAction,
+    String? stagedImageId,
     required int expectedRevision,
     required String idempotencyKey,
   }) async {
     final value = await _client
         .schema('api')
         .rpc<Object?>(
-          'update_team_profile',
+          'update_team_profile_v2',
           params: {
             'target_team_id': teamId,
             'new_team_type': teamType,
             'new_age_class': ageClass,
             'new_summary': summary,
-            'new_image_url': imageUrl,
+            'image_action': imageAction,
+            'staged_image_id': stagedImageId,
             'expected_revision': expectedRevision,
             'idempotency_key': idempotencyKey,
           },
@@ -460,17 +574,17 @@ class SupabaseRosterServices implements RosterServices {
     final value = await _client
         .schema('api')
         .rpc<Object?>(
-          'get_roster_person_details',
+          'get_roster_person_details_v3',
           params: {
             'target_club_id': clubId,
             'target_team_id': teamId,
             'target_club_person_id': personId,
           },
         );
-    if (value is! Map<String, dynamic>) {
+    if (value is! Map) {
       throw const FormatException('Roster person response is invalid.');
     }
-    return RosterPersonDetails.fromJson(value);
+    return RosterPersonDetails.fromJson(Map<String, dynamic>.from(value));
   }
 
   @override
@@ -498,19 +612,21 @@ class SupabaseRosterServices implements RosterServices {
     required String clubId,
     required String teamId,
     required String displayName,
-    required String ageClass,
+    required int birthYear,
+    DateTime? birthDate,
     required DateTime startsAt,
     required String idempotencyKey,
   }) async {
     final value = await _client
         .schema('api')
         .rpc<Object?>(
-          'create_roster_person',
+          'create_roster_person_v3',
           params: {
             'target_club_id': clubId,
             'target_team_id': teamId,
             'display_name': displayName,
-            'age_class': ageClass,
+            'birth_year': birthYear,
+            'birth_date': birthDate == null ? null : _dateOnly(birthDate),
             'starts_at': startsAt.toUtc().toIso8601String(),
             'idempotency_key': idempotencyKey,
           },
@@ -527,20 +643,22 @@ class SupabaseRosterServices implements RosterServices {
     required String teamId,
     required String personId,
     required String displayName,
-    required String ageClass,
+    required int birthYear,
+    DateTime? birthDate,
     required int expectedRevision,
     required String idempotencyKey,
   }) async {
     final value = await _client
         .schema('api')
         .rpc<Object?>(
-          'update_roster_person',
+          'update_roster_person_v3',
           params: {
             'target_club_id': clubId,
             'target_team_id': teamId,
             'target_club_person_id': personId,
             'display_name': displayName,
-            'age_class': ageClass,
+            'birth_year': birthYear,
+            'birth_date': birthDate == null ? null : _dateOnly(birthDate),
             'expected_revision': expectedRevision,
             'idempotency_key': idempotencyKey,
           },
@@ -731,6 +849,28 @@ class SupabaseRosterServices implements RosterServices {
   }
 
   @override
+  Future<List<RosterPersonSummary>> listPlayEligibilityCandidates({
+    required String clubId,
+    required String teamId,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'list_play_eligibility_candidates',
+          params: {'target_club_id': clubId, 'target_team_id': teamId},
+        );
+    if (value is! List) {
+      throw const FormatException(
+        'Eligibility candidates response is invalid.',
+      );
+    }
+    return value
+        .whereType<Map<String, dynamic>>()
+        .map(RosterPersonSummary.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
   Future<String> createPlayEligibility({
     required String clubId,
     required String teamId,
@@ -826,8 +966,7 @@ class SupabaseRosterServices implements RosterServices {
             'idempotency_key': idempotencyKey,
           },
         );
-    if (value is! Map<String, dynamic> ||
-        value['target_assignment_id'] is! String) {
+    if (value is! Map || value['target_assignment_id'] is! String) {
       throw const FormatException('Move response is invalid.');
     }
   }
@@ -880,6 +1019,36 @@ class SupabaseRosterServices implements RosterServices {
   }
 
   @override
+  Future<String> restoreArchivedTeamAssignment({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required String assignmentId,
+    required int expectedRevision,
+    required String reason,
+    required String idempotencyKey,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'restore_archived_team_assignment',
+          params: {
+            'target_club_id': clubId,
+            'target_team_id': teamId,
+            'target_club_person_id': personId,
+            'archived_assignment_id': assignmentId,
+            'expected_revision': expectedRevision,
+            'reason': reason,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+    if (value is! String) {
+      throw const FormatException('Invalid restore response.');
+    }
+    return value;
+  }
+
+  @override
   Future<String> requestClubPersonErasure({
     required String clubId,
     required String teamId,
@@ -911,10 +1080,15 @@ class SupabaseRosterServices implements RosterServices {
             'idempotency_key': idempotencyKey,
           },
         );
-    if (value is! num) {
+    final revision = switch (value) {
+      final num number => number.toInt(),
+      final String text => int.tryParse(text),
+      _ => null,
+    };
+    if (revision == null) {
       throw const FormatException('Erasure approval response is invalid.');
     }
-    return value.toInt();
+    return revision;
   }
 
   @override
@@ -1002,4 +1176,11 @@ class SupabaseRosterServices implements RosterServices {
     }
     return InvitationClaimResult.fromJson(value);
   }
+}
+
+String _dateOnly(DateTime value) {
+  final date = value.toLocal();
+  return '${date.year.toString().padLeft(4, '0')}-'
+      '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
 }

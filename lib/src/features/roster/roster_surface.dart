@@ -6,6 +6,7 @@ class _RosterSurface extends StatefulWidget {
     required this.roster,
     required this.membership,
     required this.calendar,
+    required this.onTeamCreated,
     this.initialTab,
     this.initialAction,
   });
@@ -14,6 +15,7 @@ class _RosterSurface extends StatefulWidget {
   final RosterServices roster;
   final MembershipServices membership;
   final CalendarServices calendar;
+  final Future<void> Function(String teamId) onTeamCreated;
   final String? initialTab;
   // Set by the swipe-up quick actions sheet's "Bjud in spelare" shortcut
   // (ProductRouteContract.teamInvite) to open the invitations/team-codes
@@ -29,8 +31,6 @@ class _RosterSurfaceState extends State<_RosterSurface> {
   late final AppListController<RosterPersonSummary> _list;
   List<RosterPersonSummary>? _syncedPeople;
   late int _selectedTab = _teamTabIndex(widget.initialTab);
-  String? _selectedPersonId;
-  Future<RosterPersonDetails>? _selectedPersonDetails;
 
   @override
   void initState() {
@@ -54,17 +54,18 @@ class _RosterSurfaceState extends State<_RosterSurface> {
 
   bool _openedInitialAction = false;
 
-  /// Handles ?action=invite from the swipe-up quick actions sheet
-  /// (ProductRouteContract.teamInvite): opens the invitations/team-codes
-  /// sheet immediately, same sheet reachable from the page's own "Hantera"
-  /// menu. Re-checks the capability itself rather than trusting the
-  /// shortcut having been gated correctly, since this can be reached via a
-  /// direct deep link.
+  /// Opens a capability-checked management sheet requested by a team deep
+  /// link. This supports both invitations and the separate application queue.
   void _openInitialAction() {
-    if (widget.initialAction != 'invite' || _openedInitialAction) return;
-    final canManage =
-        widget.contextValue.can('club.memberships.manage') ||
-        widget.contextValue.can('team.roster.manage');
+    final action = widget.initialAction;
+    if ((action != 'invite' && action != 'applications') ||
+        _openedInitialAction) {
+      return;
+    }
+    final canManage = action == 'applications'
+        ? widget.contextValue.can('club.memberships.manage')
+        : widget.contextValue.can('club.memberships.manage') ||
+              widget.contextValue.can('team.roster.manage');
     if (!canManage) return;
     _openedInitialAction = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -74,11 +75,17 @@ class _RosterSurfaceState extends State<_RosterSurface> {
         useRootNavigator: true,
         isScrollControlled: true,
         useSafeArea: true,
-        builder: (_) => _InvitationAdminSheet(
-          contextValue: widget.contextValue,
-          roster: widget.roster,
-          people: _data.state.data ?? const [],
-        ),
+        builder: (_) => action == 'applications'
+            ? _MembershipReviewSheet(
+                contextValue: widget.contextValue,
+                membership: widget.membership,
+                onApproved: _data.refresh,
+              )
+            : _InvitationAdminSheet(
+                contextValue: widget.contextValue,
+                roster: widget.roster,
+                people: _data.state.data ?? const [],
+              ),
       );
     });
   }
@@ -88,6 +95,24 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     if (identical(people, _syncedPeople)) return;
     _syncedPeople = people;
     _list.replaceItems(people ?? const []);
+  }
+
+  Future<void> _showMembershipReviews() async {
+    if (!widget.contextValue.can('club.memberships.manage') &&
+        !widget.contextValue.can('team.roster.manage')) {
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _MembershipReviewSheet(
+        contextValue: widget.contextValue,
+        membership: widget.membership,
+        onApproved: _data.refresh,
+      ),
+    );
   }
 
   Future<List<RosterPersonSummary>> _reload() {
@@ -100,15 +125,15 @@ class _RosterSurfaceState extends State<_RosterSurface> {
 
   Future<void> _createTeam() async {
     final strings = AppStrings.of(context);
-    final controller = TextEditingController();
+    var draftName = '';
     final teamName = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(strings.feature('Skapa ytterligare lag')),
         content: TextField(
-          controller: controller,
           autofocus: true,
           textCapitalization: TextCapitalization.words,
+          onChanged: (value) => draftName = value,
           decoration: InputDecoration(labelText: strings.feature('Lagnamn')),
         ),
         actions: [
@@ -118,7 +143,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
           ),
           FilledButton(
             onPressed: () {
-              final value = controller.text.trim();
+              final value = draftName.trim();
               if (value.isNotEmpty && value.length <= 120) {
                 Navigator.pop(dialogContext, value);
               }
@@ -128,16 +153,16 @@ class _RosterSurfaceState extends State<_RosterSurface> {
         ],
       ),
     );
-    controller.dispose();
     if (teamName == null || !mounted) return;
     try {
-      await widget.membership
+      final teamId = await widget.membership
           .createTeam(
             clubId: widget.contextValue.clubId,
             teamName: teamName,
             idempotencyKey: _newUuid(),
           )
           .timeout(const Duration(seconds: 15));
+      await widget.onTeamCreated(teamId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(strings.feature('Laget har skapats.'))),
@@ -160,8 +185,6 @@ class _RosterSurfaceState extends State<_RosterSurface> {
   void didUpdateWidget(covariant _RosterSurface oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.contextValue.id != widget.contextValue.id) {
-      _selectedPersonId = null;
-      _selectedPersonDetails = null;
       _data.replaceScope(scopeKey: widget.contextValue.id, loader: _reload);
     }
     if (oldWidget.initialTab != widget.initialTab) {
@@ -219,6 +242,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                   contextValue: widget.contextValue,
                   roster: widget.roster,
                   onNavigate: (path) => GoRouter.of(context).go(path),
+                  onOpenApplications: _showMembershipReviews,
                 ),
                 _buildRoster(context),
                 _TeamEventList(
@@ -237,7 +261,11 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     if (_selectedTab == index) return;
     setState(() => _selectedTab = index);
     const names = ['overview', 'roster', 'calendar'];
-    GoRouter.of(context).go('/team?tab=${names[index]}');
+    // Keep the selected team tab as the current browser-history entry. A
+    // subsequently pushed detail page can then return to this exact tab,
+    // while tab changes themselves do not create a trail of near-identical
+    // team pages.
+    GoRouter.of(context).pushReplacement('/team?tab=${names[index]}');
   }
 
   Widget _buildRoster(BuildContext context) {
@@ -367,7 +395,6 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                           }
                           final person = people[dataIndex];
                           return ListTile(
-                            selected: person.id == _selectedPersonId,
                             leading: const CircleAvatar(
                               child: Icon(Icons.person),
                             ),
@@ -399,8 +426,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
           ],
         );
         return Scaffold(
-          floatingActionButtonLocation:
-              MediaQuery.sizeOf(context).width < AppBreakpoints.desktop
+          floatingActionButtonLocation: _assistantUsesFab(context)
               ? _aboveAssistantFabLocation
               : null,
           body: state.phase == AsyncDataPhase.empty
@@ -426,31 +452,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                     ),
                   ),
                 )
-              : LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (constraints.maxWidth < 840) return rosterList;
-                    return Row(
-                      children: [
-                        Expanded(flex: 3, child: rosterList),
-                        const VerticalDivider(width: 1),
-                        Expanded(
-                          flex: 2,
-                          child: _selectedPersonDetails == null
-                              ? _StateCard(
-                                  icon: Icons.person_search_outlined,
-                                  title: strings.feature('Välj en person'),
-                                  message: strings.feature(
-                                    'Medlemsdetaljer visas här utan att lämna truppen.',
-                                  ),
-                                )
-                              : _RosterPersonDetailsView(
-                                  future: _selectedPersonDetails!,
-                                ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
+              : rosterList,
           floatingActionButton: canManage
               ? FloatingActionButton(
                   // A single FAB here, not a stack: this screen used to show
@@ -582,7 +584,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                               ),
                               subtitle: Text(
                                 AppStrings.of(context).feature(
-                                  'Avsluta lagtillhörighet eller starta en skyddad raderingsbegäran.',
+                                  'Avsluta en lagtillhörighet med namngiven historik eller begär skyddad anonymisering.',
                                 ),
                               ),
                               onTap: () {
@@ -695,12 +697,6 @@ class _RosterSurfaceState extends State<_RosterSurface> {
               person: person,
               onSaved: () async {
                 await _data.refresh();
-                if (mounted) {
-                  setState(() {
-                    _selectedPersonId = null;
-                    _selectedPersonDetails = null;
-                  });
-                }
               },
             ),
           ),
@@ -724,37 +720,8 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     }
   }
 
-  Future<RosterPersonDetails> _loadPersonDetails(String personId) {
-    final teamId = widget.contextValue.teamId;
-    if (teamId == null) return Future.error(StateError('Team required.'));
-    return widget.roster
-        .getPersonDetails(
-          clubId: widget.contextValue.clubId,
-          teamId: teamId,
-          personId: personId,
-        )
-        .timeout(const Duration(seconds: 15));
-  }
-
   void _openPersonDetails(RosterPersonSummary person) {
-    final future = _loadPersonDetails(person.id);
-    if (MediaQuery.sizeOf(context).width >= 840) {
-      setState(() {
-        _selectedPersonId = person.id;
-        _selectedPersonDetails = future;
-      });
-      return;
-    }
-    showModalBottomSheet<void>(
-      context: context,
-      useRootNavigator: true,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => SizedBox(
-        height: MediaQuery.sizeOf(context).height * .72,
-        child: _RosterPersonDetailsView(future: future),
-      ),
-    );
+    GoRouter.of(context).push(ProductRouteContract.teamMember(person.id));
   }
 }
 
@@ -809,13 +776,16 @@ class _RosterLifecycleSheet extends StatefulWidget {
 class _RosterLifecycleSheetState extends State<_RosterLifecycleSheet> {
   late Future<RosterLifecycleOptions> _load = _reload();
   bool _pending = false;
+  bool _showArchived = false;
   Future<RosterLifecycleOptions> _reload() => widget.roster
       .getRosterLifecycle(
         clubId: widget.contextValue.clubId,
         teamId: widget.contextValue.teamId!,
       )
       .timeout(const Duration(seconds: 15));
-  void _refresh() => setState(() => _load = _reload());
+  void _refresh() => setState(() {
+    _load = _reload();
+  });
 
   Future<String?> _reason(String title, String message) async {
     var reason = '';
@@ -853,10 +823,28 @@ class _RosterLifecycleSheetState extends State<_RosterLifecycleSheet> {
     return confirmed == true && value.length >= 2 ? value : null;
   }
 
+  Future<void> _showActionError(String title, String message) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      useRootNavigator: true,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(AppStrings.of(context).feature(title)),
+        content: Text(AppStrings.of(context).feature(message)),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(AppStrings.of(context).feature('Stäng')),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _archive(RosterLifecyclePerson person) async {
     final reason = await _reason(
-      'Arkivera från laget',
-      'Personen flyttas till Tidigare. Historiska fakta bevaras.',
+      'Avsluta i laget',
+      'Personen flyttas till Arkiverade. Namn, matcher, närvaro och annan historik bevaras.',
     );
     if (reason == null || !mounted) return;
     setState(() => _pending = true);
@@ -871,18 +859,59 @@ class _RosterLifecycleSheetState extends State<_RosterLifecycleSheet> {
         idempotencyKey: _newUuid(),
       );
       _refresh();
+    } catch (error, stackTrace) {
+      debugPrint('TEAM-08 archive failed: $error\n$stackTrace');
+      await _showActionError(
+        'Arkivera från laget',
+        'Åtgärden kunde inte sparas. Ladda om och försök igen.',
+      );
+    } finally {
+      if (mounted) setState(() => _pending = false);
+    }
+  }
+
+  Future<void> _restore(RosterLifecyclePerson person) async {
+    final reason = await _reason(
+      'Återaktivera i laget',
+      'En ny aktiv lagtillhörighetsperiod skapas. Den tidigare perioden och all historik lämnas oförändrade.',
+    );
+    if (reason == null || !mounted) return;
+    setState(() => _pending = true);
+    try {
+      await widget.roster.restoreArchivedTeamAssignment(
+        clubId: widget.contextValue.clubId,
+        teamId: widget.contextValue.teamId!,
+        personId: person.personId,
+        assignmentId: person.assignmentId,
+        expectedRevision: person.assignmentRevision,
+        reason: reason,
+        idempotencyKey: _newUuid(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _showArchived = false;
+        _load = _reload();
+      });
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppStrings.of(context).feature(
-                'Åtgärden kunde inte sparas. Ladda om och försök igen.',
-              ),
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        useRootNavigator: true,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(AppStrings.of(context).feature('Återaktivera i laget')),
+          content: Text(
+            AppStrings.of(context).feature(
+              'Återaktiveringen kunde inte sparas. Personen kan redan vara aktiv i ett annat lag.',
             ),
           ),
-        );
-      }
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(AppStrings.of(context).feature('Stäng')),
+            ),
+          ],
+        ),
+      );
     } finally {
       if (mounted) setState(() => _pending = false);
     }
@@ -890,8 +919,8 @@ class _RosterLifecycleSheetState extends State<_RosterLifecycleSheet> {
 
   Future<void> _requestErasure(RosterLifecyclePerson person) async {
     final reason = await _reason(
-      'Begär radering av klubbuppgifter',
-      'En annan klubbansvarig måste godkänna. Namn och lokala personuppgifter anonymiseras, men verksamhetshistorik bevaras.',
+      'Begär anonymisering',
+      'En annan klubbansvarig måste godkänna. Namn och personliga rekord kan inte längre kopplas till personen. Lagets neutrala verksamhetshistorik bevaras.',
     );
     if (reason == null || !mounted) return;
     setState(() => _pending = true);
@@ -904,18 +933,31 @@ class _RosterLifecycleSheetState extends State<_RosterLifecycleSheet> {
         idempotencyKey: _newUuid(),
       );
       _refresh();
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppStrings.of(
-                context,
-              ).feature('Raderingsbegäran kunde inte skapas.'),
-            ),
-          ),
+    } catch (error, stackTrace) {
+      debugPrint('TEAM-08 erasure request failed: $error\n$stackTrace');
+      try {
+        final reconciled = await _reload();
+        final wasCommitted = reconciled.requests.any(
+          (request) =>
+              request.personId == person.personId &&
+              request.state == 'requested',
+        );
+        if (wasCommitted && mounted) {
+          setState(() {
+            _load = Future.value(reconciled);
+          });
+          return;
+        }
+      } catch (reconcileError, reconcileStackTrace) {
+        debugPrint(
+          'TEAM-08 erasure request reconciliation failed: '
+          '$reconcileError\n$reconcileStackTrace',
         );
       }
+      await _showActionError(
+        'Begär anonymisering',
+        'Anonymiseringsbegäran kunde inte skapas. Kontrollera om det redan finns en väntande begäran för personen.',
+      );
     } finally {
       if (mounted) setState(() => _pending = false);
     }
@@ -924,7 +966,7 @@ class _RosterLifecycleSheetState extends State<_RosterLifecycleSheet> {
   Future<void> _approve(ClubErasureRequest request) async {
     final reason = await _reason(
       'Godkänn anonymisering',
-      'Du måste vara en annan klubbansvarig än den som startade begäran. Åtgärden kan inte ångras i appen.',
+      'Du måste vara en annan klubbansvarig än den som startade begäran. Namnet och personens egna rekord anonymiseras permanent. Lagets historiska fakta bevaras.',
     );
     if (reason == null || !mounted) return;
     setState(() => _pending = true);
@@ -936,18 +978,29 @@ class _RosterLifecycleSheetState extends State<_RosterLifecycleSheet> {
         idempotencyKey: _newUuid(),
       );
       _refresh();
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppStrings.of(context).feature(
-                'Godkännandet nekades. Kontrollera behörighet och att initiatorn är en annan användare.',
-              ),
-            ),
-          ),
+    } catch (error, stackTrace) {
+      debugPrint('TEAM-08 erasure approval failed: $error\n$stackTrace');
+      try {
+        final reconciled = await _reload();
+        final wasCommitted = reconciled.requests.any(
+          (item) => item.id == request.id && item.state == 'completed',
+        );
+        if (wasCommitted && mounted) {
+          setState(() {
+            _load = Future.value(reconciled);
+          });
+          return;
+        }
+      } catch (reconcileError, reconcileStackTrace) {
+        debugPrint(
+          'TEAM-08 erasure approval reconciliation failed: '
+          '$reconcileError\n$reconcileStackTrace',
         );
       }
+      await _showActionError(
+        'Godkänn anonymisering',
+        'Godkännandet nekades. Kontrollera behörighet och att initiatorn är en annan användare.',
+      );
     } finally {
       if (mounted) setState(() => _pending = false);
     }
@@ -974,6 +1027,13 @@ class _RosterLifecycleSheetState extends State<_RosterLifecycleSheet> {
           );
         }
         final data = snapshot.data!;
+        final visiblePeople = data.people
+            .where(
+              (person) => _showArchived
+                  ? person.assignmentState != 'active'
+                  : person.assignmentState == 'active',
+            )
+            .toList(growable: false);
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -984,7 +1044,7 @@ class _RosterLifecycleSheetState extends State<_RosterLifecycleSheet> {
             const SizedBox(height: 8),
             Text(
               AppStrings.of(context).feature(
-                'Arkivering döljer inte historik. Personuppgiftsradering kräver två separata ansvariga. Global radering granskas alltid av TeamZone.',
+                'Avsluta i laget bevarar namn och historik. Anonymisering tar bort identiteten och kräver två separata ansvariga. Global kontoradering granskas alltid av TeamZone.',
               ),
             ),
             const Divider(),
@@ -992,34 +1052,77 @@ class _RosterLifecycleSheetState extends State<_RosterLifecycleSheet> {
               AppStrings.of(context).feature('Personer'),
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            for (final person in data.people)
+            const SizedBox(height: 8),
+            SegmentedButton<bool>(
+              segments: [
+                ButtonSegment(
+                  value: false,
+                  label: Text(AppStrings.of(context).feature('Aktiva')),
+                  icon: const Icon(Icons.groups_outlined),
+                ),
+                ButtonSegment(
+                  value: true,
+                  label: Text(AppStrings.of(context).feature('Arkiverade')),
+                  icon: const Icon(Icons.archive_outlined),
+                ),
+              ],
+              selected: {_showArchived},
+              onSelectionChanged: _pending
+                  ? null
+                  : (selection) =>
+                        setState(() => _showArchived = selection.first),
+            ),
+            const SizedBox(height: 8),
+            if (visiblePeople.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Text(
+                  AppStrings.of(context).feature(
+                    _showArchived
+                        ? 'Inga arkiverade personer.'
+                        : 'Inga aktiva personer.',
+                  ),
+                ),
+              ),
+            for (final person in visiblePeople)
               ListTile(
                 title: Text(person.personName),
                 subtitle: Text(
                   AppStrings.of(context).domainValue(person.assignmentState),
                 ),
-                trailing: person.canArchive
+                trailing: person.canArchive || person.canReactivate
                     ? PopupMenuButton<String>(
                         enabled: !_pending,
                         onSelected: (value) {
                           if (value == 'archive') _archive(person);
+                          if (value == 'restore') _restore(person);
                           if (value == 'erase') _requestErasure(person);
                         },
                         itemBuilder: (_) => [
-                          PopupMenuItem(
-                            value: 'archive',
-                            child: Text(
-                              AppStrings.of(
-                                context,
-                              ).feature('Arkivera från laget'),
+                          if (person.canArchive)
+                            PopupMenuItem(
+                              value: 'archive',
+                              child: Text(
+                                AppStrings.of(
+                                  context,
+                                ).feature('Avsluta i laget'),
+                              ),
                             ),
-                          ),
+                          if (person.canReactivate)
+                            PopupMenuItem(
+                              value: 'restore',
+                              child: Text(
+                                AppStrings.of(
+                                  context,
+                                ).feature('Återaktivera i laget'),
+                              ),
+                            ),
                           PopupMenuItem(
                             value: 'erase',
                             child: Text(
                               AppStrings.of(
                                 context,
-                              ).feature('Begär radering av klubbuppgifter'),
+                              ).feature('Begär anonymisering'),
                             ),
                           ),
                         ],
@@ -1028,14 +1131,14 @@ class _RosterLifecycleSheetState extends State<_RosterLifecycleSheet> {
               ),
             const Divider(),
             Text(
-              AppStrings.of(context).feature('Raderingsbegäranden'),
+              AppStrings.of(context).feature('Anonymiseringsbegäranden'),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             if (data.requests.isEmpty)
               Text(
                 AppStrings.of(
                   context,
-                ).feature('Inga pågående raderingsbegäranden.'),
+                ).feature('Inga pågående anonymiseringsbegäranden.'),
               ),
             for (final request in data.requests)
               ListTile(
@@ -1043,9 +1146,11 @@ class _RosterLifecycleSheetState extends State<_RosterLifecycleSheet> {
                 subtitle: Text(
                   AppStrings.of(context).domainValue(request.state),
                 ),
-                trailing:
-                    request.canApprove &&
-                        widget.contextValue.rolePackage == 'club_functionary'
+                // The backend is authoritative for club-level approval. A
+                // club functionary may currently be viewing the team through
+                // a leader context, so the active role package must not hide
+                // an otherwise valid decision action.
+                trailing: request.canApprove
                     ? TextButton(
                         onPressed: _pending ? null : () => _approve(request),
                         child: Text(AppStrings.of(context).feature('Godkänn')),
@@ -1060,16 +1165,31 @@ class _RosterLifecycleSheetState extends State<_RosterLifecycleSheet> {
 }
 
 class _IntraClubMoveSheet extends StatefulWidget {
-  const _IntraClubMoveSheet({required this.contextValue, required this.roster});
+  const _IntraClubMoveSheet({
+    required this.contextValue,
+    required this.roster,
+    this.initialPersonId,
+  });
   final TeamZoneContext contextValue;
   final RosterServices roster;
+  final String? initialPersonId;
   @override
   State<_IntraClubMoveSheet> createState() => _IntraClubMoveSheetState();
 }
 
 class _IntraClubMoveSheetState extends State<_IntraClubMoveSheet> {
   late Future<IntraClubMoveOptions> _load = _reload();
+  final Set<String> _selectedPersonIds = {};
+  static const _reasons = <String>[
+    'Byte av ordinarie lag',
+    'Åldersanpassning',
+    'Omorganisation inom klubben',
+    'Flytt beslutad av lagansvarig',
+  ];
   bool _pending = false;
+  bool _selectionInitialized = false;
+  String? _targetTeamId;
+  String _reason = _reasons.first;
 
   Future<IntraClubMoveOptions> _reload() => widget.roster
       .getIntraClubMoveOptions(
@@ -1079,159 +1199,73 @@ class _IntraClubMoveSheetState extends State<_IntraClubMoveSheet> {
       .timeout(const Duration(seconds: 15));
 
   Future<void> _move(IntraClubMoveOptions options) async {
-    if (_pending || !options.canMove) return;
-    var person = options.people.first;
-    var target = options.teams.first;
-    var effectiveDate = DateTime.now();
-    final reason = TextEditingController(text: 'Flytt beslutad av lagansvarig');
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(AppStrings.of(context).feature('Flytta spelare')),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<String>(
-                  initialValue: person.personId,
-                  decoration: InputDecoration(
-                    labelText: AppStrings.of(context).feature('Spelare'),
-                  ),
-                  items: options.people
-                      .map(
-                        (item) => DropdownMenuItem(
-                          value: item.personId,
-                          child: Text(item.personName),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (id) => setDialogState(() {
-                    person = options.people.firstWhere(
-                      (item) => item.personId == id,
-                      orElse: () => person,
-                    );
-                  }),
-                ),
-                DropdownButtonFormField<String>(
-                  initialValue: target.id,
-                  decoration: InputDecoration(
-                    labelText: AppStrings.of(context).feature('Nytt lag'),
-                  ),
-                  items: options.teams
-                      .map(
-                        (item) => DropdownMenuItem(
-                          value: item.id,
-                          child: Text(item.name),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (id) => setDialogState(() {
-                    target = options.teams.firstWhere(
-                      (item) => item.id == id,
-                      orElse: () => target,
-                    );
-                  }),
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(AppStrings.of(context).feature('Flyttdatum')),
-                  subtitle: Text(
-                    MaterialLocalizations.of(
-                      context,
-                    ).formatMediumDate(effectiveDate),
-                  ),
-                  trailing: const Icon(Icons.calendar_month_outlined),
-                  onTap: () async {
-                    final selected = await showDatePicker(
-                      context: context,
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 730)),
-                      initialDate: effectiveDate,
-                    );
-                    if (selected != null) {
-                      setDialogState(() => effectiveDate = selected);
-                    }
-                  },
-                ),
-                TextField(
-                  controller: reason,
-                  maxLength: 240,
-                  decoration: InputDecoration(
-                    labelText: AppStrings.of(context).feature('Anledning'),
-                  ),
-                ),
-                Text(
-                  AppStrings.of(
-                    context,
-                  ).feature('Det tidigare laget och all historik bevaras.'),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: Text(AppStrings.of(context).feature('Avbryt')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(AppStrings.of(context).feature('Flytta')),
-            ),
-          ],
-        ),
-      ),
-    );
-    final moveReason = reason.text.trim();
-    reason.dispose();
-    if (confirmed != true || moveReason.length < 2) return;
-    final now = DateTime.now();
-    final effectiveAt = DateUtils.isSameDay(effectiveDate, now)
-        ? now
-        : DateTime(effectiveDate.year, effectiveDate.month, effectiveDate.day);
+    if (_pending ||
+        !options.canMove ||
+        _selectedPersonIds.isEmpty ||
+        _targetTeamId == null) {
+      return;
+    }
+    final effectiveAt = DateTime.now();
     setState(() => _pending = true);
+    var movedCount = 0;
+    var failedCount = 0;
+    final selectedPeople = options.people
+        .where((person) => _selectedPersonIds.contains(person.personId))
+        .toList();
     try {
-      await widget.roster.movePlayerWithinClub(
-        clubId: widget.contextValue.clubId,
-        sourceTeamId: person.sourceTeamId,
-        targetTeamId: target.id,
-        personId: person.personId,
-        assignmentId: person.assignmentId,
-        effectiveAt: effectiveAt,
-        expectedRevision: person.assignmentRevision,
-        reason: moveReason,
-        idempotencyKey: _newUuid(),
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppStrings.of(context).feature('Spelaren är flyttad.'),
-            ),
-          ),
-        );
-        setState(() => _load = _reload());
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppStrings.of(context).feature(
-                'Flytten kunde inte sparas. Ladda om och kontrollera datum och lag.',
-              ),
-            ),
-          ),
-        );
+      for (final person in selectedPeople) {
+        try {
+          await widget.roster.movePlayerWithinClub(
+            clubId: widget.contextValue.clubId,
+            sourceTeamId: person.sourceTeamId,
+            targetTeamId: _targetTeamId!,
+            personId: person.personId,
+            assignmentId: person.assignmentId,
+            effectiveAt: effectiveAt,
+            expectedRevision: person.assignmentRevision,
+            reason: _reason,
+            idempotencyKey: _newUuid(),
+          );
+          movedCount += 1;
+        } catch (_) {
+          failedCount += 1;
+        }
       }
     } finally {
       if (mounted) setState(() => _pending = false);
     }
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      useRootNavigator: true,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(AppStrings.of(context).feature('Flytta spelare')),
+        content: Text(
+          AppStrings.of(context).playerMoveResult(movedCount, failedCount),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(AppStrings.of(context).feature('Stäng')),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    _selectedPersonIds.clear();
+    _selectionInitialized = false;
+    if (movedCount > 0) {
+      Navigator.pop(context);
+      return;
+    }
+    setState(() {
+      _load = _reload();
+    });
   }
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: MediaQuery.sizeOf(context).height * .72,
+    height: MediaQuery.sizeOf(context).height * .85,
     child: FutureBuilder<IntraClubMoveOptions>(
       future: _load,
       builder: (context, snapshot) {
@@ -1250,32 +1284,55 @@ class _IntraClubMoveSheetState extends State<_IntraClubMoveSheet> {
           );
         }
         final options = snapshot.data!;
+        if (!_selectionInitialized) {
+          _selectionInitialized = true;
+          _targetTeamId = options.teams.firstOrNull?.id;
+          final initialPersonId = widget.initialPersonId;
+          if (initialPersonId != null &&
+              options.people.any(
+                (person) => person.personId == initialPersonId,
+              )) {
+            _selectedPersonIds.add(initialPersonId);
+          }
+        }
         return Column(
           children: [
             ListTile(
               title: Text(AppStrings.of(context).feature('Flytta spelare')),
               subtitle: Text(
                 AppStrings.of(context).feature(
-                  'Flytten avslutar nuvarande lagtillhörighet och skapar en ny från valt datum.',
+                  'Välj en eller flera spelare. Tidigare lagtillhörighet och historik bevaras.',
                 ),
               ),
-              trailing: FilledButton.icon(
-                onPressed: _pending || !options.canMove
-                    ? null
-                    : () => _move(options),
-                icon: const Icon(Icons.swap_horiz),
-                label: Text(AppStrings.of(context).feature('Flytta')),
+              trailing: IconButton(
+                tooltip: AppStrings.of(context).feature('Stäng'),
+                onPressed: _pending ? null : () => Navigator.pop(context),
+                icon: const Icon(Icons.close),
               ),
             ),
             Expanded(
               child: options.canMove
                   ? ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
                       children: options.people
                           .map(
-                            (person) => ListTile(
-                              leading: const Icon(Icons.person_outline),
+                            (person) => CheckboxListTile(
+                              value: _selectedPersonIds.contains(
+                                person.personId,
+                              ),
                               title: Text(person.personName),
                               subtitle: Text(person.sourceTeamName),
+                              onChanged: _pending
+                                  ? null
+                                  : (selected) => setState(() {
+                                      if (selected == true) {
+                                        _selectedPersonIds.add(person.personId);
+                                      } else {
+                                        _selectedPersonIds.remove(
+                                          person.personId,
+                                        );
+                                      }
+                                    }),
                             ),
                           )
                           .toList(),
@@ -1290,6 +1347,91 @@ class _IntraClubMoveSheetState extends State<_IntraClubMoveSheet> {
                       ),
                     ),
             ),
+            if (options.canMove)
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Divider(),
+                      DropdownButtonFormField<String>(
+                        initialValue: _targetTeamId,
+                        decoration: InputDecoration(
+                          labelText: AppStrings.of(
+                            context,
+                          ).feature('Flytta till lag'),
+                        ),
+                        items: options.teams
+                            .map(
+                              (team) => DropdownMenuItem(
+                                value: team.id,
+                                child: Text(team.name),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: _pending
+                            ? null
+                            : (value) => setState(() => _targetTeamId = value),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: _reason,
+                        decoration: InputDecoration(
+                          labelText: AppStrings.of(
+                            context,
+                          ).feature('Anledning'),
+                        ),
+                        items: _reasons
+                            .map(
+                              (reason) => DropdownMenuItem(
+                                value: reason,
+                                child: Text(
+                                  AppStrings.of(context).feature(reason),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: _pending || _selectedPersonIds.isEmpty
+                            ? null
+                            : (value) => setState(() {
+                                if (value != null) _reason = value;
+                              }),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed:
+                              _pending ||
+                                  _selectedPersonIds.isEmpty ||
+                                  _targetTeamId == null
+                              ? null
+                              : () => _move(options),
+                          icon: _pending
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.swap_horiz),
+                          label: Text(
+                            _selectedPersonIds.length > 1
+                                ? AppStrings.of(
+                                    context,
+                                  ).movePlayersAction(_selectedPersonIds.length)
+                                : AppStrings.of(
+                                    context,
+                                  ).feature('Flytta spelare'),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         );
       },
@@ -1324,15 +1466,37 @@ class _PlayEligibilitySheetState extends State<_PlayEligibilitySheet> {
   });
 
   Future<void> _create() async {
-    final people = await widget.roster.listPeople(
-      clubId: widget.contextValue.clubId,
-    );
-    if (!mounted || people.isEmpty) return;
+    List<RosterPersonSummary> people;
+    setState(() => _pending = true);
+    try {
+      people = await widget.roster
+          .listPlayEligibilityCandidates(
+            clubId: widget.contextValue.clubId,
+            teamId: widget.contextValue.teamId!,
+          )
+          .timeout(const Duration(seconds: 15));
+    } catch (_) {
+      if (mounted) {
+        await _showCandidateMessage(
+          'Spelare från andra lag kunde inte laddas. Försök igen.',
+        );
+      }
+      return;
+    } finally {
+      if (mounted) setState(() => _pending = false);
+    }
+    if (!mounted) return;
+    if (people.isEmpty) {
+      await _showCandidateMessage(
+        'Det finns inga aktiva spelare i klubbens andra lag.',
+      );
+      return;
+    }
     var personId = people.first.id;
     var kind = 'development';
     var validity = 'season';
     var boundary = DateTime(DateTime.now().year + 1, 6, 30);
-    final source = TextEditingController(text: 'Beslut av lagansvarig');
+    var sourceNote = 'Beslut av lagansvarig';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -1427,8 +1591,9 @@ class _PlayEligibilitySheetState extends State<_PlayEligibilitySheet> {
                     if (value != null) setDialogState(() => boundary = value);
                   },
                 ),
-                TextField(
-                  controller: source,
+                TextFormField(
+                  initialValue: sourceNote,
+                  onChanged: (value) => sourceNote = value,
                   maxLength: 80,
                   decoration: InputDecoration(
                     labelText: AppStrings.of(
@@ -1452,8 +1617,7 @@ class _PlayEligibilitySheetState extends State<_PlayEligibilitySheet> {
         ),
       ),
     );
-    final note = source.text.trim();
-    source.dispose();
+    final note = sourceNote.trim();
     if (confirmed != true || note.length < 2) return;
     setState(() => _pending = true);
     try {
@@ -1481,20 +1645,29 @@ class _PlayEligibilitySheetState extends State<_PlayEligibilitySheet> {
       _refresh();
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppStrings.of(context).feature(
-                'Representationen kunde inte sparas. Kontrollera lag, period och överlapp.',
-              ),
-            ),
-          ),
+        await _showCandidateMessage(
+          'Representationen kunde inte sparas. Kontrollera lag, period och överlapp.',
         );
       }
     } finally {
       if (mounted) setState(() => _pending = false);
     }
   }
+
+  Future<void> _showCandidateMessage(String message) => showDialog<void>(
+    context: context,
+    useRootNavigator: true,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(AppStrings.of(context).feature('Ny representation')),
+      content: Text(AppStrings.of(context).feature(message)),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: Text(AppStrings.of(context).feature('Stäng')),
+        ),
+      ],
+    ),
+  );
 
   Future<void> _end(PlayEligibilitySummary item) async {
     if (_pending) return;
@@ -2067,63 +2240,111 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
                   ),
                 );
               }
+              final active = snapshot.data!
+                  .where((item) => item.isActive)
+                  .toList(growable: false);
+              final inactive = snapshot.data!
+                  .where((item) => !item.isActive)
+                  .toList(growable: false);
+              Widget invitationTile(InvitationAdminItem item) => ListTile(
+                title: Text(item.subjectName),
+                subtitle: item.expiresAt == null
+                    ? null
+                    : Text(
+                        MaterialLocalizations.of(
+                          context,
+                        ).formatMediumDate(item.expiresAt!.toLocal()),
+                      ),
+                leading: Chip(
+                  avatar: Icon(
+                    item.isActive
+                        ? Icons.schedule_outlined
+                        : Icons.history_outlined,
+                    size: 18,
+                  ),
+                  label: Text(
+                    AppStrings.of(context).domainValue(item.displayState),
+                  ),
+                ),
+                trailing: item.kind == 'team_code' && item.canRevoke
+                    ? Wrap(
+                        spacing: 0,
+                        children: [
+                          IconButton(
+                            tooltip: AppStrings.of(context).feature('Visa kod'),
+                            onPressed: _pending
+                                ? null
+                                : () => _showTeamCode(item),
+                            icon: const Icon(Icons.visibility_outlined),
+                          ),
+                          IconButton(
+                            tooltip: AppStrings.of(
+                              context,
+                            ).feature('Återkalla'),
+                            onPressed: _pending ? null : () => _revoke(item),
+                            icon: const Icon(Icons.block_outlined),
+                          ),
+                        ],
+                      )
+                    : item.canEndRelation
+                    ? TextButton(
+                        onPressed: _pending ? null : () => _endRelation(item),
+                        child: Text(AppStrings.of(context).feature('Avsluta')),
+                      )
+                    : item.canRevoke
+                    ? TextButton(
+                        onPressed: _pending ? null : () => _revoke(item),
+                        child: Text(
+                          AppStrings.of(context).feature('Återkalla'),
+                        ),
+                      )
+                    : null,
+              );
               return ListView(
                 children: [
-                  for (final item in snapshot.data!)
-                    ListTile(
-                      title: Text(item.subjectName),
-                      subtitle: Text(
-                        item.expiresAt == null
-                            ? AppStrings.of(context).domainValue(item.state)
-                            : '${AppStrings.of(context).domainValue(item.state)} · ${MaterialLocalizations.of(context).formatMediumDate(item.expiresAt!.toLocal())}',
-                      ),
-                      trailing: item.kind == 'team_code' && item.canRevoke
-                          ? Wrap(
-                              spacing: 0,
-                              children: [
-                                IconButton(
-                                  tooltip: AppStrings.of(
-                                    context,
-                                  ).feature('Visa kod'),
-                                  onPressed: _pending
-                                      ? null
-                                      : () => _showTeamCode(item),
-                                  icon: const Icon(Icons.visibility_outlined),
-                                ),
-                                IconButton(
-                                  tooltip: AppStrings.of(
-                                    context,
-                                  ).feature('Återkalla'),
-                                  onPressed: _pending
-                                      ? null
-                                      : () => _revoke(item),
-                                  icon: const Icon(Icons.block_outlined),
-                                ),
-                              ],
-                            )
-                          : item.canEndRelation
-                          ? TextButton(
-                              onPressed: _pending
-                                  ? null
-                                  : () => _endRelation(item),
-                              child: Text(
-                                AppStrings.of(context).feature('Avsluta'),
-                              ),
-                            )
-                          : item.canRevoke
-                          ? TextButton(
-                              onPressed: _pending ? null : () => _revoke(item),
-                              child: Text(
-                                AppStrings.of(context).feature('Återkalla'),
-                              ),
-                            )
-                          : null,
+                  if (active.isNotEmpty) ...[
+                    _InvitationSectionHeader(
+                      label: AppStrings.of(
+                        context,
+                      ).feature('Aktiva inbjudningar'),
+                      count: active.length,
                     ),
+                    ...active.map(invitationTile),
+                  ],
+                  if (inactive.isNotEmpty) ...[
+                    _InvitationSectionHeader(
+                      label: AppStrings.of(
+                        context,
+                      ).feature('Tidigare inbjudningar'),
+                      count: inactive.length,
+                    ),
+                    ...inactive.map(invitationTile),
+                  ],
                 ],
               );
             },
           ),
         ),
+      ],
+    ),
+  );
+}
+
+class _InvitationSectionHeader extends StatelessWidget {
+  const _InvitationSectionHeader({required this.label, required this.count});
+
+  final String label;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(label, style: Theme.of(context).textTheme.titleMedium),
+        ),
+        Text('$count'),
       ],
     ),
   );
@@ -2211,9 +2432,10 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
   late final TextEditingController _name = TextEditingController(
     text: widget.initial?.displayName,
   );
-  late final TextEditingController _ageClass = TextEditingController(
-    text: widget.initial?.ageClass,
-  );
+  late int? _birthYear =
+      widget.initial?.birthYear ??
+      int.tryParse((widget.initial?.ageClass ?? '').replaceFirst('F', ''));
+  late DateTime? _birthDate = widget.initial?.birthDate;
   late bool _guardianRequired = widget.initial?.safeguardingRequired ?? false;
   String? _error;
 
@@ -2223,15 +2445,12 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
   void initState() {
     super.initState();
     _name.addListener(_submission.markDirty);
-    _ageClass.addListener(_submission.markDirty);
   }
 
   @override
   void dispose() {
     _name.removeListener(_submission.markDirty);
-    _ageClass.removeListener(_submission.markDirty);
     _name.dispose();
-    _ageClass.dispose();
     _submission.dispose();
     super.dispose();
   }
@@ -2248,7 +2467,8 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
             teamId: teamId,
             personId: widget.initial!.id,
             displayName: _name.text.trim(),
-            ageClass: _ageClass.text.trim(),
+            birthYear: _birthYear!,
+            birthDate: _birthDate,
             expectedRevision: widget.initial!.personRevision!,
             idempotencyKey: _newUuid(),
           );
@@ -2267,7 +2487,8 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
             clubId: widget.contextValue.clubId,
             teamId: teamId,
             displayName: _name.text.trim(),
-            ageClass: _ageClass.text.trim(),
+            birthYear: _birthYear!,
+            birthDate: _birthDate,
             startsAt: DateTime.now().toUtc(),
             idempotencyKey: _newUuid(),
           );
@@ -2279,7 +2500,7 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
       if (mounted) {
         setState(() {
           _error = AppStrings.of(context).feature(
-            'Personen kunde inte sparas. Kontrollera dubbletter och ladda om innan du försöker igen.',
+            'Personen kunde inte sparas. Kontrollera uppgifterna och ladda om innan du försöker igen.',
           );
         });
       }
@@ -2356,16 +2577,49 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
                         _submission.markDirty();
                       },
                     ),
-                  TextFormField(
-                    controller: _ageClass,
-                    maxLength: 40,
+                  DropdownButtonFormField<int>(
+                    key: const Key('roster-birth-year-field'),
+                    initialValue: _birthYear,
                     decoration: InputDecoration(
-                      labelText: strings.feature('Åldersklass (valfri)'),
+                      labelText: strings.feature('Födelseår'),
                     ),
-                    validator: (value) => (value?.trim().length ?? 0) > 40
-                        ? strings.feature('Ange högst 40 tecken.')
+                    items: [
+                      for (
+                        var year = DateTime.now().year;
+                        year >= DateTime.now().year - 120;
+                        year--
+                      )
+                        DropdownMenuItem(value: year, child: Text('$year')),
+                    ],
+                    onChanged: (year) {
+                      setState(() {
+                        _birthYear = year;
+                        if (_birthDate?.year != year) _birthDate = null;
+                      });
+                      _submission.markDirty();
+                    },
+                    validator: (_) => _birthYear == null
+                        ? strings.feature('Välj ett födelseår.')
                         : null,
                   ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _birthYear == null ? null : _pickBirthDate,
+                    icon: const Icon(Icons.calendar_month_outlined),
+                    label: Text(
+                      _birthDate == null
+                          ? strings.feature('Lägg till fullständigt datum')
+                          : _formatBirthDate(_birthDate!),
+                    ),
+                  ),
+                  if (_birthDate != null)
+                    TextButton(
+                      onPressed: () {
+                        setState(() => _birthDate = null);
+                        _submission.markDirty();
+                      },
+                      child: Text(strings.feature('Ta bort exakt datum')),
+                    ),
                   if (_error != null) ...[
                     const SizedBox(height: 8),
                     Text(
@@ -2393,11 +2647,41 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
       ),
     );
   }
+
+  Future<void> _pickBirthDate() async {
+    final now = DateTime.now();
+    final year = _birthYear!;
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: _birthDate ?? DateTime(year, 1, 1),
+      firstDate: DateTime(year, 1, 1),
+      lastDate: year == now.year
+          ? DateTime(now.year, now.month, now.day)
+          : DateTime(year, 12, 31),
+      helpText: AppStrings.of(context).feature('Välj födelsedatum'),
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      _birthDate = DateTime(selected.year, selected.month, selected.day);
+    });
+    _submission.markDirty();
+  }
 }
 
+String _formatBirthDate(DateTime value) =>
+    '${value.year.toString().padLeft(4, '0')}-'
+    '${value.month.toString().padLeft(2, '0')}-'
+    '${value.day.toString().padLeft(2, '0')}';
+
 class _RosterPersonDetailsView extends StatelessWidget {
-  const _RosterPersonDetailsView({required this.future});
+  const _RosterPersonDetailsView({
+    required this.future,
+    this.onMovePlayer,
+    this.onArchivePlayer,
+  });
   final Future<RosterPersonDetails> future;
+  final VoidCallback? onMovePlayer;
+  final Future<void> Function()? onArchivePlayer;
 
   @override
   Widget build(BuildContext context) => FutureBuilder<RosterPersonDetails>(
@@ -2441,14 +2725,52 @@ class _RosterPersonDetailsView extends StatelessWidget {
           if (person.ageClass != null)
             ListTile(
               leading: const Icon(Icons.badge_outlined),
-              title: Text(strings.feature('Åldersklass')),
+              title: Text(strings.feature('Födelseår')),
               subtitle: Text(person.ageClass!),
+            ),
+          if (person.birthDate != null)
+            ListTile(
+              leading: const Icon(Icons.cake_outlined),
+              title: Text(strings.feature('Födelsedatum')),
+              subtitle: Text(_formatBirthDate(person.birthDate!)),
             ),
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: Text(strings.feature('Status')),
             subtitle: Text(strings.domainValue(person.assignmentState)),
           ),
+          if ((onMovePlayer != null || onArchivePlayer != null) &&
+              person.assignmentState == 'active') ...[
+            const Divider(),
+            Text(
+              strings.feature('Åtgärder'),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            if (onMovePlayer != null)
+              ListTile(
+                leading: const Icon(Icons.swap_horiz),
+                title: Text(strings.feature('Flytta till ett annat lag')),
+                subtitle: Text(
+                  strings.feature(
+                    'Nuvarande lagtillhörighet avslutas och historiken bevaras.',
+                  ),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: onMovePlayer,
+              ),
+            if (onArchivePlayer != null)
+              ListTile(
+                leading: const Icon(Icons.archive_outlined),
+                title: Text(strings.feature('Avsluta i laget')),
+                subtitle: Text(
+                  strings.feature(
+                    'Spelaren flyttas till Arkiverade. Namn, matcher, närvaro och annan historik bevaras.',
+                  ),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => onArchivePlayer!(),
+              ),
+          ],
           if (person.hasManagementDetails) ...[
             const Divider(),
             Text(
@@ -2484,6 +2806,193 @@ class _RosterPersonDetailsView extends StatelessWidget {
   );
 }
 
+class _RosterPersonDetailsPage extends StatelessWidget {
+  const _RosterPersonDetailsPage({
+    required this.personId,
+    required this.contextValue,
+    required this.roster,
+    required this.onBack,
+  });
+
+  final String personId;
+  final TeamZoneContext contextValue;
+  final RosterServices roster;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final canManage =
+        contextValue.can('club.memberships.manage') ||
+        contextValue.can('team.roster.manage');
+    final canView = contextValue.can('team.roster.view') || canManage;
+    const supportedRoles = {'player', 'leader', 'guardian', 'club_functionary'};
+    final allowed =
+        canView &&
+        supportedRoles.contains(contextValue.rolePackage) &&
+        contextValue.rolePackage != 'guardian' &&
+        contextValue.teamId != null;
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: strings.feature('Tillbaka till truppen'),
+          onPressed: onBack,
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: Text(strings.feature('Medlemsuppgifter')),
+      ),
+      body: allowed
+          ? _RosterPersonDetailsView(
+              future: roster
+                  .getPersonDetails(
+                    clubId: contextValue.clubId,
+                    teamId: contextValue.teamId!,
+                    personId: personId,
+                  )
+                  .timeout(const Duration(seconds: 15)),
+              onMovePlayer: canManage
+                  ? () => showModalBottomSheet<void>(
+                      context: context,
+                      useRootNavigator: true,
+                      isScrollControlled: true,
+                      useSafeArea: true,
+                      builder: (_) => _IntraClubMoveSheet(
+                        contextValue: contextValue,
+                        roster: roster,
+                        initialPersonId: personId,
+                      ),
+                    )
+                  : null,
+              onArchivePlayer: canManage
+                  ? () => _archivePersonFromDetails(
+                      context: context,
+                      contextValue: contextValue,
+                      roster: roster,
+                      personId: personId,
+                      onArchived: onBack,
+                    )
+                  : null,
+            )
+          : _StateCard(
+              icon: Icons.lock_outline,
+              title: strings.feature('Medlemsdetaljen är inte tillgänglig'),
+              message: strings.feature(
+                'Din roll saknar behörighet att visa de här uppgifterna.',
+              ),
+              action: OutlinedButton(
+                onPressed: onBack,
+                child: Text(strings.feature('Tillbaka till truppen')),
+              ),
+            ),
+    );
+  }
+}
+
+Future<void> _archivePersonFromDetails({
+  required BuildContext context,
+  required TeamZoneContext contextValue,
+  required RosterServices roster,
+  required String personId,
+  required VoidCallback onArchived,
+}) async {
+  final strings = AppStrings.of(context);
+  final reasonController = TextEditingController();
+  final reason = await showDialog<String>(
+    context: context,
+    useRootNavigator: true,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(strings.feature('Avsluta i laget')),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            strings.feature(
+              'Spelaren flyttas till Arkiverade. Namn, matcher, närvaro och annan historik bevaras.',
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: reasonController,
+            autofocus: true,
+            maxLength: 240,
+            decoration: InputDecoration(
+              labelText: strings.feature('Anledning'),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: Text(strings.cancel),
+        ),
+        FilledButton(
+          onPressed: () {
+            final value = reasonController.text.trim();
+            if (value.isNotEmpty) Navigator.pop(dialogContext, value);
+          },
+          child: Text(strings.feature('Avsluta i laget')),
+        ),
+      ],
+    ),
+  );
+  reasonController.dispose();
+  if (reason == null || !context.mounted) return;
+
+  try {
+    final lifecycle = await roster.getRosterLifecycle(
+      clubId: contextValue.clubId,
+      teamId: contextValue.teamId!,
+    );
+    final assignment = lifecycle.people
+        .where(
+          (person) =>
+              person.personId == personId && person.assignmentState == 'active',
+        )
+        .firstOrNull;
+    if (assignment == null) {
+      throw StateError('Active assignment is no longer available.');
+    }
+    await roster.archiveTeamAssignment(
+      clubId: contextValue.clubId,
+      teamId: contextValue.teamId!,
+      personId: personId,
+      assignmentId: assignment.assignmentId,
+      expectedRevision: assignment.assignmentRevision,
+      reason: reason,
+      idempotencyKey: _newUuid(),
+    );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(strings.feature('Spelaren är arkiverad.'))),
+    );
+    onArchived();
+  } catch (error, stackTrace) {
+    debugPrint('TEAM-08 profile archive failed: $error\n$stackTrace');
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      useRootNavigator: true,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(strings.feature('Avsluta i laget')),
+        content: Text(
+          strings.feature(
+            'Åtgärden kunde inte sparas. Ladda om och försök igen.',
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(strings.close),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 int _teamTabIndex(String? value) => switch (value) {
   'roster' => 1,
   'calendar' => 2,
@@ -2495,10 +3004,12 @@ class _TeamOverviewSurface extends StatefulWidget {
     required this.contextValue,
     required this.roster,
     required this.onNavigate,
+    required this.onOpenApplications,
   });
   final TeamZoneContext contextValue;
   final RosterServices roster;
   final ValueChanged<String> onNavigate;
+  final Future<void> Function() onOpenApplications;
 
   @override
   State<_TeamOverviewSurface> createState() => _TeamOverviewSurfaceState();
@@ -2661,7 +3172,10 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
                         trailing: Text('${value.pendingApplicationCount}'),
                         onTap: value.pendingApplicationCount == 0
                             ? null
-                            : () => widget.onNavigate('/team?tab=roster'),
+                            : () async {
+                                await widget.onOpenApplications();
+                                if (mounted) setState(_reload);
+                              },
                       ),
                       Semantics(
                         label: strings
@@ -2702,16 +3216,34 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
                 required teamType,
                 required ageClass,
                 required summary,
-                required imageUrl,
-              }) => widget.roster.updateTeamProfile(
-                teamId: teamId,
-                teamType: teamType,
-                ageClass: ageClass,
-                summary: summary,
-                imageUrl: imageUrl,
-                expectedRevision: value.revision,
-                idempotencyKey: _newUuid(),
-              ),
+                required imageBytes,
+                required imageMimeType,
+                required removeImage,
+              }) async {
+                String? stagedImageId;
+                if (imageBytes != null && imageMimeType != null) {
+                  stagedImageId = await widget.roster.uploadTeamImage(
+                    teamId: teamId,
+                    mimeType: imageMimeType,
+                    bytes: imageBytes,
+                    idempotencyKey: _newUuid(),
+                  );
+                }
+                return widget.roster.updateTeamProfile(
+                  teamId: teamId,
+                  teamType: teamType,
+                  ageClass: ageClass,
+                  summary: summary,
+                  imageAction: stagedImageId != null
+                      ? 'replace'
+                      : removeImage
+                      ? 'remove'
+                      : 'keep',
+                  stagedImageId: stagedImageId,
+                  expectedRevision: value.revision,
+                  idempotencyKey: _newUuid(),
+                );
+              },
         ),
       );
       if (saved == true && mounted) setState(_reload);
@@ -2734,7 +3266,9 @@ class _TeamProfileEditDialog extends StatefulWidget {
     required String teamType,
     required String ageClass,
     required String summary,
-    required String imageUrl,
+    required Uint8List? imageBytes,
+    required String? imageMimeType,
+    required bool removeImage,
   })
   onSave;
   @override
@@ -2745,8 +3279,11 @@ class _TeamProfileEditDialogState extends State<_TeamProfileEditDialog> {
   late final _teamType = TextEditingController(text: widget.value.teamType);
   late final _ageClass = TextEditingController(text: widget.value.ageClass);
   late final _summary = TextEditingController(text: widget.value.summary);
-  late final _imageUrl = TextEditingController(text: widget.value.imageUrl);
   final _formKey = GlobalKey<FormState>();
+  Uint8List? _imageBytes;
+  String? _imageMimeType;
+  String? _imageName;
+  bool _removeImage = false;
   bool _saving = false;
 
   @override
@@ -2754,7 +3291,6 @@ class _TeamProfileEditDialogState extends State<_TeamProfileEditDialog> {
     _teamType.dispose();
     _ageClass.dispose();
     _summary.dispose();
-    _imageUrl.dispose();
     super.dispose();
   }
 
@@ -2792,22 +3328,76 @@ class _TeamProfileEditDialogState extends State<_TeamProfileEditDialog> {
                   labelText: strings.feature('Kort lagpresentation'),
                 ),
               ),
-              TextFormField(
-                controller: _imageUrl,
-                maxLength: 2048,
-                keyboardType: TextInputType.url,
-                decoration: InputDecoration(
-                  labelText: strings.feature('Lagbildens HTTPS-adress'),
-                  helperText: strings.feature(
-                    'Säker bilduppladdning läggs till separat.',
-                  ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  strings.feature('Lagbild'),
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
-                validator: (value) {
-                  final url = value?.trim() ?? '';
-                  return url.isEmpty || Uri.tryParse(url)?.scheme == 'https'
-                      ? null
-                      : strings.feature('Ange en giltig HTTPS-adress.');
-                },
+              ),
+              const SizedBox(height: 8),
+              AspectRatio(
+                aspectRatio: 16 / 7,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: _imageBytes != null
+                      ? Image.memory(
+                          _imageBytes!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => _imageFallback(context),
+                        )
+                      : !_removeImage && widget.value.imageUrl != null
+                      ? Image.network(
+                          widget.value.imageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => _imageFallback(context),
+                        )
+                      : _imageFallback(context),
+                ),
+              ),
+              if (_imageName != null) ...[
+                const SizedBox(height: 8),
+                Text(_imageName!, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _saving ? null : _pickImage,
+                    icon: const Icon(Icons.upload_outlined),
+                    label: Text(
+                      strings.feature(
+                        widget.value.imageUrl == null && _imageBytes == null
+                            ? 'Välj lagbild'
+                            : 'Byt lagbild',
+                      ),
+                    ),
+                  ),
+                  if ((_imageBytes != null || widget.value.imageUrl != null) &&
+                      !_removeImage)
+                    TextButton.icon(
+                      onPressed: _saving
+                          ? null
+                          : () => setState(() {
+                              _imageBytes = null;
+                              _imageMimeType = null;
+                              _imageName = null;
+                              _removeImage = true;
+                            }),
+                      icon: const Icon(Icons.delete_outline),
+                      label: Text(strings.feature('Ta bort lagbild')),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                strings.feature(
+                  'JPG, PNG eller WebP. Max 5 MB. Originalet lagras privat.',
+                ),
+                style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
           ),
@@ -2826,6 +3416,43 @@ class _TeamProfileEditDialogState extends State<_TeamProfileEditDialog> {
     );
   }
 
+  Widget _imageFallback(BuildContext context) => ColoredBox(
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+    child: const Center(child: Icon(Icons.groups_outlined, size: 56)),
+  );
+
+  Future<void> _pickImage() async {
+    final pick = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
+      withData: true,
+    );
+    final file = pick?.files.single;
+    final bytes = file?.bytes;
+    if (file == null || bytes == null || !mounted) return;
+    final strings = AppStrings.of(context);
+    if (bytes.isEmpty || bytes.length > 5 * 1024 * 1024) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(strings.feature('Bilden måste vara högst 5 MB.')),
+        ),
+      );
+      return;
+    }
+    final extension = (file.extension ?? '').toLowerCase();
+    final mimeType = extension == 'png'
+        ? 'image/png'
+        : extension == 'webp'
+        ? 'image/webp'
+        : 'image/jpeg';
+    setState(() {
+      _imageBytes = bytes;
+      _imageMimeType = mimeType;
+      _imageName = file.name;
+      _removeImage = false;
+    });
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
@@ -2834,7 +3461,9 @@ class _TeamProfileEditDialogState extends State<_TeamProfileEditDialog> {
         teamType: _teamType.text.trim(),
         ageClass: _ageClass.text.trim(),
         summary: _summary.text.trim(),
-        imageUrl: _imageUrl.text.trim(),
+        imageBytes: _imageBytes,
+        imageMimeType: _imageMimeType,
+        removeImage: _removeImage,
       );
       if (mounted) Navigator.pop(context, true);
     } catch (_) {
@@ -2892,6 +3521,8 @@ class _TeamImage extends StatelessWidget {
 
 enum _TeamEventFilter { all, match, training, meeting }
 
+enum _TeamEventPeriod { upcoming, previous }
+
 class _TeamEventList extends StatefulWidget {
   const _TeamEventList({required this.contextValue, required this.calendar});
   final TeamZoneContext contextValue;
@@ -2903,6 +3534,7 @@ class _TeamEventList extends StatefulWidget {
 class _TeamEventListState extends State<_TeamEventList> {
   late Future<List<CalendarEventSummary>> _load;
   _TeamEventFilter _filter = _TeamEventFilter.all;
+  _TeamEventPeriod _period = _TeamEventPeriod.upcoming;
 
   @override
   void initState() {
@@ -2970,6 +3602,9 @@ class _TeamEventListState extends State<_TeamEventList> {
         final previous =
             events.where((event) => event.startsAt.isBefore(now)).toList()
               ..sort((a, b) => b.startsAt.compareTo(a.startsAt));
+        final visibleEvents = _period == _TeamEventPeriod.upcoming
+            ? upcoming
+            : previous;
         return RefreshIndicator(
           onRefresh: () async {
             setState(_reload);
@@ -2978,33 +3613,76 @@ class _TeamEventListState extends State<_TeamEventList> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Wrap(
-                spacing: 8,
+              Row(
                 children: [
-                  for (final item in _TeamEventFilter.values)
-                    FilterChip(
-                      label: Text(switch (item) {
-                        _TeamEventFilter.all => strings.feature('Alla'),
-                        _TeamEventFilter.match => strings.feature('Matcher'),
-                        _TeamEventFilter.training => strings.feature(
-                          'Träningar',
+                  Expanded(
+                    child: SegmentedButton<_TeamEventPeriod>(
+                      segments: [
+                        ButtonSegment(
+                          value: _TeamEventPeriod.upcoming,
+                          label: Text(strings.feature('Kommande')),
+                          icon: const Icon(Icons.upcoming_outlined),
                         ),
-                        _TeamEventFilter.meeting => strings.feature('Möten'),
-                      }),
-                      selected: _filter == item,
-                      onSelected: (_) => setState(() => _filter = item),
+                        ButtonSegment(
+                          value: _TeamEventPeriod.previous,
+                          label: Text(strings.feature('Tidigare')),
+                          icon: const Icon(Icons.history),
+                        ),
+                      ],
+                      selected: {_period},
+                      onSelectionChanged: (selection) =>
+                          setState(() => _period = selection.single),
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  PopupMenuButton<_TeamEventFilter>(
+                    tooltip: strings.feature('Filtrera händelser'),
+                    initialValue: _filter,
+                    onSelected: (value) => setState(() => _filter = value),
+                    icon: Badge(
+                      isLabelVisible: _filter != _TeamEventFilter.all,
+                      child: const Icon(Icons.filter_list),
+                    ),
+                    itemBuilder: (context) => [
+                      for (final item in _TeamEventFilter.values)
+                        PopupMenuItem(
+                          value: item,
+                          child: Row(
+                            children: [
+                              Icon(
+                                _filter == item
+                                    ? Icons.check
+                                    : Icons.circle_outlined,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(_teamEventFilterLabel(strings, item)),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
               ),
-              const SizedBox(height: 20),
+              if (_filter != _TeamEventFilter.all) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: InputChip(
+                    label: Text(_teamEventFilterLabel(strings, _filter)),
+                    onDeleted: () =>
+                        setState(() => _filter = _TeamEventFilter.all),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
               _TeamEventSection(
-                title: strings.feature('Kommande'),
-                events: upcoming,
-              ),
-              const SizedBox(height: 20),
-              _TeamEventSection(
-                title: strings.feature('Tidigare'),
-                events: previous,
+                title: strings.feature(
+                  _period == _TeamEventPeriod.upcoming
+                      ? 'Kommande händelser'
+                      : 'Tidigare händelser',
+                ),
+                events: visibleEvents,
               ),
             ],
           ),
@@ -3013,6 +3691,14 @@ class _TeamEventListState extends State<_TeamEventList> {
     );
   }
 }
+
+String _teamEventFilterLabel(AppStrings strings, _TeamEventFilter filter) =>
+    switch (filter) {
+      _TeamEventFilter.all => strings.feature('Alla händelser'),
+      _TeamEventFilter.match => strings.feature('Matcher'),
+      _TeamEventFilter.training => strings.feature('Träningar'),
+      _TeamEventFilter.meeting => strings.feature('Möten'),
+    };
 
 class _TeamEventSection extends StatelessWidget {
   const _TeamEventSection({required this.title, required this.events});
@@ -3028,23 +3714,111 @@ class _TeamEventSection extends StatelessWidget {
       if (events.isEmpty)
         Text(AppStrings.of(context).feature('Inga händelser'))
       else
-        for (final event in events)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(
-              event.type == 'match' ? Icons.sports_soccer : Icons.event,
-            ),
-            title: Text(event.title),
-            subtitle: Text(
-              '${event.startsAt.toLocal()}${event.locationName == null ? '' : ' · ${event.locationName}'}',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => GoRouter.of(
-              context,
-            ).go(ProductRouteContract.calendarEvent(event.id)),
-          ),
+        for (final event in events) _TeamEventCard(event: event),
     ],
   );
+}
+
+class _TeamEventCard extends StatelessWidget {
+  const _TeamEventCard({required this.event});
+
+  final CalendarEventSummary event;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final localizations = MaterialLocalizations.of(context);
+    final start = event.startsAt.toLocal();
+    final end = event.endsAt.toLocal();
+    final date = localizations.formatFullDate(start);
+    final time = event.allDay
+        ? strings.feature('Heldag')
+        : '${TimeOfDay.fromDateTime(start).format(context)}–'
+              '${TimeOfDay.fromDateTime(end).format(context)}';
+    final hasResult =
+        event.type == 'match' &&
+        event.matchState == 'completed' &&
+        event.scoreUs != null &&
+        event.scoreOpponent != null;
+    final cancelled = event.state == 'cancelled';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => GoRouter.of(
+          context,
+        ).push(ProductRouteContract.calendarEvent(event.id)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                child: Icon(
+                  event.type == 'match'
+                      ? Icons.sports_soccer
+                      : event.type == 'training'
+                      ? Icons.fitness_center
+                      : Icons.event_outlined,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          strings.domainValue(event.type),
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                        if (cancelled)
+                          Chip(
+                            visualDensity: VisualDensity.compact,
+                            label: Text(strings.domainValue(event.state)),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      event.title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text('$date · $time'),
+                    if (event.locationName case final location?) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_outlined, size: 18),
+                          const SizedBox(width: 4),
+                          Expanded(child: Text(location)),
+                        ],
+                      ),
+                    ],
+                    if (hasResult) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        '${strings.feature('Resultat')}  '
+                        '${event.scoreUs}–${event.scoreOpponent}',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _ClubVerificationSheet extends StatefulWidget {
@@ -3282,31 +4056,65 @@ class _MembershipReviewSheetState extends State<_MembershipReviewSheet> {
   Future<void> _decide(MembershipReviewItem item, bool approve) async {
     if (_pendingId != null) return;
     final strings = AppStrings.of(context);
+    var approvedRole = item.role;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          strings.feature(
-            approve ? 'Godkänn medlemsansökan?' : 'Avslå medlemsansökan?',
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(
+            strings.feature(
+              approve ? 'Godkänn medlemsansökan?' : 'Avslå medlemsansökan?',
+            ),
           ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                strings.feature(
+                  approve
+                      ? 'Personen får den valda rollen i laget.'
+                      : 'Sökanden ser endast att ansökan har avslagits.',
+                ),
+              ),
+              if (approve) ...[
+                const SizedBox(height: 16),
+                DropdownButtonFormField<MembershipRole>(
+                  initialValue: approvedRole,
+                  decoration: InputDecoration(
+                    labelText: strings.feature('Godkänn som'),
+                    helperText: strings
+                        .feature('Ansökt som: {role}')
+                        .replaceFirst('{role}', _roleLabel(strings, item.role)),
+                  ),
+                  items: MembershipRole.values
+                      .map(
+                        (role) => DropdownMenuItem(
+                          value: role,
+                          child: Text(_roleLabel(strings, role)),
+                        ),
+                      )
+                      .toList(growable: false),
+                  onChanged: (role) {
+                    if (role != null) {
+                      setDialogState(() => approvedRole = role);
+                    }
+                  },
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(strings.feature('Avbryt')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(strings.feature(approve ? 'Godkänn' : 'Avslå')),
+            ),
+          ],
         ),
-        content: Text(
-          strings.feature(
-            approve
-                ? 'Personen får den valda rollen i laget.'
-                : 'Sökanden ser endast att ansökan har avslagits.',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(strings.feature('Avbryt')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(strings.feature(approve ? 'Godkänn' : 'Avslå')),
-          ),
-        ],
       ),
     );
     if (confirmed != true || !mounted) return;
@@ -3319,6 +4127,7 @@ class _MembershipReviewSheetState extends State<_MembershipReviewSheet> {
           .decide(
             applicationId: item.id,
             approve: approve,
+            approvedRole: approve ? approvedRole : null,
             idempotencyKey: _newUuid(),
           )
           .timeout(const Duration(seconds: 15));

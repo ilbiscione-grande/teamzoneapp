@@ -31,10 +31,7 @@ void main() {
       find.widgetWithText(TextFormField, 'Visningsnamn'),
       '  Ada  Spelare ',
     );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Åldersklass (valfri)'),
-      'F2012',
-    );
+    await _selectBirthYear(tester);
     await tester.tap(find.text('Spara person'));
     await tester.pumpAndSettle();
     expect(roster.createCalls, 1);
@@ -59,7 +56,7 @@ void main() {
       find.widgetWithText(TextFormField, 'Visningsnamn'),
       'Ada',
     );
-    await tester.tap(find.byType(BackButton));
+    await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.text('Kasta ändringar?'), findsOneWidget);
   });
@@ -81,6 +78,7 @@ void main() {
       find.widgetWithText(TextFormField, 'Visningsnamn'),
       'Ada Uppdaterad',
     );
+    await _selectBirthYear(tester);
     await tester.ensureVisible(find.text('Spara person'));
     await tester.tap(find.text('Spara person'));
     await tester.pumpAndSettle();
@@ -93,8 +91,6 @@ void main() {
     final sql = File(
       'supabase/migrations/20260826190142_team04_roster_person_commands.sql',
     ).readAsStringSync().toLowerCase();
-    expect(sql, contains('pg_advisory_xact_lock'));
-    expect(sql, contains("message='duplicate_roster_person'"));
     expect(sql, contains("'club.memberships.manage'"));
     expect(sql, contains('person.revision<>expected_revision'));
     expect(sql, contains("message='stale_revision'"));
@@ -104,6 +100,41 @@ void main() {
     expect(sql, contains('internal.command_deduplication'));
     expect(sql, contains('audit.command_events'));
     expect(sql, contains('revoke all on function'));
+  });
+
+  test('birth date v2 SQL stores exact date but lists only birth year', () {
+    final sql = File(
+      'supabase/migrations/20260913075009_team04_birth_date_picker.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(sql, contains('add column birth_date date'));
+    expect(sql, contains('extract(year from person.birth_date)'));
+    expect(sql, contains("'{management,birth_date}'"));
+    expect(sql, contains('create_roster_person_v2'));
+    expect(sql, contains('update_roster_person_v2'));
+    expect(sql, contains('revoke all on function'));
+  });
+
+  test('birth data v3 requires only year and keeps exact date optional', () {
+    final sql = File(
+      'supabase/migrations/20260913080957_team04_partial_birth_date.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(sql, contains('add column birth_year smallint'));
+    expect(sql, contains('new_birth_date date'));
+    expect(sql, contains('birth_date=new_birth_date'));
+    expect(sql, contains('coalesce(person.birth_year::text,person.age_class)'));
+    expect(sql, isNot(contains("date_trunc('year'")));
+  });
+
+  test('TEAM-04 allows distinct people with the same name and age class', () {
+    final sql = File(
+      'supabase/migrations/20260912183346_team04_allow_same_name_and_age_class.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(sql, contains('internal.command_deduplication'));
+    expect(sql, contains("command_type='roster.person.create.v1'"));
+    expect(sql, isNot(contains('duplicate_roster_person')));
+    expect(sql, isNot(contains('pg_advisory_xact_lock')));
+    expect(sql, contains('insert into core.persons'));
+    expect(sql, contains('update core.club_people set display_name'));
   });
 
   test('team leaders receive scoped roster management, not club admin', () {
@@ -175,7 +206,8 @@ class _Roster extends UnconfiguredRosterServices {
     required String clubId,
     required String teamId,
     required String displayName,
-    required String ageClass,
+    required int birthYear,
+    DateTime? birthDate,
     required DateTime startsAt,
     required String idempotencyKey,
   }) async {
@@ -185,7 +217,7 @@ class _Roster extends UnconfiguredRosterServices {
       RosterPersonSummary(
         id: 'person',
         displayName: displayName,
-        ageClass: ageClass,
+        ageClass: birthYear.toString(),
         teamId: teamId,
         teamName: 'F2012',
         assignmentState: 'active',
@@ -217,7 +249,8 @@ class _Roster extends UnconfiguredRosterServices {
     required String teamId,
     required String personId,
     required String displayName,
-    required String ageClass,
+    required int birthYear,
+    DateTime? birthDate,
     required int expectedRevision,
     required String idempotencyKey,
   }) async {
@@ -226,7 +259,7 @@ class _Roster extends UnconfiguredRosterServices {
     people[0] = RosterPersonSummary(
       id: personId,
       displayName: displayName,
-      ageClass: ageClass,
+      ageClass: birthYear.toString(),
       teamId: teamId,
       teamName: 'F2012',
       assignmentState: 'active',
@@ -234,6 +267,14 @@ class _Roster extends UnconfiguredRosterServices {
     );
     return expectedRevision + 1;
   }
+}
+
+Future<void> _selectBirthYear(WidgetTester tester) async {
+  final field = tester.widget<DropdownButtonFormField<int>>(
+    find.byKey(const Key('roster-birth-year-field')),
+  );
+  field.onChanged!(2012);
+  await tester.pumpAndSettle();
 }
 
 class _Identity implements IdentityServices {

@@ -29,6 +29,9 @@ void main() {
     await tester.tap(find.text('Inbjudningar och lagkoder'));
     await tester.pumpAndSettle();
     expect(find.text('F2012 · player'), findsOneWidget);
+    expect(find.text('Aktiva inbjudningar'), findsOneWidget);
+    expect(find.text('Tidigare inbjudningar'), findsOneWidget);
+    expect(find.text('Återkallad'), findsOneWidget);
     expect(find.byTooltip('Återkalla'), findsOneWidget);
     await tester.tap(find.byTooltip('Återkalla'));
     await tester.pumpAndSettle();
@@ -295,6 +298,14 @@ class _Roster extends UnconfiguredRosterServices {
       state: revokeCalls == 0 ? 'issued' : 'revoked',
       expiresAt: DateTime.now().add(const Duration(days: 1)),
       revision: 1 + revokeCalls,
+    ),
+    InvitationAdminItem(
+      id: 'old-code',
+      kind: 'team_code',
+      subjectName: 'Tidigare kod',
+      state: 'revoked',
+      expiresAt: DateTime.now().subtract(const Duration(days: 1)),
+      revision: 2,
     ),
   ];
   @override
