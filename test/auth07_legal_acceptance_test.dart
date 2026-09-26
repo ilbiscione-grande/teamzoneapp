@@ -73,6 +73,30 @@ void main() {
       ),
     );
   });
+
+  test('AUTH-07 completed acceptance replay precedes active version check', () {
+    final sql = File(
+      'supabase/migrations/20260911044257_auth07_fix_legal_acceptance_replay.sql',
+    ).readAsStringSync().toLowerCase();
+    final dedupePosition = sql.indexOf('select result into existing');
+    final versionPosition = sql.indexOf('select version into current_terms');
+    expect(dedupePosition, greaterThan(-1));
+    expect(versionPosition, greaterThan(dedupePosition));
+    expect(sql, contains('dedupe.actor_profile_id=actor_id'));
+    expect(sql, contains("dedupe.command_type='identity.legal.accept.v1'"));
+    expect(sql, contains('legal_version_changed'));
+  });
+
+  test('AUTH-07 settings expose both current legal documents', () {
+    final source = File(
+      'lib/src/features/account/profile_settings_surface.dart',
+    ).readAsStringSync();
+    expect(source, contains("strings.feature('Användarvillkor')"));
+    expect(source, contains("strings.feature('Integritetspolicy')"));
+    expect(source, contains('_openLegalDocument(status.termsUrl)'));
+    expect(source, contains('_openLegalDocument(status.privacyUrl)'));
+    expect(source, contains('LaunchMode.externalApplication'));
+  });
 }
 
 class _LegalFake implements LegalServices {

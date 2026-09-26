@@ -1,5 +1,80 @@
 enum MembershipRole { player, leader, guardian, clubFunctionary }
 
+class ProtectedNameSupportCase {
+  const ProtectedNameSupportCase({
+    required this.id,
+    required this.requesterProfileId,
+    required this.clubName,
+    required this.teamName,
+    required this.status,
+    required this.message,
+    required this.resolutionNote,
+    required this.revision,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String requesterProfileId;
+  final String clubName;
+  final String teamName;
+  final String status;
+  final String message;
+  final String? resolutionNote;
+  final int revision;
+  final DateTime createdAt;
+
+  factory ProtectedNameSupportCase.fromJson(Map<String, dynamic> json) =>
+      ProtectedNameSupportCase(
+        id: json['case_id'] as String,
+        requesterProfileId: json['requester_profile_id'] as String,
+        clubName: json['candidate_club_name'] as String,
+        teamName: json['candidate_team_name'] as String,
+        status: json['status'] as String,
+        message: json['message'] as String,
+        resolutionNote: json['resolution_note'] as String?,
+        revision: (json['revision'] as num).toInt(),
+        createdAt: DateTime.parse(json['created_at'] as String),
+      );
+}
+
+class GlobalPersonErasureCase {
+  const GlobalPersonErasureCase({
+    required this.id,
+    required this.requesterName,
+    required this.state,
+    required this.reason,
+    required this.requestedAt,
+    required this.reviewedAt,
+    required this.completedAt,
+    required this.revision,
+  });
+
+  final String id;
+  final String requesterName;
+  final String state;
+  final String reason;
+  final DateTime requestedAt;
+  final DateTime? reviewedAt;
+  final DateTime? completedAt;
+  final int revision;
+
+  factory GlobalPersonErasureCase.fromJson(Map<String, dynamic> json) =>
+      GlobalPersonErasureCase(
+        id: json['request_id'] as String,
+        requesterName: json['requester_name'] as String,
+        state: json['state'] as String,
+        reason: json['reason'] as String,
+        requestedAt: DateTime.parse(json['requested_at'] as String),
+        reviewedAt: json['reviewed_at'] == null
+            ? null
+            : DateTime.parse(json['reviewed_at'] as String),
+        completedAt: json['completed_at'] == null
+            ? null
+            : DateTime.parse(json['completed_at'] as String),
+        revision: (json['revision'] as num).toInt(),
+      );
+}
+
 extension MembershipRoleWire on MembershipRole {
   String get wireName => switch (this) {
     MembershipRole.player => 'player',
@@ -102,6 +177,26 @@ class ClubCreationResult {
         clubId: json['club_id'] as String,
         teamId: json['team_id'] as String,
         contextId: json['context_id'] as String,
+      );
+}
+
+class TeamCreationRequest {
+  const TeamCreationRequest({
+    required this.id,
+    required this.teamName,
+    required this.requesterName,
+    required this.state,
+    required this.revision,
+  });
+  final String id, teamName, requesterName, state;
+  final int revision;
+  factory TeamCreationRequest.fromJson(Map<String, dynamic> json) =>
+      TeamCreationRequest(
+        id: json['request_id'] as String,
+        teamName: json['team_name'] as String,
+        requesterName: json['requester_name'] as String,
+        state: json['state'] as String,
+        revision: (json['revision'] as num).toInt(),
       );
 }
 

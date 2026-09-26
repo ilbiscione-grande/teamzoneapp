@@ -943,6 +943,8 @@ class _CreateClubSheetState extends State<_CreateClubSheet> {
   final _teamName = TextEditingController();
   bool _pending = false;
   String? _error;
+  String? _notice;
+  bool _reviewRequired = false;
 
   @override
   void dispose() {
@@ -956,6 +958,8 @@ class _CreateClubSheetState extends State<_CreateClubSheet> {
     setState(() {
       _pending = true;
       _error = null;
+      _notice = null;
+      _reviewRequired = false;
     });
     try {
       final nameCheck = await widget.membership
@@ -964,11 +968,15 @@ class _CreateClubSheetState extends State<_CreateClubSheet> {
       if (nameCheck.status != ClubNameCheckStatus.available) {
         if (mounted) {
           setState(
-            () => _error = AppStrings.of(context).feature(
-              nameCheck.status == ClubNameCheckStatus.reviewRequired
-                  ? 'Namnet är skyddat eller används redan. Välj ett tydligt alternativt namn eller kontakta TeamZone för granskning.'
-                  : 'Klubbnamnet kan inte användas. Kontrollera namnet och försök igen.',
-            ),
+            () {
+              _reviewRequired =
+                  nameCheck.status == ClubNameCheckStatus.reviewRequired;
+              _error = AppStrings.of(context).feature(
+                _reviewRequired
+                    ? 'Namnet är skyddat eller används redan. Välj ett tydligt alternativt namn eller kontakta TeamZone för granskning.'
+                    : 'Klubbnamnet kan inte användas. Kontrollera namnet och försök igen.',
+              );
+            },
           );
         }
         return;
@@ -991,6 +999,120 @@ class _CreateClubSheetState extends State<_CreateClubSheet> {
       }
     } finally {
       if (mounted) setState(() => _pending = false);
+    }
+  }
+
+  Future<void> _openSupportCase() async {
+    final clubName = _clubName.text.trim();
+    final teamName = _teamName.text.trim();
+    final strings = AppStrings.of(context);
+    var message = strings.isSwedish
+        ? 'Jag vill få klubbnamnet "$clubName" granskat. Det första laget ska heta "$teamName". Jag kan lämna underlag som styrker min koppling till klubben.'
+        : 'I would like the club name "$clubName" reviewed. The first team will be named "$teamName". I can provide evidence of my connection to the club.';
+    var submitting = false;
+    String? dialogError;
+    final formKey = GlobalKey<FormState>();
+
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(strings.feature('Kontakta TeamZone')),
+          content: SizedBox(
+            width: 520,
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(strings.feature('Ärendet skickas till TeamZones supportadministratörer.')),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    initialValue: message,
+                    enabled: !submitting,
+                    minLines: 5,
+                    maxLines: 9,
+                    maxLength: 1000,
+                    decoration: InputDecoration(
+                      labelText: strings.feature('Meddelande'),
+                      alignLabelWithHint: true,
+                    ),
+                    onChanged: (value) => message = value,
+                    validator: (value) {
+                      final length = value?.trim().length ?? 0;
+                      return length < 20 || length > 1000
+                          ? strings.feature('Ange ett meddelande med 20–1000 tecken.')
+                          : null;
+                    },
+                  ),
+                  if (dialogError != null)
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        dialogError!,
+                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: submitting ? null : () => Navigator.pop(dialogContext, false),
+              child: Text(strings.cancel),
+            ),
+            FilledButton.icon(
+              onPressed: submitting
+                  ? null
+                  : () async {
+                      if (!(formKey.currentState?.validate() ?? false)) return;
+                      setDialogState(() {
+                        submitting = true;
+                        dialogError = null;
+                      });
+                      try {
+                        await widget.membership
+                            .submitProtectedNameSupportCase(
+                              clubName: clubName,
+                              teamName: teamName,
+                              message: message.trim(),
+                              idempotencyKey: _newUuid(),
+                            )
+                            .timeout(const Duration(seconds: 15));
+                        if (dialogContext.mounted) Navigator.pop(dialogContext, true);
+                      } catch (_) {
+                        if (dialogContext.mounted) {
+                          setDialogState(() {
+                            submitting = false;
+                            dialogError = strings.feature(
+                              'Ärendet kunde inte skickas. Försök igen.',
+                            );
+                          });
+                        }
+                      }
+                    },
+              icon: submitting
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.support_agent_outlined),
+              label: Text(strings.feature('Skicka ärende')),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (submitted == true && mounted) {
+      setState(() {
+        _error = null;
+        _reviewRequired = false;
+        _notice = strings.feature(
+          'Ärendet är skickat. TeamZone granskar uppgifterna och återkommer i appen.',
+        );
+      });
     }
   }
 
@@ -1054,6 +1176,18 @@ class _CreateClubSheetState extends State<_CreateClubSheet> {
             if (_error != null) ...[
               const SizedBox(height: 12),
               Semantics(liveRegion: true, child: Text(_error!)),
+              if (_reviewRequired) ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _pending ? null : _openSupportCase,
+                  icon: const Icon(Icons.support_agent_outlined),
+                  label: Text(strings.feature('Kontakta TeamZone')),
+                ),
+              ],
+            ],
+            if (_notice != null) ...[
+              const SizedBox(height: 12),
+              Semantics(liveRegion: true, child: Text(_notice!)),
             ],
             const SizedBox(height: 24),
             FilledButton.icon(
@@ -1090,6 +1224,7 @@ class _MembershipJoinSheetState extends State<_MembershipJoinSheet> {
   final _query = TextEditingController();
   bool _pending = false;
   String? _error;
+  String? _notice;
   List<ClubTeamSearchResult> _results = const [];
   List<MembershipApplication> _applications = const [];
 
@@ -1128,6 +1263,7 @@ class _MembershipJoinSheetState extends State<_MembershipJoinSheet> {
     setState(() {
       _pending = true;
       _error = null;
+      _notice = null;
     });
     try {
       final value = await widget.membership
@@ -1195,14 +1331,30 @@ class _MembershipJoinSheetState extends State<_MembershipJoinSheet> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    setState(() => _pending = true);
+    setState(() {
+      _pending = true;
+      _error = null;
+      _notice = null;
+    });
     try {
-      await widget.membership.apply(
+      final applicationId = await widget.membership.apply(
         teamId: target.teamId,
         role: role,
         idempotencyKey: _newUuid(),
       );
+      final alreadyPending = _applications.any(
+        (application) =>
+            application.id == applicationId &&
+            application.status == MembershipApplicationStatus.pending,
+      );
       await _loadApplications();
+      if (mounted && alreadyPending) {
+        setState(
+          () => _notice = AppStrings.of(context).feature(
+            'Du har redan en väntande ansökan för den rollen. Vänta på svar eller dra tillbaka ansökan.',
+          ),
+        );
+      }
     } catch (_) {
       if (mounted) {
         setState(
@@ -1277,6 +1429,11 @@ class _MembershipJoinSheetState extends State<_MembershipJoinSheet> {
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: Semantics(liveRegion: true, child: Text(_error!)),
+            ),
+          if (_notice != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Semantics(liveRegion: true, child: Text(_notice!)),
             ),
           if (_applications.isNotEmpty) ...[
             const SizedBox(height: 24),
@@ -1453,6 +1610,26 @@ class _ContextSelectorState extends State<_ContextSelector> {
     );
   }
 
+  Future<void> _selectCreatedTeam(String teamId) async {
+    final contexts = await widget.identity.getContexts();
+    if (!mounted || contexts.isEmpty) return;
+    final next = contexts
+        .where((context) => context.teamId == teamId)
+        .firstOrNull;
+    if (next == null) {
+      await _reloadContexts();
+      return;
+    }
+    setState(() {
+      _contexts = contexts;
+      _activeContext = next;
+    });
+    await widget.contextPersistence.writeActiveContextId(
+      widget.profile.id,
+      next.id,
+    );
+  }
+
   Future<void> _signOut() async {
     await widget.contextPersistence.clear(widget.profile.id);
     await widget.onSignOut();
@@ -1473,6 +1650,7 @@ class _ContextSelectorState extends State<_ContextSelector> {
       contexts: _contexts,
       onContextChanged: _changeContext,
       onContextsChanged: _reloadContexts,
+      onTeamCreated: _selectCreatedTeam,
       onSignOut: _signOut,
       roster: widget.roster,
       membership: widget.membership,

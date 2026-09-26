@@ -12,6 +12,24 @@ import 'package:teamzone_app/src/features/membership/membership_models.dart';
 import 'package:teamzone_app/src/features/membership/membership_services.dart';
 
 void main() {
+  test('approved and future leaders receive explicit baseline grants', () {
+    final sql = File(
+      'supabase/migrations/20260920172500_auth04_materialize_leader_capability_bundle.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(sql, contains('assignments_materialize_leader_capabilities'));
+    expect(sql, contains("'team.roster.view'"));
+    expect(sql, contains("'team.roster.manage'"));
+    expect(sql, contains("'event.manage'"));
+    expect(sql, contains('insert into core.capability_grants'));
+    expect(
+      sql,
+      contains(
+        'on conflict(assignment_id, capability, scope_type, scope_id) do nothing',
+      ),
+    );
+    expect(sql, isNot(contains('actor_has_capability')));
+  });
+
   test('AUTH-04 runtime patch disambiguates requested membership role', () {
     final sql = File(
       'supabase/migrations/20260903103734_auth04_fix_membership_request_role_ambiguity.sql',
@@ -19,6 +37,34 @@ void main() {
     expect(sql, contains('#variable_conflict use_column'));
     expect(sql, contains('request_team_membership_for_actor.requested_role'));
   });
+
+  test('AUTH-04 permits review only within a team leader capability scope', () {
+    final sql = File(
+      'supabase/migrations/20260910175749_auth04_allow_team_leader_membership_review.sql',
+    ).readAsStringSync();
+    expect(sql, contains("'team.roster.manage'"));
+    expect(sql, contains('target_team_id is not null'));
+    expect(sql, contains('row_value.team_id'));
+  });
+
+  test(
+    'AUTH-04 reviewer role override preserves request and audits decision',
+    () {
+      final sql = File(
+        'supabase/migrations/20260910181550_auth04_reviewer_role_override.sql',
+      ).readAsStringSync();
+      expect(sql, contains('approved_role'));
+      expect(sql, contains("'membership.application.role_override.v1'"));
+      expect(sql, contains("'requested_role',row_value.requested_role"));
+      expect(sql, contains("'approved_role',selected_role"));
+      expect(sql, contains("'team.roster.manage'"));
+      final surface = File(
+        'lib/src/features/roster/roster_surface.dart',
+      ).readAsStringSync();
+      expect(surface, contains("feature('Godkänn som')"));
+      expect(surface, contains('approvedRole: approve ? approvedRole : null'));
+    },
+  );
 
   test('membership wire models are strict and expose minimal fields', () {
     final result = ClubTeamSearchResult.fromJson(const {
@@ -80,6 +126,48 @@ void main() {
     expect(membership.appliedTeamId, 'team');
   });
 
+  testWidgets(
+    'repeated application explains that the existing one is pending',
+    (tester) async {
+      final membership = _MembershipFake()
+        ..applications = [
+          MembershipApplication(
+            id: 'application',
+            clubName: 'Testklubben',
+            teamName: 'F2012',
+            role: MembershipRole.player,
+            status: MembershipApplicationStatus.pending,
+            createdAt: DateTime.utc(2026, 8, 24),
+          ),
+        ];
+      await tester.pumpWidget(
+        TeamZoneApp(
+          environment: const AppEnvironment(name: 'audit'),
+          locale: const Locale('sv'),
+          services: AppServices(
+            identity: _WaitingIdentity(),
+            membership: membership,
+            isConfigured: true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Hitta klubb eller lag'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).last, 'test');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Ansök'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Skicka ansökan'));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Du har redan en väntande ansökan'),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('verified waiting user creates unofficial club and first team', (
     tester,
   ) async {
@@ -128,7 +216,43 @@ void main() {
     await tester.tap(find.text('Skapa klubb och lag'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Namnet är skyddat'), findsOneWidget);
+    expect(find.text('Kontakta TeamZone'), findsOneWidget);
     expect(membership.createdClubName, isNull);
+  });
+
+  testWidgets('protected name support case is prefilled and submitted', (
+    tester,
+  ) async {
+    final membership = _MembershipFake()
+      ..nameStatus = ClubNameCheckStatus.reviewRequired;
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'audit'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _WaitingIdentity(),
+          membership: membership,
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Skapa klubb och första lag'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), 'Team-Zone');
+    await tester.enterText(find.byType(TextFormField).at(1), 'AUTH06 testlag');
+    await tester.tap(find.text('Skapa klubb och lag'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kontakta TeamZone'));
+    await tester.pumpAndSettle();
+    expect(find.text('Team-Zone'), findsOneWidget);
+    expect(find.text('AUTH06 testlag'), findsOneWidget);
+    await tester.tap(find.text('Skicka ärende'));
+    await tester.pumpAndSettle();
+    expect(membership.supportClubName, 'Team-Zone');
+    expect(membership.supportTeamName, 'AUTH06 testlag');
+    expect(membership.supportMessage, contains('Team-Zone'));
+    expect(find.textContaining('Ärendet är skickat'), findsOneWidget);
   });
 
   test('migration freezes enumeration and private command boundary', () {
@@ -164,6 +288,13 @@ void main() {
     expect(reviewer, contains('listPendingReviews'));
     expect(reviewer, contains('.decide('));
     expect(reviewer, contains('.createTeam('));
+    expect(reviewer, isNot(contains('controller.dispose();')));
+    expect(reviewer, contains("action != 'applications'"));
+    expect(reviewer, contains('onOpenApplications'));
+    expect(reviewer, contains('_showMembershipReviews'));
+    final shell = File('lib/src/app/product_shell.dart').readAsStringSync();
+    expect(shell, contains("strings.feature('Hitta klubb eller lag')"));
+    expect(shell, contains('_MembershipJoinSheet('));
   });
 
   test('AUTH-05 migration is atomic, idempotent and creates active context', () {
@@ -187,6 +318,30 @@ void main() {
       ),
     );
   });
+
+  test(
+    'AUTH-05 additional teams create and refresh a club functionary context',
+    () {
+      final sql = File(
+        'supabase/migrations/20260910183540_auth05_create_team_context.sql',
+      ).readAsStringSync().toLowerCase();
+      expect(sql, contains('insert into core.assignments'));
+      expect(sql, contains("'club_functionary','active'"));
+      expect(sql, contains("grant_row.scope_type='club'"));
+      expect(sql, contains('context_assignment_id'));
+      final roster = File(
+        'lib/src/features/roster/roster_surface.dart',
+      ).readAsStringSync();
+      expect(roster, contains('await widget.onTeamCreated(teamId);'));
+      final selector = File(
+        'lib/src/features/auth/auth_surfaces.dart',
+      ).readAsStringSync();
+      expect(selector, contains('context.teamId == teamId'));
+      expect(selector, contains('_activeContext = next'));
+      final shell = File('lib/src/app/product_shell.dart').readAsStringSync();
+      expect(shell, contains("_router.go('/home');"));
+    },
+  );
 
   test('AUTH-06 protects confusing names and reserves decisions for service', () {
     final sql = File(
@@ -221,6 +376,41 @@ void main() {
     expect(client, contains('Semantics('));
     expect(client, isNot(contains('decideClubVerification')));
   });
+
+  test('protected-name support cases have a separate support-admin boundary', () {
+    final sql = File(
+      'supabase/migrations/20260911151216_auth06_protected_name_support_cases.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(sql, contains('create table internal.support_admins'));
+    expect(sql, contains('create table internal.protected_name_support_cases'));
+    expect(
+      sql,
+      contains(
+        'revoke all on table internal.support_admins,internal.protected_name_support_cases',
+      ),
+    );
+    expect(sql, contains('internal.actor_is_support_admin()'));
+    expect(sql, contains("name_check->>'status'<>'review_required'"));
+    expect(sql, contains('to authenticated'));
+    expect(
+      sql,
+      isNot(contains('grant select on internal.protected_name_support_cases')),
+    );
+  });
+
+  test('AUTH-06 verification retry resolves dedupe before pending status', () {
+    final sql = File(
+      'supabase/migrations/20260910202427_auth06_fix_verification_request_replay.sql',
+    ).readAsStringSync().toLowerCase();
+    final dedupePosition = sql.indexOf('select result into existing_result');
+    final statusPosition = sql.indexOf(
+      "verification_status in ('unofficial','rejected','revoked')",
+    );
+    expect(dedupePosition, greaterThan(-1));
+    expect(statusPosition, greaterThan(dedupePosition));
+    expect(sql, contains("actor_profile_id=actor_id"));
+    expect(sql, contains("command_type='club.verification.request.v1'"));
+  });
 }
 
 class _WaitingIdentity implements IdentityServices {
@@ -246,7 +436,11 @@ class _MembershipFake implements MembershipServices {
   String? appliedTeamId;
   String? createdClubName;
   String? createdTeamName;
+  String? supportClubName;
+  String? supportTeamName;
+  String? supportMessage;
   ClubNameCheckStatus nameStatus = ClubNameCheckStatus.available;
+  List<MembershipApplication> applications = const [];
 
   @override
   Future<List<ClubTeamSearchResult>> search({required String query}) async =>
@@ -261,7 +455,7 @@ class _MembershipFake implements MembershipServices {
       ];
 
   @override
-  Future<List<MembershipApplication>> listMine() async => const [];
+  Future<List<MembershipApplication>> listMine() async => applications;
 
   @override
   Future<String> apply({
@@ -289,6 +483,7 @@ class _MembershipFake implements MembershipServices {
   Future<void> decide({
     required String applicationId,
     required bool approve,
+    MembershipRole? approvedRole,
     required String idempotencyKey,
   }) async {}
 
@@ -315,8 +510,70 @@ class _MembershipFake implements MembershipServices {
   }) async => 'team';
 
   @override
+  Future<String> requestTeamCreation({
+    required String clubId,
+    required String sourceAssignmentId,
+    required String teamName,
+    required String idempotencyKey,
+  }) async => 'request';
+
+  @override
+  Future<List<TeamCreationRequest>> listTeamCreationRequests({
+    required String clubId,
+  }) async => const [];
+
+  @override
+  Future<void> decideTeamCreationRequest({
+    required String requestId,
+    required bool approve,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {}
+
+  @override
   Future<ClubNameCheck> checkClubName({required String name}) async =>
       ClubNameCheck(nameStatus);
+
+  @override
+  Future<String> submitProtectedNameSupportCase({
+    required String clubName,
+    required String teamName,
+    required String message,
+    required String idempotencyKey,
+  }) async {
+    supportClubName = clubName;
+    supportTeamName = teamName;
+    supportMessage = message;
+    return 'support-case';
+  }
+
+  @override
+  Future<bool> isSupportAdmin() async => false;
+
+  @override
+  Future<List<ProtectedNameSupportCase>> listProtectedNameSupportCases({
+    String? status,
+  }) async => const [];
+
+  @override
+  Future<int> updateProtectedNameSupportCase({
+    required String caseId,
+    required String status,
+    required String resolutionNote,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async => expectedRevision + 1;
+
+  @override
+  Future<List<GlobalPersonErasureCase>> listGlobalPersonErasureCases() async =>
+      const [];
+
+  @override
+  Future<String> decideGlobalPersonErasure({
+    required String requestId,
+    required bool approve,
+    required String reason,
+  }) async => approve ? 'completed' : 'rejected';
 
   @override
   Future<String> requestClubVerification({

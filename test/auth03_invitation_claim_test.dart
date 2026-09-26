@@ -183,7 +183,8 @@ class _InviteRoster extends UnconfiguredRosterServices {
     required String clubId,
     required String teamId,
     required String displayName,
-    required String ageClass,
+    required int birthYear,
+    DateTime? birthDate,
     required DateTime startsAt,
     required String idempotencyKey,
   }) => Future.error(StateError('Not used.'));
@@ -194,7 +195,8 @@ class _InviteRoster extends UnconfiguredRosterServices {
     required String teamId,
     required String personId,
     required String displayName,
-    required String ageClass,
+    required int birthYear,
+    DateTime? birthDate,
     required int expectedRevision,
     required String idempotencyKey,
   }) => Future.error(StateError('Not used.'));
