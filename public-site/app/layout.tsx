@@ -1,4 +1,5 @@
 import "./globals.css";
+import { PersonalAccount } from "../components/personal-account";
 
 export const metadata = {
   metadataBase: new URL(process.env.PUBLIC_ORIGIN ?? "https://teamzoneapp.se"),
@@ -8,5 +9,5 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="sv"><body><div className="site-shell">{children}</div></body></html>;
+  return <html lang="sv"><body><PersonalAccount><div className="site-shell">{children}</div></PersonalAccount></body></html>;
 }
