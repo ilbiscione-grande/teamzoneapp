@@ -72,3 +72,6 @@ docs/evidence/local/
 /.tmp-*
 /.tmp_*
 /.firebase/
+
+# Claude Code local session state (keep launch.json tracked separately)
+.claude/*.lock

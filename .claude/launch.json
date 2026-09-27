@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "teamzone-web",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "--yes",
+        "serve",
+        "-l",
+        "5000",
+        "-s",
+        "build/web"
+      ],
+      "port": 5000
+    }
+  ]
+}
