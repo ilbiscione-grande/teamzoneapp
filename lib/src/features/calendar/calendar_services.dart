@@ -842,3 +842,27 @@ class SupabaseCalendarServices implements CalendarServices {
     return controller.stream;
   }
 }
+
+/// After [CalendarServices.respondCallup] throws, the write may still have
+/// landed server-side — the command is idempotent, but this client never
+/// heard back (e.g. a dropped response on a flaky mobile connection).
+/// Re-fetches the event's squad and reports whether [callupId] still does
+/// NOT show [intendedResponse], so callers only surface a hard "couldn't
+/// save" failure when the response genuinely did not take effect. Mirrors
+/// the read-back probe messaging already uses for ambiguous send failures.
+Future<bool> callupResponseStillMismatched(
+  CalendarServices calendar,
+  String eventId,
+  String callupId,
+  String intendedResponse,
+) async {
+  try {
+    final squad = await calendar.getEventSquad(eventId);
+    final callup = squad.callups
+        .where((callup) => callup.id == callupId)
+        .firstOrNull;
+    return callup?.state != intendedResponse;
+  } catch (_) {
+    return true;
+  }
+}

@@ -611,7 +611,15 @@ class _PlayerHomeContentState extends State<_PlayerHomeContent> {
       );
       widget.onChanged();
     } catch (_) {
-      if (mounted) {
+      // The write may have landed even though this request didn't hear
+      // back — re-check before telling the user their answer was lost.
+      final mismatched = await callupResponseStillMismatched(
+        widget.calendar,
+        callup.eventId,
+        callup.id,
+        response,
+      );
+      if (mounted && mismatched) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -620,6 +628,7 @@ class _PlayerHomeContentState extends State<_PlayerHomeContent> {
           ),
         );
       }
+      widget.onChanged();
     } finally {
       if (mounted) setState(() => _pendingCallupId = null);
     }
@@ -841,7 +850,18 @@ class _LeaderHomeContentState extends State<_LeaderHomeContent> {
       );
       widget.onChanged();
     } catch (_) {
-      if (mounted) {
+      // The write may have landed even though this request didn't hear
+      // back — re-check before telling the user their answer was lost.
+      final eventId = widget.value.nextEvent?.id;
+      final mismatched = eventId == null
+          ? true
+          : await callupResponseStillMismatched(
+              widget.calendar,
+              eventId,
+              callup.id,
+              response,
+            );
+      if (mounted && mismatched) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -850,6 +870,7 @@ class _LeaderHomeContentState extends State<_LeaderHomeContent> {
           ),
         );
       }
+      widget.onChanged();
     } finally {
       if (mounted) setState(() => _pendingCallupId = null);
     }

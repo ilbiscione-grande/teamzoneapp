@@ -1710,9 +1710,18 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       );
       await widget.onReload();
     } catch (_) {
-      if (mounted) {
+      // The write may have landed even though this request didn't hear
+      // back — re-check before telling the user their answer was lost.
+      final mismatched = await callupResponseStillMismatched(
+        widget.calendar,
+        widget.event.id,
+        callupId,
+        response,
+      );
+      if (mounted && mismatched) {
         _showError('Svaret kunde inte sparas. Ladda om och försök igen.');
       }
+      await widget.onReload();
     } finally {
       if (mounted) setState(() => _busy = false);
     }
