@@ -127,6 +127,20 @@ abstract interface class RosterServices {
     required int expectedRevision,
     required String idempotencyKey,
   });
+  Future<int> setRepresentationAvailable({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required bool available,
+    required int expectedRevision,
+    required String idempotencyKey,
+  });
+  Future<int> decidePlayEligibility({
+    required String eligibilityId,
+    required bool approve,
+    required int expectedRevision,
+    required String idempotencyKey,
+  });
   Future<IntraClubMoveOptions> getIntraClubMoveOptions({
     required String clubId,
     required String sourceTeamId,
@@ -352,6 +366,22 @@ class UnconfiguredRosterServices implements RosterServices {
   @override
   Future<int> endPlayEligibility({
     required String eligibilityId,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) => Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<int> setRepresentationAvailable({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required bool available,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) => Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<int> decidePlayEligibility({
+    required String eligibilityId,
+    required bool approve,
     required int expectedRevision,
     required String idempotencyKey,
   }) => Future.error(StateError('Supabase is not configured.'));
@@ -914,6 +944,58 @@ class SupabaseRosterServices implements RosterServices {
         );
     if (value is! num) {
       throw const FormatException('Eligibility end response is invalid.');
+    }
+    return value.toInt();
+  }
+  @override
+  Future<int> setRepresentationAvailable({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required bool available,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'set_representation_available',
+          params: {
+            'target_club_id': clubId,
+            'target_team_id': teamId,
+            'target_club_person_id': personId,
+            'available': available,
+            'expected_revision': expectedRevision,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+    if (value is! num) {
+      throw const FormatException(
+        'Representation availability response is invalid.',
+      );
+    }
+    return value.toInt();
+  }
+  @override
+  Future<int> decidePlayEligibility({
+    required String eligibilityId,
+    required bool approve,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'decide_play_eligibility',
+          params: {
+            'target_eligibility_id': eligibilityId,
+            'approve': approve,
+            'expected_revision': expectedRevision,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+    if (value is! num) {
+      throw const FormatException('Eligibility decision response is invalid.');
     }
     return value.toInt();
   }

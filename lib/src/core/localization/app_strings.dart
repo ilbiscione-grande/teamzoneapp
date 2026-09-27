@@ -1321,6 +1321,17 @@ class AppStrings {
         'Everyone active in the roster already has a linked account. Add '
             'a new person to the roster if you want to invite someone '
             'else.',
+    'Tillåt representation i andra lag': 'Allow representing other teams',
+    'Gör personen valbar när ett annat lag i klubben '
+            'vill be om representation. Ingen börjar '
+            'representera automatiskt -- ditt lag godkänner '
+            'varje sådan begäran för sig.':
+        'Makes the person selectable when another team in the club wants '
+            'to request representation. No one starts representing '
+            'automatically -- your team approves each such request on '
+            'its own.',
+    'begärd av': 'requested by',
+    'från': 'from',
   };
   String get signOut => isSwedish ? 'Logga ut' : 'Sign out';
   String eventOwner(String name) =>

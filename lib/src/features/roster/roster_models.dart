@@ -149,6 +149,7 @@ class RosterPersonDetails {
     this.birthDate,
     this.birthYear,
     this.safeguardingRequired,
+    this.representationAvailable,
     this.provenance,
     this.assignmentStartsAt,
     this.assignmentEndsAt,
@@ -160,6 +161,7 @@ class RosterPersonDetails {
   final DateTime? birthDate;
   final int? birthYear;
   final bool? safeguardingRequired;
+  final bool? representationAvailable;
   final DateTime? assignmentStartsAt, assignmentEndsAt;
   final int? assignmentRevision;
   final int? personRevision;
@@ -181,6 +183,7 @@ class RosterPersonDetails {
       birthDate: DateTime.tryParse(manager?['birth_date'] as String? ?? ''),
       birthYear: (manager?['birth_year'] as num?)?.toInt(),
       safeguardingRequired: json['safeguarding_required'] as bool?,
+      representationAvailable: json['representation_available'] as bool?,
       provenance: manager?['provenance'] as String?,
       assignmentStartsAt: DateTime.tryParse(
         manager?['assignment_starts_at'] as String? ?? '',
@@ -242,6 +245,9 @@ class PlayEligibilitySummary {
     required this.state,
     required this.startsAt,
     required this.revision,
+    this.homeTeamId,
+    this.homeTeamName,
+    this.canDecide = false,
     this.endsAt,
     this.seasonEndsOn,
     this.reviewDueAt,
@@ -251,7 +257,15 @@ class PlayEligibilitySummary {
   final DateTime startsAt;
   final DateTime? endsAt, seasonEndsOn, reviewDueAt;
   final int revision;
+  // Null for eligibilities created before the home-team approval workflow
+  // existed -- those rows are already 'active' and were never 'pending'.
+  final String? homeTeamId;
+  final String? homeTeamName;
+  // Whether the acting team is this row's home team AND the row is still
+  // 'pending' -- the only combination that may approve or reject it.
+  final bool canDecide;
   bool get canEnd => state == 'active';
+  bool get isPendingApproval => state == 'pending';
 
   factory PlayEligibilitySummary.fromJson(Map<String, dynamic> json) =>
       PlayEligibilitySummary(
@@ -271,6 +285,9 @@ class PlayEligibilitySummary {
         ),
         reviewDueAt: DateTime.tryParse(json['review_due_at'] as String? ?? ''),
         revision: (json['revision'] as num).toInt(),
+        homeTeamId: json['home_team_id'] as String?,
+        homeTeamName: json['home_team_name'] as String?,
+        canDecide: json['can_decide'] as bool? ?? false,
       );
 }
 

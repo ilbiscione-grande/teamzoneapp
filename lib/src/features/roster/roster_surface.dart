@@ -1684,6 +1684,22 @@ class _PlayEligibilitySheetState extends State<_PlayEligibilitySheet> {
     }
   }
 
+  Future<void> _decide(PlayEligibilitySummary item, bool approve) async {
+    if (_pending) return;
+    setState(() => _pending = true);
+    try {
+      await widget.roster.decidePlayEligibility(
+        eligibilityId: item.id,
+        approve: approve,
+        expectedRevision: item.revision,
+        idempotencyKey: _newUuid(),
+      );
+      _refresh();
+    } finally {
+      if (mounted) setState(() => _pending = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => SizedBox(
     height: MediaQuery.sizeOf(context).height * .88,
@@ -1740,10 +1756,42 @@ class _PlayEligibilitySheetState extends State<_PlayEligibilitySheet> {
                   for (final item in snapshot.data!)
                     ListTile(
                       title: Text(item.personName),
-                      subtitle: Text(
-                        '${AppStrings.of(context).domainValue(item.kind)} · ${AppStrings.of(context).domainValue(item.validityKind)} · ${AppStrings.of(context).domainValue(item.state)}',
-                      ),
-                      trailing: item.canEnd
+                      subtitle: Text([
+                        AppStrings.of(context).domainValue(item.kind),
+                        AppStrings.of(context).domainValue(item.validityKind),
+                        AppStrings.of(context).domainValue(item.state),
+                        if (item.homeTeamId == widget.contextValue.teamId &&
+                            item.targetTeamId != widget.contextValue.teamId)
+                          '${AppStrings.of(context).feature('begärd av')} '
+                              '${item.targetTeamName}'
+                        else if (item.homeTeamName != null &&
+                            item.homeTeamId != widget.contextValue.teamId)
+                          '${AppStrings.of(context).feature('från')} '
+                              '${item.homeTeamName}',
+                      ].join(' · ')),
+                      trailing: item.canDecide
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TextButton(
+                                  onPressed: _pending
+                                      ? null
+                                      : () => _decide(item, false),
+                                  child: Text(
+                                    AppStrings.of(context).feature('Avslå'),
+                                  ),
+                                ),
+                                FilledButton(
+                                  onPressed: _pending
+                                      ? null
+                                      : () => _decide(item, true),
+                                  child: Text(
+                                    AppStrings.of(context).feature('Godkänn'),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : item.canEnd
                           ? TextButton(
                               onPressed: _pending ? null : () => _end(item),
                               child: Text(
@@ -2666,6 +2714,8 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
       int.tryParse((widget.initial?.ageClass ?? '').replaceFirst('F', ''));
   late DateTime? _birthDate = widget.initial?.birthDate;
   late bool _guardianRequired = widget.initial?.safeguardingRequired ?? false;
+  late bool _representationAvailable =
+      widget.initial?.representationAvailable ?? false;
   String? _error;
 
   bool get _isEditing => widget.initial != null;
@@ -2691,7 +2741,7 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
       final saved = await _submission.run(() async {
         final teamId = widget.contextValue.teamId!;
         if (_isEditing) {
-          final revision = await widget.roster.updatePerson(
+          var revision = await widget.roster.updatePerson(
             clubId: widget.contextValue.clubId,
             teamId: teamId,
             personId: widget.initial!.id,
@@ -2702,11 +2752,22 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
             idempotencyKey: _newUuid(),
           );
           if (_guardianRequired != widget.initial!.safeguardingRequired) {
-            await widget.roster.setGuardianRequirement(
+            revision = await widget.roster.setGuardianRequirement(
               clubId: widget.contextValue.clubId,
               teamId: teamId,
               personId: widget.initial!.id,
               guardianRequired: _guardianRequired,
+              expectedRevision: revision,
+              idempotencyKey: _newUuid(),
+            );
+          }
+          if (_representationAvailable !=
+              (widget.initial!.representationAvailable ?? false)) {
+            revision = await widget.roster.setRepresentationAvailable(
+              clubId: widget.contextValue.clubId,
+              teamId: teamId,
+              personId: widget.initial!.id,
+              available: _representationAvailable,
               expectedRevision: revision,
               idempotencyKey: _newUuid(),
             );
@@ -2803,6 +2864,26 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
                       value: _guardianRequired,
                       onChanged: (value) {
                         setState(() => _guardianRequired = value);
+                        _submission.markDirty();
+                      },
+                    ),
+                  if (_isEditing)
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        strings.feature('Tillåt representation i andra lag'),
+                      ),
+                      subtitle: Text(
+                        strings.feature(
+                          'Gör personen valbar när ett annat lag i klubben '
+                          'vill be om representation. Ingen börjar '
+                          'representera automatiskt -- ditt lag godkänner '
+                          'varje sådan begäran för sig.',
+                        ),
+                      ),
+                      value: _representationAvailable,
+                      onChanged: (value) {
+                        setState(() => _representationAvailable = value);
                         _submission.markDirty();
                       },
                     ),
