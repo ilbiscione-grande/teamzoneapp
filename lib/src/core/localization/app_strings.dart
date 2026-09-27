@@ -1319,19 +1319,37 @@ class AppStrings {
             'Lägg till en ny person i truppen om du vill bjuda in någon '
             'ytterligare.':
         'Everyone active in the roster already has a linked account. Add '
-            'a new person to the roster if you want to invite someone '
-            'else.',
+        'a new person to the roster if you want to invite someone '
+        'else.',
     'Tillåt representation i andra lag': 'Allow representing other teams',
     'Gör personen valbar när ett annat lag i klubben '
             'vill be om representation. Ingen börjar '
             'representera automatiskt -- ditt lag godkänner '
             'varje sådan begäran för sig.':
         'Makes the person selectable when another team in the club wants '
-            'to request representation. No one starts representing '
-            'automatically -- your team approves each such request on '
-            'its own.',
+        'to request representation. No one starts representing '
+        'automatically -- your team approves each such request on '
+        'its own.',
     'begärd av': 'requested by',
     'från': 'from',
+    'Bjud in': 'Invite',
+    'Skicka en inbjudan så personen kan koppla ett konto.':
+        'Send an invitation so the person can link an account.',
+    'Representation i annat lag': 'Representation on another team',
+    'Föreslå personen för ett annat lag i klubben.':
+        'Propose the person to another team in the club.',
+    'Slå på "Tillåt representation i andra lag" under Redigera person '
+            'innan du fortsätter här.':
+        'Turn on "Allow representing other teams" under Edit person '
+        'before continuing here.',
+    'Lagen kunde inte laddas. Försök igen.':
+        'The teams could not be loaded. Try again.',
+    'Förfrågan skickad. Ditt lag behöver godkänna den innan '
+            'det andra laget kan använda spelaren.':
+        'Request sent. Your team needs to approve it before the other '
+        'team can use the player.',
+    'Förfrågan kunde inte sparas. Kontrollera lag, period och överlapp.':
+        'The request could not be saved. Check team, period and overlap.',
   };
   String get signOut => isSwedish ? 'Logga ut' : 'Sign out';
   String eventOwner(String name) =>

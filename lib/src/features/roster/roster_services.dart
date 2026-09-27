@@ -947,6 +947,7 @@ class SupabaseRosterServices implements RosterServices {
     }
     return value.toInt();
   }
+
   @override
   Future<int> setRepresentationAvailable({
     required String clubId,
@@ -976,6 +977,7 @@ class SupabaseRosterServices implements RosterServices {
     }
     return value.toInt();
   }
+
   @override
   Future<int> decidePlayEligibility({
     required String eligibilityId,

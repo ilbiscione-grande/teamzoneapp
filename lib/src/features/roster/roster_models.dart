@@ -150,6 +150,7 @@ class RosterPersonDetails {
     this.birthYear,
     this.safeguardingRequired,
     this.representationAvailable,
+    this.accountLinked,
     this.provenance,
     this.assignmentStartsAt,
     this.assignmentEndsAt,
@@ -162,6 +163,7 @@ class RosterPersonDetails {
   final int? birthYear;
   final bool? safeguardingRequired;
   final bool? representationAvailable;
+  final bool? accountLinked;
   final DateTime? assignmentStartsAt, assignmentEndsAt;
   final int? assignmentRevision;
   final int? personRevision;
@@ -184,6 +186,7 @@ class RosterPersonDetails {
       birthYear: (manager?['birth_year'] as num?)?.toInt(),
       safeguardingRequired: json['safeguarding_required'] as bool?,
       representationAvailable: json['representation_available'] as bool?,
+      accountLinked: json['account_linked'] as bool?,
       provenance: manager?['provenance'] as String?,
       assignmentStartsAt: DateTime.tryParse(
         manager?['assignment_starts_at'] as String? ?? '',

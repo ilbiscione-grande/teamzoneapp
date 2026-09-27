@@ -1756,19 +1756,21 @@ class _PlayEligibilitySheetState extends State<_PlayEligibilitySheet> {
                   for (final item in snapshot.data!)
                     ListTile(
                       title: Text(item.personName),
-                      subtitle: Text([
-                        AppStrings.of(context).domainValue(item.kind),
-                        AppStrings.of(context).domainValue(item.validityKind),
-                        AppStrings.of(context).domainValue(item.state),
-                        if (item.homeTeamId == widget.contextValue.teamId &&
-                            item.targetTeamId != widget.contextValue.teamId)
-                          '${AppStrings.of(context).feature('begärd av')} '
-                              '${item.targetTeamName}'
-                        else if (item.homeTeamName != null &&
-                            item.homeTeamId != widget.contextValue.teamId)
-                          '${AppStrings.of(context).feature('från')} '
-                              '${item.homeTeamName}',
-                      ].join(' · ')),
+                      subtitle: Text(
+                        [
+                          AppStrings.of(context).domainValue(item.kind),
+                          AppStrings.of(context).domainValue(item.validityKind),
+                          AppStrings.of(context).domainValue(item.state),
+                          if (item.homeTeamId == widget.contextValue.teamId &&
+                              item.targetTeamId != widget.contextValue.teamId)
+                            '${AppStrings.of(context).feature('begärd av')} '
+                                '${item.targetTeamName}'
+                          else if (item.homeTeamName != null &&
+                              item.homeTeamId != widget.contextValue.teamId)
+                            '${AppStrings.of(context).feature('från')} '
+                                '${item.homeTeamName}',
+                        ].join(' · '),
+                      ),
                       trailing: item.canDecide
                           ? Row(
                               mainAxisSize: MainAxisSize.min,
@@ -1815,10 +1817,14 @@ class _InvitationAdminSheet extends StatefulWidget {
     required this.contextValue,
     required this.roster,
     required this.people,
+    this.initialPersonId,
   });
   final TeamZoneContext contextValue;
   final RosterServices roster;
   final List<RosterPersonSummary> people;
+  // Set when opened directly from a player's profile: jumps straight to the
+  // targeted-invite form with this person preselected instead of the menu.
+  final String? initialPersonId;
   @override
   State<_InvitationAdminSheet> createState() => _InvitationAdminSheetState();
 }
@@ -1860,10 +1866,21 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
   // account linked to it. Guardian invites don't use this: an
   // already-claimed guardian legitimately gets invited again for a second
   // child, so _guardianCandidates stays on _activePeople.
-  List<RosterPersonSummary> get _invitablePeople =>
-      _activePeople.where((person) => !person.accountLinked).toList(
-        growable: false,
-      );
+  List<RosterPersonSummary> get _invitablePeople => _activePeople
+      .where((person) => !person.accountLinked)
+      .toList(growable: false);
+
+  @override
+  void initState() {
+    super.initState();
+    final initialPersonId = widget.initialPersonId;
+    if (initialPersonId != null &&
+        _invitablePeople.any((person) => person.id == initialPersonId)) {
+      _kind = _InviteKind.targeted;
+      _step = _InviteStep.form;
+      _targetedPersonId = initialPersonId;
+    }
+  }
 
   List<RosterPersonSummary> get _children => _activePeople
       .where((person) => person.safeguardingRequired)
@@ -2988,10 +3005,14 @@ class _RosterPersonDetailsView extends StatelessWidget {
     required this.future,
     this.onMovePlayer,
     this.onArchivePlayer,
+    this.onInvitePlayer,
+    this.onSetRepresentation,
   });
   final Future<RosterPersonDetails> future;
   final VoidCallback? onMovePlayer;
   final Future<void> Function()? onArchivePlayer;
+  final void Function(RosterPersonDetails person)? onInvitePlayer;
+  final void Function(RosterPersonDetails person)? onSetRepresentation;
 
   @override
   Widget build(BuildContext context) => FutureBuilder<RosterPersonDetails>(
@@ -3049,13 +3070,40 @@ class _RosterPersonDetailsView extends StatelessWidget {
             title: Text(strings.feature('Status')),
             subtitle: Text(strings.domainValue(person.assignmentState)),
           ),
-          if ((onMovePlayer != null || onArchivePlayer != null) &&
+          if ((onMovePlayer != null ||
+                  onArchivePlayer != null ||
+                  onInvitePlayer != null ||
+                  onSetRepresentation != null) &&
               person.assignmentState == 'active') ...[
             const Divider(),
             Text(
               strings.feature('Åtgärder'),
               style: Theme.of(context).textTheme.titleMedium,
             ),
+            if (onInvitePlayer != null && person.accountLinked != true)
+              ListTile(
+                leading: const Icon(Icons.mail_outline),
+                title: Text(strings.feature('Bjud in')),
+                subtitle: Text(
+                  strings.feature(
+                    'Skicka en inbjudan så personen kan koppla ett konto.',
+                  ),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => onInvitePlayer!(person),
+              ),
+            if (onSetRepresentation != null)
+              ListTile(
+                leading: const Icon(Icons.compare_arrows),
+                title: Text(strings.feature('Representation i annat lag')),
+                subtitle: Text(
+                  strings.feature(
+                    'Föreslå personen för ett annat lag i klubben.',
+                  ),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => onSetRepresentation!(person),
+              ),
             if (onMovePlayer != null)
               ListTile(
                 leading: const Icon(Icons.swap_horiz),
@@ -3183,6 +3231,22 @@ class _RosterPersonDetailsPage extends StatelessWidget {
                       onArchived: onBack,
                     )
                   : null,
+              onInvitePlayer: canManage
+                  ? (person) => _inviteFromProfile(
+                      context: context,
+                      contextValue: contextValue,
+                      roster: roster,
+                      person: person,
+                    )
+                  : null,
+              onSetRepresentation: canManage
+                  ? (person) => _representFromProfile(
+                      context: context,
+                      contextValue: contextValue,
+                      roster: roster,
+                      person: person,
+                    )
+                  : null,
             )
           : _StateCard(
               icon: Icons.lock_outline,
@@ -3300,6 +3364,265 @@ Future<void> _archivePersonFromDetails({
         ],
       ),
     );
+  }
+}
+
+Future<void> _showProfileActionMessage(
+  BuildContext context, {
+  required String title,
+  required String message,
+}) => showDialog<void>(
+  context: context,
+  useRootNavigator: true,
+  builder: (dialogContext) => AlertDialog(
+    title: Text(title),
+    content: Text(message),
+    actions: [
+      FilledButton(
+        onPressed: () => Navigator.pop(dialogContext),
+        child: Text(AppStrings.of(context).close),
+      ),
+    ],
+  ),
+);
+
+Future<void> _inviteFromProfile({
+  required BuildContext context,
+  required TeamZoneContext contextValue,
+  required RosterServices roster,
+  required RosterPersonDetails person,
+}) async {
+  List<RosterPersonSummary> people;
+  try {
+    people = await roster
+        .listPeople(clubId: contextValue.clubId, teamId: contextValue.teamId!)
+        .timeout(const Duration(seconds: 15));
+  } catch (_) {
+    people = const [];
+  }
+  if (!context.mounted) return;
+  await showModalBottomSheet<void>(
+    context: context,
+    useRootNavigator: true,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (_) => _InvitationAdminSheet(
+      contextValue: contextValue,
+      roster: roster,
+      people: people,
+      initialPersonId: person.id,
+    ),
+  );
+}
+
+Future<void> _representFromProfile({
+  required BuildContext context,
+  required TeamZoneContext contextValue,
+  required RosterServices roster,
+  required RosterPersonDetails person,
+}) async {
+  final strings = AppStrings.of(context);
+  final title = strings.feature('Representation i annat lag');
+  if (person.representationAvailable != true) {
+    await _showProfileActionMessage(
+      context,
+      title: title,
+      message: strings.feature(
+        'Slå på "Tillåt representation i andra lag" under Redigera person '
+        'innan du fortsätter här.',
+      ),
+    );
+    return;
+  }
+  IntraClubMoveOptions options;
+  try {
+    options = await roster
+        .getIntraClubMoveOptions(
+          clubId: contextValue.clubId,
+          sourceTeamId: contextValue.teamId!,
+        )
+        .timeout(const Duration(seconds: 15));
+  } catch (_) {
+    if (context.mounted) {
+      await _showProfileActionMessage(
+        context,
+        title: title,
+        message: strings.feature('Lagen kunde inte laddas. Försök igen.'),
+      );
+    }
+    return;
+  }
+  if (!context.mounted) return;
+  if (options.teams.isEmpty) {
+    await _showProfileActionMessage(
+      context,
+      title: title,
+      message: strings.feature('Det finns inga andra aktiva lag i klubben.'),
+    );
+    return;
+  }
+  var targetTeamId = options.teams.first.id;
+  var kind = 'development';
+  var validity = 'season';
+  var boundary = DateTime(DateTime.now().year + 1, 6, 30);
+  var sourceNote = 'Beslut av lagansvarig';
+  final confirmed = await showDialog<bool>(
+    context: context,
+    useRootNavigator: true,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (context, setDialogState) => AlertDialog(
+        title: Text(title),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                initialValue: targetTeamId,
+                decoration: InputDecoration(
+                  labelText: AppStrings.of(context).feature('Lag'),
+                ),
+                items: options.teams
+                    .map(
+                      (team) => DropdownMenuItem(
+                        value: team.id,
+                        child: Text(team.name),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) =>
+                    setDialogState(() => targetTeamId = value ?? targetTeamId),
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: kind,
+                decoration: InputDecoration(
+                  labelText: AppStrings.of(context).feature('Typ'),
+                ),
+                items: const ['development', 'dispensation', 'loan', 'guest']
+                    .map(
+                      (value) => DropdownMenuItem(
+                        value: value,
+                        child: Text(AppStrings.of(context).domainValue(value)),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) =>
+                    setDialogState(() => kind = value ?? kind),
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: validity,
+                decoration: InputDecoration(
+                  labelText: AppStrings.of(context).feature('Giltighet'),
+                ),
+                items: const ['season', 'fixed', 'indefinite']
+                    .map(
+                      (value) => DropdownMenuItem(
+                        value: value,
+                        child: Text(AppStrings.of(context).domainValue(value)),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) => setDialogState(() {
+                  validity = value ?? validity;
+                  boundary = validity == 'indefinite'
+                      ? DateTime.now().add(const Duration(days: 90))
+                      : validity == 'fixed'
+                      ? DateTime.now().add(const Duration(days: 30))
+                      : DateTime(DateTime.now().year + 1, 6, 30);
+                }),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  AppStrings.of(context).feature(
+                    validity == 'indefinite'
+                        ? 'Granskas senast'
+                        : 'Gäller till',
+                  ),
+                ),
+                subtitle: Text(
+                  MaterialLocalizations.of(context).formatMediumDate(boundary),
+                ),
+                trailing: const Icon(Icons.calendar_month_outlined),
+                onTap: () async {
+                  final value = await showDatePicker(
+                    context: context,
+                    firstDate: DateTime.now().add(const Duration(days: 1)),
+                    lastDate: DateTime.now().add(const Duration(days: 730)),
+                    initialDate: boundary,
+                  );
+                  if (value != null) setDialogState(() => boundary = value);
+                },
+              ),
+              TextFormField(
+                initialValue: sourceNote,
+                onChanged: (value) => sourceNote = value,
+                maxLength: 80,
+                decoration: InputDecoration(
+                  labelText: AppStrings.of(context).feature('Beslutsunderlag'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(AppStrings.of(context).feature('Avbryt')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(AppStrings.of(context).feature('Skicka')),
+          ),
+        ],
+      ),
+    ),
+  );
+  final note = sourceNote.trim();
+  if (confirmed != true || note.length < 2 || !context.mounted) return;
+  try {
+    final endOfDay = DateTime(
+      boundary.year,
+      boundary.month,
+      boundary.day,
+      23,
+      59,
+      59,
+    );
+    await roster.createPlayEligibility(
+      clubId: contextValue.clubId,
+      teamId: targetTeamId,
+      personId: person.id,
+      kind: kind,
+      validityKind: validity,
+      startsAt: DateTime.now().toUtc(),
+      endsAt: validity == 'indefinite' ? null : endOfDay,
+      seasonEndsOn: validity == 'season' ? boundary : null,
+      reviewDueAt: validity == 'indefinite' ? endOfDay : null,
+      sourceNote: note,
+      idempotencyKey: _newUuid(),
+    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            strings.feature(
+              'Förfrågan skickad. Ditt lag behöver godkänna den innan '
+              'det andra laget kan använda spelaren.',
+            ),
+          ),
+        ),
+      );
+    }
+  } catch (_) {
+    if (context.mounted) {
+      await _showProfileActionMessage(
+        context,
+        title: title,
+        message: strings.feature(
+          'Förfrågan kunde inte sparas. Kontrollera lag, period och överlapp.',
+        ),
+      );
+    }
   }
 }
 
