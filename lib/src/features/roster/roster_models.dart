@@ -7,6 +7,7 @@ class RosterPersonSummary {
     this.teamId,
     this.teamName,
     this.assignmentState,
+    this.accountLinked = false,
   });
 
   final String id;
@@ -16,6 +17,10 @@ class RosterPersonSummary {
   final String? teamId;
   final String? teamName;
   final String? assignmentState;
+  // Already has an active core.person_account_links row — re-inviting them
+  // to claim this identity would be meaningless, so pickers that offer a
+  // roster person to invite as a new claim should exclude these.
+  final bool accountLinked;
 
   factory RosterPersonSummary.fromJson(Map<String, dynamic> json) {
     return RosterPersonSummary(
@@ -26,6 +31,7 @@ class RosterPersonSummary {
       teamId: json['team_id'] as String?,
       teamName: json['team_name'] as String?,
       assignmentState: json['assignment_state'] as String?,
+      accountLinked: json['account_linked'] as bool? ?? false,
     );
   }
 }

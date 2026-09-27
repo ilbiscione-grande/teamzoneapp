@@ -1799,11 +1799,29 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
   // Skapa lagkod (team code).
   String _teamCodeRole = 'player';
 
-  List<RosterPersonSummary> get _children => widget.people
+  // Former/archived roster people (assignmentState != 'active') can't
+  // sensibly claim an identity, be called up as a guardian, or represent
+  // another team — every person picker in this sheet stays scoped to the
+  // active roster only.
+  List<RosterPersonSummary> get _activePeople => widget.people
+      .where((person) => person.assignmentState == 'active')
+      .toList(growable: false);
+
+  // A targeted invite claims a roster identity — pointless (and refused by
+  // the server as a conflict once redeemed) for someone who already has an
+  // account linked to it. Guardian invites don't use this: an
+  // already-claimed guardian legitimately gets invited again for a second
+  // child, so _guardianCandidates stays on _activePeople.
+  List<RosterPersonSummary> get _invitablePeople =>
+      _activePeople.where((person) => !person.accountLinked).toList(
+        growable: false,
+      );
+
+  List<RosterPersonSummary> get _children => _activePeople
       .where((person) => person.safeguardingRequired)
       .toList(growable: false);
 
-  List<RosterPersonSummary> get _guardianCandidates => widget.people
+  List<RosterPersonSummary> get _guardianCandidates => _activePeople
       .where((person) => person.id != _guardianChildId)
       .toList(growable: false);
 
@@ -1824,9 +1842,9 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
       _step = _InviteStep.form;
       switch (kind) {
         case _InviteKind.targeted:
-          _targetedPersonId = widget.people.isEmpty
+          _targetedPersonId = _invitablePeople.isEmpty
               ? null
-              : widget.people.first.id;
+              : _invitablePeople.first.id;
           _targetedEmail = '';
           _targetedEmailError = null;
         case _InviteKind.guardian:
@@ -2246,6 +2264,15 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
     switch (_kind!) {
       case _InviteKind.targeted:
         title = strings.feature('Bjud in ny spelare');
+        if (_invitablePeople.isEmpty) {
+          explanation = strings.feature(
+            'Alla aktiva personer i truppen har redan ett kopplat konto. '
+            'Lägg till en ny person i truppen om du vill bjuda in någon '
+            'ytterligare.',
+          );
+          fields = const SizedBox.shrink();
+          break;
+        }
         explanation = strings.feature(
           'En riktad inbjudan skickas till en specifik person via e-post och '
           'kopplas till en vald rosterpost. Mottagaren öppnar länken, '
@@ -2261,7 +2288,7 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
               decoration: InputDecoration(
                 labelText: strings.feature('Vem gäller inbjudan?'),
               ),
-              items: widget.people
+              items: _invitablePeople
                   .map(
                     (person) => DropdownMenuItem(
                       value: person.id,

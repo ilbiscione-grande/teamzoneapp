@@ -1315,6 +1315,12 @@ class AppStrings {
     'Publika sidor': 'Public pages',
     'Länka en vuxen till ett barn som redan finns i truppen.':
         'Link an adult to a child already in the roster.',
+    'Alla aktiva personer i truppen har redan ett kopplat konto. '
+            'Lägg till en ny person i truppen om du vill bjuda in någon '
+            'ytterligare.':
+        'Everyone active in the roster already has a linked account. Add '
+            'a new person to the roster if you want to invite someone '
+            'else.',
   };
   String get signOut => isSwedish ? 'Logga ut' : 'Sign out';
   String eventOwner(String name) =>
