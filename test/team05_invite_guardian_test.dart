@@ -28,6 +28,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Inbjudningar och lagkoder'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Aktiva inbjudningar och koder'));
+    await tester.pumpAndSettle();
     expect(find.text('F2012 · player'), findsOneWidget);
     expect(find.text('Aktiva inbjudningar'), findsOneWidget);
     expect(find.text('Tidigare inbjudningar'), findsOneWidget);
@@ -72,6 +74,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Inbjudningar och lagkoder'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Aktiva inbjudningar och koder'));
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Visa kod'));
     await tester.pumpAndSettle();
     expect(roster.revealCodeCalls, 1);
@@ -93,10 +97,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Inbjudningar och lagkoder'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Guardian'));
+    await tester.tap(find.text('Koppla vårdnadshavare'));
     await tester.pumpAndSettle();
     expect(
-      find.text('Markera först ett barn som behöver vårdnadshavarkoppling.'),
+      find.text(
+        'Inga barn i truppen är markerade som i behov av '
+        'vårdnadshavarkoppling än. Öppna barnets personuppgifter och slå '
+        'på "Behöver vårdnadshavarkoppling" innan du fortsätter här.',
+      ),
       findsOneWidget,
     );
   });
@@ -115,22 +123,24 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Inbjudningar och lagkoder'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Riktad'));
+      await tester.tap(find.text('Bjud in ny spelare'));
       await tester.pumpAndSettle();
       await tester.enterText(
         _textFieldWithLabel('Mottagarens e-post'),
         'ogiltig',
       );
-      await tester.tap(find.text('Skapa'));
+      await tester.tap(find.text('Nästa'));
       await tester.pumpAndSettle();
       expect(find.text('Ange en giltig e-postadress.'), findsOneWidget);
-      expect(find.text('Riktad inbjudan'), findsOneWidget);
+      expect(find.text('Bjud in ny spelare'), findsOneWidget);
       expect(roster.targetedInviteCalls, 0);
       await tester.enterText(
         _textFieldWithLabel('Mottagarens e-post'),
         'test@example.com',
       );
-      await tester.tap(find.text('Skapa'));
+      await tester.tap(find.text('Nästa'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Bekräfta och skapa'));
       await tester.pumpAndSettle();
       expect(roster.targetedInviteCalls, 1);
       expect(find.text('Koden är skapad'), findsOneWidget);

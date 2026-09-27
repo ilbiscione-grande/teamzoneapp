@@ -1775,9 +1775,37 @@ class _InvitationAdminSheet extends StatefulWidget {
   State<_InvitationAdminSheet> createState() => _InvitationAdminSheetState();
 }
 
+enum _InviteStep { menu, list, form, confirm }
+
+enum _InviteKind { targeted, guardian, teamCode }
+
 class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
   late Future<List<InvitationAdminItem>> _load = _reload();
   bool _pending = false;
+
+  var _step = _InviteStep.menu;
+  _InviteKind? _kind;
+  String? _createdToken;
+
+  // Bjud in ny spelare (targeted invitation).
+  String? _targetedPersonId;
+  String _targetedEmail = '';
+  String? _targetedEmailError;
+
+  // Koppla vårdnadshavare (guardian invitation).
+  String? _guardianPersonId;
+  String? _guardianChildId;
+
+  // Skapa lagkod (team code).
+  String _teamCodeRole = 'player';
+
+  List<RosterPersonSummary> get _children => widget.people
+      .where((person) => person.safeguardingRequired)
+      .toList(growable: false);
+
+  List<RosterPersonSummary> get _guardianCandidates => widget.people
+      .where((person) => person.id != _guardianChildId)
+      .toList(growable: false);
 
   Future<List<InvitationAdminItem>> _reload() => widget.roster
       .listInvitationAdmin(
@@ -1790,274 +1818,110 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
     _load = _reload();
   });
 
-  Future<void> _issueTeamCode() async {
-    var role = 'player';
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(AppStrings.of(context).feature('Skapa lagkod')),
-          content: DropdownButtonFormField<String>(
-            initialValue: role,
-            decoration: InputDecoration(
-              labelText: AppStrings.of(context).feature('Ansökningsroll'),
-            ),
-            items: const ['player', 'leader', 'guardian', 'club_functionary']
-                .map(
-                  (value) => DropdownMenuItem(
-                    value: value,
-                    child: Text(AppStrings.of(context).domainValue(value)),
-                  ),
-                )
-                .toList(),
-            onChanged: (value) => setDialogState(() => role = value ?? role),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: Text(AppStrings.of(context).feature('Avbryt')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(AppStrings.of(context).feature('Skapa')),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (confirmed != true) return;
-    final token = '${_newUuid()}${_newUuid()}';
-    await _runIssue(
-      () => widget.roster.issueTeamCode(
-        clubId: widget.contextValue.clubId,
-        teamId: widget.contextValue.teamId!,
-        requestedRole: role,
-        token: token,
-        expiresAt: DateTime.now().toUtc().add(const Duration(days: 30)),
-        maxUses: 100,
-        idempotencyKey: _newUuid(),
-      ),
-      token,
-    );
+  void _openForm(_InviteKind kind) {
+    setState(() {
+      _kind = kind;
+      _step = _InviteStep.form;
+      switch (kind) {
+        case _InviteKind.targeted:
+          _targetedPersonId = widget.people.isEmpty
+              ? null
+              : widget.people.first.id;
+          _targetedEmail = '';
+          _targetedEmailError = null;
+        case _InviteKind.guardian:
+          final children = _children;
+          _guardianChildId = children.isEmpty ? null : children.first.id;
+          final guardians = _guardianCandidates;
+          _guardianPersonId = guardians.isEmpty ? null : guardians.first.id;
+        case _InviteKind.teamCode:
+          _teamCodeRole = 'player';
+      }
+    });
   }
 
-  Future<void> _issueTargeted() async {
-    if (widget.people.isEmpty) return;
-    var personId = widget.people.first.id;
-    var address = '';
-    String? emailError;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(AppStrings.of(context).feature('Riktad inbjudan')),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<String>(
-                  initialValue: personId,
-                  items: widget.people
-                      .map(
-                        (person) => DropdownMenuItem(
-                          value: person.id,
-                          child: Text(person.displayName),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) =>
-                      setDialogState(() => personId = value ?? personId),
-                ),
-                TextField(
-                  keyboardType: TextInputType.emailAddress,
-                  autofillHints: const [AutofillHints.email],
-                  onChanged: (value) {
-                    address = value;
-                    if (emailError != null) {
-                      setDialogState(() => emailError = null);
-                    }
-                  },
-                  decoration: InputDecoration(
-                    labelText: AppStrings.of(
-                      context,
-                    ).feature('Mottagarens e-post'),
-                    errorText: emailError,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: Text(AppStrings.of(context).feature('Avbryt')),
-            ),
-            FilledButton(
-              onPressed: () {
-                final normalizedAddress = address.trim();
-                final valid = RegExp(
-                  r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                ).hasMatch(normalizedAddress);
-                if (!valid) {
-                  setDialogState(
-                    () => emailError = AppStrings.of(
-                      context,
-                    ).feature('Ange en giltig e-postadress.'),
-                  );
-                  return;
-                }
-                Navigator.pop(dialogContext, true);
-              },
-              child: Text(AppStrings.of(context).feature('Skapa')),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (confirmed != true) return;
-    address = address.trim();
-    final token = '${_newUuid()}${_newUuid()}';
-    await _runIssue(
-      () => widget.roster.issueTargetedInvitation(
-        personId: personId,
-        intendedEmail: address,
-        token: token,
-        expiresAt: DateTime.now().toUtc().add(const Duration(days: 7)),
-        idempotencyKey: _newUuid(),
-      ),
-      token,
-    );
-  }
+  void _backToMenu() => setState(() {
+    _step = _InviteStep.menu;
+    _kind = null;
+    _createdToken = null;
+  });
 
-  Future<void> _issueGuardian() async {
-    final children = widget.people
-        .where((person) => person.safeguardingRequired)
-        .toList(growable: false);
-    if (children.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            AppStrings.of(context).feature(
-              'Markera först ett barn som behöver vårdnadshavarkoppling.',
-            ),
-          ),
-        ),
-      );
+  void _backOneStep() => setState(() {
+    if (_createdToken != null) {
+      _backToMenu();
       return;
     }
-    var childId = children.first.id;
-    final guardians = widget.people
-        .where((person) => person.id != childId)
-        .toList(growable: false);
-    if (guardians.isEmpty) return;
-    var guardianId = guardians.first.id;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(AppStrings.of(context).feature('Guardianinbjudan')),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                initialValue: guardianId,
-                decoration: InputDecoration(
-                  labelText: AppStrings.of(context).feature('Guardian'),
-                ),
-                items: guardians
-                    .map(
-                      (person) => DropdownMenuItem(
-                        value: person.id,
-                        child: Text(person.displayName),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) =>
-                    setDialogState(() => guardianId = value ?? guardianId),
-              ),
-              DropdownButtonFormField<String>(
-                initialValue: childId,
-                decoration: InputDecoration(
-                  labelText: AppStrings.of(context).feature('Barn'),
-                ),
-                items: children
-                    .map(
-                      (person) => DropdownMenuItem(
-                        value: person.id,
-                        child: Text(person.displayName),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) =>
-                    setDialogState(() => childId = value ?? childId),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: Text(AppStrings.of(context).feature('Avbryt')),
-            ),
-            FilledButton(
-              onPressed: guardianId == childId
-                  ? null
-                  : () => Navigator.pop(dialogContext, true),
-              child: Text(AppStrings.of(context).feature('Skapa')),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (confirmed != true || guardianId == childId) return;
-    final token = '${_newUuid()}${_newUuid()}';
-    await _runIssue(
-      () => widget.roster.issueGuardianInvitation(
-        guardianPersonId: guardianId,
-        childPersonId: childId,
-        token: token,
-        expiresAt: DateTime.now().toUtc().add(const Duration(days: 7)),
-        idempotencyKey: _newUuid(),
-      ),
-      token,
-    );
+    _step = switch (_step) {
+      _InviteStep.confirm => _InviteStep.form,
+      _InviteStep.form => _InviteStep.menu,
+      _InviteStep.list => _InviteStep.menu,
+      _InviteStep.menu => _InviteStep.menu,
+    };
+    if (_step == _InviteStep.menu) _kind = null;
+  });
+
+  bool get _canAdvanceFromForm => switch (_kind) {
+    _InviteKind.targeted => _targetedPersonId != null,
+    _InviteKind.guardian =>
+      _guardianPersonId != null &&
+          _guardianChildId != null &&
+          _guardianPersonId != _guardianChildId,
+    _InviteKind.teamCode => true,
+    null => false,
+  };
+
+  void _advanceFromForm() {
+    if (_kind == _InviteKind.targeted) {
+      final normalized = _targetedEmail.trim();
+      final valid = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(normalized);
+      if (!valid) {
+        setState(
+          () => _targetedEmailError = AppStrings.of(
+            context,
+          ).feature('Ange en giltig e-postadress.'),
+        );
+        return;
+      }
+    }
+    if (!_canAdvanceFromForm) return;
+    setState(() => _step = _InviteStep.confirm);
   }
 
-  Future<void> _runIssue(Future<String> Function() action, String token) async {
-    if (_pending) return;
+  Future<void> _confirmCreate() async {
+    if (_pending || _kind == null) return;
     setState(() => _pending = true);
+    final token = '${_newUuid()}${_newUuid()}';
     try {
-      await action();
+      switch (_kind!) {
+        case _InviteKind.targeted:
+          await widget.roster.issueTargetedInvitation(
+            personId: _targetedPersonId!,
+            intendedEmail: _targetedEmail.trim(),
+            token: token,
+            expiresAt: DateTime.now().toUtc().add(const Duration(days: 7)),
+            idempotencyKey: _newUuid(),
+          );
+        case _InviteKind.guardian:
+          await widget.roster.issueGuardianInvitation(
+            guardianPersonId: _guardianPersonId!,
+            childPersonId: _guardianChildId!,
+            token: token,
+            expiresAt: DateTime.now().toUtc().add(const Duration(days: 7)),
+            idempotencyKey: _newUuid(),
+          );
+        case _InviteKind.teamCode:
+          await widget.roster.issueTeamCode(
+            clubId: widget.contextValue.clubId,
+            teamId: widget.contextValue.teamId!,
+            requestedRole: _teamCodeRole,
+            token: token,
+            expiresAt: DateTime.now().toUtc().add(const Duration(days: 30)),
+            maxUses: 100,
+            idempotencyKey: _newUuid(),
+          );
+      }
       if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(AppStrings.of(dialogContext).feature('Koden är skapad')),
-          content: SelectableText(token),
-          actions: [
-            TextButton.icon(
-              onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: token));
-                if (!dialogContext.mounted) return;
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      AppStrings.of(
-                        dialogContext,
-                      ).feature('Inbjudningskoden har kopierats.'),
-                    ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.copy_outlined),
-              label: Text(AppStrings.of(dialogContext).feature('Kopiera')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(AppStrings.of(dialogContext).feature('Stäng')),
-            ),
-          ],
-        ),
-      );
+      setState(() => _createdToken = token);
       _refresh();
     } catch (_) {
       if (mounted) {
@@ -2072,6 +1936,20 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
     } finally {
       if (mounted) setState(() => _pending = false);
     }
+  }
+
+  Future<void> _copyCreatedToken() async {
+    final token = _createdToken;
+    if (token == null) return;
+    await Clipboard.setData(ClipboardData(text: token));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          AppStrings.of(context).feature('Inbjudningskoden har kopierats.'),
+        ),
+      ),
+    );
   }
 
   Future<void> _revoke(InvitationAdminItem item) async {
@@ -2180,152 +2058,478 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: MediaQuery.sizeOf(context).height * .88,
-    child: Column(
-      children: [
-        ListTile(
-          title: Text(
-            AppStrings.of(context).feature('Inbjudningar och lagkoder'),
-          ),
-          subtitle: Text(
-            AppStrings.of(context).feature(
-              'Lagkoder kan visas och kopieras igen. Personliga koder visas bara en gång.',
-            ),
+  Widget _stepHeader(String title) => Row(
+    children: [
+      if (_step != _InviteStep.menu)
+        IconButton(
+          onPressed: _pending ? null : _backOneStep,
+          icon: const Icon(Icons.arrow_back),
+          tooltip: AppStrings.of(context).feature('Tillbaka'),
+        ),
+      Expanded(
+        child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+      ),
+    ],
+  );
+
+  Widget _buildMenuStep(BuildContext context) => ListView(
+    children: [
+      ListTile(
+        title: Text(
+          AppStrings.of(context).feature('Inbjudningar och lagkoder'),
+        ),
+        subtitle: Text(
+          AppStrings.of(context).feature(
+            'Välj vad du vill skapa. Nästa steg förklarar vad som händer '
+            'innan något skapas.',
           ),
         ),
-        Wrap(
-          spacing: 8,
+      ),
+      _BigChoiceCard(
+        icon: Icons.person_add_alt_outlined,
+        title: AppStrings.of(context).feature('Bjud in ny spelare'),
+        subtitle: AppStrings.of(context).feature(
+          'Skicka en personlig länk till en vald rosterpost via e-post.',
+        ),
+        onTap: _pending ? null : () => _openForm(_InviteKind.targeted),
+      ),
+      _BigChoiceCard(
+        icon: Icons.family_restroom_outlined,
+        title: AppStrings.of(context).feature('Koppla vårdnadshavare'),
+        subtitle: AppStrings.of(
+          context,
+        ).feature('Länka en vuxen till ett barn som redan finns i truppen.'),
+        onTap: _pending ? null : () => _openForm(_InviteKind.guardian),
+      ),
+      _BigChoiceCard(
+        icon: Icons.qr_code_outlined,
+        title: AppStrings.of(context).feature('Skapa lagkod'),
+        subtitle: AppStrings.of(context).feature(
+          'En delbar kod som flera kan använda för att ansöka om en roll.',
+        ),
+        onTap: _pending ? null : () => _openForm(_InviteKind.teamCode),
+      ),
+      const Divider(),
+      ListTile(
+        leading: const Icon(Icons.mail_outline),
+        title: Text(
+          AppStrings.of(context).feature('Aktiva inbjudningar och koder'),
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => setState(() => _step = _InviteStep.list),
+      ),
+    ],
+  );
+
+  Widget _buildListStep(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _stepHeader(
+        AppStrings.of(context).feature('Aktiva inbjudningar och koder'),
+      ),
+      Expanded(
+        child: FutureBuilder<List<InvitationAdminItem>>(
+          future: _load,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return AppLoadingIndicator(
+                label: AppStrings.of(context).feature('Laddar inbjudningar'),
+              );
+            }
+            if (!snapshot.hasData) {
+              return _StateCard(
+                icon: Icons.sync_problem,
+                title: AppStrings.of(
+                  context,
+                ).feature('Inbjudningarna kunde inte laddas'),
+                message: AppStrings.of(context).feature('Försök igen.'),
+              );
+            }
+            if (snapshot.data!.isEmpty) {
+              return _StateCard(
+                icon: Icons.mail_outline,
+                title: AppStrings.of(context).feature('Inga inbjudningar'),
+                message: AppStrings.of(context).feature(
+                  'Skapa en riktad inbjudan, guardianinbjudan eller lagkod.',
+                ),
+              );
+            }
+            final active = snapshot.data!
+                .where((item) => item.isActive)
+                .toList(growable: false);
+            final inactive = snapshot.data!
+                .where((item) => !item.isActive)
+                .toList(growable: false);
+            Widget invitationTile(InvitationAdminItem item) => ListTile(
+              title: Text(item.subjectName),
+              subtitle: item.expiresAt == null
+                  ? null
+                  : Text(
+                      MaterialLocalizations.of(
+                        context,
+                      ).formatMediumDate(item.expiresAt!.toLocal()),
+                    ),
+              leading: Chip(
+                avatar: Icon(
+                  item.isActive
+                      ? Icons.schedule_outlined
+                      : Icons.history_outlined,
+                  size: 18,
+                ),
+                label: Text(
+                  AppStrings.of(context).domainValue(item.displayState),
+                ),
+              ),
+              trailing: item.kind == 'team_code' && item.canRevoke
+                  ? Wrap(
+                      spacing: 0,
+                      children: [
+                        IconButton(
+                          tooltip: AppStrings.of(context).feature('Visa kod'),
+                          onPressed: _pending
+                              ? null
+                              : () => _showTeamCode(item),
+                          icon: const Icon(Icons.visibility_outlined),
+                        ),
+                        IconButton(
+                          tooltip: AppStrings.of(context).feature('Återkalla'),
+                          onPressed: _pending ? null : () => _revoke(item),
+                          icon: const Icon(Icons.block_outlined),
+                        ),
+                      ],
+                    )
+                  : item.canEndRelation
+                  ? TextButton(
+                      onPressed: _pending ? null : () => _endRelation(item),
+                      child: Text(AppStrings.of(context).feature('Avsluta')),
+                    )
+                  : item.canRevoke
+                  ? TextButton(
+                      onPressed: _pending ? null : () => _revoke(item),
+                      child: Text(AppStrings.of(context).feature('Återkalla')),
+                    )
+                  : null,
+            );
+            return ListView(
+              children: [
+                if (active.isNotEmpty) ...[
+                  _InvitationSectionHeader(
+                    label: AppStrings.of(
+                      context,
+                    ).feature('Aktiva inbjudningar'),
+                    count: active.length,
+                  ),
+                  ...active.map(invitationTile),
+                ],
+                if (inactive.isNotEmpty) ...[
+                  _InvitationSectionHeader(
+                    label: AppStrings.of(
+                      context,
+                    ).feature('Tidigare inbjudningar'),
+                    count: inactive.length,
+                  ),
+                  ...inactive.map(invitationTile),
+                ],
+              ],
+            );
+          },
+        ),
+      ),
+    ],
+  );
+
+  Widget _buildFormStep(BuildContext context) {
+    final strings = AppStrings.of(context);
+    late final String title;
+    late final String explanation;
+    late final Widget fields;
+    switch (_kind!) {
+      case _InviteKind.targeted:
+        title = strings.feature('Bjud in ny spelare');
+        explanation = strings.feature(
+          'En riktad inbjudan skickas till en specifik person via e-post och '
+          'kopplas till en vald rosterpost. Mottagaren öppnar länken, '
+          'verifierar sin e-post och kontot binds automatiskt till rätt '
+          'person i laget. Länken fungerar en gång och är giltig i 7 dagar. '
+          'TeamZone skickar inte länken automatiskt — du delar den själv.',
+        );
+        fields = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            FilledButton.tonal(
-              onPressed: _pending ? _noop : _issueTargeted,
-              child: Text(AppStrings.of(context).feature('Riktad')),
+            DropdownButtonFormField<String>(
+              initialValue: _targetedPersonId,
+              decoration: InputDecoration(
+                labelText: strings.feature('Vem gäller inbjudan?'),
+              ),
+              items: widget.people
+                  .map(
+                    (person) => DropdownMenuItem(
+                      value: person.id,
+                      child: Text(person.displayName),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) => setState(() => _targetedPersonId = value),
             ),
-            FilledButton.tonal(
-              onPressed: _pending ? _noop : _issueGuardian,
-              child: Text(AppStrings.of(context).feature('Guardian')),
+            const SizedBox(height: 12),
+            TextField(
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              onChanged: (value) => setState(() {
+                _targetedEmail = value;
+                _targetedEmailError = null;
+              }),
+              decoration: InputDecoration(
+                labelText: strings.feature('Mottagarens e-post'),
+                errorText: _targetedEmailError,
+              ),
             ),
-            FilledButton.tonal(
-              onPressed: _pending ? _noop : _issueTeamCode,
-              child: Text(AppStrings.of(context).feature('Lagkod')),
+          ],
+        );
+      case _InviteKind.guardian:
+        title = strings.feature('Koppla vårdnadshavare');
+        if (_children.isEmpty) {
+          explanation = strings.feature(
+            'Inga barn i truppen är markerade som i behov av '
+            'vårdnadshavarkoppling än. Öppna barnets personuppgifter och slå '
+            'på "Behöver vårdnadshavarkoppling" innan du fortsätter här.',
+          );
+          fields = const SizedBox.shrink();
+        } else {
+          explanation = strings.feature(
+            'En guardian-koppling länkar en vuxen som redan finns i laget '
+            'till ett barn som är markerat som i behov av '
+            'vårdnadshavarkoppling. Efter att koden använts kan '
+            'vårdnadshavaren se information och svara på kallelser för '
+            'barnets räkning.',
+          );
+          fields = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DropdownButtonFormField<String>(
+                initialValue: _guardianChildId,
+                decoration: InputDecoration(labelText: strings.feature('Barn')),
+                items: _children
+                    .map(
+                      (person) => DropdownMenuItem(
+                        value: person.id,
+                        child: Text(person.displayName),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) => setState(() {
+                  _guardianChildId = value;
+                  if (_guardianPersonId == value) _guardianPersonId = null;
+                  final guardians = _guardianCandidates;
+                  _guardianPersonId ??= guardians.isEmpty
+                      ? null
+                      : guardians.first.id;
+                }),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _guardianPersonId,
+                decoration: InputDecoration(
+                  labelText: strings.feature('Vårdnadshavare'),
+                ),
+                items: _guardianCandidates
+                    .map(
+                      (person) => DropdownMenuItem(
+                        value: person.id,
+                        child: Text(person.displayName),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) => setState(() => _guardianPersonId = value),
+              ),
+            ],
+          );
+        }
+      case _InviteKind.teamCode:
+        title = strings.feature('Skapa lagkod');
+        explanation = strings.feature(
+          'En lagkod är en delbar kod som flera personer kan använda för '
+          'att ansöka om en vald roll i laget. En behörig ledare granskar '
+          'ändå varje ansökan innan personen läggs till. Koden är giltig i '
+          '30 dagar och kan användas upp till 100 gånger.',
+        );
+        fields = DropdownButtonFormField<String>(
+          initialValue: _teamCodeRole,
+          decoration: InputDecoration(
+            labelText: strings.feature('Ansökningsroll'),
+          ),
+          items: const ['player', 'leader', 'guardian', 'club_functionary']
+              .map(
+                (value) => DropdownMenuItem(
+                  value: value,
+                  child: Text(strings.domainValue(value)),
+                ),
+              )
+              .toList(),
+          onChanged: (value) =>
+              setState(() => _teamCodeRole = value ?? _teamCodeRole),
+        );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _stepHeader(title),
+        const SizedBox(height: 8),
+        Text(explanation, style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(height: 16),
+        fields,
+        const Spacer(),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(
+              onPressed: _backToMenu,
+              child: Text(strings.feature('Avbryt')),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: _canAdvanceFromForm ? _advanceFromForm : null,
+              child: Text(strings.feature('Nästa')),
             ),
           ],
         ),
-        const Divider(),
-        Expanded(
-          child: FutureBuilder<List<InvitationAdminItem>>(
-            future: _load,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return AppLoadingIndicator(
-                  label: AppStrings.of(context).feature('Laddar inbjudningar'),
-                );
-              }
-              if (!snapshot.hasData) {
-                return _StateCard(
-                  icon: Icons.sync_problem,
-                  title: AppStrings.of(
-                    context,
-                  ).feature('Inbjudningarna kunde inte laddas'),
-                  message: AppStrings.of(context).feature('Försök igen.'),
-                );
-              }
-              if (snapshot.data!.isEmpty) {
-                return _StateCard(
-                  icon: Icons.mail_outline,
-                  title: AppStrings.of(context).feature('Inga inbjudningar'),
-                  message: AppStrings.of(context).feature(
-                    'Skapa en riktad inbjudan, guardianinbjudan eller lagkod.',
-                  ),
-                );
-              }
-              final active = snapshot.data!
-                  .where((item) => item.isActive)
-                  .toList(growable: false);
-              final inactive = snapshot.data!
-                  .where((item) => !item.isActive)
-                  .toList(growable: false);
-              Widget invitationTile(InvitationAdminItem item) => ListTile(
-                title: Text(item.subjectName),
-                subtitle: item.expiresAt == null
-                    ? null
-                    : Text(
-                        MaterialLocalizations.of(
-                          context,
-                        ).formatMediumDate(item.expiresAt!.toLocal()),
-                      ),
-                leading: Chip(
-                  avatar: Icon(
-                    item.isActive
-                        ? Icons.schedule_outlined
-                        : Icons.history_outlined,
-                    size: 18,
-                  ),
-                  label: Text(
-                    AppStrings.of(context).domainValue(item.displayState),
-                  ),
-                ),
-                trailing: item.kind == 'team_code' && item.canRevoke
-                    ? Wrap(
-                        spacing: 0,
-                        children: [
-                          IconButton(
-                            tooltip: AppStrings.of(context).feature('Visa kod'),
-                            onPressed: _pending
-                                ? null
-                                : () => _showTeamCode(item),
-                            icon: const Icon(Icons.visibility_outlined),
-                          ),
-                          IconButton(
-                            tooltip: AppStrings.of(
-                              context,
-                            ).feature('Återkalla'),
-                            onPressed: _pending ? null : () => _revoke(item),
-                            icon: const Icon(Icons.block_outlined),
-                          ),
-                        ],
-                      )
-                    : item.canEndRelation
-                    ? TextButton(
-                        onPressed: _pending ? null : () => _endRelation(item),
-                        child: Text(AppStrings.of(context).feature('Avsluta')),
-                      )
-                    : item.canRevoke
-                    ? TextButton(
-                        onPressed: _pending ? null : () => _revoke(item),
-                        child: Text(
-                          AppStrings.of(context).feature('Återkalla'),
-                        ),
-                      )
-                    : null,
-              );
-              return ListView(
-                children: [
-                  if (active.isNotEmpty) ...[
-                    _InvitationSectionHeader(
-                      label: AppStrings.of(
-                        context,
-                      ).feature('Aktiva inbjudningar'),
-                      count: active.length,
-                    ),
-                    ...active.map(invitationTile),
-                  ],
-                  if (inactive.isNotEmpty) ...[
-                    _InvitationSectionHeader(
-                      label: AppStrings.of(
-                        context,
-                      ).feature('Tidigare inbjudningar'),
-                      count: inactive.length,
-                    ),
-                    ...inactive.map(invitationTile),
-                  ],
-                ],
-              );
-            },
+      ],
+    );
+  }
+
+  Widget _buildConfirmStep(BuildContext context) {
+    final strings = AppStrings.of(context);
+    if (_createdToken != null) {
+      final usageHint = switch (_kind!) {
+        _InviteKind.teamCode => strings.feature(
+          'Dela koden fritt — den kan användas flera gånger fram till '
+          'utgångsdatumet.',
+        ),
+        _InviteKind.targeted || _InviteKind.guardian => strings.feature(
+          'Dela koden med mottagaren. De klistrar in den under '
+          'Inställningar → Använd kod.',
+        ),
+      };
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _stepHeader(strings.feature('Koden är skapad')),
+          const SizedBox(height: 8),
+          SelectableText(_createdToken!),
+          const SizedBox(height: 8),
+          Text(usageHint, style: Theme.of(context).textTheme.bodyMedium),
+          const Spacer(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton.icon(
+                onPressed: _copyCreatedToken,
+                icon: const Icon(Icons.copy_outlined),
+                label: Text(strings.feature('Kopiera')),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: _backToMenu,
+                child: Text(strings.feature('Klar')),
+              ),
+            ],
           ),
+        ],
+      );
+    }
+    final summary = switch (_kind!) {
+      _InviteKind.targeted =>
+        '${strings.feature('Du bjuder in')} ${_targetedEmail.trim()} '
+            '${strings.feature('att gå med som')} '
+            '${widget.people.firstWhere((p) => p.id == _targetedPersonId).displayName}.',
+      _InviteKind.guardian =>
+        '${strings.feature('Du kopplar')} '
+            '${widget.people.firstWhere((p) => p.id == _guardianPersonId).displayName} '
+            '${strings.feature('som vårdnadshavare till')} '
+            '${widget.people.firstWhere((p) => p.id == _guardianChildId).displayName}.',
+      _InviteKind.teamCode =>
+        '${strings.feature('Du skapar en lagkod för rollen')} '
+            '${strings.domainValue(_teamCodeRole)}.',
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _stepHeader(strings.feature('Bekräfta')),
+        const SizedBox(height: 8),
+        Text(summary, style: Theme.of(context).textTheme.bodyMedium),
+        const Spacer(),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(
+              onPressed: _pending ? null : _backOneStep,
+              child: Text(strings.feature('Tillbaka')),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: _pending ? null : _confirmCreate,
+              child: Text(strings.feature('Bekräfta och skapa')),
+            ),
+          ],
         ),
       ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: MediaQuery.sizeOf(context).height * .88,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: switch (_step) {
+        _InviteStep.menu => _buildMenuStep(context),
+        _InviteStep.list => _buildListStep(context),
+        _InviteStep.form => _buildFormStep(context),
+        _InviteStep.confirm => _buildConfirmStep(context),
+      },
+    ),
+  );
+}
+
+class _BigChoiceCard extends StatelessWidget {
+  const _BigChoiceCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    margin: const EdgeInsets.symmetric(vertical: 4),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(icon, size: 28),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
+      ),
     ),
   );
 }
@@ -2349,8 +2553,6 @@ class _InvitationSectionHeader extends StatelessWidget {
     ),
   );
 }
-
-void _noop() {}
 
 class _RosterPersonEditor extends StatelessWidget {
   const _RosterPersonEditor({

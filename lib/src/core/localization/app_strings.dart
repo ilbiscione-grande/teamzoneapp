@@ -1249,6 +1249,72 @@ class AppStrings {
     'Kort': 'Card',
     'Byte': 'Substitution',
     'Skada': 'Injury',
+    'Tillbaka': 'Back',
+    'Nästa': 'Next',
+    'Bekräfta och skapa': 'Confirm and create',
+    'Bjud in ny spelare': 'Invite new player',
+    'Koppla vårdnadshavare': 'Link guardian',
+    'Aktiva inbjudningar och koder': 'Active invitations and codes',
+    'Vem gäller inbjudan?': 'Who is this invitation for?',
+    'Välj vad du vill skapa. Nästa steg förklarar vad som händer '
+            'innan något skapas.':
+        'Choose what to create. The next step explains what happens '
+        'before anything is created.',
+    'Skicka en personlig länk till en vald rosterpost via e-post.':
+        'Send a personal link to a chosen roster entry by email.',
+    'En delbar kod som flera kan använda för att ansöka om en roll.':
+        'A shareable code several people can use to apply for a role.',
+    'En riktad inbjudan skickas till en specifik person via e-post och '
+            'kopplas till en vald rosterpost. Mottagaren öppnar länken, '
+            'verifierar sin e-post och kontot binds automatiskt till rätt '
+            'person i laget. Länken fungerar en gång och är giltig i 7 dagar. '
+            'TeamZone skickar inte länken automatiskt — du delar den själv.':
+        'A targeted invitation is sent to a specific person by email and '
+        'linked to a chosen roster entry. The recipient opens the link, '
+        'verifies their email, and the account is bound to the right '
+        'person in the team automatically. The link works once and is '
+        'valid for 7 days. TeamZone does not send the link '
+        'automatically — you share it yourself.',
+    'Inga barn i truppen är markerade som i behov av '
+            'vårdnadshavarkoppling än. Öppna barnets personuppgifter och slå '
+            'på "Behöver vårdnadshavarkoppling" innan du fortsätter här.':
+        'No children in the roster are marked as needing a guardian link '
+        'yet. Open the child\'s details and turn on "Needs guardian '
+        'link" before continuing here.',
+    'En guardian-koppling länkar en vuxen som redan finns i laget '
+            'till ett barn som är markerat som i behov av '
+            'vårdnadshavarkoppling. Efter att koden använts kan '
+            'vårdnadshavaren se information och svara på kallelser för '
+            'barnets räkning.':
+        'A guardian link connects an adult already in the team to a child '
+        'marked as needing a guardian. Once the code is used, the '
+        'guardian can see information and respond to callups on the '
+        'child\'s behalf.',
+    'En lagkod är en delbar kod som flera personer kan använda för '
+            'att ansöka om en vald roll i laget. En behörig ledare granskar '
+            'ändå varje ansökan innan personen läggs till. Koden är giltig i '
+            '30 dagar och kan användas upp till 100 gånger.':
+        'A team code is a shareable code several people can use to apply '
+        'for a chosen role in the team. An authorized leader still '
+        'reviews every application before the person is added. The '
+        'code is valid for 30 days and can be used up to 100 times.',
+    'Dela koden fritt — den kan användas flera gånger fram till '
+            'utgångsdatumet.':
+        'Share the code freely — it can be used several times until it '
+        'expires.',
+    'Dela koden med mottagaren. De klistrar in den under '
+            'Inställningar → Använd kod.':
+        'Share the code with the recipient. They paste it under '
+        'Settings → Use code.',
+    'Du bjuder in': 'You are inviting',
+    'att gå med som': 'to join as',
+    'Du kopplar': 'You are linking',
+    'som vårdnadshavare till': 'as guardian to',
+    'Du skapar en lagkod för rollen':
+        'You are creating a team code for the role',
+    'Publika sidor': 'Public pages',
+    'Länka en vuxen till ett barn som redan finns i truppen.':
+        'Link an adult to a child already in the roster.',
   };
   String get signOut => isSwedish ? 'Logga ut' : 'Sign out';
   String eventOwner(String name) =>
