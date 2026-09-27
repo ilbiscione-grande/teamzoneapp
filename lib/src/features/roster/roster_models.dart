@@ -151,6 +151,7 @@ class RosterPersonDetails {
     this.safeguardingRequired,
     this.representationAvailable,
     this.accountLinked,
+    this.isSelf = false,
     this.provenance,
     this.assignmentStartsAt,
     this.assignmentEndsAt,
@@ -164,6 +165,7 @@ class RosterPersonDetails {
   final bool? safeguardingRequired;
   final bool? representationAvailable;
   final bool? accountLinked;
+  final bool isSelf;
   final DateTime? assignmentStartsAt, assignmentEndsAt;
   final int? assignmentRevision;
   final int? personRevision;
@@ -187,6 +189,7 @@ class RosterPersonDetails {
       safeguardingRequired: json['safeguarding_required'] as bool?,
       representationAvailable: json['representation_available'] as bool?,
       accountLinked: json['account_linked'] as bool?,
+      isSelf: json['is_self'] as bool? ?? false,
       provenance: manager?['provenance'] as String?,
       assignmentStartsAt: DateTime.tryParse(
         manager?['assignment_starts_at'] as String? ?? '',
@@ -198,6 +201,24 @@ class RosterPersonDetails {
       personRevision: (json['person_revision'] as num?)?.toInt(),
     );
   }
+}
+
+class PersonAttendanceSummary {
+  const PersonAttendanceSummary({
+    required this.trainingsTotal,
+    required this.trainingsAttended,
+    required this.matchesTotal,
+    required this.matchesPlayed,
+  });
+  final int trainingsTotal, trainingsAttended, matchesTotal, matchesPlayed;
+
+  factory PersonAttendanceSummary.fromJson(Map<String, dynamic> json) =>
+      PersonAttendanceSummary(
+        trainingsTotal: (json['trainings_total'] as num? ?? 0).toInt(),
+        trainingsAttended: (json['trainings_attended'] as num? ?? 0).toInt(),
+        matchesTotal: (json['matches_total'] as num? ?? 0).toInt(),
+        matchesPlayed: (json['matches_played'] as num? ?? 0).toInt(),
+      );
 }
 
 class InvitationAdminItem {

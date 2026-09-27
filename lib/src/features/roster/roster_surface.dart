@@ -405,14 +405,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                                 person.teamName,
                               ].whereType<String>().join(' · '),
                             ),
-                            trailing: canManage
-                                ? IconButton(
-                                    tooltip: strings.feature('Redigera person'),
-                                    onPressed: () =>
-                                        _openRosterPersonForm(person: person),
-                                    icon: const Icon(Icons.edit_outlined),
-                                  )
-                                : canOpenPersonDetails
+                            trailing: canOpenPersonDetails
                                 ? const Icon(Icons.chevron_right)
                                 : null,
                             onTap: canOpenPersonDetails
@@ -684,24 +677,14 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     );
   }
 
-  void _openRosterPersonForm({RosterPersonSummary? person}) {
-    Navigator.push<void>(
+  void _openRosterPersonForm() {
+    _openRosterPersonEditor(
       context,
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(),
-          body: SafeArea(
-            child: _RosterPersonEditor(
-              contextValue: widget.contextValue,
-              roster: widget.roster,
-              person: person,
-              onSaved: () async {
-                await _data.refresh();
-              },
-            ),
-          ),
-        ),
-      ),
+      contextValue: widget.contextValue,
+      roster: widget.roster,
+      onSaved: () async {
+        await _data.refresh();
+      },
     );
   }
 
@@ -2646,23 +2629,46 @@ class _InvitationSectionHeader extends StatelessWidget {
   );
 }
 
+Future<void> _openRosterPersonEditor(
+  BuildContext context, {
+  required TeamZoneContext contextValue,
+  required RosterServices roster,
+  String? personId,
+  required Future<void> Function() onSaved,
+}) => Navigator.push<void>(
+  context,
+  MaterialPageRoute(
+    builder: (_) => Scaffold(
+      appBar: AppBar(),
+      body: SafeArea(
+        child: _RosterPersonEditor(
+          contextValue: contextValue,
+          roster: roster,
+          personId: personId,
+          onSaved: onSaved,
+        ),
+      ),
+    ),
+  ),
+);
+
 class _RosterPersonEditor extends StatelessWidget {
   const _RosterPersonEditor({
     required this.contextValue,
     required this.roster,
     required this.onSaved,
-    this.person,
+    this.personId,
   });
   final TeamZoneContext contextValue;
   final RosterServices roster;
-  final RosterPersonSummary? person;
+  final String? personId;
   final Future<void> Function() onSaved;
 
   @override
   Widget build(BuildContext context) {
     final teamId = contextValue.teamId;
     if (teamId == null) return const SizedBox.shrink();
-    if (person == null) {
+    if (personId == null) {
       return _RosterPersonFormSheet(
         contextValue: contextValue,
         roster: roster,
@@ -2674,7 +2680,7 @@ class _RosterPersonEditor extends StatelessWidget {
           .getPersonDetails(
             clubId: contextValue.clubId,
             teamId: teamId,
-            personId: person!.id,
+            personId: personId!,
           )
           .timeout(const Duration(seconds: 15)),
       builder: (context, snapshot) {
@@ -2966,6 +2972,8 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
                           )
                         : Text(strings.feature('Spara person')),
                   ),
+                  if (_isEditing && widget.initial!.assignmentState == 'active')
+                    ..._personActionTiles(context, widget.initial!),
                 ],
               ),
             ),
@@ -2973,6 +2981,92 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
         ),
       ),
     );
+  }
+
+  List<Widget> _personActionTiles(
+    BuildContext context,
+    RosterPersonDetails person,
+  ) {
+    final strings = AppStrings.of(context);
+    return [
+      const SizedBox(height: 16),
+      const Divider(),
+      Text(
+        strings.feature('Åtgärder'),
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      if (person.accountLinked != true)
+        ListTile(
+          leading: const Icon(Icons.mail_outline),
+          title: Text(strings.feature('Bjud in')),
+          subtitle: Text(
+            strings.feature(
+              'Skicka en inbjudan så personen kan koppla ett konto.',
+            ),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _inviteFromProfile(
+            context: context,
+            contextValue: widget.contextValue,
+            roster: widget.roster,
+            person: person,
+          ),
+        ),
+      ListTile(
+        leading: const Icon(Icons.compare_arrows),
+        title: Text(strings.feature('Representation i annat lag')),
+        subtitle: Text(
+          strings.feature('Föreslå personen för ett annat lag i klubben.'),
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => _representFromProfile(
+          context: context,
+          contextValue: widget.contextValue,
+          roster: widget.roster,
+          person: person,
+        ),
+      ),
+      ListTile(
+        leading: const Icon(Icons.swap_horiz),
+        title: Text(strings.feature('Flytta till ett annat lag')),
+        subtitle: Text(
+          strings.feature(
+            'Nuvarande lagtillhörighet avslutas och historiken bevaras.',
+          ),
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => showModalBottomSheet<void>(
+          context: context,
+          useRootNavigator: true,
+          isScrollControlled: true,
+          useSafeArea: true,
+          builder: (_) => _IntraClubMoveSheet(
+            contextValue: widget.contextValue,
+            roster: widget.roster,
+            initialPersonId: person.id,
+          ),
+        ),
+      ),
+      ListTile(
+        leading: const Icon(Icons.archive_outlined),
+        title: Text(strings.feature('Avsluta i laget')),
+        subtitle: Text(
+          strings.feature(
+            'Spelaren flyttas till Arkiverade. Namn, matcher, närvaro och annan historik bevaras.',
+          ),
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => _archivePersonFromDetails(
+          context: context,
+          contextValue: widget.contextValue,
+          roster: widget.roster,
+          personId: person.id,
+          onArchived: () {
+            if (Navigator.of(context).canPop()) Navigator.of(context).pop();
+          },
+        ),
+      ),
+    ];
   }
 
   Future<void> _pickBirthDate() async {
@@ -3003,16 +3097,16 @@ String _formatBirthDate(DateTime value) =>
 class _RosterPersonDetailsView extends StatelessWidget {
   const _RosterPersonDetailsView({
     required this.future,
-    this.onMovePlayer,
-    this.onArchivePlayer,
-    this.onInvitePlayer,
-    this.onSetRepresentation,
+    required this.contextValue,
+    required this.roster,
+    required this.canManage,
+    this.onEdit,
   });
   final Future<RosterPersonDetails> future;
-  final VoidCallback? onMovePlayer;
-  final Future<void> Function()? onArchivePlayer;
-  final void Function(RosterPersonDetails person)? onInvitePlayer;
-  final void Function(RosterPersonDetails person)? onSetRepresentation;
+  final TeamZoneContext contextValue;
+  final RosterServices roster;
+  final bool canManage;
+  final void Function(RosterPersonDetails person)? onEdit;
 
   @override
   Widget build(BuildContext context) => FutureBuilder<RosterPersonDetails>(
@@ -3034,6 +3128,7 @@ class _RosterPersonDetailsView extends StatelessWidget {
         );
       }
       final person = snapshot.data!;
+      final canSeeStats = canManage || person.isSelf;
       return ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -3070,64 +3165,33 @@ class _RosterPersonDetailsView extends StatelessWidget {
             title: Text(strings.feature('Status')),
             subtitle: Text(strings.domainValue(person.assignmentState)),
           ),
-          if ((onMovePlayer != null ||
-                  onArchivePlayer != null ||
-                  onInvitePlayer != null ||
-                  onSetRepresentation != null) &&
-              person.assignmentState == 'active') ...[
+          if (onEdit != null && person.assignmentState == 'active')
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: Text(strings.feature('Redigera profil')),
+              subtitle: Text(
+                strings.feature(
+                  'Ändra uppgifter och hantera lag- och kontoåtgärder.',
+                ),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => onEdit!(person),
+            ),
+          if (canSeeStats) ...[
             const Divider(),
             Text(
-              strings.feature('Åtgärder'),
+              strings.feature('Statistik'),
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            if (onInvitePlayer != null && person.accountLinked != true)
-              ListTile(
-                leading: const Icon(Icons.mail_outline),
-                title: Text(strings.feature('Bjud in')),
-                subtitle: Text(
-                  strings.feature(
-                    'Skicka en inbjudan så personen kan koppla ett konto.',
-                  ),
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => onInvitePlayer!(person),
-              ),
-            if (onSetRepresentation != null)
-              ListTile(
-                leading: const Icon(Icons.compare_arrows),
-                title: Text(strings.feature('Representation i annat lag')),
-                subtitle: Text(
-                  strings.feature(
-                    'Föreslå personen för ett annat lag i klubben.',
-                  ),
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => onSetRepresentation!(person),
-              ),
-            if (onMovePlayer != null)
-              ListTile(
-                leading: const Icon(Icons.swap_horiz),
-                title: Text(strings.feature('Flytta till ett annat lag')),
-                subtitle: Text(
-                  strings.feature(
-                    'Nuvarande lagtillhörighet avslutas och historiken bevaras.',
-                  ),
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: onMovePlayer,
-              ),
-            if (onArchivePlayer != null)
-              ListTile(
-                leading: const Icon(Icons.archive_outlined),
-                title: Text(strings.feature('Avsluta i laget')),
-                subtitle: Text(
-                  strings.feature(
-                    'Spelaren flyttas till Arkiverade. Namn, matcher, närvaro och annan historik bevaras.',
-                  ),
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => onArchivePlayer!(),
-              ),
+            _PersonAttendanceStats(
+              future: roster
+                  .getPersonAttendanceSummary(
+                    clubId: contextValue.clubId,
+                    teamId: person.teamId,
+                    personId: person.id,
+                  )
+                  .timeout(const Duration(seconds: 15)),
+            ),
           ],
           if (person.hasManagementDetails) ...[
             const Divider(),
@@ -3164,7 +3228,55 @@ class _RosterPersonDetailsView extends StatelessWidget {
   );
 }
 
-class _RosterPersonDetailsPage extends StatelessWidget {
+class _PersonAttendanceStats extends StatelessWidget {
+  const _PersonAttendanceStats({required this.future});
+  final Future<PersonAttendanceSummary> future;
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<PersonAttendanceSummary>(
+    future: future,
+    builder: (context, snapshot) {
+      final strings = AppStrings.of(context);
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: 16),
+          child: Center(
+            child: SizedBox.square(
+              dimension: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        );
+      }
+      if (!snapshot.hasData) {
+        return ListTile(
+          leading: const Icon(Icons.sync_problem),
+          title: Text(strings.feature('Statistiken kunde inte laddas')),
+          subtitle: Text(strings.feature('Försök igen.')),
+        );
+      }
+      final stats = snapshot.data!;
+      return Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.event_available_outlined),
+            title: Text(strings.feature('Träningsnärvaro')),
+            subtitle: Text(
+              '${stats.trainingsAttended} / ${stats.trainingsTotal}',
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.sports_soccer_outlined),
+            title: Text(strings.feature('Matcher spelade')),
+            subtitle: Text('${stats.matchesPlayed} / ${stats.matchesTotal}'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+class _RosterPersonDetailsPage extends StatefulWidget {
   const _RosterPersonDetailsPage({
     required this.personId,
     required this.contextValue,
@@ -3178,8 +3290,27 @@ class _RosterPersonDetailsPage extends StatelessWidget {
   final VoidCallback onBack;
 
   @override
+  State<_RosterPersonDetailsPage> createState() =>
+      _RosterPersonDetailsPageState();
+}
+
+class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
+  late Future<RosterPersonDetails> _load = _reload();
+
+  Future<RosterPersonDetails> _reload() => widget.roster
+      .getPersonDetails(
+        clubId: widget.contextValue.clubId,
+        teamId: widget.contextValue.teamId!,
+        personId: widget.personId,
+      )
+      .timeout(const Duration(seconds: 15));
+
+  void _refresh() => setState(() => _load = _reload());
+
+  @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
+    final contextValue = widget.contextValue;
     final canManage =
         contextValue.can('club.memberships.manage') ||
         contextValue.can('team.roster.manage');
@@ -3195,57 +3326,28 @@ class _RosterPersonDetailsPage extends StatelessWidget {
       appBar: AppBar(
         leading: IconButton(
           tooltip: strings.feature('Tillbaka till truppen'),
-          onPressed: onBack,
+          onPressed: widget.onBack,
           icon: const Icon(Icons.arrow_back),
         ),
         title: Text(strings.feature('Medlemsuppgifter')),
       ),
       body: allowed
           ? _RosterPersonDetailsView(
-              future: roster
-                  .getPersonDetails(
-                    clubId: contextValue.clubId,
-                    teamId: contextValue.teamId!,
-                    personId: personId,
-                  )
-                  .timeout(const Duration(seconds: 15)),
-              onMovePlayer: canManage
-                  ? () => showModalBottomSheet<void>(
-                      context: context,
-                      useRootNavigator: true,
-                      isScrollControlled: true,
-                      useSafeArea: true,
-                      builder: (_) => _IntraClubMoveSheet(
+              future: _load,
+              contextValue: contextValue,
+              roster: widget.roster,
+              canManage: canManage,
+              onEdit: canManage
+                  ? (person) async {
+                      await _openRosterPersonEditor(
+                        context,
                         contextValue: contextValue,
-                        roster: roster,
-                        initialPersonId: personId,
-                      ),
-                    )
-                  : null,
-              onArchivePlayer: canManage
-                  ? () => _archivePersonFromDetails(
-                      context: context,
-                      contextValue: contextValue,
-                      roster: roster,
-                      personId: personId,
-                      onArchived: onBack,
-                    )
-                  : null,
-              onInvitePlayer: canManage
-                  ? (person) => _inviteFromProfile(
-                      context: context,
-                      contextValue: contextValue,
-                      roster: roster,
-                      person: person,
-                    )
-                  : null,
-              onSetRepresentation: canManage
-                  ? (person) => _representFromProfile(
-                      context: context,
-                      contextValue: contextValue,
-                      roster: roster,
-                      person: person,
-                    )
+                        roster: widget.roster,
+                        personId: person.id,
+                        onSaved: () async {},
+                      );
+                      _refresh();
+                    }
                   : null,
             )
           : _StateCard(
@@ -3255,7 +3357,7 @@ class _RosterPersonDetailsPage extends StatelessWidget {
                 'Din roll saknar behörighet att visa de här uppgifterna.',
               ),
               action: OutlinedButton(
-                onPressed: onBack,
+                onPressed: widget.onBack,
                 child: Text(strings.feature('Tillbaka till truppen')),
               ),
             ),

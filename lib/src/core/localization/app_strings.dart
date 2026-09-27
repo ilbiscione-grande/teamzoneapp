@@ -1350,6 +1350,13 @@ class AppStrings {
         'team can use the player.',
     'Förfrågan kunde inte sparas. Kontrollera lag, period och överlapp.':
         'The request could not be saved. Check team, period and overlap.',
+    'Redigera profil': 'Edit profile',
+    'Ändra uppgifter och hantera lag- och kontoåtgärder.':
+        'Change details and manage team and account actions.',
+    'Statistik': 'Statistics',
+    'Träningsnärvaro': 'Training attendance',
+    'Matcher spelade': 'Matches played',
+    'Statistiken kunde inte laddas': 'The statistics could not be loaded',
   };
   String get signOut => isSwedish ? 'Logga ut' : 'Sign out';
   String eventOwner(String name) =>

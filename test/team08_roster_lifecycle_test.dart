@@ -118,7 +118,7 @@ void main() {
     final surface = File(
       'lib/src/features/roster/roster_surface.dart',
     ).readAsStringSync();
-    expect(surface, contains('onArchivePlayer: canManage'));
+    expect(surface, contains('onEdit: canManage'));
     expect(surface, contains('_archivePersonFromDetails('));
     expect(surface, contains('roster.getRosterLifecycle('));
     expect(surface, contains('roster.archiveTeamAssignment('));

@@ -71,8 +71,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Trupp'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byTooltip('Redigera person'));
-    await tester.tap(find.byTooltip('Redigera person'));
+    await tester.tap(find.text('Ada Spelare'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Redigera profil'));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Visningsnamn'),

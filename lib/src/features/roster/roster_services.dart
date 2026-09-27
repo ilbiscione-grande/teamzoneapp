@@ -141,6 +141,11 @@ abstract interface class RosterServices {
     required int expectedRevision,
     required String idempotencyKey,
   });
+  Future<PersonAttendanceSummary> getPersonAttendanceSummary({
+    required String clubId,
+    required String teamId,
+    required String personId,
+  });
   Future<IntraClubMoveOptions> getIntraClubMoveOptions({
     required String clubId,
     required String sourceTeamId,
@@ -384,6 +389,12 @@ class UnconfiguredRosterServices implements RosterServices {
     required bool approve,
     required int expectedRevision,
     required String idempotencyKey,
+  }) => Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<PersonAttendanceSummary> getPersonAttendanceSummary({
+    required String clubId,
+    required String teamId,
+    required String personId,
   }) => Future.error(StateError('Supabase is not configured.'));
   @override
   Future<IntraClubMoveOptions> getIntraClubMoveOptions({
@@ -1000,6 +1011,29 @@ class SupabaseRosterServices implements RosterServices {
       throw const FormatException('Eligibility decision response is invalid.');
     }
     return value.toInt();
+  }
+
+  @override
+  Future<PersonAttendanceSummary> getPersonAttendanceSummary({
+    required String clubId,
+    required String teamId,
+    required String personId,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'get_person_attendance_summary',
+          params: {
+            'target_club_id': clubId,
+            'target_team_id': teamId,
+            'target_club_person_id': personId,
+          },
+        );
+    final row = value is List ? value.firstOrNull : value;
+    if (row is! Map<String, dynamic>) {
+      throw const FormatException('Attendance summary response is invalid.');
+    }
+    return PersonAttendanceSummary.fromJson(row);
   }
 
   @override
