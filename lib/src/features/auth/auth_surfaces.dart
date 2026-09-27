@@ -910,7 +910,7 @@ class _WaitingRoomState extends State<_WaitingRoom> {
                         useSafeArea: true,
                         builder: (_) => _CreateClubSheet(
                           membership: widget.membership,
-                          onCreated: () {
+                          onCreated: (_) {
                             Navigator.pop(context);
                             widget.onClaimed();
                           },
@@ -931,7 +931,7 @@ class _CreateClubSheet extends StatefulWidget {
   const _CreateClubSheet({required this.membership, required this.onCreated});
 
   final MembershipServices membership;
-  final VoidCallback onCreated;
+  final void Function(ClubCreationResult result) onCreated;
 
   @override
   State<_CreateClubSheet> createState() => _CreateClubSheetState();
@@ -967,28 +967,26 @@ class _CreateClubSheetState extends State<_CreateClubSheet> {
           .timeout(const Duration(seconds: 15));
       if (nameCheck.status != ClubNameCheckStatus.available) {
         if (mounted) {
-          setState(
-            () {
-              _reviewRequired =
-                  nameCheck.status == ClubNameCheckStatus.reviewRequired;
-              _error = AppStrings.of(context).feature(
-                _reviewRequired
-                    ? 'Namnet är skyddat eller används redan. Välj ett tydligt alternativt namn eller kontakta TeamZone för granskning.'
-                    : 'Klubbnamnet kan inte användas. Kontrollera namnet och försök igen.',
-              );
-            },
-          );
+          setState(() {
+            _reviewRequired =
+                nameCheck.status == ClubNameCheckStatus.reviewRequired;
+            _error = AppStrings.of(context).feature(
+              _reviewRequired
+                  ? 'Namnet är skyddat eller används redan. Välj ett tydligt alternativt namn eller kontakta TeamZone för granskning.'
+                  : 'Klubbnamnet kan inte användas. Kontrollera namnet och försök igen.',
+            );
+          });
         }
         return;
       }
-      await widget.membership
+      final result = await widget.membership
           .createClubWithFirstTeam(
             clubName: _clubName.text.trim(),
             teamName: _teamName.text.trim(),
             idempotencyKey: _newUuid(),
           )
           .timeout(const Duration(seconds: 15));
-      if (mounted) widget.onCreated();
+      if (mounted) widget.onCreated(result);
     } catch (_) {
       if (mounted) {
         setState(
@@ -1026,7 +1024,11 @@ class _CreateClubSheetState extends State<_CreateClubSheet> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(strings.feature('Ärendet skickas till TeamZones supportadministratörer.')),
+                  Text(
+                    strings.feature(
+                      'Ärendet skickas till TeamZones supportadministratörer.',
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   TextFormField(
                     initialValue: message,
@@ -1042,7 +1044,9 @@ class _CreateClubSheetState extends State<_CreateClubSheet> {
                     validator: (value) {
                       final length = value?.trim().length ?? 0;
                       return length < 20 || length > 1000
-                          ? strings.feature('Ange ett meddelande med 20–1000 tecken.')
+                          ? strings.feature(
+                              'Ange ett meddelande med 20–1000 tecken.',
+                            )
                           : null;
                     },
                   ),
@@ -1051,7 +1055,9 @@ class _CreateClubSheetState extends State<_CreateClubSheet> {
                       liveRegion: true,
                       child: Text(
                         dialogError!,
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     ),
                 ],
@@ -1060,7 +1066,9 @@ class _CreateClubSheetState extends State<_CreateClubSheet> {
           ),
           actions: [
             TextButton(
-              onPressed: submitting ? null : () => Navigator.pop(dialogContext, false),
+              onPressed: submitting
+                  ? null
+                  : () => Navigator.pop(dialogContext, false),
               child: Text(strings.cancel),
             ),
             FilledButton.icon(
@@ -1081,7 +1089,9 @@ class _CreateClubSheetState extends State<_CreateClubSheet> {
                               idempotencyKey: _newUuid(),
                             )
                             .timeout(const Duration(seconds: 15));
-                        if (dialogContext.mounted) Navigator.pop(dialogContext, true);
+                        if (dialogContext.mounted) {
+                          Navigator.pop(dialogContext, true);
+                        }
                       } catch (_) {
                         if (dialogContext.mounted) {
                           setDialogState(() {

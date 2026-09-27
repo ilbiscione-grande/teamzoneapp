@@ -1357,6 +1357,10 @@ class AppStrings {
     'Träningsnärvaro': 'Training attendance',
     'Matcher spelade': 'Matches played',
     'Statistiken kunde inte laddas': 'The statistics could not be loaded',
+    'Skapa en ny klubb': 'Create a new club',
+    'Starta en helt separat klubb med ett första lag.':
+        'Start a completely separate club with a first team.',
+    'Klubben har skapats.': 'The club has been created.',
   };
   String get signOut => isSwedish ? 'Logga ut' : 'Sign out';
   String eventOwner(String name) =>

@@ -676,6 +676,25 @@ Future<void> _showContextPicker({
                 );
               },
             ),
+          ListTile(
+            leading: const Icon(Icons.add_business_outlined),
+            title: Text(strings.feature('Skapa en ny klubb')),
+            subtitle: Text(
+              strings.feature(
+                'Starta en helt separat klubb med ett första lag.',
+              ),
+            ),
+            onTap: () async {
+              Navigator.of(sheetContext).pop();
+              await Future<void>.delayed(Duration.zero);
+              if (!context.mounted) return;
+              await _createClubFromContextPicker(
+                context: context,
+                membership: membership,
+                onTeamCreated: onTeamCreated,
+              );
+            },
+          ),
           if (activeContext.can('club.memberships.manage'))
             ListTile(
               leading: const Icon(Icons.approval_outlined),
@@ -812,6 +831,32 @@ Future<void> _createTeamFromContextPicker({
       );
     }
   }
+}
+
+Future<void> _createClubFromContextPicker({
+  required BuildContext context,
+  required MembershipServices membership,
+  required Future<void> Function(String teamId) onTeamCreated,
+}) async {
+  final strings = AppStrings.of(context);
+  final rootContext = context;
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (sheetContext) => _CreateClubSheet(
+      membership: membership,
+      onCreated: (result) async {
+        Navigator.of(sheetContext).pop();
+        if (rootContext.mounted) {
+          ScaffoldMessenger.of(rootContext).showSnackBar(
+            SnackBar(content: Text(strings.feature('Klubben har skapats.'))),
+          );
+        }
+        await onTeamCreated(result.teamId);
+      },
+    ),
+  );
 }
 
 Future<void> _showTeamCreationRequests({
