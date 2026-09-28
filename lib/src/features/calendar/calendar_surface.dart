@@ -48,6 +48,8 @@ class _CalendarWorkspace extends StatelessWidget {
     required this.showQuarterHourMarks,
     required this.onShowQuarterHourMarksChanged,
     required this.onDismissStale,
+    required this.monthEventScope,
+    required this.onMonthEventScopeChanged,
     this.teamFilter,
     this.eventTypeFilter,
     this.lastUpdated,
@@ -60,6 +62,8 @@ class _CalendarWorkspace extends StatelessWidget {
   final bool stale, reconnecting, showWeekNumbers, showQuarterHourMarks;
   final bool showArchived;
   final DateTime? lastUpdated;
+  final _MonthEventScope monthEventScope;
+  final ValueChanged<_MonthEventScope> onMonthEventScopeChanged;
   final ValueChanged<CalendarViewMode> onModeChanged;
   final ValueChanged<DateTime> onDateChanged;
   final ValueChanged<String?> onTeamChanged, onTypeChanged;
@@ -113,18 +117,83 @@ class _CalendarWorkspace extends StatelessWidget {
                     showLabel: size.width >= 600,
                     onChanged: onModeChanged,
                   ),
-                  if (!showArchived)
-                    Expanded(
-                      child: _CalendarDateNavigation(
-                        mode: mode,
-                        selectedDate: selectedDate,
-                        onChanged: onDateChanged,
-                        showWeekNumber: showWeekNumbers,
+                  // Only the date-nav + month-scope toggle scroll if a
+                  // narrow screen can't fit them; the mode switcher and
+                  // filter button (entry/exit points for this row) stay
+                  // pinned and always reachable without scrolling.
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (!showArchived)
+                            _CalendarDateNavigation(
+                              mode: mode,
+                              selectedDate: selectedDate,
+                              onChanged: onDateChanged,
+                              showWeekNumber: showWeekNumbers,
+                            ),
+                          if (!showArchived && mode == CalendarViewMode.month)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 2),
+                              child: SegmentedButton<_MonthEventScope>(
+                                showSelectedIcon: false,
+                                style: ButtonStyle(
+                                  visualDensity: const VisualDensity(
+                                    horizontal: -4,
+                                    vertical: -4,
+                                  ),
+                                  padding: const WidgetStatePropertyAll(
+                                    EdgeInsets.symmetric(horizontal: 6),
+                                  ),
+                                  minimumSize: const WidgetStatePropertyAll(
+                                    Size(36, 36),
+                                  ),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                segments: [
+                                  ButtonSegment(
+                                    value: _MonthEventScope.selectedDay,
+                                    icon: Tooltip(
+                                      message: strings.feature('Vald dag'),
+                                      child: const Icon(
+                                        Icons.today_outlined,
+                                        size: 16,
+                                      ),
+                                    ),
+                                  ),
+                                  ButtonSegment(
+                                    value: _MonthEventScope.wholeMonth,
+                                    icon: Tooltip(
+                                      message: strings.feature('Hela månaden'),
+                                      child: const Icon(
+                                        Icons.calendar_view_month_outlined,
+                                        size: 16,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                selected: {monthEventScope},
+                                onSelectionChanged: (value) =>
+                                    onMonthEventScopeChanged(value.first),
+                              ),
+                            ),
+                        ],
                       ),
-                    )
-                  else
-                    const Spacer(),
+                    ),
+                  ),
                   IconButton(
+                    visualDensity: const VisualDensity(
+                      horizontal: -4,
+                      vertical: -4,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
                     tooltip: strings.feature('Filtrera kalendern'),
                     onPressed: () => _showCalendarFilterSheet(
                       context: context,
@@ -185,6 +254,7 @@ class _CalendarWorkspace extends StatelessWidget {
                   onDate: onDateChanged,
                   onEvent: onEvent,
                   showQuarterHourMarks: showQuarterHourMarks,
+                  monthEventScope: monthEventScope,
                 ),
         ),
       ],
@@ -198,12 +268,14 @@ class _CalendarModeBody extends StatelessWidget {
     required this.onDate,
     required this.onEvent,
     required this.showQuarterHourMarks,
+    required this.monthEventScope,
   });
 
   final CalendarProjection projection;
   final ValueChanged<DateTime> onDate;
   final ValueChanged<CalendarEventSummary> onEvent;
   final bool showQuarterHourMarks;
+  final _MonthEventScope monthEventScope;
 
   @override
   Widget build(BuildContext context) {
@@ -218,6 +290,7 @@ class _CalendarModeBody extends StatelessWidget {
         final monthEvents = _CalendarMonthEventsPanel(
           projection: projection,
           onEvent: onEvent,
+          scope: monthEventScope,
         );
 
         Widget split(Widget primary, Widget secondary) => Row(
@@ -322,80 +395,46 @@ class _CalendarModeBody extends StatelessWidget {
 
 enum _MonthEventScope { selectedDay, wholeMonth }
 
-class _CalendarMonthEventsPanel extends StatefulWidget {
+class _CalendarMonthEventsPanel extends StatelessWidget {
   const _CalendarMonthEventsPanel({
     required this.projection,
     required this.onEvent,
+    required this.scope,
   });
 
   final CalendarProjection projection;
   final ValueChanged<CalendarEventSummary> onEvent;
-
-  @override
-  State<_CalendarMonthEventsPanel> createState() =>
-      _CalendarMonthEventsPanelState();
-}
-
-class _CalendarMonthEventsPanelState extends State<_CalendarMonthEventsPanel> {
-  _MonthEventScope _scope = _MonthEventScope.selectedDay;
+  final _MonthEventScope scope;
 
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
+    if (scope == _MonthEventScope.selectedDay) {
+      return _CalendarSelectedDayPanel(
+        projection: projection,
+        onEvent: onEvent,
+      );
+    }
     final monthStart = DateTime(
-      widget.projection.selectedDate.year,
-      widget.projection.selectedDate.month,
+      projection.selectedDate.year,
+      projection.selectedDate.month,
     );
     final wholeMonthProjection = CalendarProjection(
-      events: widget.projection.events,
+      events: projection.events,
       mode: CalendarViewMode.month,
       selectedDate: monthStart,
-      teamId: widget.projection.teamId,
-      eventType: widget.projection.eventType,
+      teamId: projection.teamId,
+      eventType: projection.eventType,
     );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: SegmentedButton<_MonthEventScope>(
-            segments: [
-              ButtonSegment(
-                value: _MonthEventScope.selectedDay,
-                label: Text(strings.feature('Vald dag')),
-              ),
-              ButtonSegment(
-                value: _MonthEventScope.wholeMonth,
-                label: Text(strings.feature('Hela månaden')),
-              ),
-            ],
-            selected: {_scope},
-            onSelectionChanged: (value) => setState(() => _scope = value.first),
-          ),
-        ),
-        Expanded(
-          child: _scope == _MonthEventScope.selectedDay
-              ? _CalendarSelectedDayPanel(
-                  projection: widget.projection,
-                  onEvent: widget.onEvent,
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: wholeMonthProjection.visibleEvents.isEmpty
-                      ? _StateCard(
-                          icon: Icons.event_busy,
-                          title: strings.feature('Inga event denna månad'),
-                          message: strings.feature(
-                            'Byt månad eller justera filtren.',
-                          ),
-                        )
-                      : _CalendarAgenda(
-                          projection: wholeMonthProjection,
-                          onEvent: widget.onEvent,
-                        ),
-                ),
-        ),
-      ],
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: wholeMonthProjection.visibleEvents.isEmpty
+          ? _StateCard(
+              icon: Icons.event_busy,
+              title: strings.feature('Inga event denna månad'),
+              message: strings.feature('Byt månad eller justera filtren.'),
+            )
+          : _CalendarAgenda(projection: wholeMonthProjection, onEvent: onEvent),
     );
   }
 }
@@ -496,11 +535,14 @@ class _CalendarViewModeMenu extends StatelessWidget {
           ),
       ],
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: showLabel ? 8 : 4,
+          vertical: 10,
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.view_agenda_outlined),
+            Icon(Icons.view_agenda_outlined, size: showLabel ? 24 : 20),
             if (showLabel) ...[
               const SizedBox(width: 6),
               Text(strings.feature(_calendarViewModeLabel(mode))),
@@ -559,6 +601,7 @@ class _CalendarDateNavigation extends StatelessWidget {
       CalendarViewMode.day => selectedDate.add(Duration(days: direction)),
     };
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         if (showWeekNumber)
           Tooltip(
@@ -572,14 +615,26 @@ class _CalendarDateNavigation extends StatelessWidget {
             ),
           ),
         IconButton(
+          visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           tooltip: AppStrings.of(context).feature('Föregående period'),
           onPressed: () => onChanged(move(-1)),
-          icon: const Icon(Icons.chevron_left),
+          icon: const Icon(Icons.chevron_left, size: 20),
         ),
-        Expanded(
+        SizedBox(
+          // A fixed width rather than Expanded: this row now lives inside a
+          // horizontally scrolling header (see _CalendarWorkspace), which
+          // gives unbounded width and would make Expanded throw.
+          width: 128,
           child: Tooltip(
             message: strings.feature('Välj datum'),
             child: TextButton(
+              style: TextButton.styleFrom(
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+              ),
               onPressed: () async {
                 final picked = await showDatePicker(
                   context: context,
@@ -603,14 +658,20 @@ class _CalendarDateNavigation extends StatelessWidget {
           ),
         ),
         IconButton(
+          visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           tooltip: AppStrings.of(context).feature('Idag'),
           onPressed: () => onChanged(DateTime.now()),
-          icon: const Icon(Icons.today_outlined),
+          icon: const Icon(Icons.today_outlined, size: 20),
         ),
         IconButton(
+          visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           tooltip: AppStrings.of(context).feature('Nästa period'),
           onPressed: () => onChanged(move(1)),
-          icon: const Icon(Icons.chevron_right),
+          icon: const Icon(Icons.chevron_right, size: 20),
         ),
       ],
     );
@@ -2410,6 +2471,7 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
   // Falls back to month view until (if) a stored default overrides it --
   // see _loadDefaultViewMode.
   CalendarViewMode _viewMode = CalendarViewMode.month;
+  _MonthEventScope _monthEventScope = _MonthEventScope.selectedDay;
   DateTime _selectedDate = DateTime.now();
   String? _teamFilter, _eventTypeFilter;
   bool _showArchived = false;
@@ -2767,6 +2829,9 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
               onShowWeekNumbersChanged: _setShowWeekNumbers,
               showQuarterHourMarks: _showQuarterHourMarks,
               onShowQuarterHourMarksChanged: _setShowQuarterHourMarks,
+              monthEventScope: _monthEventScope,
+              onMonthEventScopeChanged: (value) =>
+                  setState(() => _monthEventScope = value),
             );
           },
         ),

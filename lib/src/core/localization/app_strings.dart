@@ -1065,6 +1065,8 @@ class AppStrings {
     'Inga event i vald vy': 'No events in the selected view',
     'Byt datum eller justera filtren.':
         'Change the date or adjust the filters.',
+    'Byt månad eller justera filtren.':
+        'Change the month or adjust the filters.',
     'Inga event den här dagen.': 'No events on this day.',
     'Heldag': 'All day',
     'Start': 'Start',
@@ -1366,6 +1368,12 @@ class AppStrings {
     'Standardvy för kalendern': 'Default calendar view',
     'Vilken vy kalendern öppnas i. Utan ett val visas månadsvyn.':
         'Which view the calendar opens in. Month view shows without a choice.',
+    'Filtrera inkorgen': 'Filter the inbox',
+    'Lag och klubbar': 'Teams and clubs',
+    'Visar aktivt lag som standard. Välj fler för att '
+            'se deras konversationer också.':
+        'Shows the active team by default. Pick more to see their '
+        'conversations too.',
   };
   String get signOut => isSwedish ? 'Logga ut' : 'Sign out';
   String eventOwner(String name) =>

@@ -49,12 +49,15 @@ class _InboxSurfaceState extends State<_InboxSurface>
   bool _settingsPending = false;
   bool _announcementArchiveExpanded = false;
   int _notificationUnread = 0;
-  List<String> get _contextIds => widget.contexts
-      .map((context) => context.id)
-      .toSet()
-      .toList(growable: false);
+  // Defaults to just the active team/club; the filter dialog lets the user
+  // widen this to other connections. Reset to the (new) active context
+  // whenever it changes -- see didUpdateWidget.
+  late Set<String> _selectedContextIds = {widget.contextValue.id};
 
-  String get _scopeKey => (_contextIds..sort()).join('|');
+  List<String> get _contextIds =>
+      _selectedContextIds.toList(growable: false)..sort();
+
+  String get _scopeKey => _contextIds.join('|');
 
   Future<List<MessageThreadSummary>> _reload() =>
       widget.messaging.listThreads(_contextIds);
@@ -204,6 +207,121 @@ class _InboxSurfaceState extends State<_InboxSurface>
     );
   }
 
+  void _setSelectedContextIds(Set<String> value) {
+    if (value.isEmpty || setEquals(value, _selectedContextIds)) return;
+    setState(() => _selectedContextIds = value);
+    _data.replaceScope(scopeKey: _scopeKey, loader: _reload);
+  }
+
+  Future<void> _showFilterSheet() {
+    // Dedup by context id (a guardian can otherwise appear once per child).
+    final uniqueContexts = {
+      for (final item in widget.contexts) item.id: item,
+    }.values.toList(growable: false);
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        var localFilter = _filter;
+        var localSelected = Set<String>.of(_selectedContextIds);
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            final strings = AppStrings.of(sheetContext);
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                16 + MediaQuery.viewInsetsOf(sheetContext).bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    strings.feature('Filtrera inkorgen'),
+                    style: Theme.of(sheetContext).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    strings.feature('Typ'),
+                    style: Theme.of(sheetContext).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final entry in const [
+                        ('all', 'Alla'),
+                        ('unread', 'Olästa'),
+                        ('team', 'Lag'),
+                        ('leader', 'Ledare'),
+                        ('muted', 'Tystade'),
+                        ('pinned', 'Fästa'),
+                      ])
+                        ChoiceChip(
+                          label: Text(strings.feature(entry.$2)),
+                          selected: localFilter == entry.$1,
+                          onSelected: (_) {
+                            setSheetState(() => localFilter = entry.$1);
+                            _setFilter(entry.$1);
+                          },
+                        ),
+                    ],
+                  ),
+                  if (uniqueContexts.length > 1) ...[
+                    const SizedBox(height: 20),
+                    Text(
+                      strings.feature('Lag och klubbar'),
+                      style: Theme.of(sheetContext).textTheme.titleSmall,
+                    ),
+                    Text(
+                      strings.feature(
+                        'Visar aktivt lag som standard. Välj fler för att '
+                        'se deras konversationer också.',
+                      ),
+                      style: Theme.of(sheetContext).textTheme.bodySmall,
+                    ),
+                    for (final item in uniqueContexts)
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(item.teamName ?? item.clubName),
+                        subtitle: item.teamName == null
+                            ? null
+                            : Text(item.clubName),
+                        value: localSelected.contains(item.id),
+                        onChanged: (checked) {
+                          final next = Set<String>.of(localSelected);
+                          if (checked ?? false) {
+                            next.add(item.id);
+                          } else {
+                            next.remove(item.id);
+                          }
+                          if (next.isEmpty) return;
+                          setSheetState(() => localSelected = next);
+                          _setSelectedContextIds(next);
+                        },
+                      ),
+                  ],
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(sheetContext),
+                      child: Text(strings.feature('Klar')),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _syncList() {
     final threads = _data.state.data;
     if (!identical(threads, _syncedThreads)) {
@@ -331,12 +449,20 @@ class _InboxSurfaceState extends State<_InboxSurface>
   @override
   void didUpdateWidget(covariant _InboxSurface oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final oldContextIds =
-        oldWidget.contexts.map((context) => context.id).toSet().toList()
-          ..sort();
-    if (oldContextIds.join('|') != _scopeKey) {
-      _data.replaceScope(scopeKey: _scopeKey, loader: _reload);
+    if (oldWidget.contextValue.id != widget.contextValue.id) {
+      // Switched active team/club elsewhere in the app: the "just the
+      // active one" default should follow, discarding any wider selection
+      // the user had picked for the old one.
+      _selectedContextIds = {widget.contextValue.id};
+    } else {
+      // Available connections changed (e.g. a membership was added or
+      // removed): drop any selected ids that no longer exist, falling back
+      // to the active context if that empties the selection.
+      final availableIds = widget.contexts.map((context) => context.id).toSet();
+      final pruned = _selectedContextIds.intersection(availableIds);
+      _selectedContextIds = pruned.isEmpty ? {widget.contextValue.id} : pruned;
     }
+    _data.replaceScope(scopeKey: _scopeKey, loader: _reload);
     if (!identical(oldWidget.messaging, widget.messaging)) {
       _subscribeToInbox();
       _subscribeToNotifications();
@@ -472,72 +598,75 @@ class _InboxSurfaceState extends State<_InboxSurface>
                   onChanged: _list.setQuery,
                 ),
               ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                child: Wrap(
-                  spacing: 8,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 4, 12, 0),
+                child: Row(
                   children: [
-                    for (final entry in const [
-                      ('all', 'Alla'),
-                      ('unread', 'Olästa'),
-                      ('team', 'Lag'),
-                      ('leader', 'Ledare'),
-                      ('muted', 'Tystade'),
-                      ('pinned', 'Fästa'),
-                    ])
-                      ChoiceChip(
-                        label: Text(AppStrings.of(context).feature(entry.$2)),
-                        selected: _filter == entry.$1,
-                        onSelected: (_) => _setFilter(entry.$1),
+                    IconButton(
+                      tooltip: strings.feature('Filtrera inkorgen'),
+                      onPressed: _showFilterSheet,
+                      icon: Badge(
+                        isLabelVisible:
+                            _filter != 'all' || _selectedContextIds.length > 1,
+                        smallSize: 8,
+                        child: const Icon(Icons.filter_list),
+                      ),
+                    ),
+                    const Spacer(),
+                    if (compact)
+                      IconButton(
+                        tooltip: strings.feature('Markera alla som lästa'),
+                        onPressed:
+                            state.data?.any((item) => item.unreadCount > 0) ==
+                                true
+                            ? _markAllRead
+                            : null,
+                        icon: const Icon(Icons.done_all),
+                      )
+                    else
+                      TextButton.icon(
+                        onPressed:
+                            state.data?.any((item) => item.unreadCount > 0) ==
+                                true
+                            ? _markAllRead
+                            : null,
+                        icon: const Icon(Icons.done_all),
+                        label: Text(strings.feature('Markera alla som lästa')),
+                      ),
+                    if (compact)
+                      PopupMenuButton<String>(
+                        tooltip: strings.feature('Fler inkorgsåtgärder'),
+                        onSelected: _handleCompactAction,
+                        itemBuilder: (context) => [
+                          _compactAction(
+                            context,
+                            value: 'requests',
+                            icon: Icons.mark_email_unread_outlined,
+                            label: 'Förfrågningar',
+                          ),
+                          _compactAction(
+                            context,
+                            value: 'cross_club',
+                            icon: Icons.travel_explore,
+                            label: 'Ledarkontakt',
+                          ),
+                          _compactAction(
+                            context,
+                            value: 'notifications',
+                            icon: Icons.notifications_outlined,
+                            label: 'Notiser',
+                          ),
+                          _compactAction(
+                            context,
+                            value: 'settings',
+                            icon: Icons.settings_outlined,
+                            label: 'Inställningar',
+                          ),
+                        ],
+                        icon: const Icon(Icons.more_vert),
                       ),
                   ],
                 ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton.icon(
-                    onPressed:
-                        state.data?.any((item) => item.unreadCount > 0) == true
-                        ? _markAllRead
-                        : null,
-                    icon: const Icon(Icons.done_all),
-                    label: Text(strings.feature('Markera alla som lästa')),
-                  ),
-                  if (compact)
-                    PopupMenuButton<String>(
-                      tooltip: strings.feature('Fler inkorgsåtgärder'),
-                      onSelected: _handleCompactAction,
-                      itemBuilder: (context) => [
-                        _compactAction(
-                          context,
-                          value: 'requests',
-                          icon: Icons.mark_email_unread_outlined,
-                          label: 'Förfrågningar',
-                        ),
-                        _compactAction(
-                          context,
-                          value: 'cross_club',
-                          icon: Icons.travel_explore,
-                          label: 'Ledarkontakt',
-                        ),
-                        _compactAction(
-                          context,
-                          value: 'notifications',
-                          icon: Icons.notifications_outlined,
-                          label: 'Notiser',
-                        ),
-                        _compactAction(
-                          context,
-                          value: 'settings',
-                          icon: Icons.settings_outlined,
-                          label: 'Inställningar',
-                        ),
-                      ],
-                      icon: const Icon(Icons.more_vert),
-                    ),
-                ],
               ),
               Expanded(
                 child: threads.isEmpty
