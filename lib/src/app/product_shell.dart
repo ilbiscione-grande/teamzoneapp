@@ -13,6 +13,7 @@ class _ProductShell extends StatefulWidget {
     required this.membership,
     required this.legal,
     required this.calendar,
+    required this.calendarPreferences,
     required this.overview,
     required this.messaging,
     required this.match,
@@ -38,6 +39,7 @@ class _ProductShell extends StatefulWidget {
   final MembershipServices membership;
   final LegalServices legal;
   final CalendarServices calendar;
+  final CalendarPreferences calendarPreferences;
   final OverviewServices overview;
   final MessagingServices messaging;
   final MatchServices match;
@@ -129,6 +131,7 @@ class _ProductShellState extends State<_ProductShell> {
           roster: widget.roster,
           onContextsChanged: widget.onContextsChanged,
           legal: widget.legal,
+          calendarPreferences: widget.calendarPreferences,
         ),
       ),
       GoRoute(
@@ -189,6 +192,7 @@ class _ProductShellState extends State<_ProductShell> {
                   contextValue: widget.contextValue,
                   contexts: widget.contexts,
                   calendar: widget.calendar,
+                  calendarPreferences: widget.calendarPreferences,
                   match: widget.match,
                   // EventDetails is a child page of the current calendar
                   // workspace. Push it so closing/back reveals the same

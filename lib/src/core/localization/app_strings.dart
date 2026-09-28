@@ -1361,6 +1361,11 @@ class AppStrings {
     'Starta en helt separat klubb med ett första lag.':
         'Start a completely separate club with a first team.',
     'Klubben har skapats.': 'The club has been created.',
+    'Allmänt': 'General',
+    'Profil': 'Profile',
+    'Standardvy för kalendern': 'Default calendar view',
+    'Vilken vy kalendern öppnas i. Utan ett val visas månadsvyn.':
+        'Which view the calendar opens in. Month view shows without a choice.',
   };
   String get signOut => isSwedish ? 'Logga ut' : 'Sign out';
   String eventOwner(String name) =>

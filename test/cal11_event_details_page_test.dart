@@ -146,6 +146,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Kalender'));
     await tester.pumpAndSettle();
+    // Month is now the calendar's default view when no preference is
+    // stored; these fixtures schedule their event for tomorrow, which
+    // month view's default "Vald dag" (today) scope wouldn't surface, so
+    // switch to agenda first (as tests here always relied on).
+    await tester.tap(find.byTooltip('Byt kalendervy'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Agenda').last);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Träning A'));
     await tester.pumpAndSettle();
 
@@ -170,6 +178,14 @@ void main() {
     await tester.pumpWidget(_app(_PlannedEventCalendar()));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Kalender'));
+    await tester.pumpAndSettle();
+    // Month is now the calendar's default view when no preference is
+    // stored; these fixtures schedule their event for tomorrow, which
+    // month view's default "Vald dag" (today) scope wouldn't surface, so
+    // switch to agenda first (as tests here always relied on).
+    await tester.tap(find.byTooltip('Byt kalendervy'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Agenda').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Träning A'));
     await tester.pumpAndSettle();
@@ -197,6 +213,14 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Kalender'));
+    await tester.pumpAndSettle();
+    // Month is now the calendar's default view when no preference is
+    // stored; these fixtures schedule their event for tomorrow, which
+    // month view's default "Vald dag" (today) scope wouldn't surface, so
+    // switch to agenda first (as tests here always relied on).
+    await tester.tap(find.byTooltip('Byt kalendervy'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Agenda').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Träning A'));
     await tester.pumpAndSettle();
@@ -229,6 +253,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Kalender'));
     await tester.pumpAndSettle();
+    // Month is now the calendar's default view when no preference is
+    // stored; these fixtures schedule their event for tomorrow, which
+    // month view's default "Vald dag" (today) scope wouldn't surface, so
+    // switch to agenda first (as tests here always relied on).
+    await tester.tap(find.byTooltip('Byt kalendervy'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Agenda').last);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Träning A'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Deltagare'));
@@ -248,6 +280,14 @@ void main() {
     await tester.pumpWidget(_app(calendar));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Kalender'));
+    await tester.pumpAndSettle();
+    // Month is now the calendar's default view when no preference is
+    // stored; these fixtures schedule their event for tomorrow, which
+    // month view's default "Vald dag" (today) scope wouldn't surface, so
+    // switch to agenda first (as tests here always relied on).
+    await tester.tap(find.byTooltip('Byt kalendervy'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Agenda').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Träning A'));
     await tester.pumpAndSettle();
@@ -358,6 +398,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Kalender'));
     await tester.pumpAndSettle();
+    // Month is now the calendar's default view when no preference is
+    // stored; these fixtures schedule their event for tomorrow, which
+    // month view's default "Vald dag" (today) scope wouldn't surface, so
+    // switch to agenda first (as tests here always relied on).
+    await tester.tap(find.byTooltip('Byt kalendervy'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Agenda').last);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Träning A'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Deltagare'));
@@ -408,6 +456,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Kalender'));
     await tester.pumpAndSettle();
+    // Month is now the calendar's default view when no preference is
+    // stored; these fixtures schedule their event for tomorrow, which
+    // month view's default "Vald dag" (today) scope wouldn't surface, so
+    // switch to agenda first (as tests here always relied on).
+    await tester.tap(find.byTooltip('Byt kalendervy'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Agenda').last);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Träning A'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Deltagare'));
@@ -439,6 +495,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Kalender'));
     await tester.pumpAndSettle();
+    // Month is now the calendar's default view when no preference is
+    // stored; these fixtures schedule their event for tomorrow, which
+    // month view's default "Vald dag" (today) scope wouldn't surface, so
+    // switch to agenda first (as tests here always relied on).
+    await tester.tap(find.byTooltip('Byt kalendervy'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Agenda').last);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Träning A'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Deltagare'));
@@ -459,6 +523,14 @@ void main() {
     await tester.pumpWidget(_app(calendar));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Kalender'));
+    await tester.pumpAndSettle();
+    // Month is now the calendar's default view when no preference is
+    // stored; these fixtures schedule their event for tomorrow, which
+    // month view's default "Vald dag" (today) scope wouldn't surface, so
+    // switch to agenda first (as tests here always relied on).
+    await tester.tap(find.byTooltip('Byt kalendervy'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Agenda').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Träning A'));
     await tester.pumpAndSettle();
@@ -520,6 +592,10 @@ Future<void> _openResultMatch(
   );
   await tester.pumpAndSettle();
   await tester.tap(find.text('Kalender'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byTooltip('Byt kalendervy'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Agenda').last);
   await tester.pumpAndSettle();
   await tester.tap(find.text('Träning A'));
   await tester.pumpAndSettle();

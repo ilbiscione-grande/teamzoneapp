@@ -97,6 +97,7 @@ class _ProfileSettingsSurface extends StatefulWidget {
     required this.onContextsChanged,
     required this.legal,
     required this.editorial,
+    required this.calendarPreferences,
   });
 
   final List<TeamZoneContext> contexts;
@@ -104,6 +105,7 @@ class _ProfileSettingsSurface extends StatefulWidget {
   final Future<void> Function() onContextsChanged;
   final LegalServices legal;
   final EditorialServices editorial;
+  final CalendarPreferences calendarPreferences;
 
   @override
   State<_ProfileSettingsSurface> createState() =>
@@ -116,11 +118,31 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
   bool _erasurePending = false;
   bool? _marketingOptIn;
   String? _error;
+  // Falls back to month (matching the calendar's own unset-preference
+  // default) until the stored value (if any) loads.
+  CalendarViewMode _defaultCalendarView = CalendarViewMode.month;
 
   @override
   void initState() {
     super.initState();
     _load = widget.legal.getStatus().timeout(const Duration(seconds: 15));
+    unawaited(_loadDefaultCalendarView());
+  }
+
+  Future<void> _loadDefaultCalendarView() async {
+    final stored = await widget.calendarPreferences.readDefaultViewMode();
+    if (stored == null || !mounted) return;
+    for (final value in CalendarViewMode.values) {
+      if (value.name == stored) {
+        setState(() => _defaultCalendarView = value);
+        return;
+      }
+    }
+  }
+
+  Future<void> _setDefaultCalendarView(CalendarViewMode value) async {
+    setState(() => _defaultCalendarView = value);
+    await widget.calendarPreferences.writeDefaultViewMode(value.name);
   }
 
   Future<void> _saveMarketingPreference() async {
@@ -300,225 +322,274 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(strings.feature('Inställningar'))),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Text(
-              strings.feature('Mina lagkopplingar'),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              strings.feature(
-                'Här ser du vilka lag och roller du är kopplad till, och '
-                'kan lägga till en ny koppling med en inbjudan eller '
-                'lagkod.',
-              ),
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () => _showUseCodeDialog(
-                context,
-                roster: widget.roster,
-                onClaimed: widget.onContextsChanged,
-              ),
-              icon: const Icon(Icons.vpn_key_outlined),
-              label: Text(strings.feature('Använd kod')),
-            ),
-            const SizedBox(height: 16),
-            if (widget.contexts.isEmpty)
-              Text(strings.feature('Du har inga lagkopplingar ännu.'))
-            else
-              for (final item in widget.contexts)
-                Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.shield_outlined),
-                    title: Text(item.teamName ?? item.clubName),
-                    subtitle: Text(
-                      item.teamName == null
-                          ? strings.domainValue(item.rolePackage)
-                          : '${item.clubName} · '
-                                '${strings.domainValue(item.rolePackage)}',
-                    ),
-                  ),
-                ),
-            const SizedBox(height: 24),
-            const Divider(),
-            Text(
-              'Laginställningar',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            for (final item in {
-              for (final item in widget.contexts)
-                if (item.teamId != null &&
-                    (item.capabilities.contains('publication.manage') ||
-                        item.capabilities.contains('team.roster.manage')))
-                  item.teamId!: item,
-            }.values)
-              ListTile(
-                leading: const Icon(Icons.public),
-                title: Text(item.teamName ?? item.clubName),
-                subtitle: const Text('Publika matchresultat och träningstider'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => _TeamEventVisibilitySurface(
-                      teamId: item.teamId!,
-                      teamName: item.teamName ?? item.clubName,
-                      editorial: widget.editorial,
-                    ),
-                  ),
-                ),
-              ),
-            const SizedBox(height: 24),
-            Text(
-              strings.feature('Färgtema'),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              strings.feature(
-                'Färgen är själva temat — resten av utseendet är samma '
-                'oavsett vilken du väljer.',
-              ),
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 16),
-            Builder(
-              builder: (context) {
-                final scope = AppColorThemeScope.of(context);
-                return Wrap(
-                  spacing: 16,
-                  runSpacing: 12,
-                  children: [
-                    for (final colorTheme in AppColorTheme.values)
-                      _ColorThemeSwatch(
-                        colorTheme: colorTheme,
-                        selected: scope.colorTheme == colorTheme,
-                        onTap: () => scope.onColorThemeChanged(colorTheme),
-                      ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-            const Divider(),
-            const SizedBox(height: 24),
-            Text(
-              strings.feature('Villkor och integritet'),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            FutureBuilder<LegalStatus>(
-              future: _load,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: AppLoadingIndicator(label: strings.loading),
-                  );
-                }
-                if (snapshot.hasError || !snapshot.hasData) {
-                  return _StateCard(
-                    icon: Icons.sync_problem,
-                    title: strings.feature('Inställningen kunde inte laddas'),
-                    message: strings.feature('Försök igen om en stund.'),
-                  );
-                }
-                _marketingOptIn ??= snapshot.data!.marketingOptIn;
-                final status = snapshot.data!;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.description_outlined),
-                      title: Text(strings.feature('Användarvillkor')),
-                      subtitle: Text(
-                        strings
-                            .feature('Version {version}')
-                            .replaceFirst('{version}', status.termsVersion),
-                      ),
-                      trailing: const Icon(Icons.open_in_new),
-                      onTap: () => _openLegalDocument(status.termsUrl),
-                    ),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.privacy_tip_outlined),
-                      title: Text(strings.feature('Integritetspolicy')),
-                      subtitle: Text(
-                        strings
-                            .feature('Version {version}')
-                            .replaceFirst('{version}', status.privacyVersion),
-                      ),
-                      trailing: const Icon(Icons.open_in_new),
-                      onTap: () => _openLegalDocument(status.privacyUrl),
-                    ),
-                    const Divider(height: 32),
-                    Text(
-                      strings.feature('Integritetsinställningar'),
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      value: _marketingOptIn!,
-                      onChanged: _pending
-                          ? null
-                          : (value) => setState(() => _marketingOptIn = value),
-                      title: Text(
-                        strings.feature('Marknadsföring från TeamZone'),
-                      ),
-                      subtitle: Text(
-                        strings.feature(
-                          'Frivilligt. Avstängt påverkar inte appens '
-                          'funktioner.',
-                        ),
-                      ),
-                    ),
-                    if (_error != null)
-                      Semantics(liveRegion: true, child: Text(_error!)),
-                    const SizedBox(height: 8),
-                    FilledButton(
-                      onPressed: _pending ? null : _saveMarketingPreference,
-                      child: Text(strings.feature('Spara')),
-                    ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-            const Divider(),
-            const SizedBox(height: 24),
-            Text(
-              strings.feature('Radera konto'),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              strings.feature(
-                'Du kan begära global radering av din identitet. TeamZone granskar alltid begäran innan kontot tas bort.',
-              ),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _erasurePending ? null : _requestGlobalErasure,
-              icon: _erasurePending
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.person_remove_outlined),
-              label: Text(strings.feature('Begär radering av mitt konto')),
-            ),
-          ],
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(strings.feature('Inställningar')),
+          bottom: TabBar(
+            tabs: [
+              Tab(text: strings.feature('Allmänt')),
+              Tab(text: strings.feature('Lag')),
+              Tab(text: strings.feature('Profil')),
+            ],
+          ),
+        ),
+        body: SafeArea(
+          child: TabBarView(
+            children: [
+              _buildGeneralTab(context, strings),
+              _buildTeamTab(context, strings),
+              _buildProfileTab(context, strings),
+            ],
+          ),
         ),
       ),
     );
   }
+
+  Widget _buildGeneralTab(BuildContext context, AppStrings strings) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      Text(
+        strings.feature('Färgtema'),
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      const SizedBox(height: 8),
+      Text(
+        strings.feature(
+          'Färgen är själva temat — resten av utseendet är samma '
+          'oavsett vilken du väljer.',
+        ),
+        style: Theme.of(context).textTheme.bodyMedium,
+      ),
+      const SizedBox(height: 16),
+      Builder(
+        builder: (context) {
+          final scope = AppColorThemeScope.of(context);
+          return Wrap(
+            spacing: 16,
+            runSpacing: 12,
+            children: [
+              for (final colorTheme in AppColorTheme.values)
+                _ColorThemeSwatch(
+                  colorTheme: colorTheme,
+                  selected: scope.colorTheme == colorTheme,
+                  onTap: () => scope.onColorThemeChanged(colorTheme),
+                ),
+            ],
+          );
+        },
+      ),
+      const SizedBox(height: 24),
+      const Divider(),
+      Text(
+        strings.feature('Standardvy för kalendern'),
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      const SizedBox(height: 8),
+      Text(
+        strings.feature(
+          'Vilken vy kalendern öppnas i. Utan ett val visas månadsvyn.',
+        ),
+        style: Theme.of(context).textTheme.bodyMedium,
+      ),
+      const SizedBox(height: 16),
+      SegmentedButton<CalendarViewMode>(
+        segments: [
+          for (final value in CalendarViewMode.values)
+            ButtonSegment(
+              value: value,
+              label: Text(strings.feature(_calendarViewModeLabel(value))),
+            ),
+        ],
+        selected: {_defaultCalendarView},
+        onSelectionChanged: (selection) =>
+            _setDefaultCalendarView(selection.single),
+      ),
+    ],
+  );
+
+  Widget _buildTeamTab(BuildContext context, AppStrings strings) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      Text(
+        strings.feature('Mina lagkopplingar'),
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      const SizedBox(height: 8),
+      Text(
+        strings.feature(
+          'Här ser du vilka lag och roller du är kopplad till, och '
+          'kan lägga till en ny koppling med en inbjudan eller '
+          'lagkod.',
+        ),
+        style: Theme.of(context).textTheme.bodyMedium,
+      ),
+      const SizedBox(height: 16),
+      FilledButton.icon(
+        onPressed: () => _showUseCodeDialog(
+          context,
+          roster: widget.roster,
+          onClaimed: widget.onContextsChanged,
+        ),
+        icon: const Icon(Icons.vpn_key_outlined),
+        label: Text(strings.feature('Använd kod')),
+      ),
+      const SizedBox(height: 16),
+      if (widget.contexts.isEmpty)
+        Text(strings.feature('Du har inga lagkopplingar ännu.'))
+      else
+        for (final item in widget.contexts)
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.shield_outlined),
+              title: Text(item.teamName ?? item.clubName),
+              subtitle: Text(
+                item.teamName == null
+                    ? strings.domainValue(item.rolePackage)
+                    : '${item.clubName} · '
+                          '${strings.domainValue(item.rolePackage)}',
+              ),
+            ),
+          ),
+      const SizedBox(height: 24),
+      const Divider(),
+      Text('Laginställningar', style: Theme.of(context).textTheme.titleMedium),
+      for (final item in {
+        for (final item in widget.contexts)
+          if (item.teamId != null &&
+              (item.capabilities.contains('publication.manage') ||
+                  item.capabilities.contains('team.roster.manage')))
+            item.teamId!: item,
+      }.values)
+        ListTile(
+          leading: const Icon(Icons.public),
+          title: Text(item.teamName ?? item.clubName),
+          subtitle: const Text('Publika matchresultat och träningstider'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => _TeamEventVisibilitySurface(
+                teamId: item.teamId!,
+                teamName: item.teamName ?? item.clubName,
+                editorial: widget.editorial,
+              ),
+            ),
+          ),
+        ),
+    ],
+  );
+
+  Widget _buildProfileTab(BuildContext context, AppStrings strings) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      Text(
+        strings.feature('Villkor och integritet'),
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      const SizedBox(height: 8),
+      FutureBuilder<LegalStatus>(
+        future: _load,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: AppLoadingIndicator(label: strings.loading),
+            );
+          }
+          if (snapshot.hasError || !snapshot.hasData) {
+            return _StateCard(
+              icon: Icons.sync_problem,
+              title: strings.feature('Inställningen kunde inte laddas'),
+              message: strings.feature('Försök igen om en stund.'),
+            );
+          }
+          _marketingOptIn ??= snapshot.data!.marketingOptIn;
+          final status = snapshot.data!;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.description_outlined),
+                title: Text(strings.feature('Användarvillkor')),
+                subtitle: Text(
+                  strings
+                      .feature('Version {version}')
+                      .replaceFirst('{version}', status.termsVersion),
+                ),
+                trailing: const Icon(Icons.open_in_new),
+                onTap: () => _openLegalDocument(status.termsUrl),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.privacy_tip_outlined),
+                title: Text(strings.feature('Integritetspolicy')),
+                subtitle: Text(
+                  strings
+                      .feature('Version {version}')
+                      .replaceFirst('{version}', status.privacyVersion),
+                ),
+                trailing: const Icon(Icons.open_in_new),
+                onTap: () => _openLegalDocument(status.privacyUrl),
+              ),
+              const Divider(height: 32),
+              Text(
+                strings.feature('Integritetsinställningar'),
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _marketingOptIn!,
+                onChanged: _pending
+                    ? null
+                    : (value) => setState(() => _marketingOptIn = value),
+                title: Text(strings.feature('Marknadsföring från TeamZone')),
+                subtitle: Text(
+                  strings.feature(
+                    'Frivilligt. Avstängt påverkar inte appens '
+                    'funktioner.',
+                  ),
+                ),
+              ),
+              if (_error != null)
+                Semantics(liveRegion: true, child: Text(_error!)),
+              const SizedBox(height: 8),
+              FilledButton(
+                onPressed: _pending ? null : _saveMarketingPreference,
+                child: Text(strings.feature('Spara')),
+              ),
+            ],
+          );
+        },
+      ),
+      const SizedBox(height: 24),
+      const Divider(),
+      const SizedBox(height: 24),
+      Text(
+        strings.feature('Radera konto'),
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      const SizedBox(height: 8),
+      Text(
+        strings.feature(
+          'Du kan begära global radering av din identitet. TeamZone granskar alltid begäran innan kontot tas bort.',
+        ),
+      ),
+      const SizedBox(height: 12),
+      OutlinedButton.icon(
+        onPressed: _erasurePending ? null : _requestGlobalErasure,
+        icon: _erasurePending
+            ? const SizedBox.square(
+                dimension: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.person_remove_outlined),
+        label: Text(strings.feature('Begär radering av mitt konto')),
+      ),
+    ],
+  );
 }
 
 /// One selectable color swatch in the theme picker: a filled circle in that

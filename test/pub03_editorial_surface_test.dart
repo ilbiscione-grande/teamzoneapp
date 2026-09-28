@@ -28,6 +28,8 @@ void main() {
     );
     await tester.tap(find.text('Inställningar').last);
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Lag'));
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('Publika matchresultat och träningstider'),
       250,

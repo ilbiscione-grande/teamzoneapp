@@ -19,6 +19,7 @@ import 'package:teamzone_app/src/core/identity/session_persistence.dart';
 import 'package:teamzone_app/src/core/localization/app_strings.dart';
 import 'package:teamzone_app/src/core/localization/board_strings.dart';
 import 'package:teamzone_app/src/core/localization/economy_strings.dart';
+import 'package:teamzone_app/src/core/preferences/calendar_preferences.dart';
 import 'package:teamzone_app/src/core/supabase/measured_rpc.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 import 'package:teamzone_app/src/app/product_route_contract.dart';

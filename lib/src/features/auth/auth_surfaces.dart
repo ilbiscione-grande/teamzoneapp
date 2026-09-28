@@ -738,6 +738,7 @@ class _ContextBootstrapState extends State<_ContextBootstrap> {
           membership: widget.services.membership,
           legal: widget.services.legal,
           calendar: widget.services.calendar,
+          calendarPreferences: widget.services.calendarPreferences,
           overview: widget.services.overview,
           messaging: widget.services.messaging,
           match: widget.services.match,
@@ -1527,6 +1528,7 @@ class _ContextSelector extends StatefulWidget {
     required this.membership,
     required this.legal,
     required this.calendar,
+    required this.calendarPreferences,
     required this.overview,
     required this.messaging,
     required this.match,
@@ -1550,6 +1552,7 @@ class _ContextSelector extends StatefulWidget {
   final MembershipServices membership;
   final LegalServices legal;
   final CalendarServices calendar;
+  final CalendarPreferences calendarPreferences;
   final OverviewServices overview;
   final MessagingServices messaging;
   final MatchServices match;
@@ -1666,6 +1669,7 @@ class _ContextSelectorState extends State<_ContextSelector> {
       membership: widget.membership,
       legal: widget.legal,
       calendar: widget.calendar,
+      calendarPreferences: widget.calendarPreferences,
       overview: widget.overview,
       messaging: widget.messaging,
       match: widget.match,

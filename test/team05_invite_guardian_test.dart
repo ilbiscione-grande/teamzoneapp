@@ -48,6 +48,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Inställningar'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Lag'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Använd kod'));
     await tester.pumpAndSettle();
     await tester.enterText(

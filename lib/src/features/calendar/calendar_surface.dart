@@ -5,6 +5,7 @@ class _CalendarSurface extends StatefulWidget {
     required this.contextValue,
     required this.contexts,
     required this.calendar,
+    required this.calendarPreferences,
     required this.match,
     required this.onNavigate,
     required this.matchSpaceV2,
@@ -14,6 +15,7 @@ class _CalendarSurface extends StatefulWidget {
   final TeamZoneContext contextValue;
   final List<TeamZoneContext> contexts;
   final CalendarServices calendar;
+  final CalendarPreferences calendarPreferences;
   final MatchServices match;
   final ValueChanged<String> onNavigate;
   final bool matchSpaceV2;
@@ -111,6 +113,17 @@ class _CalendarWorkspace extends StatelessWidget {
                     showLabel: size.width >= 600,
                     onChanged: onModeChanged,
                   ),
+                  if (!showArchived)
+                    Expanded(
+                      child: _CalendarDateNavigation(
+                        mode: mode,
+                        selectedDate: selectedDate,
+                        onChanged: onDateChanged,
+                        showWeekNumber: showWeekNumbers,
+                      ),
+                    )
+                  else
+                    const Spacer(),
                   IconButton(
                     tooltip: strings.feature('Filtrera kalendern'),
                     onPressed: () => _showCalendarFilterSheet(
@@ -140,14 +153,7 @@ class _CalendarWorkspace extends StatelessWidget {
                   ),
                 ],
               ),
-              if (!showArchived)
-                _CalendarDateNavigation(
-                  mode: mode,
-                  selectedDate: selectedDate,
-                  onChanged: onDateChanged,
-                  showWeekNumber: showWeekNumbers,
-                )
-              else
+              if (showArchived)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.archive_outlined),
@@ -2401,7 +2407,9 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
   late final AsyncDataController<List<CalendarEventSummary>> _data;
   StreamSubscription<CalendarSyncEvent>? _invalidationSubscription;
   Timer? _invalidationDebounce;
-  CalendarViewMode _viewMode = CalendarViewMode.agenda;
+  // Falls back to month view until (if) a stored default overrides it --
+  // see _loadDefaultViewMode.
+  CalendarViewMode _viewMode = CalendarViewMode.month;
   DateTime _selectedDate = DateTime.now();
   String? _teamFilter, _eventTypeFilter;
   bool _showArchived = false;
@@ -2431,6 +2439,18 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
     _openInitialAction();
     unawaited(_loadShowWeekNumbers());
     unawaited(_loadShowQuarterHourMarks());
+    unawaited(_loadDefaultViewMode());
+  }
+
+  Future<void> _loadDefaultViewMode() async {
+    final stored = await widget.calendarPreferences.readDefaultViewMode();
+    if (stored == null || !mounted) return;
+    for (final value in CalendarViewMode.values) {
+      if (value.name == stored) {
+        setState(() => _viewMode = value);
+        return;
+      }
+    }
   }
 
   void _trackStaleness() {

@@ -7,6 +7,7 @@ import 'package:teamzone_app/src/core/identity/identity_models.dart';
 import 'package:teamzone_app/src/core/identity/identity_services.dart';
 import 'package:teamzone_app/src/core/identity/auth_entry_services.dart';
 import 'package:teamzone_app/src/core/identity/session_persistence.dart';
+import 'package:teamzone_app/src/core/preferences/calendar_preferences.dart';
 import 'package:teamzone_app/src/core/preferences/theme_persistence.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_services.dart';
 import 'package:teamzone_app/src/features/assistant_coach/assistant_identity.dart';
@@ -30,6 +31,7 @@ class AppServices {
     this.authEntry = const UnconfiguredAuthEntryServices(),
     this.contextPersistence = const StatelessContextPersistence(),
     this.themePersistence = const StatelessThemePersistence(),
+    this.calendarPreferences = const StatelessCalendarPreferences(),
     this.roster = const UnconfiguredRosterServices(),
     this.membership = const UnconfiguredMembershipServices(),
     this.legal = const UnconfiguredLegalServices(),
@@ -51,6 +53,7 @@ class AppServices {
   final AuthEntryServices authEntry;
   final ContextPersistence contextPersistence;
   final ThemePersistence themePersistence;
+  final CalendarPreferences calendarPreferences;
   final RosterServices roster;
   final MembershipServices membership;
   final LegalServices legal;
@@ -75,10 +78,12 @@ class SupabaseBootstrap {
     if (!environment.hasSupabaseConfiguration) {
       return const AppServices(
         identity: UnconfiguredIdentityServices(),
-        // The color theme is a pure device-local preference with no
-        // dependency on a working backend connection, so it stays real even
-        // in the unconfigured "Backend är inte ansluten" state.
+        // The color theme and calendar default view are pure device-local
+        // preferences with no dependency on a working backend connection,
+        // so they stay real even in the unconfigured "Backend är inte
+        // ansluten" state.
         themePersistence: SharedPreferencesThemePersistence(),
+        calendarPreferences: SharedPreferencesCalendarPreferences(),
         isConfigured: false,
       );
     }
@@ -105,6 +110,7 @@ class SupabaseBootstrap {
       authEntry: identity,
       contextPersistence: const SharedPreferencesContextPersistence(),
       themePersistence: const SharedPreferencesThemePersistence(),
+      calendarPreferences: const SharedPreferencesCalendarPreferences(),
       roster: SupabaseRosterServices(Supabase.instance.client),
       membership: SupabaseMembershipServices(Supabase.instance.client),
       legal: SupabaseLegalServices(Supabase.instance.client),
