@@ -4,6 +4,37 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/roster/roster_models.dart';
 
 abstract interface class RosterServices {
+  /// Replaces a leader's panel capabilities. [expected] is the set the
+  /// caller saw; a different current set fails as stale. [template] records
+  /// which template (or 'custom') the set came from.
+  Future<void> setLeaderPermissions({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required List<String> capabilities,
+    required List<String> expected,
+    String? template,
+    required String idempotencyKey,
+  });
+
+  /// Sets the team's sport, which selects its position catalog.
+  Future<void> setTeamSport({
+    required String clubId,
+    required String teamId,
+    required String sport,
+    required String idempotencyKey,
+  });
+  Future<int> setTeamPersonDetails({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required List<String> titles,
+    required List<String> positions,
+    required List<String> customTitles,
+    required List<String> customPositions,
+    required int expectedRevision,
+    required String idempotencyKey,
+  });
   Future<TeamOverview> getTeamOverview({required String teamId});
   Future<TeamProfileEditData> getTeamProfileEdit({required String teamId});
   Future<String> uploadTeamImage({
@@ -214,10 +245,83 @@ abstract interface class RosterServices {
     required String token,
     required String idempotencyKey,
   });
+  Future<TeamRoles> listTeamRoles({
+    required String clubId,
+    required String teamId,
+  });
+  Future<List<LeaderCandidate>> listLeaderCandidates({
+    required String clubId,
+    required String teamId,
+  });
+
+  /// Adds, changes or removes a player/leader role. Pass [fromRole] null to
+  /// add and [toRole] null to remove. Idempotent per [idempotencyKey].
+  Future<void> setTeamRole({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    String? fromRole,
+    String? toRole,
+    required String idempotencyKey,
+  });
 }
 
 class UnconfiguredRosterServices implements RosterServices {
   const UnconfiguredRosterServices();
+
+  @override
+  Future<void> setLeaderPermissions({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required List<String> capabilities,
+    required List<String> expected,
+    String? template,
+    required String idempotencyKey,
+  }) => Future.error(StateError('Supabase is not configured.'));
+
+  @override
+  Future<void> setTeamSport({
+    required String clubId,
+    required String teamId,
+    required String sport,
+    required String idempotencyKey,
+  }) => Future.error(StateError('Supabase is not configured.'));
+
+  @override
+  Future<int> setTeamPersonDetails({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required List<String> titles,
+    required List<String> positions,
+    required List<String> customTitles,
+    required List<String> customPositions,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) => Future.error(StateError('Supabase is not configured.'));
+
+  @override
+  Future<TeamRoles> listTeamRoles({
+    required String clubId,
+    required String teamId,
+  }) => Future.error(StateError('Supabase is not configured.'));
+
+  @override
+  Future<List<LeaderCandidate>> listLeaderCandidates({
+    required String clubId,
+    required String teamId,
+  }) => Future.error(StateError('Supabase is not configured.'));
+
+  @override
+  Future<void> setTeamRole({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    String? fromRole,
+    String? toRole,
+    required String idempotencyKey,
+  }) => Future.error(StateError('Supabase is not configured.'));
 
   @override
   Future<TeamOverview> getTeamOverview({required String teamId}) =>
@@ -486,7 +590,169 @@ class UnconfiguredRosterServices implements RosterServices {
 class SupabaseRosterServices implements RosterServices {
   SupabaseRosterServices(this._client);
 
+  @override
+  Future<void> setLeaderPermissions({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required List<String> capabilities,
+    required List<String> expected,
+    String? template,
+    required String idempotencyKey,
+  }) async {
+    try {
+      await _client
+          .schema('api')
+          .rpc<Object?>(
+            'set_leader_permissions',
+            params: {
+              'target_club_id': clubId,
+              'target_team_id': teamId,
+              'target_person_id': personId,
+              'new_capabilities': capabilities,
+              'expected_capabilities': expected,
+              'template': template,
+              'idempotency_key': idempotencyKey,
+            },
+          );
+    } on PostgrestException catch (error) {
+      const known = {
+        'own_leaders_permission',
+        'not_grantable',
+        'stale_permissions',
+        'last_leaders_manager',
+      };
+      if (known.contains(error.message)) {
+        throw TeamRoleException(error.message);
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> setTeamSport({
+    required String clubId,
+    required String teamId,
+    required String sport,
+    required String idempotencyKey,
+  }) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'set_team_sport',
+          params: {
+            'target_club_id': clubId,
+            'target_team_id': teamId,
+            'new_sport': sport,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+  }
+
+  @override
+  Future<int> setTeamPersonDetails({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required List<String> titles,
+    required List<String> positions,
+    required List<String> customTitles,
+    required List<String> customPositions,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {
+    final result = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'set_team_person_details_v2',
+          params: {
+            'target_club_id': clubId,
+            'target_team_id': teamId,
+            'target_person_id': personId,
+            'new_titles': titles,
+            'new_positions': positions,
+            'new_custom_titles': customTitles,
+            'new_custom_positions': customPositions,
+            'expected_revision': expectedRevision,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+    return (result as num).toInt();
+  }
+
   final SupabaseClient _client;
+
+  @override
+  Future<TeamRoles> listTeamRoles({
+    required String clubId,
+    required String teamId,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'list_team_roles',
+          params: {'target_club_id': clubId, 'target_team_id': teamId},
+        );
+    if (value is! Map) throw const FormatException('Invalid team roles.');
+    return TeamRoles.fromJson(Map<String, dynamic>.from(value));
+  }
+
+  @override
+  Future<List<LeaderCandidate>> listLeaderCandidates({
+    required String clubId,
+    required String teamId,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'list_club_leader_candidates',
+          params: {'target_club_id': clubId, 'target_team_id': teamId},
+        );
+    return (value as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(LeaderCandidate.fromJson)
+        .toList();
+  }
+
+  @override
+  Future<void> setTeamRole({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    String? fromRole,
+    String? toRole,
+    required String idempotencyKey,
+  }) async {
+    final (name, params) = switch ((fromRole, toRole)) {
+      (null, final String to) => ('add_team_role', {'role': to}),
+      (final String from, null) => ('remove_team_role', {'role': from}),
+      (final String from, final String to) => (
+        'change_team_role',
+        {'from_role': from, 'to_role': to},
+      ),
+      _ => throw ArgumentError('A role change needs a from or to role.'),
+    };
+    try {
+      await _client
+          .schema('api')
+          .rpc<Object?>(
+            name,
+            params: {
+              'target_club_id': clubId,
+              'target_team_id': teamId,
+              'target_person_id': personId,
+              ...params,
+              'idempotency_key': idempotencyKey,
+            },
+          );
+    } on PostgrestException catch (error) {
+      const known = {'own_leader_role', 'home_in_other_team', 'stale_role'};
+      if (known.contains(error.message)) {
+        throw TeamRoleException(error.message);
+      }
+      rethrow;
+    }
+  }
 
   @override
   Future<TeamOverview> getTeamOverview({required String teamId}) async {

@@ -20,7 +20,9 @@ void main() {
     expect(source, contains('localizations.formatFullDate(start)'));
     expect(source, contains('localizations.formatTimeOfDay('));
     expect(source, contains("strings.feature('Ägande lag')"));
-    expect(source, contains('strings.preparationTitle(event.type)'));
+    // Förberedelser v1 replaced the old placeholder text with a real
+    // per-event workspace (event_preparation.dart).
+    expect(source, contains('_PreparationTab('));
     expect(source, isNot(contains("'\${widget.event.startsAt.toLocal()} –")));
   });
 

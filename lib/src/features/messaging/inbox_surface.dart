@@ -54,8 +54,15 @@ class _InboxSurfaceState extends State<_InboxSurface>
   // whenever it changes -- see didUpdateWidget.
   late Set<String> _selectedContextIds = {widget.contextValue.id};
 
-  List<String> get _contextIds =>
-      _selectedContextIds.toList(growable: false)..sort();
+  // A team context can merge several of your assignments (e.g. leader and
+  // club functionary); their threads all belong to that one team.
+  List<String> get _contextIds => {
+    for (final id in _selectedContextIds) ...[
+      id,
+      ...?widget.contexts.where((item) => item.id == id).firstOrNull?.aliasIds,
+      if (id == widget.contextValue.id) ...widget.contextValue.aliasIds,
+    ],
+  }.toList(growable: false)..sort();
 
   String get _scopeKey => _contextIds.join('|');
 
@@ -405,7 +412,10 @@ class _InboxSurfaceState extends State<_InboxSurface>
   Future<void> _markAllRead() async {
     final strings = AppStrings.of(context);
     try {
-      await widget.messaging.markAllRead([widget.contextValue.id], _newUuid());
+      await widget.messaging.markAllRead([
+        widget.contextValue.id,
+        ...widget.contextValue.aliasIds,
+      ], _newUuid());
       if (mounted) await _data.refresh();
     } catch (_) {
       if (mounted) {

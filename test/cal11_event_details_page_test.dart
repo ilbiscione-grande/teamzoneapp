@@ -9,8 +9,43 @@ import 'package:teamzone_app/src/features/calendar/calendar_models.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_services.dart';
 import 'package:teamzone_app/src/features/match/match_services.dart';
 import 'package:teamzone_app/src/features/match/match_models.dart';
+import 'package:teamzone_app/src/features/roster/roster_models.dart';
+import 'package:teamzone_app/src/features/roster/roster_services.dart';
 
 void main() {
+  testWidgets('selection menu remains above compact list', (tester) async {
+    final calendar = _Calendar();
+    await _openParticipants(tester, calendar);
+    await tester.tap(find.byTooltip('Fler åtgärder'));
+    await tester.pumpAndSettle();
+    expect(find.text('Välj alla spelare'), findsOneWidget);
+    expect(find.text('Alla behöriga'), findsOneWidget);
+    expect(find.text('Behörighetsgrupp'), findsOneWidget);
+    expect(find.text('Generator'), findsOneWidget);
+    expect(find.text('Påminn alla obesvarade'), findsOneWidget);
+    await tester.tap(find.text('Välj alla spelare'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 valda'), findsOneWidget);
+    expect(calendar.savedMemberIds, isNull);
+    expect(find.text('Sök deltagare i klubben'), findsOneWidget);
+  });
+
+  testWidgets('mobile participant selection fits and clears assistant button', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await _openParticipants(tester, _Calendar());
+    await tester.ensureVisible(find.text('Ulla Uncalled'));
+    await tester.tap(find.text('Ulla Uncalled'));
+    await tester.pumpAndSettle();
+    expect(find.text('Kalla 1'), findsOneWidget);
+    expect(tester.getRect(find.text('Kalla 1')).right, lessThan(318));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'written report defaults to internal draft and can be published',
     (tester) async {
@@ -246,320 +281,163 @@ void main() {
     expect(find.text('Registrera eller granska närvaro'), findsNothing);
   });
 
-  testWidgets('participant draft exposes every approved selection mode', (
-    tester,
-  ) async {
-    await tester.pumpWidget(_app(_Calendar()));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Kalender'));
-    await tester.pumpAndSettle();
-    // Month is now the calendar's default view when no preference is
-    // stored; these fixtures schedule their event for tomorrow, which
-    // month view's default "Vald dag" (today) scope wouldn't surface, so
-    // switch to agenda first (as tests here always relied on).
-    await tester.tap(find.byTooltip('Byt kalendervy'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Agenda').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Träning A'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Deltagare'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Fler åtgärder'));
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('Välj alla spelare'), findsOneWidget);
-    expect(find.text('Alla behöriga'), findsOneWidget);
-    expect(find.text('Behörighetsgrupp'), findsOneWidget);
-    expect(find.text('Generator'), findsOneWidget);
-  });
-
-  testWidgets('EventDetails opens as its own page with a status header and a '
-      'sorted, bucketed roster', (tester) async {
-    final calendar = _Calendar();
-    await tester.pumpWidget(_app(calendar));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Kalender'));
-    await tester.pumpAndSettle();
-    // Month is now the calendar's default view when no preference is
-    // stored; these fixtures schedule their event for tomorrow, which
-    // month view's default "Vald dag" (today) scope wouldn't surface, so
-    // switch to agenda first (as tests here always relied on).
-    await tester.tap(find.byTooltip('Byt kalendervy'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Agenda').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Träning A'));
-    await tester.pumpAndSettle();
-
-    // A real page — an AppBar with a centered title and a close (X)
-    // action, not a back arrow, not a dialog/bottom sheet — with the
-    // four tabs still present.
-    expect(find.byIcon(Icons.close), findsOneWidget);
-    expect(find.byIcon(Icons.arrow_back), findsNothing);
-    expect(
-      find.descendant(
-        of: find.byType(AppBar),
-        matching: find.text('Träning A'),
-      ),
-      findsOneWidget,
-    );
-    expect(find.text('Info'), findsOneWidget);
-    expect(find.text('Deltagare'), findsOneWidget);
-    expect(find.text('Förberedelser'), findsOneWidget);
-    expect(find.text('Uppföljning'), findsOneWidget);
-
-    // Status header counts, visible without switching tabs: utkast=4
-    // (everyone but the two uncalled), kallade=4 (same four), accepterat=2
-    // (Anna + Lasse), obesvarade=1 (Pelle), avböjt=1 (Doris).
-    expect(find.text('4'), findsNWidgets(2));
-    expect(find.text('2'), findsOneWidget);
-    expect(find.text('1'), findsNWidgets(2));
-
-    await tester.tap(find.text('Deltagare'));
-    await tester.pumpAndSettle();
-
-    // Fixed bucket order: kallade spelare, kallade ledare, okallade
-    // spelare, okallade ledare — and within "kallade spelare",
-    // accepted before pending before declined. The list is taller than
-    // the test viewport, so scroll each section into view as we check it
-    // rather than assuming it's already built/visible.
-    // dragUntilVisible only needs a finder whose center point sits over
-    // the scrollable region — the CustomScrollView itself is unique and
-    // unambiguous, unlike find.byType(Scrollable) (which also matches
-    // TabBar, TabBarView's PageView, the search field's EditableText,
-    // and — since PageView keeps neighboring tabs built for swiping —
-    // the Info tab's own SingleChildScrollView).
-    final scrollable = find.byType(CustomScrollView);
-    expect(find.text('Kallade spelare'), findsOneWidget);
-    await tester.dragUntilVisible(
-      find.text('Doris Declined'),
-      scrollable,
-      const Offset(0, -150),
-    );
-    final calledPlayersSection = tester.getTopLeft(
-      find.text('Kallade spelare'),
-    );
-    final acceptedName = tester.getTopLeft(find.text('Anna Accepterad'));
-    final pendingName = tester.getTopLeft(find.text('Pelle Pending'));
-    final declinedName = tester.getTopLeft(find.text('Doris Declined'));
-    expect(acceptedName.dy, greaterThan(calledPlayersSection.dy));
-    expect(pendingName.dy, greaterThan(acceptedName.dy));
-    expect(declinedName.dy, greaterThan(pendingName.dy));
-    expect(find.textContaining('Avböjt: Skada'), findsOneWidget);
-    expect(find.textContaining('Svara som ledare'), findsOneWidget);
-
-    await tester.dragUntilVisible(
-      find.text('Kallade ledare'),
-      scrollable,
-      const Offset(0, -200),
-    );
-    expect(find.text('Kallade ledare'), findsOneWidget);
-    await tester.dragUntilVisible(
-      find.text('Okallade spelare'),
-      scrollable,
-      const Offset(0, -200),
-    );
-    expect(find.text('Okallade spelare'), findsOneWidget);
-    await tester.dragUntilVisible(
-      find.text('Okallade ledare'),
-      scrollable,
-      const Offset(0, -200),
-    );
-    expect(find.text('Okallade ledare'), findsOneWidget);
-    await tester.dragUntilVisible(
-      find.byType(TextField),
-      scrollable,
-      const Offset(0, 400),
-    );
-
-    // Search is club-wide, not limited to the roster already shown, and
-    // selecting a result adds them straight to the draft.
-    await tester.enterText(find.byType(TextField), 'Gäst');
-    await tester.pumpAndSettle();
-    expect(find.text('Gäst Spelarsson'), findsOneWidget);
-    // Selection is the whole row now, not a separate checkbox.
-    await tester.tap(find.text('Gäst Spelarsson'));
-    await tester.pumpAndSettle();
-    expect(calendar.savedMemberIds, contains('guest-1'));
-
-    // The reported bug: toggling a selection used to reload the whole
-    // page and reset back to the Info tab. Still on Deltagare, with the
-    // search field (and its state) intact, not bounced back to Info.
-    expect(find.text('Sök spelare eller lag i hela klubben'), findsOneWidget);
-    expect(find.text('Info'), findsOneWidget);
-    expect(find.text('Kallade spelare'), findsOneWidget);
-  });
-
-  testWidgets('a called guest not on the roster still shows up, and "Välj alla '
-      'spelare" drafts every uncalled player in one save', (tester) async {
+  testWidgets('compact grouped draft stays local until send', (tester) async {
     final calendar = _Calendar(withGuestAndExtraPlayer: true);
-    await tester.pumpWidget(_app(calendar));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Kalender'));
-    await tester.pumpAndSettle();
-    // Month is now the calendar's default view when no preference is
-    // stored; these fixtures schedule their event for tomorrow, which
-    // month view's default "Vald dag" (today) scope wouldn't surface, so
-    // switch to agenda first (as tests here always relied on).
-    await tester.tap(find.byTooltip('Byt kalendervy'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Agenda').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Träning A'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Deltagare'));
-    await tester.pumpAndSettle();
-
-    // squad.callups has a person the roster RPC can't see (no active
-    // assignment on this event's team) — without the guest-bucket fix
-    // they would be invisible on this tab entirely.
-    final scrollable = find.byType(CustomScrollView);
-    await tester.dragUntilVisible(
-      find.text('Gästspelare'),
-      scrollable,
-      const Offset(0, -200),
-    );
-    expect(find.text('Gästspelare'), findsOneWidget);
+    await _openParticipants(tester, calendar);
+    expect(find.text('SPELARE (6)'), findsOneWidget);
+    expect(find.text('LEDARE (2)'), findsOneWidget);
     expect(find.text('Gäst Golding'), findsOneWidget);
-
-    // Scroll back up — the search field/bulk-actions button sits above
-    // the roster sections and just scrolled out of view.
-    await tester.dragUntilVisible(
-      find.byTooltip('Fler åtgärder'),
-      scrollable,
-      const Offset(0, 400),
+    expect(
+      tester
+          .getSize(
+            find.byKey(const ValueKey('participant-row-player-uncalled-1')),
+          )
+          .height,
+      38,
     );
-
-    // Bulk action: "Välj alla spelare" drafts every uncalled, undrafted
-    // player in one saveSquadDraft call instead of one tap each. Found
-    // by tooltip, not by icon — PopupMenuButton's own default icon is
-    // also more_vert, so several rows could match that.
-    await tester.tap(find.byTooltip('Fler åtgärder'));
+    await tester.tap(find.text('Markera alla').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.textContaining('Välj alla spelare'));
+    expect(find.text('2 valda'), findsOneWidget);
+    expect(calendar.savedMemberIds, isNull);
+    await tester.tap(find.text('Avmarkera alla'));
     await tester.pumpAndSettle();
-    expect(calendar.savedMemberIds, isNotNull);
+    expect(find.textContaining(' valda'), findsNothing);
+    await tester.tap(find.text('Ulla Uncalled'));
+    await tester.tap(find.text('Vera Väntande'));
+    await tester.pumpAndSettle();
+    expect(calendar.savedMemberIds, isNull);
+    await tester.tap(find.text('Kalla 2'));
+    await tester.pumpAndSettle();
     expect(
       calendar.savedMemberIds,
-      containsAll(['player-uncalled-1', 'player-uncalled-2']),
+      containsAll(['player-uncalled-1', 'player-uncalled-2', 'accepted-1']),
     );
-    // Leaders and already-drafted/called players are left untouched by
-    // "select all players".
     expect(calendar.savedMemberIds, isNot(contains('leader-uncalled-1')));
+    expect(calendar.dispatches, ['save', 'lock', 'send']);
+    expect(find.textContaining(' valda'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
-
-  testWidgets('a leader can respond to a teammate\'s pending callup from the '
-      'Deltagare tab', (tester) async {
+  testWidgets('search and selection remain on participant tab', (tester) async {
     final calendar = _Calendar();
-    await tester.pumpWidget(_app(calendar));
+    await _openParticipants(tester, calendar);
+    await tester.enterText(find.byType(TextField), 'Gäst');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Kalender'));
+    await tester.tap(find.text('Gäst Spelarsson'));
     await tester.pumpAndSettle();
-    // Month is now the calendar's default view when no preference is
-    // stored; these fixtures schedule their event for tomorrow, which
-    // month view's default "Vald dag" (today) scope wouldn't surface, so
-    // switch to agenda first (as tests here always relied on).
-    await tester.tap(find.byTooltip('Byt kalendervy'));
+    expect(calendar.savedMemberIds, isNull);
+    expect(find.text('1 valda'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), '');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Agenda').last);
+    expect(find.text('Gäst Spelarsson'), findsOneWidget);
+    await tester.tap(find.text('Kalla 1'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Träning A'));
+    expect(calendar.savedMemberIds, contains('guest-1'));
+    expect(find.text('Sök deltagare i klubben'), findsOneWidget);
+  });
+  testWidgets('response button does not select or expand the row', (
+    tester,
+  ) async {
+    final calendar = _Calendar();
+    await _openParticipants(tester, calendar);
+    await tester.tap(find.byTooltip('Acceptera'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Deltagare'));
-    await tester.pumpAndSettle();
-
-    // Respond buttons only show for a callup this actor can actually
-    // respond to — Pelle's is flagged canRespond/responseRole:'manager'
-    // in the fixture (the actor manages the squad, not Pelle himself).
-    final scrollable = find.byType(CustomScrollView);
-    await tester.dragUntilVisible(
-      find.text('Acceptera'),
-      scrollable,
-      const Offset(0, -150),
-    );
-    await tester.tap(find.text('Acceptera'));
-    await tester.pumpAndSettle();
-
     expect(calendar.respondedCallupId, 'callup-pending');
     expect(calendar.respondedResponse, 'accepted');
-    // Set (not null) since the actor is responding on Pelle's behalf,
-    // not for their own callup.
     expect(calendar.respondedActingAsPersonId, 'pending-1');
-  });
-
-  testWidgets('a guardian response row explains the acting-as role', (
-    tester,
-  ) async {
-    await tester.pumpWidget(_app(_Calendar(responseRole: 'guardian')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Kalender'));
-    await tester.pumpAndSettle();
-    // Month is now the calendar's default view when no preference is
-    // stored; these fixtures schedule their event for tomorrow, which
-    // month view's default "Vald dag" (today) scope wouldn't surface, so
-    // switch to agenda first (as tests here always relied on).
-    await tester.tap(find.byTooltip('Byt kalendervy'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Agenda').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Träning A'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Deltagare'));
-    await tester.pumpAndSettle();
-
-    await tester.dragUntilVisible(
-      find.textContaining('Svara som vårdnadshavare'),
-      find.byType(CustomScrollView),
-      const Offset(0, -150),
+    expect(find.textContaining(' valda'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('participant-details-pending-1')),
+      findsNothing,
     );
-    expect(find.textContaining('Svara som vårdnadshavare'), findsOneWidget);
   });
-
-  testWidgets('a sent reminder is confirmed and remains visible on the row', (
+  testWidgets('reminder is direct and sent state respects cooldown', (
     tester,
   ) async {
     final calendar = _Calendar();
-    await tester.pumpWidget(_app(calendar));
+    await _openParticipants(tester, calendar);
+    await tester.tap(find.byTooltip('Påminn'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Kalender'));
-    await tester.pumpAndSettle();
-    // Month is now the calendar's default view when no preference is
-    // stored; these fixtures schedule their event for tomorrow, which
-    // month view's default "Vald dag" (today) scope wouldn't surface, so
-    // switch to agenda first (as tests here always relied on).
-    await tester.tap(find.byTooltip('Byt kalendervy'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Agenda').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Träning A'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Deltagare'));
-    await tester.pumpAndSettle();
-
-    final scrollable = find.byType(CustomScrollView);
-    await tester.dragUntilVisible(
-      find.text('Pelle Pending'),
-      scrollable,
-      const Offset(0, -150),
-    );
-    final pelleRow = find.ancestor(
-      of: find.text('Pelle Pending'),
-      matching: find.byType(ListTile),
-    );
-    await tester.tap(
-      find.descendant(
-        of: pelleRow,
-        matching: find.byTooltip('Hantera kallelse'),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Påminn'));
-    await tester.pumpAndSettle();
-
     expect(calendar.remindedCallupId, 'callup-pending');
     expect(find.text('Påminnelsen är skickad.'), findsOneWidget);
-    expect(find.textContaining('Påmind'), findsOneWidget);
+    expect(find.byTooltip(RegExp('Påminn · senast')), findsOneWidget);
+    expect(calendar.respondedCallupId, isNull);
+    expect(calendar.savedMemberIds, isNull);
+  });
+  testWidgets(
+    'one expansion at a time, cached lazy statistics and guardian role',
+    (tester) async {
+      final roster = _ParticipantRoster();
+      await _openParticipants(
+        tester,
+        _Calendar(responseRole: 'guardian'),
+        roster: roster,
+      );
+      expect(roster.profileReads, 0);
+      await tester.ensureVisible(find.text('Ulla Uncalled'));
+      await tester.longPress(find.text('Ulla Uncalled'));
+      await tester.pumpAndSettle();
+      expect(find.text('75 % · 3/4'), findsOneWidget);
+      expect(find.text('Född 2012'), findsOneWidget);
+      expect(find.textContaining(' valda'), findsNothing);
+      await tester.longPress(find.text('Pelle Pending'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('participant-details-player-uncalled-1')),
+        findsNothing,
+      );
+      expect(find.text('Du svarar som vårdnadshavare'), findsOneWidget);
+      await tester.ensureVisible(find.text('Ulla Uncalled'));
+      await tester.longPress(find.text('Ulla Uncalled'));
+      await tester.pumpAndSettle();
+      expect(roster.profileReads, 2);
+      expect(roster.attendanceReads, 2);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets('walk-in attendance and bulk preserve registered marks', (
+    tester,
+  ) async {
+    final calendar = _Calendar(ended: true);
+    await _openParticipants(tester, calendar);
+    await tester.tap(find.text('Ulla Uncalled'));
+    await tester.pumpAndSettle();
+    expect(
+      calendar.attendanceChanges.single.single['person_id'],
+      'player-uncalled-1',
+    );
+    expect(calendar.attendanceChanges.single.single['status'], 'present');
+    expect(calendar.savedMemberIds, isNull);
+    await tester.ensureVisible(
+      find.text('Markera återstående som frånvarande'),
+    );
+    await tester.tap(find.text('Markera återstående som frånvarande'));
+    await tester.pumpAndSettle();
+    final bulk = calendar.attendanceChanges.last;
+    for (final id in ['player-uncalled-1', 'accepted-1', 'declined-1']) {
+      expect(bulk.map((c) => c['person_id']), isNot(contains(id)));
+    }
+    expect(bulk.every((c) => c['status'] == 'absent'), isTrue);
+    expect(calendar.dispatches, isEmpty);
+  });
+  testWidgets('late correction stages and requires reason', (tester) async {
+    final calendar = _Calendar(ended: true, late: true);
+    await _openParticipants(tester, calendar);
+    await tester.tap(find.text('Ulla Uncalled'));
+    await tester.pumpAndSettle();
+    expect(calendar.attendanceChanges, isEmpty);
+    await tester.tap(find.text('Spara närvaro'));
+    await tester.pumpAndSettle();
+    expect(calendar.attendanceChanges, isEmpty);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Orsak till sen ändring'),
+      'Missad registrering',
+    );
+    await tester.tap(find.text('Spara närvaro'));
+    await tester.pumpAndSettle();
+    expect(calendar.attendanceChanges, hasLength(1));
+    expect(calendar.correctionReason, 'Missad registrering');
   });
 }
 
@@ -567,6 +445,7 @@ Widget _app(
   _Calendar calendar, {
   IdentityServices identity = const _Identity(),
   MatchServices match = const UnconfiguredMatchServices(),
+  RosterServices roster = const UnconfiguredRosterServices(),
 }) => TeamZoneApp(
   environment: const AppEnvironment(name: 'cal11'),
   locale: const Locale('sv'),
@@ -574,6 +453,7 @@ Widget _app(
     identity: identity,
     calendar: calendar,
     match: match,
+    roster: roster,
     isConfigured: true,
   ),
 );
@@ -616,7 +496,7 @@ class _ResultCalendar extends _Calendar {
     allDay: false,
     timezone: 'Europe/Stockholm',
     revision: match.calls.isEmpty ? 1 : 2,
-    callerActions: const {'revise', 'complete'},
+    callerActions: const {'revise', 'complete', 'match_live'},
     teams: const [
       {'team_id': 'team', 'name': 'F2012', 'relation': 'primary'},
       {
@@ -705,6 +585,8 @@ class _Calendar extends UnconfiguredCalendarServices {
   _Calendar({
     this.withGuestAndExtraPlayer = false,
     this.responseRole = 'manager',
+    this.ended = false,
+    this.late = false,
   });
 
   // Off by default so the first test's status-header counts stay exactly
@@ -712,6 +594,13 @@ class _Calendar extends UnconfiguredCalendarServices {
   // rather than the two tests silently sharing (and fighting over) one
   // mutable fixture.
   final bool withGuestAndExtraPlayer;
+  final bool ended, late;
+  final dispatches = <String>[];
+  final attendanceChanges = <List<Map<String, dynamic>>>[];
+  final attendanceStatuses = <String, String>{};
+  final attendanceRevisions = <String, int>{};
+  String? correctionReason;
+  String squadState = 'sent';
   final String responseRole;
   List<String>? savedMemberIds;
   String? respondedCallupId;
@@ -719,14 +608,14 @@ class _Calendar extends UnconfiguredCalendarServices {
   String? respondedActingAsPersonId;
   String? remindedCallupId;
 
-  final _event = EventDetails(
+  late final _event = EventDetails(
     id: 'event-1',
     title: 'Träning A',
     description: null,
     type: 'training',
     state: 'scheduled',
-    startsAt: DateTime.now().toUtc().add(const Duration(days: 1)),
-    endsAt: DateTime.now().toUtc().add(const Duration(days: 1, hours: 1)),
+    startsAt: DateTime.now().toUtc().add(Duration(hours: ended ? -2 : 24)),
+    endsAt: DateTime.now().toUtc().add(Duration(hours: ended ? -1 : 25)),
     allDay: false,
     timezone: 'Europe/Stockholm',
     revision: 1,
@@ -765,7 +654,7 @@ class _Calendar extends UnconfiguredCalendarServices {
   @override
   Future<SquadDetails> getEventSquad(String eventId) async => SquadDetails(
     eventId: eventId,
-    state: 'sent',
+    state: squadState,
     squadRevisionId: 'squad-1',
     revision: 1,
     members: const [
@@ -791,80 +680,98 @@ class _Calendar extends UnconfiguredCalendarServices {
           ]
         : const [],
     attendance: const [],
-    roster: [
-      const EventRosterPerson(
-        personId: 'accepted-1',
-        name: 'Anna Accepterad',
-        teamId: 'team',
-        teamName: 'F2012',
-        rolePackage: 'player',
-        inDraft: true,
-        callupId: 'callup-accepted',
-        callupState: 'accepted',
-      ),
-      EventRosterPerson(
-        personId: 'pending-1',
-        name: 'Pelle Pending',
-        teamId: 'team',
-        teamName: 'F2012',
-        rolePackage: 'player',
-        inDraft: true,
-        callupId: 'callup-pending',
-        callupState: 'pending',
-        callupLastRemindedAt: remindedCallupId == null ? null : DateTime.now(),
-        // A leader can respond on a teammate's behalf now (same
-        // capability that already gates remind/cancel) — 'manager'
-        // rather than 'self' since this account isn't Pelle himself.
-        canRespond: true,
-        responseRole: responseRole,
-      ),
-      const EventRosterPerson(
-        personId: 'declined-1',
-        name: 'Doris Declined',
-        teamId: 'team',
-        teamName: 'F2012',
-        rolePackage: 'player',
-        inDraft: true,
-        callupId: 'callup-declined',
-        callupState: 'declined',
-        declineReasonCode: 'injury',
-      ),
-      const EventRosterPerson(
-        personId: 'leader-called-1',
-        name: 'Lasse Ledare',
-        teamId: 'team',
-        teamName: 'F2012',
-        rolePackage: 'leader',
-        inDraft: true,
-        callupId: 'callup-leader',
-        callupState: 'accepted',
-      ),
-      const EventRosterPerson(
-        personId: 'player-uncalled-1',
-        name: 'Ulla Uncalled',
-        teamId: 'team',
-        teamName: 'F2012',
-        rolePackage: 'player',
-        inDraft: false,
-      ),
-      if (withGuestAndExtraPlayer)
-        const EventRosterPerson(
-          personId: 'player-uncalled-2',
-          name: 'Vera Väntande',
-          teamId: 'team',
-          teamName: 'F2012',
-          rolePackage: 'player',
-          inDraft: false,
-        ),
-      const EventRosterPerson(
-        personId: 'leader-uncalled-1',
-        name: 'Kalle Kallelselös',
-        teamId: 'team',
-        teamName: 'F2012',
-        rolePackage: 'leader',
-        inDraft: false,
-      ),
-    ],
+    roster:
+        [
+              const EventRosterPerson(
+                personId: 'accepted-1',
+                name: 'Anna Accepterad',
+                teamId: 'team',
+                teamName: 'F2012',
+                rolePackage: 'player',
+                inDraft: true,
+                callupId: 'callup-accepted',
+                callupState: 'accepted',
+              ),
+              EventRosterPerson(
+                personId: 'pending-1',
+                name: 'Pelle Pending',
+                teamId: 'team',
+                teamName: 'F2012',
+                rolePackage: 'player',
+                inDraft: true,
+                callupId: 'callup-pending',
+                callupState: 'pending',
+                callupLastRemindedAt: remindedCallupId == null
+                    ? null
+                    : DateTime.now(),
+                // A leader can respond on a teammate's behalf now (same
+                // capability that already gates remind/cancel) — 'manager'
+                // rather than 'self' since this account isn't Pelle himself.
+                canRespond: true,
+                responseRole: responseRole,
+              ),
+              const EventRosterPerson(
+                personId: 'declined-1',
+                name: 'Doris Declined',
+                teamId: 'team',
+                teamName: 'F2012',
+                rolePackage: 'player',
+                inDraft: true,
+                callupId: 'callup-declined',
+                callupState: 'declined',
+                declineReasonCode: 'injury',
+              ),
+              const EventRosterPerson(
+                personId: 'leader-called-1',
+                name: 'Lasse Ledare',
+                teamId: 'team',
+                teamName: 'F2012',
+                rolePackage: 'leader',
+                inDraft: true,
+                callupId: 'callup-leader',
+                callupState: 'accepted',
+              ),
+              const EventRosterPerson(
+                personId: 'player-uncalled-1',
+                name: 'Ulla Uncalled',
+                teamId: 'team',
+                teamName: 'F2012',
+                rolePackage: 'player',
+                inDraft: false,
+              ),
+              if (withGuestAndExtraPlayer)
+                const EventRosterPerson(
+                  personId: 'player-uncalled-2',
+                  name: 'Vera Väntande',
+                  teamId: 'team',
+                  teamName: 'F2012',
+                  rolePackage: 'player',
+                  inDraft: false,
+                ),
+              const EventRosterPerson(
+                personId: 'leader-uncalled-1',
+                name: 'Kalle Kallelselös',
+                teamId: 'team',
+                teamName: 'F2012',
+                rolePackage: 'leader',
+                inDraft: false,
+              ),
+            ]
+            .map(
+              (p) => p.copyWith(
+                attendanceStatus:
+                    attendanceStatuses[p.personId] ??
+                    (ended
+                        ? (p.personId == 'accepted-1'
+                              ? 'present'
+                              : p.personId == 'declined-1'
+                              ? 'absent'
+                              : 'unknown')
+                        : null),
+                attendanceRevision: attendanceRevisions[p.personId] ?? 0,
+              ),
+            )
+            .toList(),
     callerActions: const {
       'save_squad',
       'lock_squad',
@@ -901,6 +808,52 @@ class _Calendar extends UnconfiguredCalendarServices {
     required String idempotencyKey,
   }) async {
     savedMemberIds = memberIds;
+    squadState = 'draft';
+    dispatches.add('save');
+  }
+
+  @override
+  Future<void> lockSquad({
+    required String eventId,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {
+    dispatches.add('lock');
+    squadState = 'locked';
+  }
+
+  @override
+  Future<void> sendCallups({
+    required String squadRevisionId,
+    required DateTime expiry,
+    required String idempotencyKey,
+  }) async {
+    dispatches.add('send');
+    squadState = 'sent';
+  }
+
+  @override
+  Future<AttendancePermissions> getAttendancePermissions(
+    String eventId,
+  ) async => AttendancePermissions(
+    lateWindow: late,
+    canRecord: true,
+    canCorrectLate: true,
+  );
+  @override
+  Future<void> recordAttendance({
+    required String eventId,
+    required List<Map<String, dynamic>> changes,
+    String? correctionReason,
+    required String idempotencyKey,
+  }) async {
+    attendanceChanges.add(changes);
+    this.correctionReason = correctionReason;
+    for (final c in changes) {
+      final id = c['person_id'] as String;
+      attendanceStatuses[id] = c['status'] as String;
+      attendanceRevisions[id] = (c['expected_revision'] as int) + 1;
+    }
   }
 
   @override
@@ -1063,4 +1016,59 @@ class _SharedTeamIdentity extends _Identity {
       capabilities: {'event.manage', 'event.squad.manage'},
     ),
   ];
+}
+
+Future<void> _openParticipants(
+  WidgetTester tester,
+  _Calendar calendar, {
+  RosterServices roster = const UnconfiguredRosterServices(),
+}) async {
+  await tester.pumpWidget(_app(calendar, roster: roster));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Kalender'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byTooltip('Byt kalendervy'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Agenda').last);
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Träning A'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Deltagare'));
+  await tester.pumpAndSettle();
+}
+
+class _ParticipantRoster extends UnconfiguredRosterServices {
+  int profileReads = 0;
+  int attendanceReads = 0;
+  @override
+  Future<RosterPersonDetails> getPersonDetails({
+    required String clubId,
+    required String teamId,
+    required String personId,
+  }) async {
+    profileReads++;
+    return RosterPersonDetails(
+      id: personId,
+      displayName: 'Spelare',
+      teamId: teamId,
+      teamName: 'F2012',
+      assignmentState: 'active',
+      birthYear: 2012,
+    );
+  }
+
+  @override
+  Future<PersonAttendanceSummary> getPersonAttendanceSummary({
+    required String clubId,
+    required String teamId,
+    required String personId,
+  }) async {
+    attendanceReads++;
+    return const PersonAttendanceSummary(
+      trainingsTotal: 4,
+      trainingsAttended: 3,
+      matchesTotal: 2,
+      matchesPlayed: 1,
+    );
+  }
 }

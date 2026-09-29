@@ -290,10 +290,52 @@ class SupabaseIdentityServices
     if (value is! List) {
       throw const FormatException('Context response is not a list.');
     }
-    return value
-        .whereType<Map<String, dynamic>>()
-        .map(TeamZoneContext.fromJson)
-        .toList(growable: false);
+    // One context per team you hold roles in, not one per assignment.
+    final contexts = mergeTeamContexts(
+      value
+          .whereType<Map<String, dynamic>>()
+          .map(TeamZoneContext.fromJson)
+          .toList(growable: false),
+    );
+    return _withOwnTitles(contexts);
+  }
+
+  /// Adds your titles (e.g. Huvudtränare) to the team contexts. Titles are
+  /// descriptive only, so a failure leaves the contexts as they are.
+  Future<List<TeamZoneContext>> _withOwnTitles(
+    List<TeamZoneContext> contexts,
+  ) async {
+    if (!contexts.any((context) => context.roles.contains('leader'))) {
+      return contexts;
+    }
+    try {
+      final value = await _client
+          .schema('api')
+          .rpc<Object?>('get_my_team_titles')
+          .timeout(const Duration(seconds: 10));
+      if (value is! List) return contexts;
+      final byTeam = {
+        for (final row in value.whereType<Map<String, dynamic>>())
+          '${row['club_id']}:${row['team_id']}': row,
+      };
+      List<String> strings(Object? raw) =>
+          (raw as List? ?? const []).whereType<String>().toList();
+      return [
+        for (final context in contexts)
+          if (context.roles.contains('leader')
+                  ? byTeam['${context.clubId}:${context.teamId}']
+                  : null
+              case final row?)
+            context.withTitles(
+              strings(row['titles']),
+              strings(row['custom_titles']),
+            )
+          else
+            context,
+      ];
+    } catch (_) {
+      return contexts;
+    }
   }
 
   Map<String, dynamic> _singleRow(Object? value) {

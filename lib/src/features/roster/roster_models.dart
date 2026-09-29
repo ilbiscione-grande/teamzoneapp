@@ -152,6 +152,7 @@ class RosterPersonDetails {
     this.representationAvailable,
     this.accountLinked,
     this.isSelf = false,
+    this.homeMember = true,
     this.provenance,
     this.assignmentStartsAt,
     this.assignmentEndsAt,
@@ -166,6 +167,10 @@ class RosterPersonDetails {
   final bool? representationAvailable;
   final bool? accountLinked;
   final bool isSelf;
+
+  /// Whether the person belongs to the team as a player (home team). Leaders
+  /// and functionaries are found through their role and are not.
+  final bool homeMember;
   final DateTime? assignmentStartsAt, assignmentEndsAt;
   final int? assignmentRevision;
   final int? personRevision;
@@ -190,6 +195,7 @@ class RosterPersonDetails {
       representationAvailable: json['representation_available'] as bool?,
       accountLinked: json['account_linked'] as bool?,
       isSelf: json['is_self'] as bool? ?? false,
+      homeMember: json['home_member'] as bool? ?? true,
       provenance: manager?['provenance'] as String?,
       assignmentStartsAt: DateTime.tryParse(
         manager?['assignment_starts_at'] as String? ?? '',
@@ -494,4 +500,139 @@ class InvitationClaimResult {
       _ => throw const FormatException('Invitation claim response is invalid.'),
     };
   }
+}
+
+/// One active role a person holds in a team (TEAM-09).
+class TeamRole {
+  const TeamRole({
+    required this.personId,
+    required this.name,
+    required this.role,
+    this.isSelf = false,
+    this.titles = const [],
+    this.positions = const [],
+    this.customTitles = const [],
+    this.customPositions = const [],
+    this.detailsRevision = 0,
+    this.permissions,
+    this.permissionTemplate,
+  });
+  final String personId, name, role;
+  final bool isSelf;
+
+  /// Descriptive only (never permissions). [titles] are catalog keys such as
+  /// head_coach and belong to leader roles; [positions] are keys from the
+  /// team sport's catalog and belong to player roles. The custom lists hold
+  /// the team's own labels.
+  final List<String> titles, positions, customTitles, customPositions;
+  final int detailsRevision;
+
+  /// A leader's panel capabilities in this team; only sent to viewers who
+  /// manage leaders (null otherwise, and for non-leader rows).
+  final List<String>? permissions;
+  final String? permissionTemplate;
+
+  factory TeamRole.fromJson(Map<String, dynamic> json) => TeamRole(
+    personId: json['person_id'] as String,
+    name: json['name'] as String? ?? '',
+    role: json['role'] as String? ?? 'player',
+    isSelf: json['is_self'] == true,
+    titles: _strings(json['functions']),
+    positions: _strings(json['positions']),
+    customTitles: _strings(json['custom_titles']),
+    customPositions: _strings(json['custom_positions']),
+    detailsRevision: (json['details_revision'] as num?)?.toInt() ?? 0,
+    permissions: json['permissions'] is List
+        ? _strings(json['permissions'])
+        : null,
+    permissionTemplate: json['permission_template'] as String?,
+  );
+}
+
+List<String> _strings(Object? value) =>
+    (value as List? ?? const []).whereType<String>().toList();
+
+/// One position in a sport's catalog: general (e.g. defender) or
+/// detailed with its general [parent] (e.g. centre_back → defender).
+class SportPosition {
+  const SportPosition({required this.key, required this.level, this.parent});
+  final String key, level;
+  final String? parent;
+  bool get isGeneral => level == 'general';
+
+  factory SportPosition.fromJson(Map<String, dynamic> json) => SportPosition(
+    key: json['key'] as String,
+    level: json['level'] as String? ?? 'general',
+    parent: json['parent'] as String?,
+  );
+}
+
+class TeamRoles {
+  const TeamRoles({
+    required this.canManage,
+    required this.roles,
+    this.sport = 'football',
+    this.positionCatalog = const [],
+    bool? canEditDetails,
+    this.grantable = const [],
+  }) : canEditDetails = canEditDetails ?? canManage;
+
+  /// Manages leaders: adds/changes leader roles and edits permissions.
+  final bool canManage;
+
+  /// May edit titles and positions (roster or leader management).
+  final bool canEditDetails;
+
+  /// Panel capabilities the viewer holds and can therefore give or remove.
+  final List<String> grantable;
+  final List<TeamRole> roles;
+  final String sport;
+  final List<SportPosition> positionCatalog;
+
+  List<String> rolesOf(String personId) => [
+    for (final role in roles)
+      if (role.personId == personId) role.role,
+  ];
+
+  factory TeamRoles.fromJson(Map<String, dynamic> json) => TeamRoles(
+    canManage: json['can_manage'] == true,
+    canEditDetails: json['can_edit_details'] as bool?,
+    grantable: _strings(json['grantable']),
+    roles: (json['roles'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(TeamRole.fromJson)
+        .toList(growable: false),
+    sport: json['sport'] as String? ?? 'football',
+    positionCatalog: (json['position_catalog'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(SportPosition.fromJson)
+        .toList(growable: false),
+  );
+}
+
+/// A leader or functionary elsewhere in the club who could also lead this team.
+class LeaderCandidate {
+  const LeaderCandidate({
+    required this.personId,
+    required this.name,
+    required this.context,
+    this.isSelf = false,
+  });
+  final String personId, name, context;
+  final bool isSelf;
+
+  factory LeaderCandidate.fromJson(Map<String, dynamic> json) =>
+      LeaderCandidate(
+        personId: json['person_id'] as String,
+        name: json['name'] as String? ?? '',
+        context: json['context'] as String? ?? '',
+        isSelf: json['is_self'] == true,
+      );
+}
+
+/// A role command the server refused for a known reason
+/// (`own_leader_role`, `home_in_other_team`, `stale_role`).
+class TeamRoleException implements Exception {
+  const TeamRoleException(this.code);
+  final String code;
 }

@@ -447,9 +447,9 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
               title: Text(item.teamName ?? item.clubName),
               subtitle: Text(
                 item.teamName == null
-                    ? strings.domainValue(item.rolePackage)
+                    ? _contextRolesLabel(strings, item)
                     : '${item.clubName} · '
-                          '${strings.domainValue(item.rolePackage)}',
+                          '${_contextRolesLabel(strings, item)}',
               ),
             ),
           ),

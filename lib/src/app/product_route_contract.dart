@@ -51,6 +51,11 @@ class ProductRouteContract {
   static String teamMember(String personId) =>
       '$team/member/${Uri.encodeComponent(personId)}';
 
+  /// Stands in for your own person in the active team; the member page
+  /// resolves it through your role there.
+  static const selfPersonId = 'me';
+  static String get ownTeamProfile => teamMember(selfPersonId);
+
   /// Deep links that land on a destination and immediately trigger one
   /// specific action there (rather than just opening the page), used by the
   /// swipe-up quick actions sheet. Each destination reads its own

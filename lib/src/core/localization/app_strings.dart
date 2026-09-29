@@ -1374,6 +1374,166 @@ class AppStrings {
             'se deras konversationer också.':
         'Shows the active team by default. Pick more to see their '
         'conversations too.',
+    'Du kan inte ändra eller ta bort din egen ledarroll.':
+        'You can\'t change or remove your own leader role.',
+    'Personen spelar i ett annat lag. Använd Flytta eller Representation.':
+        'This person plays in another team. Use Move or Representation.',
+    'Rollen har redan ändrats av någon annan.':
+        'The role was already changed by someone else.',
+    'Rollen kunde inte ändras. Försök igen.':
+        'The role couldn\'t be changed. Try again.',
+    'du': 'you',
+    'Ledare och roller': 'Leaders and roles',
+    'Inga ledare ännu': 'No leaders yet',
+    'är nu ledare i laget.': 'is now a leader of the team.',
+    'Ledare kan hantera truppen, kallelser och event i laget.':
+        'Leaders can manage the squad, call-ups and events for the team.',
+    'Rollerna kunde inte laddas.': 'The roles couldn\'t be loaded.',
+    'Lägg till ledare': 'Add leader',
+    'Ändra roll': 'Change role',
+    'är nu spelare i laget.': 'is now a player in the team.',
+    'är inte längre ledare i laget.': 'is no longer a leader of the team.',
+    'Ändra till spelare': 'Change to player',
+    'Ta bort som ledare': 'Remove as leader',
+    'Sök person': 'Search person',
+    'Klubbens ledare': 'Club\'s leaders',
+    'Klubbens ledare kunde inte laddas.':
+        'The club\'s leaders couldn\'t be loaded.',
+    'Alla klubbens ledare är redan ledare här.':
+        'All of the club\'s leaders already lead this team.',
+    'Från truppen': 'From the squad',
+    'Ingen i truppen att välja.': 'No one in the squad to choose.',
+    'Behåller sin spelarroll': 'Keeps their player role',
+    'Ny person': 'New person',
+    'Bjud in med en lagkod': 'Invite with a team code',
+    'Skapa en lagkod med rollen Ledare under Inbjudningar och lagkoder.':
+        'Create a team code with the Leader role under Invitations and team codes.',
+    'Lägg till ledarroll': 'Add leader role',
+    'Byt från spelare till ledare': 'Switch from player to leader',
+    'Byt från ledare till spelare': 'Switch from leader to player',
+    'Ta bort ledarrollen': 'Remove leader role',
+    'Roll i laget': 'Role in the team',
+    'Ingen roll': 'No role',
+    'Lägg till ledare, även dig själv eller klubbens befintliga ledare.':
+        'Add leaders, including yourself or the club\'s existing leaders.',
+    'Uppgifterna kunde inte hämtas. Kontrollera din behörighet och försök igen.':
+        'The details couldn\'t be loaded. Check your permissions and try again.',
+    'Uppgifterna har ändrats av någon annan. Hämta senaste uppgifter innan du sparar.':
+        'Someone else changed these details. Load the latest before saving.',
+    'Kunde inte spara. Kontrollera anslutningen och din behörighet och försök igen.':
+        'Couldn\'t save. Check your connection and permissions and try again.',
+    'Titel och position': 'Title and position',
+    'Position': 'Position',
+    'Gäller i detta lag och ändrar inte personens behörigheter.':
+        'Applies to this team and doesn\'t change the person\'s permissions.',
+    'Egen titel': 'Own title',
+    'Egen position': 'Own position',
+    'detaljerat': 'detailed',
+    'Hämta senaste uppgifter': 'Load latest details',
+    'Kunde inte hämta uppgifterna': 'Couldn\'t load the details',
+    'Hämtar uppgifter…': 'Loading details…',
+    'Inga valda': 'None selected',
+    'Välj titel': 'Choose title',
+    'Ingen titel vald': 'No title chosen',
+    'Idrott': 'Sport',
+    'Styr vilka spelarpositioner som finns att välja.':
+        'Determines which playing positions can be chosen.',
+    'Huvudtränare': 'Head coach',
+    'Assisterande tränare': 'Assistant coach',
+    'Lagledare': 'Team manager',
+    'Kontaktperson': 'Contact person',
+    'Målvaktstränare': 'Goalkeeper coach',
+    'Fystränare': 'Fitness coach',
+    'Materialansvarig': 'Equipment manager',
+    'Medicinskt ansvarig': 'Medical staff',
+    'Kassör': 'Treasurer',
+    'Administratör': 'Administrator',
+    'Målvakt': 'Goalkeeper',
+    'Försvarare': 'Defender',
+    'Mittfältare': 'Midfielder',
+    'Anfallare': 'Forward',
+    'Mittback': 'Centre back',
+    'Vänsterback': 'Left back',
+    'Högerback': 'Right back',
+    'Wingback': 'Wing back',
+    'Defensiv mittfältare': 'Defensive midfielder',
+    'Central mittfältare': 'Central midfielder',
+    'Offensiv mittfältare': 'Attacking midfielder',
+    'Vänsterytter': 'Left winger',
+    'Högerytter': 'Right winger',
+    'Centralanfallare': 'Striker',
+    'Nia': 'Back court',
+    'Kant': 'Wing',
+    'Linjespelare': 'Pivot',
+    'Vänsternia': 'Left back',
+    'Mittnia': 'Centre back',
+    'Högernia': 'Right back',
+    'Vänstersexa': 'Left wing',
+    'Högersexa': 'Right wing',
+    'Fotboll': 'Football',
+    'Handboll': 'Handball',
+    'Annan idrott': 'Other sport',
+    'Övrigt': 'Other',
+    'Trupp och medlemmar': 'Squad and members',
+    'Lägga till, ändra och bjuda in personer': 'Add, edit and invite people',
+    'Ledare och behörigheter': 'Leaders and permissions',
+    'Göra personer till ledare och ändra behörigheter':
+        'Make people leaders and change permissions',
+    'Skapa och flytta event': 'Create and move events',
+    'Datum, tid, plats, ställa in och dela':
+        'Date, time, place, cancel and share',
+    'Kallelser': 'Call-ups',
+    'Välja trupp, skicka och påminna': 'Pick the squad, send and remind',
+    'Sen närvarorättelse': 'Late attendance correction',
+    'Rätta närvaro efter att eventet är över':
+        'Correct attendance after the event',
+    'Material, uppgifter och filer': 'Equipment, tasks and files',
+    'Förberedelser som alla behöver, mötesagenda':
+        'Shared preparations, meeting agenda',
+    'Träningsupplägg': 'Training plan',
+    'Träningsfokus och träningsanteckningar':
+        'Training focus and training notes',
+    'Matchplan och taktik': 'Match plan and tactics',
+    'Matchförberedelse och taktik': 'Match preparation and tactics',
+    'Matchläge och resultat': 'Match mode and result',
+    'Klocka, mål, resultat och matchrapport':
+        'Clock, goals, result and match report',
+    'Spelarutveckling': 'Player development',
+    'Utvecklingsplaner': 'Development plans',
+    'Nyheter och lagets publika sida': 'News and the team\'s public page',
+    'Målvakts- och fystränare': 'Goalkeeper and fitness coach',
+    'Ledare (standard)': 'Leader (standard)',
+    'Anpassad': 'Custom',
+    'Utgå från mall': 'Start from template',
+    'Anpassad – skiljer sig från mallarna':
+        'Custom – differs from the templates',
+    'Vissa behörigheter ändrades inte eftersom du själv saknar dem.':
+        'Some permissions weren\'t changed because you don\'t have them yourself.',
+    'Titeln föreslår mallen': 'The title suggests the template',
+    'Använd': 'Use',
+    'Behörigheterna har ändrats av någon annan. Stäng och öppna igen.':
+        'Someone else changed the permissions. Close and open again.',
+    'Du kan bara ge eller ta bort behörigheter som du själv har.':
+        'You can only give or remove permissions you have yourself.',
+    'Du kan inte ta bort din egen behörighet att hantera ledare.':
+        'You can\'t remove your own permission to manage leaders.',
+    'Laget måste ha minst en person som kan hantera ledare.':
+        'The team needs at least one person who can manage leaders.',
+    'Behörigheterna kunde inte sparas. Försök igen.':
+        'The permissions couldn\'t be saved. Try again.',
+    'Behörighet': 'Permission',
+    'Behörigheter': 'Permissions',
+    'Behörigheterna sparades för': 'Permissions saved for',
+    'Nya ledare och behörigheter hanteras av huvudtränaren eller en klubbfunktionär.':
+        'New leaders and permissions are managed by the head coach or a club functionary.',
+    'Titlar, behörigheter och nya ledare':
+        'Titles, permissions and new leaders',
+    'Klubbfunktionär – hela klubben': 'Club functionary – whole club',
+    'Inga spelare i truppen ännu.': 'No players in the squad yet.',
+    'Du har ingen profil i det här laget': 'You have no profile in this team',
+    'Byt till ett lag där du är spelare eller ledare, eller se dina kontouppgifter under Inställningar.':
+        'Switch to a team where you are a player or leader, or see your account details under Settings.',
+    'Min profil': 'My profile',
   };
   String get signOut => isSwedish ? 'Logga ut' : 'Sign out';
   String eventOwner(String name) =>

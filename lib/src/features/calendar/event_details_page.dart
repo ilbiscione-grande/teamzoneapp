@@ -15,6 +15,7 @@ class _EventDetailsPage extends StatefulWidget {
     required this.eventId,
     required this.contextValue,
     required this.calendar,
+    required this.roster,
     required this.match,
     required this.matchSpaceV2,
     required this.onNavigate,
@@ -23,6 +24,7 @@ class _EventDetailsPage extends StatefulWidget {
   final String eventId;
   final TeamZoneContext contextValue;
   final CalendarServices calendar;
+  final RosterServices roster;
   final MatchServices match;
   final bool matchSpaceV2;
   final ValueChanged<String> onNavigate;
@@ -114,6 +116,7 @@ class _EventDetailsPageState extends State<_EventDetailsPage> {
             eventId: widget.eventId,
             contextValue: widget.contextValue,
             calendar: widget.calendar,
+            roster: widget.roster,
             match: widget.match,
             matchSpaceV2: widget.matchSpaceV2,
             onDeleted: _goBackToCalendar,
@@ -132,6 +135,7 @@ class _EventDetailsBody extends StatefulWidget {
     required this.eventId,
     required this.contextValue,
     required this.calendar,
+    required this.roster,
     required this.match,
     required this.matchSpaceV2,
     required this.onDeleted,
@@ -144,6 +148,7 @@ class _EventDetailsBody extends StatefulWidget {
   final String eventId;
   final TeamZoneContext contextValue;
   final CalendarServices calendar;
+  final RosterServices roster;
   final MatchServices match;
   final bool matchSpaceV2;
   final VoidCallback onDeleted;
@@ -172,7 +177,6 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     vsync: this,
   )..addListener(_handleTabIndexChanged);
 
-  bool _sendingCallups = false;
   int _resultRefresh = 0;
 
   Map<String, dynamic>? get _activeTeamRelation {
@@ -258,97 +262,25 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     }
   }
 
-  /// People currently drafted but not yet called — the ones a tap on
-  /// "Skicka kallelser" would actually notify. Already-called members
-  /// stay in the draft list too, so counting the raw draft is not enough.
-  int get _pendingCallupCount => [
-    ...squad.roster,
-    ..._guestRosterFor(squad),
-  ].where((person) => person.inDraft && !person.isCalled).length;
-
-  /// The current actor's own callup for this event, if any — responseRole
-  /// 'self' uniquely identifies it regardless of the actor's role package
-  /// (a leader can be called up too). Read-only here: shown on Info so
-  /// it's visible everywhere, but only actually respondable from the
-  /// Deltagare tab, alongside everyone else's.
   EventRosterPerson? get _myCallup =>
       [...squad.roster, ..._guestRosterFor(squad)]
           .where((person) => person.isCalled && person.responseRole == 'self')
           .firstOrNull;
 
-  Future<void> _sendCallups() async {
-    final revisionId = squad.squadRevisionId;
-    if (revisionId == null) return;
-    setState(() => _sendingCallups = true);
-    try {
-      // send_callups_for_actor requires the squad to already be 'locked'
-      // (it rejects a 'draft' revision outright) — a step the old
-      // "Hantera urval" flow had its own button for, that this rebuild
-      // never wired up, so every send failed. Skipped when already
-      // locked (a prior send attempt that locked but then failed before
-      // actually sending, say), never re-locked from 'sent'/'empty'.
-      final draftRevision = squad.revision;
-      if (squad.state == 'draft' && draftRevision != null) {
-        await widget.calendar.lockSquad(
-          eventId: widget.eventId,
-          expectedRevision: draftRevision,
-          idempotencyKey: _newUuid(),
-        );
-      }
-      await widget.calendar.sendCallups(
-        squadRevisionId: revisionId,
-        expiry: DateTime.now().add(const Duration(days: 7)),
-        idempotencyKey: _newUuid(),
-      );
-      await _refresh();
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppStrings.of(context).feature(
-                'Kallelserna kunde inte skickas. Ladda om och försök igen.',
-              ),
-            ),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _sendingCallups = false);
+  Future<void> _refreshParticipants() async {
+    final updated = await widget.calendar.getEventSquad(widget.eventId);
+    if (mounted) {
+      setState(() {
+        squad = updated;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
-    final pendingCount = _pendingCallupCount;
-    final showSendFab =
-        _tabController.index == 1 &&
-        _contextCanManageRoster &&
-        squad.can('send_callups') &&
-        pendingCount > 0;
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: !showSendFab
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: _sendingCallups ? null : _sendCallups,
-              icon: _sendingCallups
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Badge(
-                      label: Text('$pendingCount'),
-                      child: const Icon(Icons.send_outlined),
-                    ),
-              label: Text(
-                squad.dispatchKind == 'late'
-                    ? strings.feature('Skicka sena kallelser')
-                    : strings.feature('Skicka kallelser'),
-              ),
-            ),
-      floatingActionButtonLocation: _leftOfAssistantFabLocation,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -396,11 +328,25 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                   event: event,
                   squad: squad,
                   calendar: widget.calendar,
-                  onReload: _refresh,
+                  onReload: _refreshParticipants,
+                  roster: widget.roster,
+                  clubId: widget.contextValue.clubId,
                   allowManage: _contextCanManageRoster,
                   allowAttendance: _contextCanManageRoster,
                 ),
-                _scroll(_preparation(context)),
+                _PreparationTab(
+                  key: const ValueKey('event-preparation'),
+                  event: event,
+                  people: [...squad.roster, ..._guestRosterFor(squad)],
+                  services: widget.calendar.preparation,
+                  allowEdit: _contextCanCoManage,
+                  onOpenMatchMode:
+                      event.preparationActions.contains(
+                        EventPreparationAction.matchSpace,
+                      )
+                      ? _showMatchSpace
+                      : null,
+                ),
                 _scroll(_followUp(context)),
               ],
             ),
@@ -485,7 +431,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
             key: ValueKey(_resultRefresh),
             event: event,
             match: widget.match,
-            canManage: _contextCanCoManage && event.can('complete'),
+            canManage: _contextCanCoManage && event.can('match_live'),
             onSaved: _refresh,
           ),
         if (ownerTeam != null)
@@ -685,44 +631,6 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
   String _formatMoment(BuildContext context, DateTime value) {
     final localizations = MaterialLocalizations.of(context);
     return '${localizations.formatMediumDate(value)} · ${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(value))}';
-  }
-
-  Widget _preparation(BuildContext context) {
-    final actions = event.preparationActions;
-    final strings = AppStrings.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          strings.preparationTitle(event.type),
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 8),
-        Text(strings.preparationDescription(event.type)),
-        const SizedBox(height: 20),
-        if (_contextCanCoManage &&
-            actions.contains(EventPreparationAction.matchSpace))
-          FilledButton.tonalIcon(
-            onPressed: _showMatchSpace,
-            icon: const Icon(Icons.sports_soccer),
-            label: Text(strings.matchSpaceAction(widget.matchSpaceV2)),
-          ),
-        if (_contextCanManageRoster &&
-            actions.contains(EventPreparationAction.participants))
-          OutlinedButton.icon(
-            onPressed: () => _tabController.animateTo(1),
-            icon: const Icon(Icons.groups_outlined),
-            label: Text(strings.feature('Förbered deltagare och kallelser')),
-          ),
-        if (_contextCanCoManage &&
-            actions.contains(EventPreparationAction.editEvent))
-          OutlinedButton.icon(
-            onPressed: _revise,
-            icon: const Icon(Icons.edit_calendar_outlined),
-            label: Text(strings.feature('Uppdatera eventinformation')),
-          ),
-      ],
-    );
   }
 
   Widget _followUp(BuildContext context) {
@@ -983,12 +891,15 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
   }
 
   Future<void> _showMatchSpace() async {
-    await showDialog<void>(
-      context: context,
-      builder: (_) => _MatchSpaceDialog(
-        event: event,
-        match: widget.match,
-        compactFallback: !widget.matchSpaceV2,
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => _MatchModePage(
+          event: event,
+          squad: squad,
+          match: widget.match,
+          live: widget.calendar.preparation,
+          readOnly: !widget.matchSpaceV2 || !_contextCanCoManage,
+        ),
       ),
     );
     if (!mounted) return;
@@ -1334,8 +1245,18 @@ List<EventRosterPerson> _guestRosterFor(SquadDetails squad) {
             );
   }
   for (final attendance in squad.attendance) {
-    final existing = guests[attendance.personId];
-    if (existing == null || rosterIds.contains(attendance.personId)) continue;
+    if (rosterIds.contains(attendance.personId)) continue;
+    final existing =
+        guests[attendance.personId] ??
+        EventRosterPerson(
+          personId: attendance.personId,
+          name: attendance.name,
+          teamId: '',
+          teamName: '',
+          rolePackage: 'player',
+          inDraft: false,
+          isGuest: true,
+        );
     guests[attendance.personId] = existing.copyWith(
       attendanceStatus: attendance.status,
       attendanceMinutes: attendance.minutes,
@@ -1485,1040 +1406,8 @@ class _StatusCircle extends StatelessWidget {
   );
 }
 
-/// The Deltagare tab: club-wide search-and-add at the top, then one roster
-/// list (kallade spelare, kallade ledare, okallade spelare, okallade
-/// ledare — the fixed order and internal sort the user asked for) whose
-/// rows switch behavior with the event's lifecycle:
-///  - before any callups exist: a checkbox toggles draft membership;
-///  - once called: the row shows the person's callup response (read-only —
-///    that's their own action) with remind/cancel where the caller can;
-///  - once the event has ended: called rows switch to an attendance status
-///    picker instead. Recording attendance for someone who was never
-///    called is not something the backend supports (record_attendance_v2
-///    requires an existing callup), so uncalled rows stay informational
-///    there rather than offering a control that would just fail.
-/// Replaces the old "Hantera urval"/"Trupp" bottom sheet entirely — no
-/// button to go elsewhere, everything happens inline on this tab.
-class _ParticipantsTab extends StatefulWidget {
-  const _ParticipantsTab({
-    required this.event,
-    required this.squad,
-    required this.calendar,
-    required this.onReload,
-    required this.allowManage,
-    required this.allowAttendance,
-  });
-
-  final EventDetails event;
-  final SquadDetails squad;
-  final CalendarServices calendar;
-  final bool allowManage, allowAttendance;
-  // Future<void>, not VoidCallback: every caller below needs to await this
-  // before clearing its own busy flag. A fire-and-forget reload used to let
-  // a second tap (trivial to land now that a whole row is one tap target)
-  // slip in on the still-stale widget.squad — its member list and revision
-  // hadn't caught up yet — which the server then rightly rejected as a
-  // stale_revision conflict, surfacing as a generic "kunde inte sparas".
-  final Future<void> Function() onReload;
-
-  @override
-  State<_ParticipantsTab> createState() => _ParticipantsTabState();
-}
-
-class _ParticipantsTabState extends State<_ParticipantsTab> {
-  final _searchController = TextEditingController();
-  final _reasonController = TextEditingController();
-  List<SquadCandidate> _candidates = const [];
-  String _query = '';
-  bool _busy = false;
-  AttendancePermissions? _resolvedPermissions;
-
-  // Attendance edits staged locally until "Spara närvaro" — only entries
-  // the person actually touched, so an empty map means nothing pending.
-  final Map<String, String> _stagedStatus = {};
-  final Map<String, int> _stagedMinutes = {};
-
-  bool _busyBulk = false;
-
-  bool get _canManage => widget.allowManage && widget.squad.can('save_squad');
-  bool get _canRecordAttendance =>
-      widget.allowAttendance && widget.squad.can('record_attendance');
-  bool get _eventEnded =>
-      DateTime.now().toUtc().isAfter(widget.event.endsAt.toUtc());
-  Set<String> get _draftMemberIds =>
-      widget.squad.members.map((member) => member.personId).toSet();
-
-  List<EventRosterPerson> get _guestRoster => _guestRosterFor(widget.squad);
-
-  @override
-  void initState() {
-    super.initState();
-    if (_canManage) unawaited(_loadCandidates());
-    if (_eventEnded && _canRecordAttendance) {
-      unawaited(
-        widget.calendar.getAttendancePermissions(widget.event.id).then((value) {
-          if (mounted) setState(() => _resolvedPermissions = value);
-        }),
-      );
-    }
-    _searchController.addListener(() {
-      setState(() => _query = _searchController.text.trim());
-    });
-  }
-
-  @override
-  void didUpdateWidget(covariant _ParticipantsTab oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.squad.revision != widget.squad.revision) {
-      // A save just landed and the parent refetched — drop any staged
-      // attendance edits so the UI reflects the fresh server state rather
-      // than a mix of old local edits and new data.
-      _stagedStatus.clear();
-      _stagedMinutes.clear();
-      if (_canManage) unawaited(_loadCandidates());
-    }
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _reasonController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadCandidates() async {
-    try {
-      final candidates = await widget.calendar.listSquadCandidates(
-        widget.event.id,
-      );
-      if (mounted) setState(() => _candidates = candidates);
-    } catch (_) {
-      // Search just stays empty; the roster list below still works.
-    }
-  }
-
-  List<SquadCandidate> get _matches {
-    if (_query.isEmpty) return const [];
-    final needle = _query.toLowerCase();
-    return _candidates
-        .where(
-          (candidate) =>
-              candidate.name.toLowerCase().contains(needle) ||
-              (candidate.teamName?.toLowerCase().contains(needle) ?? false),
-        )
-        .toList();
-  }
-
-  Future<void> _toggleDraftMember(String personId) async {
-    final ids = _draftMemberIds;
-    ids.contains(personId) ? ids.remove(personId) : ids.add(personId);
-    setState(() => _busy = true);
-    try {
-      await widget.calendar.saveSquadDraft(
-        eventId: widget.event.id,
-        memberIds: ids.toList(),
-        source: 'manual',
-        expectedRevision: widget.squad.state == 'draft'
-            ? widget.squad.revision
-            : null,
-        idempotencyKey: _newUuid(),
-      );
-      await widget.onReload();
-    } catch (_) {
-      if (mounted) {
-        _showError('Ändringen kunde inte sparas. Ladda om och försök igen.');
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _manageCallup(EventRosterPerson person, String action) async {
-    final callupId = person.callupId;
-    if (callupId == null) return;
-    setState(() => _busy = true);
-    try {
-      await widget.calendar.manageCallup(
-        callupId: callupId,
-        action: action,
-        expectedRevision:
-            widget.squad.callups
-                .where((callup) => callup.id == callupId)
-                .map((callup) => callup.revision)
-                .firstOrNull ??
-            0,
-        idempotencyKey: _newUuid(),
-      );
-      await widget.onReload();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppStrings.of(context).feature(
-                action == 'remind'
-                    ? 'Påminnelsen är skickad.'
-                    : 'Kallelsen är återkallad.',
-              ),
-            ),
-          ),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        _showError('Åtgärden kunde inte utföras. Ladda om och försök igen.');
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  /// Responds to a callup — the person's own ('self'), or, for whoever
-  /// can already manage the squad, anyone else's on the roster too
-  /// ('manager' — same capability that already gates remind/cancel,
-  /// covering both spelare and ledare buckets uniformly).
-  Future<void> _respondToCallup(
-    EventRosterPerson person,
-    String response,
-  ) async {
-    final callupId = person.callupId;
-    if (callupId == null) return;
-    String? reasonCode;
-    String? reasonText;
-    if (response == 'declined') {
-      final reason = await _declineCallupReasonDialog(context);
-      if (reason == null || !mounted) return;
-      reasonCode = reason.$1;
-      reasonText = reason.$2;
-    }
-    setState(() => _busy = true);
-    try {
-      await widget.calendar.respondCallup(
-        callupId: callupId,
-        response: response,
-        actingAsPersonId: person.responseRole == 'self'
-            ? null
-            : person.personId,
-        declineReasonCode: reasonCode,
-        declineReasonText: reasonText,
-        expectedRevision:
-            widget.squad.callups
-                .where((callup) => callup.id == callupId)
-                .map((callup) => callup.revision)
-                .firstOrNull ??
-            0,
-        idempotencyKey: _newUuid(),
-      );
-      await widget.onReload();
-    } catch (_) {
-      // The write may have landed even though this request didn't hear
-      // back — re-check before telling the user their answer was lost.
-      final mismatched = await callupResponseStillMismatched(
-        widget.calendar,
-        widget.event.id,
-        callupId,
-        response,
-      );
-      if (mounted && mismatched) {
-        _showError('Svaret kunde inte sparas. Ladda om och försök igen.');
-      }
-      await widget.onReload();
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  void _setAttendance(EventRosterPerson person, String status) {
-    setState(() {
-      _stagedStatus[person.personId] = status;
-      if (status == 'late' || status == 'partial') {
-        _stagedMinutes.putIfAbsent(
-          person.personId,
-          () => person.attendanceMinutes ?? 1,
-        );
-      } else {
-        _stagedMinutes.remove(person.personId);
-      }
-    });
-  }
-
-  void _setAttendanceMinutes(EventRosterPerson person, String value) {
-    final minutes = int.tryParse(value);
-    if (minutes == null || minutes < 1 || minutes > 1440) return;
-    setState(() => _stagedMinutes[person.personId] = minutes);
-  }
-
-  Future<void> _saveAttendance() async {
-    final strings = AppStrings.of(context);
-    final permissions = _resolvedPermissions;
-    if (permissions == null || _stagedStatus.isEmpty) return;
-    final reason = _reasonController.text.trim();
-    if (permissions.lateWindow && reason.length < 3) {
-      _showError('Ange en orsak till den sena korrigeringen (minst 3 tecken).');
-      return;
-    }
-    final everyone = [...widget.squad.roster, ..._guestRoster];
-    final changes = <Map<String, dynamic>>[];
-    for (final entry in _stagedStatus.entries) {
-      final person = everyone
-          .where((item) => item.personId == entry.key)
-          .firstOrNull;
-      if (person == null) continue;
-      changes.add({
-        'person_id': entry.key,
-        'status': entry.value,
-        'expected_revision': person.attendanceRevision,
-        if (entry.value == 'late' || entry.value == 'partial')
-          'minutes': _stagedMinutes[entry.key],
-      });
-    }
-    if (changes.isEmpty) return;
-    setState(() => _busy = true);
-    try {
-      await widget.calendar.recordAttendance(
-        eventId: widget.event.id,
-        changes: changes,
-        correctionReason: permissions.lateWindow ? reason : null,
-        idempotencyKey: _newUuid(),
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(strings.feature('Närvaron har sparats.'))),
-        );
-      }
-      await widget.onReload();
-    } catch (_) {
-      if (mounted) {
-        _showError('Närvaron kunde inte sparas. Ladda om och försök igen.');
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  // ─── Bulk actions (behind the "..." menu) ──────────────────────────────
-  // Inspired by the reference implementation's "Välj alla"/"Påminn alla"/
-  // "Sätt alla deltog" — one tap instead of one tap per person.
-
-  /// Adds every not-yet-called, not-yet-drafted player (not leaders — a
-  /// coach calls up players to play; leaders are added individually)
-  /// straight to the draft in a single save.
-  Future<void> _selectAllPlayers() async {
-    final toAdd = widget.squad.roster
-        .where((p) => p.rolePackage == 'player' && !p.isCalled && !p.inDraft)
-        .map((p) => p.personId);
-    if (toAdd.isEmpty) return;
-    final ids = _draftMemberIds..addAll(toAdd);
-    setState(() => _busyBulk = true);
-    try {
-      await widget.calendar.saveSquadDraft(
-        eventId: widget.event.id,
-        memberIds: ids.toList(),
-        source: 'manual',
-        expectedRevision: widget.squad.state == 'draft'
-            ? widget.squad.revision
-            : null,
-        idempotencyKey: _newUuid(),
-      );
-      await widget.onReload();
-    } catch (_) {
-      if (mounted) {
-        _showError('Ändringen kunde inte sparas. Ladda om och försök igen.');
-      }
-    } finally {
-      if (mounted) setState(() => _busyBulk = false);
-    }
-  }
-
-  Future<void> _saveBulkDraft({
-    required List<String> memberIds,
-    required String source,
-    Map<String, dynamic> selectionContext = const {},
-  }) async {
-    if (memberIds.isEmpty) return;
-    setState(() => _busyBulk = true);
-    try {
-      await widget.calendar.saveSquadDraft(
-        eventId: widget.event.id,
-        memberIds: memberIds,
-        source: source,
-        selectionContext: selectionContext,
-        expectedRevision: widget.squad.state == 'draft'
-            ? widget.squad.revision
-            : null,
-        idempotencyKey: _newUuid(),
-      );
-      await widget.onReload();
-    } catch (_) {
-      if (mounted) {
-        _showError(
-          'Deltagarurvalet kunde inte sparas. Ladda om och försök igen.',
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _busyBulk = false);
-    }
-  }
-
-  Future<void> _selectAllEligible() => _saveBulkDraft(
-    memberIds: _candidates.map((candidate) => candidate.personId).toList(),
-    source: 'all',
-  );
-
-  Future<void> _selectEligibilityGroup() async {
-    final strings = AppStrings.of(context);
-    final groups =
-        _candidates
-            .map((candidate) => candidate.eligibilityKind)
-            .toSet()
-            .toList()
-          ..sort();
-    if (groups.isEmpty) return;
-    final selected = await showDialog<String>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: Text(strings.feature('Välj behörighetsgrupp')),
-        children: [
-          for (final group in groups)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(context, group),
-              child: Text(
-                '${strings.eligibilityKind(group)} (${_candidates.where((candidate) => candidate.eligibilityKind == group).length})',
-              ),
-            ),
-        ],
-      ),
-    );
-    if (selected == null || !mounted) return;
-    await _saveBulkDraft(
-      memberIds: _candidates
-          .where((candidate) => candidate.eligibilityKind == selected)
-          .map((candidate) => candidate.personId)
-          .toList(),
-      source: 'group',
-      selectionContext: {'eligibility_kind': selected},
-    );
-  }
-
-  Future<void> _selectGeneratedDraft() async {
-    final strings = AppStrings.of(context);
-    if (_candidates.isEmpty) return;
-    var count =
-        (_draftMemberIds.isEmpty
-                ? _candidates.length.clamp(1, 18)
-                : _draftMemberIds.length.clamp(1, _candidates.length))
-            .toInt();
-    final selectedCount = await showDialog<int>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(strings.feature('Generera deltagarurval')),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                strings.feature(
-                  'Ordinarie spelare prioriteras och urvalet blir alltid reproducerbart.',
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(strings.participantCount(count)),
-              Slider(
-                value: count.toDouble(),
-                min: 1,
-                max: _candidates.length.toDouble(),
-                divisions: _candidates.length > 1
-                    ? _candidates.length - 1
-                    : null,
-                label: '$count',
-                onChanged: (value) =>
-                    setDialogState(() => count = value.round()),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(strings.feature('Avbryt')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, count),
-              child: Text(strings.feature('Använd urval')),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (selectedCount == null || !mounted) return;
-    final generated = List<SquadCandidate>.of(_candidates)
-      ..sort((left, right) {
-        final leftPriority = left.eligibilityKind == 'team_assignment' ? 0 : 1;
-        final rightPriority = right.eligibilityKind == 'team_assignment'
-            ? 0
-            : 1;
-        final priority = leftPriority.compareTo(rightPriority);
-        if (priority != 0) return priority;
-        final name = left.name.compareTo(right.name);
-        return name != 0 ? name : left.personId.compareTo(right.personId);
-      });
-    await _saveBulkDraft(
-      memberIds: generated
-          .take(selectedCount)
-          .map((candidate) => candidate.personId)
-          .toList(),
-      source: 'generator',
-      selectionContext: {
-        'generator': 'balanced_v1',
-        'target_count': selectedCount,
-      },
-    );
-  }
-
-  /// Reminds everyone whose callup is actually due one (mirrors
-  /// EventRosterPerson.canRemindAt — pending, not expired, past the 6h
-  /// cooldown) instead of everyone with a pending response.
-  Future<void> _remindAllUnanswered() async {
-    final now = DateTime.now();
-    final eligible = [
-      ...widget.squad.roster,
-      ..._guestRoster,
-    ].where((person) => person.canRemindAt(now)).toList();
-    if (eligible.isEmpty) return;
-    setState(() => _busyBulk = true);
-    try {
-      await Future.wait(
-        eligible.map(
-          (person) => widget.calendar.manageCallup(
-            callupId: person.callupId!,
-            action: 'remind',
-            expectedRevision:
-                widget.squad.callups
-                    .where((callup) => callup.id == person.callupId)
-                    .map((callup) => callup.revision)
-                    .firstOrNull ??
-                0,
-            idempotencyKey: _newUuid(),
-          ),
-        ),
-      );
-      await widget.onReload();
-    } catch (_) {
-      if (mounted) {
-        _showError(
-          'Några påminnelser kunde inte skickas. Ladda om och försök igen.',
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _busyBulk = false);
-    }
-  }
-
-  /// Stages "present" for everyone whose callup was accepted but has no
-  /// attendance mark yet — never overwrites an existing mark. Saves
-  /// immediately unless a late-correction reason is required, in which
-  /// case it only stages so the leader can fill that in first.
-  Future<void> _markAllAcceptedAsPresent() async {
-    final candidates = [...widget.squad.roster, ..._guestRoster].where(
-      (person) =>
-          person.callupState == 'accepted' &&
-          (person.attendanceStatus == null ||
-              person.attendanceStatus == 'unknown'),
-    );
-    if (candidates.isEmpty) return;
-    setState(() {
-      for (final person in candidates) {
-        _stagedStatus[person.personId] = 'present';
-        _stagedMinutes.remove(person.personId);
-      }
-    });
-    if (!(_resolvedPermissions?.lateWindow ?? false)) {
-      await _saveAttendance();
-    }
-  }
-
-  Future<void> _showBulkActionsSheet() async {
-    final strings = AppStrings.of(context);
-    final now = DateTime.now();
-    final everyone = [...widget.squad.roster, ..._guestRoster];
-    final selectableCount = widget.squad.roster
-        .where(
-          (person) =>
-              person.rolePackage == 'player' &&
-              !person.isCalled &&
-              !person.inDraft,
-        )
-        .length;
-    final remindableCount = everyone
-        .where((person) => person.canRemindAt(now))
-        .length;
-    final attendanceCandidateCount = everyone
-        .where(
-          (person) =>
-              person.callupState == 'accepted' &&
-              (person.attendanceStatus == null ||
-                  person.attendanceStatus == 'unknown'),
-        )
-        .length;
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        top: false,
-        child: ListView(
-          shrinkWrap: true,
-          padding: EdgeInsets.zero,
-          children: [
-            if (_canManage)
-              ListTile(
-                leading: const Icon(Icons.library_add_check_outlined),
-                title: Text(strings.selectAllPlayersLabel(selectableCount)),
-                enabled: selectableCount > 0 && !_busyBulk,
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  unawaited(_selectAllPlayers());
-                },
-              ),
-            if (_canManage)
-              ListTile(
-                leading: const Icon(Icons.done_all),
-                title: Text(strings.feature('Alla behöriga')),
-                subtitle: Text(strings.peopleCount(_candidates.length)),
-                enabled: _candidates.isNotEmpty && !_busyBulk,
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  unawaited(_selectAllEligible());
-                },
-              ),
-            if (_canManage)
-              ListTile(
-                leading: const Icon(Icons.filter_alt_outlined),
-                title: Text(strings.feature('Behörighetsgrupp')),
-                enabled: _candidates.isNotEmpty && !_busyBulk,
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  unawaited(_selectEligibilityGroup());
-                },
-              ),
-            if (_canManage)
-              ListTile(
-                leading: const Icon(Icons.auto_awesome_outlined),
-                title: Text(strings.feature('Generator')),
-                subtitle: Text(
-                  strings.feature('Skapa ett balanserat, reproducerbart urval'),
-                ),
-                enabled: _candidates.isNotEmpty && !_busyBulk,
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  unawaited(_selectGeneratedDraft());
-                },
-              ),
-            if (!_eventEnded &&
-                widget.allowManage &&
-                widget.squad.can('remind_callup'))
-              ListTile(
-                leading: const Icon(Icons.notifications_active_outlined),
-                title: Text(strings.remindAllUnansweredLabel(remindableCount)),
-                enabled: remindableCount > 0 && !_busyBulk,
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  unawaited(_remindAllUnanswered());
-                },
-              )
-            else if (_eventEnded && _canRecordAttendance)
-              ListTile(
-                leading: const Icon(Icons.how_to_reg_outlined),
-                title: Text(
-                  strings.markAllPresentLabel(attendanceCandidateCount),
-                ),
-                enabled: attendanceCandidateCount > 0 && !_busyBulk,
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  unawaited(_markAllAcceptedAsPresent());
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(AppStrings.of(context).feature(message))),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = AppStrings.of(context);
-    final roster = widget.squad.roster;
-    int priority(EventRosterPerson person) => switch (person.callupState) {
-      'accepted' => 0,
-      'declined' => 2,
-      _ => 1,
-    };
-    List<EventRosterPerson> called(String role) =>
-        roster
-            .where((person) => person.isCalled && person.rolePackage == role)
-            .toList()
-          ..sort((a, b) {
-            final byPriority = priority(a).compareTo(priority(b));
-            return byPriority != 0 ? byPriority : a.name.compareTo(b.name);
-          });
-    List<EventRosterPerson> uncalled(String role) =>
-        roster
-            .where((person) => !person.isCalled && person.rolePackage == role)
-            .toList()
-          ..sort((a, b) => a.name.compareTo(b.name));
-
-    return CustomScrollView(
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-          sliver: SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (_canManage) ...[
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          decoration: InputDecoration(
-                            prefixIcon: const Icon(Icons.search),
-                            hintText: strings.feature(
-                              'Sök spelare eller lag i hela klubben',
-                            ),
-                            suffixIcon: _query.isEmpty
-                                ? null
-                                : IconButton(
-                                    icon: const Icon(Icons.clear),
-                                    onPressed: () => _searchController.clear(),
-                                  ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Bulk actions ("Välj alla"/"Påminn alla"/"Sätt alla
-                      // deltog") — a coach otherwise has to repeat the same
-                      // tap once per person on the roster.
-                      IconButton.outlined(
-                        tooltip: strings.feature('Fler åtgärder'),
-                        onPressed: _busyBulk ? null : _showBulkActionsSheet,
-                        icon: _busyBulk
-                            ? const SizedBox.square(
-                                dimension: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.more_vert),
-                      ),
-                    ],
-                  ),
-                  if (_matches.isNotEmpty)
-                    Card(
-                      margin: const EdgeInsets.only(top: 4),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 280),
-                        child: ListView(
-                          shrinkWrap: true,
-                          children: [
-                            for (final candidate in _matches)
-                              _SelectableRow(
-                                title: candidate.name,
-                                subtitle: [
-                                  if (candidate.teamName != null)
-                                    candidate.teamName!,
-                                  if (candidate.rolePackage != null)
-                                    strings.domainValue(candidate.rolePackage!),
-                                ].join(' · '),
-                                selected: _draftMemberIds.contains(
-                                  candidate.personId,
-                                ),
-                                onTap: _busy
-                                    ? null
-                                    : () => _toggleDraftMember(
-                                        candidate.personId,
-                                      ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 12),
-                ],
-                if (_eventEnded &&
-                    _canRecordAttendance &&
-                    _stagedStatus.isNotEmpty) ...[
-                  if (_resolvedPermissions?.lateWindow ?? false)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: TextField(
-                        controller: _reasonController,
-                        maxLength: 500,
-                        decoration: InputDecoration(
-                          labelText: strings.feature(
-                            'Orsak till sen korrigering',
-                          ),
-                        ),
-                      ),
-                    ),
-                  FilledButton.icon(
-                    onPressed: _busy ? null : _saveAttendance,
-                    icon: const Icon(Icons.fact_check_outlined),
-                    label: Text(strings.feature('Spara närvaro')),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ],
-            ),
-          ),
-        ),
-        _rosterSection(strings.feature('Kallade spelare'), called('player')),
-        _rosterSection(strings.feature('Kallade ledare'), called('leader')),
-        _rosterSection(strings.feature('Okallade spelare'), uncalled('player')),
-        _rosterSection(strings.feature('Okallade ledare'), uncalled('leader')),
-        _rosterSection(strings.feature('Gästspelare'), _guestRoster),
-        const SliverToBoxAdapter(child: SizedBox(height: 32)),
-      ],
-    );
-  }
-
-  Widget _rosterSection(String title, List<EventRosterPerson> people) {
-    if (people.isEmpty) {
-      return const SliverToBoxAdapter(child: SizedBox.shrink());
-    }
-    return SliverMainAxisGroup(
-      slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-            child: Text(title, style: Theme.of(context).textTheme.titleSmall),
-          ),
-        ),
-        SliverList.builder(
-          itemCount: people.length,
-          itemBuilder: (context, index) => Padding(
-            // A little breathing room between rows now that each row's
-            // own padding is tighter.
-            padding: const EdgeInsets.only(bottom: 2),
-            child: _RosterRow(
-              person: people[index],
-              eventEnded: _eventEnded,
-              canManage: _canManage,
-              canRecordAttendance: _canRecordAttendance,
-              canRemind:
-                  widget.allowManage && widget.squad.can('remind_callup'),
-              canCancel:
-                  widget.allowManage && widget.squad.can('cancel_callup'),
-              busy: _busy,
-              stagedStatus: _stagedStatus[people[index].personId],
-              stagedMinutes: _stagedMinutes[people[index].personId],
-              onToggleDraft: () => _toggleDraftMember(people[index].personId),
-              onManageCallup: (action) => _manageCallup(people[index], action),
-              onRespond: (response) =>
-                  _respondToCallup(people[index], response),
-              onSetAttendance: (status) =>
-                  _setAttendance(people[index], status),
-              onSetAttendanceMinutes: (value) =>
-                  _setAttendanceMinutes(people[index], value),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 extension<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
-}
-
-class _RosterRow extends StatelessWidget {
-  const _RosterRow({
-    required this.person,
-    required this.eventEnded,
-    required this.canManage,
-    required this.canRecordAttendance,
-    required this.canRemind,
-    required this.canCancel,
-    required this.busy,
-    required this.stagedStatus,
-    required this.stagedMinutes,
-    required this.onToggleDraft,
-    required this.onManageCallup,
-    required this.onRespond,
-    required this.onSetAttendance,
-    required this.onSetAttendanceMinutes,
-  });
-
-  final EventRosterPerson person;
-  final bool eventEnded,
-      canManage,
-      canRecordAttendance,
-      canRemind,
-      canCancel,
-      busy;
-  final String? stagedStatus;
-  final int? stagedMinutes;
-  final VoidCallback onToggleDraft;
-  final ValueChanged<String> onManageCallup;
-  final ValueChanged<String> onRespond;
-  final ValueChanged<String> onSetAttendance;
-  final ValueChanged<String> onSetAttendanceMinutes;
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = AppStrings.of(context);
-    final declineReason = _localizedDeclineReason(strings, person);
-    final responseRoleLabel = switch (person.responseRole) {
-      'self' => strings.feature('Din kallelse'),
-      'guardian' => strings.feature('Svara som vårdnadshavare'),
-      'manager' => strings.feature('Svara som ledare'),
-      _ => null,
-    };
-    final subtitle = [
-      if (person.isGuest) strings.feature('Gäst') else person.teamName,
-      strings.domainValue(person.rolePackage),
-      if (person.canRespond && responseRoleLabel != null) responseRoleLabel,
-      if (person.callupLastRemindedAt != null) strings.feature('Påmind'),
-      if (declineReason != null) '${strings.feature('Avböjt')}: $declineReason',
-    ].join(' · ');
-
-    final textTheme = Theme.of(context).textTheme;
-
-    if (eventEnded) {
-      if (!person.isCalled) {
-        return ListTile(
-          dense: true,
-          visualDensity: VisualDensity.compact,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-          title: Text(person.name, style: textTheme.bodyMedium),
-          subtitle: Text(subtitle, style: textTheme.bodySmall),
-          trailing: canRecordAttendance
-              ? Text(
-                  strings.feature('Aldrig kallad'),
-                  style: Theme.of(context).textTheme.bodySmall,
-                )
-              : null,
-        );
-      }
-      final current = stagedStatus ?? person.attendanceStatus ?? 'unknown';
-      final needsMinutes = current == 'late' || current == 'partial';
-      final currentMinutes = stagedMinutes ?? person.attendanceMinutes ?? 1;
-      return ListTile(
-        dense: true,
-        visualDensity: VisualDensity.compact,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-        title: Text(person.name, style: textTheme.bodyMedium),
-        subtitle: Text(subtitle, style: textTheme.bodySmall),
-        trailing: canRecordAttendance
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButton<String>(
-                    value: current,
-                    onChanged: busy ? null : (value) => onSetAttendance(value!),
-                    items: [
-                      for (final status in const [
-                        'unknown',
-                        'present',
-                        'late',
-                        'partial',
-                        'absent',
-                      ])
-                        DropdownMenuItem(
-                          value: status,
-                          child: Text(strings.domainValue(status)),
-                        ),
-                    ],
-                  ),
-                  if (needsMinutes) ...[
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 76,
-                      child: TextFormField(
-                        key: ValueKey(
-                          'attendance-minutes-${person.personId}-$currentMinutes',
-                        ),
-                        initialValue: '$currentMinutes',
-                        enabled: !busy,
-                        keyboardType: TextInputType.number,
-                        textInputAction: TextInputAction.done,
-                        decoration: InputDecoration(
-                          isDense: true,
-                          labelText: strings.feature('Minuter'),
-                          suffixText: 'min',
-                        ),
-                        onChanged: onSetAttendanceMinutes,
-                      ),
-                    ),
-                  ],
-                ],
-              )
-            : Text(strings.domainValue(current)),
-      );
-    }
-
-    if (person.isCalled) {
-      // Mirrors the server's own remind_callup_for_actor gate (pending,
-      // not expired, 6h since the last reminder) so a doomed-to-fail tap
-      // is never offered in the first place.
-      final canRemindNow = canRemind && person.canRemindAt(DateTime.now());
-      final canRespond =
-          person.canRespond && (person.responseRole != 'manager' || canManage);
-      final compact = MediaQuery.sizeOf(context).width < 600;
-      return ListTile(
-        dense: true,
-        visualDensity: VisualDensity.compact,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-        title: Text(person.name, style: textTheme.bodyMedium),
-        subtitle: Text(subtitle, style: textTheme.bodySmall),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (canRespond)
-              _CallupResponseButtons(
-                busy: busy,
-                saving: false,
-                response: person.callupState,
-                compact: compact,
-                onRespond: onRespond,
-              )
-            else
-              _CallupStateBadge(state: person.callupState ?? 'pending'),
-            if (canRemindNow || canCancel)
-              PopupMenuButton<String>(
-                tooltip: strings.feature('Hantera kallelse'),
-                onSelected: busy ? null : onManageCallup,
-                itemBuilder: (_) => [
-                  if (canRemindNow)
-                    PopupMenuItem(
-                      value: 'remind',
-                      child: Text(strings.feature('Påminn')),
-                    ),
-                  if (canCancel)
-                    PopupMenuItem(
-                      value: 'cancel',
-                      child: Text(strings.feature('Återkalla')),
-                    ),
-                ],
-              ),
-          ],
-        ),
-      );
-    }
-
-    return _SelectableRow(
-      title: person.name,
-      subtitle: subtitle,
-      selected: person.inDraft,
-      onTap: canManage && !busy ? onToggleDraft : null,
-    );
-  }
 }
 
 String? _localizedDeclineReason(AppStrings strings, EventRosterPerson person) {
@@ -2534,78 +1423,4 @@ String? _localizedDeclineReason(AppStrings strings, EventRosterPerson person) {
   if (label == null) return null;
   final detail = person.declineReasonText?.trim();
   return detail == null || detail.isEmpty ? label : '$label – $detail';
-}
-
-/// A row selected by tapping anywhere on it — the whole row tints with the
-/// theme's accent color when selected — rather than a separate checkbox,
-/// used both for the search results dropdown and the roster's draft rows.
-/// Built on Material+InkWell (rather than ListTile) so the entire row is
-/// unambiguously one tap target, not just the trailing icon.
-class _SelectableRow extends StatelessWidget {
-  const _SelectableRow({
-    required this.title,
-    required this.subtitle,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String title;
-  final String subtitle;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    return Material(
-      color: selected ? colors.primaryContainer : Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: textTheme.bodyMedium),
-                    Text(subtitle, style: textTheme.bodySmall),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Icon(
-                selected ? Icons.check_circle : Icons.circle_outlined,
-                color: selected ? colors.primary : colors.outlineVariant,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CallupStateBadge extends StatelessWidget {
-  const _CallupStateBadge({required this.state});
-  final String state;
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = AppStrings.of(context);
-    final color = switch (state) {
-      'accepted' => Colors.green,
-      'declined' => Colors.red,
-      _ => Colors.amber.shade800,
-    };
-    return Chip(
-      label: Text(strings.domainValue(state)),
-      backgroundColor: color.withValues(alpha: 0.15),
-      labelStyle: TextStyle(color: color),
-      side: BorderSide.none,
-    );
-  }
 }

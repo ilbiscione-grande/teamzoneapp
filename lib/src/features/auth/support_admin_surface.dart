@@ -25,9 +25,9 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
       _cases = widget.membership
           .listProtectedNameSupportCases(status: _status)
           .timeout(const Duration(seconds: 15));
-      _erasures = widget.membership
-          .listGlobalPersonErasureCases()
-          .timeout(const Duration(seconds: 15));
+      _erasures = widget.membership.listGlobalPersonErasureCases().timeout(
+        const Duration(seconds: 15),
+      );
     });
   }
 
@@ -230,9 +230,7 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: Text(strings.feature('Supportärenden')),
-      ),
+      appBar: AppBar(title: Text(strings.feature('Supportärenden'))),
       body: Column(
         children: [
           Padding(
@@ -319,9 +317,7 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
                     if (items.isEmpty && erasures.isEmpty) {
                       return Center(
                         child: Text(
-                          strings.feature(
-                            'Inga supportärenden i vald status.',
-                          ),
+                          strings.feature('Inga supportärenden i vald status.'),
                         ),
                       );
                     }
@@ -333,8 +329,7 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
                       child: ListView.separated(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                         itemCount: erasures.length + items.length,
-                        separatorBuilder: (_, _) =>
-                            const SizedBox(height: 12),
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           if (index < erasures.length) {
                             final item = erasures[index];
@@ -400,70 +395,74 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
                             );
                           }
                           final item = items[index - erasures.length];
-                      return Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Chip(
-                                avatar: const Icon(
-                                  Icons.domain_verification_outlined,
-                                  size: 18,
-                                ),
-                                label: Text(
-                                  strings.feature('Skyddat klubbnamn'),
-                                ),
-                              ),
-                              Text(
-                                item.clubName,
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                              Text(
-                                '${item.teamName} · ${strings.domainValue(item.status)}',
-                              ),
-                              const SizedBox(height: 12),
-                              SelectableText(item.message),
-                              if (item.resolutionNote != null) ...[
-                                const SizedBox(height: 12),
-                                Text(item.resolutionNote!),
-                              ],
-                              if (item.status == 'pending' ||
-                                  item.status == 'in_review') ...[
-                                const SizedBox(height: 12),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    if (item.status == 'pending')
-                                      OutlinedButton(
-                                        onPressed: () =>
-                                            _update(item, 'in_review'),
-                                        child: Text(
-                                          strings.feature('Påbörja granskning'),
-                                        ),
-                                      ),
-                                    FilledButton(
-                                      onPressed: () =>
-                                          _update(item, 'resolved'),
-                                      child: Text(
-                                        strings.feature('Lös ärende'),
-                                      ),
+                          return Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Chip(
+                                    avatar: const Icon(
+                                      Icons.domain_verification_outlined,
+                                      size: 18,
                                     ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          _update(item, 'rejected'),
-                                      child: Text(
-                                        strings.feature('Avslå ärende'),
-                                      ),
+                                    label: Text(
+                                      strings.feature('Skyddat klubbnamn'),
+                                    ),
+                                  ),
+                                  Text(
+                                    item.clubName,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
+                                  ),
+                                  Text(
+                                    '${item.teamName} · ${strings.domainValue(item.status)}',
+                                  ),
+                                  const SizedBox(height: 12),
+                                  SelectableText(item.message),
+                                  if (item.resolutionNote != null) ...[
+                                    const SizedBox(height: 12),
+                                    Text(item.resolutionNote!),
+                                  ],
+                                  if (item.status == 'pending' ||
+                                      item.status == 'in_review') ...[
+                                    const SizedBox(height: 12),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: [
+                                        if (item.status == 'pending')
+                                          OutlinedButton(
+                                            onPressed: () =>
+                                                _update(item, 'in_review'),
+                                            child: Text(
+                                              strings.feature(
+                                                'Påbörja granskning',
+                                              ),
+                                            ),
+                                          ),
+                                        FilledButton(
+                                          onPressed: () =>
+                                              _update(item, 'resolved'),
+                                          child: Text(
+                                            strings.feature('Lös ärende'),
+                                          ),
+                                        ),
+                                        TextButton(
+                                          onPressed: () =>
+                                              _update(item, 'rejected'),
+                                          child: Text(
+                                            strings.feature('Avslå ärende'),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      );
+                                ],
+                              ),
+                            ),
+                          );
                         },
                       ),
                     );

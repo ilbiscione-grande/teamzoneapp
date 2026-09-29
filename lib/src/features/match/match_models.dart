@@ -19,6 +19,15 @@ class WrittenMatchReport {
       );
 }
 
+class MatchRosterMember {
+  const MatchRosterMember({
+    required this.personId,
+    required this.name,
+    required this.sourceState,
+  });
+  final String personId, name, sourceState;
+}
+
 class MatchSnapshot {
   const MatchSnapshot({
     required this.eventId,
@@ -30,11 +39,49 @@ class MatchSnapshot {
     required this.cursor,
     required this.clock,
     required this.facts,
+    this.roster = const [],
+    this.people = const {},
+    this.canManage = false,
+    this.serverOffset = Duration.zero,
   });
   final String eventId, state, cursor;
   final int revision, rosterRevision, scoreUs, scoreOpponent;
   final Map<String, dynamic> clock;
   final List<Map<String, dynamic>> facts;
+
+  /// The frozen match squad (from Deltagare), never a copy kept here.
+  final List<MatchRosterMember> roster;
+
+  /// Names of everyone referenced by a fact, including people who left a
+  /// later roster revision.
+  final Map<String, String> people;
+  final bool canManage;
+
+  /// Server clock minus device clock when the snapshot was read, so every
+  /// leader's device shows the same match time.
+  final Duration serverOffset;
+
+  bool get isPaused => clock['paused_at'] != null;
+  bool get isRunning => state == 'live' && !isPaused;
+
+  Iterable<Map<String, dynamic>> get activeFacts =>
+      facts.where((fact) => fact['state'] != 'voided');
+
+  /// Paused because the current period was ended (rather than a pause
+  /// within it), so resuming starts the next period.
+  bool get currentPeriodEnded =>
+      isPaused &&
+      activeFacts.any(
+        (fact) =>
+            fact['fact_type'] == 'period_end' &&
+            ((fact['detail'] as Map?)?['period'] as num?)?.toInt() ==
+                currentPeriod,
+      );
+
+  Duration elapsedNow() => elapsedAt(DateTime.now().add(serverOffset));
+
+  /// The playing minute ("58'") a fact registered now would get.
+  int get currentMinute => state == 'planning' ? 0 : elapsedNow().inMinutes + 1;
 
   Duration elapsedAt(DateTime now) {
     final startedAt = DateTime.tryParse(clock['started_at'] as String? ?? '');
@@ -90,6 +137,27 @@ class MatchSnapshot {
       facts: (json['facts'] as List? ?? const [])
           .whereType<Map<String, dynamic>>()
           .toList(growable: false),
+      roster: (json['roster'] as List? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(
+            (member) => MatchRosterMember(
+              personId: member['person_id'] as String,
+              name: member['name'] as String? ?? '',
+              sourceState: member['source_state'] as String? ?? 'accepted',
+            ),
+          )
+          .toList(growable: false),
+      people: {
+        for (final entry in ((json['people'] as Map?) ?? const {}).entries)
+          if (entry.value is String) '${entry.key}': entry.value as String,
+      },
+      canManage: json['can_manage'] == true,
+      serverOffset: switch (DateTime.tryParse(
+        json['server_now'] as String? ?? '',
+      )) {
+        final DateTime serverNow => serverNow.difference(DateTime.now()),
+        null => Duration.zero,
+      },
     );
   }
 }

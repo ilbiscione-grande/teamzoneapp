@@ -36,6 +36,42 @@ void main() {
     expect(selectValidContext([player, leader], 'revoked'), same(leader));
   });
 
+  test('roles in the same team merge into one context', () {
+    const functionary = TeamZoneContext(
+      id: 'functionary-context',
+      clubId: 'club',
+      clubName: 'Club',
+      teamId: 'leader-team',
+      teamName: 'Ledarlaget',
+      rolePackage: 'club_functionary',
+      capabilities: {'club.memberships.manage'},
+    );
+    const guardian = TeamZoneContext(
+      id: 'guardian-context',
+      clubId: 'club',
+      clubName: 'Club',
+      teamId: 'leader-team',
+      teamName: 'Ledarlaget',
+      rolePackage: 'guardian',
+      capabilities: {'team.read'},
+    );
+    final merged = mergeTeamContexts([functionary, player, leader, guardian]);
+    expect(merged.map((c) => c.id), [
+      'leader-context',
+      'player-context',
+      'guardian-context',
+    ]);
+    final team = merged.first;
+    // The team role is primary; both roles are shown and both rights apply.
+    expect(team.rolePackage, 'leader');
+    expect(team.roles, ['club_functionary', 'leader']);
+    expect(team.capabilities, {'team.read', 'club.memberships.manage'});
+    expect(team.aliasIds, {'functionary-context'});
+    // A stored choice of the merged-away assignment still selects the team.
+    expect(selectValidContext(merged, 'functionary-context'), same(team));
+    expect(player.roles, ['player']);
+  });
+
   test('context persistence is isolated per profile and clearable', () async {
     final store = MemoryContextPersistence();
     await store.writeActiveContextId('user-a', leader.id);

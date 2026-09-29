@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_models.dart';
+import 'package:teamzone_app/src/features/calendar/preparation_services.dart';
+
+export 'package:teamzone_app/src/features/calendar/preparation_services.dart';
 
 enum CalendarSyncStatus { connected, reconnecting, disconnected }
 
@@ -16,6 +19,8 @@ class CalendarSyncEvent {
 }
 
 abstract interface class CalendarServices {
+  /// The event's Förberedelser workspace (items, note, files).
+  EventPreparationServices get preparation;
   Future<List<CalendarEventSummary>> listCalendar({
     required List<String> contextIds,
     required DateTime from,
@@ -150,6 +155,9 @@ class UnconfiguredCalendarServices implements CalendarServices {
   const UnconfiguredCalendarServices();
   StateError get _error => StateError('Supabase is not configured.');
   @override
+  EventPreparationServices get preparation =>
+      const UnconfiguredEventPreparationServices();
+  @override
   Future<String> createEvent(CreateEventInput input, String idempotencyKey) =>
       Future.error(_error);
   @override
@@ -283,8 +291,11 @@ class UnconfiguredCalendarServices implements CalendarServices {
 }
 
 class SupabaseCalendarServices implements CalendarServices {
-  SupabaseCalendarServices(this._client);
+  SupabaseCalendarServices(this._client)
+    : preparation = SupabaseEventPreparationServices(_client);
   final SupabaseClient _client;
+  @override
+  final EventPreparationServices preparation;
 
   static const _maximumQueryWindow = Duration(days: 399);
 

@@ -154,6 +154,7 @@ class _ProductShellState extends State<_ProductShell> {
           eventId: state.pathParameters['eventId']!,
           contextValue: widget.contextValue,
           calendar: widget.calendar,
+          roster: widget.roster,
           match: widget.match,
           matchSpaceV2: widget.matchSpaceV2,
           onNavigate: (fallback) =>
@@ -398,6 +399,19 @@ class _ProductShellState extends State<_ProductShell> {
           closeDrawer: usesSidebar
               ? null
               : () => _scaffoldKey.currentState?.closeDrawer(),
+          onOpenOwnProfile: () {
+            _scaffoldKey.currentState?.closeDrawer();
+            final hasTeamProfile =
+                widget.contextValue.teamId != null &&
+                widget.contextValue.rolePackage != 'guardian';
+            if (!hasTeamProfile) {
+              _router.go(ProductRouteContract.settings);
+            } else if (!location.startsWith(
+              ProductRouteContract.ownTeamProfile,
+            )) {
+              _router.push(ProductRouteContract.ownTeamProfile);
+            }
+          },
         );
         return PopScope<void>(
           canPop: false,
@@ -621,7 +635,7 @@ Future<void> _showContextPicker({
               overflow: TextOverflow.ellipsis,
             ),
             subtitle: Text(
-              '${strings.feature('Aktivt lag')} · ${activeContext.clubName} · ${strings.domainValue(activeContext.rolePackage)}',
+              '${strings.feature('Aktivt lag')} · ${activeContext.clubName} · ${_contextRolesLabel(strings, activeContext)}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -645,8 +659,8 @@ Future<void> _showContextPicker({
               ),
               subtitle: Text(
                 item.teamName == null
-                    ? strings.domainValue(item.rolePackage)
-                    : '${item.clubName} · ${strings.domainValue(item.rolePackage)}',
+                    ? _contextRolesLabel(strings, item)
+                    : '${item.clubName} · ${_contextRolesLabel(strings, item)}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -1192,6 +1206,7 @@ class _AppNavigationPanel extends StatelessWidget {
     required this.onTeamRequestsChanged,
     required this.onSignOut,
     required this.closeDrawer,
+    required this.onOpenOwnProfile,
   });
 
   final TeamZoneProfile profile;
@@ -1207,6 +1222,7 @@ class _AppNavigationPanel extends StatelessWidget {
   final Future<int> pendingTeamRequests;
   final VoidCallback onTeamRequestsChanged;
   final Future<void> Function() onSignOut;
+  final VoidCallback onOpenOwnProfile;
   // Null on tablet/desktop, where this panel is a permanent sidebar rather
   // than a dismissible drawer. Closes via the Scaffold's own ScaffoldState
   // (see the GlobalKey in _ProductShellState), not Navigator.pop: a
@@ -1262,18 +1278,41 @@ class _AppNavigationPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 20),
-          const CircleAvatar(radius: 36, child: Icon(Icons.person, size: 40)),
-          const SizedBox(height: 8),
-          Text(
-            profile.displayName.isEmpty ? strings.signOut : profile.displayName,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          Text(
-            strings.domainValue(contextValue.rolePackage),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall,
+          const SizedBox(height: 12),
+          // Opens your own profile in the active team; without a team
+          // profile (no team, or a guardian) the account settings instead.
+          Semantics(
+            button: true,
+            label: strings.feature('Min profil'),
+            child: InkWell(
+              key: const Key('drawer-own-profile'),
+              borderRadius: BorderRadius.circular(16),
+              onTap: onOpenOwnProfile,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  children: [
+                    const CircleAvatar(
+                      radius: 36,
+                      child: Icon(Icons.person, size: 40),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      profile.displayName.isEmpty
+                          ? strings.signOut
+                          : profile.displayName,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    Text(
+                      _contextRolesLabel(strings, contextValue),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 16),
           Padding(
@@ -1461,21 +1500,17 @@ bool _assistantUsesFab(BuildContext context) {
   return isNativeTablet || !AppBreakpoints.usesAssistantSidePanel(size.width);
 }
 
-/// Same idea as [_AboveAssistantFabLocation], but clears the persistent
-/// Min assistent FAB by sitting to its left on the same row instead of
-/// stacking above it — used by EventDetails' "Skicka kallelser" FAB.
-class _LeftOfAssistantFabLocation extends FloatingActionButtonLocation {
-  const _LeftOfAssistantFabLocation();
-
-  static const double _clearance = 72; // assistant FAB width (56) + gap (16)
-
-  @override
-  Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
-    final standard = FloatingActionButtonLocation.endFloat.getOffset(
-      scaffoldGeometry,
-    );
-    return Offset(standard.dx - _clearance, standard.dy);
-  }
+/// What you are in a context. Your titles replace the plain leader role,
+/// e.g. "Huvudtränare · Klubbfunktionär"; otherwise the roles, e.g.
+/// "Klubbfunktionär · Ledare".
+String _contextRolesLabel(AppStrings strings, TeamZoneContext context) {
+  final titles = [
+    ...context.titles.map((key) => _titleLabel(strings, key)),
+    ...context.customTitles,
+  ];
+  return [
+    ...titles,
+    for (final role in context.roles)
+      if (titles.isEmpty || role != 'leader') strings.domainValue(role),
+  ].join(' · ');
 }
-
-const _leftOfAssistantFabLocation = _LeftOfAssistantFabLocation();

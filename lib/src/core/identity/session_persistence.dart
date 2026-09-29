@@ -67,7 +67,7 @@ TeamZoneContext selectValidContext(
 ) {
   if (contexts.isEmpty) throw StateError('No context is available.');
   for (final context in contexts) {
-    if (context.id == persistedId) return context;
+    if (context.matchesId(persistedId)) return context;
   }
   const priority = {
     'leader': 0,

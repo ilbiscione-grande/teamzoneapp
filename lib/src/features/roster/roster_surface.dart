@@ -31,6 +31,41 @@ class _RosterSurfaceState extends State<_RosterSurface> {
   late final AppListController<RosterPersonSummary> _list;
   List<RosterPersonSummary>? _syncedPeople;
   late int _selectedTab = _teamTabIndex(widget.initialTab);
+  late Future<TeamRoles> _teamRoles = _loadTeamRoles();
+
+  Future<TeamRoles> _loadTeamRoles() {
+    final teamId = widget.contextValue.teamId;
+    final roles = teamId == null
+        ? Future<TeamRoles>.error(StateError('No team'))
+        : Future.sync(
+            () => widget.roster
+                .listTeamRoles(
+                  clubId: widget.contextValue.clubId,
+                  teamId: teamId,
+                )
+                .timeout(const Duration(seconds: 15)),
+          );
+    // Builders show the failure; it may settle before any of them listens.
+    return roles..ignore();
+  }
+
+  void _refreshTeamRoles() {
+    if (!mounted) return;
+    setState(() {
+      _teamRoles = _loadTeamRoles();
+    });
+  }
+
+  void _openTeamRoles() => _openTeamRolesSheet(
+    context,
+    contextValue: widget.contextValue,
+    roster: widget.roster,
+    people: _data.state.data ?? const [],
+    onChanged: () {
+      _refreshTeamRoles();
+      unawaited(_data.refresh());
+    },
+  ).then((_) => _refreshTeamRoles());
 
   @override
   void initState() {
@@ -186,6 +221,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.contextValue.id != widget.contextValue.id) {
       _data.replaceScope(scopeKey: widget.contextValue.id, loader: _reload);
+      _teamRoles = _loadTeamRoles();
     }
     if (oldWidget.initialTab != widget.initialTab) {
       _selectedTab = _teamTabIndex(widget.initialTab);
@@ -315,7 +351,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
         final rosterList = Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
               child: SearchBar(
                 leading: const Icon(Icons.search),
                 hintText: strings.feature('Sök i truppen'),
@@ -346,8 +382,12 @@ class _RosterSurfaceState extends State<_RosterSurface> {
               ),
             ),
             Expanded(
-              child: people.isEmpty
-                  ? _StateCard(
+              child: FutureBuilder<TeamRoles>(
+                future: _teamRoles,
+                builder: (context, rolesSnapshot) {
+                  final leaders = _leaderEntries(rolesSnapshot.data);
+                  if (people.isEmpty && leaders.isEmpty) {
+                    return _StateCard(
                       icon: Icons.search_off,
                       title: strings.feature('Inga matchande personer'),
                       message: strings.feature(
@@ -363,38 +403,38 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                           ),
                         ),
                       ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _data.refresh,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.all(16),
-                        itemCount:
-                            people.length +
-                            (state.isStale ? 1 : 0) +
-                            (_list.hasMore ? 1 : 0),
-                        separatorBuilder: (_, _) => const Divider(),
-                        itemBuilder: (context, index) {
-                          if (state.isStale && index == 0) {
-                            return ListTile(
-                              leading: const Icon(Icons.cloud_off),
-                              title: Text(strings.offlineData),
-                              subtitle: state.lastUpdated == null
-                                  ? null
-                                  : Text(
-                                      strings.lastUpdated(state.lastUpdated!),
-                                    ),
-                            );
-                          }
-                          final dataIndex = index - (state.isStale ? 1 : 0);
-                          if (dataIndex == people.length) {
-                            return TextButton.icon(
-                              onPressed: _list.loadMore,
-                              icon: const Icon(Icons.expand_more),
-                              label: Text(strings.feature('Visa fler')),
-                            );
-                          }
-                          final person = people[dataIndex];
-                          return ListTile(
+                    );
+                  }
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      _refreshTeamRoles();
+                      await _data.refresh();
+                    },
+                    child: ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        if (state.isStale)
+                          ListTile(
+                            leading: const Icon(Icons.cloud_off),
+                            title: Text(strings.offlineData),
+                            subtitle: state.lastUpdated == null
+                                ? null
+                                : Text(strings.lastUpdated(state.lastUpdated!)),
+                          ),
+                        if (leaders.isNotEmpty)
+                          _rosterGroupHeader(
+                            strings.feature('Spelare'),
+                            people.length,
+                          ),
+                        if (people.isEmpty && leaders.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              strings.feature('Inga spelare i truppen ännu.'),
+                            ),
+                          ),
+                        for (final person in people) ...[
+                          ListTile(
                             leading: const CircleAvatar(
                               child: Icon(Icons.person),
                             ),
@@ -411,10 +451,57 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                             onTap: canOpenPersonDetails
                                 ? () => _openPersonDetails(person)
                                 : null,
-                          );
-                        },
-                      ),
+                          ),
+                          const Divider(),
+                        ],
+                        if (_list.hasMore)
+                          TextButton.icon(
+                            onPressed: _list.loadMore,
+                            icon: const Icon(Icons.expand_more),
+                            label: Text(strings.feature('Visa fler')),
+                          ),
+                        if (leaders.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          _rosterGroupHeader(
+                            strings.feature('Ledare'),
+                            leaders.length,
+                          ),
+                          for (final (leader, roles) in leaders) ...[
+                            ListTile(
+                              key: ValueKey('roster-leader-${leader.personId}'),
+                              leading: CircleAvatar(
+                                child: Text(_initialsOf(leader.name)),
+                              ),
+                              title: Text(
+                                leader.isSelf
+                                    ? '${leader.name} (${strings.feature('du')})'
+                                    : leader.name,
+                              ),
+                              subtitle: Text(
+                                [
+                                  ...roles.map(
+                                    (role) => _roleLabel(strings, role),
+                                  ),
+                                  if (_titlesSummary(strings, leader)
+                                      case final titles when titles.isNotEmpty)
+                                    titles,
+                                ].join(' · '),
+                              ),
+                              trailing: canOpenPersonDetails
+                                  ? const Icon(Icons.chevron_right)
+                                  : null,
+                              onTap: canOpenPersonDetails
+                                  ? () => _openPersonProfile(leader.personId)
+                                  : null,
+                            ),
+                            const Divider(),
+                          ],
+                        ],
+                      ],
                     ),
+                  );
+                },
+              ),
             ),
           ],
         );
@@ -423,27 +510,52 @@ class _RosterSurfaceState extends State<_RosterSurface> {
               ? _aboveAssistantFabLocation
               : null,
           body: state.phase == AsyncDataPhase.empty
-              ? _StateCard(
-                  icon: Icons.groups_outlined,
-                  title: AppStrings.of(context).feature('Ingen i truppen ännu'),
-                  message: AppStrings.of(
-                    context,
-                  ).feature('Rosterposter visas här när de har skapats.'),
-                  // A brand-new team's empty roster used to have no action
-                  // here at all, unlike every other empty/blocked state on
-                  // this screen. Found via a physical walkthrough of a
-                  // freshly created team. Points at Inställningar, not
-                  // straight at the code dialog: "Använd kod" was removed
-                  // from the Trupp tab entirely and consolidated into the
-                  // profile settings page (see profile_settings_surface.dart).
-                  action: OutlinedButton.icon(
-                    onPressed: () =>
-                        GoRouter.of(context).go(ProductRouteContract.settings),
-                    icon: const Icon(Icons.settings_outlined),
-                    label: Text(
-                      AppStrings.of(context).feature('Inställningar'),
-                    ),
-                  ),
+              ? FutureBuilder<TeamRoles>(
+                  future: _teamRoles,
+                  // Keep the search and filter chips whenever a leader exists
+                  // or a filter is active, so a filter that matches nobody
+                  // can always be changed back.
+                  builder: (context, rolesSnapshot) =>
+                      _list.filterKey != null ||
+                          _list.query.isNotEmpty ||
+                          (rolesSnapshot.data?.roles.any(
+                                (role) => role.role != 'player',
+                              ) ??
+                              false)
+                      ? rosterList
+                      : Column(
+                          children: [
+                            Expanded(
+                              child: _StateCard(
+                                icon: Icons.groups_outlined,
+                                title: AppStrings.of(
+                                  context,
+                                ).feature('Ingen i truppen ännu'),
+                                message: AppStrings.of(context).feature(
+                                  'Rosterposter visas här när de har skapats.',
+                                ),
+                                // A brand-new team's empty roster used to have no action
+                                // here at all, unlike every other empty/blocked state on
+                                // this screen. Found via a physical walkthrough of a
+                                // freshly created team. Points at Inställningar, not
+                                // straight at the code dialog: "Använd kod" was removed
+                                // from the Trupp tab entirely and consolidated into the
+                                // profile settings page (see profile_settings_surface.dart).
+                                action: OutlinedButton.icon(
+                                  onPressed: () => GoRouter.of(
+                                    context,
+                                  ).go(ProductRouteContract.settings),
+                                  icon: const Icon(Icons.settings_outlined),
+                                  label: Text(
+                                    AppStrings.of(
+                                      context,
+                                    ).feature('Inställningar'),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                 )
               : rosterList,
           floatingActionButton: canManage
@@ -475,6 +587,23 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            ListTile(
+                              leading: const Icon(Icons.shield_outlined),
+                              title: Text(
+                                AppStrings.of(
+                                  context,
+                                ).feature('Ledare och roller'),
+                              ),
+                              subtitle: Text(
+                                AppStrings.of(context).feature(
+                                  'Lägg till ledare, även dig själv eller klubbens befintliga ledare.',
+                                ),
+                              ),
+                              onTap: () {
+                                Navigator.pop(sheetContext);
+                                _openTeamRoles();
+                              },
+                            ),
                             ListTile(
                               leading: const Icon(Icons.how_to_reg_outlined),
                               title: Text(
@@ -677,6 +806,38 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     );
   }
 
+  /// Leaders and functionaries for the squad list, one entry per person,
+  /// filtered by the same search as the players. They are always active, so
+  /// the "Tidigare" filter hides them.
+  List<(TeamRole, List<String>)> _leaderEntries(TeamRoles? data) {
+    if (data == null || _list.filterKey == 'other') return const [];
+    final query = _list.query.trim().toLowerCase();
+    final byPerson = <String, (TeamRole, List<String>)>{};
+    for (final role in data.roles.where((role) => role.role != 'player')) {
+      if (query.isNotEmpty && !role.name.toLowerCase().contains(query)) {
+        continue;
+      }
+      final entry = byPerson.putIfAbsent(role.personId, () => (role, []));
+      entry.$2.add(role.role);
+    }
+    return byPerson.values.toList();
+  }
+
+  Widget _rosterGroupHeader(String label, int count) => Padding(
+    padding: const EdgeInsets.only(top: 4, bottom: 4),
+    child: Semantics(
+      header: true,
+      child: Text(
+        '${label.toUpperCase()} ($count)',
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+          letterSpacing: .3,
+        ),
+      ),
+    ),
+  );
+
   void _openRosterPersonForm() {
     _openRosterPersonEditor(
       context,
@@ -703,8 +864,19 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     }
   }
 
-  void _openPersonDetails(RosterPersonSummary person) {
-    GoRouter.of(context).push(ProductRouteContract.teamMember(person.id));
+  void _openPersonDetails(RosterPersonSummary person) =>
+      _openPersonProfile(person.id);
+
+  /// Players and leaders share one profile page. Roles, titles and
+  /// permissions can change there, so the squad reloads on return.
+  void _openPersonProfile(String personId) {
+    GoRouter.of(context).push(ProductRouteContract.teamMember(personId)).then((
+      _,
+    ) {
+      if (!mounted) return;
+      _refreshTeamRoles();
+      unawaited(_data.refresh());
+    });
   }
 }
 
@@ -2890,7 +3062,7 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
                         _submission.markDirty();
                       },
                     ),
-                  if (_isEditing)
+                  if (_isEditing && widget.initial!.homeMember)
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(
@@ -2995,6 +3167,7 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
         strings.feature('Åtgärder'),
         style: Theme.of(context).textTheme.titleMedium,
       ),
+      // Role, titles and permissions are managed on the profile itself.
       if (person.accountLinked != true)
         ListTile(
           leading: const Icon(Icons.mail_outline),
@@ -3012,6 +3185,18 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
             person: person,
           ),
         ),
+      // Leaders are in the team through their role, not a home-team
+      // assignment, so moving, representation and archiving do not apply.
+      if (person.homeMember) ..._playerActionTiles(context, person),
+    ];
+  }
+
+  List<Widget> _playerActionTiles(
+    BuildContext context,
+    RosterPersonDetails person,
+  ) {
+    final strings = AppStrings.of(context);
+    return [
       ListTile(
         leading: const Icon(Icons.compare_arrows),
         title: Text(strings.feature('Representation i annat lag')),
@@ -3094,18 +3279,31 @@ String _formatBirthDate(DateTime value) =>
     '${value.month.toString().padLeft(2, '0')}-'
     '${value.day.toString().padLeft(2, '0')}';
 
+class _NoOwnTeamProfile implements Exception {
+  const _NoOwnTeamProfile();
+}
+
 class _RosterPersonDetailsView extends StatelessWidget {
   const _RosterPersonDetailsView({
+    super.key,
     required this.future,
+    required this.roles,
     required this.contextValue,
     required this.roster,
     required this.canManage,
+    required this.onRolesChanged,
     this.onEdit,
   });
   final Future<RosterPersonDetails> future;
+
+  /// The team's roles, loaded once and shared by the role, title and
+  /// permission tiles.
+  final Future<TeamRoles> roles;
   final TeamZoneContext contextValue;
   final RosterServices roster;
   final bool canManage;
+  final void Function(RosterPersonDetails person, List<String> roles)
+  onRolesChanged;
   final void Function(RosterPersonDetails person)? onEdit;
 
   @override
@@ -3118,6 +3316,21 @@ class _RosterPersonDetailsView extends StatelessWidget {
           label: strings.feature('Laddar medlemsdetaljer'),
         );
       }
+      if (snapshot.error is _NoOwnTeamProfile) {
+        return _StateCard(
+          icon: Icons.person_off_outlined,
+          title: strings.feature('Du har ingen profil i det här laget'),
+          message: strings.feature(
+            'Byt till ett lag där du är spelare eller ledare, eller se dina kontouppgifter under Inställningar.',
+          ),
+          action: OutlinedButton.icon(
+            onPressed: () =>
+                GoRouter.of(context).go(ProductRouteContract.settings),
+            icon: const Icon(Icons.settings_outlined),
+            label: Text(strings.feature('Inställningar')),
+          ),
+        );
+      }
       if (snapshot.hasError || !snapshot.hasData) {
         return _StateCard(
           icon: Icons.lock_outline,
@@ -3128,19 +3341,38 @@ class _RosterPersonDetailsView extends StatelessWidget {
         );
       }
       final person = snapshot.data!;
-      final canSeeStats = canManage || person.isSelf;
+      // Attendance statistics are kept for the squad, not for leaders.
+      final canSeeStats = person.homeMember && (canManage || person.isSelf);
       return ListView(
         padding: const EdgeInsets.all(24),
         children: [
           CircleAvatar(
             radius: 34,
-            child: Text(person.displayName.characters.first.toUpperCase()),
+            child: Text(_initialsOf(person.displayName)),
           ),
           const SizedBox(height: 12),
           Text(
-            person.displayName,
+            person.isSelf
+                ? '${person.displayName} (${strings.feature('du')})'
+                : person.displayName,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          FutureBuilder<TeamRoles>(
+            future: roles,
+            builder: (context, rolesSnapshot) {
+              final held = rolesSnapshot.data?.rolesOf(person.id) ?? const [];
+              if (held.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  held.map((role) => _roleLabel(strings, role)).join(' · '),
+                  key: const ValueKey('person-profile-roles'),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              );
+            },
           ),
           const SizedBox(height: 20),
           ListTile(
@@ -3154,6 +3386,26 @@ class _RosterPersonDetailsView extends StatelessWidget {
               title: Text(strings.feature('Födelseår')),
               subtitle: Text(person.ageClass!),
             ),
+          _PersonRoleTile(
+            contextValue: contextValue,
+            roster: roster,
+            person: person,
+            roles: roles,
+            onChanged: (held) => onRolesChanged(person, held),
+          ),
+          _PersonTeamDetailsTile(
+            roster: roster,
+            clubId: contextValue.clubId,
+            teamId: person.teamId,
+            personId: person.id,
+            roles: roles,
+          ),
+          _PersonPermissionsTile(
+            contextValue: contextValue,
+            roster: roster,
+            personId: person.id,
+            roles: roles,
+          ),
           if (person.birthDate != null)
             ListTile(
               leading: const Icon(Icons.cake_outlined),
@@ -3295,17 +3547,70 @@ class _RosterPersonDetailsPage extends StatefulWidget {
 }
 
 class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
+  late Future<TeamRoles> _roles = _loadRoles();
   late Future<RosterPersonDetails> _load = _reload();
+  // Bumped on every reload so the profile tiles pick up the new roles.
+  int _generation = 0;
 
-  Future<RosterPersonDetails> _reload() => widget.roster
-      .getPersonDetails(
-        clubId: widget.contextValue.clubId,
-        teamId: widget.contextValue.teamId!,
-        personId: widget.personId,
-      )
-      .timeout(const Duration(seconds: 15));
+  Future<TeamRoles> _loadRoles() {
+    final teamId = widget.contextValue.teamId;
+    final roles = teamId == null
+        ? Future<TeamRoles>.error(StateError('No team'))
+        : Future.sync(
+            () => widget.roster
+                .listTeamRoles(
+                  clubId: widget.contextValue.clubId,
+                  teamId: teamId,
+                )
+                .timeout(const Duration(seconds: 15)),
+          );
+    // Builders show the failure; it may settle before any of them listens.
+    return roles..ignore();
+  }
 
-  void _refresh() => setState(() => _load = _reload());
+  /// ProductRouteContract.ownTeamProfile resolves to your own person in the
+  /// active team through your role there.
+  Future<String> _personId() async {
+    if (widget.personId != ProductRouteContract.selfPersonId) {
+      return widget.personId;
+    }
+    final TeamRoles roles;
+    try {
+      roles = await _roles;
+    } catch (_) {
+      throw const _NoOwnTeamProfile();
+    }
+    final own = roles.roles.where((role) => role.isSelf).firstOrNull;
+    if (own == null) throw const _NoOwnTeamProfile();
+    return own.personId;
+  }
+
+  Future<RosterPersonDetails> _reload() async {
+    final teamId = widget.contextValue.teamId;
+    if (teamId == null) throw const _NoOwnTeamProfile();
+    return widget.roster
+        .getPersonDetails(
+          clubId: widget.contextValue.clubId,
+          teamId: teamId,
+          personId: await _personId(),
+        )
+        .timeout(const Duration(seconds: 15));
+  }
+
+  void _refresh() => setState(() {
+    _roles = _loadRoles();
+    _load = _reload();
+    _generation++;
+  });
+
+  void _rolesChanged(RosterPersonDetails person, List<String> held) {
+    // A leader whose last role here ended is no longer in the team.
+    if (held.isEmpty && !person.homeMember) {
+      widget.onBack();
+      return;
+    }
+    _refresh();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3333,10 +3638,13 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
       ),
       body: allowed
           ? _RosterPersonDetailsView(
+              key: ValueKey(_generation),
               future: _load,
+              roles: _roles,
               contextValue: contextValue,
               roster: widget.roster,
               canManage: canManage,
+              onRolesChanged: _rolesChanged,
               onEdit: canManage
                   ? (person) async {
                       await _openRosterPersonEditor(
@@ -3752,6 +4060,9 @@ class _TeamOverviewSurface extends StatefulWidget {
 
 class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
   late Future<TeamOverview> _load;
+  // Titles are an optional enrichment: people without roster access simply
+  // see the leader names.
+  late Future<TeamRoles?> _roles;
 
   @override
   void initState() {
@@ -3766,6 +4077,12 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
         : widget.roster
               .getTeamOverview(teamId: teamId)
               .timeout(const Duration(seconds: 15));
+    _roles = teamId == null
+        ? Future.value(null)
+        : widget.roster
+              .listTeamRoles(clubId: widget.contextValue.clubId, teamId: teamId)
+              .timeout(const Duration(seconds: 15))
+              .then<TeamRoles?>((value) => value, onError: (_) => null);
   }
 
   @override
@@ -3841,12 +4158,42 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
-            Text(
-              value.leaders.isEmpty
-                  ? strings.feature('Inga ledare visas ännu.')
-                  : value.leaders
-                        .map((leader) => leader.displayName)
-                        .join(', '),
+            FutureBuilder<TeamRoles?>(
+              future: _roles,
+              builder: (context, rolesSnapshot) {
+                if (value.leaders.isEmpty) {
+                  return Text(strings.feature('Inga ledare visas ännu.'));
+                }
+                final roles = rolesSnapshot.data;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final leader in value.leaders)
+                      Builder(
+                        builder: (context) {
+                          final row = roles?.roles
+                              .where(
+                                (role) =>
+                                    role.personId == leader.personId &&
+                                    _isLeaderRole(role.role),
+                              )
+                              .firstOrNull;
+                          final titles = row == null
+                              ? ''
+                              : _titlesSummary(strings, row);
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 2),
+                            child: Text(
+                              titles.isEmpty
+                                  ? leader.displayName
+                                  : '${leader.displayName} · $titles',
+                            ),
+                          );
+                        },
+                      ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 20),
             Wrap(
@@ -3941,11 +4288,22 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
       final value = await widget.roster
           .getTeamProfileEdit(teamId: teamId)
           .timeout(const Duration(seconds: 15));
+      final roles = await _roles;
       if (!mounted) return;
+      final sportKey = _newUuid();
       final saved = await showDialog<bool>(
         context: context,
         builder: (_) => _TeamProfileEditDialog(
           value: value,
+          initialSport: roles?.sport,
+          onSportSave: roles?.canManage == true
+              ? (sport) => widget.roster.setTeamSport(
+                  clubId: widget.contextValue.clubId,
+                  teamId: teamId,
+                  sport: sport,
+                  idempotencyKey: sportKey,
+                )
+              : null,
           onSave:
               ({
                 required teamType,
@@ -3995,8 +4353,18 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
 }
 
 class _TeamProfileEditDialog extends StatefulWidget {
-  const _TeamProfileEditDialog({required this.value, required this.onSave});
+  const _TeamProfileEditDialog({
+    required this.value,
+    required this.onSave,
+    this.initialSport,
+    this.onSportSave,
+  });
   final TeamProfileEditData value;
+
+  /// The team's sport selects its position catalog. Shown only when the
+  /// user may manage team roles ([onSportSave] set).
+  final String? initialSport;
+  final Future<void> Function(String sport)? onSportSave;
   final Future<int> Function({
     required String teamType,
     required String ageClass,
@@ -4014,6 +4382,7 @@ class _TeamProfileEditDialogState extends State<_TeamProfileEditDialog> {
   late final _teamType = TextEditingController(text: widget.value.teamType);
   late final _ageClass = TextEditingController(text: widget.value.ageClass);
   late final _summary = TextEditingController(text: widget.value.summary);
+  late String? _sport = widget.initialSport;
   final _formKey = GlobalKey<FormState>();
   Uint8List? _imageBytes;
   String? _imageMimeType;
@@ -4054,6 +4423,30 @@ class _TeamProfileEditDialogState extends State<_TeamProfileEditDialog> {
                   labelText: strings.feature('Åldersklass'),
                 ),
               ),
+              if (widget.onSportSave != null && _sport != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: DropdownButtonFormField<String>(
+                    key: const ValueKey('team-sport'),
+                    initialValue: _sport,
+                    decoration: InputDecoration(
+                      labelText: strings.feature('Idrott'),
+                      helperText: strings.feature(
+                        'Styr vilka spelarpositioner som finns att välja.',
+                      ),
+                    ),
+                    items: [
+                      for (final sport in _sportLabels.keys)
+                        DropdownMenuItem(
+                          value: sport,
+                          child: Text(_sportLabel(strings, sport)),
+                        ),
+                    ],
+                    onChanged: _saving
+                        ? null
+                        : (value) => setState(() => _sport = value ?? _sport),
+                  ),
+                ),
               TextFormField(
                 controller: _summary,
                 maxLength: 1000,
@@ -4200,6 +4593,12 @@ class _TeamProfileEditDialogState extends State<_TeamProfileEditDialog> {
         imageMimeType: _imageMimeType,
         removeImage: _removeImage,
       );
+      final sport = _sport;
+      if (sport != null &&
+          sport != widget.initialSport &&
+          widget.onSportSave != null) {
+        await widget.onSportSave!(sport);
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (_) {
       if (mounted) {
