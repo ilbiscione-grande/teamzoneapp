@@ -280,6 +280,9 @@ class AppStrings {
     'Klubben är granskad och godkänd av TeamZone.':
         'The club has been reviewed and approved by TeamZone.',
     'Granskning pågår': 'Review in progress',
+    'Gör klubben officiell': 'Make the club official',
+    'Ansök hos TeamZone om att verifiera klubben.':
+        'Apply to TeamZone to verify the club.',
     'TeamZone har tagit emot klubbens underlag.':
         'TeamZone has received the club evidence.',
     'Verifiering avslagen': 'Verification rejected',
@@ -1593,6 +1596,8 @@ class AppStrings {
     'Inbjudningar och förfrågningar': 'Invitations and requests',
     'Nästa händelse': 'Next event',
     'Senaste match': 'Latest match',
+    'Idrotten ändras av klubbens administratörer.':
+        'The sport is changed by the club administrators.',
     'Om laget': 'About the team',
     'Händelserna kunde inte laddas.': 'Events could not be loaded.',
     'Inga kommande händelser.': 'No upcoming events.',
@@ -1771,6 +1776,14 @@ class AppStrings {
     'Appanvändning visas bara för personen själv.':
         'App use is shown only to the person.',
     'dygn': 'days',
+    'Presentation': 'Presentation',
+    'T.ex. Flicklag': 'E.g. Girls team',
+    'T.ex. F2012': 'E.g. F2012',
+    'Vilka ni är, var ni tränar och vad som gäller för laget.':
+        'Who you are, where you train and what applies to the team.',
+    'Tryck för att välja lagbild': 'Tap to choose a team picture',
+    'Lagprofilen kunde inte sparas. Försök igen.':
+        'The team profile could not be saved. Try again.',
   };
   String get signOut => isSwedish ? 'Logga ut' : 'Sign out';
   String eventOwner(String name) =>

@@ -4563,7 +4563,7 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
         builder: (_) => _TeamProfileEditDialog(
           value: value,
           initialSport: roles?.sport,
-          onSportSave: roles?.canManage == true
+          onSportSave: roles?.canSetSport == true
               ? (sport) => widget.roster.setTeamSport(
                   clubId: widget.contextValue.clubId,
                   teamId: teamId,
@@ -4767,7 +4767,7 @@ class _TeamProfileEditDialog extends StatefulWidget {
   final TeamProfileEditData value;
 
   /// The team's sport selects its position catalog. Shown only when the
-  /// user may manage team roles ([onSportSave] set).
+  /// user is a club administrator ([onSportSave] set); others see it read-only.
   final String? initialSport;
   final Future<void> Function(String sport)? onSportSave;
   final Future<int> Function({
@@ -4788,170 +4788,385 @@ class _TeamProfileEditDialogState extends State<_TeamProfileEditDialog> {
   late final _ageClass = TextEditingController(text: widget.value.ageClass);
   late final _summary = TextEditingController(text: widget.value.summary);
   late String? _sport = widget.initialSport;
-  final _formKey = GlobalKey<FormState>();
+  final _draft = AppFormController();
   Uint8List? _imageBytes;
   String? _imageMimeType;
   String? _imageName;
   bool _removeImage = false;
   bool _saving = false;
+  String? _error;
+
+  static const _sportIcons = {
+    'football': Icons.sports_soccer,
+    'handball': Icons.sports_handball,
+    'other': Icons.sports_outlined,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    for (final controller in [_teamType, _ageClass, _summary]) {
+      controller.addListener(_draft.markDirty);
+    }
+  }
 
   @override
   void dispose() {
-    _teamType.dispose();
-    _ageClass.dispose();
-    _summary.dispose();
+    for (final field in [_teamType, _ageClass, _summary]) {
+      field.removeListener(_draft.markDirty);
+      field.dispose();
+    }
+    _draft.dispose();
     super.dispose();
+  }
+
+  bool get _hasImage =>
+      _imageBytes != null || (widget.value.imageUrl != null && !_removeImage);
+
+  Widget _section(
+    BuildContext context,
+    IconData icon,
+    String title,
+    List<Widget> children,
+  ) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _imagePreview(BuildContext context) {
+    final image = _imageBytes != null
+        ? Image.memory(
+            _imageBytes!,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => _imageFallback(context),
+          )
+        : !_removeImage && widget.value.imageUrl != null
+        ? Image.network(
+            widget.value.imageUrl!,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => _imageFallback(context),
+          )
+        : _imageFallback(context);
+    return AspectRatio(
+      aspectRatio: 16 / 7,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            key: const ValueKey('team-image-preview'),
+            onTap: _saving ? null : _pickImage,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                image,
+                Positioned(
+                  right: 10,
+                  bottom: 10,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.all(8),
+                      child: Icon(
+                        Icons.photo_camera_outlined,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
-    return AlertDialog(
-      title: Text(strings.feature('Redigera lagprofil')),
-      content: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    final theme = Theme.of(context);
+    final fullScreen = MediaQuery.sizeOf(context).width < 600;
+    final header = Padding(
+      padding: const EdgeInsets.fromLTRB(4, 8, 16, 8),
+      child: Row(
+        children: [
+          IconButton(
+            tooltip: strings.feature('Stäng'),
+            onPressed: _saving ? null : () => Navigator.maybePop(context),
+            icon: const Icon(Icons.close),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              strings.feature('Redigera lagprofil'),
+              style: theme.textTheme.titleLarge,
+            ),
+          ),
+          FilledButton(
+            key: const ValueKey('save-team-profile'),
+            onPressed: _saving ? null : _save,
+            child: Text(strings.save),
+          ),
+        ],
+      ),
+    );
+
+    final form = ListView(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+      children: [
+        _section(context, Icons.image_outlined, strings.feature('Lagbild'), [
+          _imagePreview(context),
+          if (_imageName != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              _imageName!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              TextFormField(
-                controller: _teamType,
-                maxLength: 80,
-                decoration: InputDecoration(
-                  labelText: strings.feature('Lagtyp'),
+              OutlinedButton.icon(
+                onPressed: _saving ? null : _pickImage,
+                icon: const Icon(Icons.upload_outlined),
+                label: Text(
+                  strings.feature(
+                    widget.value.imageUrl == null && _imageBytes == null
+                        ? 'Välj lagbild'
+                        : 'Byt lagbild',
+                  ),
                 ),
               ),
-              TextFormField(
+              if (_hasImage)
+                TextButton.icon(
+                  onPressed: _saving
+                      ? null
+                      : () => setState(() {
+                          _imageBytes = null;
+                          _imageMimeType = null;
+                          _imageName = null;
+                          _removeImage = true;
+                          _draft.markDirty();
+                        }),
+                  icon: const Icon(Icons.delete_outline),
+                  label: Text(strings.feature('Ta bort lagbild')),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            strings.feature(
+              'JPG, PNG eller WebP. Max 5 MB. Originalet lagras privat.',
+            ),
+            style: theme.textTheme.bodySmall,
+          ),
+        ]),
+        _section(context, Icons.groups_outlined, strings.feature('Om laget'), [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final type = TextFormField(
+                key: const ValueKey('team-type'),
+                controller: _teamType,
+                maxLength: 80,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(
+                  labelText: strings.feature('Lagtyp'),
+                  hintText: strings.feature('T.ex. Flicklag'),
+                ),
+              );
+              final age = TextFormField(
+                key: const ValueKey('team-age-class'),
                 controller: _ageClass,
                 maxLength: 80,
                 decoration: InputDecoration(
                   labelText: strings.feature('Åldersklass'),
+                  hintText: strings.feature('T.ex. F2012'),
                 ),
-              ),
-              if (widget.onSportSave != null && _sport != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: DropdownButtonFormField<String>(
-                    key: const ValueKey('team-sport'),
-                    initialValue: _sport,
-                    decoration: InputDecoration(
-                      labelText: strings.feature('Idrott'),
-                      helperText: strings.feature(
-                        'Styr vilka spelarpositioner som finns att välja.',
-                      ),
-                    ),
-                    items: [
-                      for (final sport in _sportLabels.keys)
-                        DropdownMenuItem(
-                          value: sport,
-                          child: Text(_sportLabel(strings, sport)),
-                        ),
-                    ],
-                    onChanged: _saving
-                        ? null
-                        : (value) => setState(() => _sport = value ?? _sport),
-                  ),
-                ),
-              TextFormField(
-                controller: _summary,
-                maxLength: 1000,
-                minLines: 3,
-                maxLines: 6,
-                decoration: InputDecoration(
-                  labelText: strings.feature('Kort lagpresentation'),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  strings.feature('Lagbild'),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              const SizedBox(height: 8),
-              AspectRatio(
-                aspectRatio: 16 / 7,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: _imageBytes != null
-                      ? Image.memory(
-                          _imageBytes!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _imageFallback(context),
-                        )
-                      : !_removeImage && widget.value.imageUrl != null
-                      ? Image.network(
-                          widget.value.imageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _imageFallback(context),
-                        )
-                      : _imageFallback(context),
-                ),
-              ),
-              if (_imageName != null) ...[
-                const SizedBox(height: 8),
-                Text(_imageName!, maxLines: 1, overflow: TextOverflow.ellipsis),
-              ],
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: _saving ? null : _pickImage,
-                    icon: const Icon(Icons.upload_outlined),
-                    label: Text(
-                      strings.feature(
-                        widget.value.imageUrl == null && _imageBytes == null
-                            ? 'Välj lagbild'
-                            : 'Byt lagbild',
-                      ),
-                    ),
-                  ),
-                  if ((_imageBytes != null || widget.value.imageUrl != null) &&
-                      !_removeImage)
-                    TextButton.icon(
-                      onPressed: _saving
-                          ? null
-                          : () => setState(() {
-                              _imageBytes = null;
-                              _imageMimeType = null;
-                              _imageName = null;
-                              _removeImage = true;
-                            }),
-                      icon: const Icon(Icons.delete_outline),
-                      label: Text(strings.feature('Ta bort lagbild')),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                strings.feature(
-                  'JPG, PNG eller WebP. Max 5 MB. Originalet lagras privat.',
-                ),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
+              );
+              return constraints.maxWidth >= 440
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: type),
+                        const SizedBox(width: 12),
+                        Expanded(child: age),
+                      ],
+                    )
+                  : Column(children: [type, age]);
+            },
           ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.pop(context, false),
-          child: Text(strings.feature('Avbryt')),
-        ),
-        FilledButton(
-          onPressed: _saving ? null : _save,
-          child: Text(strings.save),
+          if (widget.onSportSave == null && _sport != null)
+            ListTile(
+              key: const ValueKey('team-sport-readonly'),
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(_sportIcons[_sport] ?? Icons.sports_outlined),
+              title: Text(_sportLabel(strings, _sport!)),
+              subtitle: Text(
+                strings.feature('Idrotten ändras av klubbens administratörer.'),
+              ),
+              trailing: const Icon(Icons.lock_outline, size: 18),
+            ),
+          if (widget.onSportSave != null && _sport != null) ...[
+            const SizedBox(height: 4),
+            Text(strings.feature('Idrott'), style: theme.textTheme.labelLarge),
+            const SizedBox(height: 8),
+            Wrap(
+              key: const ValueKey('team-sport'),
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final sport in _sportLabels.keys)
+                  ChoiceChip(
+                    key: ValueKey('team-sport-$sport'),
+                    avatar: Icon(
+                      _sportIcons[sport] ?? Icons.sports_outlined,
+                      size: 18,
+                    ),
+                    label: Text(_sportLabel(strings, sport)),
+                    selected: _sport == sport,
+                    onSelected: _saving
+                        ? null
+                        : (_) => setState(() {
+                            _sport = sport;
+                            _draft.markDirty();
+                          }),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              strings.feature(
+                'Styr vilka spelarpositioner som finns att välja.',
+              ),
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
+        ]),
+        _section(
+          context,
+          Icons.notes_outlined,
+          strings.feature('Presentation'),
+          [
+            TextFormField(
+              key: const ValueKey('team-summary'),
+              controller: _summary,
+              maxLength: 1000,
+              minLines: 4,
+              maxLines: 8,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                labelText: strings.feature('Kort lagpresentation'),
+                hintText: strings.feature(
+                  'Vilka ni är, var ni tränar och vad som gäller för laget.',
+                ),
+                alignLabelWithHint: true,
+              ),
+            ),
+          ],
         ),
       ],
+    );
+
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        header,
+        const Divider(height: 1),
+        if (_saving) const LinearProgressIndicator(minHeight: 2),
+        if (_error != null)
+          Material(
+            color: theme.colorScheme.errorContainer,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    color: theme.colorScheme.onErrorContainer,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _error!,
+                      style: TextStyle(
+                        color: theme.colorScheme.onErrorContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        Expanded(child: form),
+      ],
+    );
+
+    return AppUnsavedChangesScope(
+      controller: _draft,
+      title: strings.feature('Kasta ändringar?'),
+      message: strings.feature('Dina osparade ändringar går förlorade.'),
+      discardLabel: strings.feature('Kasta'),
+      cancelLabel: strings.feature('Fortsätt redigera'),
+      child: fullScreen
+          ? Dialog.fullscreen(child: SafeArea(child: body))
+          : Dialog(
+              clipBehavior: Clip.antiAlias,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 600,
+                  maxHeight: MediaQuery.sizeOf(context).height * .9,
+                ),
+                child: body,
+              ),
+            ),
     );
   }
 
   Widget _imageFallback(BuildContext context) => ColoredBox(
     color: Theme.of(context).colorScheme.surfaceContainerHighest,
-    child: const Center(child: Icon(Icons.groups_outlined, size: 56)),
+    child: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.groups_outlined, size: 48),
+          const SizedBox(height: 6),
+          Text(
+            AppStrings.of(context).feature('Tryck för att välja lagbild'),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+    ),
   );
 
   Future<void> _pickImage() async {
@@ -4965,11 +5180,7 @@ class _TeamProfileEditDialogState extends State<_TeamProfileEditDialog> {
     if (file == null || bytes == null || !mounted) return;
     final strings = AppStrings.of(context);
     if (bytes.isEmpty || bytes.length > 5 * 1024 * 1024) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(strings.feature('Bilden måste vara högst 5 MB.')),
-        ),
-      );
+      setState(() => _error = strings.feature('Bilden måste vara högst 5 MB.'));
       return;
     }
     final extension = (file.extension ?? '').toLowerCase();
@@ -4983,12 +5194,16 @@ class _TeamProfileEditDialogState extends State<_TeamProfileEditDialog> {
       _imageMimeType = mimeType;
       _imageName = file.name;
       _removeImage = false;
+      _error = null;
+      _draft.markDirty();
     });
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
     try {
       await widget.onSave(
         teamType: _teamType.text.trim(),
@@ -5004,17 +5219,16 @@ class _TeamProfileEditDialogState extends State<_TeamProfileEditDialog> {
           widget.onSportSave != null) {
         await widget.onSportSave!(sport);
       }
+      _draft.markClean();
       if (mounted) Navigator.pop(context, true);
     } catch (_) {
       if (mounted) {
-        setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppStrings.of(context).feature('Lagprofilen kunde inte sparas.'),
-            ),
-          ),
-        );
+        setState(() {
+          _saving = false;
+          _error = AppStrings.of(
+            context,
+          ).feature('Lagprofilen kunde inte sparas. Försök igen.');
+        });
       }
     }
   }

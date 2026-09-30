@@ -804,6 +804,51 @@ Future<void> _showContextPicker({
                 );
               },
             ),
+          if (activeContext.can('club.memberships.manage'))
+            FutureBuilder<ClubVerificationStatus>(
+              future: membership.getClubVerificationStatus(
+                clubId: activeContext.clubId,
+              ),
+              builder: (_, snapshot) {
+                final status = snapshot.data?.status;
+                return ListTile(
+                  key: const ValueKey('context-club-verification'),
+                  leading: Icon(
+                    status == 'official'
+                        ? Icons.verified
+                        : Icons.verified_outlined,
+                  ),
+                  title: Text(
+                    strings.feature(switch (status) {
+                      'official' => 'Officiell klubb',
+                      'pending' => 'Granskning pågår',
+                      _ => 'Gör klubben officiell',
+                    }),
+                  ),
+                  subtitle: Text(
+                    status == 'official' || status == 'pending'
+                        ? activeContext.clubName
+                        : strings.feature(
+                            'Ansök hos TeamZone om att verifiera klubben.',
+                          ),
+                  ),
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    await Future<void>.delayed(Duration.zero);
+                    if (!context.mounted) return;
+                    await showModalBottomSheet<void>(
+                      context: context,
+                      isScrollControlled: true,
+                      useSafeArea: true,
+                      builder: (_) => _ClubVerificationSheet(
+                        clubId: activeContext.clubId,
+                        membership: membership,
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ListTile(
             leading: const Icon(Icons.group_add_outlined),
             title: Text(strings.feature('Hitta klubb eller lag')),

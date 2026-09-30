@@ -575,7 +575,11 @@ class TeamRoles {
     this.positionCatalog = const [],
     bool? canEditDetails,
     this.grantable = const [],
+    this.canSetSport = false,
   }) : canEditDetails = canEditDetails ?? canManage;
+
+  /// Club administrator: may change which sport the team plays.
+  final bool canSetSport;
 
   /// Manages leaders: adds/changes leader roles and edits permissions.
   final bool canManage;
@@ -597,6 +601,7 @@ class TeamRoles {
   factory TeamRoles.fromJson(Map<String, dynamic> json) => TeamRoles(
     canManage: json['can_manage'] == true,
     canEditDetails: json['can_edit_details'] as bool?,
+    canSetSport: json['can_set_sport'] == true,
     grantable: _strings(json['grantable']),
     roles: (json['roles'] as List? ?? const [])
         .whereType<Map<String, dynamic>>()

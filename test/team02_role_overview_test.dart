@@ -112,6 +112,75 @@ void main() {
     expect(find.textContaining('Originalet lagras privat'), findsOneWidget);
   });
 
+  testWidgets('team profile editor is full screen on phones and saves', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final roster = _Roster();
+    await tester.pumpWidget(_app(canManage: true, roster: roster));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Laget'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Redigera lagprofil'),
+      250,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.ensureVisible(find.text('Redigera lagprofil'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Redigera lagprofil'));
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byType(Dialog)).width, 390);
+    expect(
+      find.descendant(of: find.byType(Dialog), matching: find.text('Om laget')),
+      findsOneWidget,
+    );
+    // Only club administrators change the sport; leaders see it read-only.
+    expect(find.byKey(const ValueKey('team-sport-readonly')), findsOneWidget);
+    expect(find.byKey(const ValueKey('team-sport-handball')), findsNothing);
+    await tester.enterText(find.byKey(const ValueKey('team-type')), 'Flicklag');
+    await tester.enterText(
+      find.byKey(const ValueKey('team-age-class')),
+      'F2012',
+    );
+    await tester.tap(find.byKey(const ValueKey('save-team-profile')));
+    await tester.pumpAndSettle();
+    expect(roster.saved, ('Flicklag', 'F2012'));
+    expect(find.byType(Dialog), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('club administrators can change the team sport', (
+    tester,
+  ) async {
+    final roster = _Roster(canSetSport: true);
+    await tester.pumpWidget(_app(canManage: true, roster: roster));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Laget'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Redigera lagprofil'),
+      250,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('Redigera lagprofil'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('team-sport-readonly')), findsNothing);
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('team-sport-handball')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('team-sport-handball')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('save-team-profile')));
+    await tester.pumpAndSettle();
+    expect(roster.sport, 'handball');
+    expect(tester.takeException(), isNull);
+  });
+
   test('TEAM-02 projection minimizes admin data behind capability', () {
     final sql = File(
       'supabase/migrations/20260824151510_team02_role_based_overview.sql',
@@ -187,12 +256,16 @@ void main() {
   });
 }
 
-Widget _app({required bool canManage, bool openRequests = true}) => TeamZoneApp(
+Widget _app({
+  required bool canManage,
+  bool openRequests = true,
+  _Roster? roster,
+}) => TeamZoneApp(
   environment: const AppEnvironment(name: 'team02'),
   locale: const Locale('sv'),
   services: AppServices(
     identity: _Identity(canManage),
-    roster: _Roster(openRequests: openRequests),
+    roster: roster ?? _Roster(openRequests: openRequests),
     calendar: _Calendar(),
     isConfigured: true,
   ),
@@ -246,8 +319,43 @@ class _Calendar extends UnconfiguredCalendarServices {
 }
 
 class _Roster extends UnconfiguredRosterServices {
-  const _Roster({this.openRequests = true});
+  _Roster({this.openRequests = true, this.canSetSport = false});
   final bool openRequests;
+  final bool canSetSport;
+  (String, String)? saved;
+  String? sport;
+
+  @override
+  Future<TeamRoles> listTeamRoles({
+    required String clubId,
+    required String teamId,
+  }) async => TeamRoles(canManage: true, canSetSport: canSetSport, roles: const []);
+
+  @override
+  Future<void> setTeamSport({
+    required String clubId,
+    required String teamId,
+    required String sport,
+    required String idempotencyKey,
+  }) async {
+    this.sport = sport;
+  }
+
+  @override
+  Future<int> updateTeamProfile({
+    required String teamId,
+    required String teamType,
+    required String ageClass,
+    required String summary,
+    required String imageAction,
+    String? stagedImageId,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {
+    saved = (teamType, ageClass);
+    return expectedRevision + 1;
+  }
+
   @override
   Future<TeamOverview> getTeamOverview({required String teamId}) async =>
       TeamOverview(
