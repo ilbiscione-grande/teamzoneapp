@@ -73,6 +73,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ada Spelare'));
     await tester.pumpAndSettle();
+    // The member info tab scrolls below its tab bar.
+    await tester.dragUntilVisible(
+      find.text('Redigera profil'),
+      find.byType(ListView).last,
+      const Offset(0, -200),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Redigera profil'));
     await tester.pumpAndSettle();
     await tester.enterText(

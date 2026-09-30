@@ -139,7 +139,11 @@ void main() {
     expect(find.text('forälder@mail.se'), findsOneWidget);
     expect(find.text('Ifyllt av klubben.'), findsOneWidget);
     final edit = find.byKey(const ValueKey('edit-club-contact'));
-    await tester.ensureVisible(edit);
+    await tester.drag(
+      find.byKey(const ValueKey('person-contact')),
+      const Offset(0, -300),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(edit);
     await tester.pumpAndSettle();
     await tester.enterText(
@@ -222,6 +226,103 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('a leader sees info and statistics on a player profile', (
+    tester,
+  ) async {
+    final profile = _Profile()
+      ..statistics = const PersonStatistics(
+        trainingsTotal: 10,
+        trainingsAttended: 8,
+        goals: 3,
+        averageResponseMinutes: 95,
+        app: AppUsage(
+          messagesSent: 5,
+          activeDays30: 3,
+          currentStreak: 2,
+          longestStreak: 6,
+        ),
+      );
+    await _openMember(tester, profile);
+    expect(find.widgetWithText(Tab, 'Medlemsinfo'), findsOneWidget);
+    expect(find.widgetWithText(Tab, 'Statistik'), findsOneWidget);
+    // Settings are only on your own profile.
+    expect(find.widgetWithText(Tab, 'Inställningar'), findsNothing);
+    await tester.tap(find.widgetWithText(Tab, 'Statistik'));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('stat-goals')),
+        matching: find.text('3'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('8/10'), findsOneWidget);
+    expect(find.text('80 %'), findsOneWidget);
+    expect(find.text('1 h 35 min'), findsOneWidget);
+    // App use is the player's own, also when a leader looks.
+    await tester.dragUntilVisible(
+      find.byKey(const ValueKey('stat-messages')),
+      find.byKey(const ValueKey('person-statistics')),
+      const Offset(0, -200),
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('stat-messages')),
+        matching: find.text('5'),
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('own profile adds app statistics and personal settings', (
+    tester,
+  ) async {
+    final profile = _Profile()
+      ..statistics = const PersonStatistics(
+        isSelf: true,
+        app: AppUsage(
+          messagesSent: 12,
+          activeDays30: 9,
+          currentStreak: 4,
+          longestStreak: 7,
+        ),
+      );
+    await _openMember(tester, profile, self: true);
+    await tester.tap(find.widgetWithText(Tab, 'Statistik'));
+    await tester.pumpAndSettle();
+    await tester.dragUntilVisible(
+      find.byKey(const ValueKey('stat-messages')),
+      find.byKey(const ValueKey('person-statistics')),
+      const Offset(0, -200),
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('stat-streak')),
+        matching: find.text('4'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('stat-messages')),
+        matching: find.text('12'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.widgetWithText(Tab, 'Inställningar'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('personal-settings')), findsOneWidget);
+    expect(find.text('Mina uppgifter'), findsOneWidget);
+    await tester.dragUntilVisible(
+      find.byKey(const ValueKey('setting-week-numbers')),
+      find.byKey(const ValueKey('personal-settings')),
+      const Offset(0, -200),
+    );
+    expect(find.text('Standardvy för kalendern'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('teammates see no contact details', (tester) async {
     final profile = _Profile()..contact = const PersonContact();
     await _openMember(tester, profile);
@@ -247,8 +348,12 @@ Future<void> _openSettingsProfile(WidgetTester tester, _Profile profile) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> _openMember(WidgetTester tester, _Profile profile) async {
-  await tester.pumpWidget(_app(profile));
+Future<void> _openMember(
+  WidgetTester tester,
+  _Profile profile, {
+  bool self = false,
+}) async {
+  await tester.pumpWidget(_app(profile, roster: _Roster(self: self)));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Laget'));
   await tester.pumpAndSettle();
@@ -258,16 +363,17 @@ Future<void> _openMember(WidgetTester tester, _Profile profile) async {
   await tester.pumpAndSettle();
 }
 
-Widget _app(_Profile profile) => TeamZoneApp(
-  environment: const AppEnvironment(name: 'prof01'),
-  locale: const Locale('sv'),
-  services: AppServices(
-    identity: const _Identity(),
-    roster: const _Roster(),
-    profile: profile,
-    isConfigured: true,
-  ),
-);
+Widget _app(_Profile profile, {_Roster roster = const _Roster()}) =>
+    TeamZoneApp(
+      environment: const AppEnvironment(name: 'prof01'),
+      locale: const Locale('sv'),
+      services: AppServices(
+        identity: const _Identity(),
+        roster: roster,
+        profile: profile,
+        isConfigured: true,
+      ),
+    );
 
 class _Profile extends UnconfiguredProfileServices {
   Object? failWith;
@@ -278,6 +384,14 @@ class _Profile extends UnconfiguredProfileServices {
   LoginEmailChange? change;
   PersonContact contact = const PersonContact();
   MemberCard? card;
+  PersonStatistics statistics = const PersonStatistics();
+
+  @override
+  Future<PersonStatistics> getPersonStatistics({
+    required String clubId,
+    required String teamId,
+    required String personId,
+  }) async => statistics;
 
   @override
   Future<MemberCard> getMemberCard({
@@ -361,7 +475,8 @@ class _Profile extends UnconfiguredProfileServices {
 }
 
 class _Roster extends UnconfiguredRosterServices {
-  const _Roster();
+  const _Roster({this.self = false});
+  final bool self;
   @override
   Future<List<RosterPersonSummary>> listPeople({
     required String clubId,
@@ -381,12 +496,13 @@ class _Roster extends UnconfiguredRosterServices {
     required String clubId,
     required String teamId,
     required String personId,
-  }) async => const RosterPersonDetails(
+  }) async => RosterPersonDetails(
     id: 'ada',
     displayName: 'Ada Spelare',
     teamId: 'team',
     teamName: 'F2012',
     assignmentState: 'active',
+    isSelf: self,
   );
   @override
   Future<TeamRoles> listTeamRoles({

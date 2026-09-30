@@ -72,6 +72,7 @@ part '../features/account/profile_settings_surface.dart';
 part '../features/account/my_profile.dart';
 part '../features/account/member_contact.dart';
 part '../features/account/member_card.dart';
+part '../features/account/person_statistics.dart';
 part '../features/publication/team_event_visibility_surface.dart';
 part '../features/assistant_coach/assistant_coach_entry.dart';
 part '../features/auth/auth_surfaces.dart';

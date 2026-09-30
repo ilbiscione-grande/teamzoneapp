@@ -1753,6 +1753,24 @@ class AppStrings {
     'Välj bild': 'Choose image',
     'Markera som läst': 'Mark as read',
     'Ta bort notisen': 'Remove notification',
+    'Medlemsinfo': 'Member info',
+    'Statistik visas för personen själv och lagets ledare.':
+        'Statistics are shown to the person and the team leaders.',
+    'Träning och match': 'Training and matches',
+    'Mål': 'Goals',
+    'Assist': 'Assists',
+    'Mottagna': 'Received',
+    'Tackat ja': 'Accepted',
+    'Tackat nej': 'Declined',
+    'Snittid för svar': 'Average response time',
+    'Appen': 'The app',
+    'Dagar i rad': 'Days in a row',
+    'Längsta svit': 'Longest streak',
+    'Aktiva dagar (30 d)': 'Active days (30 d)',
+    'Skickade meddelanden': 'Messages sent',
+    'Appanvändning visas bara för personen själv.':
+        'App use is shown only to the person.',
+    'dygn': 'days',
   };
   String get signOut => isSwedish ? 'Logga ut' : 'Sign out';
   String eventOwner(String name) =>

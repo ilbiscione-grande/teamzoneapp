@@ -161,6 +161,76 @@ class MemberCard {
   );
 }
 
+/// Figures on the member profile. [app] is only filled in on your own
+/// profile.
+class PersonStatistics {
+  const PersonStatistics({
+    this.isSelf = false,
+    this.trainingsTotal = 0,
+    this.trainingsAttended = 0,
+    this.matchesTotal = 0,
+    this.matchesPlayed = 0,
+    this.goals = 0,
+    this.assists = 0,
+    this.cards = 0,
+    this.callupsReceived = 0,
+    this.callupsAccepted = 0,
+    this.callupsDeclined = 0,
+    this.callupsAnswered = 0,
+    this.averageResponseMinutes,
+    this.app,
+  });
+  final bool isSelf;
+  final int trainingsTotal, trainingsAttended, matchesTotal, matchesPlayed;
+  final int goals, assists, cards;
+  final int callupsReceived, callupsAccepted, callupsDeclined, callupsAnswered;
+  final int? averageResponseMinutes;
+  final AppUsage? app;
+
+  static int _int(Map<String, dynamic>? json, String key) =>
+      (json?[key] as num? ?? 0).toInt();
+
+  factory PersonStatistics.fromJson(Map<String, dynamic> json) {
+    final sport = json['sport'] as Map<String, dynamic>?;
+    final callups = json['callups'] as Map<String, dynamic>?;
+    final app = json['app'] as Map<String, dynamic>?;
+    return PersonStatistics(
+      isSelf: json['is_self'] as bool? ?? false,
+      trainingsTotal: _int(sport, 'trainings_total'),
+      trainingsAttended: _int(sport, 'trainings_attended'),
+      matchesTotal: _int(sport, 'matches_total'),
+      matchesPlayed: _int(sport, 'matches_played'),
+      goals: _int(sport, 'goals'),
+      assists: _int(sport, 'assists'),
+      cards: _int(sport, 'cards'),
+      callupsReceived: _int(callups, 'received'),
+      callupsAccepted: _int(callups, 'accepted'),
+      callupsDeclined: _int(callups, 'declined'),
+      callupsAnswered: _int(callups, 'answered'),
+      averageResponseMinutes: (callups?['avg_response_minutes'] as num?)
+          ?.round(),
+      app: app == null
+          ? null
+          : AppUsage(
+              messagesSent: _int(app, 'messages_sent'),
+              activeDays30: _int(app, 'active_days_30'),
+              currentStreak: _int(app, 'current_streak'),
+              longestStreak: _int(app, 'longest_streak'),
+            ),
+    );
+  }
+}
+
+class AppUsage {
+  const AppUsage({
+    required this.messagesSent,
+    required this.activeDays30,
+    required this.currentStreak,
+    required this.longestStreak,
+  });
+  final int messagesSent, activeDays30, currentStreak, longestStreak;
+}
+
 /// Raised with the server's reason code, e.g. invalid_email, request_open.
 class ProfileException implements Exception {
   const ProfileException(this.code);

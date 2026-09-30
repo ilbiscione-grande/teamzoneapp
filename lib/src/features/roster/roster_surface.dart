@@ -3580,8 +3580,6 @@ class _RosterPersonDetailsView extends StatelessWidget {
         );
       }
       final person = snapshot.data!;
-      // Attendance statistics are kept for the squad, not for leaders.
-      final canSeeStats = person.homeMember && (canManage || person.isSelf);
       return ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -3699,99 +3697,6 @@ class _RosterPersonDetailsView extends StatelessWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => onEdit!(person),
             ),
-          if (canSeeStats) ...[
-            const Divider(),
-            Text(
-              strings.feature('Statistik'),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            _PersonAttendanceStats(
-              future: roster
-                  .getPersonAttendanceSummary(
-                    clubId: contextValue.clubId,
-                    teamId: person.teamId,
-                    personId: person.id,
-                  )
-                  .timeout(const Duration(seconds: 15)),
-            ),
-          ],
-          if (person.hasManagementDetails) ...[
-            const Divider(),
-            Text(
-              strings.feature('Administrativa uppgifter'),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            ListTile(
-              title: Text(strings.feature('Ursprung')),
-              subtitle: Text(person.provenance!),
-            ),
-            if (person.assignmentStartsAt != null)
-              ListTile(
-                title: Text(strings.feature('Startdatum')),
-                subtitle: Text(
-                  MaterialLocalizations.of(
-                    context,
-                  ).formatMediumDate(person.assignmentStartsAt!.toLocal()),
-                ),
-              ),
-            if (person.assignmentEndsAt != null)
-              ListTile(
-                title: Text(strings.feature('Slutdatum')),
-                subtitle: Text(
-                  MaterialLocalizations.of(
-                    context,
-                  ).formatMediumDate(person.assignmentEndsAt!.toLocal()),
-                ),
-              ),
-          ],
-        ],
-      );
-    },
-  );
-}
-
-class _PersonAttendanceStats extends StatelessWidget {
-  const _PersonAttendanceStats({required this.future});
-  final Future<PersonAttendanceSummary> future;
-
-  @override
-  Widget build(BuildContext context) => FutureBuilder<PersonAttendanceSummary>(
-    future: future,
-    builder: (context, snapshot) {
-      final strings = AppStrings.of(context);
-      if (snapshot.connectionState != ConnectionState.done) {
-        return const Padding(
-          padding: EdgeInsets.symmetric(vertical: 16),
-          child: Center(
-            child: SizedBox.square(
-              dimension: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ),
-        );
-      }
-      if (!snapshot.hasData) {
-        return ListTile(
-          leading: const Icon(Icons.sync_problem),
-          title: Text(strings.feature('Statistiken kunde inte laddas')),
-          subtitle: Text(strings.feature('Försök igen.')),
-        );
-      }
-      final stats = snapshot.data!;
-      return Column(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.event_available_outlined),
-            title: Text(strings.feature('Träningsnärvaro')),
-            subtitle: Text(
-              '${stats.trainingsAttended} / ${stats.trainingsTotal}',
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.sports_soccer_outlined),
-            title: Text(strings.feature('Matcher spelade')),
-            subtitle: Text('${stats.matchesPlayed} / ${stats.matchesTotal}'),
-          ),
         ],
       );
     },
@@ -3806,6 +3711,7 @@ class _RosterPersonDetailsPage extends StatefulWidget {
     required this.onBack,
     this.profileServices = const UnconfiguredProfileServices(),
     this.onOwnProfileChanged,
+    this.personalSettings,
   });
 
   final String personId;
@@ -3815,6 +3721,9 @@ class _RosterPersonDetailsPage extends StatefulWidget {
 
   /// Tells the app your own name or picture changed.
   final VoidCallback? onOwnProfileChanged;
+
+  /// Your personal settings, shown as a tab on your own profile.
+  final Widget Function()? personalSettings;
   final VoidCallback onBack;
 
   @override
@@ -3939,55 +3848,98 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
         title: Text(strings.feature('Medlemsuppgifter')),
       ),
       body: allowed
-          ? _RosterPersonDetailsView(
-              key: ValueKey(_generation),
+          ? FutureBuilder<RosterPersonDetails>(
               future: _load,
-              roles: _roles,
-              contact: _contact,
-              contextValue: contextValue,
-              roster: widget.roster,
-              canManage: canManage,
-              onRolesChanged: _rolesChanged,
-              onEditOwnProfile: () async {
-                if (await _openMyProfileEditor(
-                  context,
-                  widget.profileServices,
-                )) {
-                  widget.onOwnProfileChanged?.call();
-                  _refresh();
-                }
-              },
-              onOpenMemberCard: (person) => _openMemberCard(
-                context,
-                profile: widget.profileServices,
-                clubId: contextValue.clubId,
-                teamId: person.teamId,
-                personId: person.id,
-              ),
-              onEditClubContact: (person, current) async {
-                if (await _editClubContact(
-                  context,
-                  profile: widget.profileServices,
-                  clubId: contextValue.clubId,
-                  teamId: person.teamId,
-                  personId: person.id,
-                  current: current,
-                )) {
-                  _refresh();
-                }
-              },
-              onEdit: canManage
-                  ? (person) async {
-                      await _openRosterPersonEditor(
-                        context,
-                        contextValue: contextValue,
-                        roster: widget.roster,
-                        personId: person.id,
-                        onSaved: () async {},
-                      );
+              builder: (context, snapshot) {
+                final view = _RosterPersonDetailsView(
+                  key: ValueKey(_generation),
+                  future: _load,
+                  roles: _roles,
+                  contact: _contact,
+                  contextValue: contextValue,
+                  roster: widget.roster,
+                  canManage: canManage,
+                  onRolesChanged: _rolesChanged,
+                  onEditOwnProfile: () async {
+                    if (await _openMyProfileEditor(
+                      context,
+                      widget.profileServices,
+                    )) {
+                      widget.onOwnProfileChanged?.call();
                       _refresh();
                     }
-                  : null,
+                  },
+                  onOpenMemberCard: (person) => _openMemberCard(
+                    context,
+                    profile: widget.profileServices,
+                    clubId: contextValue.clubId,
+                    teamId: person.teamId,
+                    personId: person.id,
+                  ),
+                  onEditClubContact: (person, current) async {
+                    if (await _editClubContact(
+                      context,
+                      profile: widget.profileServices,
+                      clubId: contextValue.clubId,
+                      teamId: person.teamId,
+                      personId: person.id,
+                      current: current,
+                    )) {
+                      _refresh();
+                    }
+                  },
+                  onEdit: canManage
+                      ? (person) async {
+                          await _openRosterPersonEditor(
+                            context,
+                            contextValue: contextValue,
+                            roster: widget.roster,
+                            personId: person.id,
+                            onSaved: () async {},
+                          );
+                          _refresh();
+                        }
+                      : null,
+                );
+                final person = snapshot.data;
+                if (person == null) return view;
+                // Statistics for yourself and those who manage the team;
+                // settings only on your own profile.
+                final showStats = person.isSelf || canManage;
+                final settings = person.isSelf ? widget.personalSettings : null;
+                final tabs = <(String, Widget)>[
+                  (strings.feature('Medlemsinfo'), view),
+                  if (showStats)
+                    (
+                      strings.feature('Statistik'),
+                      _PersonStatisticsView(
+                        key: ValueKey('stats-$_generation'),
+                        profile: widget.profileServices,
+                        clubId: contextValue.clubId,
+                        teamId: person.teamId,
+                        personId: person.id,
+                        homeMember: person.homeMember,
+                      ),
+                    ),
+                  if (settings != null)
+                    (strings.feature('Inställningar'), settings()),
+                ];
+                if (tabs.length == 1) return view;
+                return DefaultTabController(
+                  key: ValueKey('profile-tabs-${tabs.length}'),
+                  length: tabs.length,
+                  child: Column(
+                    children: [
+                      TabBar(tabs: [for (final tab in tabs) Tab(text: tab.$1)]),
+                      Expanded(
+                        child: TabBarView(
+                          children: [for (final tab in tabs) tab.$2],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             )
           : _StateCard(
               icon: Icons.lock_outline,

@@ -100,6 +100,8 @@ class _ProfileSettingsSurface extends StatefulWidget {
     required this.calendarPreferences,
     required this.profileServices,
     this.onOwnProfileChanged,
+    this.messaging,
+    this.embedded = false,
   });
 
   final List<TeamZoneContext> contexts;
@@ -110,6 +112,10 @@ class _ProfileSettingsSurface extends StatefulWidget {
   final CalendarPreferences calendarPreferences;
   final ProfileServices profileServices;
   final VoidCallback? onOwnProfileChanged;
+  final MessagingServices? messaging;
+
+  /// One list of all personal settings, for the profile page's tab.
+  final bool embedded;
 
   @override
   State<_ProfileSettingsSurface> createState() =>
@@ -125,12 +131,67 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
   // Falls back to month (matching the calendar's own unset-preference
   // default) until the stored value (if any) loads.
   CalendarViewMode _defaultCalendarView = CalendarViewMode.month;
+  bool _showWeekNumbers = true;
+  bool _showQuarterHourMarks = false;
+  late Future<bool?> _pushEnabled = _loadPush();
+
+  Future<bool?> _loadPush() async {
+    final messaging = widget.messaging;
+    if (messaging == null) return null;
+    try {
+      return (await messaging.getPreferences()).pushEnabled;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _setPushEnabled(bool value) async {
+    final messaging = widget.messaging;
+    if (messaging == null) return;
+    setState(() {
+      _pushEnabled = Future.value(value);
+    });
+    try {
+      await messaging.setPushEnabled(value, _newUuid());
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _pushEnabled = _loadPush();
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(AppStrings.of(context).safeError)));
+    }
+  }
+
+  // Shared with the calendar's own filter sheet (same stored keys).
+  Future<void> _loadCalendarFlags() async {
+    final preferences = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _showWeekNumbers =
+          preferences.getBool('calendar.showWeekNumbers') ?? true;
+      _showQuarterHourMarks =
+          preferences.getBool('calendar.showQuarterHourMarks') ?? false;
+    });
+  }
+
+  Future<void> _setCalendarFlag(
+    String key,
+    bool value,
+    void Function(bool value) apply,
+  ) async {
+    setState(() => apply(value));
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(key, value);
+  }
 
   @override
   void initState() {
     super.initState();
     _load = widget.legal.getStatus().timeout(const Duration(seconds: 15));
     unawaited(_loadDefaultCalendarView());
+    unawaited(_loadCalendarFlags());
   }
 
   Future<void> _loadDefaultCalendarView() async {
@@ -323,9 +384,45 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
     }
   }
 
+  Widget _buildGeneralTab(BuildContext context, AppStrings strings) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: _generalItems(context, strings),
+  );
+
+  Widget _buildTeamTab(BuildContext context, AppStrings strings) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: _teamItems(context, strings),
+  );
+
+  Widget _buildProfileTab(BuildContext context, AppStrings strings) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: _profileItems(context, strings),
+  );
+
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
+    if (widget.embedded) {
+      return ListView(
+        key: const ValueKey('personal-settings'),
+        padding: const EdgeInsets.all(16),
+        children: [
+          ..._myDetailsItems(context, strings),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+          ..._generalItems(context, strings),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+          ..._teamItems(context, strings, includeTeamSettings: false),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+          ..._privacyItems(context, strings),
+        ],
+      );
+    }
     return DefaultTabController(
       length: 3,
       child: Scaffold(
@@ -352,111 +449,158 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
     );
   }
 
-  Widget _buildGeneralTab(BuildContext context, AppStrings strings) => ListView(
-    padding: const EdgeInsets.all(16),
-    children: [
-      Text(
-        strings.feature('Färgtema'),
-        style: Theme.of(context).textTheme.titleMedium,
+  List<Widget> _generalItems(BuildContext context, AppStrings strings) => [
+    Text(
+      strings.feature('Färgtema'),
+      style: Theme.of(context).textTheme.titleMedium,
+    ),
+    const SizedBox(height: 8),
+    Text(
+      strings.feature(
+        'Färgen är själva temat — resten av utseendet är samma '
+        'oavsett vilken du väljer.',
       ),
-      const SizedBox(height: 8),
-      Text(
-        strings.feature(
-          'Färgen är själva temat — resten av utseendet är samma '
-          'oavsett vilken du väljer.',
-        ),
-        style: Theme.of(context).textTheme.bodyMedium,
+      style: Theme.of(context).textTheme.bodyMedium,
+    ),
+    const SizedBox(height: 16),
+    Builder(
+      builder: (context) {
+        final scope = AppColorThemeScope.of(context);
+        return Wrap(
+          spacing: 16,
+          runSpacing: 12,
+          children: [
+            for (final colorTheme in AppColorTheme.values)
+              _ColorThemeSwatch(
+                colorTheme: colorTheme,
+                selected: scope.colorTheme == colorTheme,
+                onTap: () => scope.onColorThemeChanged(colorTheme),
+              ),
+          ],
+        );
+      },
+    ),
+    const SizedBox(height: 24),
+    const Divider(),
+    Text(
+      strings.feature('Standardvy för kalendern'),
+      style: Theme.of(context).textTheme.titleMedium,
+    ),
+    const SizedBox(height: 8),
+    Text(
+      strings.feature(
+        'Vilken vy kalendern öppnas i. Utan ett val visas månadsvyn.',
       ),
+      style: Theme.of(context).textTheme.bodyMedium,
+    ),
+    const SizedBox(height: 16),
+    SegmentedButton<CalendarViewMode>(
+      segments: [
+        for (final value in CalendarViewMode.values)
+          ButtonSegment(
+            value: value,
+            label: Text(strings.feature(_calendarViewModeLabel(value))),
+          ),
+      ],
+      selected: {_defaultCalendarView},
+      onSelectionChanged: (selection) =>
+          _setDefaultCalendarView(selection.single),
+    ),
+    const SizedBox(height: 8),
+    SwitchListTile(
+      key: const ValueKey('setting-week-numbers'),
+      contentPadding: EdgeInsets.zero,
+      title: Text(strings.feature('Visa veckonummer')),
+      value: _showWeekNumbers,
+      onChanged: (value) =>
+          _setCalendarFlag('calendar.showWeekNumbers', value, (v) {
+            _showWeekNumbers = v;
+          }),
+    ),
+    SwitchListTile(
+      key: const ValueKey('setting-quarter-marks'),
+      contentPadding: EdgeInsets.zero,
+      title: Text(strings.feature('Visa kvartsmarkeringar')),
+      subtitle: Text(
+        strings.feature('Extra tunna linjer var 15:e minut i dagsvyn.'),
+      ),
+      value: _showQuarterHourMarks,
+      onChanged: (value) =>
+          _setCalendarFlag('calendar.showQuarterHourMarks', value, (v) {
+            _showQuarterHourMarks = v;
+          }),
+    ),
+    if (widget.messaging != null) ...[
       const SizedBox(height: 16),
-      Builder(
-        builder: (context) {
-          final scope = AppColorThemeScope.of(context);
-          return Wrap(
-            spacing: 16,
-            runSpacing: 12,
-            children: [
-              for (final colorTheme in AppColorTheme.values)
-                _ColorThemeSwatch(
-                  colorTheme: colorTheme,
-                  selected: scope.colorTheme == colorTheme,
-                  onTap: () => scope.onColorThemeChanged(colorTheme),
-                ),
-            ],
-          );
-        },
-      ),
-      const SizedBox(height: 24),
       const Divider(),
       Text(
-        strings.feature('Standardvy för kalendern'),
+        strings.feature('Notiser'),
         style: Theme.of(context).textTheme.titleMedium,
       ),
-      const SizedBox(height: 8),
-      Text(
-        strings.feature(
-          'Vilken vy kalendern öppnas i. Utan ett val visas månadsvyn.',
-        ),
-        style: Theme.of(context).textTheme.bodyMedium,
-      ),
-      const SizedBox(height: 16),
-      SegmentedButton<CalendarViewMode>(
-        segments: [
-          for (final value in CalendarViewMode.values)
-            ButtonSegment(
-              value: value,
-              label: Text(strings.feature(_calendarViewModeLabel(value))),
-            ),
-        ],
-        selected: {_defaultCalendarView},
-        onSelectionChanged: (selection) =>
-            _setDefaultCalendarView(selection.single),
-      ),
-    ],
-  );
-
-  Widget _buildTeamTab(BuildContext context, AppStrings strings) => ListView(
-    padding: const EdgeInsets.all(16),
-    children: [
-      Text(
-        strings.feature('Mina lagkopplingar'),
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-      const SizedBox(height: 8),
-      Text(
-        strings.feature(
-          'Här ser du vilka lag och roller du är kopplad till, och '
-          'kan lägga till en ny koppling med en inbjudan eller '
-          'lagkod.',
-        ),
-        style: Theme.of(context).textTheme.bodyMedium,
-      ),
-      const SizedBox(height: 16),
-      FilledButton.icon(
-        onPressed: () => _showUseCodeDialog(
-          context,
-          roster: widget.roster,
-          onClaimed: widget.onContextsChanged,
-        ),
-        icon: const Icon(Icons.vpn_key_outlined),
-        label: Text(strings.feature('Använd kod')),
-      ),
-      const SizedBox(height: 16),
-      if (widget.contexts.isEmpty)
-        Text(strings.feature('Du har inga lagkopplingar ännu.'))
-      else
-        for (final item in widget.contexts)
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.shield_outlined),
-              title: Text(item.teamName ?? item.clubName),
-              subtitle: Text(
-                item.teamName == null
-                    ? _contextRolesLabel(strings, item)
-                    : '${item.clubName} · '
-                          '${_contextRolesLabel(strings, item)}',
-              ),
+      FutureBuilder<bool?>(
+        future: _pushEnabled,
+        builder: (context, snapshot) => SwitchListTile(
+          key: const ValueKey('setting-push'),
+          contentPadding: EdgeInsets.zero,
+          title: Text(strings.feature('Frivilliga pushnotiser')),
+          subtitle: Text(
+            strings.feature(
+              'Av som standard. Låsskärmen visar bara att ett nytt meddelande finns.',
             ),
           ),
+          value: snapshot.data ?? false,
+          onChanged: snapshot.data == null ? null : _setPushEnabled,
+        ),
+      ),
+    ],
+  ];
+
+  List<Widget> _teamItems(
+    BuildContext context,
+    AppStrings strings, {
+    bool includeTeamSettings = true,
+  }) => [
+    Text(
+      strings.feature('Mina lagkopplingar'),
+      style: Theme.of(context).textTheme.titleMedium,
+    ),
+    const SizedBox(height: 8),
+    Text(
+      strings.feature(
+        'Här ser du vilka lag och roller du är kopplad till, och '
+        'kan lägga till en ny koppling med en inbjudan eller '
+        'lagkod.',
+      ),
+      style: Theme.of(context).textTheme.bodyMedium,
+    ),
+    const SizedBox(height: 16),
+    FilledButton.icon(
+      onPressed: () => _showUseCodeDialog(
+        context,
+        roster: widget.roster,
+        onClaimed: widget.onContextsChanged,
+      ),
+      icon: const Icon(Icons.vpn_key_outlined),
+      label: Text(strings.feature('Använd kod')),
+    ),
+    const SizedBox(height: 16),
+    if (widget.contexts.isEmpty)
+      Text(strings.feature('Du har inga lagkopplingar ännu.'))
+    else
+      for (final item in widget.contexts)
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.shield_outlined),
+            title: Text(item.teamName ?? item.clubName),
+            subtitle: Text(
+              item.teamName == null
+                  ? _contextRolesLabel(strings, item)
+                  : '${item.clubName} · '
+                        '${_contextRolesLabel(strings, item)}',
+            ),
+          ),
+        ),
+    if (includeTeamSettings) ...[
       const SizedBox(height: 24),
       const Divider(),
       Text('Laginställningar', style: Theme.of(context).textTheme.titleMedium),
@@ -483,129 +627,135 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
           ),
         ),
     ],
-  );
+  ];
 
-  Widget _buildProfileTab(BuildContext context, AppStrings strings) => ListView(
-    padding: const EdgeInsets.all(16),
-    children: [
-      Text(
-        strings.feature('Mina uppgifter'),
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-      const SizedBox(height: 8),
-      _MyProfileCard(
-        profile: widget.profileServices,
-        onSaved: widget.onOwnProfileChanged,
-      ),
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
-      Text(
-        strings.feature('Villkor och integritet'),
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-      const SizedBox(height: 8),
-      FutureBuilder<LegalStatus>(
-        future: _load,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: AppLoadingIndicator(label: strings.loading),
-            );
-          }
-          if (snapshot.hasError || !snapshot.hasData) {
-            return _StateCard(
-              icon: Icons.sync_problem,
-              title: strings.feature('Inställningen kunde inte laddas'),
-              message: strings.feature('Försök igen om en stund.'),
-            );
-          }
-          _marketingOptIn ??= snapshot.data!.marketingOptIn;
-          final status = snapshot.data!;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.description_outlined),
-                title: Text(strings.feature('Användarvillkor')),
-                subtitle: Text(
-                  strings
-                      .feature('Version {version}')
-                      .replaceFirst('{version}', status.termsVersion),
-                ),
-                trailing: const Icon(Icons.open_in_new),
-                onTap: () => _openLegalDocument(status.termsUrl),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.privacy_tip_outlined),
-                title: Text(strings.feature('Integritetspolicy')),
-                subtitle: Text(
-                  strings
-                      .feature('Version {version}')
-                      .replaceFirst('{version}', status.privacyVersion),
-                ),
-                trailing: const Icon(Icons.open_in_new),
-                onTap: () => _openLegalDocument(status.privacyUrl),
-              ),
-              const Divider(height: 32),
-              Text(
-                strings.feature('Integritetsinställningar'),
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                value: _marketingOptIn!,
-                onChanged: _pending
-                    ? null
-                    : (value) => setState(() => _marketingOptIn = value),
-                title: Text(strings.feature('Marknadsföring från TeamZone')),
-                subtitle: Text(
-                  strings.feature(
-                    'Frivilligt. Avstängt påverkar inte appens '
-                    'funktioner.',
-                  ),
-                ),
-              ),
-              if (_error != null)
-                Semantics(liveRegion: true, child: Text(_error!)),
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: _pending ? null : _saveMarketingPreference,
-                child: Text(strings.feature('Spara')),
-              ),
-            ],
+  List<Widget> _myDetailsItems(BuildContext context, AppStrings strings) => [
+    Text(
+      strings.feature('Mina uppgifter'),
+      style: Theme.of(context).textTheme.titleMedium,
+    ),
+    const SizedBox(height: 8),
+    _MyProfileCard(
+      profile: widget.profileServices,
+      onSaved: widget.onOwnProfileChanged,
+    ),
+  ];
+
+  List<Widget> _profileItems(BuildContext context, AppStrings strings) => [
+    ..._myDetailsItems(context, strings),
+    const SizedBox(height: 24),
+    const Divider(),
+    const SizedBox(height: 16),
+    ..._privacyItems(context, strings),
+  ];
+
+  /// Terms, privacy choices and account deletion.
+  List<Widget> _privacyItems(BuildContext context, AppStrings strings) => [
+    Text(
+      strings.feature('Villkor och integritet'),
+      style: Theme.of(context).textTheme.titleMedium,
+    ),
+    const SizedBox(height: 8),
+    FutureBuilder<LegalStatus>(
+      future: _load,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: AppLoadingIndicator(label: strings.loading),
           );
-        },
+        }
+        if (snapshot.hasError || !snapshot.hasData) {
+          return _StateCard(
+            icon: Icons.sync_problem,
+            title: strings.feature('Inställningen kunde inte laddas'),
+            message: strings.feature('Försök igen om en stund.'),
+          );
+        }
+        _marketingOptIn ??= snapshot.data!.marketingOptIn;
+        final status = snapshot.data!;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.description_outlined),
+              title: Text(strings.feature('Användarvillkor')),
+              subtitle: Text(
+                strings
+                    .feature('Version {version}')
+                    .replaceFirst('{version}', status.termsVersion),
+              ),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => _openLegalDocument(status.termsUrl),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: Text(strings.feature('Integritetspolicy')),
+              subtitle: Text(
+                strings
+                    .feature('Version {version}')
+                    .replaceFirst('{version}', status.privacyVersion),
+              ),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => _openLegalDocument(status.privacyUrl),
+            ),
+            const Divider(height: 32),
+            Text(
+              strings.feature('Integritetsinställningar'),
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _marketingOptIn!,
+              onChanged: _pending
+                  ? null
+                  : (value) => setState(() => _marketingOptIn = value),
+              title: Text(strings.feature('Marknadsföring från TeamZone')),
+              subtitle: Text(
+                strings.feature(
+                  'Frivilligt. Avstängt påverkar inte appens '
+                  'funktioner.',
+                ),
+              ),
+            ),
+            if (_error != null)
+              Semantics(liveRegion: true, child: Text(_error!)),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: _pending ? null : _saveMarketingPreference,
+              child: Text(strings.feature('Spara')),
+            ),
+          ],
+        );
+      },
+    ),
+    const SizedBox(height: 24),
+    const Divider(),
+    const SizedBox(height: 24),
+    Text(
+      strings.feature('Radera konto'),
+      style: Theme.of(context).textTheme.titleMedium,
+    ),
+    const SizedBox(height: 8),
+    Text(
+      strings.feature(
+        'Du kan begära global radering av din identitet. TeamZone granskar alltid begäran innan kontot tas bort.',
       ),
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 24),
-      Text(
-        strings.feature('Radera konto'),
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-      const SizedBox(height: 8),
-      Text(
-        strings.feature(
-          'Du kan begära global radering av din identitet. TeamZone granskar alltid begäran innan kontot tas bort.',
-        ),
-      ),
-      const SizedBox(height: 12),
-      OutlinedButton.icon(
-        onPressed: _erasurePending ? null : _requestGlobalErasure,
-        icon: _erasurePending
-            ? const SizedBox.square(
-                dimension: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(Icons.person_remove_outlined),
-        label: Text(strings.feature('Begär radering av mitt konto')),
-      ),
-    ],
-  );
+    ),
+    const SizedBox(height: 12),
+    OutlinedButton.icon(
+      onPressed: _erasurePending ? null : _requestGlobalErasure,
+      icon: _erasurePending
+          ? const SizedBox.square(
+              dimension: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.person_remove_outlined),
+      label: Text(strings.feature('Begär radering av mitt konto')),
+    ),
+  ];
 }
 
 /// One selectable color swatch in the theme picker: a filled circle in that

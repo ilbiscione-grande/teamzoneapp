@@ -164,6 +164,7 @@ class _ProductShellState extends State<_ProductShell> {
           calendarPreferences: widget.calendarPreferences,
           profileServices: widget.profileServices,
           onOwnProfileChanged: _refreshOwnProfile,
+          messaging: widget.messaging,
         ),
       ),
       GoRoute(
@@ -204,6 +205,18 @@ class _ProductShellState extends State<_ProductShell> {
           roster: widget.roster,
           profileServices: widget.profileServices,
           onOwnProfileChanged: _refreshOwnProfile,
+          personalSettings: () => _ProfileSettingsSurface(
+            embedded: true,
+            editorial: widget.editorial,
+            contexts: widget.contexts,
+            roster: widget.roster,
+            onContextsChanged: widget.onContextsChanged,
+            legal: widget.legal,
+            calendarPreferences: widget.calendarPreferences,
+            profileServices: widget.profileServices,
+            onOwnProfileChanged: _refreshOwnProfile,
+            messaging: widget.messaging,
+          ),
           onBack: () => _router.canPop()
               ? _router.pop()
               : _router.go('${ProductRouteContract.team}?tab=roster'),
@@ -301,6 +314,9 @@ class _ProductShellState extends State<_ProductShell> {
         .timeout(const Duration(seconds: 15))
         .catchError((_) => false);
     _pendingTeamRequests = _loadPendingTeamRequests();
+    unawaited(
+      Future.sync(widget.profileServices.recordActivity).catchError((_) {}),
+    );
     _locationHistory.add(_router.routeInformationProvider.value.uri.toString());
     _router.routeInformationProvider.addListener(_recordLocation);
   }

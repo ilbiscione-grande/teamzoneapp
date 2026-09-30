@@ -84,6 +84,14 @@ abstract interface class ProfileServices {
     required Uint8List bytes,
   });
   Future<void> removeClubBadge(String clubId);
+  Future<PersonStatistics> getPersonStatistics({
+    required String clubId,
+    required String teamId,
+    required String personId,
+  });
+
+  /// Notes that you used the app today (for the active-day streak).
+  Future<void> recordActivity();
 }
 
 class UnconfiguredProfileServices implements ProfileServices {
@@ -175,6 +183,14 @@ class UnconfiguredProfileServices implements ProfileServices {
   }) => _fail();
   @override
   Future<void> removeClubBadge(String clubId) => _fail();
+  @override
+  Future<PersonStatistics> getPersonStatistics({
+    required String clubId,
+    required String teamId,
+    required String personId,
+  }) => _fail();
+  @override
+  Future<void> recordActivity() async {}
 }
 
 class SupabaseProfileServices implements ProfileServices {
@@ -458,6 +474,26 @@ class SupabaseProfileServices implements ProfileServices {
       'staged_badge_id': staged['badge_id'],
     });
   }
+
+  @override
+  Future<PersonStatistics> getPersonStatistics({
+    required String clubId,
+    required String teamId,
+    required String personId,
+  }) async {
+    final value = await _rpc('get_person_statistics', {
+      'target_club_id': clubId,
+      'target_team_id': teamId,
+      'target_person_id': personId,
+    });
+    if (value is! Map<String, dynamic>) {
+      throw const FormatException('Statistics response is invalid.');
+    }
+    return PersonStatistics.fromJson(value);
+  }
+
+  @override
+  Future<void> recordActivity() => _rpc('record_activity');
 
   @override
   Future<void> removeClubBadge(String clubId) => _rpc('set_club_badge', {
