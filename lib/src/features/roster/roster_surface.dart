@@ -132,6 +132,24 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     _list.replaceItems(people ?? const []);
   }
 
+  Future<void> _showInvitations() async {
+    if (!widget.contextValue.can('club.memberships.manage') &&
+        !widget.contextValue.can('team.roster.manage')) {
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _InvitationAdminSheet(
+        contextValue: widget.contextValue,
+        roster: widget.roster,
+        people: _data.state.data ?? const [],
+      ),
+    );
+  }
+
   Future<void> _showMembershipReviews() async {
     if (!widget.contextValue.can('club.memberships.manage') &&
         !widget.contextValue.can('team.roster.manage')) {
@@ -279,6 +297,8 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                   roster: widget.roster,
                   onNavigate: (path) => GoRouter.of(context).go(path),
                   onOpenApplications: _showMembershipReviews,
+                  onOpenInvitations: _showInvitations,
+                  calendar: widget.calendar,
                 ),
                 _buildRoster(context),
                 _TeamEventList(
@@ -347,7 +367,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
             ),
           );
         }
-        final people = _list.visibleItems;
+        final allPeople = _list.visibleItems;
         final rosterList = Column(
           children: [
             Padding(
@@ -386,6 +406,21 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                 future: _teamRoles,
                 builder: (context, rolesSnapshot) {
                   final leaders = _leaderEntries(rolesSnapshot.data);
+                  // Someone who leads the team is listed as a leader, not
+                  // also as a former player (a new leader starts from an
+                  // ended player assignment, and a player may become leader).
+                  final leaderIds = {
+                    for (final role
+                        in rolesSnapshot.data?.roles ?? const <TeamRole>[])
+                      if (role.role != 'player') role.personId,
+                  };
+                  final people = allPeople
+                      .where(
+                        (person) =>
+                            person.assignmentState == 'active' ||
+                            !leaderIds.contains(person.id),
+                      )
+                      .toList();
                   if (people.isEmpty && leaders.isEmpty) {
                     return _StateCard(
                       icon: Icons.search_off,
@@ -844,6 +879,8 @@ class _RosterSurfaceState extends State<_RosterSurface> {
       contextValue: widget.contextValue,
       roster: widget.roster,
       onSaved: () async {
+        // A new person can be a leader straight away.
+        _refreshTeamRoles();
         await _data.refresh();
       },
     );
@@ -2913,7 +2950,26 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
       widget.initial?.representationAvailable ?? false;
   String? _error;
 
+  // A new person can get their role, titles and positions right away. The
+  // team's roles decide what the viewer may set and which positions exist.
+  late final Future<TeamRoles?> _teamRoles = widget.initial != null
+      ? Future.value(null)
+      : Future.sync(
+          () => widget.roster
+              .listTeamRoles(
+                clubId: widget.contextValue.clubId,
+                teamId: widget.contextValue.teamId!,
+              )
+              .timeout(const Duration(seconds: 15)),
+        ).then<TeamRoles?>((value) => value, onError: (_) => null);
+  // 'player', 'leader' or 'both'.
+  String _newRole = 'player';
+  final Set<String> _newTitles = {};
+  final Set<String> _newPositions = {};
+
   bool get _isEditing => widget.initial != null;
+  bool get _newIsLeader => _newRole != 'player';
+  bool get _newIsPlayer => _newRole != 'leader';
 
   @override
   void initState() {
@@ -2968,7 +3024,7 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
             );
           }
         } else {
-          await widget.roster.createPerson(
+          final personId = await widget.roster.createPerson(
             clubId: widget.contextValue.clubId,
             teamId: teamId,
             displayName: _name.text.trim(),
@@ -2977,6 +3033,7 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
             startsAt: DateTime.now().toUtc(),
             idempotencyKey: _newUuid(),
           );
+          await _applyNewRole(teamId, personId);
         }
         await widget.onSaved();
       });
@@ -2991,6 +3048,150 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
       }
     }
   }
+
+  /// Gives a just-created person (a player in the team) the chosen role,
+  /// titles and positions. The person already exists, so a failure here is
+  /// reported without undoing that; it can be fixed on the profile.
+  Future<void> _applyNewRole(String teamId, String personId) async {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final strings = AppStrings.of(context);
+    final roles = await _teamRoles;
+    if (roles == null) return;
+    try {
+      if (roles.canManage && _newIsLeader) {
+        await widget.roster.setTeamRole(
+          clubId: widget.contextValue.clubId,
+          teamId: teamId,
+          personId: personId,
+          fromRole: _newIsPlayer ? null : 'player',
+          toRole: 'leader',
+          idempotencyKey: _newUuid(),
+        );
+      }
+      final leader = roles.canManage && _newIsLeader;
+      final titles = leader ? (_newTitles.toList()..sort()) : <String>[];
+      final positions = _newIsPlayer
+          ? (_newPositions.toList()..sort())
+          : <String>[];
+      if (roles.canEditDetails && (titles.isNotEmpty || positions.isNotEmpty)) {
+        await widget.roster.setTeamPersonDetails(
+          clubId: widget.contextValue.clubId,
+          teamId: teamId,
+          personId: personId,
+          titles: titles,
+          positions: positions,
+          customTitles: const [],
+          customPositions: const [],
+          expectedRevision: 0,
+          idempotencyKey: _newUuid(),
+        );
+      }
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            strings.feature(
+              'Personen lades till, men roll, titel eller position kunde inte sparas. Ändra det på personens profil.',
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  /// Role, title and position for a new person, shown as far as the viewer
+  /// may set them.
+  Widget _newRoleSection(AppStrings strings) => FutureBuilder<TeamRoles?>(
+    future: _teamRoles,
+    builder: (context, snapshot) {
+      final roles = snapshot.data;
+      if (roles == null) return const SizedBox.shrink();
+      final leader = roles.canManage && _newIsLeader;
+      Widget heading(String text) => Padding(
+        padding: const EdgeInsets.only(top: 16, bottom: 8),
+        child: Text(text, style: Theme.of(context).textTheme.titleSmall),
+      );
+      Widget chips(
+        Iterable<String> keys,
+        Set<String> selected,
+        String Function(String key) label,
+        String keyPrefix,
+      ) => Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        children: [
+          for (final key in keys)
+            FilterChip(
+              key: ValueKey('$keyPrefix-$key'),
+              label: Text(label(key)),
+              selected: selected.contains(key),
+              onSelected: (value) {
+                setState(
+                  () => value ? selected.add(key) : selected.remove(key),
+                );
+                _submission.markDirty();
+              },
+            ),
+        ],
+      );
+      final catalog = [
+        ...roles.positionCatalog.where((item) => item.level == 'general'),
+        ...roles.positionCatalog.where((item) => item.level != 'general'),
+      ];
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (roles.canManage) ...[
+            heading(strings.feature('Roll i laget')),
+            SegmentedButton<String>(
+              key: const ValueKey('new-person-role'),
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment(
+                  value: 'player',
+                  label: Text(strings.feature('Spelare')),
+                ),
+                ButtonSegment(
+                  value: 'leader',
+                  label: Text(strings.feature('Ledare')),
+                ),
+                ButtonSegment(
+                  value: 'both',
+                  label: Text(strings.feature('Båda')),
+                ),
+              ],
+              selected: {_newRole},
+              onSelectionChanged: (value) {
+                setState(() => _newRole = value.single);
+                _submission.markDirty();
+              },
+            ),
+          ],
+          if (roles.canEditDetails && leader) ...[
+            heading(strings.feature('Titel')),
+            chips(
+              _teamTitleLabels.keys,
+              _newTitles,
+              (key) => _titleLabel(strings, key),
+              'new-person-title',
+            ),
+          ],
+          if (roles.canEditDetails && _newIsPlayer && catalog.isNotEmpty) ...[
+            heading(
+              '${strings.feature('Position')} · ${_sportLabel(strings, roles.sport)}',
+            ),
+            chips(
+              catalog.map((item) => item.key),
+              _newPositions,
+              (key) => _positionLabel(strings, key),
+              'new-person-position',
+            ),
+          ],
+        ],
+      );
+    },
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -3125,6 +3326,7 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
                       },
                       child: Text(strings.feature('Ta bort exakt datum')),
                     ),
+                  if (!_isEditing) _newRoleSection(strings),
                   if (_error != null) ...[
                     const SizedBox(height: 8),
                     Text(
@@ -4046,23 +4248,32 @@ class _TeamOverviewSurface extends StatefulWidget {
   const _TeamOverviewSurface({
     required this.contextValue,
     required this.roster,
+    required this.calendar,
     required this.onNavigate,
     required this.onOpenApplications,
+    required this.onOpenInvitations,
   });
   final TeamZoneContext contextValue;
   final RosterServices roster;
+  final CalendarServices calendar;
   final ValueChanged<String> onNavigate;
   final Future<void> Function() onOpenApplications;
+  final Future<void> Function() onOpenInvitations;
 
   @override
   State<_TeamOverviewSurface> createState() => _TeamOverviewSurfaceState();
 }
 
+/// Team overview, top to bottom: team picture and identity, open
+/// invitations and requests (only when there are any and you may handle
+/// them), the next event, the latest match, then the team presentation
+/// and its leaders.
 class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
   late Future<TeamOverview> _load;
   // Titles are an optional enrichment: people without roster access simply
   // see the leader names.
   late Future<TeamRoles?> _roles;
+  late Future<List<CalendarEventSummary>> _events;
 
   @override
   void initState() {
@@ -4083,6 +4294,23 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
               .listTeamRoles(clubId: widget.contextValue.clubId, teamId: teamId)
               .timeout(const Duration(seconds: 15))
               .then<TeamRoles?>((value) => value, onError: (_) => null);
+    final now = DateTime.now();
+    _events = teamId == null
+        ? Future.value(const [])
+        : Future.sync(
+            () => widget.calendar
+                .listCalendar(
+                  contextIds: [
+                    widget.contextValue.id,
+                    ...widget.contextValue.aliasIds,
+                  ],
+                  from: DateTime(now.year - 1, now.month, now.day),
+                  to: DateTime(now.year + 1, now.month, now.day),
+                )
+                .timeout(const Duration(seconds: 15)),
+          );
+    // The event cards show their own failure; it may settle first.
+    _events.ignore();
   }
 
   @override
@@ -4090,6 +4318,11 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.contextValue.id != widget.contextValue.id) setState(_reload);
   }
+
+  Widget _sectionTitle(BuildContext context, String text) => Padding(
+    padding: const EdgeInsets.only(top: 24, bottom: 8),
+    child: Text(text, style: Theme.of(context).textTheme.titleLarge),
+  );
 
   @override
   Widget build(BuildContext context) => FutureBuilder<TeamOverview>(
@@ -4119,6 +4352,8 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
           value.canManage &&
           (widget.contextValue.can('club.memberships.manage') ||
               widget.contextValue.can('team.roster.manage'));
+      final hasRequests =
+          value.activeInvitationCount > 0 || value.pendingApplicationCount > 0;
       return RefreshIndicator(
         onRefresh: () async {
           setState(_reload);
@@ -4147,17 +4382,36 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
                   ].whereType<String>().join(' · '),
                 ),
               ),
-            const SizedBox(height: 16),
+            if (showAdmin && hasRequests) ...[
+              const SizedBox(height: 20),
+              _TeamRequestsCard(
+                invitations: value.activeInvitationCount,
+                applications: value.pendingApplicationCount,
+                onOpenInvitations: () async {
+                  await widget.onOpenInvitations();
+                  if (mounted) setState(_reload);
+                },
+                onOpenApplications: () async {
+                  await widget.onOpenApplications();
+                  if (mounted) setState(_reload);
+                },
+              ),
+            ],
+            FutureBuilder<List<CalendarEventSummary>>(
+              future: _events,
+              builder: (context, eventsSnapshot) => _TeamOverviewEvents(
+                snapshot: eventsSnapshot,
+                teamId: widget.contextValue.teamId,
+                sectionTitle: _sectionTitle,
+                onOpenCalendar: () => widget.onNavigate('/team?tab=calendar'),
+              ),
+            ),
+            _sectionTitle(context, strings.feature('Om laget')),
             Text(
               value.summary ??
                   strings.feature('Ingen laginformation har publicerats ännu.'),
             ),
-            const SizedBox(height: 20),
-            Text(
-              strings.feature('Ledare'),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
+            _sectionTitle(context, strings.feature('Ledare')),
             FutureBuilder<TeamRoles?>(
               future: _roles,
               builder: (context, rolesSnapshot) {
@@ -4195,82 +4449,14 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
                 );
               },
             ),
-            const SizedBox(height: 20),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ActionChip(
-                  avatar: const Icon(Icons.groups_outlined),
-                  label: Text(strings.feature('Öppna trupp')),
-                  onPressed: () => widget.onNavigate('/team?tab=roster'),
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.event_outlined),
-                  label: Text(strings.feature('Öppna lagkalender')),
-                  onPressed: () => widget.onNavigate('/team?tab=calendar'),
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.inbox_outlined),
-                  label: Text(strings.feature('Öppna Inbox')),
-                  onPressed: () => widget.onNavigate('/inbox'),
-                ),
-              ],
-            ),
             if (showAdmin) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               Align(
                 alignment: Alignment.centerLeft,
                 child: OutlinedButton.icon(
                   onPressed: _editTeamProfile,
                   icon: const Icon(Icons.edit_outlined),
                   label: Text(strings.feature('Redigera lagprofil')),
-                ),
-              ),
-            ],
-            if (showAdmin) ...[
-              const SizedBox(height: 24),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        strings.feature('Kräver åtgärd'),
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 12),
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.mark_email_unread_outlined),
-                        title: Text(strings.feature('Aktiva inbjudningar')),
-                        trailing: Text('${value.activeInvitationCount}'),
-                      ),
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.how_to_reg_outlined),
-                        title: Text(strings.feature('Väntande ansökningar')),
-                        trailing: Text('${value.pendingApplicationCount}'),
-                        onTap: value.pendingApplicationCount == 0
-                            ? null
-                            : () async {
-                                await widget.onOpenApplications();
-                                if (mounted) setState(_reload);
-                              },
-                      ),
-                      Semantics(
-                        label: strings
-                            .feature('Totalt {count} ärenden kräver åtgärd.')
-                            .replaceFirst('{count}', '${value.actionCount}'),
-                        child: Text(
-                          strings
-                              .feature('{count} ärenden totalt')
-                              .replaceFirst('{count}', '${value.actionCount}'),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ],
@@ -4349,6 +4535,144 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
         );
       }
     }
+  }
+}
+
+/// Open invitations and membership requests. Rows with nothing waiting are
+/// left out; the card itself is shown only when something is.
+class _TeamRequestsCard extends StatelessWidget {
+  const _TeamRequestsCard({
+    required this.invitations,
+    required this.applications,
+    required this.onOpenInvitations,
+    required this.onOpenApplications,
+  });
+  final int invitations, applications;
+  final VoidCallback onOpenInvitations, onOpenApplications;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    Widget row(IconData icon, String label, int count, VoidCallback onTap) =>
+        ListTile(
+          leading: Icon(icon),
+          title: Text(strings.feature(label)),
+          trailing: Badge.count(count: count, largeSize: 22),
+          onTap: onTap,
+        );
+    return Card(
+      key: const ValueKey('team-overview-requests'),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Text(
+              strings.feature('Inbjudningar och förfrågningar'),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          if (invitations > 0)
+            row(
+              Icons.mark_email_unread_outlined,
+              'Aktiva inbjudningar',
+              invitations,
+              onOpenInvitations,
+            ),
+          if (applications > 0)
+            row(
+              Icons.how_to_reg_outlined,
+              'Väntande ansökningar',
+              applications,
+              onOpenApplications,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Nästa händelse" and "Senaste match" on the team overview, built from
+/// the team's own calendar. Cancelled events are skipped.
+class _TeamOverviewEvents extends StatelessWidget {
+  const _TeamOverviewEvents({
+    required this.snapshot,
+    required this.teamId,
+    required this.sectionTitle,
+    required this.onOpenCalendar,
+  });
+  final AsyncSnapshot<List<CalendarEventSummary>> snapshot;
+  final String? teamId;
+  final Widget Function(BuildContext context, String text) sectionTitle;
+  final VoidCallback onOpenCalendar;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    Widget placeholder(String text, {bool calendarLink = false}) => Card(
+      child: ListTile(
+        title: Text(strings.feature(text)),
+        trailing: calendarLink ? const Icon(Icons.chevron_right) : null,
+        onTap: calendarLink ? onOpenCalendar : null,
+      ),
+    );
+    final nextTitle = sectionTitle(context, strings.feature('Nästa händelse'));
+    final matchTitle = sectionTitle(context, strings.feature('Senaste match'));
+    if (snapshot.connectionState != ConnectionState.done) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [nextTitle, const LinearProgressIndicator(minHeight: 2)],
+      );
+    }
+    if (snapshot.hasError || !snapshot.hasData) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          nextTitle,
+          placeholder('Händelserna kunde inte laddas.', calendarLink: true),
+        ],
+      );
+    }
+    final now = DateTime.now();
+    final events = snapshot.data!
+        .where((event) => teamId == null || event.owningTeamId == teamId)
+        .where((event) => event.state != 'cancelled')
+        .toList();
+    final next =
+        (events.where((event) => event.endsAt.isAfter(now)).toList()
+              ..sort((a, b) => a.startsAt.compareTo(b.startsAt)))
+            .firstOrNull;
+    final lastMatch =
+        (events
+                .where(
+                  (event) =>
+                      event.type == 'match' && event.startsAt.isBefore(now),
+                )
+                .toList()
+              ..sort((a, b) => b.startsAt.compareTo(a.startsAt)))
+            .firstOrNull;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        nextTitle,
+        if (next == null)
+          placeholder('Inga kommande händelser.', calendarLink: true)
+        else
+          KeyedSubtree(
+            key: const ValueKey('team-overview-next-event'),
+            child: _TeamEventCard(event: next),
+          ),
+        matchTitle,
+        if (lastMatch == null)
+          placeholder('Inga spelade matcher ännu.')
+        else
+          KeyedSubtree(
+            key: const ValueKey('team-overview-last-match'),
+            child: _TeamEventCard(event: lastMatch),
+          ),
+      ],
+    );
   }
 }
 

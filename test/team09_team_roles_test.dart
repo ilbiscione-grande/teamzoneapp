@@ -219,6 +219,11 @@ void main() {
     await _openRoster(tester, roster);
     await tester.tap(find.text('Översikt'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Thomas Emilson · Huvudtränare · Ungdomsansvarig'),
+      250,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(
       find.text('Thomas Emilson · Huvudtränare · Ungdomsansvarig'),
       findsOneWidget,
@@ -646,6 +651,78 @@ void main() {
     expect(find.textContaining('Ledare'), findsNothing);
   });
 
+  testWidgets('new person gets role and title straight from the dialog', (
+    tester,
+  ) async {
+    final roster = _Roster(
+      roles: [
+        const TeamRole(
+          personId: 'me',
+          name: 'Thomas Emilson',
+          role: 'leader',
+          isSelf: true,
+        ),
+      ],
+    );
+    await _openNewPersonForm(tester, roster, 'Lisa Ledare');
+    await tester.ensureVisible(find.byKey(const ValueKey('new-person-role')));
+    await tester.tap(find.text('Ledare').last);
+    await tester.pumpAndSettle();
+    // A leader picks titles, not positions.
+    expect(
+      find.byKey(const ValueKey('new-person-position-defender')),
+      findsNothing,
+    );
+    final title = find.byKey(const ValueKey('new-person-title-head_coach'));
+    await tester.ensureVisible(title);
+    await tester.tap(title);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Spara person'));
+    await tester.tap(find.text('Spara person'));
+    await tester.pumpAndSettle();
+    expect(roster.calls.single, ('new-person', 'player', 'leader'));
+    final lisa = roster.roles.singleWhere((r) => r.personId == 'new-person');
+    expect(lisa.role, 'leader');
+    expect(lisa.titles, ['head_coach']);
+    expect(lisa.positions, isEmpty);
+    // Listed once, as a leader, not also as a former player.
+    expect(find.text('Lisa Ledare'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('roster-leader-new-person')),
+      findsOneWidget,
+    );
+    expect(find.text('SPELARE (0)'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('new player gets positions from the team sport', (tester) async {
+    final roster = _Roster(
+      roles: [
+        const TeamRole(
+          personId: 'me',
+          name: 'Thomas Emilson',
+          role: 'leader',
+          isSelf: true,
+        ),
+      ],
+    );
+    await _openNewPersonForm(tester, roster, 'Ada Spelare');
+    // Player is the default; no role change is sent.
+    final forward = find.byKey(const ValueKey('new-person-position-forward'));
+    await tester.ensureVisible(forward);
+    await tester.tap(forward);
+    final striker = find.byKey(const ValueKey('new-person-position-striker'));
+    await tester.ensureVisible(striker);
+    await tester.tap(striker);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Spara person'));
+    await tester.tap(find.text('Spara person'));
+    await tester.pumpAndSettle();
+    expect(roster.calls, isEmpty);
+    final ada = roster.roles.singleWhere((r) => r.personId == 'new-person');
+    expect(ada.positions, ['forward', 'striker']);
+  });
+
   testWidgets('empty filter keeps the filter chips', (tester) async {
     final roster = _Roster(
       roles: [
@@ -709,6 +786,28 @@ void main() {
     expect(find.text('Lägg till ledarroll'), findsNothing);
     expect(find.text('Redigera profil'), findsNothing);
   });
+}
+
+Future<void> _openNewPersonForm(
+  WidgetTester tester,
+  _Roster roster,
+  String name,
+) async {
+  await _openRoster(tester, roster);
+  await tester.tap(find.byTooltip('Hantera'));
+  await tester.pumpAndSettle();
+  await tester.ensureVisible(find.text('Lägg till person'));
+  await tester.tap(find.text('Lägg till person'));
+  await tester.pumpAndSettle();
+  await tester.enterText(
+    find.widgetWithText(TextFormField, 'Visningsnamn'),
+    name,
+  );
+  final year = tester.widget<DropdownButtonFormField<int>>(
+    find.byKey(const Key('roster-birth-year-field')),
+  );
+  year.onChanged!(1985);
+  await tester.pumpAndSettle();
 }
 
 Future<void> _openRolesSheet(WidgetTester tester) async {
@@ -792,6 +891,32 @@ class _Roster extends UnconfiguredRosterServices {
   }
 
   @override
+  Future<String> createPerson({
+    required String clubId,
+    required String teamId,
+    required String displayName,
+    required int birthYear,
+    DateTime? birthDate,
+    required DateTime startsAt,
+    required String idempotencyKey,
+  }) async {
+    roles.add(
+      TeamRole(personId: 'new-person', name: displayName, role: 'player'),
+    );
+    people.add(
+      RosterPersonSummary(
+        id: 'new-person',
+        displayName: displayName,
+        teamId: teamId,
+        teamName: 'F2012',
+        assignmentState: 'active',
+        safeguardingRequired: false,
+      ),
+    );
+    return 'new-person';
+  }
+
+  @override
   Future<int> setTeamPersonDetails({
     required String clubId,
     required String teamId,
@@ -828,10 +953,11 @@ class _Roster extends UnconfiguredRosterServices {
   _Roster({
     List<TeamRole> roles = const [],
     this.candidates = const [],
-    this.people = const [],
+    List<RosterPersonSummary> people = const [],
     this.canManage = true,
     this.sport = 'football',
-  }) : roles = [...roles];
+  }) : roles = [...roles],
+       people = [...people];
 
   final String sport;
 
@@ -883,7 +1009,7 @@ class _Roster extends UnconfiguredRosterServices {
 
   List<TeamRole> roles;
   final List<LeaderCandidate> candidates;
-  final List<RosterPersonSummary> people;
+  List<RosterPersonSummary> people;
   final bool canManage;
   Object? failWith;
   final calls = <(String, String?, String?)>[];
@@ -960,6 +1086,22 @@ class _Roster extends UnconfiguredRosterServices {
         candidates.any((c) => c.personId == personId && c.isSelf);
     if (fromRole != null) {
       roles.removeWhere((r) => r.personId == personId && r.role == fromRole);
+    }
+    if (fromRole == 'player') {
+      people = [
+        for (final person in people)
+          if (person.id != personId)
+            person
+          else
+            RosterPersonSummary(
+              id: person.id,
+              displayName: person.displayName,
+              teamId: person.teamId,
+              teamName: person.teamName,
+              assignmentState: 'ended',
+              safeguardingRequired: false,
+            ),
+      ];
     }
     if (toRole != null) {
       roles.add(

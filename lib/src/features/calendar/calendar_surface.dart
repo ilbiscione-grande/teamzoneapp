@@ -54,11 +54,14 @@ class _CalendarWorkspace extends StatelessWidget {
     this.eventTypeFilter,
     this.lastUpdated,
   });
+
+  /// Teams shown; null shows every team you are connected to.
   final List<CalendarEventSummary> events;
   final Map<String, String> teams;
   final CalendarViewMode mode;
   final DateTime selectedDate;
-  final String? teamFilter, eventTypeFilter;
+  final Set<String>? teamFilter;
+  final String? eventTypeFilter;
   final bool stale, reconnecting, showWeekNumbers, showQuarterHourMarks;
   final bool showArchived;
   final DateTime? lastUpdated;
@@ -66,7 +69,8 @@ class _CalendarWorkspace extends StatelessWidget {
   final ValueChanged<_MonthEventScope> onMonthEventScopeChanged;
   final ValueChanged<CalendarViewMode> onModeChanged;
   final ValueChanged<DateTime> onDateChanged;
-  final ValueChanged<String?> onTeamChanged, onTypeChanged;
+  final ValueChanged<Set<String>?> onTeamChanged;
+  final ValueChanged<String?> onTypeChanged;
   final ValueChanged<bool> onShowArchivedChanged;
   final ValueChanged<CalendarEventSummary> onEvent;
   final ValueChanged<bool> onShowWeekNumbersChanged,
@@ -76,7 +80,6 @@ class _CalendarWorkspace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
-    final size = MediaQuery.sizeOf(context);
     final projection = CalendarProjection(
       events: events,
       mode: mode,
@@ -112,78 +115,22 @@ class _CalendarWorkspace extends StatelessWidget {
                 ),
               Row(
                 children: [
-                  _CalendarViewModeMenu(
-                    mode: mode,
-                    showLabel: size.width >= 600,
-                    onChanged: onModeChanged,
-                  ),
-                  // Only the date-nav + month-scope toggle scroll if a
-                  // narrow screen can't fit them; the mode switcher and
-                  // filter button (entry/exit points for this row) stay
-                  // pinned and always reachable without scrolling.
+                  // The date navigation scrolls if a narrow screen can't fit
+                  // it; the single view-and-filter button stays pinned.
                   Expanded(
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (!showArchived)
-                            _CalendarDateNavigation(
+                      child: showArchived
+                          ? const SizedBox.shrink()
+                          : _CalendarDateNavigation(
                               mode: mode,
                               selectedDate: selectedDate,
                               onChanged: onDateChanged,
                               showWeekNumber: showWeekNumbers,
                             ),
-                          if (!showArchived && mode == CalendarViewMode.month)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 2),
-                              child: SegmentedButton<_MonthEventScope>(
-                                showSelectedIcon: false,
-                                style: ButtonStyle(
-                                  visualDensity: const VisualDensity(
-                                    horizontal: -4,
-                                    vertical: -4,
-                                  ),
-                                  padding: const WidgetStatePropertyAll(
-                                    EdgeInsets.symmetric(horizontal: 6),
-                                  ),
-                                  minimumSize: const WidgetStatePropertyAll(
-                                    Size(36, 36),
-                                  ),
-                                  tapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                segments: [
-                                  ButtonSegment(
-                                    value: _MonthEventScope.selectedDay,
-                                    icon: Tooltip(
-                                      message: strings.feature('Vald dag'),
-                                      child: const Icon(
-                                        Icons.today_outlined,
-                                        size: 16,
-                                      ),
-                                    ),
-                                  ),
-                                  ButtonSegment(
-                                    value: _MonthEventScope.wholeMonth,
-                                    icon: Tooltip(
-                                      message: strings.feature('Hela månaden'),
-                                      child: const Icon(
-                                        Icons.calendar_view_month_outlined,
-                                        size: 16,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                                selected: {monthEventScope},
-                                onSelectionChanged: (value) =>
-                                    onMonthEventScopeChanged(value.first),
-                              ),
-                            ),
-                        ],
-                      ),
                     ),
                   ),
+                  // View mode, filters and display options share one button.
                   IconButton(
                     visualDensity: const VisualDensity(
                       horizontal: -4,
@@ -194,9 +141,11 @@ class _CalendarWorkspace extends StatelessWidget {
                       minWidth: 32,
                       minHeight: 32,
                     ),
-                    tooltip: strings.feature('Filtrera kalendern'),
+                    tooltip: strings.feature('Vy och filter'),
                     onPressed: () => _showCalendarFilterSheet(
                       context: context,
+                      mode: mode,
+                      onModeChanged: onModeChanged,
                       teams: teams,
                       types: types,
                       teamFilter: teamFilter,
@@ -255,6 +204,7 @@ class _CalendarWorkspace extends StatelessWidget {
                   onEvent: onEvent,
                   showQuarterHourMarks: showQuarterHourMarks,
                   monthEventScope: monthEventScope,
+                  onMonthEventScopeChanged: onMonthEventScopeChanged,
                 ),
         ),
       ],
@@ -269,6 +219,7 @@ class _CalendarModeBody extends StatelessWidget {
     required this.onEvent,
     required this.showQuarterHourMarks,
     required this.monthEventScope,
+    required this.onMonthEventScopeChanged,
   });
 
   final CalendarProjection projection;
@@ -276,6 +227,7 @@ class _CalendarModeBody extends StatelessWidget {
   final ValueChanged<CalendarEventSummary> onEvent;
   final bool showQuarterHourMarks;
   final _MonthEventScope monthEventScope;
+  final ValueChanged<_MonthEventScope> onMonthEventScopeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -291,6 +243,7 @@ class _CalendarModeBody extends StatelessWidget {
           projection: projection,
           onEvent: onEvent,
           scope: monthEventScope,
+          onScopeChanged: onMonthEventScopeChanged,
         );
 
         Widget split(Widget primary, Widget secondary) => Row(
@@ -400,19 +353,23 @@ class _CalendarMonthEventsPanel extends StatelessWidget {
     required this.projection,
     required this.onEvent,
     required this.scope,
+    required this.onScopeChanged,
   });
 
   final CalendarProjection projection;
   final ValueChanged<CalendarEventSummary> onEvent;
   final _MonthEventScope scope;
+  final ValueChanged<_MonthEventScope> onScopeChanged;
 
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
+    final toggle = _MonthScopeToggle(scope: scope, onChanged: onScopeChanged);
     if (scope == _MonthEventScope.selectedDay) {
       return _CalendarSelectedDayPanel(
         projection: projection,
         onEvent: onEvent,
+        trailing: toggle,
       );
     }
     final monthStart = DateTime(
@@ -426,15 +383,82 @@ class _CalendarMonthEventsPanel extends StatelessWidget {
       teamId: projection.teamId,
       eventType: projection.eventType,
     );
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: wholeMonthProjection.visibleEvents.isEmpty
-          ? _StateCard(
-              icon: Icons.event_busy,
-              title: strings.feature('Inga event denna månad'),
-              message: strings.feature('Byt månad eller justera filtren.'),
-            )
-          : _CalendarAgenda(projection: wholeMonthProjection, onEvent: onEvent),
+    return ListView(
+      key: const Key('calendarMonthEventsPanel'),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      children: [
+        _CalendarPanelTitle(
+          title: MaterialLocalizations.of(context).formatMonthYear(monthStart),
+          trailing: toggle,
+        ),
+        const Divider(),
+        if (wholeMonthProjection.visibleEvents.isEmpty)
+          _StateCard(
+            icon: Icons.event_busy,
+            title: strings.feature('Inga event denna månad'),
+            message: strings.feature('Byt månad eller justera filtren.'),
+          )
+        else
+          _CalendarAgenda(projection: wholeMonthProjection, onEvent: onEvent),
+      ],
+    );
+  }
+}
+
+/// Title row above an event list, with an optional control on the right.
+class _CalendarPanelTitle extends StatelessWidget {
+  const _CalendarPanelTitle({required this.title, this.trailing});
+  final String title;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(
+        child: Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+      ),
+      if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+    ],
+  );
+}
+
+/// Shows the selected day's events or the whole month's under the month grid.
+class _MonthScopeToggle extends StatelessWidget {
+  const _MonthScopeToggle({required this.scope, required this.onChanged});
+  final _MonthEventScope scope;
+  final ValueChanged<_MonthEventScope> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return SegmentedButton<_MonthEventScope>(
+      key: const Key('calendarMonthScopeToggle'),
+      showSelectedIcon: false,
+      style: const ButtonStyle(
+        visualDensity: VisualDensity(horizontal: -4, vertical: -4),
+        padding: WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 10)),
+        minimumSize: WidgetStatePropertyAll(Size(36, 32)),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      segments: [
+        ButtonSegment(
+          value: _MonthEventScope.selectedDay,
+          label: Text(strings.feature('Dag')),
+          tooltip: strings.feature('Vald dag'),
+        ),
+        ButtonSegment(
+          value: _MonthEventScope.wholeMonth,
+          label: Text(strings.feature('Månad')),
+          tooltip: strings.feature('Hela månaden'),
+        ),
+      ],
+      selected: {scope},
+      onSelectionChanged: (value) => onChanged(value.first),
     );
   }
 }
@@ -499,61 +523,6 @@ String _calendarViewModeLabel(CalendarViewMode mode) => switch (mode) {
   CalendarViewMode.week => 'Vecka',
   CalendarViewMode.day => 'Dag',
 };
-
-class _CalendarViewModeMenu extends StatelessWidget {
-  const _CalendarViewModeMenu({
-    required this.mode,
-    required this.showLabel,
-    required this.onChanged,
-  });
-
-  final CalendarViewMode mode;
-  final bool showLabel;
-  final ValueChanged<CalendarViewMode> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = AppStrings.of(context);
-    return PopupMenuButton<CalendarViewMode>(
-      tooltip: strings.feature('Byt kalendervy'),
-      initialValue: mode,
-      onSelected: onChanged,
-      itemBuilder: (context) => [
-        for (final value in CalendarViewMode.values)
-          PopupMenuItem(
-            value: value,
-            child: Row(
-              children: [
-                if (value == mode) ...[
-                  const Icon(Icons.check, size: 18),
-                  const SizedBox(width: 8),
-                ] else
-                  const SizedBox(width: 26),
-                Text(strings.feature(_calendarViewModeLabel(value))),
-              ],
-            ),
-          ),
-      ],
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: showLabel ? 8 : 4,
-          vertical: 10,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.view_agenda_outlined, size: showLabel ? 24 : 20),
-            if (showLabel) ...[
-              const SizedBox(width: 6),
-              Text(strings.feature(_calendarViewModeLabel(mode))),
-              const Icon(Icons.arrow_drop_down),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _CalendarDateNavigation extends StatelessWidget {
   const _CalendarDateNavigation({
@@ -694,13 +663,18 @@ String _compactMonthYear(String monthYear) {
   return '${monthYear.substring(0, 3)}${monthYear.substring(spaceIndex)}';
 }
 
+/// View mode, filters and display options behind one calendar button.
+/// Picking a view applies it and closes the sheet; the other settings apply
+/// immediately and the sheet stays open until "Klar".
 Future<void> _showCalendarFilterSheet({
   required BuildContext context,
+  required CalendarViewMode mode,
+  required ValueChanged<CalendarViewMode> onModeChanged,
   required Map<String, String> teams,
   required List<String> types,
-  required String? teamFilter,
+  required Set<String>? teamFilter,
   required String? eventTypeFilter,
-  required ValueChanged<String?> onTeamChanged,
+  required ValueChanged<Set<String>?> onTeamChanged,
   required ValueChanged<String?> onTypeChanged,
   required bool showArchived,
   required ValueChanged<bool> onShowArchivedChanged,
@@ -727,119 +701,171 @@ Future<void> _showCalendarFilterSheet({
             16,
             16 + MediaQuery.viewInsetsOf(sheetContext).bottom,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                AppStrings.of(sheetContext).feature('Filtrera kalendern'),
-                style: Theme.of(sheetContext).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String?>(
-                isExpanded: true,
-                initialValue: localTeam,
-                decoration: InputDecoration(
-                  labelText: AppStrings.of(sheetContext).feature('Lag'),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  AppStrings.of(sheetContext).feature('Vy och filter'),
+                  style: Theme.of(sheetContext).textTheme.titleMedium,
                 ),
-                items: [
-                  DropdownMenuItem(
-                    value: null,
-                    child: Text(
-                      AppStrings.of(sheetContext).feature('Alla lag'),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  for (final entry in teams.entries)
-                    DropdownMenuItem(
-                      value: entry.key,
-                      child: Text(entry.value, overflow: TextOverflow.ellipsis),
-                    ),
-                ],
-                onChanged: (value) {
-                  setSheetState(() => localTeam = value);
-                  onTeamChanged(value);
-                },
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String?>(
-                isExpanded: true,
-                initialValue: localType,
-                decoration: InputDecoration(
-                  labelText: AppStrings.of(sheetContext).feature('Eventtyp'),
+                const SizedBox(height: 16),
+                Text(
+                  AppStrings.of(sheetContext).feature('Vy'),
+                  style: Theme.of(sheetContext).textTheme.labelLarge,
                 ),
-                items: [
-                  DropdownMenuItem(
-                    value: null,
-                    child: Text(
-                      AppStrings.of(sheetContext).feature('Alla eventtyper'),
-                      overflow: TextOverflow.ellipsis,
+                const SizedBox(height: 8),
+                Wrap(
+                  key: const Key('calendarViewModeSelector'),
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final value in CalendarViewMode.values)
+                      ChoiceChip(
+                        label: Text(
+                          AppStrings.of(
+                            sheetContext,
+                          ).feature(_calendarViewModeLabel(value)),
+                        ),
+                        selected: value == mode,
+                        onSelected: (_) {
+                          onModeChanged(value);
+                          Navigator.of(sheetContext).pop();
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  AppStrings.of(sheetContext).feature('Lag'),
+                  style: Theme.of(sheetContext).textTheme.labelLarge,
+                ),
+                const SizedBox(height: 8),
+                // Several teams can be shown at once; with none picked, or
+                // all of them, every team is shown.
+                Wrap(
+                  key: const Key('calendarTeamFilter'),
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilterChip(
+                      label: Text(
+                        AppStrings.of(sheetContext).feature('Alla lag'),
+                      ),
+                      selected: localTeam == null,
+                      onSelected: (_) {
+                        setSheetState(() => localTeam = null);
+                        onTeamChanged(null);
+                      },
                     ),
+                    for (final entry in teams.entries)
+                      FilterChip(
+                        label: Text(
+                          entry.value,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        selected: localTeam?.contains(entry.key) ?? false,
+                        onSelected: (selected) {
+                          final next = {...?localTeam};
+                          selected
+                              ? next.add(entry.key)
+                              : next.remove(entry.key);
+                          final value =
+                              next.isEmpty ||
+                                  next.containsAll(teams.keys.toSet())
+                              ? null
+                              : next;
+                          setSheetState(() => localTeam = value);
+                          onTeamChanged(value);
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String?>(
+                  isExpanded: true,
+                  initialValue: localType,
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(sheetContext).feature('Eventtyp'),
                   ),
-                  for (final type in types)
+                  items: [
                     DropdownMenuItem(
-                      value: type,
+                      value: null,
                       child: Text(
-                        AppStrings.of(sheetContext).domainValue(type),
+                        AppStrings.of(sheetContext).feature('Alla eventtyper'),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                ],
-                onChanged: (value) {
-                  setSheetState(() => localType = value);
-                  onTypeChanged(value);
-                },
-              ),
-              const SizedBox(height: 8),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  AppStrings.of(sheetContext).feature('Visa arkiverade event'),
+                    for (final type in types)
+                      DropdownMenuItem(
+                        value: type,
+                        child: Text(
+                          AppStrings.of(sheetContext).domainValue(type),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    setSheetState(() => localType = value);
+                    onTypeChanged(value);
+                  },
                 ),
-                subtitle: Text(
-                  AppStrings.of(sheetContext).feature(
-                    'Döljer aktiva event och visar den bevarade historiken.',
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    AppStrings.of(
+                      sheetContext,
+                    ).feature('Visa arkiverade event'),
                   ),
+                  subtitle: Text(
+                    AppStrings.of(sheetContext).feature(
+                      'Döljer aktiva event och visar den bevarade historiken.',
+                    ),
+                  ),
+                  value: localShowArchived,
+                  onChanged: (value) {
+                    setSheetState(() => localShowArchived = value);
+                    onShowArchivedChanged(value);
+                  },
                 ),
-                value: localShowArchived,
-                onChanged: (value) {
-                  setSheetState(() => localShowArchived = value);
-                  onShowArchivedChanged(value);
-                },
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  AppStrings.of(sheetContext).feature('Visa veckonummer'),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    AppStrings.of(sheetContext).feature('Visa veckonummer'),
+                  ),
+                  value: localShowWeekNumbers,
+                  onChanged: (value) {
+                    setSheetState(() => localShowWeekNumbers = value);
+                    onShowWeekNumbersChanged(value);
+                  },
                 ),
-                value: localShowWeekNumbers,
-                onChanged: (value) {
-                  setSheetState(() => localShowWeekNumbers = value);
-                  onShowWeekNumbersChanged(value);
-                },
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  AppStrings.of(sheetContext).feature('Visa kvartsmarkeringar'),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    AppStrings.of(
+                      sheetContext,
+                    ).feature('Visa kvartsmarkeringar'),
+                  ),
+                  subtitle: Text(
+                    AppStrings.of(
+                      sheetContext,
+                    ).feature('Extra tunna linjer var 15:e minut i dagsvyn.'),
+                  ),
+                  value: localShowQuarterHourMarks,
+                  onChanged: (value) {
+                    setSheetState(() => localShowQuarterHourMarks = value);
+                    onShowQuarterHourMarksChanged(value);
+                  },
                 ),
-                subtitle: Text(
-                  AppStrings.of(
-                    sheetContext,
-                  ).feature('Extra tunna linjer var 15:e minut i dagsvyn.'),
+                const SizedBox(height: 8),
+                FilledButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(),
+                  child: Text(AppStrings.of(sheetContext).feature('Klar')),
                 ),
-                value: localShowQuarterHourMarks,
-                onChanged: (value) {
-                  setSheetState(() => localShowQuarterHourMarks = value);
-                  onShowQuarterHourMarksChanged(value);
-                },
-              ),
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: () => Navigator.of(sheetContext).pop(),
-                child: Text(AppStrings.of(sheetContext).feature('Klar')),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
@@ -1582,9 +1608,11 @@ class _CalendarSelectedDayPanel extends StatelessWidget {
   const _CalendarSelectedDayPanel({
     required this.projection,
     required this.onEvent,
+    this.trailing,
   });
   final CalendarProjection projection;
   final ValueChanged<CalendarEventSummary> onEvent;
+  final Widget? trailing;
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
@@ -1594,9 +1622,9 @@ class _CalendarSelectedDayPanel extends StatelessWidget {
       key: const Key('calendarSelectedDayPanel'),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       children: [
-        Text(
-          MaterialLocalizations.of(context).formatFullDate(selected),
-          style: Theme.of(context).textTheme.titleMedium,
+        _CalendarPanelTitle(
+          title: MaterialLocalizations.of(context).formatFullDate(selected),
+          trailing: trailing,
         ),
         const Divider(),
         if (dayEvents.isEmpty)
@@ -1655,8 +1683,10 @@ class _CalendarEventTile extends StatelessWidget {
                   label: Text(strings.domainValue(event.state)),
                   visualDensity: VisualDensity.compact,
                 )
-              else
-                Text(strings.domainValue(event.state)),
+              // Planned events are the normal case and carry no label; a
+              // draft is marked so it isn't mistaken for a published event.
+              else if (event.state == 'draft')
+                _draftEventMarker(context, 20),
             ],
           ),
           onTap: onTap,
@@ -1665,6 +1695,16 @@ class _CalendarEventTile extends StatelessWidget {
     );
   }
 }
+
+Widget _draftEventMarker(BuildContext context, double size) => Tooltip(
+  key: const Key('calendarDraftMarker'),
+  message: AppStrings.of(context).domainValue('draft'),
+  child: Icon(
+    Icons.edit_note,
+    size: size,
+    color: Theme.of(context).colorScheme.onSurfaceVariant,
+  ),
+);
 
 Widget _sharedEventMarker(BuildContext context, double size) => Tooltip(
   message: AppStrings.of(context).feature('Delat event'),
@@ -2473,7 +2513,8 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
   CalendarViewMode _viewMode = CalendarViewMode.month;
   _MonthEventScope _monthEventScope = _MonthEventScope.selectedDay;
   DateTime _selectedDate = DateTime.now();
-  String? _teamFilter, _eventTypeFilter;
+  Set<String>? _teamFilter;
+  String? _eventTypeFilter;
   bool _showArchived = false;
   static const _showWeekNumbersKey = 'calendar.showWeekNumbers';
   static const _showQuarterHourMarksKey = 'calendar.showQuarterHourMarks';
@@ -2488,7 +2529,7 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
   @override
   void initState() {
     super.initState();
-    _teamFilter = widget.contextValue.teamId;
+    _teamFilter = _initialTeamFilter;
     WidgetsBinding.instance.addObserver(this);
     _data = AsyncDataController<List<CalendarEventSummary>>(
       scopeKey: _scopeKey,
@@ -2567,18 +2608,24 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
     });
   }
 
+  /// The active team to start with; a club-level context shows all teams.
+  Set<String>? get _initialTeamFilter {
+    final teamId = widget.contextValue.teamId;
+    return teamId == null ? null : {teamId};
+  }
+
   String get _scopeKey {
     final ids = widget.contexts.map((item) => item.id).toList()..sort();
-    return '${widget.contextValue.id}:${_teamFilter ?? 'all'}:${_showArchived ? 'archived' : 'active'}:${ids.join(',')}';
+    final teams = _teamFilter == null
+        ? 'all'
+        : (_teamFilter!.toList()..sort()).join('+');
+    return '${widget.contextValue.id}:$teams:${_showArchived ? 'archived' : 'active'}:${ids.join(',')}';
   }
 
   List<String> get _filteredContextIds {
-    final teamId = _teamFilter;
-    if (teamId == null) {
-      return widget.contexts.map((item) => item.id).toList(growable: false);
-    }
+    final teamIds = _teamFilter;
     return widget.contexts
-        .where((item) => item.teamId == teamId)
+        .where((item) => teamIds == null || teamIds.contains(item.teamId))
         .map((item) => item.id)
         .toList(growable: false);
   }
@@ -2632,7 +2679,7 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
     );
     if (oldWidget.contextValue.id != widget.contextValue.id ||
         contextsChanged) {
-      _teamFilter = widget.contextValue.teamId;
+      _teamFilter = _initialTeamFilter;
       _data.replaceScope(scopeKey: _scopeKey, loader: _reload);
       _listenForInvalidations();
     }
@@ -2813,7 +2860,7 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
               onModeChanged: (value) => setState(() => _viewMode = value),
               onDateChanged: (value) => setState(() => _selectedDate = value),
               onTeamChanged: (value) {
-                if (value == _teamFilter) return;
+                if (setEquals(value, _teamFilter)) return;
                 setState(() => _teamFilter = value);
                 _data.replaceScope(scopeKey: _scopeKey, loader: _reload);
               },

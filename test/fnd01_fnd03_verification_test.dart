@@ -159,12 +159,12 @@ void main() {
       // shell's own history tracking there would be nothing to pop here.
       await tester.tap(find.text('Kalender').last);
       await tester.pumpAndSettle();
-      expect(find.byTooltip('Filtrera kalendern'), findsOneWidget);
+      expect(find.byTooltip('Vy och filter'), findsOneWidget);
 
       final popped = await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(popped, isTrue);
-      expect(find.byTooltip('Filtrera kalendern'), findsNothing);
+      expect(find.byTooltip('Vy och filter'), findsNothing);
       expect(find.text('Hem'), findsWidgets);
     });
 
@@ -280,7 +280,7 @@ void main() {
       await tester.tap(find.text('Kalender').last);
       await tester.pumpAndSettle();
       expect(find.text('Genvägar'), findsNothing);
-      expect(find.byTooltip('Filtrera kalendern'), findsOneWidget);
+      expect(find.byTooltip('Vy och filter'), findsOneWidget);
     });
   });
 

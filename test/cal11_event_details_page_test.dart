@@ -185,7 +185,7 @@ void main() {
     // stored; these fixtures schedule their event for tomorrow, which
     // month view's default "Vald dag" (today) scope wouldn't surface, so
     // switch to agenda first (as tests here always relied on).
-    await tester.tap(find.byTooltip('Byt kalendervy'));
+    await tester.tap(find.byTooltip('Vy och filter'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Agenda').last);
     await tester.pumpAndSettle();
@@ -218,7 +218,7 @@ void main() {
     // stored; these fixtures schedule their event for tomorrow, which
     // month view's default "Vald dag" (today) scope wouldn't surface, so
     // switch to agenda first (as tests here always relied on).
-    await tester.tap(find.byTooltip('Byt kalendervy'));
+    await tester.tap(find.byTooltip('Vy och filter'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Agenda').last);
     await tester.pumpAndSettle();
@@ -253,7 +253,7 @@ void main() {
     // stored; these fixtures schedule their event for tomorrow, which
     // month view's default "Vald dag" (today) scope wouldn't surface, so
     // switch to agenda first (as tests here always relied on).
-    await tester.tap(find.byTooltip('Byt kalendervy'));
+    await tester.tap(find.byTooltip('Vy och filter'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Agenda').last);
     await tester.pumpAndSettle();
@@ -473,7 +473,7 @@ Future<void> _openResultMatch(
   await tester.pumpAndSettle();
   await tester.tap(find.text('Kalender'));
   await tester.pumpAndSettle();
-  await tester.tap(find.byTooltip('Byt kalendervy'));
+  await tester.tap(find.byTooltip('Vy och filter'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Agenda').last);
   await tester.pumpAndSettle();
@@ -1027,7 +1027,7 @@ Future<void> _openParticipants(
   await tester.pumpAndSettle();
   await tester.tap(find.text('Kalender'));
   await tester.pumpAndSettle();
-  await tester.tap(find.byTooltip('Byt kalendervy'));
+  await tester.tap(find.byTooltip('Vy och filter'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Agenda').last);
   await tester.pumpAndSettle();

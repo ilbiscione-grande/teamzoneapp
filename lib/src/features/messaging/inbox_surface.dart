@@ -73,6 +73,54 @@ class _InboxSurfaceState extends State<_InboxSurface>
       ? widget.contextValue.clubName
       : '${widget.contextValue.teamName} · ${widget.contextValue.clubName}';
 
+  static const _otherConversations = 'Övriga konversationer';
+  static const _severalClubs = 'Flera klubbar';
+
+  // Clubs opened or closed by hand. Otherwise the active club (or the only
+  // one) starts open and the others show just their name.
+  final Map<String, bool> _clubExpanded = {};
+
+  /// The club a conversation belongs to, from its server-derived labels
+  /// ("Lag · Klubb" or "Klubb").
+  String _clubOf(MessageThreadSummary thread) {
+    final clubs = {
+      for (final label in thread.scopeLabels) label.split(' · ').last,
+    };
+    if (clubs.isEmpty) return _otherConversations;
+    return clubs.length == 1 ? clubs.single : _severalClubs;
+  }
+
+  List<({String club, List<MessageThreadSummary> threads})> _groupByClub(
+    List<MessageThreadSummary> threads,
+  ) {
+    final grouped = <String, List<MessageThreadSummary>>{};
+    for (final thread in threads) {
+      (grouped[_clubOf(thread)] ??= []).add(thread);
+    }
+    int rank(String club) => club == widget.contextValue.clubName
+        ? 0
+        : club == _severalClubs
+        ? 2
+        : club == _otherConversations
+        ? 3
+        : 1;
+    return [
+      for (final entry in grouped.entries)
+        (club: entry.key, threads: entry.value),
+    ]..sort((a, b) {
+      final byRank = rank(a.club).compareTo(rank(b.club));
+      return byRank != 0
+          ? byRank
+          : a.club.toLowerCase().compareTo(b.club.toLowerCase());
+    });
+  }
+
+  bool _isClubExpanded(String club, int clubCount) =>
+      // A search shows every hit.
+      _list.query.isNotEmpty ||
+      (_clubExpanded[club] ??
+          (clubCount == 1 || club == widget.contextValue.clubName));
+
   List<({String title, String? subtitle, List<MessageThreadSummary> threads})>
   _groupThreads(List<MessageThreadSummary> threads) {
     final grouped = <String, List<MessageThreadSummary>>{};
@@ -225,99 +273,212 @@ class _InboxSurfaceState extends State<_InboxSurface>
     final uniqueContexts = {
       for (final item in widget.contexts) item.id: item,
     }.values.toList(growable: false);
+    // Teams listed under their club; a club opens to show its teams.
+    final byClub = <String, List<TeamZoneContext>>{};
+    for (final item in uniqueContexts) {
+      (byClub[item.clubName] ??= []).add(item);
+    }
+    final clubNames = byClub.keys.toList()
+      ..sort((a, b) {
+        if (a == widget.contextValue.clubName) return -1;
+        if (b == widget.contextValue.clubName) return 1;
+        return a.toLowerCase().compareTo(b.toLowerCase());
+      });
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      showDragHandle: true,
+      // Never full height, so there is always a backdrop to tap as well.
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * .85,
+      ),
       builder: (sheetContext) {
         var localFilter = _filter;
         var localSelected = Set<String>.of(_selectedContextIds);
+        final openClubs = <String>{
+          for (final club in clubNames)
+            if (byClub[club]!.any((item) => localSelected.contains(item.id)))
+              club,
+        };
         return StatefulBuilder(
           builder: (sheetContext, setSheetState) {
             final strings = AppStrings.of(sheetContext);
+            void apply(Set<String> next) {
+              // At least one connection stays selected.
+              if (next.isEmpty) return;
+              setSheetState(() => localSelected = next);
+              _setSelectedContextIds(next);
+            }
+
             return Padding(
-              padding: EdgeInsets.fromLTRB(
-                16,
-                16,
-                16,
-                16 + MediaQuery.viewInsetsOf(sheetContext).bottom,
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    strings.feature('Filtrera inkorgen'),
-                    style: Theme.of(sheetContext).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    strings.feature('Typ'),
-                    style: Theme.of(sheetContext).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final entry in const [
-                        ('all', 'Alla'),
-                        ('unread', 'Olästa'),
-                        ('team', 'Lag'),
-                        ('leader', 'Ledare'),
-                        ('muted', 'Tystade'),
-                        ('pinned', 'Fästa'),
-                      ])
-                        ChoiceChip(
-                          label: Text(strings.feature(entry.$2)),
-                          selected: localFilter == entry.$1,
-                          onSelected: (_) {
-                            setSheetState(() => localFilter = entry.$1);
-                            _setFilter(entry.$1);
-                          },
+                  // Title and close stay put while the options scroll.
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            strings.feature('Filtrera inkorgen'),
+                            style: Theme.of(sheetContext).textTheme.titleMedium,
+                          ),
                         ),
-                    ],
+                        IconButton(
+                          key: const ValueKey('inbox-filter-close'),
+                          tooltip: strings.feature('Stäng'),
+                          onPressed: () => Navigator.pop(sheetContext),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
                   ),
-                  if (uniqueContexts.length > 1) ...[
-                    const SizedBox(height: 20),
-                    Text(
-                      strings.feature('Lag och klubbar'),
-                      style: Theme.of(sheetContext).textTheme.titleSmall,
-                    ),
-                    Text(
-                      strings.feature(
-                        'Visar aktivt lag som standard. Välj fler för att '
-                        'se deras konversationer också.',
+                  // Scrolls when there are many teams, instead of overflowing.
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            strings.feature('Typ'),
+                            style: Theme.of(sheetContext).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (final entry in const [
+                                ('all', 'Alla'),
+                                ('unread', 'Olästa'),
+                                ('team', 'Lag'),
+                                ('leader', 'Ledare'),
+                                ('muted', 'Tystade'),
+                                ('pinned', 'Fästa'),
+                              ])
+                                ChoiceChip(
+                                  label: Text(strings.feature(entry.$2)),
+                                  selected: localFilter == entry.$1,
+                                  onSelected: (_) {
+                                    setSheetState(() => localFilter = entry.$1);
+                                    _setFilter(entry.$1);
+                                  },
+                                ),
+                            ],
+                          ),
+                          if (uniqueContexts.length > 1) ...[
+                            const SizedBox(height: 20),
+                            Text(
+                              strings.feature('Lag och klubbar'),
+                              style: Theme.of(
+                                sheetContext,
+                              ).textTheme.titleSmall,
+                            ),
+                            Text(
+                              strings.feature(
+                                'Visar aktivt lag som standard. Välj fler för att '
+                                'se deras konversationer också.',
+                              ),
+                              style: Theme.of(sheetContext).textTheme.bodySmall,
+                            ),
+                            const SizedBox(height: 4),
+                            for (final club in clubNames) ...[
+                              Builder(
+                                builder: (_) {
+                                  final items = byClub[club]!;
+                                  final picked = items
+                                      .where(
+                                        (item) =>
+                                            localSelected.contains(item.id),
+                                      )
+                                      .length;
+                                  final open = openClubs.contains(club);
+                                  return ListTile(
+                                    key: ValueKey('inbox-filter-club-$club'),
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: Checkbox(
+                                      tristate: true,
+                                      value: picked == 0
+                                          ? false
+                                          : picked == items.length
+                                          ? true
+                                          : null,
+                                      onChanged: (_) => apply(
+                                        picked == items.length
+                                            ? (Set<String>.of(localSelected)
+                                                ..removeAll(
+                                                  items.map((item) => item.id),
+                                                ))
+                                            : (Set<String>.of(localSelected)
+                                                ..addAll(
+                                                  items.map((item) => item.id),
+                                                )),
+                                      ),
+                                    ),
+                                    title: Text(
+                                      club,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    subtitle: picked == 0
+                                        ? null
+                                        : Text(
+                                            '$picked/${items.length} ${strings.feature('valda')}',
+                                          ),
+                                    trailing: Icon(
+                                      open
+                                          ? Icons.expand_less
+                                          : Icons.expand_more,
+                                    ),
+                                    onTap: () => setSheetState(
+                                      () => open
+                                          ? openClubs.remove(club)
+                                          : openClubs.add(club),
+                                    ),
+                                  );
+                                },
+                              ),
+                              if (openClubs.contains(club))
+                                for (final item in byClub[club]!)
+                                  CheckboxListTile(
+                                    contentPadding: const EdgeInsets.only(
+                                      left: 40,
+                                    ),
+                                    dense: true,
+                                    title: Text(
+                                      item.teamName ??
+                                          strings.feature('Hela klubben'),
+                                    ),
+                                    value: localSelected.contains(item.id),
+                                    onChanged: (checked) => apply(
+                                      (checked ?? false)
+                                          ? (Set<String>.of(localSelected)
+                                              ..add(item.id))
+                                          : (Set<String>.of(localSelected)
+                                              ..remove(item.id)),
+                                    ),
+                                  ),
+                            ],
+                          ],
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: () => Navigator.pop(sheetContext),
+                              child: Text(strings.feature('Klar')),
+                            ),
+                          ),
+                        ],
                       ),
-                      style: Theme.of(sheetContext).textTheme.bodySmall,
-                    ),
-                    for (final item in uniqueContexts)
-                      CheckboxListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(item.teamName ?? item.clubName),
-                        subtitle: item.teamName == null
-                            ? null
-                            : Text(item.clubName),
-                        value: localSelected.contains(item.id),
-                        onChanged: (checked) {
-                          final next = Set<String>.of(localSelected);
-                          if (checked ?? false) {
-                            next.add(item.id);
-                          } else {
-                            next.remove(item.id);
-                          }
-                          if (next.isEmpty) return;
-                          setSheetState(() => localSelected = next);
-                          _setSelectedContextIds(next);
-                        },
-                      ),
-                  ],
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(sheetContext),
-                      child: Text(strings.feature('Klar')),
                     ),
                   ),
                 ],
@@ -583,7 +744,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
           final conversations = threads
               .where((thread) => thread.type != 'announcement')
               .toList(growable: false);
-          final groups = _groupThreads(conversations);
+          final clubs = _groupByClub(conversations);
           if (state.phase == AsyncDataPhase.empty) {
             return Center(
               child: _StateCard(
@@ -782,94 +943,51 @@ class _InboxSurfaceState extends State<_InboxSurface>
                                   ),
                                 ),
                             ],
-                            for (final group in groups) ...[
-                              Container(
-                                margin: const EdgeInsets.only(
-                                  top: 8,
-                                  bottom: 4,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.secondaryContainer,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      group.title == 'Flera lag'
-                                          ? Icons.hub_outlined
-                                          : Icons.groups_outlined,
+                            for (final club in clubs) ...[
+                              Builder(
+                                builder: (context) {
+                                  final expanded = _isClubExpanded(
+                                    club.club,
+                                    clubs.length,
+                                  );
+                                  return _InboxClubHeader(
+                                    key: ValueKey('inbox-club-${club.club}'),
+                                    title: strings.inboxGroupTitle(club.club),
+                                    count: club.threads.length,
+                                    unread: club.threads.fold(
+                                      0,
+                                      (sum, thread) => sum + thread.unreadCount,
                                     ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            AppStrings.of(
-                                              context,
-                                            ).inboxGroupTitle(group.title),
-                                            style: Theme.of(
-                                              context,
-                                            ).textTheme.titleSmall,
-                                          ),
-                                          if (group.subtitle != null)
-                                            Text(
-                                              group.subtitle!,
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: Theme.of(
-                                                context,
-                                              ).textTheme.bodySmall,
-                                            ),
-                                        ],
-                                      ),
+                                    expanded: expanded,
+                                    onTap: () => setState(
+                                      () =>
+                                          _clubExpanded[club.club] = !expanded,
                                     ),
-                                    Badge(
-                                      label: Text('${group.threads.length}'),
-                                    ),
-                                  ],
-                                ),
+                                  );
+                                },
                               ),
-                              for (final thread in group.threads)
-                                Card(
-                                  margin: const EdgeInsets.only(bottom: 6),
-                                  child: ListTile(
-                                    leading: Icon(
-                                      thread.muted
-                                          ? Icons.notifications_off_outlined
-                                          : Icons.forum_outlined,
-                                    ),
-                                    title: Text(
-                                      thread.subject ?? strings.directMessage,
-                                    ),
-                                    subtitle: Text(
-                                      '${(thread.senderName ?? '').trim().isEmpty ? '' : '${thread.senderName}: '}${thread.preview ?? strings.noMessages}\n${_inboxTime(context, thread.lastAt)}',
-                                      maxLines: 3,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    trailing: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        if (thread.pinned)
-                                          const Icon(Icons.push_pin, size: 18),
-                                        if (thread.unreadCount > 0)
-                                          Badge(
-                                            label: Text(
-                                              '${thread.unreadCount}',
+                              if (_isClubExpanded(club.club, clubs.length))
+                                for (final group in _groupThreads(
+                                  club.threads,
+                                )) ...[
+                                  // Team headings inside a club; a club with
+                                  // only its own club-wide threads needs none.
+                                  if (group.title != club.club ||
+                                      _groupThreads(club.threads).length > 1)
+                                    _InboxTeamHeading(
+                                      title: group.title == club.club
+                                          ? strings.feature('Hela klubben')
+                                          : strings.inboxGroupTitle(
+                                              group.title,
                                             ),
-                                          ),
-                                      ],
+                                      subtitle: group.title == 'Flera lag'
+                                          ? group.subtitle
+                                          : null,
+                                      count: group.threads.length,
                                     ),
-                                    onTap: () => _openThread(thread),
-                                  ),
-                                ),
+                                  for (final thread in group.threads)
+                                    _threadCard(context, strings, thread),
+                                ],
                             ],
                             if (archivedAnnouncements.isNotEmpty)
                               Card(
@@ -923,6 +1041,38 @@ class _InboxSurfaceState extends State<_InboxSurface>
       ),
     );
   }
+
+  Widget _threadCard(
+    BuildContext context,
+    AppStrings strings,
+    MessageThreadSummary thread,
+  ) => Card(
+    margin: const EdgeInsets.only(bottom: 6),
+    child: ListTile(
+      leading: Icon(
+        thread.muted
+            ? Icons.notifications_off_outlined
+            : thread.type == 'group'
+            ? Icons.groups_outlined
+            : Icons.forum_outlined,
+      ),
+      title: Text(thread.subject ?? strings.directMessage),
+      subtitle: Text(
+        '${(thread.senderName ?? '').trim().isEmpty ? '' : '${thread.senderName}: '}${thread.preview ?? strings.noMessages}\n${_inboxTime(context, thread.lastAt)}',
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (thread.pinned) const Icon(Icons.push_pin, size: 18),
+          if (thread.unreadCount > 0)
+            Badge(label: Text('${thread.unreadCount}')),
+        ],
+      ),
+      onTap: () => _openThread(thread),
+    ),
+  );
 
   String _announcementSendError(AppStrings strings, Object error) {
     if (error is PostgrestException) {
@@ -1740,11 +1890,21 @@ class _ComposeDialog extends StatefulWidget {
 class _ComposeDialogState extends State<_ComposeDialog> {
   final _subject = TextEditingController();
   final _body = TextEditingController();
+  final _search = TextEditingController();
   final Set<String> _selected = {};
   final Set<String> _audienceRoles = {};
-  String _type = 'direct';
+  // Message or announcement; for a message the thread type follows the
+  // number of recipients (see _type).
+  String _mode = 'message';
   late String _scope = widget.hasTeamScope ? 'team' : 'club';
   String? _validationError;
+
+  /// One recipient is a direct message, several make a group conversation.
+  String get _type => _mode == 'announcement'
+      ? 'announcement'
+      : _selected.length > 1
+      ? 'group'
+      : 'direct';
 
   String get _selectedScopeName =>
       _scope == 'club' ? widget.clubName : (widget.teamName ?? widget.clubName);
@@ -1753,13 +1913,13 @@ class _ComposeDialogState extends State<_ComposeDialog> {
   void dispose() {
     _subject.dispose();
     _body.dispose();
+    _search.dispose();
     super.dispose();
   }
 
   void _toggle(AllowedRecipient recipient) {
     setState(() {
       _validationError = null;
-      if (_type == 'direct') _selected.clear();
       if (!_selected.add(recipient.profileId)) {
         _selected.remove(recipient.profileId);
       }
@@ -1804,11 +1964,9 @@ class _ComposeDialogState extends State<_ComposeDialog> {
       });
       return;
     }
-    if (_type != 'direct' && _subject.text.trim().isEmpty) {
+    if (_type == 'group' && _subject.text.trim().isEmpty) {
       setState(() {
-        _validationError = strings.feature(
-          _type == 'announcement' ? 'Ange en rubrik.' : 'Ange ett gruppnamn.',
-        );
+        _validationError = strings.feature('Ange ett gruppnamn.');
       });
       return;
     }
@@ -1816,7 +1974,7 @@ class _ComposeDialogState extends State<_ComposeDialog> {
       context,
       _ComposeDraft(
         type: _type,
-        subject: _subject.text.trim(),
+        subject: _type == 'group' ? _subject.text.trim() : '',
         recipientIds: _selected.toList(growable: false),
       ),
     );
@@ -1825,184 +1983,62 @@ class _ComposeDialogState extends State<_ComposeDialog> {
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
+    final colors = Theme.of(context).colorScheme;
+    final announcement = _mode == 'announcement';
+    final height = (MediaQuery.sizeOf(context).height * .72).clamp(
+      320.0,
+      600.0,
+    );
     return AlertDialog(
-      title: Text(
-        strings.feature(
-          _type == 'announcement' ? 'Nytt anslag' : 'Ny konversation',
-        ),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      title: Row(
+        children: [
+          Icon(announcement ? Icons.campaign_outlined : Icons.edit_outlined),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              strings.feature(announcement ? 'Nytt anslag' : 'Nytt meddelande'),
+            ),
+          ),
+        ],
       ),
       content: SizedBox(
         width: 480,
+        height: height,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SegmentedButton<String>(
-              segments: [
-                ButtonSegment(
-                  value: 'direct',
-                  label: Text(strings.feature('Direkt')),
-                ),
-                ButtonSegment(
-                  value: 'group',
-                  label: Text(strings.feature('Grupp')),
-                ),
-                if (widget.canCreateAnnouncement)
+            if (widget.canCreateAnnouncement) ...[
+              SegmentedButton<String>(
+                segments: [
+                  ButtonSegment(
+                    value: 'message',
+                    label: Text(strings.feature('Meddelande')),
+                    icon: const Icon(Icons.forum_outlined),
+                  ),
                   ButtonSegment(
                     value: 'announcement',
                     label: Text(strings.feature('Anslag')),
                     icon: const Icon(Icons.campaign_outlined),
                   ),
-              ],
-              selected: {_type},
-              onSelectionChanged: (value) => setState(() {
-                _type = value.single;
-                _validationError = null;
-                if (_type == 'direct' && _selected.length > 1) {
-                  final first = _selected.first;
-                  _selected
-                    ..clear()
-                    ..add(first);
-                }
-                if (_type == 'announcement') {
-                  _selected.clear();
-                }
-              }),
-            ),
-            if (_type != 'direct') ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: _subject,
-                decoration: InputDecoration(
-                  labelText: _type == 'announcement'
-                      ? strings.feature('Rubrik')
-                      : strings.feature('Gruppnamn'),
-                ),
-                onChanged: (_) => setState(() => _validationError = null),
-              ),
-            ],
-            if (_type == 'announcement') ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: _body,
-                minLines: 4,
-                maxLines: 8,
-                maxLength: 4000,
-                decoration: InputDecoration(
-                  labelText: strings.feature('Meddelande'),
-                  alignLabelWithHint: true,
-                ),
-                onChanged: (_) => setState(() => _validationError = null),
-              ),
-              const SizedBox(height: 4),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '${strings.feature('Målgrupp')} · $_selectedScopeName',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-              ),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  for (final audience in const [
-                    ('player', 'Spelare'),
-                    ('leader', 'Ledare'),
-                    ('guardian', 'Vårdnadshavare'),
-                    ('all', 'Alla'),
-                  ])
-                    FilterChip(
-                      selected: _audienceRoles.contains(audience.$1),
-                      label: Text(
-                        audience.$1 == 'all'
-                            ? '${strings.feature(audience.$2)} i $_selectedScopeName'
-                            : strings.feature(audience.$2),
-                      ),
-                      onSelected: (_) => setState(() {
-                        _validationError = null;
-                        if (audience.$1 == 'all') {
-                          _audienceRoles
-                            ..clear()
-                            ..add('all');
-                        } else {
-                          _audienceRoles.remove('all');
-                          if (!_audienceRoles.add(audience.$1)) {
-                            _audienceRoles.remove(audience.$1);
-                          }
-                        }
-                      }),
-                    ),
                 ],
+                selected: {_mode},
+                onSelectionChanged: (value) => setState(() {
+                  _mode = value.single;
+                  _validationError = null;
+                }),
               ),
-              if (widget.canUseClubScope) ...[
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    strings.feature('Omfattning'),
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                SegmentedButton<String>(
-                  segments: [
-                    if (widget.hasTeamScope)
-                      ButtonSegment(
-                        value: 'team',
-                        label: Text(
-                          widget.teamName ?? strings.feature('Laget'),
-                        ),
-                      ),
-                    ButtonSegment(value: 'club', label: Text(widget.clubName)),
-                  ],
-                  selected: {_scope},
-                  onSelectionChanged: (value) =>
-                      setState(() => _scope = value.single),
-                ),
-              ] else
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    '${strings.feature('Omfattning')}: $_selectedScopeName',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-            ] else ...[
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  strings.selectedRecipients(_selected.length),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
+              const SizedBox(height: 16),
             ],
+            Expanded(
+              child: announcement
+                  ? _announcementForm(strings)
+                  : _recipientPicker(strings, colors),
+            ),
             if (_validationError != null) ...[
               const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  _validationError!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
+              Text(_validationError!, style: TextStyle(color: colors.error)),
             ],
-            const SizedBox(height: 8),
-            if (_type != 'announcement')
-              SizedBox(
-                height: 320,
-                child: ListView(
-                  children: [
-                    for (final item in widget.recipients)
-                      CheckboxListTile(
-                        value: _selected.contains(item.profileId),
-                        onChanged: (_) => _toggle(item),
-                        title: Text(item.displayName),
-                        subtitle: Text(item.rolePackage),
-                      ),
-                  ],
-                ),
-              ),
           ],
         ),
       ),
@@ -2011,15 +2047,362 @@ class _ComposeDialogState extends State<_ComposeDialog> {
           onPressed: () => Navigator.pop(context),
           child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
         ),
-        FilledButton(
+        FilledButton.icon(
           onPressed: _submit,
-          child: Text(
-            strings.feature(_type == 'announcement' ? 'Skicka' : 'Skapa'),
+          icon: const Icon(Icons.send_outlined, size: 18),
+          label: Text(
+            strings.feature(
+              announcement
+                  ? 'Skicka'
+                  : _type == 'group'
+                  ? 'Skapa grupp'
+                  : 'Starta konversation',
+            ),
           ),
         ),
       ],
     );
   }
+
+  Widget _recipientPicker(AppStrings strings, ColorScheme colors) {
+    final query = _search.text.trim().toLowerCase();
+    final matches = widget.recipients
+        .where(
+          (item) =>
+              query.isEmpty || item.displayName.toLowerCase().contains(query),
+        )
+        .toList(growable: false);
+    final chosen = [
+      for (final item in widget.recipients)
+        if (_selected.contains(item.profileId)) item,
+    ];
+    final group = _type == 'group';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // The conversation type follows from how many are chosen.
+        Container(
+          key: const ValueKey('compose-kind'),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: colors.secondaryContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                chosen.isEmpty
+                    ? Icons.person_search_outlined
+                    : group
+                    ? Icons.groups_outlined
+                    : Icons.person_outline,
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  strings.feature(
+                    chosen.isEmpty
+                        ? 'Välj en eller flera mottagare'
+                        : group
+                        ? 'Gruppkonversation'
+                        : 'Direktmeddelande',
+                  ),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+              if (chosen.isNotEmpty)
+                Text(
+                  strings.selectedRecipients(_selected.length),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+            ],
+          ),
+        ),
+        if (chosen.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final item in chosen)
+                InputChip(
+                  visualDensity: VisualDensity.compact,
+                  avatar: CircleAvatar(
+                    child: Text(
+                      _initialsOf(item.displayName),
+                      style: const TextStyle(fontSize: 10),
+                    ),
+                  ),
+                  label: Text(item.displayName),
+                  deleteButtonTooltipMessage: strings
+                      .feature('Ta bort {name}')
+                      .replaceFirst('{name}', item.displayName),
+                  onDeleted: () => _toggle(item),
+                ),
+            ],
+          ),
+        ],
+        if (group) ...[
+          const SizedBox(height: 12),
+          TextField(
+            key: const ValueKey('compose-group-name'),
+            controller: _subject,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              labelText: strings.feature('Gruppnamn'),
+              prefixIcon: const Icon(Icons.label_outline),
+              isDense: true,
+            ),
+            onChanged: (_) => setState(() => _validationError = null),
+          ),
+        ],
+        const SizedBox(height: 12),
+        TextField(
+          controller: _search,
+          decoration: InputDecoration(
+            hintText: strings.feature('Sök mottagare'),
+            prefixIcon: const Icon(Icons.search),
+            isDense: true,
+          ),
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: 4),
+        Expanded(
+          child: matches.isEmpty
+              ? Center(
+                  child: Text(
+                    strings.feature('Inga mottagare matchar sökningen.'),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: matches.length,
+                  itemBuilder: (context, index) {
+                    final item = matches[index];
+                    return CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      secondary: CircleAvatar(
+                        radius: 16,
+                        child: Text(
+                          _initialsOf(item.displayName),
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                      value: _selected.contains(item.profileId),
+                      onChanged: (_) => _toggle(item),
+                      title: Text(item.displayName),
+                      subtitle: Text(strings.domainValue(item.rolePackage)),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _announcementForm(AppStrings strings) => SingleChildScrollView(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: _subject,
+          decoration: InputDecoration(labelText: strings.feature('Rubrik')),
+          onChanged: (_) => setState(() => _validationError = null),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _body,
+          minLines: 4,
+          maxLines: 8,
+          maxLength: 4000,
+          decoration: InputDecoration(
+            labelText: strings.feature('Meddelande'),
+            alignLabelWithHint: true,
+          ),
+          onChanged: (_) => setState(() => _validationError = null),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${strings.feature('Målgrupp')} · $_selectedScopeName',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            for (final audience in const [
+              ('player', 'Spelare'),
+              ('leader', 'Ledare'),
+              ('guardian', 'Vårdnadshavare'),
+              ('all', 'Alla'),
+            ])
+              FilterChip(
+                selected: _audienceRoles.contains(audience.$1),
+                label: Text(
+                  audience.$1 == 'all'
+                      ? '${strings.feature(audience.$2)} i $_selectedScopeName'
+                      : strings.feature(audience.$2),
+                ),
+                onSelected: (_) => setState(() {
+                  _validationError = null;
+                  if (audience.$1 == 'all') {
+                    _audienceRoles
+                      ..clear()
+                      ..add('all');
+                  } else {
+                    _audienceRoles.remove('all');
+                    if (!_audienceRoles.add(audience.$1)) {
+                      _audienceRoles.remove(audience.$1);
+                    }
+                  }
+                }),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (widget.canUseClubScope) ...[
+          Text(
+            strings.feature('Omfattning'),
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: 6),
+          SegmentedButton<String>(
+            segments: [
+              if (widget.hasTeamScope)
+                ButtonSegment(
+                  value: 'team',
+                  label: Text(widget.teamName ?? strings.feature('Laget')),
+                ),
+              ButtonSegment(value: 'club', label: Text(widget.clubName)),
+            ],
+            selected: {_scope},
+            onSelectionChanged: (value) =>
+                setState(() => _scope = value.single),
+          ),
+        ] else
+          Text(
+            '${strings.feature('Omfattning')}: $_selectedScopeName',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+      ],
+    ),
+  );
+}
+
+/// Collapsible club heading in the inbox list. Closed, only the club name,
+/// the number of conversations and any unread count show.
+class _InboxClubHeader extends StatelessWidget {
+  const _InboxClubHeader({
+    super.key,
+    required this.title,
+    required this.count,
+    required this.unread,
+    required this.expanded,
+    required this.onTap,
+  });
+  final String title;
+  final int count, unread;
+  final bool expanded;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 6),
+      child: Semantics(
+        button: true,
+        expanded: expanded,
+        hint: strings.feature(
+          expanded ? 'Dölj konversationer' : 'Visa konversationer',
+        ),
+        child: Material(
+          color: colors.secondaryContainer,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.shield_outlined),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                  if (unread > 0) ...[
+                    Badge(
+                      label: Text('$unread'),
+                      backgroundColor: colors.primary,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(
+                    '$count',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                  const SizedBox(width: 4),
+                  AnimatedRotation(
+                    turns: expanded ? .5 : 0,
+                    duration: const Duration(milliseconds: 150),
+                    child: const Icon(Icons.expand_more),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Team heading inside an open club in the inbox list.
+class _InboxTeamHeading extends StatelessWidget {
+  const _InboxTeamHeading({
+    required this.title,
+    required this.count,
+    this.subtitle,
+  });
+  final String title;
+  final String? subtitle;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              text: title,
+              children: [
+                if (subtitle != null)
+                  TextSpan(
+                    text: ' · $subtitle',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+              ],
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+        ),
+        Text('$count', style: Theme.of(context).textTheme.labelSmall),
+      ],
+    ),
+  );
 }
 
 String _inboxTime(BuildContext context, DateTime value) {

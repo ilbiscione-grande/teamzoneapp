@@ -31,6 +31,23 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(calendar.requestedContextIds, ['context-a']);
+
+    // Several teams can be shown together from the filter button.
+    await tester.tap(find.byTooltip('Vy och filter'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilterChip, 'F2011'));
+    await tester.pumpAndSettle();
+    // Both teams picked means every team.
+    expect(calendar.requestedContextIds, ['context-a', 'context-b']);
+    expect(
+      tester
+          .widget<FilterChip>(find.widgetWithText(FilterChip, 'Alla lag'))
+          .selected,
+      isTrue,
+    );
+    await tester.tap(find.widgetWithText(FilterChip, 'F2011'));
+    await tester.pumpAndSettle();
+    expect(calendar.requestedContextIds, ['context-b']);
   });
 
   testWidgets('calendar exposes agenda, month, week and day on mobile', (
@@ -44,9 +61,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Kalender'));
     await tester.pumpAndSettle();
-    expect(find.byTooltip('Byt kalendervy'), findsOneWidget);
+    expect(find.byTooltip('Vy och filter'), findsOneWidget);
     Future<void> selectView(String label) async {
-      await tester.tap(find.byTooltip('Byt kalendervy'));
+      await tester.tap(find.byTooltip('Vy och filter'));
       await tester.pumpAndSettle();
       for (final option in ['Agenda', 'Månad', 'Vecka', 'Dag']) {
         expect(find.text(option), findsWidgets);
@@ -61,13 +78,12 @@ void main() {
     expect(find.byIcon(Icons.filter_list), findsOneWidget);
     await tester.tap(find.byIcon(Icons.filter_list));
     await tester.pumpAndSettle();
-    expect(find.text('F2012'), findsWidgets);
-    await tester.tap(find.text('F2012').first);
-    await tester.pumpAndSettle();
-    expect(find.text('Alla lag'), findsOneWidget);
-    await tester.tap(find.text('Alla lag'));
+    expect(find.widgetWithText(FilterChip, 'F2012'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilterChip, 'Alla lag'));
     await tester.pumpAndSettle();
     expect(find.text('Alla eventtyper'), findsOneWidget);
+    await tester.ensureVisible(find.text('Klar'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Klar'));
     await tester.pumpAndSettle();
     await selectView('Månad');
@@ -84,6 +100,28 @@ void main() {
     expect(find.text('Extraevent 1'), findsOneWidget);
     expect(find.text('Extraevent 2'), findsOneWidget);
     expect(find.text('Extraevent 3'), findsOneWidget);
+    // Planned events carry no status text; only the draft gets an icon.
+    expect(find.text('Planerad'), findsNothing);
+    expect(find.byKey(const Key('calendarDraftMarker')), findsOneWidget);
+    // The Dag/Månad switch sits in the title row of the list under the grid.
+    await tester.drag(
+      find.byKey(const Key('calendarSelectedDayPanel')),
+      const Offset(0, 600),
+    );
+    await tester.pumpAndSettle();
+    final toggle = find.byKey(const Key('calendarMonthScopeToggle'));
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('calendarSelectedDayPanel')),
+        matching: toggle,
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.descendant(of: toggle, matching: find.text('Månad')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('calendarMonthEventsPanel')), findsOneWidget);
+    await tester.tap(find.descendant(of: toggle, matching: find.text('Dag')));
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     await selectView('Vecka');
     // The week grid shows the 7 selected-week days plus one extra "peek"
@@ -284,7 +322,7 @@ class _Calendar extends UnconfiguredCalendarServices {
           teamName: 'F2012',
           title: 'Extraevent $index',
           type: 'training',
-          state: 'scheduled',
+          state: index == 3 ? 'draft' : 'scheduled',
           // Extraevent 1 (19:00–20:00) deliberately overlaps Kvällsträning
           // (18:00–19:30) for 30 minutes, to exercise the day timeline's
           // side-by-side overlap layout.

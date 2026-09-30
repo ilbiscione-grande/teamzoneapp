@@ -306,8 +306,11 @@ void main() {
   });
 
   test('client supports direct, group and server-validated additions', () {
-    expect(surface, contains("_type = 'direct'"));
-    expect(surface, contains("value: 'group'"));
+    // The thread type follows the number of chosen recipients.
+    expect(
+      surface,
+      matches(RegExp(r"_selected\.length > 1\s*\?\s*'group'\s*:\s*'direct'")),
+    );
     expect(surface, contains("strings.feature('Gruppnamn')"));
     expect(surface, contains('_ParticipantPickerDialog'));
     expect(services, contains("operation: 'add_thread_participants'"));
@@ -391,11 +394,14 @@ void main() {
         globalInboxMigration,
         contains('internal.actor_can_access_thread(thread.id, false)'),
       );
-      expect(surface, contains('_groupThreads(conversations)'));
+      // Conversations are grouped per club, then per team inside a club.
+      expect(surface, contains('_groupByClub(conversations)'));
+      expect(surface, contains('_groupThreads('));
       expect(surface, contains("thread.type != 'announcement'"));
       expect(surface, contains("title: 'Flera lag'"));
       expect(surface, contains("title: 'Övriga konversationer'"));
-      expect(surface, contains('group.threads.length'));
+      expect(surface, contains('count: group.threads.length'));
+      expect(surface, contains('_InboxClubHeader('));
     },
   );
 }

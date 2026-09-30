@@ -84,7 +84,7 @@ class AppStrings {
   String selectedRecipients(int count) =>
       isSwedish ? 'Valda mottagare: $count' : 'Selected recipients: $count';
   String inboxGroupTitle(String title) => switch (title) {
-    'Flera lag' || 'Övriga konversationer' => feature(title),
+    'Flera lag' || 'Övriga konversationer' || 'Flera klubbar' => feature(title),
     _ => title,
   };
   String movePlayersAction(int count) =>
@@ -1590,6 +1590,40 @@ class AppStrings {
     'Du svarar som vårdnadshavare': 'You are answering as guardian',
     'Senaste påminnelse': 'Last reminder',
     'Återkalla kallelse': 'Withdraw callup',
+    'Inbjudningar och förfrågningar': 'Invitations and requests',
+    'Nästa händelse': 'Next event',
+    'Senaste match': 'Latest match',
+    'Om laget': 'About the team',
+    'Händelserna kunde inte laddas.': 'Events could not be loaded.',
+    'Inga kommande händelser.': 'No upcoming events.',
+    'Inga spelade matcher ännu.': 'No matches played yet.',
+    'Vy och filter': 'View and filters',
+    'Vy': 'View',
+    'Flera klubbar': 'Several clubs',
+    'Nytt meddelande': 'New message',
+    'Sök mottagare': 'Search recipients',
+    'Välj en eller flera mottagare': 'Choose one or more recipients',
+    'Direktmeddelande': 'Direct message',
+    'Gruppkonversation': 'Group conversation',
+    'Starta konversation': 'Start conversation',
+    'Skapa grupp': 'Create group',
+    'Inga mottagare matchar sökningen.': 'No recipients match the search.',
+    'Ta bort {name}': 'Remove {name}',
+    'Visa konversationer': 'Show conversations',
+    'Dölj konversationer': 'Hide conversations',
+    'olästa': 'unread',
+    'Ange ett gruppnamn.': 'Enter a group name.',
+    'Om du accepterar kan ni starta en privat konversation i TeamZone.':
+        'If you accept, you can start a private conversation in TeamZone.',
+    'Meddelandeförhandsvisningar visas bara här för chattar du har tillgång till.':
+        'Message previews are only shown here for chats you have access to.',
+    'Konversationen döljs bara för dig. Övriga deltagare och historiken påverkas inte.':
+        'The conversation is hidden only for you. Other participants and the history are not affected.',
+    'Du lämnar konversationen. Tidigare meddelanden finns kvar för övriga deltagare.':
+        'You leave the conversation. Earlier messages remain for the other participants.',
+    'Båda': 'Both',
+    'Personen lades till, men roll, titel eller position kunde inte sparas. Ändra det på personens profil.':
+        'The person was added, but the role, title or position could not be saved. Change it on the person\'s profile.',
   };
   String get signOut => isSwedish ? 'Logga ut' : 'Sign out';
   String eventOwner(String name) =>

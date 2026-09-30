@@ -555,7 +555,7 @@ Future<void> _openPreparation(
   await tester.pumpAndSettle();
   await tester.tap(find.text('Kalender'));
   await tester.pumpAndSettle();
-  await tester.tap(find.byTooltip('Byt kalendervy'));
+  await tester.tap(find.byTooltip('Vy och filter'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Agenda').last);
   await tester.pumpAndSettle();

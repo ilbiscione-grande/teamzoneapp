@@ -8,11 +8,13 @@ import 'package:teamzone_app/src/core/config/app_environment.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
 import 'package:teamzone_app/src/core/identity/identity_services.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
+import 'package:teamzone_app/src/features/calendar/calendar_models.dart';
+import 'package:teamzone_app/src/features/calendar/calendar_services.dart';
 import 'package:teamzone_app/src/features/roster/roster_models.dart';
 import 'package:teamzone_app/src/features/roster/roster_services.dart';
 
 void main() {
-  testWidgets('leader sees team identity, shortcuts and administrative needs', (
+  testWidgets('leader sees picture, requests, next event, latest match', (
     tester,
   ) async {
     await tester.pumpWidget(_app(canManage: true));
@@ -20,23 +22,54 @@ void main() {
     await tester.tap(find.text('Laget'));
     await tester.pumpAndSettle();
     expect(find.text('F2012'), findsWidgets);
-    expect(find.text('Ada Ledare'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Öppna trupp'),
-      250,
-      scrollable: find.byType(Scrollable).last,
-    );
-    expect(find.text('Öppna trupp'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Kräver åtgärd'),
-      250,
-      scrollable: find.byType(Scrollable).last,
-    );
-    expect(find.text('Kräver åtgärd'), findsOneWidget);
+    final requests = find.byKey(const ValueKey('team-overview-requests'));
+    expect(requests, findsOneWidget);
     expect(find.text('Aktiva inbjudningar'), findsOneWidget);
     expect(find.text('Väntande ansökningar'), findsOneWidget);
+    final next = find.byKey(const ValueKey('team-overview-next-event'));
+    await tester.scrollUntilVisible(
+      next,
+      250,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(
+      find.descendant(of: next, matching: find.text('Träning tisdag')),
+      findsOneWidget,
+    );
+    // Order: requests above the next event.
+    expect(
+      tester.getTopLeft(requests).dy,
+      lessThan(tester.getTopLeft(next).dy),
+    );
+    final match = find.byKey(const ValueKey('team-overview-last-match'));
+    await tester.scrollUntilVisible(
+      match,
+      250,
+      scrollable: find.byType(Scrollable).last,
+    );
+    // The latest match wins over an older one; cancelled ones are skipped.
+    expect(
+      find.descendant(of: match, matching: find.text('Mot Bergby')),
+      findsOneWidget,
+    );
+    expect(find.text('Inställd match'), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text('Ada Ledare'),
+      250,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('Redigera lagprofil'), findsOneWidget);
-    expect(find.byIcon(Icons.groups_outlined), findsWidgets);
+  });
+
+  testWidgets('requests card is hidden when nothing is waiting', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app(canManage: true, openRequests: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Laget'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('team-overview-requests')), findsNothing);
+    expect(find.text('Nästa händelse'), findsOneWidget);
   });
 
   testWidgets('player never sees administrative team needs', (tester) async {
@@ -45,10 +78,14 @@ void main() {
     await tester.tap(find.text('Laget'));
     await tester.pumpAndSettle();
     expect(find.text('F2012'), findsWidgets);
-    expect(find.text('Ada Ledare'), findsOneWidget);
+    expect(find.byKey(const ValueKey('team-overview-requests')), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text('Ada Ledare'),
+      250,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.drag(find.byType(Scrollable).last, const Offset(0, -600));
     await tester.pumpAndSettle();
-    expect(find.text('Kräver åtgärd'), findsNothing);
     expect(find.text('Aktiva inbjudningar'), findsNothing);
     expect(find.text('Väntande ansökningar'), findsNothing);
     expect(find.text('Redigera lagprofil'), findsNothing);
@@ -150,21 +187,70 @@ void main() {
   });
 }
 
-Widget _app({required bool canManage}) => TeamZoneApp(
+Widget _app({required bool canManage, bool openRequests = true}) => TeamZoneApp(
   environment: const AppEnvironment(name: 'team02'),
   locale: const Locale('sv'),
   services: AppServices(
     identity: _Identity(canManage),
-    roster: const _Roster(),
+    roster: _Roster(openRequests: openRequests),
+    calendar: _Calendar(),
     isConfigured: true,
   ),
 );
 
+class _Calendar extends UnconfiguredCalendarServices {
+  CalendarEventSummary _event(
+    String id,
+    String title,
+    String type,
+    Duration fromNow, {
+    String state = 'scheduled',
+    String? matchState,
+  }) {
+    final start = DateTime.now().add(fromNow).toUtc();
+    return CalendarEventSummary(
+      id: id,
+      clubId: 'club',
+      owningTeamId: 'team',
+      teamName: 'F2012',
+      title: title,
+      type: type,
+      state: state,
+      startsAt: start,
+      endsAt: start.add(const Duration(hours: 1, minutes: 30)),
+      allDay: false,
+      timezone: 'Europe/Stockholm',
+      revision: 1,
+      matchState: matchState,
+    );
+  }
+
+  @override
+  Future<List<CalendarEventSummary>> listCalendar({
+    required List<String> contextIds,
+    required DateTime from,
+    required DateTime to,
+  }) async => [
+    _event('m-old', 'Mot Alby', 'match', const Duration(days: -20)),
+    _event('m-new', 'Mot Bergby', 'match', const Duration(days: -6)),
+    _event(
+      'm-cancel',
+      'Inställd match',
+      'match',
+      const Duration(days: -2),
+      state: 'cancelled',
+    ),
+    _event('t-later', 'Träning torsdag', 'training', const Duration(days: 4)),
+    _event('t-next', 'Träning tisdag', 'training', const Duration(days: 2)),
+  ];
+}
+
 class _Roster extends UnconfiguredRosterServices {
-  const _Roster();
+  const _Roster({this.openRequests = true});
+  final bool openRequests;
   @override
   Future<TeamOverview> getTeamOverview({required String teamId}) async =>
-      const TeamOverview(
+      TeamOverview(
         teamId: 'team',
         clubId: 'club',
         teamName: 'F2012',
@@ -177,8 +263,8 @@ class _Roster extends UnconfiguredRosterServices {
         ],
         memberCount: 18,
         canManage: true,
-        activeInvitationCount: 2,
-        pendingApplicationCount: 3,
+        activeInvitationCount: openRequests ? 2 : 0,
+        pendingApplicationCount: openRequests ? 3 : 0,
       );
 
   @override
