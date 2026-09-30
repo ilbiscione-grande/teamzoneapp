@@ -209,6 +209,8 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
     }
   }
 
+  AppStrings get _s => AppStrings.of(context);
+
   void _showError(String text) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -363,18 +365,24 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         context: context,
         builder: (context) => AlertDialog(
           title: Text(
-            status == 'late' ? 'Antal minuter sen' : 'Antal minuter närvarande',
+            _s.feature(
+              status == 'late'
+                  ? 'Antal minuter sen'
+                  : 'Antal minuter närvarande',
+            ),
           ),
           content: TextField(
             controller: controller,
             keyboardType: TextInputType.number,
             autofocus: true,
-            decoration: const InputDecoration(labelText: 'Minuter (1–1440)'),
+            decoration: InputDecoration(
+              labelText: _s.feature('Minuter (1–1440)'),
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Avbryt'),
+              child: Text(_s.feature('Avbryt')),
             ),
             FilledButton(
               onPressed: () {
@@ -383,7 +391,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                   Navigator.pop(context, value);
                 }
               },
-              child: const Text('Spara'),
+              child: Text(_s.feature('Spara')),
             ),
           ],
         ),
@@ -810,11 +818,11 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                   child: TextField(
                     controller: _searchController,
                     onChanged: (value) => setState(() => _query = value.trim()),
-                    decoration: const InputDecoration(
-                      hintText: 'Sök deltagare i klubben',
-                      prefixIcon: Icon(Icons.search, size: 20),
+                    decoration: InputDecoration(
+                      hintText: _s.feature('Sök deltagare i klubben'),
+                      prefixIcon: const Icon(Icons.search, size: 20),
                       isDense: true,
-                      contentPadding: EdgeInsets.symmetric(
+                      contentPadding: const EdgeInsets.symmetric(
                         horizontal: 10,
                         vertical: 8,
                       ),
@@ -822,7 +830,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                   ),
                 ),
                 PopupMenuButton<String>(
-                  tooltip: 'Fler åtgärder',
+                  tooltip: _s.feature('Fler åtgärder'),
                   enabled: !_working && !_selectionFrozen,
                   onSelected: (value) {
                     if (value == 'group') _selectEligibilityGroup();
@@ -851,24 +859,24 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                   },
                   itemBuilder: (_) => [
                     if (!_eventEnded)
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'players',
-                        child: Text('Välj alla spelare'),
+                        child: Text(_s.feature('Välj alla spelare')),
                       ),
                     if (!_eventEnded)
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'all',
-                        child: Text('Alla behöriga'),
+                        child: Text(_s.feature('Alla behöriga')),
                       ),
                     if (!_eventEnded)
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'group',
-                        child: Text('Behörighetsgrupp'),
+                        child: Text(_s.feature('Behörighetsgrupp')),
                       ),
                     if (!_eventEnded)
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'generate',
-                        child: Text('Generator'),
+                        child: Text(_s.feature('Generator')),
                       ),
                     if (!_eventEnded && widget.squad.can('remind_callup'))
                       PopupMenuItem(
@@ -876,7 +884,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                         enabled: people.any(
                           (p) => p.canRemindAt(DateTime.now()),
                         ),
-                        child: const Text('Påminn alla obesvarade'),
+                        child: Text(_s.feature('Påminn alla obesvarade')),
                       ),
                     if (_eventEnded && _canRecordAttendance)
                       PopupMenuItem(
@@ -886,7 +894,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                               p.callupState == 'accepted' &&
                               _attendance(p) == 'unknown',
                         ),
-                        child: const Text('Markera accepterade som närvarande'),
+                        child: Text(
+                          _s.feature('Markera accepterade som närvarande'),
+                        ),
                       ),
                   ],
                 ),
@@ -896,15 +906,17 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         if (_permissionsFailed)
           TextButton(
             onPressed: _loadPermissions,
-            child: const Text('Behörighet kunde inte hämtas. Försök igen'),
+            child: Text(
+              _s.feature('Behörighet kunde inte hämtas. Försök igen'),
+            ),
           ),
         if (_working) const LinearProgressIndicator(minHeight: 2),
         Expanded(
           child: CustomScrollView(
             slivers: [
               for (final group in [
-                ('SPELARE', players),
-                ('LEDARE', leaders),
+                (_s.feature('Spelare').toUpperCase(), players),
+                (_s.feature('Ledare').toUpperCase(), leaders),
               ]) ...[
                 SliverToBoxAdapter(child: _groupHeader(group.$1, group.$2)),
                 SliverList.builder(
@@ -923,7 +935,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                           ? null
                           : _markRemainingAbsent,
                       icon: const Icon(Icons.group_off_outlined, size: 18),
-                      label: const Text('Markera återstående som frånvarande'),
+                      label: Text(
+                        _s.feature('Markera återstående som frånvarande'),
+                      ),
                     ),
                   ),
                 ),
@@ -939,7 +953,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
               children: [
                 Expanded(
                   child: Text(
-                    '${_selectedIds.length} valda',
+                    '${_selectedIds.length} ${_s.feature('valda')}',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -948,7 +962,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                       ? null
                       : _sendSelected,
                   icon: const Icon(Icons.send_outlined, size: 18),
-                  label: Text('Kalla ${_selectedIds.length}'),
+                  label: Text('${_s.feature('Kalla')} ${_selectedIds.length}'),
                 ),
               ],
             ),
@@ -962,17 +976,21 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                   TextField(
                     controller: _reasonController,
                     maxLength: 500,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       isDense: true,
-                      labelText: 'Orsak till sen ändring',
+                      labelText: _s.feature('Orsak till sen ändring'),
                     ),
                   ),
                 Row(
                   children: [
-                    Expanded(child: Text('${_stagedStatus.length} ändringar')),
+                    Expanded(
+                      child: Text(
+                        '${_stagedStatus.length} ${_s.feature('ändringar')}',
+                      ),
+                    ),
                     FilledButton(
                       onPressed: _working ? null : _saveAttendance,
-                      child: const Text('Spara närvaro'),
+                      child: Text(_s.feature('Spara närvaro')),
                     ),
                   ],
                 ),
@@ -1022,13 +1040,13 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
           const Spacer(),
           if (_eventEnded)
             Text(
-              'Närvaro ${people.where(_present).length}/${people.length}',
+              '${_s.feature('Närvaro')} ${people.where(_present).length}/${people.length}',
               style: const TextStyle(fontSize: 12),
             )
           else if (called > 0)
             Flexible(
               child: Text(
-                '$called kallade · $answered svarat',
+                '$called ${_s.feature('kallade')} · $answered ${_s.feature('svarat')}',
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 12),
               ),
@@ -1047,8 +1065,8 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                 people
                         .where((p) => !p.isCalled)
                         .every((p) => _selectedIds.contains(p.personId))
-                    ? 'Avmarkera alla'
-                    : 'Markera alla',
+                    ? _s.feature('Avmarkera alla')
+                    : _s.feature('Markera alla'),
                 style: const TextStyle(fontSize: 12),
               ),
             ),
@@ -1089,11 +1107,11 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
     final status = _attendance(p);
     final canRespond = !_working && _canRespond(p);
     final attendanceLabel = switch (status) {
-      'present' => 'Närvarande',
-      'absent' => 'Frånvarande',
-      'late' => 'Sen',
-      'partial' => 'Delvis närvarande',
-      _ => 'Ej registrerad',
+      'present' => _s.feature('Närvarande'),
+      'absent' => _s.feature('Frånvarande'),
+      'late' => _s.feature('Sen'),
+      'partial' => _s.feature('Delvis närvarande'),
+      _ => _s.feature('Ej registrerad'),
     };
     VoidCallback? primary;
     if (_eventEnded) {
@@ -1191,8 +1209,8 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                                     ? colors.primary
                                     : Colors.blueGrey.shade300,
                                 selected
-                                    ? 'Avmarkera ${p.name}'
-                                    : 'Välj ${p.name}',
+                                    ? '${_s.feature('Avmarkera')} ${p.name}'
+                                    : '${_s.feature('Välj')} ${p.name}',
                                 primary,
                               )
                             else if (p.callupState == 'pending') ...[
@@ -1202,8 +1220,8 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                                     ? Colors.blueGrey
                                     : colors.primary,
                                 p.callupLastRemindedAt == null
-                                    ? 'Påminn'
-                                    : 'Påminn · senast ${MaterialLocalizations.of(context).formatShortDate(p.callupLastRemindedAt!.toLocal())}',
+                                    ? _s.feature('Påminn')
+                                    : '${_s.feature('Påminn · senast')} ${MaterialLocalizations.of(context).formatShortDate(p.callupLastRemindedAt!.toLocal())}',
                                 _canManage &&
                                         widget.squad.can('remind_callup') &&
                                         !_working &&
@@ -1215,7 +1233,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                                 _smallAction(
                                   Icons.check,
                                   Colors.green,
-                                  'Acceptera',
+                                  _s.feature('Acceptera'),
                                   canRespond
                                       ? () => _respondToCallup(p, 'accepted')
                                       : null,
@@ -1223,15 +1241,15 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                                 _smallAction(
                                   Icons.close,
                                   Colors.red,
-                                  'Avböj',
+                                  _s.feature('Avböj'),
                                   canRespond
                                       ? () => _respondToCallup(p, 'declined')
                                       : null,
                                 ),
                               ] else
-                                const Tooltip(
-                                  message: 'Ej svarat',
-                                  child: Icon(
+                                Tooltip(
+                                  message: _s.feature('Ej svarat'),
+                                  child: const Icon(
                                     Icons.schedule,
                                     size: 20,
                                     color: Colors.blueGrey,
@@ -1240,10 +1258,10 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                             ] else
                               Tooltip(
                                 message: p.callupState == 'accepted'
-                                    ? 'Accepterat'
+                                    ? _s.feature('Accepterat')
                                     : p.callupState == 'declined'
-                                    ? 'Avböjt'
-                                    : 'Kallelse: ${p.callupState}',
+                                    ? _s.feature('Avböjt')
+                                    : '${_s.feature('Kallelse')}: ${_s.domainValue(p.callupState ?? '')}',
                                 child: Icon(
                                   p.callupState == 'accepted'
                                       ? Icons.check_circle
@@ -1265,8 +1283,8 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
                                 tooltip: expanded
-                                    ? 'Dölj information om ${p.name}'
-                                    : 'Visa information om ${p.name}',
+                                    ? '${_s.feature('Dölj information om')} ${p.name}'
+                                    : '${_s.feature('Visa information om')} ${p.name}',
                                 onPressed: () => _expand(p),
                                 icon: Icon(
                                   expanded
@@ -1325,14 +1343,14 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                     children: [
                       Expanded(
                         child: _stat(
-                          'Träningsnärvaro',
+                          _s.feature('Träningsnärvaro'),
                           stats.trainingsAttended,
                           stats.trainingsTotal,
                         ),
                       ),
                       Expanded(
                         child: _stat(
-                          'Matcher',
+                          _s.feature('Matcher'),
                           stats.matchesPlayed,
                           stats.matchesTotal,
                         ),
@@ -1340,18 +1358,18 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                     ],
                   ),
                 if (stats == null)
-                  const Text(
-                    'Närvarostatistik är inte tillgänglig.',
-                    style: TextStyle(fontSize: 12),
+                  Text(
+                    _s.feature('Närvarostatistik är inte tillgänglig.'),
+                    style: const TextStyle(fontSize: 12),
                   ),
                 const SizedBox(height: 6),
                 Wrap(
                   spacing: 12,
                   children: [
                     if (p.teamName.isNotEmpty) Text(p.teamName),
-                    if (p.isGuest) const Text('Gäst'),
+                    if (p.isGuest) Text(_s.feature('Gäst')),
                     if (profile?.birthYear != null)
-                      Text('Född ${profile!.birthYear}'),
+                      Text('${_s.feature('Född')} ${profile!.birthYear}'),
                     if (profile?.ageClass != null) Text(profile!.ageClass!),
                   ],
                 ),
@@ -1363,13 +1381,13 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
             case final String reason)
           Text(reason, style: const TextStyle(fontSize: 12)),
         if (p.responseRole == 'guardian')
-          const Text(
-            'Du svarar som vårdnadshavare',
-            style: TextStyle(fontSize: 12),
+          Text(
+            _s.feature('Du svarar som vårdnadshavare'),
+            style: const TextStyle(fontSize: 12),
           ),
         if (p.callupLastRemindedAt != null)
           Text(
-            'Senaste påminnelse: ${p.callupLastRemindedAt!.toLocal()}',
+            '${_s.feature('Senaste påminnelse')}: ${MaterialLocalizations.of(context).formatShortDate(p.callupLastRemindedAt!.toLocal())}',
             style: const TextStyle(fontSize: 12),
           ),
         if (_eventEnded && _canRecordAttendance)
@@ -1377,11 +1395,11 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
             spacing: 8,
             children: [
               for (final entry in {
-                'present': 'Närvarande',
-                'absent': 'Frånvarande',
-                'unknown': 'Ej registrerad',
-                'late': 'Sen',
-                'partial': 'Delvis närvarande',
+                'present': _s.feature('Närvarande'),
+                'absent': _s.feature('Frånvarande'),
+                'unknown': _s.feature('Ej registrerad'),
+                'late': _s.feature('Sen'),
+                'partial': _s.feature('Delvis närvarande'),
               }.entries)
                 TextButton(
                   onPressed: _working
@@ -1400,19 +1418,19 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                   onPressed: _working
                       ? null
                       : () => _respondToCallup(p, 'accepted'),
-                  child: const Text('Acceptera'),
+                  child: Text(_s.feature('Acceptera')),
                 ),
                 TextButton(
                   onPressed: _working
                       ? null
                       : () => _respondToCallup(p, 'declined'),
-                  child: const Text('Avböj'),
+                  child: Text(_s.feature('Avböj')),
                 ),
               ],
               if (_canManage && widget.squad.can('cancel_callup'))
                 TextButton(
                   onPressed: _working ? null : () => _manageCallup(p, 'cancel'),
-                  child: const Text('Återkalla kallelse'),
+                  child: Text(_s.feature('Återkalla kallelse')),
                 ),
             ],
           ),

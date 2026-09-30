@@ -34,17 +34,20 @@ void main() {
     expect(source, contains("event.can('manage_roster')"));
     expect(source, contains("event.can('manage_sharing')"));
     expect(source, contains("event.can('revise')"));
-    // The old "Urval"/"Kallelser och svar"/"Närvaro" summary + a single
-    // "Hantera urval" button was replaced by an inline, always-visible
-    // status header and roster list (per request) — the fixed four-bucket
-    // sort order (called players/leaders, then uncalled) is the current
-    // structural contract to protect instead.
-    expect(source, contains("strings.feature('Kallade spelare')"));
-    expect(source, contains("strings.feature('Kallade ledare')"));
-    expect(source, contains("strings.feature('Okallade spelare')"));
-    expect(source, contains("strings.feature('Okallade ledare')"));
-    expect(source, contains("widget.squad.can('save_squad')"));
-    expect(source, contains("widget.squad.can('record_attendance')"));
+    expect(source, contains('_ParticipantsTab('));
+
+    // The Deltagare tab lives in its own file. Its compact list splits
+    // players from leaders (callup state is shown per row), and selecting
+    // and recording attendance stay gated by the squad's capabilities.
+    final participants = File(
+      'lib/src/features/calendar/event_participants.dart',
+    ).readAsStringSync();
+    expect(participants, contains("_s.feature('Spelare').toUpperCase()"));
+    expect(participants, contains("_s.feature('Ledare').toUpperCase()"));
+    expect(participants, contains("p.rolePackage == 'player'"));
+    expect(participants, contains("widget.squad.can('save_squad')"));
+    expect(participants, contains("widget.squad.can('record_attendance')"));
+    expect(participants, contains("widget.squad.can('send_callups')"));
   });
 
   test('web allows mouse dragging of the horizontally scrollable tab row', () {

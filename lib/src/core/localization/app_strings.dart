@@ -1534,6 +1534,62 @@ class AppStrings {
     'Byt till ett lag där du är spelare eller ledare, eller se dina kontouppgifter under Inställningar.':
         'Switch to a team where you are a player or leader, or see your account details under Settings.',
     'Min profil': 'My profile',
+    'Sökningen kunde inte laddas. Lagets deltagare visas fortfarande.':
+        'Search could not be loaded. The team\'s participants are still shown.',
+    'Kallelserna är skickade.': 'The callups have been sent.',
+    'Kallelserna är skickade, men listan kunde inte uppdateras. Öppna eventet igen.':
+        'The callups were sent, but the list could not be updated. Open the event again.',
+    'Kallelserna kunde inte bekräftas. Försök igen med samma urval.':
+        'The callups could not be confirmed. Try again with the same selection.',
+    'Antal minuter sen': 'Minutes late',
+    'Antal minuter närvarande': 'Minutes present',
+    'Minuter (1–1440)': 'Minutes (1–1440)',
+    'Registrera högst 100 personer åt gången.':
+        'Record at most 100 people at a time.',
+    'Ange en orsak till den sena ändringen (3–500 tecken).':
+        'Give a reason for the late change (3–500 characters).',
+    'Närvaron är sparad, men listan kunde inte uppdateras. Öppna eventet igen.':
+        'Attendance was saved, but the list could not be updated. Open the event again.',
+    'Närvaron kunde inte sparas. Listan kan ha ändrats. Ladda om innan du försöker igen.':
+        'Attendance could not be saved. The list may have changed. Reload before trying again.',
+    'Åtgärden kunde inte utföras. Ladda om och försök igen.':
+        'The action could not be completed. Reload and try again.',
+    'Svaret kunde inte sparas. Ladda om och försök igen.':
+        'The response could not be saved. Reload and try again.',
+    'Några påminnelser kunde inte skickas. Ladda om och försök igen.':
+        'Some reminders could not be sent. Reload and try again.',
+    'Sök deltagare i klubben': 'Search participants in the club',
+    'Välj alla spelare': 'Select all players',
+    'Påminn alla obesvarade': 'Remind everyone who has not answered',
+    'Markera accepterade som närvarande': 'Mark accepted as present',
+    'Behörighet kunde inte hämtas. Försök igen':
+        'Permissions could not be loaded. Try again',
+    'Markera återstående som frånvarande': 'Mark remaining as absent',
+    'valda': 'selected',
+    'Kalla': 'Call up',
+    'Orsak till sen ändring': 'Reason for late change',
+    'ändringar': 'changes',
+    'kallade': 'called',
+    'svarat': 'answered',
+    'Avmarkera alla': 'Deselect all',
+    'Markera alla': 'Select all',
+    'Sen': 'Late',
+    'Delvis närvarande': 'Partly present',
+    'Ej registrerad': 'Not recorded',
+    'Avmarkera': 'Deselect',
+    'Välj': 'Select',
+    'Påminn · senast': 'Remind · last',
+    'Ej svarat': 'Not answered',
+    'Accepterat': 'Accepted',
+    'Kallelse': 'Callup',
+    'Dölj information om': 'Hide information about',
+    'Visa information om': 'Show information about',
+    'Närvarostatistik är inte tillgänglig.':
+        'Attendance statistics are not available.',
+    'Född': 'Born',
+    'Du svarar som vårdnadshavare': 'You are answering as guardian',
+    'Senaste påminnelse': 'Last reminder',
+    'Återkalla kallelse': 'Withdraw callup',
   };
   String get signOut => isSwedish ? 'Logga ut' : 'Sign out';
   String eventOwner(String name) =>
