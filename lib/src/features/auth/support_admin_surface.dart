@@ -1,9 +1,10 @@
 part of '../../app/teamzone_app.dart';
 
 class _SupportAdminSurface extends StatefulWidget {
-  const _SupportAdminSurface({required this.membership});
+  const _SupportAdminSurface({required this.membership, required this.profile});
 
   final MembershipServices membership;
+  final ProfileServices profile;
 
   @override
   State<_SupportAdminSurface> createState() => _SupportAdminSurfaceState();
@@ -230,7 +231,23 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(strings.feature('Supportärenden'))),
+      appBar: AppBar(
+        title: Text(strings.feature('Supportärenden')),
+        actions: [
+          IconButton(
+            key: const ValueKey('support-email-changes'),
+            tooltip: strings.feature('Byte av inloggningsadress'),
+            icon: const Icon(Icons.alternate_email),
+            onPressed: () => showModalBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              useSafeArea: true,
+              showDragHandle: true,
+              builder: (_) => _LoginEmailChangeQueue(profile: widget.profile),
+            ),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(

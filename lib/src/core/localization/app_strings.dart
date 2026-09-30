@@ -1624,6 +1624,135 @@ class AppStrings {
     'Båda': 'Both',
     'Personen lades till, men roll, titel eller position kunde inte sparas. Ändra det på personens profil.':
         'The person was added, but the role, title or position could not be saved. Change it on the person\'s profile.',
+    'Ange motståndare.': 'Enter the opponent.',
+    'Motståndarens namn är för långt.': 'The opponent name is too long.',
+    'Sluttiden måste vara efter starttiden.':
+        'The end time must be after the start time.',
+    'Samlingen ska vara 0–1440 minuter före start.':
+        'Gathering must be 0–1440 minutes before the start.',
+    'Ange en tidszon.': 'Enter a time zone.',
+    'Kontrollera serien: 2–104 tillfällen och ett intervall på 1–52.':
+        'Check the series: 2–104 occurrences and an interval of 1–52.',
+    'När': 'When',
+    'Från': 'From',
+    'Till': 'To',
+    'Datum': 'Date',
+    'Samling kl.': 'Gathering at',
+    'Skapar ett event per tillfälle.': 'Creates one event per occurrence.',
+    'T.ex. konstgräsplanen': 'E.g. the artificial pitch',
+    'Detaljer': 'Details',
+    'Spara som utkast': 'Save as draft',
+    'Planeras klart och publiceras senare.':
+        'Finish planning and publish later.',
+    'Fler inställningar': 'More settings',
+    'dag': 'day',
+    'vecka': 'week',
+    '{count} tillfällen': '{count} occurrences',
+    'Anläggning': 'Facility',
+    'T.ex. Bergby IP': 'E.g. Bergby sports ground',
+    'Plan (valfritt)': 'Pitch (optional)',
+    'T.ex. Plan 3': 'E.g. Pitch 3',
+    'Underlag (valfritt)': 'Surface (optional)',
+    'T.ex. konstgräs': 'E.g. artificial grass',
+    'Ange anläggning för planen och underlaget.':
+        'Enter the facility for the pitch and surface.',
+    'Kontrollera e-postadressen.': 'Check the email address.',
+    'Telefonnumret får bara innehålla siffror, mellanslag, bindestreck och +.':
+        'The phone number may only contain digits, spaces, hyphens and +.',
+    'Profilen har ändrats någon annanstans. Öppna den igen.':
+        'The profile was changed elsewhere. Open it again.',
+    'Du har redan en begäran som inte är klar.':
+        'You already have a request that is not finished.',
+    'Det är redan din inloggningsadress.':
+        'That is already your login address.',
+    'Det gick inte att spara. Försök igen.': 'Could not save. Try again.',
+    'Bilden får vara högst 2 MB.': 'The picture may be at most 2 MB.',
+    'Ange ditt namn.': 'Enter your name.',
+    'Begäran är skickad. Supporten återkommer innan något ändras.':
+        'The request was sent. Support gets back to you before anything changes.',
+    'Kolla din e-post': 'Check your email',
+    'Vi har skickat en bekräftelselänk till {email}. Bytet gäller när du har bekräftat.':
+        'We sent a confirmation link to {email}. The change applies once you confirm.',
+    'Bekräftelsen kunde inte skickas. Försök igen om en stund.':
+        'The confirmation could not be sent. Try again in a while.',
+    'Väntar på support: byte till {email}.':
+        'Waiting for support: change to {email}.',
+    'Godkänt: bekräfta bytet till {email}.':
+        'Approved: confirm the change to {email}.',
+    'Den senaste begäran avslogs.': 'The latest request was declined.',
+    'Inloggningsadress': 'Login address',
+    'Bekräfta bytet': 'Confirm the change',
+    'Avbryt begäran': 'Cancel request',
+    'Begär byte av inloggningsadress': 'Request a new login address',
+    'Av säkerhetsskäl granskar supporten varje byte. Därefter bekräftar du via en länk i e-posten.':
+        'For security, support reviews every change. Then you confirm with a link in the email.',
+    'Mina uppgifter': 'My details',
+    'Profilen kunde inte laddas': 'The profile could not be loaded',
+    'Byt bild': 'Change picture',
+    'Lägg till bild': 'Add picture',
+    'Ta bort bild': 'Remove picture',
+    'Kontakt-e-post': 'Contact email',
+    'Telefon': 'Phone',
+    'Kontaktuppgifterna visas bara för dig och ledarna i dina lag. Profilbilden syns för alla i dina klubbar.':
+        'Contact details are shown only to you and the leaders of your teams. Your picture is visible to everyone in your clubs.',
+    'Beskriv varför med minst 5 tecken.':
+        'Describe why in at least 5 characters.',
+    'Byt inloggningsadress': 'Change login address',
+    'Supporten granskar begäran. När den är godkänd bekräftar du bytet via en länk som skickas till den nya adressen.':
+        'Support reviews the request. Once approved, you confirm the change with a link sent to the new address.',
+    'Ny inloggningsadress': 'New login address',
+    'Varför vill du byta?': 'Why do you want to change?',
+    'Skicka till support': 'Send to support',
+    'Namn saknas': 'Name missing',
+    'Lägg till kontaktuppgifter': 'Add contact details',
+    'E-post': 'Email',
+    'Ingen angiven': 'None given',
+    'Inget angivet': 'None given',
+    'Ifyllt av klubben.': 'Filled in by the club.',
+    'Redigera mina uppgifter': 'Edit my details',
+    'Namn, kontaktuppgifter och profilbild.':
+        'Name, contact details and picture.',
+    'Ändra kontaktuppgifter': 'Change contact details',
+    'Personen har inget konto, så klubben fyller i uppgifterna.':
+        'The person has no account, so the club fills in the details.',
+    'Kontaktuppgifter': 'Contact details',
+    'Godkänn byte': 'Approve change',
+    'Avslå byte': 'Decline change',
+    'T.ex. hur identiteten kontrollerades.':
+        'E.g. how the identity was checked.',
+    'Beslutet kunde inte sparas. Ladda om.':
+        'The decision could not be saved. Reload.',
+    'Byte av inloggningsadress': 'Login address changes',
+    'Kön kunde inte laddas.': 'The queue could not be loaded.',
+    'Inga väntande begäranden.': 'No pending requests.',
+    'Kontrollera adressen och postnumret.':
+        'Check the address and postal code.',
+    'Gatuadress': 'Street address',
+    'Postnummer': 'Postal code',
+    'Ort': 'City',
+    'Adress': 'Address',
+    'Visa medlemskort': 'Show member card',
+    'Klubbmärke': 'Club badge',
+    'Visas på klubbens medlemskort.': 'Shown on the club member cards.',
+    'Medlemskortet kunde inte laddas.': 'The member card could not be loaded.',
+    'Visa framsidan': 'Show the front',
+    'Visa baksidan': 'Show the back',
+    'MEDLEMSKORT': 'MEMBER CARD',
+    'Roll': 'Role',
+    'Vårdnadshavare till': 'Guardian of',
+    'Medlems-ID': 'Member ID',
+    'Medlem sedan': 'Member since',
+    'Adress och kontaktuppgifter visas bara för personen och lagets ledare.':
+        'Address and contact details are shown only to the person and the team leaders.',
+    'Ingen adress angiven': 'No address given',
+    'Klubbmärket får vara högst 1 MB.': 'The club badge may be at most 1 MB.',
+    'Klubbmärket kunde inte sparas.': 'The club badge could not be saved.',
+    'Klubbmärket kunde inte tas bort.': 'The club badge could not be removed.',
+    'Visas på medlemskorten för alla i klubben. PNG, JPG eller WebP, högst 1 MB.':
+        'Shown on the member cards for everyone in the club. PNG, JPG or WebP, at most 1 MB.',
+    'Välj bild': 'Choose image',
+    'Markera som läst': 'Mark as read',
+    'Ta bort notisen': 'Remove notification',
   };
   String get signOut => isSwedish ? 'Logga ut' : 'Sign out';
   String eventOwner(String name) =>

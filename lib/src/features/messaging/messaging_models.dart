@@ -348,6 +348,24 @@ class NotificationItem {
   final int messageCount;
   final String? senderName, chatName, messagePreview;
   final DateTime createdAt;
+
+  NotificationItem asRead() => NotificationItem(
+    id: id,
+    eventType: eventType,
+    createdAt: createdAt,
+    category: category,
+    title: title,
+    preview: preview,
+    deepLink: deepLink,
+    unread: false,
+    canonicalKey: canonicalKey,
+    priority: priority,
+    messageCount: messageCount,
+    senderName: senderName,
+    chatName: chatName,
+    messagePreview: messagePreview,
+  );
+
   factory NotificationItem.fromJson(Map<String, dynamic> json) {
     final category = json['category'] as String;
     return NotificationItem(

@@ -1414,6 +1414,70 @@ class _InboxSurfaceState extends State<_InboxSurface>
                 }
               }());
             };
+            void showError() {
+              if (sheetContext.mounted) {
+                ScaffoldMessenger.of(sheetContext).showSnackBar(
+                  SnackBar(
+                    content: Text(AppStrings.of(sheetContext).safeError),
+                  ),
+                );
+              }
+            }
+
+            // Read without opening: the item stays, the count drops.
+            Future<void> markRead(NotificationItem item) async {
+              try {
+                await widget.messaging.setNotificationState(
+                  item.id,
+                  'read',
+                  _newUuid(),
+                );
+              } catch (_) {
+                showError();
+                return;
+              }
+              if (!sheetContext.mounted) return;
+              setSheetState(() {
+                center = NotificationCenter(
+                  items: [
+                    for (final value in center.items)
+                      value.id == item.id ? value.asRead() : value,
+                  ],
+                  unreadCount: center.unreadCount > 0 && item.unread
+                      ? center.unreadCount - 1
+                      : center.unreadCount,
+                );
+              });
+              unawaited(_refreshNotificationBadge());
+            }
+
+            // Removed from the list for you (dismissed); nothing else changes.
+            Future<bool> dismiss(NotificationItem item) async {
+              try {
+                await widget.messaging.setNotificationState(
+                  item.id,
+                  'dismissed',
+                  _newUuid(),
+                );
+                return true;
+              } catch (_) {
+                showError();
+                return false;
+              }
+            }
+
+            void removeLocally(NotificationItem item) {
+              setSheetState(() {
+                center = NotificationCenter(
+                  items: center.items
+                      .where((value) => value.id != item.id)
+                      .toList(growable: false),
+                  unreadCount: center.unreadCount - (item.unread ? 1 : 0),
+                );
+              });
+              unawaited(_refreshNotificationBadge());
+            }
+
             return SafeArea(
               child: ListView(
                 shrinkWrap: true,
@@ -1455,38 +1519,8 @@ class _InboxSurfaceState extends State<_InboxSurface>
                         padding: const EdgeInsets.only(right: 24),
                         child: const Icon(Icons.delete_outline),
                       ),
-                      confirmDismiss: (_) async {
-                        try {
-                          await widget.messaging.setNotificationState(
-                            item.id,
-                            'dismissed',
-                            _newUuid(),
-                          );
-                          return true;
-                        } catch (_) {
-                          if (sheetContext.mounted) {
-                            ScaffoldMessenger.of(sheetContext).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  AppStrings.of(sheetContext).safeError,
-                                ),
-                              ),
-                            );
-                          }
-                          return false;
-                        }
-                      },
-                      onDismissed: (_) {
-                        setSheetState(() {
-                          center = NotificationCenter(
-                            items: center.items
-                                .where((value) => value.id != item.id)
-                                .toList(growable: false),
-                            unreadCount:
-                                center.unreadCount - (item.unread ? 1 : 0),
-                          );
-                        });
-                      },
+                      confirmDismiss: (_) => dismiss(item),
+                      onDismissed: (_) => removeLocally(item),
                       child: ListTile(
                         leading: Icon(
                           item.category == 'message'
@@ -1509,7 +1543,42 @@ class _InboxSurfaceState extends State<_InboxSurface>
                           overflow: TextOverflow.ellipsis,
                         ),
                         isThreeLine: true,
-                        trailing: item.unread ? const Badge() : null,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (item.unread)
+                              IconButton(
+                                key: ValueKey('notification-read-${item.id}'),
+                                tooltip: AppStrings.of(
+                                  context,
+                                ).feature('Markera som läst'),
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () => markRead(item),
+                                icon: Badge(
+                                  child: Icon(
+                                    Icons.mark_email_read_outlined,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                            IconButton(
+                              key: ValueKey('notification-dismiss-${item.id}'),
+                              tooltip: AppStrings.of(
+                                context,
+                              ).feature('Ta bort notisen'),
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () async {
+                                if (await dismiss(item) &&
+                                    sheetContext.mounted) {
+                                  removeLocally(item);
+                                }
+                              },
+                              icon: const Icon(Icons.delete_outline),
+                            ),
+                          ],
+                        ),
                         onTap: () async {
                           if (item.unread) {
                             await widget.messaging.setNotificationState(

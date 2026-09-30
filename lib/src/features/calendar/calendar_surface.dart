@@ -1728,6 +1728,8 @@ class _EventEditorValue {
     required this.scope,
     this.description,
     this.locationName,
+    this.locationPitch,
+    this.locationSurface,
     this.trainingTheme,
     this.trainingFocus,
     this.trainingPlan,
@@ -1739,7 +1741,7 @@ class _EventEditorValue {
     required this.assemblyMinutesBefore,
   });
   final String title, type, state, timezone, frequency, scope;
-  final String? description, locationName;
+  final String? description, locationName, locationPitch, locationSurface;
   final DateTime startsAt, endsAt;
   final bool allDay, recurring;
   final List<String> audiences;
@@ -1757,7 +1759,7 @@ class _EventEditorDialog extends StatefulWidget {
     this.initial,
   });
   final String teamName;
-  final List<String> locationSuggestions;
+  final List<SavedEventPlace> locationSuggestions;
   final EventDetails? initial;
   @override
   State<_EventEditorDialog> createState() => _EventEditorDialogState();
@@ -1770,6 +1772,12 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
   );
   late final TextEditingController _location = TextEditingController(
     text: widget.initial?.locationName,
+  );
+  late final TextEditingController _pitch = TextEditingController(
+    text: widget.initial?.locationPitch,
+  );
+  late final TextEditingController _surface = TextEditingController(
+    text: widget.initial?.locationSurface,
   );
   late final TextEditingController _timezone = TextEditingController(
     text: widget.initial?.timezone ?? 'Europe/Stockholm',
@@ -1841,6 +1849,8 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     for (final controller in [
       _description,
       _location,
+      _pitch,
+      _surface,
       _timezone,
       _interval,
       _trainingTheme,
@@ -1866,6 +1876,8 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     for (final controller in [
       _description,
       _location,
+      _pitch,
+      _surface,
       _timezone,
       _interval,
       _trainingTheme,
@@ -1885,48 +1897,14 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     super.dispose();
   }
 
-  Future<DateTime?> _pickDateTime(DateTime initial) async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: DateTime.now().subtract(const Duration(days: 730)),
-      lastDate: DateTime.now().add(const Duration(days: 3650)),
-    );
-    if (date == null || !mounted) return null;
-    if (_allDay) return DateTime(date.year, date.month, date.day);
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(initial),
-    );
-    if (time == null) return null;
-    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
-  }
-
   void _save() {
     final interval = int.tryParse(_interval.text);
     final count = interval == null ? null : _seriesCount(interval);
     final assembly = int.tryParse(_assembly.text);
     final generatedTitle = _generatedTitle();
-    if (generatedTitle.length > 160 ||
-        _timezone.text.trim().isEmpty ||
-        !_endsAt.isAfter(_startsAt) ||
-        _audiences.isEmpty ||
-        assembly == null ||
-        assembly < 0 ||
-        assembly > 1440 ||
-        (_type == 'match' && _opponent.text.trim().isEmpty) ||
-        (_recurring &&
-            (interval == null ||
-                interval < 1 ||
-                interval > 52 ||
-                count == null ||
-                count < 2 ||
-                count > 104))) {
-      setState(() {
-        _error = AppStrings.of(context).feature(
-          'Kontrollera obligatoriska uppgifter, tider och serieinställningar.',
-        );
-      });
+    final problem = _validationError(AppStrings.of(context));
+    if (problem != null || assembly == null) {
+      setState(() => _error = problem);
       return;
     }
     _draft.markClean();
@@ -1947,6 +1925,11 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
         locationName: _location.text.trim().isEmpty
             ? null
             : _location.text.trim(),
+        // Pitch and surface only belong with a facility.
+        locationPitch: _location.text.trim().isEmpty ? null : _optional(_pitch),
+        locationSurface: _location.text.trim().isEmpty
+            ? null
+            : _optional(_surface),
         recurring: _recurring,
         frequency: _frequency,
         interval: interval ?? 1,
@@ -1989,15 +1972,122 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     });
   }
 
-  Future<void> _pickSeriesStart() async {
-    final currentDate = DateUtils.dateOnly(_startsAt);
+  String? _optional(TextEditingController controller) {
+    final value = controller.text.trim();
+    return value.isEmpty ? null : value;
+  }
+
+  String _generatedTitle() => switch (_type) {
+    'training' => 'Träning',
+    'match' => 'vs ${_opponent.text.trim()}',
+    'meeting' => 'Möte',
+    _ => 'Aktivitet',
+  };
+
+  static const _typeIcons = {
+    'training': Icons.fitness_center,
+    'match': Icons.sports_soccer,
+    'meeting': Icons.groups_outlined,
+    'activity': Icons.event_outlined,
+  };
+
+  /// Type-specific details: what the event is about.
+  List<Widget> _typedFields(AppStrings strings) => switch (_type) {
+    'training' => [
+      TextFormField(
+        controller: _trainingTheme,
+        maxLength: 160,
+        decoration: InputDecoration(labelText: strings.feature('Träningstema')),
+      ),
+      TextFormField(
+        controller: _trainingFocus,
+        minLines: 2,
+        maxLines: 4,
+        decoration: InputDecoration(labelText: strings.feature('Fokus')),
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _trainingPlan,
+        minLines: 3,
+        maxLines: 8,
+        decoration: InputDecoration(labelText: strings.feature('Träningsplan')),
+      ),
+    ],
+    'match' => [
+      TextFormField(
+        controller: _matchNotes,
+        minLines: 2,
+        maxLines: 6,
+        decoration: InputDecoration(
+          labelText: strings.feature('Matchanteckningar'),
+        ),
+      ),
+    ],
+    'meeting' => [
+      TextFormField(
+        controller: _meetingPurpose,
+        minLines: 1,
+        maxLines: 3,
+        decoration: InputDecoration(labelText: strings.feature('Syfte')),
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _meetingAgenda,
+        minLines: 3,
+        maxLines: 8,
+        decoration: InputDecoration(labelText: strings.feature('Mötesagenda')),
+      ),
+    ],
+    _ => const [],
+  };
+
+  /// First problem with the form, in plain words, or null when it is valid.
+  String? _validationError(AppStrings strings) {
+    final interval = int.tryParse(_interval.text);
+    final count = interval == null ? null : _seriesCount(interval);
+    final assembly = int.tryParse(_assembly.text);
+    if (_type == 'match' && _opponent.text.trim().isEmpty) {
+      return strings.feature('Ange motståndare.');
+    }
+    if (_generatedTitle().length > 160) {
+      return strings.feature('Motståndarens namn är för långt.');
+    }
+    if (!_endsAt.isAfter(_startsAt)) {
+      return strings.feature('Sluttiden måste vara efter starttiden.');
+    }
+    if (assembly == null || assembly < 0 || assembly > 1440) {
+      return strings.feature('Samlingen ska vara 0–1440 minuter före start.');
+    }
+    if (_location.text.trim().isEmpty &&
+        (_pitch.text.trim().isNotEmpty || _surface.text.trim().isNotEmpty)) {
+      return strings.feature('Ange anläggning för planen och underlaget.');
+    }
+    if (_audiences.isEmpty) return strings.feature('Välj minst en målgrupp.');
+    if (_timezone.text.trim().isEmpty) {
+      return strings.feature('Ange en tidszon.');
+    }
+    if (_recurring &&
+        (interval == null ||
+            interval < 1 ||
+            interval > 52 ||
+            count == null ||
+            count < 2 ||
+            count > 104)) {
+      return strings.feature(
+        'Kontrollera serien: 2–104 tillfällen och ett intervall på 1–52.',
+      );
+    }
+    return null;
+  }
+
+  Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: currentDate,
+      initialDate: _startsAt,
       firstDate: DateTime.now().subtract(const Duration(days: 730)),
       lastDate: DateTime.now().add(const Duration(days: 3650)),
     );
-    if (picked == null) return;
+    if (picked == null || !mounted) return;
     setState(() {
       final duration = _endsAt.difference(_startsAt);
       _startsAt = DateTime(
@@ -2017,490 +2107,638 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     });
   }
 
-  String? _optional(TextEditingController controller) {
-    final value = controller.text.trim();
-    return value.isEmpty ? null : value;
+  Future<void> _pickEndDate() async {
+    final first = DateUtils.dateOnly(_startsAt);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _endsAt.isBefore(first) ? first : _endsAt,
+      firstDate: first,
+      lastDate: first.add(const Duration(days: 3650)),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _endsAt = DateTime(picked.year, picked.month, picked.day);
+      if (!_endsAt.isAfter(_startsAt)) {
+        _endsAt = _startsAt.add(const Duration(days: 1));
+      }
+      _draft.markDirty();
+    });
   }
 
-  String _generatedTitle() => switch (_type) {
-    'training' => 'Träning',
-    'match' => 'vs ${_opponent.text.trim()}',
-    'meeting' => 'Möte',
-    _ => 'Aktivitet',
-  };
+  /// Start keeps the length; end on the same day, or the next when it is
+  /// earlier than the start (an evening event past midnight).
+  Future<void> _pickTime({required bool start}) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(start ? _startsAt : _endsAt),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      if (start) {
+        final duration = _endsAt.difference(_startsAt);
+        _startsAt = DateTime(
+          _startsAt.year,
+          _startsAt.month,
+          _startsAt.day,
+          picked.hour,
+          picked.minute,
+        );
+        _endsAt = _startsAt.add(duration);
+      } else {
+        var end = DateTime(
+          _startsAt.year,
+          _startsAt.month,
+          _startsAt.day,
+          picked.hour,
+          picked.minute,
+        );
+        if (!end.isAfter(_startsAt)) end = end.add(const Duration(days: 1));
+        _endsAt = end;
+      }
+      _draft.markDirty();
+    });
+  }
 
-  Widget _typedFields(AppStrings strings) {
-    final fields = <Widget>[];
-    switch (_type) {
-      case 'training':
-        fields.addAll([
-          TextFormField(
-            controller: _trainingTheme,
-            maxLength: 160,
-            decoration: InputDecoration(
-              labelText: strings.feature('Träningstema'),
-            ),
-          ),
-          TextFormField(
-            controller: _trainingFocus,
-            minLines: 2,
-            maxLines: 4,
-            decoration: InputDecoration(labelText: strings.feature('Fokus')),
-          ),
-          TextFormField(
-            controller: _trainingPlan,
-            minLines: 3,
-            maxLines: 8,
-            decoration: InputDecoration(
-              labelText: strings.feature('Träningsplan'),
-            ),
-          ),
-        ]);
-      case 'match':
-        fields.addAll([
-          TextFormField(
-            controller: _opponent,
-            maxLength: 157,
-            decoration: InputDecoration(
-              labelText: strings.feature('Motståndare *'),
-            ),
-          ),
-          DropdownButtonFormField<String>(
-            initialValue: _homeAway,
-            decoration: InputDecoration(
-              labelText: strings.feature('Hemmaplan eller bortaplan'),
-            ),
-            items: [
-              DropdownMenuItem(
-                value: 'home',
-                child: Text(strings.feature('Hemma')),
-              ),
-              DropdownMenuItem(
-                value: 'away',
-                child: Text(strings.feature('Borta')),
+  Widget _section(
+    BuildContext context,
+    IconData icon,
+    String title,
+    List<Widget> children,
+  ) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
-            onChanged: (value) => setState(() {
-              _homeAway = value ?? _homeAway;
-              _draft.markDirty();
-            }),
           ),
-          TextFormField(
-            controller: _matchNotes,
-            minLines: 2,
-            maxLines: 6,
-            decoration: InputDecoration(
-              labelText: strings.feature('Matchanteckningar'),
-            ),
-          ),
-        ]);
-      case 'meeting':
-        fields.addAll([
-          TextFormField(
-            controller: _meetingPurpose,
-            minLines: 1,
-            maxLines: 3,
-            decoration: InputDecoration(labelText: strings.feature('Syfte')),
-          ),
-          TextFormField(
-            controller: _meetingAgenda,
-            minLines: 3,
-            maxLines: 8,
-            decoration: InputDecoration(
-              labelText: strings.feature('Mötesagenda'),
-            ),
-          ),
-        ]);
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: fields,
-    );
-  }
-
-  Widget _dateTile(AppStrings strings, bool start) {
-    final value = start ? _startsAt : _endsAt;
-    return Card(
-      margin: EdgeInsets.zero,
-      child: ListTile(
-        title: Text(strings.feature(start ? 'Start' : 'Slut')),
-        subtitle: Text(_formatDateTime(context, value, _allDay)),
-        trailing: const Icon(Icons.edit_calendar_outlined),
-        onTap: () async {
-          final picked = await _pickDateTime(value);
-          if (picked == null) return;
-          setState(() {
-            if (start) {
-              final duration = _endsAt.difference(_startsAt);
-              _startsAt = picked;
-              _endsAt = picked.add(duration);
-            } else {
-              _endsAt = picked;
-            }
-            _draft.markDirty();
-          });
-        },
+          const SizedBox(height: 10),
+          ...children,
+        ],
       ),
     );
   }
 
-  Widget _seriesDateTile(String label, DateTime value, VoidCallback onTap) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: ListTile(
-        title: Text(label),
-        subtitle: Text(
-          MaterialLocalizations.of(context).formatMediumDate(value),
+  /// An outlined field that opens a picker.
+  Widget _pickerField({
+    required Key key,
+    required String label,
+    required String value,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return InkWell(
+      key: key,
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          isDense: true,
+          suffixIcon: Icon(icon, size: 20),
         ),
-        trailing: const Icon(Icons.edit_calendar_outlined),
-        onTap: onTap,
+        child: Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodyLarge,
+        ),
       ),
+    );
+  }
+
+  Widget _whenFields(AppStrings strings) {
+    final localizations = MaterialLocalizations.of(context);
+    String time(DateTime value) =>
+        TimeOfDay.fromDateTime(value).format(context);
+    final nextDay = !DateUtils.isSameDay(_startsAt, _endsAt);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 440;
+        if (_allDay) {
+          final from = _pickerField(
+            key: const ValueKey('event-date'),
+            label: strings.feature('Från'),
+            value: localizations.formatMediumDate(_startsAt),
+            icon: Icons.calendar_today_outlined,
+            onTap: _pickDate,
+          );
+          final to = _pickerField(
+            key: const ValueKey('event-end-date'),
+            label: strings.feature('Till'),
+            value: localizations.formatMediumDate(_endsAt),
+            icon: Icons.calendar_today_outlined,
+            onTap: _pickEndDate,
+          );
+          return Row(
+            children: [
+              Expanded(child: from),
+              const SizedBox(width: 12),
+              Expanded(child: to),
+            ],
+          );
+        }
+        final date = _pickerField(
+          key: const ValueKey('event-date'),
+          label: strings.feature('Datum'),
+          value: localizations.formatMediumDate(_startsAt),
+          icon: Icons.calendar_today_outlined,
+          onTap: _pickDate,
+        );
+        final times = Row(
+          children: [
+            Expanded(
+              child: _pickerField(
+                key: const ValueKey('event-start-time'),
+                label: strings.feature('Start'),
+                value: time(_startsAt),
+                icon: Icons.schedule,
+                onTap: () => _pickTime(start: true),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _pickerField(
+                key: const ValueKey('event-end-time'),
+                label: strings.feature('Slut'),
+                value: nextDay ? '${time(_endsAt)} (+1)' : time(_endsAt),
+                icon: Icons.schedule,
+                onTap: () => _pickTime(start: false),
+              ),
+            ),
+          ],
+        );
+        return wide
+            ? Row(
+                children: [
+                  Expanded(flex: 5, child: date),
+                  const SizedBox(width: 12),
+                  Expanded(flex: 6, child: times),
+                ],
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [date, const SizedBox(height: 12), times],
+              );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
+    final theme = Theme.of(context);
+    final creating = widget.initial == null;
+    final fullScreen = MediaQuery.sizeOf(context).width < 600;
+    final assembly = int.tryParse(_assembly.text);
+    final assemblyAt = assembly == null || _allDay
+        ? null
+        : _startsAt.subtract(Duration(minutes: assembly));
+
+    final header = Padding(
+      padding: const EdgeInsets.fromLTRB(4, 8, 16, 8),
+      child: Row(
+        children: [
+          IconButton(
+            tooltip: strings.feature('Stäng'),
+            onPressed: () => Navigator.maybePop(context),
+            icon: const Icon(Icons.close),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  strings.feature(creating ? 'Skapa event' : 'Redigera event'),
+                  style: theme.textTheme.titleLarge,
+                ),
+                Text(widget.teamName, style: theme.textTheme.bodySmall),
+              ],
+            ),
+          ),
+          FilledButton(
+            onPressed: _save,
+            child: Text(strings.feature(creating ? 'Skapa' : 'Spara')),
+          ),
+        ],
+      ),
+    );
+
+    final form = ListView(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+      children: [
+        // What
+        _section(
+          context,
+          Icons.category_outlined,
+          strings.feature('Typ av event'),
+          [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final value in _typeIcons.keys)
+                  ChoiceChip(
+                    key: ValueKey('event-type-$value'),
+                    avatar: Icon(_typeIcons[value], size: 18),
+                    label: Text(strings.domainValue(value)),
+                    selected: _type == value,
+                    onSelected: (_) => setState(() {
+                      if (!_assemblyWasEdited) {
+                        _assembly.text = _defaultAssembly(value).toString();
+                        _assemblyWasEdited = false;
+                      }
+                      _type = value;
+                      _error = null;
+                      _draft.markDirty();
+                    }),
+                  ),
+              ],
+            ),
+            if (_type == 'match') ...[
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _opponent,
+                maxLength: 157,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  labelText: strings.feature('Motståndare *'),
+                  prefixIcon: const Icon(Icons.shield_outlined),
+                ),
+              ),
+              SegmentedButton<String>(
+                segments: [
+                  ButtonSegment(
+                    value: 'home',
+                    icon: const Icon(Icons.home_outlined),
+                    label: Text(strings.feature('Hemma')),
+                  ),
+                  ButtonSegment(
+                    value: 'away',
+                    icon: const Icon(Icons.directions_bus_outlined),
+                    label: Text(strings.feature('Borta')),
+                  ),
+                ],
+                selected: {_homeAway},
+                onSelectionChanged: (value) => setState(() {
+                  _homeAway = value.single;
+                  _draft.markDirty();
+                }),
+              ),
+            ],
+          ],
+        ),
+        // When
+        _section(context, Icons.event_outlined, strings.feature('När'), [
+          _whenFields(strings),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            title: Text(strings.feature('Heldag')),
+            value: _allDay,
+            onChanged: (value) => setState(() {
+              _allDay = value;
+              if (value) {
+                _startsAt = DateTime(
+                  _startsAt.year,
+                  _startsAt.month,
+                  _startsAt.day,
+                );
+                _endsAt = DateTime(_endsAt.year, _endsAt.month, _endsAt.day);
+                if (!_endsAt.isAfter(_startsAt)) {
+                  _endsAt = _startsAt.add(const Duration(days: 1));
+                }
+              } else {
+                _startsAt = DateTime(
+                  _startsAt.year,
+                  _startsAt.month,
+                  _startsAt.day,
+                  18,
+                );
+                _endsAt = _startsAt.add(const Duration(hours: 2));
+              }
+              _draft.markDirty();
+            }),
+          ),
+          if (!_allDay)
+            TextFormField(
+              controller: _assembly,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: strings.feature('Samling före start (minuter)'),
+                prefixIcon: const Icon(Icons.flag_outlined),
+                suffixText: 'min',
+                helperText: assemblyAt == null
+                    ? null
+                    : '${strings.feature('Samling kl.')} ${TimeOfDay.fromDateTime(assemblyAt).format(context)}',
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+          if (creating) ...[
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text(strings.feature('Återkommande serie')),
+              subtitle: Text(
+                strings.feature('Skapar ett event per tillfälle.'),
+              ),
+              value: _recurring,
+              onChanged: (value) => setState(() {
+                _recurring = value;
+                _draft.markDirty();
+              }),
+            ),
+            if (_recurring) _seriesFields(strings),
+          ],
+          if (widget.initial?.recurrenceId != null) ...[
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _scope,
+              decoration: InputDecoration(labelText: strings.feature('Ändra')),
+              items: [
+                DropdownMenuItem(
+                  value: 'one',
+                  child: Text(strings.feature('Bara detta')),
+                ),
+                DropdownMenuItem(
+                  value: 'forward',
+                  child: Text(strings.feature('Detta och framåt')),
+                ),
+                DropdownMenuItem(
+                  value: 'all',
+                  child: Text(strings.feature('Hela serien')),
+                ),
+              ],
+              onChanged: (value) => setState(() {
+                _scope = value ?? _scope;
+                _draft.markDirty();
+              }),
+            ),
+          ],
+        ]),
+        // Where
+        _section(context, Icons.place_outlined, strings.feature('Plats'), [
+          if (widget.locationSuggestions.isNotEmpty) ...[
+            // Earlier places, picked as a whole (facility, pitch, surface).
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final place in widget.locationSuggestions.take(8))
+                  ActionChip(
+                    key: ValueKey('saved-place-${place.label}'),
+                    avatar: const Icon(Icons.history, size: 16),
+                    label: Text(place.label),
+                    onPressed: () => setState(() {
+                      _location.text = place.name;
+                      _pitch.text = place.pitch ?? '';
+                      _surface.text = place.surface ?? '';
+                    }),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+          TextFormField(
+            key: const ValueKey('event-place-facility'),
+            controller: _location,
+            maxLength: 160,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              labelText: strings.feature('Anläggning'),
+              hintText: strings.feature('T.ex. Bergby IP'),
+              prefixIcon: const Icon(Icons.stadium_outlined),
+            ),
+          ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextFormField(
+                  key: const ValueKey('event-place-pitch'),
+                  controller: _pitch,
+                  maxLength: 80,
+                  decoration: InputDecoration(
+                    labelText: strings.feature('Plan (valfritt)'),
+                    hintText: strings.feature('T.ex. Plan 3'),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  key: const ValueKey('event-place-surface'),
+                  controller: _surface,
+                  maxLength: 80,
+                  decoration: InputDecoration(
+                    labelText: strings.feature('Underlag (valfritt)'),
+                    hintText: strings.feature('T.ex. konstgräs'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ]),
+        // Who
+        _section(context, Icons.people_outline, strings.feature('Målgrupp'), [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final value in ['players', 'leaders', 'guardians', 'club'])
+                FilterChip(
+                  label: Text(strings.domainValue(value)),
+                  selected: _audiences.contains(value),
+                  onSelected: (selected) => setState(() {
+                    selected ? _audiences.add(value) : _audiences.remove(value);
+                    _draft.markDirty();
+                  }),
+                ),
+            ],
+          ),
+        ]),
+        // Details
+        _section(context, Icons.notes_outlined, strings.feature('Detaljer'), [
+          ..._typedFields(strings),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _description,
+            minLines: 2,
+            maxLines: 4,
+            decoration: InputDecoration(
+              labelText: strings.feature('Beskrivning'),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 8),
+        if (creating)
+          SwitchListTile(
+            key: const ValueKey('event-save-as-draft'),
+            contentPadding: EdgeInsets.zero,
+            secondary: const Icon(Icons.edit_note_outlined),
+            title: Text(strings.feature('Spara som utkast')),
+            subtitle: Text(
+              strings.feature('Planeras klart och publiceras senare.'),
+            ),
+            value: _state == 'draft',
+            onChanged: (value) => setState(() {
+              _state = value ? 'draft' : 'scheduled';
+              _draft.markDirty();
+            }),
+          ),
+        ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          title: Text(strings.feature('Fler inställningar')),
+          children: [
+            TextFormField(
+              controller: _timezone,
+              decoration: InputDecoration(
+                labelText: strings.feature('Tidszon'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        header,
+        const Divider(height: 1),
+        if (_error != null)
+          Material(
+            color: theme.colorScheme.errorContainer,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    color: theme.colorScheme.onErrorContainer,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _error!,
+                      style: TextStyle(
+                        color: theme.colorScheme.onErrorContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        Expanded(child: form),
+      ],
+    );
+
     return AppUnsavedChangesScope(
       controller: _draft,
       title: strings.feature('Kasta ändringar?'),
       message: strings.feature('Dina osparade ändringar går förlorade.'),
       discardLabel: strings.feature('Kasta'),
       cancelLabel: strings.feature('Fortsätt redigera'),
-      child: AlertDialog(
-        title: Text(
-          strings.feature(
-            widget.initial == null ? 'Skapa event' : 'Redigera event',
-          ),
-        ),
-        content: SizedBox(
-          width: 560,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _type,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          labelText: strings.feature('Typ av event'),
-                        ),
-                        items: [
-                          for (final value in [
-                            'training',
-                            'match',
-                            'meeting',
-                            'activity',
-                          ])
-                            DropdownMenuItem(
-                              value: value,
-                              child: Text(strings.domainValue(value)),
-                            ),
-                        ],
-                        onChanged: (value) => setState(() {
-                          final next = value ?? _type;
-                          if (!_assemblyWasEdited) {
-                            _assembly.text = _defaultAssembly(next).toString();
-                            _assemblyWasEdited = false;
-                          }
-                          _type = next;
-                          _draft.markDirty();
-                        }),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Tooltip(
-                      message: strings.feature(
-                        widget.initial == null
-                            ? 'Status: ${strings.domainValue(_state)}. Klicka för att byta.'
-                            : 'Status: ${strings.domainValue(_state)}',
-                      ),
-                      child: IconButton.filledTonal(
-                        onPressed: widget.initial == null
-                            ? () => setState(() {
-                                _state = _state == 'scheduled'
-                                    ? 'draft'
-                                    : 'scheduled';
-                                _draft.markDirty();
-                              })
-                            : null,
-                        icon: Icon(
-                          _state == 'scheduled'
-                              ? Icons.event_available_outlined
-                              : Icons.edit_note_outlined,
-                        ),
-                      ),
-                    ),
-                  ],
+      child: fullScreen
+          ? Dialog.fullscreen(child: SafeArea(child: body))
+          : Dialog(
+              clipBehavior: Clip.antiAlias,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 600,
+                  maxHeight: MediaQuery.sizeOf(context).height * .9,
                 ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _description,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: InputDecoration(
-                    labelText: strings.feature('Beskrivning'),
-                  ),
-                ),
-                TextFormField(
-                  initialValue: widget.teamName,
-                  enabled: false,
-                  decoration: InputDecoration(
-                    labelText: strings.feature('Lag'),
-                  ),
-                ),
-                _typedFields(strings),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(strings.feature('Heldag')),
-                  value: _allDay,
-                  onChanged: (value) => setState(() {
-                    _allDay = value;
-                    if (value) {
-                      _startsAt = DateTime(
-                        _startsAt.year,
-                        _startsAt.month,
-                        _startsAt.day,
-                      );
-                      _endsAt = DateTime(
-                        _endsAt.year,
-                        _endsAt.month,
-                        _endsAt.day,
-                      );
-                      if (!_endsAt.isAfter(_startsAt)) {
-                        _endsAt = _startsAt.add(const Duration(days: 1));
-                      }
-                    }
-                    _draft.markDirty();
-                  }),
-                ),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final fields = [
-                      _dateTile(strings, true),
-                      _dateTile(strings, false),
-                    ];
-                    if (constraints.maxWidth < 480) {
-                      return Column(children: fields);
-                    }
-                    return Row(
-                      children: [
-                        Expanded(child: fields[0]),
-                        const SizedBox(width: 12),
-                        Expanded(child: fields[1]),
-                      ],
-                    );
-                  },
-                ),
-                TextFormField(
-                  controller: _assembly,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: strings.feature('Samling före start (minuter)'),
-                    helperText: strings.feature(
-                      'Samlingstiden räknas automatiskt från eventets start.',
-                    ),
-                  ),
-                ),
-                TextFormField(
-                  controller: _timezone,
-                  decoration: InputDecoration(
-                    labelText: strings.feature('Tidszon'),
-                  ),
-                ),
-                TextFormField(
-                  controller: _location,
-                  maxLength: 160,
-                  decoration: InputDecoration(
-                    labelText: strings.feature('Plats'),
-                  ),
-                ),
-                if (widget.locationSuggestions.isNotEmpty)
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      for (final suggestion in widget.locationSuggestions.take(
-                        8,
-                      ))
-                        ActionChip(
-                          label: Text(suggestion),
-                          onPressed: () {
-                            _location.text = suggestion;
-                            _location.selection = TextSelection.collapsed(
-                              offset: suggestion.length,
-                            );
-                          },
-                        ),
-                    ],
-                  ),
-                const SizedBox(height: 8),
-                Text(
-                  strings.feature('Audience'),
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (final value in [
-                      'players',
-                      'leaders',
-                      'guardians',
-                      'club',
-                    ])
-                      FilterChip(
-                        label: Text(strings.domainValue(value)),
-                        selected: _audiences.contains(value),
-                        onSelected: (selected) => setState(() {
-                          selected
-                              ? _audiences.add(value)
-                              : _audiences.remove(value);
-                          _draft.markDirty();
-                        }),
-                      ),
-                  ],
-                ),
-                if (widget.initial == null) ...[
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(strings.feature('Återkommande serie')),
-                    value: _recurring,
-                    onChanged: (value) => setState(() {
-                      _recurring = value;
-                      _draft.markDirty();
-                    }),
-                  ),
-                  if (_recurring) ...[
-                    Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            initialValue: _frequency,
-                            isExpanded: true,
-                            decoration: InputDecoration(
-                              labelText: strings.feature('Intervalltyp'),
-                            ),
-                            items: [
-                              DropdownMenuItem(
-                                value: 'daily',
-                                child: Text(strings.feature('Dagligen')),
-                              ),
-                              DropdownMenuItem(
-                                value: 'weekly',
-                                child: Text(strings.feature('Veckovis')),
-                              ),
-                            ],
-                            onChanged: (value) => setState(() {
-                              _frequency = value ?? _frequency;
-                              _draft.markDirty();
-                            }),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _interval,
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              labelText: strings.feature('Varje'),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final start = _seriesDateTile(
-                          strings.feature('Serien börjar'),
-                          DateUtils.dateOnly(_startsAt),
-                          _pickSeriesStart,
-                        );
-                        final end = _seriesDateTile(
-                          strings.feature('Serien slutar'),
-                          _seriesEndsOn,
-                          _pickSeriesEnd,
-                        );
-                        if (constraints.maxWidth < 420) {
-                          return Column(
-                            children: [start, const SizedBox(height: 8), end],
-                          );
-                        }
-                        return Row(
-                          children: [
-                            Expanded(child: start),
-                            const SizedBox(width: 8),
-                            Expanded(child: end),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
-                ],
-                if (widget.initial?.recurrenceId != null)
-                  DropdownButtonFormField<String>(
-                    initialValue: _scope,
-                    decoration: InputDecoration(
-                      labelText: strings.feature('Ändra'),
-                    ),
-                    items: [
-                      DropdownMenuItem(
-                        value: 'one',
-                        child: Text(strings.feature('Bara detta')),
-                      ),
-                      DropdownMenuItem(
-                        value: 'forward',
-                        child: Text(strings.feature('Detta och framåt')),
-                      ),
-                      DropdownMenuItem(
-                        value: 'all',
-                        child: Text(strings.feature('Hela serien')),
-                      ),
-                    ],
-                    onChanged: (value) => setState(() {
-                      _scope = value ?? _scope;
-                      _draft.markDirty();
-                    }),
-                  ),
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      _error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  ),
-              ],
+                child: body,
+              ),
             ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.maybePop(context),
-            child: Text(strings.feature('Avbryt')),
-          ),
-          FilledButton(
-            onPressed: _save,
-            child: Text(
-              strings.feature(widget.initial == null ? 'Skapa' : 'Spara'),
-            ),
-          ),
-        ],
-      ),
     );
   }
-}
 
-String _formatDateTime(BuildContext context, DateTime value, bool allDay) {
-  final date = MaterialLocalizations.of(context).formatMediumDate(value);
-  if (allDay) return date;
-  return '$date · ${TimeOfDay.fromDateTime(value).format(context)}';
+  Widget _seriesFields(AppStrings strings) {
+    final interval = int.tryParse(_interval.text);
+    final count = interval == null ? null : _seriesCount(interval);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                initialValue: _frequency,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: strings.feature('Intervalltyp'),
+                ),
+                items: [
+                  DropdownMenuItem(
+                    value: 'daily',
+                    child: Text(strings.feature('Dagligen')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'weekly',
+                    child: Text(strings.feature('Veckovis')),
+                  ),
+                ],
+                onChanged: (value) => setState(() {
+                  _frequency = value ?? _frequency;
+                  _draft.markDirty();
+                }),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextFormField(
+                controller: _interval,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: strings.feature('Varje'),
+                  suffixText: strings.feature(
+                    _frequency == 'daily' ? 'dag' : 'vecka',
+                  ),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _pickerField(
+          key: const ValueKey('event-series-end'),
+          label: strings.feature('Serien slutar'),
+          value: MaterialLocalizations.of(
+            context,
+          ).formatMediumDate(_seriesEndsOn),
+          icon: Icons.event_repeat_outlined,
+          onTap: _pickSeriesEnd,
+        ),
+        if (count != null && count > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              strings
+                  .feature('{count} tillfällen')
+                  .replaceFirst('{count}', '$count'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 class _CalendarSurfaceState extends State<_CalendarSurface>
@@ -2728,9 +2966,9 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
   Future<void> _createEvent() async {
     final teamId = widget.contextValue.teamId;
     if (teamId == null) return;
-    List<String> suggestions;
+    List<SavedEventPlace> suggestions;
     try {
-      suggestions = await widget.calendar.listSavedLocations(
+      suggestions = await widget.calendar.listSavedPlaces(
         clubId: widget.contextValue.clubId,
         teamId: teamId,
       );
@@ -2761,6 +2999,8 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
           timezone: value.timezone,
           audiences: value.audiences,
           locationName: value.locationName,
+          locationPitch: value.locationPitch,
+          locationSurface: value.locationSurface,
           recurrenceFrequency: value.recurring ? value.frequency : null,
           recurrenceInterval: value.recurring ? value.interval : null,
           recurrenceCount: value.recurring ? value.count : null,

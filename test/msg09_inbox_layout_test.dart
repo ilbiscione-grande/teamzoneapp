@@ -75,6 +75,31 @@ void main() {
     expect(messaging.created.single, ('direct', '', 1));
   });
 
+  testWidgets('notifications are read or removed without opening', (
+    tester,
+  ) async {
+    final messaging = _Messaging();
+    await _openInbox(tester, messaging);
+    await tester.tap(find.byTooltip('Fler inkorgsåtgärder'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Notiser').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Kallelse till match'), findsOneWidget);
+    // Mark as read: the item stays, the read button goes.
+    await tester.tap(find.byKey(const ValueKey('notification-read-n1')));
+    await tester.pumpAndSettle();
+    expect(messaging.states, [('n1', 'read')]);
+    expect(find.byKey(const ValueKey('notification-read-n1')), findsNothing);
+    expect(find.text('Kallelse till match'), findsOneWidget);
+    // Remove: the item leaves the list.
+    await tester.tap(find.byKey(const ValueKey('notification-dismiss-n1')));
+    await tester.pumpAndSettle();
+    expect(messaging.states.last, ('n1', 'dismissed'));
+    expect(find.text('Kallelse till match'), findsNothing);
+    expect(find.text('Nytt meddelande i Cupresa'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('filter sheet scrolls instead of overflowing', (tester) async {
     tester.view.physicalSize = const Size(390, 560);
     tester.view.devicePixelRatio = 1;
@@ -129,6 +154,39 @@ Future<void> _openInbox(
 
 class _Messaging extends UnconfiguredMessagingServices {
   final created = <(String, String, int)>[];
+  final states = <(String, String)>[];
+
+  NotificationItem _notification(String id, String title, bool unread) =>
+      NotificationItem(
+        id: id,
+        eventType: 'callup.sent',
+        createdAt: DateTime(2026, 9, 29, 12),
+        category: 'callup',
+        title: title,
+        preview: 'Förhandsvisning',
+        deepLink: '/calendar',
+        unread: unread,
+        canonicalKey: id,
+        priority: 1,
+      );
+
+  @override
+  Future<NotificationCenter> listNotifications() async => NotificationCenter(
+    items: [
+      if (!states.contains(('n1', 'dismissed')))
+        _notification(
+          'n1',
+          'Kallelse till match',
+          !states.contains(('n1', 'read')),
+        ),
+      _notification('n2', 'Nytt meddelande i Cupresa', false),
+    ],
+    unreadCount: states.contains(('n1', 'read')) ? 0 : 1,
+  );
+
+  @override
+  Future<void> setNotificationState(String a, String b, String c) async =>
+      states.add((a, b));
 
   @override
   Future<List<MessageThreadSummary>> listThreads(

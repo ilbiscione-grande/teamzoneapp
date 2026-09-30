@@ -415,6 +415,18 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.place_outlined),
             title: Text(event.locationName!),
+            subtitle:
+                [event.locationPitch, event.locationSurface]
+                    .whereType<String>()
+                    .where((part) => part.trim().isNotEmpty)
+                    .isEmpty
+                ? null
+                : Text(
+                    [event.locationPitch, event.locationSurface]
+                        .whereType<String>()
+                        .where((part) => part.trim().isNotEmpty)
+                        .join(' · '),
+                  ),
           ),
         if (event.assemblyMinutesBefore != null)
           ListTile(
@@ -683,9 +695,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
   Future<void> _revise() async {
     final teamId = widget.contextValue.teamId;
     if (teamId == null) return;
-    List<String> suggestions;
+    List<SavedEventPlace> suggestions;
     try {
-      suggestions = await widget.calendar.listSavedLocations(
+      suggestions = await widget.calendar.listSavedPlaces(
         clubId: widget.contextValue.clubId,
         teamId: teamId,
       );
@@ -715,6 +727,8 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
           'all_day': value.allDay,
           'timezone': value.timezone,
           'location_name': value.locationName,
+          'location_pitch': value.locationPitch,
+          'location_surface': value.locationSurface,
           'audience_types': value.audiences,
           'assembly_minutes_before': value.assemblyMinutesBefore,
           'training_theme': value.trainingTheme,

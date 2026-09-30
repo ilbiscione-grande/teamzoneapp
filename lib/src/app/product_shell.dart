@@ -12,6 +12,7 @@ class _ProductShell extends StatefulWidget {
     required this.roster,
     required this.membership,
     required this.legal,
+    required this.profileServices,
     required this.calendar,
     required this.calendarPreferences,
     required this.overview,
@@ -38,6 +39,7 @@ class _ProductShell extends StatefulWidget {
   final RosterServices roster;
   final MembershipServices membership;
   final LegalServices legal;
+  final ProfileServices profileServices;
   final CalendarServices calendar;
   final CalendarPreferences calendarPreferences;
   final OverviewServices overview;
@@ -77,6 +79,34 @@ class _ProductShellState extends State<_ProductShell> {
   final List<String> _locationHistory = [];
   late final Future<bool> _supportAdminAccess;
   late Future<int> _pendingTeamRequests;
+  // Your own profile picture for the menu; none on failure.
+  late Future<_OwnSummary> _ownSummary = _loadOwnSummary();
+
+  /// Your current name and picture for the menu. Reloaded after you edit
+  /// your details; falls back to the name from sign-in.
+  Future<_OwnSummary> _loadOwnSummary() async {
+    try {
+      final details = await widget.profileServices.getMyProfile().timeout(
+        const Duration(seconds: 15),
+      );
+      String? avatar;
+      if (details.hasAvatar) {
+        try {
+          avatar = await widget.profileServices.avatarUrl(details.profileId);
+        } catch (_) {}
+      }
+      return (name: details.displayName, avatar: avatar);
+    } catch (_) {
+      return (name: null, avatar: null);
+    }
+  }
+
+  void _refreshOwnProfile() {
+    if (!mounted) return;
+    setState(() {
+      _ownSummary = _loadOwnSummary();
+    });
+  }
 
   late final GoRouter _router = GoRouter(
     navigatorKey: _productNavigatorKey,
@@ -132,11 +162,16 @@ class _ProductShellState extends State<_ProductShell> {
           onContextsChanged: widget.onContextsChanged,
           legal: widget.legal,
           calendarPreferences: widget.calendarPreferences,
+          profileServices: widget.profileServices,
+          onOwnProfileChanged: _refreshOwnProfile,
         ),
       ),
       GoRoute(
         path: ProductRouteContract.support,
-        builder: (_, _) => _SupportAdminSurface(membership: widget.membership),
+        builder: (_, _) => _SupportAdminSurface(
+          membership: widget.membership,
+          profile: widget.profileServices,
+        ),
       ),
       GoRoute(
         path: ProductRouteContract.assistant,
@@ -167,6 +202,8 @@ class _ProductShellState extends State<_ProductShell> {
           personId: state.pathParameters['personId']!,
           contextValue: widget.contextValue,
           roster: widget.roster,
+          profileServices: widget.profileServices,
+          onOwnProfileChanged: _refreshOwnProfile,
           onBack: () => _router.canPop()
               ? _router.pop()
               : _router.go('${ProductRouteContract.team}?tab=roster'),
@@ -187,6 +224,7 @@ class _ProductShellState extends State<_ProductShell> {
                   },
                   initialTab: state.uri.queryParameters['tab'],
                   initialAction: state.uri.queryParameters['action'],
+                  profileServices: widget.profileServices,
                 )
               : destination.path == '/calendar'
               ? _CalendarSurface(
@@ -399,6 +437,7 @@ class _ProductShellState extends State<_ProductShell> {
           closeDrawer: usesSidebar
               ? null
               : () => _scaffoldKey.currentState?.closeDrawer(),
+          ownSummary: _ownSummary,
           onOpenOwnProfile: () {
             _scaffoldKey.currentState?.closeDrawer();
             final hasTeamProfile =
@@ -452,9 +491,20 @@ class _ProductShellState extends State<_ProductShell> {
                           tooltip: strings.feature('Öppna menyn'),
                           onPressed: () =>
                               _scaffoldKey.currentState?.openDrawer(),
-                          icon: const CircleAvatar(
-                            radius: 16,
-                            child: Icon(Icons.person, size: 18),
+                          icon: FutureBuilder<_OwnSummary>(
+                            future: _ownSummary,
+                            builder: (context, snapshot) {
+                              final avatar = snapshot.data?.avatar;
+                              return CircleAvatar(
+                                radius: 16,
+                                backgroundImage: avatar == null
+                                    ? null
+                                    : NetworkImage(avatar),
+                                child: avatar == null
+                                    ? const Icon(Icons.person, size: 18)
+                                    : null,
+                              );
+                            },
                           ),
                         ),
                     ],
@@ -1207,6 +1257,7 @@ class _AppNavigationPanel extends StatelessWidget {
     required this.onSignOut,
     required this.closeDrawer,
     required this.onOpenOwnProfile,
+    required this.ownSummary,
   });
 
   final TeamZoneProfile profile;
@@ -1223,6 +1274,7 @@ class _AppNavigationPanel extends StatelessWidget {
   final VoidCallback onTeamRequestsChanged;
   final Future<void> Function() onSignOut;
   final VoidCallback onOpenOwnProfile;
+  final Future<_OwnSummary> ownSummary;
   // Null on tablet/desktop, where this panel is a permanent sidebar rather
   // than a dismissible drawer. Closes via the Scaffold's own ScaffoldState
   // (see the GlobalKey in _ProductShellState), not Navigator.pop: a
@@ -1292,17 +1344,33 @@ class _AppNavigationPanel extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Column(
                   children: [
-                    const CircleAvatar(
-                      radius: 36,
-                      child: Icon(Icons.person, size: 40),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      profile.displayName.isEmpty
-                          ? strings.signOut
-                          : profile.displayName,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleMedium,
+                    FutureBuilder<_OwnSummary>(
+                      future: ownSummary,
+                      builder: (context, snapshot) {
+                        final avatar = snapshot.data?.avatar;
+                        final name = snapshot.data?.name ?? profile.displayName;
+                        return Column(
+                          children: [
+                            CircleAvatar(
+                              key: const Key('drawer-own-avatar'),
+                              radius: 36,
+                              backgroundImage: avatar == null
+                                  ? null
+                                  : NetworkImage(avatar),
+                              child: avatar == null
+                                  ? const Icon(Icons.person, size: 40)
+                                  : null,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              name.isEmpty ? strings.signOut : name,
+                              key: const Key('drawer-own-name'),
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ],
+                        );
+                      },
                     ),
                     Text(
                       _contextRolesLabel(strings, contextValue),
@@ -1514,3 +1582,5 @@ String _contextRolesLabel(AppStrings strings, TeamZoneContext context) {
       if (titles.isEmpty || role != 'leader') strings.domainValue(role),
   ].join(' · ');
 }
+
+typedef _OwnSummary = ({String? name, String? avatar});

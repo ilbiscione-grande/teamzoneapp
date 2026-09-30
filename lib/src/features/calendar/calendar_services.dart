@@ -42,6 +42,12 @@ abstract interface class CalendarServices {
     required String clubId,
     required String teamId,
   });
+
+  /// Saved places as facility/pitch/surface combinations.
+  Future<List<SavedEventPlace>> listSavedPlaces({
+    required String clubId,
+    required String teamId,
+  });
   Future<SquadDetails> getEventSquad(String eventId);
   Future<int> setEventCallupVisibility({
     required String eventId,
@@ -178,6 +184,14 @@ class UnconfiguredCalendarServices implements CalendarServices {
     required String clubId,
     required String teamId,
   }) async => const [];
+  @override
+  Future<List<SavedEventPlace>> listSavedPlaces({
+    required String clubId,
+    required String teamId,
+  }) async => [
+    for (final name in await listSavedLocations(clubId: clubId, teamId: teamId))
+      SavedEventPlace(name: name),
+  ];
   @override
   Future<SquadDetails> getEventSquad(String eventId) => Future.error(_error);
   @override
@@ -445,6 +459,37 @@ class SupabaseCalendarServices implements CalendarServices {
   }
 
   @override
+  Future<List<SavedEventPlace>> listSavedPlaces({
+    required String clubId,
+    required String teamId,
+  }) async {
+    try {
+      final value = await _client
+          .schema('api')
+          .rpc<Object?>(
+            'list_saved_event_places',
+            params: {'target_club_id': clubId, 'target_team_id': teamId},
+          );
+      if (value is! List) {
+        throw const FormatException('Saved places response is invalid.');
+      }
+      return value
+          .whereType<Map<String, dynamic>>()
+          .map(SavedEventPlace.fromJson)
+          .toList(growable: false);
+    } catch (_) {
+      // Before the place migration only facility names exist.
+      return [
+        for (final name in await listSavedLocations(
+          clubId: clubId,
+          teamId: teamId,
+        ))
+          SavedEventPlace(name: name),
+      ];
+    }
+  }
+
+  @override
   Future<SquadDetails> getEventSquad(String eventId) async {
     final value = await _client
         .schema('api')
@@ -654,6 +699,8 @@ class SupabaseCalendarServices implements CalendarServices {
               'match_notes': input.matchNotes,
               'meeting_purpose': input.meetingPurpose,
               'meeting_agenda': input.meetingAgenda,
+              'location_pitch': input.locationPitch,
+              'location_surface': input.locationSurface,
             },
             'idempotency_key': idempotencyKey,
           },

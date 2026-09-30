@@ -98,6 +98,8 @@ class _ProfileSettingsSurface extends StatefulWidget {
     required this.legal,
     required this.editorial,
     required this.calendarPreferences,
+    required this.profileServices,
+    this.onOwnProfileChanged,
   });
 
   final List<TeamZoneContext> contexts;
@@ -106,6 +108,8 @@ class _ProfileSettingsSurface extends StatefulWidget {
   final LegalServices legal;
   final EditorialServices editorial;
   final CalendarPreferences calendarPreferences;
+  final ProfileServices profileServices;
+  final VoidCallback? onOwnProfileChanged;
 
   @override
   State<_ProfileSettingsSurface> createState() =>
@@ -484,6 +488,18 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
   Widget _buildProfileTab(BuildContext context, AppStrings strings) => ListView(
     padding: const EdgeInsets.all(16),
     children: [
+      Text(
+        strings.feature('Mina uppgifter'),
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      const SizedBox(height: 8),
+      _MyProfileCard(
+        profile: widget.profileServices,
+        onSaved: widget.onOwnProfileChanged,
+      ),
+      const SizedBox(height: 24),
+      const Divider(),
+      const SizedBox(height: 16),
       Text(
         strings.feature('Villkor och integritet'),
         style: Theme.of(context).textTheme.titleMedium,

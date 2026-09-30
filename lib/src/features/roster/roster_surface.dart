@@ -9,6 +9,7 @@ class _RosterSurface extends StatefulWidget {
     required this.onTeamCreated,
     this.initialTab,
     this.initialAction,
+    this.profileServices = const UnconfiguredProfileServices(),
   });
 
   final TeamZoneContext contextValue;
@@ -16,6 +17,7 @@ class _RosterSurface extends StatefulWidget {
   final MembershipServices membership;
   final CalendarServices calendar;
   final Future<void> Function(String teamId) onTeamCreated;
+  final ProfileServices profileServices;
   final String? initialTab;
   // Set by the swipe-up quick actions sheet's "Bjud in spelare" shortcut
   // (ProductRouteContract.teamInvite) to open the invitations/team-codes
@@ -789,6 +791,30 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                               },
                             ),
                             if (canManageClub) ...[
+                              ListTile(
+                                key: const ValueKey('manage-club-badge'),
+                                leading: const Icon(Icons.shield_outlined),
+                                title: Text(
+                                  AppStrings.of(context).feature('Klubbmärke'),
+                                ),
+                                subtitle: Text(
+                                  AppStrings.of(
+                                    context,
+                                  ).feature('Visas på klubbens medlemskort.'),
+                                ),
+                                onTap: () {
+                                  Navigator.pop(sheetContext);
+                                  showDialog<void>(
+                                    context: context,
+                                    useRootNavigator: true,
+                                    builder: (_) => _ClubBadgeDialog(
+                                      profile: widget.profileServices,
+                                      clubId: widget.contextValue.clubId,
+                                      clubName: widget.contextValue.clubName,
+                                    ),
+                                  );
+                                },
+                              ),
                               ListTile(
                                 leading: const Icon(Icons.group_add_outlined),
                                 title: Text(
@@ -3494,9 +3520,20 @@ class _RosterPersonDetailsView extends StatelessWidget {
     required this.roster,
     required this.canManage,
     required this.onRolesChanged,
+    this.contact,
+    this.onEditOwnProfile,
+    this.onEditClubContact,
+    this.onOpenMemberCard,
     this.onEdit,
   });
   final Future<RosterPersonDetails> future;
+
+  /// Contact details and picture URL for the person.
+  final Future<(PersonContact, String?)>? contact;
+  final VoidCallback? onEditOwnProfile;
+  final void Function(RosterPersonDetails person)? onOpenMemberCard;
+  final void Function(RosterPersonDetails person, PersonContact current)?
+  onEditClubContact;
 
   /// The team's roles, loaded once and shared by the role, title and
   /// permission tiles.
@@ -3548,9 +3585,16 @@ class _RosterPersonDetailsView extends StatelessWidget {
       return ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          CircleAvatar(
-            radius: 34,
-            child: Text(_initialsOf(person.displayName)),
+          Center(
+            child: FutureBuilder<(PersonContact, String?)>(
+              future: contact,
+              builder: (context, snapshot) => _ProfileAvatar(
+                key: const ValueKey('person-profile-avatar'),
+                name: person.displayName,
+                url: snapshot.data?.$2,
+                radius: 34,
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           Text(
@@ -3576,6 +3620,17 @@ class _RosterPersonDetailsView extends StatelessWidget {
               );
             },
           ),
+          if (onOpenMemberCard != null) ...[
+            const SizedBox(height: 12),
+            Center(
+              child: FilledButton.tonalIcon(
+                key: const ValueKey('open-member-card'),
+                onPressed: () => onOpenMemberCard!(person),
+                icon: const Icon(Icons.badge_outlined),
+                label: Text(strings.feature('Visa medlemskort')),
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
           ListTile(
             leading: const Icon(Icons.groups_outlined),
@@ -3588,6 +3643,19 @@ class _RosterPersonDetailsView extends StatelessWidget {
               title: Text(strings.feature('Födelseår')),
               subtitle: Text(person.ageClass!),
             ),
+          FutureBuilder<(PersonContact, String?)>(
+            future: contact,
+            builder: (context, snapshot) {
+              final value = snapshot.data?.$1;
+              if (value == null) return const SizedBox.shrink();
+              return _PersonContactTiles(
+                contact: value,
+                isSelf: person.isSelf,
+                onEditOwn: () => onEditOwnProfile?.call(),
+                onEditClub: () => onEditClubContact?.call(person, value),
+              );
+            },
+          ),
           _PersonRoleTile(
             contextValue: contextValue,
             roster: roster,
@@ -3736,11 +3804,17 @@ class _RosterPersonDetailsPage extends StatefulWidget {
     required this.contextValue,
     required this.roster,
     required this.onBack,
+    this.profileServices = const UnconfiguredProfileServices(),
+    this.onOwnProfileChanged,
   });
 
   final String personId;
   final TeamZoneContext contextValue;
   final RosterServices roster;
+  final ProfileServices profileServices;
+
+  /// Tells the app your own name or picture changed.
+  final VoidCallback? onOwnProfileChanged;
   final VoidCallback onBack;
 
   @override
@@ -3751,8 +3825,33 @@ class _RosterPersonDetailsPage extends StatefulWidget {
 class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
   late Future<TeamRoles> _roles = _loadRoles();
   late Future<RosterPersonDetails> _load = _reload();
+  late Future<(PersonContact, String?)> _contact = _loadContact();
   // Bumped on every reload so the profile tiles pick up the new roles.
   int _generation = 0;
+
+  /// Contact details and picture; optional, so failures just hide them.
+  Future<(PersonContact, String?)> _loadContact() async {
+    try {
+      final person = await _load;
+      final contact = await widget.profileServices
+          .getPersonContact(
+            clubId: widget.contextValue.clubId,
+            teamId: person.teamId,
+            personId: person.id,
+          )
+          .timeout(const Duration(seconds: 15));
+      String? url;
+      final avatar = contact.avatarProfileId;
+      if (avatar != null) {
+        try {
+          url = await widget.profileServices.avatarUrl(avatar);
+        } catch (_) {}
+      }
+      return (contact, url);
+    } catch (_) {
+      return (const PersonContact(), null);
+    }
+  }
 
   Future<TeamRoles> _loadRoles() {
     final teamId = widget.contextValue.teamId;
@@ -3802,6 +3901,7 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
   void _refresh() => setState(() {
     _roles = _loadRoles();
     _load = _reload();
+    _contact = _loadContact();
     _generation++;
   });
 
@@ -3843,10 +3943,39 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
               key: ValueKey(_generation),
               future: _load,
               roles: _roles,
+              contact: _contact,
               contextValue: contextValue,
               roster: widget.roster,
               canManage: canManage,
               onRolesChanged: _rolesChanged,
+              onEditOwnProfile: () async {
+                if (await _openMyProfileEditor(
+                  context,
+                  widget.profileServices,
+                )) {
+                  widget.onOwnProfileChanged?.call();
+                  _refresh();
+                }
+              },
+              onOpenMemberCard: (person) => _openMemberCard(
+                context,
+                profile: widget.profileServices,
+                clubId: contextValue.clubId,
+                teamId: person.teamId,
+                personId: person.id,
+              ),
+              onEditClubContact: (person, current) async {
+                if (await _editClubContact(
+                  context,
+                  profile: widget.profileServices,
+                  clubId: contextValue.clubId,
+                  teamId: person.teamId,
+                  personId: person.id,
+                  current: current,
+                )) {
+                  _refresh();
+                }
+              },
               onEdit: canManage
                   ? (person) async {
                       await _openRosterPersonEditor(

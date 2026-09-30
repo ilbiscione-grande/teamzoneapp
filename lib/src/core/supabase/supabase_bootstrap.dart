@@ -22,6 +22,7 @@ import 'package:teamzone_app/src/features/messaging/messaging_services.dart';
 import 'package:teamzone_app/src/features/match/match_services.dart';
 import 'package:teamzone_app/src/features/membership/membership_services.dart';
 import 'package:teamzone_app/src/features/legal/legal_services.dart';
+import 'package:teamzone_app/src/features/account/profile_services.dart';
 import 'package:teamzone_app/src/features/roster/roster_services.dart';
 
 class AppServices {
@@ -35,6 +36,7 @@ class AppServices {
     this.roster = const UnconfiguredRosterServices(),
     this.membership = const UnconfiguredMembershipServices(),
     this.legal = const UnconfiguredLegalServices(),
+    this.profile = const UnconfiguredProfileServices(),
     this.calendar = const UnconfiguredCalendarServices(),
     this.overview = const UnconfiguredOverviewServices(),
     this.messaging = const UnconfiguredMessagingServices(),
@@ -57,6 +59,7 @@ class AppServices {
   final RosterServices roster;
   final MembershipServices membership;
   final LegalServices legal;
+  final ProfileServices profile;
   final CalendarServices calendar;
   final OverviewServices overview;
   final MessagingServices messaging;
@@ -114,6 +117,7 @@ class SupabaseBootstrap {
       roster: SupabaseRosterServices(Supabase.instance.client),
       membership: SupabaseMembershipServices(Supabase.instance.client),
       legal: SupabaseLegalServices(Supabase.instance.client),
+      profile: SupabaseProfileServices(Supabase.instance.client),
       calendar: SupabaseCalendarServices(Supabase.instance.client),
       overview: SupabaseOverviewServices(Supabase.instance.client),
       messaging: SupabaseMessagingServices(Supabase.instance.client),

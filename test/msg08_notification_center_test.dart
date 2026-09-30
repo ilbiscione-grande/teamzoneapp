@@ -228,7 +228,9 @@ void main() {
   });
 
   test('dismiss waits for server confirmation and rolls back on failure', () {
-    expect(surface, contains('confirmDismiss: (_) async'));
+    // Swipe and the remove button share one server-confirmed dismiss.
+    expect(surface, contains('confirmDismiss: (_) => dismiss(item)'));
+    expect(surface, contains('Future<bool> dismiss(NotificationItem item)'));
     expect(surface, contains("await widget.messaging.setNotificationState("));
     expect(surface, contains("'dismissed'"));
     expect(surface, contains('return true;'));

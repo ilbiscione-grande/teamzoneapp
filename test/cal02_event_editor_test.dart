@@ -16,37 +16,131 @@ void main() {
     tester,
   ) async {
     final calendar = _Calendar();
-    await tester.pumpWidget(_app(calendar));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Kalender'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Nytt event'));
-    await tester.pumpAndSettle();
+    await _openEditor(tester, calendar);
+    // The form is split into clear sections, in this order.
+    expect(find.byKey(const ValueKey('event-type-training')), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Titel'), findsNothing);
     for (final label in [
-      'Beskrivning',
       'Typ av event',
-      'Start',
-      'Slut',
+      'När',
       'Samling före start (minuter)',
-      'Tidszon',
-      'Plats',
-      'Audience',
       'Återkommande serie',
+      'Plats',
     ]) {
+      await _scrollTo(tester, find.text(label));
       expect(find.text(label), findsWidgets);
     }
-    expect(find.text('Arena A'), findsOneWidget);
-    expect(find.byIcon(Icons.event_available_outlined), findsOneWidget);
-    expect(find.widgetWithText(TextFormField, 'Titel'), findsNothing);
-    await tester.ensureVisible(find.text('Arena A'));
+    await _scrollTo(tester, find.text('Arena A'));
     await tester.tap(find.text('Arena A'));
-    await tester.ensureVisible(find.text('Skapa').last);
+    for (final label in [
+      'Målgrupp',
+      'Detaljer',
+      'Beskrivning',
+      'Spara som utkast',
+      'Fler inställningar',
+    ]) {
+      await _scrollTo(tester, find.text(label));
+      expect(find.text(label), findsWidgets);
+    }
     await tester.tap(find.text('Skapa').last);
     await tester.pumpAndSettle();
     expect(calendar.created?.title, 'Träning');
+    expect(calendar.created?.state, 'scheduled');
     expect(calendar.created?.locationName, 'Arena A');
     expect(calendar.created?.audiences, containsAll(['players', 'leaders']));
     expect(calendar.created?.assemblyMinutesBefore, 15);
+  });
+
+  testWidgets('match asks for the opponent and keeps home or away', (
+    tester,
+  ) async {
+    final calendar = _Calendar();
+    await _openEditor(tester, calendar);
+    await tester.tap(find.byKey(const ValueKey('event-type-match')));
+    await tester.pumpAndSettle();
+    // Save without an opponent names the problem.
+    await tester.tap(find.text('Skapa').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Ange motståndare.'), findsOneWidget);
+    expect(calendar.created, isNull);
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Motståndare *'),
+      'Bergby FF',
+    );
+    await tester.tap(find.text('Borta'));
+    await _scrollTo(tester, find.byKey(const ValueKey('event-save-as-draft')));
+    await tester.tap(find.byKey(const ValueKey('event-save-as-draft')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Skapa').last);
+    await tester.pumpAndSettle();
+    expect(calendar.created?.type, 'match');
+    expect(calendar.created?.title, 'vs Bergby FF');
+    expect(calendar.created?.homeAway, 'away');
+    expect(calendar.created?.state, 'draft');
+    // Matches gather earlier by default.
+    expect(calendar.created?.assemblyMinutesBefore, 75);
+  });
+
+  testWidgets('saved place fills facility, pitch and surface together', (
+    tester,
+  ) async {
+    final calendar = _Calendar();
+    await _openEditor(tester, calendar);
+    final chip = find.byKey(
+      const ValueKey('saved-place-Bergby IP · Plan 3 · Konstgräs'),
+    );
+    await _scrollTo(tester, chip);
+    await tester.tap(chip);
+    await tester.pumpAndSettle();
+    String text(String key) => tester
+        .widget<TextFormField>(find.byKey(ValueKey(key)))
+        .controller!
+        .text;
+    expect(text('event-place-facility'), 'Bergby IP');
+    expect(text('event-place-pitch'), 'Plan 3');
+    expect(text('event-place-surface'), 'Konstgräs');
+    // A new surface on the same pitch is its own saved combination.
+    await tester.enterText(
+      find.byKey(const ValueKey('event-place-surface')),
+      'Naturgräs',
+    );
+    await tester.tap(find.text('Skapa').last);
+    await tester.pumpAndSettle();
+    expect(calendar.created?.locationName, 'Bergby IP');
+    expect(calendar.created?.locationPitch, 'Plan 3');
+    expect(calendar.created?.locationSurface, 'Naturgräs');
+  });
+
+  testWidgets('pitch without a facility is refused', (tester) async {
+    final calendar = _Calendar();
+    await _openEditor(tester, calendar);
+    final pitch = find.byKey(const ValueKey('event-place-pitch'));
+    await _scrollTo(tester, pitch);
+    await tester.enterText(pitch, 'Plan 2');
+    await tester.tap(find.text('Skapa').last);
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Ange anläggning för planen och underlaget.'),
+      findsOneWidget,
+    );
+    expect(calendar.created, isNull);
+  });
+
+  testWidgets('phone gets a full-screen editor without overflow', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await _openEditor(tester, _Calendar());
+    final dialog = tester.getSize(find.byType(Dialog));
+    expect(dialog.width, 390);
+    expect(find.byKey(const ValueKey('event-date')), findsOneWidget);
+    expect(find.byKey(const ValueKey('event-start-time')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('event-type-match')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
   });
 
   test('CAL-02 SQL scopes saved places and shifts series relatively', () {
@@ -96,6 +190,27 @@ void main() {
   });
 }
 
+Future<void> _openEditor(WidgetTester tester, _Calendar calendar) async {
+  await tester.pumpWidget(_app(calendar));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Kalender'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byTooltip('Nytt event'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _scrollTo(WidgetTester tester, Finder target) async {
+  await tester.scrollUntilVisible(
+    target,
+    200,
+    scrollable: find
+        .descendant(of: find.byType(Dialog), matching: find.byType(Scrollable))
+        .first,
+  );
+  await tester.ensureVisible(target.first);
+  await tester.pumpAndSettle();
+}
+
 Widget _app(_Calendar calendar) => TeamZoneApp(
   environment: const AppEnvironment(name: 'cal02'),
   locale: const Locale('sv'),
@@ -113,6 +228,14 @@ class _Calendar extends UnconfiguredCalendarServices {
     required String clubId,
     required String teamId,
   }) async => const ['Arena A'];
+  @override
+  Future<List<SavedEventPlace>> listSavedPlaces({
+    required String clubId,
+    required String teamId,
+  }) async => const [
+    SavedEventPlace(name: 'Arena A'),
+    SavedEventPlace(name: 'Bergby IP', pitch: 'Plan 3', surface: 'Konstgräs'),
+  ];
   @override
   Future<String> createEvent(
     CreateEventInput input,

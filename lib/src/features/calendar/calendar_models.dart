@@ -148,6 +148,8 @@ class EventDetails {
     required this.teams,
     required this.audiences,
     this.locationName,
+    this.locationPitch,
+    this.locationSurface,
     this.recurrenceId,
     this.archivedAt,
     this.archiveReason,
@@ -163,6 +165,9 @@ class EventDetails {
   });
   final String id, title, type, state, timezone;
   final String? description, locationName;
+
+  /// Optional pitch and surface of the place (free text).
+  final String? locationPitch, locationSurface;
   final int? assemblyMinutesBefore;
   final String? trainingTheme, trainingFocus, trainingPlan;
   final String? opponentName, homeAway, matchNotes;
@@ -206,6 +211,12 @@ class EventDetails {
           .toList(growable: false),
       locationName: location is Map<String, dynamic>
           ? location['name'] as String?
+          : null,
+      locationPitch: location is Map<String, dynamic>
+          ? location['pitch'] as String?
+          : null,
+      locationSurface: location is Map<String, dynamic>
+          ? location['surface'] as String?
           : null,
       recurrenceId: json['recurrence_id'] as String?,
       archivedAt: json['archived_at'] == null
@@ -282,6 +293,8 @@ class CreateEventInput {
     required this.timezone,
     this.description,
     this.locationName,
+    this.locationPitch,
+    this.locationSurface,
     this.state = 'scheduled',
     this.allDay = false,
     this.audiences = const ['players', 'leaders'],
@@ -300,6 +313,7 @@ class CreateEventInput {
   });
   final String clubId, teamId, title, type, state, timezone;
   final String? description, locationName, recurrenceFrequency;
+  final String? locationPitch, locationSurface;
   final DateTime startsAt, endsAt;
   final bool allDay;
   final List<String> audiences;
@@ -308,6 +322,27 @@ class CreateEventInput {
   final String? trainingTheme, trainingFocus, trainingPlan;
   final String? opponentName, homeAway, matchNotes;
   final String? meetingPurpose, meetingAgenda;
+}
+
+/// A place the club has used: facility, optional pitch and surface. Picked
+/// again as a whole.
+class SavedEventPlace {
+  const SavedEventPlace({required this.name, this.pitch, this.surface});
+  final String name;
+  final String? pitch, surface;
+
+  String get label => [
+    name,
+    pitch,
+    surface,
+  ].whereType<String>().where((part) => part.trim().isNotEmpty).join(' · ');
+
+  factory SavedEventPlace.fromJson(Map<String, dynamic> json) =>
+      SavedEventPlace(
+        name: json['name'] as String,
+        pitch: json['pitch'] as String?,
+        surface: json['surface'] as String?,
+      );
 }
 
 class SquadMemberView {
