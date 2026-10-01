@@ -26,6 +26,13 @@ abstract interface class ProfileServices {
 
   /// A short-lived address of a profile's picture, or null without one.
   Future<String?> avatarUrl(String profileId);
+
+  /// Short-lived picture addresses of the team's current members, by club
+  /// person id; members without a picture are left out.
+  Future<Map<String, String>> teamAvatarUrls({
+    required String clubId,
+    required String teamId,
+  });
   Future<PersonContact> getPersonContact({
     required String clubId,
     required String teamId,
@@ -126,6 +133,11 @@ class UnconfiguredProfileServices implements ProfileServices {
   }) => _fail();
   @override
   Future<String?> avatarUrl(String profileId) async => null;
+  @override
+  Future<Map<String, String>> teamAvatarUrls({
+    required String clubId,
+    required String teamId,
+  }) async => const {};
   @override
   Future<PersonContact> getPersonContact({
     required String clubId,
@@ -303,6 +315,36 @@ class SupabaseProfileServices implements ProfileServices {
           fileOptions: FileOptions(contentType: mimeType, upsert: false),
         );
     return value['avatar_id'] as String;
+  }
+
+  @override
+  Future<Map<String, String>> teamAvatarUrls({
+    required String clubId,
+    required String teamId,
+  }) async {
+    final value = await _rpc('list_team_avatars', {
+      'target_club_id': clubId,
+      'target_team_id': teamId,
+    });
+    final keyByPerson = <String, String>{
+      if (value is List)
+        for (final item in value.whereType<Map<String, dynamic>>())
+          if (item['person_id'] is String && item['object_key'] is String)
+            item['person_id'] as String: item['object_key'] as String,
+    };
+    if (keyByPerson.isEmpty) return const {};
+    final signed = await _client.storage
+        .from('profile-avatars')
+        .createSignedUrlsResult(keyByPerson.values.toSet().toList(), 3600);
+    // A picture that cannot be signed is left out; the list shows initials.
+    final urlByKey = {
+      for (final item in signed.whereType<SignedUrlSuccess>())
+        item.path: item.signedUrl,
+    };
+    return {
+      for (final entry in keyByPerson.entries)
+        entry.key: ?urlByKey[entry.value],
+    };
   }
 
   @override

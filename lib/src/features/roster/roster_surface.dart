@@ -34,6 +34,20 @@ class _RosterSurfaceState extends State<_RosterSurface> {
   List<RosterPersonSummary>? _syncedPeople;
   late int _selectedTab = _teamTabIndex(widget.initialTab);
   late Future<TeamRoles> _teamRoles = _loadTeamRoles();
+  late Future<Map<String, String>> _avatars = _loadAvatars();
+
+  /// Members' profile pictures; the list falls back to initials without.
+  Future<Map<String, String>> _loadAvatars() async {
+    final teamId = widget.contextValue.teamId;
+    if (teamId == null) return const {};
+    try {
+      return await widget.profileServices
+          .teamAvatarUrls(clubId: widget.contextValue.clubId, teamId: teamId)
+          .timeout(const Duration(seconds: 15));
+    } catch (_) {
+      return const {};
+    }
+  }
 
   Future<TeamRoles> _loadTeamRoles() {
     final teamId = widget.contextValue.teamId;
@@ -55,6 +69,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     if (!mounted) return;
     setState(() {
       _teamRoles = _loadTeamRoles();
+      _avatars = _loadAvatars();
     });
   }
 
@@ -242,6 +257,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     if (oldWidget.contextValue.id != widget.contextValue.id) {
       _data.replaceScope(scopeKey: widget.contextValue.id, loader: _reload);
       _teamRoles = _loadTeamRoles();
+      _avatars = _loadAvatars();
     }
     if (oldWidget.initialTab != widget.initialTab) {
       _selectedTab = _teamTabIndex(widget.initialTab);
@@ -472,13 +488,23 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                           ),
                         for (final person in people) ...[
                           ListTile(
-                            leading: const CircleAvatar(
-                              child: Icon(Icons.person),
+                            key: ValueKey('roster-player-${person.id}'),
+                            leading: _RosterAvatar(
+                              avatars: _avatars,
+                              personId: person.id,
+                              name: person.displayName,
                             ),
                             title: Text(person.displayName),
                             subtitle: Text(
                               [
-                                person.ageClass,
+                                _mainPositionLabel(
+                                  strings,
+                                  rolesSnapshot.data?.roles
+                                      .where(
+                                        (role) => role.personId == person.id,
+                                      )
+                                      .firstOrNull,
+                                ),
                                 person.teamName,
                               ].whereType<String>().join(' · '),
                             ),
@@ -506,8 +532,10 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                           for (final (leader, roles) in leaders) ...[
                             ListTile(
                               key: ValueKey('roster-leader-${leader.personId}'),
-                              leading: CircleAvatar(
-                                child: Text(_initialsOf(leader.name)),
+                              leading: _RosterAvatar(
+                                avatars: _avatars,
+                                personId: leader.personId,
+                                name: leader.name,
                               ),
                               title: Text(
                                 leader.isSelf
@@ -3214,6 +3242,8 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
           positions: positions,
           customTitles: const [],
           customPositions: const [],
+          // A single position is the main one.
+          mainPosition: positions.length == 1 ? positions.single : null,
           expectedRevision: 0,
           idempotencyKey: _newUuid(),
         );
@@ -6169,4 +6199,29 @@ class _MembershipReviewSheetState extends State<_MembershipReviewSheet> {
       ),
     );
   }
+}
+
+/// A squad member's profile picture, or their initials without one.
+class _RosterAvatar extends StatelessWidget {
+  const _RosterAvatar({
+    required this.avatars,
+    required this.personId,
+    required this.name,
+  });
+  final Future<Map<String, String>> avatars;
+  final String personId, name;
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Map<String, String>>(
+    future: avatars,
+    builder: (context, snapshot) {
+      final url = snapshot.data?[personId];
+      return CircleAvatar(
+        key: ValueKey('roster-avatar-$personId'),
+        foregroundImage: url == null ? null : NetworkImage(url),
+        onForegroundImageError: url == null ? null : (_, _) {},
+        child: Text(_initialsOf(name)),
+      );
+    },
+  );
 }

@@ -1601,6 +1601,10 @@ class AppStrings {
     'Redigera medlem': 'Edit member',
     'Klubbens färger': 'Club colours',
     'Klubbinställningar': 'Club settings',
+    'Huvudposition': 'Main position',
+    'huvudposition': 'main position',
+    'Övriga valda positioner är alternativa positioner.':
+        'The other chosen positions are alternative positions.',
     'Ladda upp klubbmärke': 'Upload club badge',
     'Byt klubbmärke': 'Change club badge',
     'Klubb': 'Club',

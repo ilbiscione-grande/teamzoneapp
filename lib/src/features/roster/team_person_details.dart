@@ -70,13 +70,22 @@ String _titlesSummary(AppStrings strings, TeamRole role) => [
   ...role.customTitles,
 ].join(' · ');
 
-/// "Mittback · Libero" — a general position is left out when one of its
-/// detailed positions is also chosen, since it is implied.
-String _positionsSummary(
-  AppStrings strings,
-  TeamRole role,
-  List<SportPosition> catalog,
-) {
+/// A catalog key or own position label as shown.
+String _anyPositionLabel(AppStrings strings, String position) =>
+    _playingPositionLabels.containsKey(position)
+    ? _positionLabel(strings, position)
+    : position;
+
+/// The main position as shown in the squad list, or null without one.
+String? _mainPositionLabel(AppStrings strings, TeamRole? role) {
+  final main = role?.mainPosition;
+  return main == null ? null : _anyPositionLabel(strings, main);
+}
+
+/// Positions in catalog order and then own labels; a general position is
+/// left out when one of its detailed positions is also chosen, since it is
+/// implied.
+List<String> _orderedPositions(TeamRole role, List<SportPosition> catalog) {
   final order = {for (var i = 0; i < catalog.length; i++) catalog[i].key: i};
   final implied = {
     for (final entry in catalog)
@@ -84,9 +93,27 @@ String _positionsSummary(
   };
   final keys = role.positions.where((key) => !implied.contains(key)).toList()
     ..sort((a, b) => (order[a] ?? 99).compareTo(order[b] ?? 99));
+  return [...keys, ...role.customPositions];
+}
+
+/// "Centralanfallare (huvudposition) · Central mittfältare · Vänsterytter",
+/// or "Mittback · Libero" without a main position.
+String _positionsSummary(
+  AppStrings strings,
+  TeamRole role,
+  List<SportPosition> catalog,
+) {
+  final main = role.mainPosition;
+  final others = _orderedPositions(
+    role,
+    catalog,
+  ).where((position) => position != main).toList();
+  // The marker only matters next to alternatives.
+  if (main != null && others.isEmpty) return _anyPositionLabel(strings, main);
   return [
-    ...keys.map((key) => _positionLabel(strings, key)),
-    ...role.customPositions,
+    if (main != null)
+      '${_anyPositionLabel(strings, main)} (${strings.feature('huvudposition')})',
+    ...others.map((position) => _anyPositionLabel(strings, position)),
   ].join(' · ');
 }
 
@@ -151,6 +178,7 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
   late Set<String> _positions = _person.positions.toSet();
   late List<String> _customTitles = [..._person.customTitles];
   late List<String> _customPositions = [..._person.customPositions];
+  late String? _main = _person.mainPosition;
   late int _revision = _person.detailsRevision;
   final _customTitle = TextEditingController();
   final _customPosition = TextEditingController();
@@ -177,9 +205,29 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
     if (_busy || _stale) return;
     setState(() {
       change();
+      // The main position must stay one of the chosen positions; the first
+      // chosen position becomes the main one until another is picked.
+      final chosen = _chosenPositions;
+      if (_main != null && !chosen.contains(_main)) _main = null;
+      if (_main == null && chosen.isNotEmpty) _main = chosen.first;
       _key = _newUuid();
       _error = null;
     });
+  }
+
+  /// Chosen positions in catalog order, then own labels. A general position
+  /// implied by a chosen detailed one is left out, as in the summary.
+  List<String> get _chosenPositions {
+    final implied = {
+      for (final entry in _data.positionCatalog)
+        if (!entry.isGeneral && _positions.contains(entry.key)) entry.parent,
+    };
+    return [
+      for (final entry in _data.positionCatalog)
+        if (_positions.contains(entry.key) && !implied.contains(entry.key))
+          entry.key,
+      ..._customPositions,
+    ];
   }
 
   void _addCustom(TextEditingController controller, List<String> target) {
@@ -211,6 +259,7 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
           _positions = person.positions.toSet();
           _customTitles = [...person.customTitles];
           _customPositions = [...person.customPositions];
+          _main = person.mainPosition;
           _revision = person.detailsRevision;
           _key = _newUuid();
           _error = null;
@@ -247,6 +296,7 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
             positions: _isPlayer ? (_positions.toList()..sort()) : const [],
             customTitles: _isLeader ? _customTitles : const [],
             customPositions: _isPlayer ? _customPositions : const [],
+            mainPosition: _isPlayer ? _main : null,
             expectedRevision: _revision,
             idempotencyKey: _key,
           )
@@ -431,6 +481,35 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
                     _customPosition,
                     strings.feature('Egen position'),
                   ),
+                  if (_chosenPositions.isNotEmpty) ...[
+                    _heading(strings.feature('Huvudposition')),
+                    Text(
+                      strings.feature(
+                        'Övriga valda positioner är alternativa positioner.',
+                      ),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      key: const ValueKey('main-position'),
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        for (final position in _chosenPositions)
+                          ChoiceChip(
+                            key: ValueKey('main-position-$position'),
+                            avatar: _main == position
+                                ? const Icon(Icons.star, size: 18)
+                                : null,
+                            label: Text(_anyPositionLabel(strings, position)),
+                            selected: _main == position,
+                            onSelected: _busy || _stale
+                                ? null
+                                : (_) => _changed(() => _main = position),
+                          ),
+                      ],
+                    ),
+                  ],
                 ],
                 if (_error != null)
                   Padding(

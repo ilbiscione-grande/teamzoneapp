@@ -653,7 +653,7 @@ class _Identity implements IdentityServices {
   Future<TeamZoneProfile> getProfile() async =>
       const TeamZoneProfile(id: 'profile', displayName: 'Ada', locale: 'sv');
   @override
-  Future<List<TeamZoneContext>> getContexts() async => [
+  Future<List<TeamZoneContext>> getContexts() async => mergeTeamContexts([
     TeamZoneContext(
       id: 'context',
       clubId: 'club',
@@ -661,14 +661,21 @@ class _Identity implements IdentityServices {
       teamId: 'team',
       teamName: 'F2012',
       rolePackage: 'leader',
-      capabilities: {
-        'team.read',
-        'team.roster.view',
-        'team.roster.manage',
-        if (clubAdmin) 'club.memberships.manage',
-      },
+      capabilities: {'team.read', 'team.roster.view', 'team.roster.manage'},
     ),
-  ];
+    // A club administrator's club-wide role in the same team, merged into
+    // the leader context like a real account with both assignments.
+    if (clubAdmin)
+      const TeamZoneContext(
+        id: 'context-admin',
+        clubId: 'club',
+        clubName: 'Testklubben',
+        teamId: 'team',
+        teamName: 'F2012',
+        rolePackage: 'club_functionary',
+        capabilities: {'team.read', 'club.memberships.manage'},
+      ),
+  ]);
   @override
   Future<void> signIn({
     required String email,

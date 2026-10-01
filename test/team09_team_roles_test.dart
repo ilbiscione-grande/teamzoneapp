@@ -53,9 +53,80 @@ void main() {
     expect(roster.roles.single.positions, ['centre_back', 'defender']);
     expect(roster.roles.single.customPositions, ['Libero']);
     expect(roster.roles.single.titles, isEmpty);
-    // The general position is implied by the detailed one.
-    expect(find.text('Mittback · Libero'), findsOneWidget);
+    // The general position is implied by the detailed one, and the first
+    // chosen position became the main one.
+    expect(roster.savedMainPosition, 'centre_back');
+    expect(find.text('Mittback (huvudposition) · Libero'), findsOneWidget);
     expect(roster.calls, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('main position with alternatives shows in the squad list', (
+    tester,
+  ) async {
+    final roster = _Roster(
+      roles: [
+        const TeamRole(personId: 'ada', name: 'Ada Spelare', role: 'player'),
+      ],
+      people: [
+        const RosterPersonSummary(
+          id: 'ada',
+          displayName: 'Ada Spelare',
+          ageClass: 'F2012',
+          teamId: 'team',
+          teamName: 'F2012',
+          assignmentState: 'active',
+          safeguardingRequired: false,
+        ),
+      ],
+    );
+    await _openRoster(tester, roster);
+    await tester.tap(find.text('Ada Spelare'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('person-team-details')),
+    );
+    await tester.tap(find.byKey(const ValueKey('person-team-details')));
+    await tester.pumpAndSettle();
+    for (final label in [
+      'Centralanfallare',
+      'Central mittfältare',
+      'Vänsterytter',
+    ]) {
+      await tester.ensureVisible(find.widgetWithText(FilterChip, label));
+      await tester.tap(find.widgetWithText(FilterChip, label));
+      await tester.pump();
+    }
+    // The first chosen becomes the main position; another can be picked.
+    final striker = find.byKey(const ValueKey('main-position-striker'));
+    final midfield = find.byKey(
+      const ValueKey('main-position-central_midfielder'),
+    );
+    await tester.ensureVisible(striker);
+    expect(tester.widget<ChoiceChip>(striker).selected, isTrue);
+    await tester.tap(midfield);
+    await tester.pump();
+    expect(tester.widget<ChoiceChip>(midfield).selected, isTrue);
+    await tester.tap(striker);
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('save-team-person-details')));
+    await tester.pumpAndSettle();
+    expect(roster.savedMainPosition, 'striker');
+    expect(
+      find.text(
+        'Centralanfallare (huvudposition) · Central mittfältare · Vänsterytter',
+      ),
+      findsOneWidget,
+    );
+    // Back in the squad list the main position replaces the age class.
+    await tester.tap(find.byTooltip('Tillbaka till truppen'));
+    await tester.pumpAndSettle();
+    final row = find.byKey(const ValueKey('roster-player-ada'));
+    expect(
+      find.descendant(of: row, matching: find.text('Centralanfallare · F2012')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('roster-avatar-ada')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -858,6 +929,7 @@ Future<void> _openRoster(
 
 class _Roster extends UnconfiguredRosterServices {
   final detailKeys = <String>[];
+  String? savedMainPosition;
   List<String> grantable = const [];
   final permissionCalls = <(String, List<String>, List<String>, String?)>[];
 
@@ -925,10 +997,12 @@ class _Roster extends UnconfiguredRosterServices {
     required List<String> positions,
     required List<String> customTitles,
     required List<String> customPositions,
+    String? mainPosition,
     required int expectedRevision,
     required String idempotencyKey,
   }) async {
     detailKeys.add(idempotencyKey);
+    savedMainPosition = mainPosition;
     if (failWith != null) throw failWith!;
     roles = [
       for (final r in roles)
@@ -944,6 +1018,7 @@ class _Roster extends UnconfiguredRosterServices {
             positions: positions,
             customTitles: customTitles,
             customPositions: customPositions,
+            mainPosition: mainPosition,
             detailsRevision: expectedRevision + 1,
           ),
     ];
@@ -970,6 +1045,12 @@ class _Roster extends UnconfiguredRosterServices {
       SportPosition(key: 'centre_back', level: 'detailed', parent: 'defender'),
       SportPosition(key: 'left_back', level: 'detailed', parent: 'defender'),
       SportPosition(key: 'striker', level: 'detailed', parent: 'forward'),
+      SportPosition(
+        key: 'central_midfielder',
+        level: 'detailed',
+        parent: 'midfielder',
+      ),
+      SportPosition(key: 'left_winger', level: 'detailed', parent: 'forward'),
     ],
     'handball': [
       SportPosition(key: 'goalkeeper', level: 'general'),

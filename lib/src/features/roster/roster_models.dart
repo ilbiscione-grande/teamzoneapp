@@ -513,6 +513,7 @@ class TeamRole {
     this.positions = const [],
     this.customTitles = const [],
     this.customPositions = const [],
+    this.mainPosition,
     this.detailsRevision = 0,
     this.permissions,
     this.permissionTemplate,
@@ -525,6 +526,10 @@ class TeamRole {
   /// team sport's catalog and belong to player roles. The custom lists hold
   /// the team's own labels.
   final List<String> titles, positions, customTitles, customPositions;
+
+  /// The main playing position: one of [positions] or [customPositions];
+  /// the others are alternatives.
+  final String? mainPosition;
   final int detailsRevision;
 
   /// A leader's panel capabilities in this team; only sent to viewers who
@@ -541,6 +546,7 @@ class TeamRole {
     positions: _strings(json['positions']),
     customTitles: _strings(json['custom_titles']),
     customPositions: _strings(json['custom_positions']),
+    mainPosition: json['main_position'] as String?,
     detailsRevision: (json['details_revision'] as num?)?.toInt() ?? 0,
     permissions: json['permissions'] is List
         ? _strings(json['permissions'])
