@@ -15,7 +15,7 @@ class _TeamEventVisibilitySurface extends StatefulWidget {
 
 class _TeamEventVisibilitySurfaceState
     extends State<_TeamEventVisibilitySurface> {
-  bool? _results, _training;
+  bool? _results, _training, _matches;
   int _revision = 0;
   bool _busy = false;
   String? _error;
@@ -32,6 +32,7 @@ class _TeamEventVisibilitySurfaceState
       setState(() {
         _results = data['show_results'] == true;
         _training = data['show_training'] == true;
+        _matches = data['show_matches'] == true;
         _revision = (data['revision'] as num).toInt();
         _error = null;
       });
@@ -54,6 +55,7 @@ class _TeamEventVisibilitySurfaceState
         teamId: widget.teamId,
         showResults: _results!,
         showTraining: _training!,
+        showMatches: _matches!,
         expectedRevision: _revision,
       );
       await _load();
@@ -90,6 +92,14 @@ class _TeamEventVisibilitySurfaceState
           'Gäller hela laget, både befintliga och nya händelser. Informationen kan läsas utan inloggning när klubbens och lagets sidor är publicerade.',
         ),
         if (_results != null) ...[
+          SwitchListTile(
+            title: const Text('Visa matcher'),
+            subtitle: const Text(
+              'Alla lagets matcher visas, både kommande och spelade, med motståndare och tid. Platsen visas bara om den publiceras för en enskild match. En match som görs privat i redaktionen döljs.',
+            ),
+            value: _matches!,
+            onChanged: _busy ? null : (v) => setState(() => _matches = v),
+          ),
           SwitchListTile(
             title: const Text('Visa matchresultat'),
             subtitle: const Text(

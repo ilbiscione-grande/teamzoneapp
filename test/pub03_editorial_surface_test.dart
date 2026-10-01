@@ -31,7 +31,7 @@ void main() {
     await tester.tap(find.text('Lag'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.text('Publika matchresultat och träningstider'),
+      find.text('Publika matcher, resultat och träningstider'),
       250,
       scrollable: find
           .descendant(
@@ -40,15 +40,22 @@ void main() {
           )
           .first,
     );
-    await tester.tap(find.text('Publika matchresultat och träningstider'));
+    await tester.tap(find.text('Publika matcher, resultat och träningstider'));
     await tester.pumpAndSettle();
     expect(find.text('Laginställningar · F2012'), findsOneWidget);
+    await tester.tap(find.text('Visa matcher'));
     await tester.tap(find.text('Visa matchresultat'));
+    await tester.scrollUntilVisible(
+      find.text('Spara laginställningar'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.tap(find.text('Visa träningstider'));
     await tester.tap(find.text('Spara laginställningar'));
     await tester.pumpAndSettle();
     expect(editorial.teamResults, isTrue);
     expect(editorial.teamTraining, isTrue);
+    expect(editorial.teamMatches, isTrue);
     expect(editorial.teamRevision, 1);
     expect(
       find.text('Lagets publiceringsinställningar är sparade.'),
@@ -380,12 +387,13 @@ class _Editorial extends UnconfiguredEditorialServices {
   bool eventPublished = false;
   bool resultPublished = false;
   int managementLoads = 0;
-  bool teamResults = false, teamTraining = false;
+  bool teamResults = false, teamTraining = false, teamMatches = false;
   int teamRevision = 0;
   @override
   Future<Map<String, dynamic>> getTeamEventVisibility(String teamId) async => {
     'show_results': teamResults,
     'show_training': teamTraining,
+    'show_matches': teamMatches,
     'revision': teamRevision,
   };
   @override
@@ -393,12 +401,14 @@ class _Editorial extends UnconfiguredEditorialServices {
     required String teamId,
     required bool showResults,
     required bool showTraining,
+    required bool showMatches,
     required int expectedRevision,
   }) async {
     expect(teamId, 'team');
     expect(expectedRevision, teamRevision);
     teamResults = showResults;
     teamTraining = showTraining;
+    teamMatches = showMatches;
     teamRevision++;
   }
 

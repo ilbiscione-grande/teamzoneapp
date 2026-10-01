@@ -8,6 +8,7 @@ abstract interface class EditorialServices {
     required String teamId,
     required bool showResults,
     required bool showTraining,
+    required bool showMatches,
     required int expectedRevision,
   });
   Future<Map<String, dynamic>> getPublicationSelfService(String clubId);
@@ -84,6 +85,7 @@ class UnconfiguredEditorialServices implements EditorialServices {
     required String teamId,
     required bool showResults,
     required bool showTraining,
+    required bool showMatches,
     required int expectedRevision,
   }) => _fail();
   @override
@@ -182,16 +184,18 @@ class SupabaseEditorialServices implements EditorialServices {
     required String teamId,
     required bool showResults,
     required bool showTraining,
+    required bool showMatches,
     required int expectedRevision,
   }) async {
     await _client
         .schema('api')
         .rpc(
-          'set_team_event_visibility',
+          'set_team_event_visibility_v2',
           params: {
             'team_id': teamId,
             'show_results': showResults,
             'show_training': showTraining,
+            'show_matches': showMatches,
             'expected_revision': expectedRevision,
           },
         );

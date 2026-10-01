@@ -614,7 +614,7 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
         ListTile(
           leading: const Icon(Icons.public),
           title: Text(item.teamName ?? item.clubName),
-          subtitle: const Text('Publika matchresultat och träningstider'),
+          subtitle: const Text('Publika matcher, resultat och träningstider'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(
