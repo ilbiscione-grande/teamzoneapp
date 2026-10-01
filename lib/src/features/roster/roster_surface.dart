@@ -816,6 +816,32 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                                 },
                               ),
                               ListTile(
+                                key: const ValueKey('club-colors'),
+                                leading: const Icon(Icons.palette_outlined),
+                                title: Text(
+                                  AppStrings.of(
+                                    context,
+                                  ).feature('Klubbens färger'),
+                                ),
+                                subtitle: Text(
+                                  AppStrings.of(context).feature(
+                                    'Färger på klubbens publika sidor.',
+                                  ),
+                                ),
+                                onTap: () {
+                                  Navigator.pop(sheetContext);
+                                  showDialog<bool>(
+                                    context: context,
+                                    useRootNavigator: true,
+                                    builder: (_) => _ClubColorsDialog(
+                                      profile: widget.profileServices,
+                                      clubId: widget.contextValue.clubId,
+                                      clubName: widget.contextValue.clubName,
+                                    ),
+                                  );
+                                },
+                              ),
+                              ListTile(
                                 leading: const Icon(Icons.group_add_outlined),
                                 title: Text(
                                   AppStrings.of(
@@ -2870,6 +2896,8 @@ Future<void> _openRosterPersonEditor(
   required RosterServices roster,
   String? personId,
   required Future<void> Function() onSaved,
+  ProfileServices profileServices = const UnconfiguredProfileServices(),
+  PersonContact? contact,
 }) => Navigator.push<void>(
   context,
   MaterialPageRoute(
@@ -2881,6 +2909,8 @@ Future<void> _openRosterPersonEditor(
           roster: roster,
           personId: personId,
           onSaved: onSaved,
+          profileServices: profileServices,
+          contact: contact,
         ),
       ),
     ),
@@ -2893,11 +2923,15 @@ class _RosterPersonEditor extends StatelessWidget {
     required this.roster,
     required this.onSaved,
     this.personId,
+    this.profileServices = const UnconfiguredProfileServices(),
+    this.contact,
   });
   final TeamZoneContext contextValue;
   final RosterServices roster;
   final String? personId;
   final Future<void> Function() onSaved;
+  final ProfileServices profileServices;
+  final PersonContact? contact;
 
   @override
   Widget build(BuildContext context) {
@@ -2939,6 +2973,8 @@ class _RosterPersonEditor extends StatelessWidget {
           roster: roster,
           initial: snapshot.data,
           onSaved: onSaved,
+          profileServices: profileServices,
+          contact: contact,
         );
       },
     );
@@ -2951,11 +2987,18 @@ class _RosterPersonFormSheet extends StatefulWidget {
     required this.roster,
     required this.onSaved,
     this.initial,
+    this.profileServices = const UnconfiguredProfileServices(),
+    this.contact,
   });
   final TeamZoneContext contextValue;
   final RosterServices roster;
   final RosterPersonDetails? initial;
   final Future<void> Function() onSaved;
+  final ProfileServices profileServices;
+
+  /// The person's contact details; the club fills them in for members
+  /// without an account.
+  final PersonContact? contact;
 
   @override
   State<_RosterPersonFormSheet> createState() => _RosterPersonFormSheetState();
@@ -2974,7 +3017,30 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
   late bool _guardianRequired = widget.initial?.safeguardingRequired ?? false;
   late bool _representationAvailable =
       widget.initial?.representationAvailable ?? false;
+  late final _email = TextEditingController(text: widget.contact?.contactEmail);
+  late final _phone = TextEditingController(text: widget.contact?.phone);
+  late final _street = TextEditingController(
+    text: widget.contact?.streetAddress,
+  );
+  late final _postal = TextEditingController(text: widget.contact?.postalCode);
+  late final _city = TextEditingController(text: widget.contact?.city);
+  late final List<TextEditingController> _contactFields = [
+    _email,
+    _phone,
+    _street,
+    _postal,
+    _city,
+  ];
+  bool _contactChanged = false;
   String? _error;
+
+  bool get _editsContact =>
+      _isEditing && (widget.contact?.canEditClubContact ?? false);
+
+  void _markContactChanged() {
+    _contactChanged = true;
+    _submission.markDirty();
+  }
 
   // A new person can get their role, titles and positions right away. The
   // team's roles decide what the viewer may set and which positions exist.
@@ -3001,15 +3067,25 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
   void initState() {
     super.initState();
     _name.addListener(_submission.markDirty);
+    for (final field in _contactFields) {
+      field.addListener(_markContactChanged);
+    }
   }
 
   @override
   void dispose() {
     _name.removeListener(_submission.markDirty);
     _name.dispose();
+    for (final field in _contactFields) {
+      field.removeListener(_markContactChanged);
+      field.dispose();
+    }
     _submission.dispose();
     super.dispose();
   }
+
+  String? _trimmed(TextEditingController field) =>
+      field.text.trim().isEmpty ? null : field.text.trim();
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
@@ -3018,16 +3094,39 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
       final saved = await _submission.run(() async {
         final teamId = widget.contextValue.teamId!;
         if (_isEditing) {
-          var revision = await widget.roster.updatePerson(
-            clubId: widget.contextValue.clubId,
-            teamId: teamId,
-            personId: widget.initial!.id,
-            displayName: _name.text.trim(),
-            birthYear: _birthYear!,
-            birthDate: _birthDate,
-            expectedRevision: widget.initial!.personRevision!,
-            idempotencyKey: _newUuid(),
-          );
+          final initial = widget.initial!;
+          var revision = initial.personRevision!;
+          if (_name.text.trim() != initial.displayName ||
+              _birthYear != initial.birthYear ||
+              _birthDate != initial.birthDate) {
+            revision = await widget.roster.updatePerson(
+              clubId: widget.contextValue.clubId,
+              teamId: teamId,
+              personId: initial.id,
+              displayName: _name.text.trim(),
+              birthYear: _birthYear!,
+              birthDate: _birthDate,
+              expectedRevision: revision,
+              idempotencyKey: _newUuid(),
+            );
+          }
+          if (_editsContact && _contactChanged) {
+            await widget.profileServices.setPersonContact(
+              clubId: widget.contextValue.clubId,
+              teamId: teamId,
+              personId: initial.id,
+              contactEmail: _trimmed(_email),
+              phone: _trimmed(_phone),
+            );
+            await widget.profileServices.setPersonAddress(
+              clubId: widget.contextValue.clubId,
+              teamId: teamId,
+              personId: initial.id,
+              street: _trimmed(_street),
+              postalCode: _trimmed(_postal),
+              city: _trimmed(_city),
+            );
+          }
           if (_guardianRequired != widget.initial!.safeguardingRequired) {
             revision = await widget.roster.setGuardianRequirement(
               clubId: widget.contextValue.clubId,
@@ -3064,6 +3163,12 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
         await widget.onSaved();
       });
       if (saved && mounted) Navigator.pop(context);
+    } on ProfileException catch (error) {
+      if (mounted) {
+        setState(
+          () => _error = _profileErrorMessage(AppStrings.of(context), error),
+        );
+      }
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -3353,6 +3458,7 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
                       child: Text(strings.feature('Ta bort exakt datum')),
                     ),
                   if (!_isEditing) _newRoleSection(strings),
+                  if (_isEditing) ..._contactSection(context, strings),
                   if (_error != null) ...[
                     const SizedBox(height: 8),
                     Text(
@@ -3381,6 +3487,82 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
         ),
       ),
     );
+  }
+
+  List<Widget> _contactSection(BuildContext context, AppStrings strings) {
+    final contact = widget.contact;
+    if (contact == null || !contact.canSeeContact) return const [];
+    final heading = Padding(
+      padding: const EdgeInsets.only(top: 20, bottom: 4),
+      child: Text(
+        strings.feature('Kontaktuppgifter'),
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+    );
+    if (!_editsContact) {
+      return [
+        heading,
+        Text(
+          strings.feature(
+            'Personen har ett konto och sköter sina kontaktuppgifter själv.',
+          ),
+          key: const ValueKey('person-contact-own'),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ];
+    }
+    return [
+      heading,
+      Text(
+        strings.feature(
+          'Personen har inget konto, så klubben fyller i uppgifterna.',
+        ),
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+      const SizedBox(height: 8),
+      TextFormField(
+        key: const ValueKey('club-contact-email'),
+        controller: _email,
+        keyboardType: TextInputType.emailAddress,
+        decoration: InputDecoration(labelText: strings.feature('E-post')),
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        key: const ValueKey('club-contact-phone'),
+        controller: _phone,
+        keyboardType: TextInputType.phone,
+        decoration: InputDecoration(labelText: strings.feature('Telefon')),
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        key: const ValueKey('club-contact-street'),
+        controller: _street,
+        decoration: InputDecoration(labelText: strings.feature('Gatuadress')),
+      ),
+      const SizedBox(height: 12),
+      Row(
+        children: [
+          SizedBox(
+            width: 120,
+            child: TextFormField(
+              key: const ValueKey('club-contact-postal'),
+              controller: _postal,
+              decoration: InputDecoration(
+                labelText: strings.feature('Postnummer'),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextFormField(
+              key: const ValueKey('club-contact-city'),
+              controller: _city,
+              decoration: InputDecoration(labelText: strings.feature('Ort')),
+            ),
+          ),
+        ],
+      ),
+    ];
   }
 
   List<Widget> _personActionTiles(
@@ -3522,9 +3704,7 @@ class _RosterPersonDetailsView extends StatelessWidget {
     required this.onRolesChanged,
     this.contact,
     this.onEditOwnProfile,
-    this.onEditClubContact,
     this.onOpenMemberCard,
-    this.onEdit,
   });
   final Future<RosterPersonDetails> future;
 
@@ -3532,8 +3712,6 @@ class _RosterPersonDetailsView extends StatelessWidget {
   final Future<(PersonContact, String?)>? contact;
   final VoidCallback? onEditOwnProfile;
   final void Function(RosterPersonDetails person)? onOpenMemberCard;
-  final void Function(RosterPersonDetails person, PersonContact current)?
-  onEditClubContact;
 
   /// The team's roles, loaded once and shared by the role, title and
   /// permission tiles.
@@ -3543,7 +3721,6 @@ class _RosterPersonDetailsView extends StatelessWidget {
   final bool canManage;
   final void Function(RosterPersonDetails person, List<String> roles)
   onRolesChanged;
-  final void Function(RosterPersonDetails person)? onEdit;
 
   @override
   Widget build(BuildContext context) => FutureBuilder<RosterPersonDetails>(
@@ -3650,7 +3827,6 @@ class _RosterPersonDetailsView extends StatelessWidget {
                 contact: value,
                 isSelf: person.isSelf,
                 onEditOwn: () => onEditOwnProfile?.call(),
-                onEditClub: () => onEditClubContact?.call(person, value),
               );
             },
           ),
@@ -3685,18 +3861,6 @@ class _RosterPersonDetailsView extends StatelessWidget {
             title: Text(strings.feature('Status')),
             subtitle: Text(strings.domainValue(person.assignmentState)),
           ),
-          if (onEdit != null && person.assignmentState == 'active')
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: Text(strings.feature('Redigera profil')),
-              subtitle: Text(
-                strings.feature(
-                  'Ändra uppgifter och hantera lag- och kontoåtgärder.',
-                ),
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => onEdit!(person),
-            ),
         ],
       );
     },
@@ -3846,6 +4010,46 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
           icon: const Icon(Icons.arrow_back),
         ),
         title: Text(strings.feature('Medlemsuppgifter')),
+        actions: [
+          // Team and account actions for someone else; your own details
+          // are edited from the Medlemsinfo tab.
+          if (allowed && canManage)
+            FutureBuilder<RosterPersonDetails>(
+              future: _load,
+              builder: (context, snapshot) {
+                final person = snapshot.data;
+                if (person == null ||
+                    person.isSelf ||
+                    person.assignmentState != 'active') {
+                  return const SizedBox.shrink();
+                }
+                return IconButton(
+                  key: const ValueKey('edit-member'),
+                  tooltip: strings.feature('Redigera medlem'),
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () async {
+                    PersonContact? contact;
+                    try {
+                      contact = (await _contact).$1;
+                    } catch (_) {
+                      // Edited without contact details.
+                    }
+                    if (!context.mounted) return;
+                    await _openRosterPersonEditor(
+                      context,
+                      contextValue: contextValue,
+                      roster: widget.roster,
+                      personId: person.id,
+                      onSaved: () async {},
+                      profileServices: widget.profileServices,
+                      contact: contact,
+                    );
+                    _refresh();
+                  },
+                );
+              },
+            ),
+        ],
       ),
       body: allowed
           ? FutureBuilder<RosterPersonDetails>(
@@ -3876,30 +4080,6 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
                     teamId: person.teamId,
                     personId: person.id,
                   ),
-                  onEditClubContact: (person, current) async {
-                    if (await _editClubContact(
-                      context,
-                      profile: widget.profileServices,
-                      clubId: contextValue.clubId,
-                      teamId: person.teamId,
-                      personId: person.id,
-                      current: current,
-                    )) {
-                      _refresh();
-                    }
-                  },
-                  onEdit: canManage
-                      ? (person) async {
-                          await _openRosterPersonEditor(
-                            context,
-                            contextValue: contextValue,
-                            roster: widget.roster,
-                            personId: person.id,
-                            onSaved: () async {},
-                          );
-                          _refresh();
-                        }
-                      : null,
                 );
                 final person = snapshot.data;
                 if (person == null) return view;

@@ -1598,6 +1598,28 @@ class AppStrings {
     'Senaste match': 'Latest match',
     'Idrotten ändras av klubbens administratörer.':
         'The sport is changed by the club administrators.',
+    'Redigera medlem': 'Edit member',
+    'Klubbens färger': 'Club colours',
+    'Färger på klubbens publika sidor.': "Colours on the club's public pages.",
+    'Huvudfärg': 'Primary colour',
+    'Accentfärg': 'Accent colour',
+    'Ogiltig färg': 'Invalid colour',
+    'Återställ': 'Reset',
+    'Klubbsida': 'Club page',
+    'Följ klubben': 'Follow the club',
+    'Ange färgerna som #rrggbb, t.ex. #00843d.':
+        'Enter the colours as #rrggbb, e.g. #00843d.',
+    'Färgerna kunde inte sparas. Försök igen.':
+        'The colours could not be saved. Try again.',
+    'Färgerna kunde inte hämtas. Bara klubbens administratörer kan ändra dem.':
+        "The colours could not be loaded. Only the club's administrators can change them.",
+    'Används på klubbens publika klubb- och lagsidor. Ljusa huvudfärger mörkas automatiskt så att texten går att läsa.':
+        "Used on the club's public club and team pages. Light primary colours are darkened automatically so the text stays readable.",
+    'Personen har ett konto och sköter sina kontaktuppgifter själv.':
+        'The person has an account and keeps their own contact details.',
+    'Ta ett foto': 'Take a photo',
+    'Välj från bilder': 'Choose from photos',
+    'Kameran kunde inte öppnas.': 'The camera could not be opened.',
     'Om laget': 'About the team',
     'Händelserna kunde inte laddas.': 'Events could not be loaded.',
     'Inga kommande händelser.': 'No upcoming events.',

@@ -8,11 +8,10 @@ class _PersonContactTiles extends StatelessWidget {
     required this.contact,
     required this.isSelf,
     required this.onEditOwn,
-    required this.onEditClub,
   });
   final PersonContact contact;
   final bool isSelf;
-  final VoidCallback onEditOwn, onEditClub;
+  final VoidCallback onEditOwn;
 
   @override
   Widget build(BuildContext context) {
@@ -74,19 +73,6 @@ class _PersonContactTiles extends StatelessWidget {
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: onEditOwn,
-          )
-        else if (contact.canEditClubContact)
-          ListTile(
-            key: const ValueKey('edit-club-contact'),
-            leading: const Icon(Icons.edit_outlined),
-            title: Text(strings.feature('Ändra kontaktuppgifter')),
-            subtitle: Text(
-              strings.feature(
-                'Personen har inget konto, så klubben fyller i uppgifterna.',
-              ),
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: onEditClub,
           ),
       ],
     );
@@ -94,143 +80,6 @@ class _PersonContactTiles extends StatelessWidget {
 }
 
 /// Leaders keep contact details for a member without an account.
-Future<bool> _editClubContact(
-  BuildContext context, {
-  required ProfileServices profile,
-  required String clubId,
-  required String teamId,
-  required String personId,
-  required PersonContact current,
-}) async {
-  final strings = AppStrings.of(context);
-  final email = TextEditingController(text: current.contactEmail);
-  final phone = TextEditingController(text: current.phone);
-  final street = TextEditingController(text: current.streetAddress);
-  final postal = TextEditingController(text: current.postalCode);
-  final city = TextEditingController(text: current.city);
-  String? text(TextEditingController controller) =>
-      controller.text.trim().isEmpty ? null : controller.text.trim();
-  String? error;
-  final saved = await showDialog<bool>(
-    context: context,
-    builder: (dialogContext) => StatefulBuilder(
-      builder: (dialogContext, setDialogState) => AlertDialog(
-        title: Text(strings.feature('Kontaktuppgifter')),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                key: const ValueKey('club-contact-email'),
-                controller: email,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: strings.feature('E-post'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                key: const ValueKey('club-contact-phone'),
-                controller: phone,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: strings.feature('Telefon'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                key: const ValueKey('club-contact-street'),
-                controller: street,
-                decoration: InputDecoration(
-                  labelText: strings.feature('Gatuadress'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  SizedBox(
-                    width: 110,
-                    child: TextField(
-                      key: const ValueKey('club-contact-postal'),
-                      controller: postal,
-                      decoration: InputDecoration(
-                        labelText: strings.feature('Postnummer'),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      key: const ValueKey('club-contact-city'),
-                      controller: city,
-                      decoration: InputDecoration(
-                        labelText: strings.feature('Ort'),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    error!,
-                    style: TextStyle(
-                      color: Theme.of(dialogContext).colorScheme.error,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(strings.feature('Avbryt')),
-          ),
-          FilledButton(
-            key: const ValueKey('save-club-contact'),
-            onPressed: () async {
-              try {
-                await profile.setPersonContact(
-                  clubId: clubId,
-                  teamId: teamId,
-                  personId: personId,
-                  contactEmail: email.text.trim().isEmpty
-                      ? null
-                      : email.text.trim(),
-                  phone: phone.text.trim().isEmpty ? null : phone.text.trim(),
-                );
-                await profile.setPersonAddress(
-                  clubId: clubId,
-                  teamId: teamId,
-                  personId: personId,
-                  street: text(street),
-                  postalCode: text(postal),
-                  city: text(city),
-                );
-                if (dialogContext.mounted) Navigator.pop(dialogContext, true);
-              } catch (e) {
-                setDialogState(() => error = _profileErrorMessage(strings, e));
-              }
-            },
-            child: Text(strings.feature('Spara')),
-          ),
-        ],
-      ),
-    ),
-  );
-  // The dialog may still animate out; dispose after that.
-  Future<void>.delayed(const Duration(seconds: 1), () {
-    email.dispose();
-    phone.dispose();
-    street.dispose();
-    postal.dispose();
-    city.dispose();
-  });
-  return saved ?? false;
-}
-
 /// Support's queue of login email changes.
 class _LoginEmailChangeQueue extends StatefulWidget {
   const _LoginEmailChangeQueue({required this.profile});

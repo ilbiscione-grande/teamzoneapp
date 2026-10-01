@@ -84,6 +84,14 @@ abstract interface class ProfileServices {
     required Uint8List bytes,
   });
   Future<void> removeClubBadge(String clubId);
+
+  /// The club's colours on its public pages (club administrators).
+  Future<ClubColors> getClubColors(String clubId);
+  Future<ClubColors> setClubColors({
+    required String clubId,
+    String? primary,
+    String? accent,
+  });
   Future<PersonStatistics> getPersonStatistics({
     required String clubId,
     required String teamId,
@@ -184,6 +192,14 @@ class UnconfiguredProfileServices implements ProfileServices {
   @override
   Future<void> removeClubBadge(String clubId) => _fail();
   @override
+  Future<ClubColors> getClubColors(String clubId) async => const ClubColors();
+  @override
+  Future<ClubColors> setClubColors({
+    required String clubId,
+    String? primary,
+    String? accent,
+  }) => _fail();
+  @override
   Future<PersonStatistics> getPersonStatistics({
     required String clubId,
     required String teamId,
@@ -212,6 +228,8 @@ class SupabaseProfileServices implements ProfileServices {
     'invalid_address',
     'invalid_badge',
     'badge_not_uploaded',
+    'invalid_color',
+    'club_admin_required',
   ];
 
   Future<T> _call<T>(Future<T> Function() run) async {
@@ -494,6 +512,30 @@ class SupabaseProfileServices implements ProfileServices {
 
   @override
   Future<void> recordActivity() => _rpc('record_activity');
+
+  @override
+  Future<ClubColors> getClubColors(String clubId) async {
+    final value = await _rpc('get_club_colors', {'target_club_id': clubId});
+    return value is Map<String, dynamic>
+        ? ClubColors.fromJson(value)
+        : const ClubColors();
+  }
+
+  @override
+  Future<ClubColors> setClubColors({
+    required String clubId,
+    String? primary,
+    String? accent,
+  }) async {
+    final value = await _rpc('set_club_colors', {
+      'target_club_id': clubId,
+      'new_primary': primary,
+      'new_accent': accent,
+    });
+    return value is Map<String, dynamic>
+        ? ClubColors.fromJson(value)
+        : const ClubColors();
+  }
 
   @override
   Future<void> removeClubBadge(String clubId) => _rpc('set_club_badge', {

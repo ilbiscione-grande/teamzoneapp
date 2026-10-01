@@ -3,15 +3,12 @@ import Link from "next/link";
 import { WrittenMatchReport } from "../../../components/written-match-report";
 import { notFound } from "next/navigation";
 import { InactiveState } from "../../../components/inactive-state";
-import { SiteHeader } from "../../../components/site-header";
 import { FollowButton } from "../../../components/follow-button";
+import { ClubFooter, ClubHeader, Crest, Empty, EventCard, NewsGrid, ResultCard, SectionHead, clubSiteClass, ClubTheme, initials, type CalendarEvent, type NewsItem, type ResultItem } from "../../../components/club-site";
 import { canonicalUrl, getClubPage, getPublications, getTeamEvents, getTeamResults, getTeamPage } from "../../../lib/page-data";
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ clubSlug: string; teamSlug: string }> };
-type Publication = { id: string; slug?: string; title: string; summary?: string; published_at: string };
-type PublicEvent = { id: string; title: string; starts_at: string; event_type: string; location_name?: string };
-type MatchResult = { id: string; title: string; starts_at: string; score_us: number; score_opponent: number; report_text?: string | null };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { clubSlug, teamSlug } = await params;
@@ -34,25 +31,84 @@ export default async function TeamPage({ params }: Props) {
     if (club?.not_found) notFound();
     if (club?.available === false) return <InactiveState kind="lag" />;
     const [publicationResult, eventResult, resultData] = await Promise.all([getPublications(club.id, team.id), getTeamEvents(team.id), getTeamResults(team.id)]);
-    const results = (resultData?.items ?? []) as MatchResult[];
-    const news = (publicationResult?.items ?? []).filter((item: Publication & { content_type?: string }) => item.content_type === "news") as Publication[];
-    const events = (eventResult?.items ?? []) as PublicEvent[];
+    const results = (resultData?.items ?? []) as ResultItem[];
+    const news = (publicationResult?.items ?? []).filter((item: NewsItem & { content_type?: string }) => item.content_type === "news") as NewsItem[];
+    const events = (eventResult?.items ?? []) as CalendarEvent[];
     const now = Date.now();
     const upcoming = events.filter((event) => new Date(event.starts_at).getTime() >= now).sort(byDate);
     const previous = events.filter((event) => new Date(event.starts_at).getTime() < now).sort((a, b) => -byDate(a, b));
+    const [next, ...later] = upcoming;
+    const latest = results[0];
+    const clubHref = `/${clubSlug}`;
+    const teams = (club.teams ?? []) as { id: string; slug: string; name: string }[];
     return (
-      <main className="public-page">
-        <SiteHeader clubName={club.name} clubHref={`/${clubSlug}`} />
-        <section className="hero-card team-hero"><p className="eyebrow">Lagkanal · {club.official ? "officiellt verifierad klubb" : "inofficiell klubb"}</p><h1>{team.name}</h1><div className="hero-meta">{team.age_class && <span className="pill">{team.age_class}</span>}</div></section>
-        <div className="home-section"><FollowButton channel={{ kind: "team", id: team.id, name: team.name, slug: team.slug, club_slug: club.slug }} /></div>
-        <nav className="section-nav" aria-label="Lagsidan"><a href="#oversikt">Översikt</a><a href="#nyheter">Nyheter</a><a href="#handelser">Händelser</a></nav>
-        <section id="oversikt" className="panel feature-panel"><p className="eyebrow">Laget</p><h2>{team.name}</h2><p>{team.description || "Lagets publicerade information och innehåll samlas här."}</p></section>
-        {results.length > 0 && <section className="panel home-section" id="resultat"><p className="eyebrow">Färdigspelat</p><h2>Senaste slutresultaten</h2><div className="card-list">{results.map(result => <article className="story-card feed-card" key={result.id}><div><time dateTime={result.starts_at}>{formatDate(result.starts_at)}</time><h3>{result.title}</h3><p>{team.name} · motståndare</p><WrittenMatchReport text={result.report_text}/></div><strong className="result-score">{result.score_us}–{result.score_opponent}</strong></article>)}</div></section>}
-        <div className="content-grid">
-          <section id="handelser" className="panel"><p className="eyebrow">Kalender</p><h2>Kommande händelser</h2>{upcoming.length ? <EventList events={upcoming} /> : <Empty text="Inga kommande händelser är publicerade." />}<h3 className="subheading">Tidigare</h3>{previous.length ? <EventList events={previous} /> : <Empty text="Inga tidigare händelser är publicerade." />}</section>
-          <section id="nyheter" className="panel"><p className="eyebrow">Från laget</p><h2>Nyheter</h2>{news.length ? <div className="card-list">{news.map((item) => <article className="story-card" key={item.id}><time>{formatDate(item.published_at)}</time><h3>{item.slug ? <Link href={`/${clubSlug}/nyheter/${item.slug}`}>{item.title}</Link> : item.title}</h3>{item.summary && <p>{item.summary}</p>}</article>)}</div> : <Empty text="Laget har inte publicerat några nyheter ännu." />}</section>
-        </div>
-        <Link className="back-link" href={`/${clubSlug}`}>Till {club.name}</Link>
+      <main className={clubSiteClass(club)}><ClubTheme club={club} />
+        <ClubHeader clubName={club.name} clubHref={clubHref} crest={club.profile_media_path}>
+          <a href="#oversikt">Översikt</a>{results.length > 0 && <a href="#resultat">Resultat</a>}<a href="#handelser">Kalender</a><a href="#nyheter">Nyheter</a><Link href={`/${clubSlug}`}>Till {club.name}</Link>
+        </ClubHeader>
+
+        <section className="cs-hero team">
+          <span className="cs-hero-mark" aria-hidden="true">{initials(team.name)}</span>
+          <div className="cs-wrap cs-hero-inner">
+            <Crest name={club.name} src={club.profile_media_path} size="lg" />
+            <div className="cs-hero-text">
+              <p className="cs-kicker">Lagkanal · <Link href={`/${clubSlug}`}>{club.name}</Link></p>
+              <h1>{team.name}</h1>
+              <div className="cs-hero-meta">{team.age_class && <span>{team.age_class}</span>}<span className={`cs-verified${club.official ? " official" : ""}`}>{club.official ? "officiellt verifierad klubb" : "inofficiell klubb"}</span></div>
+              <div className="cs-hero-actions"><FollowButton channel={{ kind: "team", id: team.id, name: team.name, slug: team.slug, club_slug: club.slug }} /></div>
+            </div>
+          </div>
+        </section>
+
+        {(next || latest) && (
+          <section className="cs-matchbar" aria-label="Matchcenter">
+            <div className="cs-wrap">
+              <SectionHead title="Matchcenter" />
+              <div className="cs-center">
+                {next && <div><p className="cs-center-label">Nästa</p><EventCard event={next} hero /></div>}
+                {latest && <div><p className="cs-center-label">Senaste resultat</p><ResultCard result={latest} teamName={team.name} /></div>}
+              </div>
+            </div>
+          </section>
+        )}
+
+        <section id="oversikt" className="cs-section">
+          <div className="cs-wrap cs-about">
+            <div><p className="cs-kicker">Laget</p><h2 className="cs-title">{team.name}</h2><p className="cs-lead">{team.description || "Lagets publicerade information och innehåll samlas här."}</p></div>
+            <dl className="cs-facts">
+              <div><dt>Klubb</dt><dd><Link href={`/${clubSlug}`}>{club.name}</Link></dd></div>
+              {team.age_class && <div><dt>Åldersklass</dt><dd>{team.age_class}</dd></div>}
+              <div><dt>Kommande</dt><dd>{upcoming.length}</dd></div>
+            </dl>
+          </div>
+        </section>
+
+        {results.length > 0 && (
+          <section id="resultat" className="cs-section alt">
+            <div className="cs-wrap">
+              <SectionHead kicker="Färdigspelat" title="Senaste slutresultaten" />
+              <div className="cs-results">{results.map(result => <ResultCard key={result.id} result={result} teamName={team.name}><WrittenMatchReport text={result.report_text} /></ResultCard>)}</div>
+            </div>
+          </section>
+        )}
+
+        <section id="handelser" className="cs-section">
+          <div className="cs-wrap">
+            <SectionHead kicker="Kalender" title="Kommande händelser" />
+            {upcoming.length ? <div className="cs-events">{(next ? [next, ...later] : later).map(event => <EventCard key={event.id} event={event} />)}</div> : <Empty text="Inga kommande händelser är publicerade." />}
+            <h3 className="cs-subhead">Tidigare</h3>
+            {previous.length ? <div className="cs-events past">{previous.map(event => <EventCard key={event.id} event={event} />)}</div> : <Empty text="Inga tidigare händelser är publicerade." />}
+          </div>
+        </section>
+
+        <section id="nyheter" className="cs-section alt">
+          <div className="cs-wrap">
+            <SectionHead kicker="Från laget" title="Nyheter" />
+            {news.length ? <NewsGrid items={news} clubSlug={clubSlug} clubName={club.name} crest={club.profile_media_path} /> : <Empty text="Laget har inte publicerat några nyheter ännu." />}
+          </div>
+        </section>
+
+        <ClubFooter clubName={club.name} clubHref={clubHref} crest={club.profile_media_path} locality={club.locality} teams={teams} />
       </main>
     );
   } catch (error) {
@@ -61,8 +117,4 @@ export default async function TeamPage({ params }: Props) {
   }
 }
 
-function EventList({ events }: { events: PublicEvent[] }) { return <div className="event-list">{events.map((event) => <article key={event.id}><time dateTime={event.starts_at}>{formatDate(event.starts_at)}</time><div><strong>{event.title}</strong><span>{eventLabel(event.event_type)}{event.location_name ? ` · ${event.location_name}` : ""}</span></div></article>)}</div>; }
-function Empty({ text }: { text: string }) { return <div className="empty-note">{text}</div>; }
-function formatDate(value: string) { return new Intl.DateTimeFormat("sv-SE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); }
-function byDate(a: PublicEvent, b: PublicEvent) { return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(); }
-function eventLabel(type: string) { return ({ match: "Match", training: "Träning", meeting: "Möte", activity: "Aktivitet" } as Record<string, string>)[type] ?? "Händelse"; }
+function byDate(a: CalendarEvent, b: CalendarEvent) { return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(); }

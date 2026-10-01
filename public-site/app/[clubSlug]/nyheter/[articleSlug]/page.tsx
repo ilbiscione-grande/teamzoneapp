@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { InactiveState } from "../../../../components/inactive-state";
-import { SiteHeader } from "../../../../components/site-header";
+import { ClubFooter, ClubHeader, clubSiteClass, ClubTheme } from "../../../../components/club-site";
 import { canonicalUrl, getClubPage, getPublicArticle } from "../../../../lib/page-data";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ export default async function ArticlePage({ params }: Props) {
     const [article, club] = await Promise.all([getPublicArticle(clubSlug, articleSlug), getClubPage(clubSlug)]);
     if (article?.not_found || club?.not_found) notFound();
     if (article?.available === false || club?.available === false) return <InactiveState kind="klubb" />;
-    return <main className="public-page"><SiteHeader clubName={club.name} clubHref={`/${clubSlug}`} /><article className="panel article-page"><p className="eyebrow">Nyhet från {club.name}</p><h1>{article.title}</h1><div className="article-byline"><time dateTime={article.published_at}>{formatDate(article.published_at)}</time>{article.author_label && <span>{article.author_label}</span>}</div>{article.summary && <p className="article-lead">{article.summary}</p>}<div className="article-body">{(article.body_blocks as Block[]).map((block, index) => <ContentBlock block={block} key={`${block.type}-${index}`} />)}</div></article><Link className="back-link" href={`/${clubSlug}#nyheter`}>Fler nyheter från {club.name}</Link></main>;
+    return <main className={clubSiteClass(club)}><ClubTheme club={club} /><ClubHeader clubName={club.name} clubHref={`/${clubSlug}`} crest={club.profile_media_path}><a href={`/${clubSlug}#nyheter`}>Nyheter</a><a href={`/${clubSlug}#lag`}>Lag</a><a href={`/${clubSlug}#kontakt`}>Kontakt</a></ClubHeader><div className="cs-article-wrap">{article.media_path && <img className="cs-article-image" src={article.media_path} alt="" />}<article className="cs-article"><p className="cs-kicker">Nyhet från {club.name}</p><h1>{article.title}</h1><div className="article-byline"><time dateTime={article.published_at}>{formatDate(article.published_at)}</time>{article.author_label && <span>{article.author_label}</span>}</div>{article.summary && <p className="article-lead">{article.summary}</p>}<div className="article-body">{(article.body_blocks as Block[]).map((block, index) => <ContentBlock block={block} key={`${block.type}-${index}`} />)}</div><Link className="cs-more" href={`/${clubSlug}#nyheter`}>← Fler nyheter från {club.name}</Link></article></div><ClubFooter clubName={club.name} clubHref={`/${clubSlug}`} crest={club.profile_media_path} locality={club.locality} teams={club.teams ?? []} /></main>;
   } catch (error) {
     if ((error as { digest?: string }).digest?.startsWith("NEXT_HTTP_ERROR_FALLBACK;404")) throw error;
     return <InactiveState kind="klubb" />;

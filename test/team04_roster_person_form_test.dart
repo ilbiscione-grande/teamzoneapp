@@ -73,14 +73,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ada Spelare'));
     await tester.pumpAndSettle();
-    // The member info tab scrolls below its tab bar.
-    await tester.dragUntilVisible(
-      find.text('Redigera profil'),
-      find.byType(ListView).last,
-      const Offset(0, -200),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Redigera profil'));
+    // Managing someone else is in the top bar; the old row is gone.
+    expect(find.text('Redigera profil'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('edit-member')));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Visningsnamn'),

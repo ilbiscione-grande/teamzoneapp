@@ -142,7 +142,66 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
   String? _text(TextEditingController controller) =>
       controller.text.trim().isEmpty ? null : controller.text.trim();
 
+  /// Phones and mobile browsers can take the picture with the camera.
+  static bool get _cameraAvailable =>
+      kIsWeb ||
+      defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS;
+
   Future<void> _pickAvatar() async {
+    final strings = AppStrings.of(context);
+    var useCamera = false;
+    if (_cameraAvailable) {
+      final source = await showModalBottomSheet<bool>(
+        context: context,
+        useSafeArea: true,
+        builder: (sheetContext) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                key: const ValueKey('avatar-camera'),
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: Text(strings.feature('Ta ett foto')),
+                onTap: () => Navigator.pop(sheetContext, true),
+              ),
+              ListTile(
+                key: const ValueKey('avatar-gallery'),
+                leading: const Icon(Icons.photo_library_outlined),
+                title: Text(strings.feature('Välj från bilder')),
+                onTap: () => Navigator.pop(sheetContext, false),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (source == null || !mounted) return;
+      useCamera = source;
+    }
+    if (useCamera) {
+      final XFile? photo;
+      try {
+        photo = await ImagePicker().pickImage(
+          source: ImageSource.camera,
+          preferredCameraDevice: CameraDevice.front,
+          maxWidth: 1024,
+          maxHeight: 1024,
+          imageQuality: 85,
+        );
+      } catch (_) {
+        if (mounted) {
+          setState(
+            () => _error = strings.feature('Kameran kunde inte öppnas.'),
+          );
+        }
+        return;
+      }
+      if (photo == null) return;
+      final bytes = await photo.readAsBytes();
+      if (!mounted) return;
+      _useAvatar(bytes, 'jpg');
+      return;
+    }
     final pick = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
@@ -151,6 +210,10 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
     final file = pick?.files.single;
     final bytes = file?.bytes;
     if (file == null || bytes == null || !mounted) return;
+    _useAvatar(bytes, file.extension);
+  }
+
+  void _useAvatar(Uint8List bytes, String? fileExtension) {
     if (bytes.length > 2097152) {
       setState(
         () => _error = AppStrings.of(
@@ -159,7 +222,7 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
       );
       return;
     }
-    final extension = (file.extension ?? '').toLowerCase();
+    final extension = (fileExtension ?? '').toLowerCase();
     setState(() {
       _pickedBytes = bytes;
       _pickedMime = extension == 'png'

@@ -60,6 +60,67 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('a new picture can come from the camera or the photos', (
+    tester,
+  ) async {
+    await _openSettingsProfile(tester, _Profile());
+    await tester.tap(find.byKey(const ValueKey('my-profile-card')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('pick-avatar')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('avatar-camera')), findsOneWidget);
+    expect(find.byKey(const ValueKey('avatar-gallery')), findsOneWidget);
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('avatar-camera')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('club administrators choose the club colours', (tester) async {
+    final profile = _Profile();
+    await tester.pumpWidget(_app(profile, clubAdmin: true));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Laget'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Trupp'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Hantera'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('club-colors')),
+      100,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.byKey(const ValueKey('club-colors')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('club-colors-preview')), findsOneWidget);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('club-accent-hex')))
+          .controller!
+          .text,
+      '#c6f04d',
+    );
+    await tester.tap(find.byKey(const ValueKey('club-primary-#00843d')));
+    await tester.pump();
+    await tester.enterText(
+      find.byKey(const ValueKey('club-accent-hex')),
+      'not a colour',
+    );
+    await tester.pump();
+    expect(find.text('Ogiltig färg'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('club-accent-hex')),
+      'FFD100',
+    );
+    await tester.tap(find.byKey(const ValueKey('club-colors-save')));
+    await tester.pumpAndSettle();
+    expect(profile.colors.primary, '#00843d');
+    expect(profile.colors.accent, '#ffd100');
+    expect(find.byKey(const ValueKey('club-colors-preview')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('login address change goes through support', (tester) async {
     final profile = _Profile();
     await _openSettingsProfile(tester, profile);
@@ -138,23 +199,20 @@ void main() {
     expect(find.byKey(const ValueKey('person-contact')), findsOneWidget);
     expect(find.text('forälder@mail.se'), findsOneWidget);
     expect(find.text('Ifyllt av klubben.'), findsOneWidget);
-    final edit = find.byKey(const ValueKey('edit-club-contact'));
-    await tester.drag(
-      find.byKey(const ValueKey('person-contact')),
-      const Offset(0, -300),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(edit);
+    // Contact details are edited with the rest, from the top bar.
+    expect(find.byKey(const ValueKey('edit-club-contact')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('edit-member')));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('club-contact-phone')),
       '0701234567',
     );
-    await tester.tap(find.byKey(const ValueKey('save-club-contact')));
+    await tester.ensureVisible(find.text('Spara person'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Spara person'));
     await tester.pumpAndSettle();
     expect(profile.clubContact, ('ada', 'forälder@mail.se', '0701234567'));
-    // Let the dialog's controllers be released.
-    await tester.pump(const Duration(seconds: 1));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('member card flips to show the address', (tester) async {
@@ -363,12 +421,15 @@ Future<void> _openMember(
   await tester.pumpAndSettle();
 }
 
-Widget _app(_Profile profile, {_Roster roster = const _Roster()}) =>
-    TeamZoneApp(
+Widget _app(
+  _Profile profile, {
+  _Roster roster = const _Roster(),
+  bool clubAdmin = false,
+}) => TeamZoneApp(
       environment: const AppEnvironment(name: 'prof01'),
       locale: const Locale('sv'),
       services: AppServices(
-        identity: const _Identity(),
+        identity: _Identity(clubAdmin: clubAdmin),
         roster: roster,
         profile: profile,
         isConfigured: true,
@@ -385,6 +446,17 @@ class _Profile extends UnconfiguredProfileServices {
   PersonContact contact = const PersonContact();
   MemberCard? card;
   PersonStatistics statistics = const PersonStatistics();
+  ClubColors colors = const ClubColors(accent: '#c6f04d');
+
+  @override
+  Future<ClubColors> getClubColors(String clubId) async => colors;
+
+  @override
+  Future<ClubColors> setClubColors({
+    required String clubId,
+    String? primary,
+    String? accent,
+  }) async => colors = ClubColors(primary: primary, accent: accent);
 
   @override
   Future<PersonStatistics> getPersonStatistics({
@@ -503,6 +575,8 @@ class _Roster extends UnconfiguredRosterServices {
     teamName: 'F2012',
     assignmentState: 'active',
     isSelf: self,
+    personRevision: 1,
+    birthYear: 2012,
   );
   @override
   Future<TeamRoles> listTeamRoles({
@@ -515,7 +589,8 @@ class _Roster extends UnconfiguredRosterServices {
 }
 
 class _Identity implements IdentityServices {
-  const _Identity();
+  const _Identity({this.clubAdmin = false});
+  final bool clubAdmin;
   @override
   SessionStatus get sessionStatus => SessionStatus.authenticated;
   @override
@@ -524,7 +599,7 @@ class _Identity implements IdentityServices {
   Future<TeamZoneProfile> getProfile() async =>
       const TeamZoneProfile(id: 'profile', displayName: 'Ada', locale: 'sv');
   @override
-  Future<List<TeamZoneContext>> getContexts() async => const [
+  Future<List<TeamZoneContext>> getContexts() async => [
     TeamZoneContext(
       id: 'context',
       clubId: 'club',
@@ -532,7 +607,12 @@ class _Identity implements IdentityServices {
       teamId: 'team',
       teamName: 'F2012',
       rolePackage: 'leader',
-      capabilities: {'team.read', 'team.roster.view', 'team.roster.manage'},
+      capabilities: {
+        'team.read',
+        'team.roster.view',
+        'team.roster.manage',
+        if (clubAdmin) 'club.memberships.manage',
+      },
     ),
   ];
   @override

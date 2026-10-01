@@ -114,6 +114,18 @@ class PersonContact {
 
 /// The virtual member card: front for club members, back (contact) only for
 /// the person and the team's leaders.
+/// A club's colours on its public pages, as #rrggbb.
+class ClubColors {
+  const ClubColors({this.primary, this.accent});
+  final String? primary;
+  final String? accent;
+
+  factory ClubColors.fromJson(Map<String, dynamic> json) => ClubColors(
+    primary: json['primary'] as String?,
+    accent: json['accent'] as String?,
+  );
+}
+
 class MemberCard {
   const MemberCard({
     required this.personId,
