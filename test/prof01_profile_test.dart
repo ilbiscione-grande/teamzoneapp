@@ -121,6 +121,41 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('club settings are a tab for club administrators only', (
+    tester,
+  ) async {
+    final profile = _Profile();
+    await _openSettings(tester, profile);
+    expect(find.widgetWithText(Tab, 'Klubb'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+    await _openSettings(tester, profile, clubAdmin: true);
+    await tester.tap(find.widgetWithText(Tab, 'Klubb'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('club-settings-club')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('club-settings-club')),
+        matching: find.text('Testklubben'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('club-public-club')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('club-badge-upload-club')),
+      findsOneWidget,
+    );
+    expect(find.text('Ladda upp klubbmärke'), findsOneWidget);
+    expect(find.byKey(const ValueKey('club-verification-club')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('club-colors-club')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('club-primary-#0b1f3a')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('club-colors-save')));
+    await tester.pumpAndSettle();
+    expect(profile.colors.primary, '#0b1f3a');
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('login address change goes through support', (tester) async {
     final profile = _Profile();
     await _openSettingsProfile(tester, profile);
@@ -387,6 +422,25 @@ void main() {
     expect(find.text('Ada Spelare'), findsWidgets);
     expect(find.byKey(const ValueKey('person-contact')), findsNothing);
   });
+}
+
+Future<void> _openSettings(
+  WidgetTester tester,
+  _Profile profile, {
+  bool clubAdmin = false,
+}) async {
+  await tester.pumpWidget(_app(profile, clubAdmin: clubAdmin));
+  await tester.pumpAndSettle();
+  await tester.scrollUntilVisible(
+    find.text('Inställningar').last,
+    250,
+    scrollable: find.descendant(
+      of: find.byKey(const Key('app-navigation-panel-list')),
+      matching: find.byType(Scrollable),
+    ),
+  );
+  await tester.tap(find.text('Inställningar').last);
+  await tester.pumpAndSettle();
 }
 
 Future<void> _openSettingsProfile(WidgetTester tester, _Profile profile) async {

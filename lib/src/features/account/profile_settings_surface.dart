@@ -102,10 +102,14 @@ class _ProfileSettingsSurface extends StatefulWidget {
     this.onOwnProfileChanged,
     this.messaging,
     this.embedded = false,
+    this.membership = const UnconfiguredMembershipServices(),
   });
 
   final List<TeamZoneContext> contexts;
   final RosterServices roster;
+
+  /// Club verification for the club settings.
+  final MembershipServices membership;
   final Future<void> Function() onContextsChanged;
   final LegalServices legal;
   final EditorialServices editorial;
@@ -394,6 +398,129 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
     children: _teamItems(context, strings),
   );
 
+  /// One entry per club the user administers.
+  List<TeamZoneContext> get _adminClubs => {
+    for (final item in widget.contexts)
+      if (item.capabilities.contains('club.memberships.manage'))
+        item.clubId: item,
+  }.values.toList(growable: false);
+
+  Widget _buildClubTab(BuildContext context, AppStrings strings) => ListView(
+    key: const ValueKey('club-settings'),
+    padding: const EdgeInsets.all(16),
+    children: _clubItems(context, strings),
+  );
+
+  List<Widget> _clubItems(BuildContext context, AppStrings strings) {
+    final clubs = _adminClubs;
+    final theme = Theme.of(context);
+    return [
+      Text(
+        strings.feature('Klubbinställningar'),
+        style: theme.textTheme.titleMedium,
+      ),
+      const SizedBox(height: 8),
+      Text(
+        strings.feature(
+          'För klubbens administratörer: klubbmärke, färger, publik sida och verifiering.',
+        ),
+        style: theme.textTheme.bodyMedium,
+      ),
+      for (final club in clubs) ...[
+        const SizedBox(height: 16),
+        Card(
+          key: ValueKey('club-settings-${club.clubId}'),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _ClubSettingsHeader(
+                key: ValueKey('club-header-${club.clubId}'),
+                profile: widget.profileServices,
+                clubId: club.clubId,
+                clubName: club.clubName,
+              ),
+              const Divider(height: 1),
+              ListTile(
+                key: ValueKey('club-badge-${club.clubId}'),
+                leading: const Icon(Icons.verified_user_outlined),
+                title: Text(strings.feature('Klubbmärke')),
+                subtitle: Text(
+                  strings.feature('Visas på klubbens medlemskort.'),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => _ClubBadgeDialog(
+                    profile: widget.profileServices,
+                    clubId: club.clubId,
+                    clubName: club.clubName,
+                  ),
+                ),
+              ),
+              ListTile(
+                key: ValueKey('club-colors-${club.clubId}'),
+                leading: const Icon(Icons.palette_outlined),
+                title: Text(strings.feature('Klubbens färger')),
+                subtitle: Text(
+                  strings.feature('Färger på klubbens publika sidor.'),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => showDialog<bool>(
+                  context: context,
+                  builder: (_) => _ClubColorsDialog(
+                    profile: widget.profileServices,
+                    clubId: club.clubId,
+                    clubName: club.clubName,
+                  ),
+                ),
+              ),
+              ListTile(
+                key: ValueKey('club-public-${club.clubId}'),
+                leading: const Icon(Icons.public),
+                title: Text(strings.feature('Publik klubbsida och lagsidor')),
+                subtitle: Text(
+                  strings.feature(
+                    'Synlighet, webbadress och vad som visas publikt.',
+                  ),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => _PublicationSelfServiceSurface(
+                      clubId: club.clubId,
+                      editorial: widget.editorial,
+                    ),
+                  ),
+                ),
+              ),
+              ListTile(
+                key: ValueKey('club-verification-${club.clubId}'),
+                leading: const Icon(Icons.verified_outlined),
+                title: Text(strings.feature('Klubbverifiering')),
+                subtitle: Text(
+                  strings.feature(
+                    'Se officiell status eller skicka underlag till TeamZone.',
+                  ),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => showModalBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  useSafeArea: true,
+                  builder: (_) => _ClubVerificationSheet(
+                    clubId: club.clubId,
+                    membership: widget.membership,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ];
+  }
+
   Widget _buildProfileTab(BuildContext context, AppStrings strings) => ListView(
     padding: const EdgeInsets.all(16),
     children: _profileItems(context, strings),
@@ -416,6 +543,12 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
           const Divider(),
           const SizedBox(height: 16),
           ..._teamItems(context, strings, includeTeamSettings: false),
+          if (_adminClubs.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
+            ..._clubItems(context, strings),
+          ],
           const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 16),
@@ -423,8 +556,9 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
         ],
       );
     }
+    final showClub = _adminClubs.isNotEmpty;
     return DefaultTabController(
-      length: 3,
+      length: showClub ? 4 : 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text(strings.feature('Inställningar')),
@@ -432,6 +566,7 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
             tabs: [
               Tab(text: strings.feature('Allmänt')),
               Tab(text: strings.feature('Lag')),
+              if (showClub) Tab(text: strings.feature('Klubb')),
               Tab(text: strings.feature('Profil')),
             ],
           ),
@@ -441,6 +576,7 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
             children: [
               _buildGeneralTab(context, strings),
               _buildTeamTab(context, strings),
+              if (showClub) _buildClubTab(context, strings),
               _buildProfileTab(context, strings),
             ],
           ),
@@ -805,6 +941,90 @@ class _ColorThemeSwatch extends StatelessWidget {
                 )
               : null,
         ),
+      ),
+    );
+  }
+}
+
+/// The club's name and current badge, with the badge upload one tap away.
+class _ClubSettingsHeader extends StatefulWidget {
+  const _ClubSettingsHeader({
+    super.key,
+    required this.profile,
+    required this.clubId,
+    required this.clubName,
+  });
+  final ProfileServices profile;
+  final String clubId, clubName;
+  @override
+  State<_ClubSettingsHeader> createState() => _ClubSettingsHeaderState();
+}
+
+class _ClubSettingsHeaderState extends State<_ClubSettingsHeader> {
+  late Future<String?> _badge = widget.profile.clubBadgeUrl(widget.clubId);
+
+  Future<void> _editBadge() async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _ClubBadgeDialog(
+        profile: widget.profile,
+        clubId: widget.clubId,
+        clubName: widget.clubName,
+      ),
+    );
+    if (mounted) {
+      setState(() => _badge = widget.profile.clubBadgeUrl(widget.clubId));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      child: FutureBuilder<String?>(
+        future: _badge,
+        builder: (context, snapshot) {
+          final url = snapshot.data;
+          return Row(
+            children: [
+              InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: _editBadge,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: theme.colorScheme.outlineVariant),
+                  ),
+                  child: _ClubBadge(name: widget.clubName, url: url, size: 64),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.clubName, style: theme.textTheme.titleMedium),
+                    const SizedBox(height: 6),
+                    OutlinedButton.icon(
+                      key: ValueKey('club-badge-upload-${widget.clubId}'),
+                      onPressed: _editBadge,
+                      icon: const Icon(Icons.upload_outlined, size: 18),
+                      label: Text(
+                        strings.feature(
+                          url == null
+                              ? 'Ladda upp klubbmärke'
+                              : 'Byt klubbmärke',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

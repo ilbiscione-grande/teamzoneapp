@@ -165,6 +165,7 @@ class _ProductShellState extends State<_ProductShell> {
           profileServices: widget.profileServices,
           onOwnProfileChanged: _refreshOwnProfile,
           messaging: widget.messaging,
+          membership: widget.membership,
         ),
       ),
       GoRoute(
@@ -216,6 +217,7 @@ class _ProductShellState extends State<_ProductShell> {
             profileServices: widget.profileServices,
             onOwnProfileChanged: _refreshOwnProfile,
             messaging: widget.messaging,
+            membership: widget.membership,
           ),
           onBack: () => _router.canPop()
               ? _router.pop()

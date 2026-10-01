@@ -1600,6 +1600,15 @@ class AppStrings {
         'The sport is changed by the club administrators.',
     'Redigera medlem': 'Edit member',
     'Klubbens färger': 'Club colours',
+    'Klubbinställningar': 'Club settings',
+    'Ladda upp klubbmärke': 'Upload club badge',
+    'Byt klubbmärke': 'Change club badge',
+    'Klubb': 'Club',
+    'För klubbens administratörer: klubbmärke, färger, publik sida och verifiering.':
+        "For the club's administrators: badge, colours, public page and verification.",
+    'Publik klubbsida och lagsidor': 'Public club and team pages',
+    'Synlighet, webbadress och vad som visas publikt.':
+        'Visibility, web address and what is shown publicly.',
     'Färger på klubbens publika sidor.': "Colours on the club's public pages.",
     'Huvudfärg': 'Primary colour',
     'Accentfärg': 'Accent colour',
