@@ -7,6 +7,7 @@ import { safeReturnPath } from "../lib/personal-home";
 import { usePersonalAccount } from "./personal-account";
 import { PersonalDashboard } from "./personal-dashboard";
 import { TeamNotifications } from "./team-notifications";
+import { PortalHero } from "./portal";
 
 export function PersonalHomePage() {
   const { client, session, ready, enabled, error, refresh } = usePersonalAccount();
@@ -39,30 +40,53 @@ export function PersonalHomePage() {
     finally { setBusy(false); }
   }
 
+  const showLogin = ready && enabled && !session;
+  const login = showLogin ? <form onSubmit={signIn} className="pz-login" aria-labelledby="login-title">
+    <p className="cs-kicker">Samma konto överallt</p>
+    <h2 id="login-title">Logga in</h2>
+    <label className="field" htmlFor="account-email">E-post<input id="account-email" type="email" autoComplete="username" required maxLength={320} value={email} onChange={e => setEmail(e.target.value)} disabled={busy} /></label>
+    <label className="field" htmlFor="account-password">Lösenord<input id="account-password" type="password" autoComplete="current-password" required maxLength={1024} value={password} onChange={e => setPassword(e.target.value)} disabled={busy} /></label>
+    {authError && <p role="alert" className="pz-error">{authError}</p>}
+    <button className="primary-button" disabled={busy}>{busy ? "Loggar in…" : "Logga in"}</button>
+    <p className="pz-small"><a href="https://app.teamzoneapp.se">Skapa konto eller återställ lösenord i TeamZone</a></p>
+  </form> : undefined;
+
   return <>
-    <section className={`hero-card personal-hero ${session ? "dashboard-hero" : ""}`}>
-      <p className="eyebrow">Din hemmaplan</p><h1>{session ? "Min startsida" : "Nära lagen du följer"}</h1>
-      <p className="lead">Dina lag, senaste nyheterna, matchresultaten och kalendern. Samlat på ett ställe.</p>
-      {!session && <p>Publika klubb- och lagsidor kan du läsa utan att logga in.</p>}
-      <Link className="follow-button" href="/klubbar">Sök klubbar och lag →</Link>
-    </section>
-    {!ready && <p role="status">Hämtar ditt konto…</p>}
-    {error && <p role="alert">{error} {session && <button onClick={refresh}>Försök igen</button>}</p>}
-    {authError && <p role="alert">{authError}</p>}
-    {ready && !enabled && !error && <section className="panel home-section"><h2>Din personliga startsida är på väg</h2><p>Under tiden kan du söka fram klubbar och lag och läsa deras publika sidor.</p></section>}
-    {ready && enabled && !session && <section className="panel home-section account-panel">
-      <div><p className="eyebrow">Samma konto överallt</p><h2>Logga in och följ dina favoriter</h2><p>Följ lag och klubbar så visas dina genvägar, nyheter och publicerade slutresultat här, även när du byter enhet.</p><p>Dina följda lag och klubbar är privata för ditt konto.</p><p><a href="https://app.teamzoneapp.se">Skapa konto eller återställ lösenord i TeamZone</a></p></div>
-      <form onSubmit={signIn} className="account-form">
-        <label htmlFor="account-email">E-post</label><input id="account-email" type="email" autoComplete="username" required maxLength={320} value={email} onChange={e => setEmail(e.target.value)} disabled={busy} />
-        <label htmlFor="account-password">Lösenord</label><input id="account-password" type="password" autoComplete="current-password" required maxLength={1024} value={password} onChange={e => setPassword(e.target.value)} disabled={busy} />
-        <button className="primary-button" disabled={busy}>{busy ? "Loggar in…" : "Logga in"}</button>
-      </form>
+    <PortalHero kicker={session ? `Inloggad · ${session.user.email ?? ""}` : "Din hemmaplan"} title={session ? "Min startsida" : "Nära lagen du följer"} aside={login}>
+      <p className="pz-lead">Dina lag, senaste nyheterna, matchresultaten och kalendern. Samlat på ett ställe.</p>
+      <div className="cs-hero-actions">
+        <Link className="cs-button" href="/klubbar">Sök klubbar och lag</Link>
+        {session && <button className="cs-button ghost" disabled={busy} onClick={signOut}>Logga ut</button>}
+      </div>
+      {!session && <p className="pz-note">Publika klubb- och lagsidor kan du läsa utan att logga in.</p>}
+    </PortalHero>
+
+    {(!ready || error || (authError && session)) && <div className="cs-wrap pz-status">
+      {!ready && <p role="status">Hämtar ditt konto…</p>}
+      {error && <p role="alert">{error} {session && <button className="cs-button small" onClick={refresh}>Försök igen</button>}</p>}
+      {authError && session && <p role="alert">{authError}</p>}
+    </div>}
+
+    {ready && !enabled && !error && <section className="cs-section"><div className="cs-wrap"><div className="cs-empty"><strong>Din personliga startsida är på väg.</strong> Under tiden kan du söka fram klubbar och lag och läsa deras publika sidor.</div></div></section>}
+
+    {ready && !session && <section className="cs-section alt">
+      <div className="cs-wrap">
+        <div className="cs-section-head"><div><p className="cs-kicker">Logga in och följ dina favoriter</p><h2>Allt om dina lag</h2></div></div>
+        <div className="pz-features">
+          <article><span aria-hidden="true">01</span><h3>Följ lag och klubbar</h3><p>Följ lag och klubbar så visas dina genvägar, nyheter och publicerade slutresultat här, även när du byter enhet.</p></article>
+          <article><span aria-hidden="true">02</span><h3>Matcher och resultat</h3><p>Se kommande matcher, slutresultat och matchrapporter från lagen du är med i eller håller koll på.</p></article>
+          <article><span aria-hidden="true">03</span><h3>Privat för dig</h3><p>Dina följda lag och klubbar är privata för ditt konto. Klubbarnas publika sidor kan alla läsa.</p></article>
+        </div>
+      </div>
     </section>}
-    {session && <>
-      <div className="account-bar"><span>Inloggad som {session.user.email}</span><button disabled={busy} onClick={signOut}>Logga ut</button></div>
-      <TeamNotifications key={`notifications:${session.user.id}`} />
-      <PersonalDashboard key={session.user.id} />
-    </>}
+
+    {session && <section className="cs-section alt pz-dashboard">
+      <div className="cs-wrap">
+        <TeamNotifications key={`notifications:${session.user.id}`} />
+        <PersonalDashboard key={session.user.id} />
+      </div>
+    </section>}
   </>;
+
 }
 

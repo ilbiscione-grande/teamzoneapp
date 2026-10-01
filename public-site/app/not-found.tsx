@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { SiteHeader } from "../components/site-header";
+import { PortalFooter, PortalHeader, PortalHero, portalClass } from "../components/portal";
 
 export default function NotFound() {
-  return <main className="public-page"><SiteHeader /><section className="hero-card"><p className="eyebrow">404</p><h1>Sidan kunde inte hittas.</h1><p className="lead">Kontrollera adressen eller gå tillbaka till TeamZone.</p></section><Link className="back-link" href="/">Till TeamZone</Link></main>;
+  return <main className={portalClass}><PortalHeader /><PortalHero kicker="404" title="Sidan kunde inte hittas." mark="404"><p className="pz-lead">Kontrollera adressen eller gå tillbaka till TeamZone.</p><div className="cs-hero-actions"><Link className="cs-button" href="/">Till TeamZone</Link><Link className="cs-button ghost" href="/klubbar">Hitta klubb</Link></div></PortalHero><PortalFooter /></main>;
 }

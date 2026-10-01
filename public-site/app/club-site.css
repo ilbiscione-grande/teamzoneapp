@@ -16,7 +16,8 @@
   --cs-deep: #05080e;
   --cs-green: #1f8a4c;
   --cs-red: #d64545;
-  display: block;
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
   color: var(--cs-text);
   background: var(--cs-bg);
@@ -220,6 +221,7 @@ body:has(.cs) { background: #05080e; }
 .cs-article .cs-more { margin-top: 40px; }
 
 /* Footer */
+.cs > .cs-footer { margin-top: auto; }
 .cs-footer { padding: 56px 0 24px; color: #c4cbd7; background: var(--cs-deep); }
 .cs-footer-grid { display: grid; grid-template-columns: 1.4fr repeat(3, minmax(0, 1fr)); gap: 32px; }
 .cs-footer-club { display: flex; align-items: center; gap: 16px; }

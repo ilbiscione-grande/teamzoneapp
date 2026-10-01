@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { SiteHeader } from "../../components/site-header";
+import { PortalFooter, PortalHeader, PortalHero, portalClass } from "../../components/portal";
 import { FollowButton } from "../../components/follow-button";
 
 type Club = { kind: "club" | "team"; id: string; slug: string; name: string; locality?: string; official: boolean; visibility: "listed" | "published"; club_slug?: string; club_name?: string; age_class?: string };
@@ -41,30 +41,37 @@ export default function ClubCatalog() {
     }
   }
 
-  return <main className="public-page">
-    <SiteHeader />
-    <section className="panel feature-panel">
-      <p className="eyebrow">Klubbar och lag</p><h1>Hitta en klubb eller ett lag</h1>
-      <p>Sök på klubbnamn, lagnamn, ort eller åldersklass. Du kan kombinera flera ord, till exempel Thomas Vetlanda.</p>
-      <p>Både officiellt verifierade och inofficiella klubbar kan finnas i katalogen. Märkningen visar skillnaden.</p>
-      <form onSubmit={search} role="search" style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <label htmlFor="club-query">Klubb, lag, ort eller åldersklass</label>
+  return <main className={portalClass}>
+    <PortalHeader active="search" />
+    <PortalHero kicker="Klubbar och lag" title="Hitta en klubb eller ett lag">
+      <p className="pz-lead">Sök på klubbnamn, lagnamn, ort eller åldersklass. Du kan kombinera flera ord, till exempel Thomas Vetlanda.</p>
+      <form onSubmit={search} role="search" className="pz-search">
+        <label htmlFor="club-query" className="pz-visually-hidden">Klubb, lag, ort eller åldersklass</label>
         <input id="club-query" value={query} disabled={busy} onChange={(event) => setQuery(event.target.value)} minLength={3} maxLength={80} placeholder="Exempel: Vetlanda, Thomas lag, J18" aria-describedby="search-help" />
-        <button type="submit" disabled={busy}>{busy ? "Söker…" : "Sök"}</button>
+        <button type="submit" className="cs-button" disabled={busy}>{busy ? "Söker…" : "Sök"}</button>
       </form>
-      <p id="search-help">Skriv minst tre tecken. Början av ett ord räcker.</p>
+      <p id="search-help" className="pz-note">Skriv minst tre tecken. Början av ett ord räcker. Både officiellt verifierade och inofficiella klubbar kan finnas i katalogen. Märkningen visar skillnaden.</p>
+    </PortalHero>
+    <section className="cs-section alt pz-results">
+      <div className="cs-wrap">
+        {message && <p role="status" className="cs-empty">{message}</p>}
+        {items.length > 0 && <div className="pz-result-grid">
+          {items.map((club) => <article className="pz-result" key={`${club.kind}:${club.id}`}>
+            <span className="cs-crest cs-crest-sm cs-crest-initials" aria-hidden="true">{club.name.split(/\s+/).filter(Boolean).slice(0, 2).map(word => word[0]?.toUpperCase()).join("")}</span>
+            <div className="pz-result-body">
+              <p className="cs-kicker">{club.kind === "team" ? "Lag" : "Klubb"}</p>
+              <h2>{club.visibility === "published" ? <Link href={club.kind === "team" ? `/${club.club_slug}/${club.slug}` : `/${club.slug}`}>{club.name}</Link> : club.name}</h2>
+              {club.kind === "team" && <p>{club.club_name}{club.age_class ? ` · ${club.age_class}` : ""}</p>}
+              <p className={club.official ? "pz-official" : undefined}>{club.official ? "Officiellt verifierad klubb" : "Inofficiell klubb"}{club.locality ? ` · ${club.locality}` : ""}</p>
+              {club.visibility === "listed" && <p>Enbart katalogpost – ingen publik klubbsida ännu.</p>}
+            </div>
+            {club.visibility === "published" && <FollowButton channel={club} />}
+          </article>)}
+        </div>}
+        {hasMore && <p role="status" className="pz-note dark">Det finns fler träffar. Lägg till exempelvis ort eller åldersklass för att begränsa sökningen.</p>}
+      </div>
     </section>
-    {message && <p role="status">{message}</p>}
-    <div className="card-list">
-      {items.map((club) => <article className="story-card" key={`${club.kind}:${club.id}`}>
-        <p className="eyebrow">{club.kind === "team" ? "Lag" : "Klubb"}</p>
-        <h2>{club.visibility === "published" ? <Link href={club.kind === "team" ? `/${club.club_slug}/${club.slug}` : `/${club.slug}`}>{club.name}</Link> : club.name}</h2>
-        {club.kind === "team" && <p>{club.club_name}{club.age_class ? ` · ${club.age_class}` : ""}</p>}
-        <p>{club.official ? "Officiellt verifierad klubb" : "Inofficiell klubb"}{club.locality ? ` · ${club.locality}` : ""}</p>
-        {club.visibility === "listed" && <p>Enbart katalogpost – ingen publik klubbsida ännu.</p>}
-        {club.visibility === "published" && <FollowButton channel={club} />}
-      </article>)}
-    </div>
-    {hasMore && <p role="status">Det finns fler träffar. Lägg till exempelvis ort eller åldersklass för att begränsa sökningen.</p>}
+    <PortalFooter />
   </main>;
+
 }

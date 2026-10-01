@@ -1,0 +1,126 @@
+/* TeamZone's own pages (start page, sign-in, personal start page, search,
+   legal and status pages) in the club-site look. Builds on club-site.css. */
+
+/* The older page styles read these variables; inside .cs they follow the
+   club-site palette. */
+.cs {
+  --ink: var(--cs-text);
+  --muted: var(--cs-muted);
+  --paper: var(--cs-bg-alt);
+  --line: var(--cs-line);
+  --green: var(--cs-brand);
+  --lime: var(--cs-accent);
+}
+
+/* Brand */
+.pz-brand { gap: 10px; }
+.pz-mark { flex: 0 0 auto; display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 8px; background: var(--cs-accent); color: var(--cs-accent-ink); font-family: var(--cs-display), sans-serif; font-size: 1.15rem; font-weight: 800; letter-spacing: 0; }
+.pz-mark.large { width: 64px; height: 64px; border-radius: 12px; font-size: 1.8rem; }
+.cs-nav a[aria-current="page"] { color: white; border-bottom-color: var(--cs-accent); }
+
+/* Hero */
+.pz-hero .cs-hero-inner, .pz-hero-grid { position: relative; z-index: 1; }
+.pz-hero-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(28px, 5vw, 64px); align-items: center; padding: clamp(48px, 8vw, 104px) 0 clamp(44px, 7vw, 88px); }
+.pz-hero-grid.with-aside { grid-template-columns: minmax(0, 1.25fr) minmax(300px, .75fr); }
+.pz-hero h1 { font-size: clamp(2.8rem, 7.5vw, 5.8rem); }
+.pz-lead { max-width: 620px; margin: 18px 0 0; color: #d3d9e3; font-size: clamp(1.05rem, 1.8vw, 1.25rem); line-height: 1.6; }
+.pz-note { margin: 18px 0 0; color: #9aa4b5; font-size: .9rem; line-height: 1.6; }
+.pz-note.dark { color: var(--cs-muted); }
+.pz-status { padding: 18px 0; }
+.pz-status p { margin: 0; }
+.cs-button.small { min-height: 36px; padding: 6px 14px; font-size: .9rem; }
+.pz-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* A hero followed directly by the footer fills the page. */
+.cs > .cs-hero:nth-last-child(2) { flex: 1 0 auto; display: flex; align-items: center; }
+.pz-status { background: white; }
+
+/* Sign-in card */
+.pz-login { display: grid; gap: 14px; padding: clamp(22px, 3vw, 32px); border-radius: 8px; background: white; color: var(--cs-text); box-shadow: 0 30px 80px rgba(0,0,0,.35); }
+.pz-login .cs-kicker { margin: 0; color: var(--cs-brand); font-size: .85rem; }
+.pz-login h2 { margin: -6px 0 4px; font-size: 2.2rem; line-height: 1; font-weight: 800; text-transform: uppercase; }
+.pz-login .field input { margin-top: 2px; }
+.pz-login .primary-button { margin-top: 4px; min-height: 48px; }
+.pz-small { margin: 0; font-size: .85rem; }
+.pz-small a { color: var(--cs-brand); font-weight: 600; }
+.pz-error { margin: 0; padding: 10px 12px; border-radius: 4px; background: #fdecec; color: #8d1f1f; font-size: .88rem; }
+
+/* What you get */
+.pz-features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.pz-features article { padding: 26px 24px; border-radius: 6px; background: white; border: 1px solid var(--cs-line); border-top: 4px solid var(--cs-ink); }
+.pz-features span { font-family: var(--cs-display), sans-serif; font-size: 2.6rem; font-weight: 800; line-height: 1; color: var(--cs-brand); }
+.pz-features h3 { margin: 12px 0 8px; font-size: 1.6rem; line-height: 1.05; font-weight: 800; text-transform: uppercase; }
+.pz-features p { margin: 0; color: var(--cs-muted); line-height: 1.65; }
+
+/* Search */
+.pz-search { display: flex; gap: 10px; max-width: 680px; margin-top: 28px; }
+.pz-search input { flex: 1; min-width: 0; min-height: 54px; padding: 0 18px; border: 2px solid transparent; border-radius: 4px; font-size: 1.05rem; color: var(--cs-text); background: white; }
+.pz-search input:focus { outline: none; border-color: var(--cs-accent); }
+.pz-search .cs-button { min-height: 54px; padding: 0 28px; }
+.pz-results { min-height: 240px; }
+.pz-result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 16px; }
+.pz-result { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 16px; align-items: start; padding: 20px; border-radius: 6px; background: white; border: 1px solid var(--cs-line); border-left: 4px solid var(--cs-ink); }
+.pz-result .cs-crest { margin-top: 4px; }
+.pz-result-body h2 { margin: 0 0 6px; font-size: 1.6rem; line-height: 1.05; font-weight: 800; text-transform: uppercase; overflow-wrap: anywhere; }
+.pz-result-body h2 a { text-decoration: none; }
+.pz-result-body h2 a:hover { color: var(--cs-brand); }
+.pz-result-body .cs-kicker { margin: 0 0 2px; color: var(--cs-brand); font-size: .8rem; }
+.pz-result-body p { margin: 2px 0; color: var(--cs-muted); font-size: .9rem; }
+.pz-result-body p.pz-official { color: var(--cs-brand); font-weight: 600; }
+.pz-result-body p.pz-official::before { content: "✓ "; }
+.pz-result > .follow-control, .pz-result > .follow-button { grid-column: 2; justify-self: start; margin-top: 10px; }
+
+/* Personal start page: the dashboard in the club-site look */
+.pz-dashboard { padding-top: clamp(32px, 5vw, 56px); }
+.cs .panel { border-radius: 6px; border-color: var(--cs-line); background: white; }
+.cs .eyebrow { color: var(--cs-brand); font-family: var(--cs-display), sans-serif; font-size: .85rem; font-weight: 700; letter-spacing: .14em; }
+.cs .panel h2, .cs .dashboard-panel h2, .cs .dashboard-team-strip h2 { font-family: var(--cs-display), sans-serif; font-size: 1.8rem; line-height: 1; font-weight: 800; letter-spacing: .005em; text-transform: uppercase; }
+.cs .dashboard-toolbar { padding: 0 2px; }
+.cs .personal-dashboard button, .cs .personal-dashboard select, .cs .team-notifications button { border-radius: 4px; }
+.cs .dashboard-stats { gap: 14px; }
+.cs .dashboard-stats a { border-radius: 6px; padding: 22px; border-color: var(--cs-line); }
+.cs .dashboard-stats a:first-child { background: var(--cs-ink); border-color: var(--cs-ink); }
+.cs .dashboard-stats a:hover { border-color: var(--cs-ink); }
+.cs .dashboard-stats strong { font-family: var(--cs-display), sans-serif; font-size: 3rem; font-weight: 800; }
+.cs .dashboard-stats span { font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+.cs .dashboard-stats a:first-child strong { color: var(--cs-accent-text); }
+.cs .dashboard-team-strip { padding: 20px 22px; border-radius: 6px; background: var(--cs-ink); color: white; }
+.cs .dashboard-team-strip .eyebrow { color: var(--cs-accent-text); }
+.cs .dashboard-team-links small { color: #9aa4b5; }
+.cs .dashboard-team-links > a:hover strong { color: var(--cs-accent-text); }
+.cs .team-avatar { width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--cs-accent-text); color: var(--cs-accent-text); background: var(--cs-ink-3); font-family: var(--cs-display), sans-serif; font-size: .95rem; }
+.cs .feed-filters button { border-radius: 4px; font-weight: 600; }
+.cs .feed-filters button[aria-pressed="true"] { background: var(--cs-ink); border-color: var(--cs-ink); }
+.cs .calendar-month-heading h3, .cs .calendar-agenda-title h3 { font-family: var(--cs-display), sans-serif; font-size: 1.3rem; text-transform: uppercase; }
+.cs .calendar-grid .calendar-day { border-radius: 4px; }
+.cs .calendar-grid .calendar-day.today { box-shadow: inset 0 0 0 2px var(--cs-brand); }
+.cs .calendar-grid .calendar-day[aria-pressed="true"] { background: var(--cs-ink); }
+.cs .dashboard-agenda time strong { font-family: var(--cs-display), sans-serif; font-size: 1.15rem; text-transform: uppercase; }
+.cs .dashboard-result { border-radius: 6px; border-top: 4px solid var(--cs-ink); }
+.cs .dashboard-result h3 { font-family: var(--cs-display), sans-serif; font-size: 1.2rem; text-transform: uppercase; }
+.cs .dashboard-score > strong { font-family: var(--cs-display), sans-serif; font-size: 2.8rem; font-weight: 800; }
+.cs .dashboard-news-list h3 { font-family: var(--cs-display), sans-serif; font-size: 1.45rem; line-height: 1.08; text-transform: uppercase; }
+.cs .dashboard-news-list article.featured-news { border-radius: 6px; background: var(--cs-ink); color: white; }
+.cs .dashboard-news-list article.featured-news .eyebrow, .cs .dashboard-news-list article.featured-news .article-link { color: var(--cs-accent-text); }
+.cs .dashboard-news-list article.featured-news p:not(.eyebrow) { color: #c4cbd7; }
+.cs .dashboard-follow-list a:hover strong { color: var(--cs-brand); }
+.cs .empty-note { border-radius: 4px; background: var(--cs-bg-alt); }
+.cs .pill { border-radius: 4px; background: var(--cs-bg-alt); border-color: var(--cs-line); }
+.cs .team-notifications { margin-bottom: 22px; }
+
+/* Legal pages */
+.cs .legal-page { padding: 0; }
+.cs .legal-header { padding: 0 0 18px; }
+.cs .legal-document { border-radius: 8px; box-shadow: none; border-color: var(--cs-line); background: white; }
+.cs .legal-document h1 { font-family: var(--cs-display), sans-serif; font-size: clamp(2.6rem, 6vw, 4.2rem); line-height: .95; font-weight: 800; text-transform: uppercase; letter-spacing: 0; }
+.cs .legal-sections h2 { font-family: var(--cs-display), sans-serif; font-size: 1.7rem; text-transform: uppercase; letter-spacing: 0; }
+.cs .legal-nav a { color: var(--cs-brand); }
+
+@media (max-width: 860px) {
+  .pz-hero-grid.with-aside { grid-template-columns: 1fr; }
+  .pz-features { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .pz-search { flex-direction: column; }
+  .pz-mark { width: 34px; height: 34px; font-size: 1rem; }
+}

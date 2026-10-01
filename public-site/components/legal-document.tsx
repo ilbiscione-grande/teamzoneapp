@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PortalFooter, PortalHeader, portalClass } from "./portal";
 
 type LegalSection = Readonly<{
   title: string;
@@ -20,12 +21,10 @@ export function LegalDocument({
   sections: readonly LegalSection[];
 }>) {
   return (
-    <main className="legal-page">
+    <main className={portalClass}>
+      <PortalHeader active="legal" />
+      <div className="cs-section alt"><div className="legal-page">
       <header className="legal-header">
-        <Link className="brand-link" href="/" aria-label="TeamZone startsida">
-          <span className="brand-mark" aria-hidden="true">TZ</span>
-          <span>TeamZone</span>
-        </Link>
         <nav className="legal-nav" aria-label="Juridiska dokument">
           <Link href="/villkor">Användarvillkor</Link>
           <Link href="/integritet">Integritetspolicy</Link>
@@ -55,6 +54,8 @@ export function LegalDocument({
           ))}
         </div>
       </article>
+      </div></div>
+      <PortalFooter />
     </main>
   );
 }
