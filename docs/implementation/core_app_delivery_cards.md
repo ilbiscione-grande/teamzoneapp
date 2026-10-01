@@ -1,6 +1,6 @@
 # TeamZone grundapp – implementerbara arbetskort
 
-**Status:** AKTIVT ARBETSDOKUMENT  
+**Status:** AKTIVT ARBETSDOKUMENT (senast uppdaterat 2026-10-01)  
 **Upprättat:** 2026-08-23  
 **Källa:** fastställd paritetsmatris och fastställd arbetsplan  
 **Livegräns:** inga Supabase-liveändringar utan separat uttryckligt godkännande
@@ -50,6 +50,7 @@ Ett kort får inte markeras `[x]` enbart för att en teknisk grund redan finns. 
 | 7 | Min assistent-grund | AC-01–AC-08 | HOME-04 och stabila domänsignaler |
 | 8 | Senare funktioner | LATER-01–LATER-04 | Separat prioriteringsbeslut |
 | 9 | Samlad releasegrind | REL-01–REL-03 | Våg 0–6 klara |
+| 10 | Utbyggnad efter grundappen | TEAM-09–TEAM-12, CAL-12–CAL-14, MSG-09, PROF-01–PROF-04, AUTH-08, PUB-10–PUB-13, SET-01 | Produktägarens prioriteringar efter 2026-09-26 |
 
 Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående verifiering kan ske parallellt när det inte skapar konkurrerande kontrakt.
 
@@ -1064,7 +1065,171 @@ Supabase-testprojektet; runtime förblir avstängd tills flödet är verifierat.
 - [x] Android namespace/applicationId och iOS bundle identifier är fortsatt `com.teamzone.teamzone`.
 - [x] Alla implementerade arbetskort har evidence, REL-01 och REL-02 är gröna och första återställningspunkten `bef10fb` finns.
 
-## 14. Rekommenderat nästa konkreta arbete
+## 14. Våg 10 – utbyggnad efter grundappen
+
+Kort för arbete som levererats efter dokumentationssynken 2026-09-26. Samlad evidens:
+[`core_app_iteration_2026-09-27_10-01.md`](../evidence/core_app_iteration_2026-09-27_10-01.md). Ett kort i den här vågen
+är `[~]` tills den fysiska enhetsgrinden (Android-telefon och tablet) är genomförd, även när det är hosted-verifierat och
+godkänt av produktägaren.
+
+### TEAM-09 – Roller, titlar och positioner
+
+**Status:** `[~]` – hosted och automatiskt verifierad; fysisk grind återstår
+
+- [x] Ledare kan lägga till ledare (sig själv, befintliga klubbledare eller nya) och byta person mellan spelare och ledare.
+- [x] Titlar (t.ex. Huvudtränare) och idrottsspecifika positioner i två nivåer, plus upp till fem egna av varje.
+- [x] Flera roller i samma lag blir en lagkontext som visar titeln. Ledare som också är spelare syns i båda listorna.
+- [x] Lägg till person: roll, titel och position väljs i samma dialog.
+
+Beskrivning: [`team-person-functions-positions.md`](team-person-functions-positions.md).
+
+### TEAM-10 – Behörigheter per ledare
+
+**Status:** `[~]` – hosted och automatiskt verifierad; fysisk grind återstår
+
+- [x] Behörigheter per ledare med mallar, styrda av capability grants och aldrig av titeln.
+- [x] Huvudtränare och klubbens medlemsadministratörer hanterar ledare. Klubbskopad `club.memberships.manage` ger
+  `team.leaders.manage` och `team.roster.manage` i hela klubben.
+
+Beskrivning: [`team-leader-permissions.md`](team-leader-permissions.md).
+
+### TEAM-11 – Idrott ändras bara av klubbadministratör
+
+**Status:** `[~]` – hosted och automatiskt verifierad
+
+- [x] `set_team_sport` kräver klubbskopad `club.memberships.manage` och svarar `club_admin_required` annars.
+- [x] `list_team_roles` returnerar `can_set_sport`; övriga ledare ser idrotten skrivskyddat i lagprofilen.
+
+### TEAM-12 – Lagöversikt, lagprofil och medlemsredigering
+
+**Status:** `[~]` – hosted och automatiskt verifierad; godkänd av produktägaren på webb
+
+- [x] Översikten visar lagbild, aktiva inbjudningar/förfrågningar (bara för behöriga och när sådana finns), nästa
+  händelse och senaste match.
+- [x] Lagprofil-dialogen är helskärm på mobil, med fast rubrikrad, sektioner, idrott som chips, felrad och osparat-skydd.
+- [x] Medlemssidan har en penna uppe till höger som öppnar en sida med uppgifter, kontaktuppgifter (för personer utan
+  konto) och lagåtgärder. Den separata kontaktdialogen och raden "Redigera profil" är borttagna.
+- [x] Representation i två steg med godkännande från hemmalaget. Inbjudningar görs i en guide i tre steg.
+
+### CAL-12 – Förberedelser och matchläge
+
+**Status:** `[~]` – hosted och automatiskt verifierad; fysisk grind återstår
+
+- [x] Förberedelser v1 per eventtyp med synlighet per fil och realtid.
+- [x] Matchläge som tunn klient över Match Space v2: klocka, perioder, mål, målskytt/assist och rättelser.
+
+Beskrivning: [`event-preparations-v1.md`](event-preparations-v1.md).
+
+### CAL-13 – Ny eventdialog och platser
+
+**Status:** `[~]` – hosted och automatiskt verifierad
+
+- [x] Eventdialogen är omgjord med sektioner, fast rubrikrad och osparat-skydd.
+- [x] Platsen består av anläggning, plan och valfritt fritextunderlag; kombinationen återanvänds.
+
+### CAL-14 – Kalenderns vy och filter
+
+**Status:** `[~]` – hosted och automatiskt verifierad
+
+- [x] "Vy och filter" i en knapp, Dag/Månad i listans rubrikrad, flera lag samtidigt och sparad standardvy.
+- [x] "Planerad" är borttaget från korten. Utkast markeras med en liten ikon.
+
+### MSG-09 – Inbox per klubb, ny meddelandedialog och notisåtgärder
+
+**Status:** `[~]` – hosted och automatiskt verifierad
+
+- [x] Inbox filtreras på aktivt lag som standard, och klubbar kan fällas ihop.
+- [x] Ny meddelandedialog väljer direkt- eller gruppmeddelande efter antal mottagare.
+- [x] Filterdialogen scrollar och går att stänga.
+- [x] Notiser kan markeras som lästa eller arkiveras direkt i listan.
+
+### PROF-01 – Egen profil, kontaktuppgifter och profilbild
+
+**Status:** `[~]` – hosted och automatiskt verifierad; kameran fysiskt overifierad
+
+- [x] Namn, kontakt-e-post, telefon, adress och profilbild kan redigeras. Profilbilden kan väljas från bilder eller tas
+  med kameran.
+- [x] Uppgifterna är synliga för personen och lagets ledare. Klubben fyller i uppgifter för personer utan konto.
+- [x] Visningsnamnet slår igenom i klubbens register, drawer och profil.
+
+### PROF-02 – Byte av inloggningsmejl via support
+
+**Status:** `[~]` – hosted och automatiskt verifierad
+
+- [x] Bytet kräver en supportgodkänd begäran och ett bekräftelsemejl. En trigger på `auth.users` stoppar direkta byten.
+
+### PROF-03 – Virtuellt medlemskort
+
+**Status:** `[~]` – hosted och automatiskt verifierad
+
+- [x] Kortet har foto, klubbmärke, namn, lag och roller, och en baksida med fullständig adress. Helskärm på mobil,
+  dialog på tablet och desktop.
+- [x] Klubbadministratörer laddar upp klubbmärket. Det lagras privat och läses via signerad URL.
+
+### PROF-04 – Profilflikar och statistik
+
+**Status:** `[~]` – hosted och automatiskt verifierad
+
+- [x] Flikarna Medlemsinfo, Statistik och Inställningar (den sista bara på den egna profilen).
+- [x] Statistiken gäller alltid den visade personen: närvaro, matcher, mål, assist, kort, kallelsesvar och appanvändning.
+  Personen själv och lagets ledare kan se den.
+
+### AUTH-08 – Följarkonto som bara skapas på den publika sajten
+
+**Status:** `[~]` – hosted och automatiskt verifierad; registrering end-to-end med mejlbekräftelse återstår
+
+- [x] Kontotypen `follower` hör inte till något lag och har ingen roll.
+- [x] Kontot kan bara skapas via den publika sajtens server (kontroll av ursprung och Turnstile). Bara `service_role`
+  kan märka konton, och aldrig ett befintligt konto.
+- [x] Villkor och integritetspolicy godkänns vid registreringen och sparas med källan `web`.
+- [x] I appen hamnar följare i väntrummet och blir medlemmar när en klubbkoppling blir aktiv.
+
+### PUB-10 – Matcher på lagsidan
+
+**Status:** `[~]` – hosted verifierad och godkänd av produktägaren
+
+- [x] Lagvalet "Visa matcher" visar alla matcher, både kommande och spelade, med titel och tid. Platsen visas bara om den
+  publiceras per match, och en match som görs privat förblir dold. Valet är av som standard.
+
+### PUB-11 – Klubbmärke på de publika sidorna
+
+**Status:** `[~]` – implementerad och testad isolerat; migrationen är inte körd och den publika delen är inte driftsatt
+
+- [x] Aktivt märke för en publicerad klubb visas via `/media/public/<slumpad nyckel>`. Byte eller borttagning av märket,
+  eller avpublicering av klubben, stänger den gamla adressen.
+- [ ] Bildbehandling (skalning och rensning av metadata) väntar på en konfigurerad leverantör för `public-media-worker`.
+
+### PUB-12 – Klubbsajtens design och klubbfärger
+
+**Status:** `[~]` – driftsatt och godkänd av produktägaren
+
+- [x] Klubb-, lag- och artikelsidor har klubbsajtsdesign, inspirerad av ledande svenska fotbollsklubbar.
+- [x] Klubbadministratörer väljer huvud- och accentfärg. Ett stylesheet från sajten säkrar läsbar kontrast; inga
+  inline-stilar används (CSP).
+
+Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men dokumenteras här.
+
+### PUB-13 – TeamZones egna sidor i klubbsajtstil
+
+**Status:** `[~]` – driftsatt; den inloggade startsidan återstår att kontrollera visuellt
+
+- [x] Startsida med inloggnings- och registreringskort, personlig startsida, sök, 404, "inte publicerad" och juridiska sidor.
+- [x] Godkända adresser styrs av `PUBLIC_SITE_ORIGINS`. Det rättade också kontaktformuläret på `public.teamzoneapp.se`.
+
+### SET-01 – Klubbinställningar
+
+**Status:** `[~]` – hosted och automatiskt verifierad
+
+- [x] Inställningar har fliken Klubb, bara för klubbadministratörer: klubbmärke med förhandsvisning och uppladdning,
+  klubbfärger, publik klubbsida och lagsidor samt klubbverifiering.
+- [x] Samma sektion finns under Inställningar på den egna profilen.
+- [x] Lag som aldrig publicerats får en föreslagen webbadress, och ett ogiltigt värde förklaras.
+
+## 15. Rekommenderat nästa konkreta arbete
+
+**Våg 10 (2026-10-01):** kör `20261001170000_public_club_badge.sql` och driftsätt app och publik sajt; genomför en samlad fysisk enhetsgrind (Galaxy S25 och Android-tablet) för TEAM-09–12, CAL-12–14, MSG-09, PROF-01–04 och SET-01; registrera ett följarkonto end-to-end med mejlbekräftelse (AUTH-08); kontrollera den inloggade personliga startsidan visuellt (PUB-13).
+
+Grundappens ursprungliga ordning:
 
 1. [x] Genomför **FND-01** som en ren extraktion utan produktbeteendeändring.
 2. [x] Genomför **FND-02** ovanpå de extraherade ytorna.
@@ -1123,10 +1288,15 @@ Supabase-testprojektet; runtime förblir avstängd tills flödet är verifierat.
 55. [~] **AC-07** lokalt implementerad och Flutter-verifierad; verklig flerrollsdata och fysisk enhetsverifiering återstår.
 56. [~] **AC-08** policy och fail-closed-grind lokalt implementerade och Flutter-verifierade; flerrollsmatris och fysisk enhetsgrind återstår.
 
-## 15. Ändringslogg
+## 16. Ändringslogg
 
 | Datum | Ändring | Status |
 |---|---|---|
+| 2026-10-01 | **Våg 10 dokumenterad.** Nya kort TEAM-09–12, CAL-12–14, MSG-09, PROF-01–04, AUTH-08, PUB-10–13 och SET-01 samlar arbetet sedan 2026-09-26 med evidens i `core_app_iteration_2026-09-27_10-01.md`. Alla migrationer till och med `20261001150000` är körda i testprojektet; `20261001170000_public_club_badge` väntar. Flutter 524/524, publik sajt 56/56 och nio isolerade SQL-tester passerar. | Våg 10 `[~]` |
+| 2026-10-01 | **Publik sajt, följarkonto och klubbinställningar.** Klubbsajtsdesign med klubbfärger, TeamZones egna sidor i samma stil, följarkonto som bara skapas på public-sajten, "Visa matcher" för lag, publikt klubbmärke (väntar på migration) och fliken Klubb under Inställningar. Kontaktformuläret på `public.teamzoneapp.se` och sparandet av lag som aldrig publicerats rättades. App och publik sajt driftsatta. | PUB-10–13, AUTH-08, SET-01 `[~]` |
+| 2026-09-30 | **Profil, eventdialog och lagdialoger.** Egen profil med kontaktuppgifter och profilbild, inloggningsmejl via support, medlemskort, profilflikar med statistik, ny eventdialog med anläggning/plan/underlag, notisåtgärder, lagöversikt, lagprofil-dialog och idrott endast för klubbadministratörer. | PROF-01–04, CAL-13, TEAM-11–12 `[~]` |
+| 2026-09-29 | **Lagroller, behörigheter, förberedelser och matchläge.** Roller, titlar och positioner per idrott, behörigheter per ledare med mallar, klubbens medlemsadministratörer hanterar ledare, förberedelser v1 och matchläge. | TEAM-09–10, CAL-12 `[~]` |
+| 2026-09-27 | **Trupp och representation.** Spelare får `team.roster.view`, inbjudningsguide i tre steg, representation i två steg med rättat SQL-fel, en redigeringsvy per person, sparad kalendervy och inbox per aktivt lag. | TEAM-12, CAL-14, MSG-09 `[~]` |
 | 2026-09-15 | **CAL-01 helt stängd efter tablet- och desktopverifiering.** Kalendern använder en kompakt vy-dropdown och separat filterrad. Månad/Vecka har kalenderöversikt till vänster och event för vald dag till höger; Dag har tidslinje till vänster och kommande agenda till höger. Månadsvyn kan växla mellan vald dag och hela kalendermånaden oberoende av markerat datum. EventDetails öppnas med push/pop och återställer vy, datum och filter; val från Dag-vyns högra agenda synkroniserar först till eventets dag. Native tablet använder alltid Min assistent-FAB så sidans högra kolumn förblir kontextuell. | CAL-01 samtliga grindar godkända |
 | 2026-09-13 | **TEAM-08 helt stängd efter hosted och fysisk slutverifiering.** Normal avslutning och återaktivering bevarar den namngivna laghistoriken. Klubbanonymisering kräver två separata ansvariga och bevarar neutral historik som `Tidigare spelare`. Global kontoradering går genom den enhetliga supportkön och den driftsatta Auth-workern; det raderade testkontot kunde därefter inte logga in. En profilomfattande eftermigration hanterar även äldre fragmenterade personidentiteter. Slutkontrollen på fysisk Android-tablet bekräftade den neutrala historikposten i rätt lagkontext. Policy för eventuell publik namngiven historik och juridisk sluttext kvarstår som separata releasegrindar. | TEAM-08 samtliga produktgrindar godkända |
 | 2026-09-13 | **TEAM-07 helt stängd efter fysisk tabletverifiering och UX-uppföljning.** En ledare flyttade en spelare mellan två lag och tillbaka; den aktiva representationen bytte lag medan historiken bevarades. PostgREST-svaret gjordes robust för generella mappar och mutationsfelet separerades från efterföljande omladdning så en lyckad flytt inte längre samtidigt visar ett falskt fel. Flyttpanelen är nu ett sammanhållet bottomsheet med flerval, mållag, anledning och fast flyttknapp. Samma flöde kan öppnas från spelarprofilen med aktuell spelare förvald. Resultatet visas ovanpå panelen, och efter bekräftad hel eller partiell flytt stängs panelen så nästa öppning alltid hämtar en aktuell kandidatlista. Riktad Flutter-analys passerar utan anmärkningar och backendansluten APK är byggd, installerad och fysiskt godkänd. | TEAM-07 samtliga grindar godkända |

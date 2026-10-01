@@ -51,6 +51,7 @@ body:has(.cs) { background: #05080e; }
 
 /* Crest */
 .cs-crest { flex: 0 0 auto; display: inline-grid; place-items: center; object-fit: contain; border-radius: 50%; }
+img.cs-crest { border-radius: 0; filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
 .cs-crest-sm { width: 44px; height: 44px; }
 .cs-crest-md { width: 64px; height: 64px; }
 .cs-crest-lg { width: clamp(96px, 14vw, 156px); height: clamp(96px, 14vw, 156px); }

@@ -11,10 +11,22 @@ entitlements, Economy and Board. Fee/payment settlement remains closed by
 PAR-FIN-03, and S11 workspaces/webtools are explicitly deferred while the core
 application is stabilized.
 
+Since 2026-09-27 the core app has been extended with team roles and permissions,
+event preparations and match mode, member profiles, follower accounts on the
+public site, a club-site design with club colours and club settings (wave 10 in
+[`docs/implementation/core_app_delivery_cards.md`](docs/implementation/core_app_delivery_cards.md)).
+
 Current progress is tracked in
 [`docs/implementation/slice_status.md`](docs/implementation/slice_status.md).
 The approved files under `docs/specification/source/` remain an immutable input
 snapshot rather than a mutable progress tracker.
+
+## Applications
+
+- `lib/` – the Flutter app (Android, iOS, web at `app.teamzoneapp.se`).
+- `public-site/` – the Next.js public site (`public.teamzoneapp.se`): club and
+  team pages, TeamZone's start page, sign-in and follower sign-up, search.
+- `supabase/` – migrations, Edge Functions and isolated SQL tests.
 
 ## Targets
 
@@ -44,6 +56,38 @@ An approved non-live environment can be connected with:
 ```
 
 Without both values the app deliberately shows a safe unconfigured state.
+
+### Public site (`public-site/`)
+
+```powershell
+npm ci
+npx tsc --noEmit
+npm test
+npm run build
+```
+
+Server configuration lives in `public-site/apphosting.yaml` and secrets in
+Firebase App Hosting; see [`docs/development/environment.md`](docs/development/environment.md).
+
+### Isolated SQL tests
+
+Migrations are checked in an in-memory PostgreSQL (PGlite) before they are run
+against the audit project:
+
+```powershell
+node supabase/tests/<name>.local.mjs
+```
+
+### Deployment (audit project)
+
+Only after the matching migrations are applied:
+
+```powershell
+npx firebase-tools deploy --only hosting --project teamzoneapp-b02a2
+npx firebase-tools deploy --only apphosting:teamzoneapp-public --project teamzoneapp-b02a2
+```
+
+The Flutter web build for hosting uses `--release` with the `audit` defines below.
 
 ## Security
 

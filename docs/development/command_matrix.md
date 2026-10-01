@@ -9,6 +9,10 @@
 | Android debug | `flutter build apk --debug` (see note below for a backend-connected build) | Yes |
 | Android device smoke | `flutter run -d <device>` (see note below for a backend-connected build) | When a device is connected |
 | iOS build/sign | CI/macOS command decided later | No on Windows |
+| Public site types | `npx tsc --noEmit` (in `public-site/`) | Yes |
+| Public site tests | `npm test` (in `public-site/`) | Yes |
+| Public site build | `npm run build` (in `public-site/`) | Before deploy |
+| Isolated SQL test | `node supabase/tests/<name>.local.mjs` (PGlite, no database needed) | For new or patched migrations |
 
 All Flutter commands need write access to the shared Flutter SDK cache. CI must pin a compatible Flutter release and commit `pubspec.lock`.
 

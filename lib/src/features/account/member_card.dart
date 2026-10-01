@@ -677,7 +677,7 @@ class _ClubBadgeDialogState extends State<_ClubBadgeDialog> {
             const SizedBox(height: 12),
             Text(
               strings.feature(
-                'Visas på medlemskorten för alla i klubben. PNG, JPG eller WebP, högst 1 MB.',
+                'Visas på medlemskorten och, när klubbsidan är publicerad, på klubbens publika sidor. PNG, JPG eller WebP, högst 1 MB.',
               ),
               textAlign: TextAlign.center,
             ),

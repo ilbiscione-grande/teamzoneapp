@@ -1784,8 +1784,8 @@ class AppStrings {
     'Klubbmärket får vara högst 1 MB.': 'The club badge may be at most 1 MB.',
     'Klubbmärket kunde inte sparas.': 'The club badge could not be saved.',
     'Klubbmärket kunde inte tas bort.': 'The club badge could not be removed.',
-    'Visas på medlemskorten för alla i klubben. PNG, JPG eller WebP, högst 1 MB.':
-        'Shown on the member cards for everyone in the club. PNG, JPG or WebP, at most 1 MB.',
+    'Visas på medlemskorten och, när klubbsidan är publicerad, på klubbens publika sidor. PNG, JPG eller WebP, högst 1 MB.':
+        "Shown on the member cards and, when the club page is published, on the club's public pages. PNG, JPG or WebP, at most 1 MB.",
     'Välj bild': 'Choose image',
     'Markera som läst': 'Mark as read',
     'Ta bort notisen': 'Remove notification',

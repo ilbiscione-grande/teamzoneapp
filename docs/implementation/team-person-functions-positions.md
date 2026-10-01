@@ -21,7 +21,10 @@ och dess capability grants.
   detaljerade med förälder (mittback → försvarare). Väljs en detaljerad
   position döljs den övergripande i sammanfattningen.
 - **Idrott per lag.** `core.teams.sport` (fotboll, handboll, annan idrott)
-  väljer katalog. Sätts under Översikt → Redigera lagprofil → Idrott. Byte
+  väljer katalog. Sätts under Översikt → Redigera lagprofil → Idrott, men bara
+  av klubbens administratörer (klubbskopad `club.memberships.manage`, sedan
+  `20260930170000_team_sport_club_admin_only.sql`); övriga ser idrotten
+  skrivskyddat. Byte
   av idrott tar bort positioner som inte finns i den nya katalogen; lagets
   egna benämningar behålls. "Annan idrott" har bara egna benämningar.
 - **Egna benämningar.** Upp till fem egna titlar och fem egna positioner per

@@ -13,10 +13,26 @@
 
 Visual Studio is intentionally absent because native Windows desktop is not a v1 target. Android and web are buildable on this host. iOS project files are maintained here, while building/signing requires macOS or suitable CI.
 
-No Docker-compatible runtime or local PostgreSQL server is required for S00. Future database migrations are tested in the hosted audit project until an explicitly approved isolated runtime exists.
+No Docker-compatible runtime or local PostgreSQL server is required. New and patched migrations are first checked in an in-memory PostgreSQL (PGlite, `supabase/tests/*.local.mjs`) with stubs for the objects they touch; patch points in live functions are checked read-only against the audit project before the migration is run there.
 
 ## Environment contract
 
 `TEAMZONE_ENV` accepts `local`, `audit`, `staging` or `production`. Unknown values parse fail-safe to `local`. `local` does not wire a Supabase project — a plain `flutter build`/`flutter run` therefore shows "Backend är inte ansluten" by design, not as a bug. See [command_matrix.md](command_matrix.md) for the exact `--dart-define` flags needed for a backend-connected build against a real (e.g. `audit`) project.
+
+## Public site environment
+
+`public-site/apphosting.yaml` sets the runtime values; secrets come from Firebase App Hosting.
+
+| Variable | Purpose |
+|---|---|
+| `PUBLIC_ORIGIN` | Canonical origin used for canonical URLs and sitemaps |
+| `PUBLIC_SITE_ORIGINS` | Further addresses the site is served on (comma-separated, `https://`). Requests and Turnstile tokens from these are accepted; currently `https://public.teamzoneapp.se` |
+| `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | Supabase project and public key (sign-in and follower sign-up) |
+| `SUPABASE_SECRET_KEY` (secret) | Server-only service key for public reads and marking follower accounts |
+| `PUBLIC_API_IP_HMAC_SECRET` (secret) | IP hashing for rate limits |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `CAPTCHA_SECRET_KEY` (secret) | Cloudflare Turnstile for contact and sign-up |
+| `PUBLIC_PERSONAL_HOME_ENABLED` | Enables the personal start page |
+
+External settings that must match: the Turnstile widget allows `public.teamzoneapp.se` and `teamzoneapp.se`, and Supabase Auth allows `https://public.teamzoneapp.se/**` as a redirect URL for follower confirmation emails.
 
 Secrets are supplied outside Git. Flutter/web/mobile clients may only receive a Supabase publishable key; secret/service-role keys remain server-side. There is no committed `.env` file in this repo (only `.env.example` with placeholders) and no `.vscode/launch.json` — get the real `SUPABASE_URL`/`SUPABASE_PUBLISHABLE_KEY` values from the Supabase dashboard or `supabase projects list`/CLI access to the linked project.

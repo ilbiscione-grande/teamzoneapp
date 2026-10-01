@@ -4,6 +4,7 @@ import test from "node:test";
 import { clubThemeCss, clubThemeHref, normalizeColor } from "../lib/club-theme.ts";
 
 const route = readFileSync(new URL("../app/api/public/v1/club-theme/route.ts", import.meta.url), "utf8");
+const mediaRoute = readFileSync(new URL("../app/media/public/[token]/route.ts", import.meta.url), "utf8");
 const clubPage = readFileSync(new URL("../app/[clubSlug]/page.tsx", import.meta.url), "utf8");
 
 test("only plain hex colours are accepted", () => {
@@ -34,4 +35,12 @@ test("the theme is a same-origin stylesheet, not inline style", () => {
   assert.match(route, /clubThemeCss/);
   assert.match(clubPage, /<ClubTheme club=\{club\} \/>/);
   assert.doesNotMatch(clubPage, /style=\{/);
+});
+
+test("club badges are served only as resolved, allow-listed images", () => {
+  assert.match(mediaRoute, /resolve_public_club_badge/);
+  assert.ok(mediaRoute.includes('badge.bucket_id!=="club-badges"'));
+  assert.ok(mediaRoute.includes('"image/png", "image/jpeg", "image/webp"'));
+  assert.ok(mediaRoute.includes('"x-content-type-options":"nosniff"'));
+  assert.match(mediaRoute, /sandbox/);
 });
