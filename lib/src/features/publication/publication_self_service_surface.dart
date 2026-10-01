@@ -135,7 +135,19 @@ class _PublicationSelfServiceSurfaceState
     String type, {
     bool clubPublished = false,
   }) async {
-    final slug = TextEditingController(text: '${item['slug'] ?? ''}');
+    // Never-published pages have no address yet; suggest one from the name.
+    final slug = TextEditingController(
+      text: '${item['slug'] ?? ''}'.isNotEmpty
+          ? '${item['slug']}'
+          : _publicationSlug('${item['name'] ?? ''}'),
+    );
+    bool slugValid() {
+      final value = slug.text.trim().toLowerCase();
+      return value.length >= 2 &&
+          value.length <= 80 &&
+          RegExp(r'^[a-z0-9]+(?:-[a-z0-9]+)*$').hasMatch(value);
+    }
+
     final locality = TextEditingController(text: '${item['locality'] ?? ''}');
     final description = TextEditingController(
       text: '${item['description'] ?? ''}',
@@ -212,8 +224,12 @@ class _PublicationSelfServiceSurfaceState
                   TextField(
                     controller: slug,
                     onChanged: (_) => setDialog(() {}),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Webbadress (slug)',
+                      helperText: 'Små bokstäver a–z, siffror och bindestreck.',
+                      errorText: slugValid()
+                          ? null
+                          : 'Använd 2–80 tecken: a–z, 0–9 och bindestreck, t.ex. f2014.',
                     ),
                   ),
                   if (type == 'club') ...[
@@ -312,13 +328,7 @@ class _PublicationSelfServiceSurfaceState
               child: const Text('Avbryt'),
             ),
             FilledButton(
-              onPressed:
-                  (mode == 'private' || confirmed) &&
-                      RegExp(
-                        r'^[a-z0-9]+(?:-[a-z0-9]+)*$',
-                      ).hasMatch(slug.text.trim().toLowerCase()) &&
-                      slug.text.trim().length >= 2 &&
-                      slug.text.trim().length <= 80
+              onPressed: (mode == 'private' || confirmed) && slugValid()
                   ? () => Navigator.pop(dialogContext, true)
                   : null,
               child: const Text('Spara'),
@@ -620,4 +630,17 @@ class _PublicationSelfServiceSurfaceState
       },
     ),
   );
+}
+
+/// A web address suggestion from a club or team name: "Örby IF F2014"
+/// becomes "orby-if-f2014".
+String _publicationSlug(String name) {
+  const letters = {'å': 'a', 'ä': 'a', 'ö': 'o', 'é': 'e', 'ü': 'u'};
+  final lower = name.toLowerCase().split('').map((c) => letters[c] ?? c).join();
+  final slug = lower
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+      .replaceAll(RegExp(r'^-+|-+$'), '');
+  return slug.length > 80
+      ? slug.substring(0, 80).replaceAll(RegExp(r'-+$'), '')
+      : slug;
 }

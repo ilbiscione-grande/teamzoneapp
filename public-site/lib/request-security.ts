@@ -12,7 +12,8 @@ export function hmacHex(secret: string, value: string): string {
   return createHmac("sha256", secret).update(value, "utf8").digest("hex");
 }
 
-export function assertSameOrigin(request: Request, publicOrigin: string): void {
+export function assertSameOrigin(request: Request, allowed: string | readonly string[]): void {
   const origin = request.headers.get("origin");
-  if (origin !== publicOrigin) throw new Error("origin_denied");
+  const origins = typeof allowed === "string" ? [allowed] : allowed;
+  if (!origin || !origins.includes(origin)) throw new Error("origin_denied");
 }

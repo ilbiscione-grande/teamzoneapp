@@ -1,4 +1,4 @@
-import { serverConfig } from "../../../../../lib/config";
+import { serverConfig, siteOrigins } from "../../../../../lib/config";
 import { verifyCaptcha } from "../../../../../lib/captcha";
 import { json, neutralError } from "../../../../../lib/http";
 import { assertSameOrigin, hmacHex, resolveClientIp } from "../../../../../lib/request-security";
@@ -20,7 +20,7 @@ type ContactBody = {
 export async function POST(request: Request) {
   try {
     const config = serverConfig(true);
-    assertSameOrigin(request, config.publicOrigin);
+    assertSameOrigin(request, siteOrigins(config));
     if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
       return json({ error: "Begäran kunde inte behandlas." }, 415);
     }

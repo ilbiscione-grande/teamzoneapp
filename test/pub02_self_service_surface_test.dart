@@ -56,6 +56,35 @@ void main() {
     );
   });
 
+  testWidgets('a never-published team gets a suggested web address', (
+    tester,
+  ) async {
+    final editorial = _Editorial()
+      ..clubMode = 'published'
+      ..teamMode = 'private'
+      ..teamSlug = null
+      ..teamName = 'Örby F2014';
+    await _open(tester, editorial);
+    await tester.tap(find.text('Välj synlighet'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextField, 'orby-f2014'), findsOneWidget);
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Publik lagsida').last);
+    await tester.pumpAndSettle();
+    final confirmation = find.widgetWithText(
+      CheckboxListTile,
+      'Jag bekräftar att namn och valda uppgifter får publiceras på webben.',
+    );
+    await tester.ensureVisible(confirmation);
+    await tester.tap(confirmation);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Spara'));
+    await tester.pumpAndSettle();
+    expect(editorial.savedSlug, 'orby-f2014');
+    expect(editorial.savedMode, 'published');
+  });
+
   testWidgets('private club explains why a published team is hidden', (
     tester,
   ) async {
@@ -162,6 +191,11 @@ class _Editorial extends UnconfiguredEditorialServices {
   final bool manager;
   String? status;
   String clubMode = 'private';
+  String? teamMode;
+  String? teamSlug = 'testlag';
+  String teamName = 'Testlag';
+  String? savedSlug;
+  String? savedMode;
   int revision = 1;
   List<String> fields = [];
   @override
@@ -178,6 +212,9 @@ class _Editorial extends UnconfiguredEditorialServices {
     required int expectedRevision,
     required String idempotencyKey,
   }) async {
+    savedSlug = slug;
+    savedMode = mode;
+    if (aggregateType == 'team') return;
     expect(expectedRevision, revision);
     clubMode = mode;
     this.fields = fields;
@@ -200,9 +237,9 @@ class _Editorial extends UnconfiguredEditorialServices {
         'teams': [
           {
             'id': 'team',
-            'name': 'Testlag',
-            'mode': manager ? 'published' : 'private',
-            'slug': 'testlag',
+            'name': teamName,
+            'mode': teamMode ?? (manager ? 'published' : 'private'),
+            'slug': teamSlug,
             'revision': 1,
             'can_request': true,
             'request_status': status,

@@ -36,7 +36,17 @@
 .pz-status { background: white; }
 
 /* Sign-in card */
-.pz-login { display: grid; gap: 14px; padding: clamp(22px, 3vw, 32px); border-radius: 8px; background: white; color: var(--cs-text); box-shadow: 0 30px 80px rgba(0,0,0,.35); }
+.pz-login { overflow: hidden; border-radius: 8px; background: white; color: var(--cs-text); box-shadow: 0 30px 80px rgba(0,0,0,.35); }
+.pz-login-form { display: grid; gap: 14px; padding: clamp(22px, 3vw, 32px); }
+.pz-tabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--cs-line); }
+.pz-tabs button { min-height: 50px; border: 0; border-bottom: 3px solid transparent; background: var(--cs-bg-alt); color: var(--cs-muted); font-family: var(--cs-display), sans-serif; font-size: 1.05rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; cursor: pointer; }
+.pz-tabs button[aria-selected="true"] { background: white; color: var(--cs-text); border-bottom-color: var(--cs-accent); }
+.pz-success { margin: 0; padding: 10px 12px; border-radius: 4px; background: #e7f6ec; color: #145a32; font-size: .88rem; line-height: 1.5; }
+.pz-link { padding: 0; border: 0; background: none; color: var(--cs-brand); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.pz-small.muted { color: var(--cs-muted); line-height: 1.55; }
+.pz-check { display: flex; gap: 10px; align-items: flex-start; font-size: .88rem; line-height: 1.5; }
+.pz-check input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--cs-ink); }
+.pz-check a { color: var(--cs-brand); font-weight: 600; }
 .pz-login .cs-kicker { margin: 0; color: var(--cs-brand); font-size: .85rem; }
 .pz-login h2 { margin: -6px 0 4px; font-size: 2.2rem; line-height: 1; font-weight: 800; text-transform: uppercase; }
 .pz-login .field input { margin-top: 2px; }

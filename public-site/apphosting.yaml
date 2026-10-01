@@ -8,6 +8,10 @@ env:
     value: https://teamzoneapp.se
     availability:
       - RUNTIME
+  - variable: PUBLIC_SITE_ORIGINS
+    value: https://public.teamzoneapp.se
+    availability:
+      - RUNTIME
   - variable: TRUSTED_PROXY_HOPS
     value: "1"
     availability:

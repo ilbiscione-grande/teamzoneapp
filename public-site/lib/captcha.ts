@@ -1,7 +1,7 @@
-import type { ServerConfig } from "./config.ts";
+import { siteOrigins, type ServerConfig } from "./config.ts";
 import { hmacHex } from "./request-security.ts";
 
-export async function verifyCaptcha(config: ServerConfig, token: string, rawIp: string) {
+export async function verifyCaptcha(config: ServerConfig, token: string, rawIp: string, action = "contact") {
   if (!config.captchaVerifyUrl || !config.captchaSecretKey || token.length < 16 || token.length > 4096) {
     return { verified: false, assertionHash: "" };
   }
@@ -15,10 +15,10 @@ export async function verifyCaptcha(config: ServerConfig, token: string, rawIp: 
   });
   if (!response.ok) return { verified: false, assertionHash: "" };
   const result = await response.json() as { success?: boolean; hostname?: string; action?: string };
-  const expectedHostname = new URL(config.publicOrigin).hostname;
+  const hostnames = siteOrigins(config).map((origin) => new URL(origin).hostname);
   const verified = result.success === true
-    && result.hostname === expectedHostname
-    && result.action === "contact";
+    && typeof result.hostname === "string" && hostnames.includes(result.hostname)
+    && result.action === action;
   return {
     verified,
     assertionHash: verified ? hmacHex(config.ipHmacSecret, `captcha:${token}`) : "",
