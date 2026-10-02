@@ -171,6 +171,55 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('sent details can update an existing person', (tester) async {
+    final roster = _Roster(
+      people: [
+        const RosterPersonSummary(
+          id: 'olle',
+          displayName: 'Olle Annan',
+          teamId: 'team',
+          teamName: 'F2012',
+          assignmentState: 'active',
+          safeguardingRequired: false,
+        ),
+        const RosterPersonSummary(
+          id: 'nina',
+          displayName: 'Nina Nilsson',
+          teamId: 'team',
+          teamName: 'F2012',
+          assignmentState: 'active',
+          safeguardingRequired: false,
+        ),
+      ],
+    );
+    await _openRoster(tester, roster);
+    await _openIntake(tester);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('intake-update-sub-1')),
+      150,
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('intake-surface')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('intake-update-sub-1')));
+    await tester.pumpAndSettle();
+    // Nina Nilsson shares a name with "Nina Ny" and is listed first.
+    expect(find.text('Möjlig matchning'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Nina Nilsson')).dy,
+      lessThan(tester.getTopLeft(find.text('Olle Annan')).dy),
+    );
+    await tester.tap(find.byKey(const ValueKey('intake-merge-nina')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('intake-merge-confirm')));
+    await tester.pumpAndSettle();
+    expect(roster.mergedIntake, [('sub-1', 'team', 'nina')]);
+    expect(roster.acceptedIntake, isEmpty);
+    expect(find.text('Nina Nilssons uppgifter är uppdaterade.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a submission can be added as a leader instead', (tester) async {
     final roster = _Roster();
     await _openRoster(tester, roster);
@@ -1030,6 +1079,17 @@ class _Roster extends UnconfiguredRosterServices {
   ];
   final intakeForms = <IntakeFormLink>[];
   final acceptedIntake = <(String, String, String)>[];
+  final mergedIntake = <(String, String, String)>[];
+
+  @override
+  Future<void> updatePersonFromIntake({
+    required String submissionId,
+    required String teamId,
+    required String personId,
+  }) async {
+    mergedIntake.add((submissionId, teamId, personId));
+    intakeSubmissions.removeWhere((item) => item.id == submissionId);
+  }
 
   @override
   Future<IntakeOverview> getIntakeOverview({required String clubId}) async =>

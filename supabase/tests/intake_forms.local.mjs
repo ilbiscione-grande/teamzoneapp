@@ -50,6 +50,10 @@ end $f$;
 `);
 await db.exec(fs.readFileSync('supabase/migrations/20261002090000_intake_forms.sql', 'utf8')
   .replace("notify pgrst,'reload schema';", ''));
+await db.exec(`create function internal.person_in_team(c uuid,t uuid,p uuid) returns boolean language sql as $f$
+ select exists(select 1 from core.club_people where id=p and team_id=t) $f$;`);
+await db.exec(fs.readFileSync('supabase/migrations/20261002120000_intake_update_existing.sql', 'utf8')
+  .replace("notify pgrst,'reload schema';", ''));
 
 const assert = (ok, msg) => { if (!ok) throw new Error(msg); console.log('ok -', msg); };
 const as = (n) => db.exec(`delete from auth.actor; insert into auth.actor values('${id(n)}')`);
@@ -133,4 +137,20 @@ const renewed = (await db.query(`select api.create_intake_form($1,null) r`, [clu
 assert(renewed.id !== clubForm.id && renewed.expires_at, 'a new page replaces the expired one');
 await db.query(`select api.close_intake_form($1)`, [teamForm.id]);
 assert((await db.query(`select api.public_get_intake_form($1) r`, [teamForm.token])).rows[0].r.not_found, 'closed form stops working');
+// Update an existing person instead of creating one.
+await as(12);
+const existing = (await db.query(`insert into core.club_people(club_id,team_id,display_name,birth_year,phone)
+  values($1,$2,'Ada A.',2012,'0700000000') returning id`, [club, t1])).rows[0].id;
+const renewedToken = (await db.query(`select public_token t from core.intake_forms where id=$1`, [renewed.id])).rows[0].t;
+await submit(renewedToken, { name: 'Ada Andersson', phone: '070-999 99 99', ip: 'f'.repeat(64) });
+const pending = (await overview()).submissions.find((x) => x.phone === '070-999 99 99').id;
+assert(await fails(() => db.query(`select api.update_person_from_intake($1,$2,$3)`, [pending, t1, leader]), /not_found/),
+  'only a person in the chosen team can be updated');
+await db.query(`select api.update_person_from_intake($1,$2,$3)`, [pending, t1, existing]);
+const merged = (await db.query(`select * from core.club_people where id=$1`, [existing])).rows[0];
+assert(merged.phone === '070-999 99 99' && merged.contact_email === 'ada@mail.se' && merged.city === 'Eksjö',
+  'contact details and address replaced');
+assert(merged.display_name === 'Ada A.' && merged.birth_date !== null, 'name kept, missing birth date filled in');
+assert((await db.query(`select count(*)::int n from core.intake_submissions where id=$1`, [pending])).rows[0].n === 0,
+  'merged submission is deleted');
 console.log('PASS');

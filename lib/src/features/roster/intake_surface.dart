@@ -277,6 +277,43 @@ class _IntakeSurfaceState extends State<_IntakeSurface> {
     }
   }
 
+  Future<void> _updateExisting(
+    IntakeOverview data,
+    IntakeSubmission submission,
+  ) async {
+    final strings = AppStrings.of(context);
+    final choice = await showDialog<(IntakeTeam, RosterPersonSummary)>(
+      context: context,
+      builder: (_) => _IntakeMergeDialog(
+        roster: widget.roster,
+        clubId: widget.contextValue.clubId,
+        teams: data.teams,
+        initialTeam: _defaultTeam(data, submission),
+        submission: submission,
+      ),
+    );
+    if (choice == null) return;
+    final (team, person) = choice;
+    await _run(submission.id, () async {
+      try {
+        await widget.roster.updatePersonFromIntake(
+          submissionId: submission.id,
+          teamId: team.id,
+          personId: person.id,
+        );
+        _show(
+          strings
+              .feature('{name}s uppgifter är uppdaterade.')
+              .replaceAll('{name}', person.displayName),
+        );
+        widget.onPeopleAdded?.call();
+        _reload();
+      } catch (_) {
+        _show(strings.feature('Personen kunde inte uppdateras. Försök igen.'));
+      }
+    });
+  }
+
   Future<void> _dismiss(IntakeSubmission submission) async {
     final strings = AppStrings.of(context);
     final confirmed = await showDialog<bool>(
@@ -470,6 +507,14 @@ class _IntakeSurfaceState extends State<_IntakeSurface> {
                           .replaceAll('{team}', team.name),
                     ),
                   ),
+                OutlinedButton.icon(
+                  key: ValueKey('intake-update-${submission.id}'),
+                  onPressed: busy
+                      ? null
+                      : () => _updateExisting(data, submission),
+                  icon: const Icon(Icons.manage_accounts_outlined),
+                  label: Text(strings.feature('Uppdatera befintlig')),
+                ),
                 TextButton(
                   key: ValueKey('intake-choose-${submission.id}'),
                   onPressed: busy
@@ -547,6 +592,187 @@ class _IntakeSurfaceState extends State<_IntakeSurface> {
           );
         },
       ),
+    );
+  }
+}
+
+/// Picks the existing person the sent details belong to: a team, then a
+/// person in it. Names sharing a word with the sent name come first.
+class _IntakeMergeDialog extends StatefulWidget {
+  const _IntakeMergeDialog({
+    required this.roster,
+    required this.clubId,
+    required this.teams,
+    required this.initialTeam,
+    required this.submission,
+  });
+  final RosterServices roster;
+  final String clubId;
+  final List<IntakeTeam> teams;
+  final IntakeTeam? initialTeam;
+  final IntakeSubmission submission;
+  @override
+  State<_IntakeMergeDialog> createState() => _IntakeMergeDialogState();
+}
+
+class _IntakeMergeDialogState extends State<_IntakeMergeDialog> {
+  late IntakeTeam? _team = widget.initialTeam;
+  late Future<List<RosterPersonSummary>> _people = _load();
+  final _search = TextEditingController();
+  RosterPersonSummary? _selected;
+
+  Future<List<RosterPersonSummary>> _load() async {
+    final team = _team;
+    if (team == null) return const [];
+    final people = await widget.roster
+        .listPeople(clubId: widget.clubId, teamId: team.id)
+        .timeout(const Duration(seconds: 15));
+    return people
+        .where((person) => person.assignmentState == 'active')
+        .toList(growable: false);
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  static Set<String> _words(String name) => name
+      .toLowerCase()
+      .split(RegExp(r'[\s.-]+'))
+      .where((word) => word.length > 1)
+      .toSet();
+
+  bool _likelyMatch(RosterPersonSummary person) => _words(
+    person.displayName,
+  ).intersection(_words(widget.submission.fullName)).isNotEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return AlertDialog(
+      title: Text(strings.feature('Uppdatera befintlig person')),
+      content: SizedBox(
+        width: 420,
+        height: 420,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              strings
+                  .feature(
+                    'Telefon, e-post och adress från {name} sparas på personen du väljer. Namnet ändras inte.',
+                  )
+                  .replaceAll('{name}', widget.submission.fullName),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              key: const ValueKey('intake-merge-team'),
+              initialValue: _team?.id,
+              isExpanded: true,
+              decoration: InputDecoration(labelText: strings.feature('Lag')),
+              items: [
+                for (final team in widget.teams)
+                  DropdownMenuItem(value: team.id, child: Text(team.name)),
+              ],
+              onChanged: (value) => setState(() {
+                _team = widget.teams.firstWhere((team) => team.id == value);
+                _selected = null;
+                _people = _load();
+              }),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _search,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: strings.feature('Sök person'),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: FutureBuilder<List<RosterPersonSummary>>(
+                future: _people,
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        strings.feature('Truppen kunde inte hämtas.'),
+                      ),
+                    );
+                  }
+                  final people = snapshot.data;
+                  if (people == null) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final query = _search.text.trim().toLowerCase();
+                  final shown =
+                      people
+                          .where(
+                            (person) =>
+                                query.isEmpty ||
+                                person.displayName.toLowerCase().contains(
+                                  query,
+                                ),
+                          )
+                          .toList()
+                        ..sort((a, b) {
+                          final match = (_likelyMatch(b) ? 1 : 0).compareTo(
+                            _likelyMatch(a) ? 1 : 0,
+                          );
+                          return match != 0
+                              ? match
+                              : a.displayName.compareTo(b.displayName);
+                        });
+                  if (shown.isEmpty) {
+                    return Center(
+                      child: Text(strings.feature('Inga personer hittades.')),
+                    );
+                  }
+                  return RadioGroup<String>(
+                    groupValue: _selected?.id,
+                    onChanged: (value) => setState(
+                      () => _selected = shown.firstWhere(
+                        (person) => person.id == value,
+                      ),
+                    ),
+                    child: ListView(
+                      children: [
+                        for (final person in shown)
+                          RadioListTile<String>(
+                            key: ValueKey('intake-merge-${person.id}'),
+                            value: person.id,
+                            title: Text(person.displayName),
+                            subtitle: _likelyMatch(person)
+                                ? Text(strings.feature('Möjlig matchning'))
+                                : null,
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(strings.feature('Avbryt')),
+        ),
+        FilledButton(
+          key: const ValueKey('intake-merge-confirm'),
+          onPressed: _team == null || _selected == null
+              ? null
+              : () => Navigator.pop(context, (_team!, _selected!)),
+          child: Text(strings.feature('Uppdatera')),
+        ),
+      ],
     );
   }
 }

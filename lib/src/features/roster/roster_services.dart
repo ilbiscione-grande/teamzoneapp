@@ -58,6 +58,14 @@ abstract interface class RosterServices {
     required String idempotencyKey,
   });
   Future<void> dismissIntakeSubmission({required String submissionId});
+
+  /// Puts the sent phone, email and address on an existing person in the
+  /// team instead of creating a new one.
+  Future<void> updatePersonFromIntake({
+    required String submissionId,
+    required String teamId,
+    required String personId,
+  });
   Future<TeamProfileEditData> getTeamProfileEdit({required String teamId});
   Future<String> uploadTeamImage({
     required String teamId,
@@ -310,6 +318,12 @@ class UnconfiguredRosterServices implements RosterServices {
   @override
   Future<void> dismissIntakeSubmission({required String submissionId}) =>
       Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<void> updatePersonFromIntake({
+    required String submissionId,
+    required String teamId,
+    required String personId,
+  }) => Future.error(StateError('Supabase is not configured.'));
 
   const UnconfiguredRosterServices();
 
@@ -696,6 +710,24 @@ class SupabaseRosterServices implements RosterServices {
       throw const FormatException('Intake acceptance is invalid.');
     }
     return value;
+  }
+
+  @override
+  Future<void> updatePersonFromIntake({
+    required String submissionId,
+    required String teamId,
+    required String personId,
+  }) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'update_person_from_intake',
+          params: {
+            'target_submission_id': submissionId,
+            'target_team_id': teamId,
+            'target_person_id': personId,
+          },
+        );
   }
 
   @override

@@ -1601,6 +1601,22 @@ class AppStrings {
     'Redigera medlem': 'Edit member',
     'Klubbens färger': 'Club colours',
     'Klubbinställningar': 'Club settings',
+    'Uppdatera befintlig':
+        'Update existing',
+    'Uppdatera befintlig person':
+        'Update an existing person',
+    'Telefon, e-post och adress från {name} sparas på personen du väljer. Namnet ändras inte.':
+        'Phone, email and address from {name} are saved on the person you choose. The name is not changed.',
+    'Truppen kunde inte hämtas.':
+        'The squad could not be loaded.',
+    'Inga personer hittades.':
+        'No people found.',
+    'Möjlig matchning':
+        'Possible match',
+    '{name}s uppgifter är uppdaterade.':
+        "{name}'s details are updated.",
+    'Personen kunde inte uppdateras. Försök igen.':
+        'The person could not be updated. Try again.',
     'Kontaktuppdatering':
         'Contact update',
     'Tillfällig sida med QR-kod där personer fyller i sina uppgifter.':
