@@ -1,6 +1,6 @@
 # TeamZone implementation slice status
 
-Updated: 2026-10-01
+Updated: 2026-10-02
 
 This is the mutable execution status for the rebuild. The approved specification
 under `docs/specification/source/` is an immutable snapshot and is not edited to
@@ -239,20 +239,21 @@ remain partial only for the explicit gates stated on each card; deferred
 imports, workspaces/webtools, generative AI and production provisioning are not
 silently counted as current implementation work.
 
-### Wave 10 – extensions after the core app (2026-09-27 – 2026-10-01)
+### Wave 10 – extensions after the core app (2026-09-27 – 2026-10-02)
 
 The product owner's follow-up priorities are tracked as wave 10 in
 [`core_app_delivery_cards.md`](core_app_delivery_cards.md#14-våg-10--utbyggnad-efter-grundappen):
-team roles, titles, positions and per-leader permissions (TEAM-09–12),
+team roles, titles, positions, per-leader permissions, main position and main
+title, profile pictures in the squad list, temporary contact pages with QR code
+and adding or updating people from them (TEAM-09–16),
 event preparations, match mode, the new event editor and places (CAL-12–14),
 Inbox per club and notification actions (MSG-09), own profile, login-email change
 via support, member card and profile statistics (PROF-01–04), follower accounts
 created only on the public site (AUTH-08), the club-site design, club colours,
 public matches and club badge (PUB-10–13) and club settings (SET-01).
 
-All wave 10 cards are `[~]`: hosted and automatically verified (Flutter 524/524,
-public site 56/56, nine isolated PGlite SQL tests) and partly accepted by the
+All wave 10 cards are `[~]`: hosted and automatically verified (Flutter 528/528,
+public site 58/58, twelve isolated PGlite SQL tests) and partly accepted by the
 product owner, with a combined physical device gate outstanding. Every migration
-up to `20261001150000` is applied to the audit project;
-`20261001170000_public_club_badge` is pending. Evidence:
+up to `20261002120000` is applied to the audit project. Evidence:
 [`core_app_iteration_2026-09-27_10-01.md`](../evidence/core_app_iteration_2026-09-27_10-01.md).

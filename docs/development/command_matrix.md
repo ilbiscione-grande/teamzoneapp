@@ -24,4 +24,6 @@ All Flutter commands need write access to the shared Flutter SDK cache. CI must 
 --dart-define=SUPABASE_PUBLISHABLE_KEY=<publishable key>
 ```
 
+Optional: `--dart-define=PUBLIC_SITE_URL=https://...` sets the public site used in contact-page links and QR codes (default `https://public.teamzoneapp.se`).
+
 Get `<project-ref>` from `supabase projects list` (the currently linked project is `hgcshgunvooyudvrcpig`) and the publishable key from the Supabase dashboard → that project → Project Settings → API. Both are safe to embed in a client build (they are the public/anon-style keys, not secret/service-role keys) but are kept out of this repo and out of committed docs so they can be rotated without a doc update — never commit them to `.env` (git-ignored) or paste them into checked-in files.

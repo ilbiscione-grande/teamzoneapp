@@ -50,7 +50,7 @@ Ett kort får inte markeras `[x]` enbart för att en teknisk grund redan finns. 
 | 7 | Min assistent-grund | AC-01–AC-08 | HOME-04 och stabila domänsignaler |
 | 8 | Senare funktioner | LATER-01–LATER-04 | Separat prioriteringsbeslut |
 | 9 | Samlad releasegrind | REL-01–REL-03 | Våg 0–6 klara |
-| 10 | Utbyggnad efter grundappen | TEAM-09–TEAM-12, CAL-12–CAL-14, MSG-09, PROF-01–PROF-04, AUTH-08, PUB-10–PUB-13, SET-01 | Produktägarens prioriteringar efter 2026-09-26 |
+| 10 | Utbyggnad efter grundappen | TEAM-09–TEAM-16, CAL-12–CAL-14, MSG-09, PROF-01–PROF-04, AUTH-08, PUB-10–PUB-13, SET-01 | Produktägarens prioriteringar efter 2026-09-26 |
 
 Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående verifiering kan ske parallellt när det inte skapar konkurrerande kontrakt.
 
@@ -1067,7 +1067,7 @@ Supabase-testprojektet; runtime förblir avstängd tills flödet är verifierat.
 
 ## 14. Våg 10 – utbyggnad efter grundappen
 
-Kort för arbete som levererats efter dokumentationssynken 2026-09-26. Samlad evidens:
+Kort för arbete som levererats efter dokumentationssynken 2026-09-26, uppdaterat 2026-10-02. Samlad evidens:
 [`core_app_iteration_2026-09-27_10-01.md`](../evidence/core_app_iteration_2026-09-27_10-01.md). Ett kort i den här vågen
 är `[~]` tills den fysiska enhetsgrinden (Android-telefon och tablet) är genomförd, även när det är hosted-verifierat och
 godkänt av produktägaren.
@@ -1110,6 +1110,40 @@ Beskrivning: [`team-leader-permissions.md`](team-leader-permissions.md).
 - [x] Medlemssidan har en penna uppe till höger som öppnar en sida med uppgifter, kontaktuppgifter (för personer utan
   konto) och lagåtgärder. Den separata kontaktdialogen och raden "Redigera profil" är borttagna.
 - [x] Representation i två steg med godkännande från hemmalaget. Inbjudningar görs i en guide i tre steg.
+
+### TEAM-13 – Huvudposition och profilbilder i trupplistan
+
+**Status:** `[~]` – hosted och automatiskt verifierad
+
+- [x] En spelare har en huvudposition bland sina positioner; övriga är alternativa. Egna positioner kan vara huvudposition.
+- [x] Trupplistan visar huvudpositionen i stället för åldern och medlemmarnas profilbilder, med initialer som reserv.
+- [x] En huvudposition som inte längre är en position nollställs automatiskt, även från äldre appversioner.
+
+### TEAM-14 – Huvudtitel för ledare
+
+**Status:** `[~]` – hosted och automatiskt verifierad
+
+- [x] En ledare med flera titler väljer huvudtitel. Med en enda titel blir den huvudtitel automatiskt.
+- [x] Huvudtiteln visas i trupplistan, lagväljaren och menyn i stället för "Ledare" och "Klubbfunktionär".
+
+### TEAM-15 – Tillfälliga kontaktsidor med QR-kod
+
+**Status:** `[~]` – driftsatt och verifierad med ett riktigt inskick av produktägaren
+
+- [x] Ledare skapar en sida för laget och klubbadministratörer en för klubben. Sidan delas med QR-kod eller direktlänk
+  och gäller i 14 dagar.
+- [x] Formuläret på public-sajten har namn, telefon, e-post, födelsedatum och adress. Det skyddas av kontroll av
+  ursprung, Turnstile och gränser för antal inskick, och bara `service_role` kan spara.
+- [x] Ledaren lägger till personen som spelare med ett tryck, eller väljer annat lag eller ledarroll. Hanterade
+  inskick raderas.
+
+### TEAM-16 – Inskick uppdaterar befintlig person
+
+**Status:** `[~]` – driftsatt och verifierad av produktägaren
+
+- [x] Ett inskick kan uppdatera en befintlig spelare eller ledare. Telefon, e-post och adress ersätts, ett saknat
+  födelsedatum fylls i och namnet behålls.
+- [x] Personer som delar ett namn med inskicket föreslås först.
 
 ### CAL-12 – Förberedelser och matchläge
 
@@ -1193,7 +1227,7 @@ Beskrivning: [`event-preparations-v1.md`](event-preparations-v1.md).
 
 ### PUB-11 – Klubbmärke på de publika sidorna
 
-**Status:** `[~]` – implementerad och testad isolerat; migrationen är inte körd och den publika delen är inte driftsatt
+**Status:** `[~]` – migrerad och driftsatt; inget riktigt märke uppladdat ännu
 
 - [x] Aktivt märke för en publicerad klubb visas via `/media/public/<slumpad nyckel>`. Byte eller borttagning av märket,
   eller avpublicering av klubben, stänger den gamla adressen.
@@ -1227,7 +1261,7 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 
 ## 15. Rekommenderat nästa konkreta arbete
 
-**Våg 10 (2026-10-01):** kör `20261001170000_public_club_badge.sql` och driftsätt app och publik sajt; genomför en samlad fysisk enhetsgrind (Galaxy S25 och Android-tablet) för TEAM-09–12, CAL-12–14, MSG-09, PROF-01–04 och SET-01; registrera ett följarkonto end-to-end med mejlbekräftelse (AUTH-08); kontrollera den inloggade personliga startsidan visuellt (PUB-13).
+**Våg 10 (2026-10-02):** genomför en samlad fysisk enhetsgrind (Galaxy S25 och Android-tablet) för TEAM-09–16, CAL-12–14, MSG-09, PROF-01–04 och SET-01; registrera ett följarkonto end-to-end med mejlbekräftelse (AUTH-08); kontrollera den inloggade personliga startsidan visuellt (PUB-13).
 
 Grundappens ursprungliga ordning:
 
@@ -1292,6 +1326,8 @@ Grundappens ursprungliga ordning:
 
 | Datum | Ändring | Status |
 |---|---|---|
+| 2026-10-02 | **Kontaktuppdatering.** Tillfälliga kontaktsidor med QR-kod och direktlänk som gäller i 14 dagar. Inskick läggs till i ett lag med ett tryck eller uppdaterar en befintlig spelare eller ledare. Produktägaren har verifierat flödet med ett riktigt inskick. | TEAM-15–16 `[~]` |
+| 2026-10-01 | **Huvudposition, huvudtitel och profilbilder i trupplistan.** Spelare har huvudposition och alternativa positioner, ledare en huvudtitel som visas i stället för rollen, och trupplistan visar profilbilder. Publikt klubbmärke (PUB-11) är nu migrerat och driftsatt. | TEAM-13–14, PUB-11 `[~]` |
 | 2026-10-01 | **Våg 10 dokumenterad.** Nya kort TEAM-09–12, CAL-12–14, MSG-09, PROF-01–04, AUTH-08, PUB-10–13 och SET-01 samlar arbetet sedan 2026-09-26 med evidens i `core_app_iteration_2026-09-27_10-01.md`. Alla migrationer till och med `20261001150000` är körda i testprojektet; `20261001170000_public_club_badge` väntar. Flutter 524/524, publik sajt 56/56 och nio isolerade SQL-tester passerar. | Våg 10 `[~]` |
 | 2026-10-01 | **Publik sajt, följarkonto och klubbinställningar.** Klubbsajtsdesign med klubbfärger, TeamZones egna sidor i samma stil, följarkonto som bara skapas på public-sajten, "Visa matcher" för lag, publikt klubbmärke (väntar på migration) och fliken Klubb under Inställningar. Kontaktformuläret på `public.teamzoneapp.se` och sparandet av lag som aldrig publicerats rättades. App och publik sajt driftsatta. | PUB-10–13, AUTH-08, SET-01 `[~]` |
 | 2026-09-30 | **Profil, eventdialog och lagdialoger.** Egen profil med kontaktuppgifter och profilbild, inloggningsmejl via support, medlemskort, profilflikar med statistik, ny eventdialog med anläggning/plan/underlag, notisåtgärder, lagöversikt, lagprofil-dialog och idrott endast för klubbadministratörer. | PROF-01–04, CAL-13, TEAM-11–12 `[~]` |

@@ -13,7 +13,8 @@ application is stabilized.
 
 Since 2026-09-27 the core app has been extended with team roles and permissions,
 event preparations and match mode, member profiles, follower accounts on the
-public site, a club-site design with club colours and club settings (wave 10 in
+public site, a club-site design with club colours, club settings, main positions
+and titles, and temporary contact pages with QR codes (wave 10 in
 [`docs/implementation/core_app_delivery_cards.md`](docs/implementation/core_app_delivery_cards.md)).
 
 Current progress is tracked in
@@ -25,7 +26,8 @@ snapshot rather than a mutable progress tracker.
 
 - `lib/` – the Flutter app (Android, iOS, web at `app.teamzoneapp.se`).
 - `public-site/` – the Next.js public site (`public.teamzoneapp.se`): club and
-  team pages, TeamZone's start page, sign-in and follower sign-up, search.
+  team pages, TeamZone's start page, sign-in and follower sign-up, search and
+  temporary contact pages (`/anmalan/<token>`).
 - `supabase/` – migrations, Edge Functions and isolated SQL tests.
 
 ## Targets

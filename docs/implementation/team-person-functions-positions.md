@@ -30,6 +30,22 @@ och dess capability grants.
 - **Egna benämningar.** Upp till fem egna titlar och fem egna positioner per
   person och lag (1–40 tecken).
 
+## Huvudposition och huvudtitel
+
+- **Huvudposition** (`main_position`, sedan
+  `20261001190000_main_position_and_roster_avatars.sql`): en av spelarens
+  positioner, katalognyckel eller egen benämning. Övriga positioner räknas som
+  alternativa. Visas i trupplistan i stället för åldern och först i
+  profilens sammanfattning ("Centralanfallare (huvudposition) · …").
+- **Huvudtitel** (`main_title`, sedan `20261001210000_main_title.sql`): en av
+  ledarens titlar. Visas i trupplistan, lagväljaren och menyn i stället för
+  rollnamnen "Ledare" och "Klubbfunktionär".
+- Den första positionen eller titeln man väljer blir huvudval tills man väljer
+  ett annat. Med ett enda val visas det utan markering.
+- Valideringstriggern nollställer ett huvudval som inte längre finns bland
+  positionerna eller titlarna, så även äldre klienter (v1–v3 av kommandot)
+  lämnar korrekt data. Appen sparar med `api.set_team_person_details_v4`.
+
 ## Var det syns
 
 - Laget → Trupp → Ledare och roller: titlar per ledare; tryck på raden för att

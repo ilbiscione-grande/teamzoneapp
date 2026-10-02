@@ -1,8 +1,8 @@
-# Grundappens utbyggnad 2026-09-27 – 2026-10-01
+# Grundappens utbyggnad 2026-09-27 – 2026-10-02
 
-**Status:** levererat till testprojektet `hgcshgunvooyudvrcpig`. App och publik sajt driftsatta; en migration väntar (se nedan).
-**Commits:** `d4bad8b` … `fe333da` på `main`.
-**Leveranskort:** TEAM-09–TEAM-12, CAL-12–CAL-14, MSG-09, PROF-01–PROF-05, AUTH-08, PUB-10–PUB-13 och SET-01 i
+**Status:** levererat till testprojektet `hgcshgunvooyudvrcpig`. Alla migrationer är körda och app och publik sajt är driftsatta.
+**Commits:** `d4bad8b` … `e776a42` på `main`.
+**Leveranskort:** TEAM-09–TEAM-16, CAL-12–CAL-14, MSG-09, PROF-01–PROF-04, AUTH-08, PUB-10–PUB-13 och SET-01 i
 [`core_app_delivery_cards.md`](../implementation/core_app_delivery_cards.md).
 
 Den här filen samlar perioden efter dokumentationssynken 2026-09-26 (`151da6e`). Detaljerade
@@ -90,9 +90,32 @@ funktionsbeskrivningar finns i [`team-leader-permissions.md`](../implementation/
   - Kontaktformuläret på `public.teamzoneapp.se` avvisades tidigare eftersom bara `PUBLIC_ORIGIN`
     (`teamzoneapp.se`) godkändes; nu godkänns alla adresser i `PUBLIC_SITE_ORIGINS`.
 
-## 7. Migrationer
+## 7. Trupp, titlar och kontaktuppdatering (2026-10-01 – 2026-10-02)
 
-Alla nedan är körda i testprojektet utom den sista.
+- **Huvudposition och alternativa positioner** (TEAM-13, `e3f54d1`):
+  - en spelares huvudposition är en av positionerna, och övriga räknas som alternativa;
+  - trupplistan visar huvudpositionen i stället för åldern, och medlemmarnas profilbilder med initialer som reserv
+    (`api.list_team_avatars` och signerade adresser i ett anrop);
+  - en huvudposition som inte längre är en position nollställs, även från äldre appversioner.
+- **Huvudtitel för ledare** (TEAM-14, `f009ee3`):
+  - visas i trupplistan, lagväljaren och menyn i stället för "Ledare" och "Klubbfunktionär";
+  - ledare med en enda titel fick den automatiskt som huvudtitel när migrationen kördes.
+- **Kontaktuppdatering** (TEAM-15, `303d166`):
+  - från Trupp → Hantera skapar en ledare en tillfällig sida för laget, eller klubbadministratören för klubben, med
+    QR-kod och direktlänk (`public.teamzoneapp.se/anmalan/<nyckel>`, appens `PUBLIC_SITE_URL`);
+  - sidan gäller i 14 dagar. På den fyller vem som helst i namn, telefon, e-post, födelsedatum och adress;
+  - den publika sajtens server sparar uppgifterna efter kontroll av ursprung och Turnstile (`intake`). Gränsen är
+    fem inskick per timme och nätverksadress och 500 per sida;
+  - ledaren lägger till personen som spelare med ett tryck, eller väljer annat lag eller ledarroll. Ett hanterat inskick
+    raderas.
+- **Uppdatera befintlig person** (TEAM-16, `64ae4c3`, `e776a42`):
+  - ett inskick kan uppdatera en befintlig spelare eller ledare i stället för att skapa en ny;
+  - telefon, e-post och adress ersätts, ett saknat födelsedatum fylls i och namnet behålls;
+  - personer som delar ett namn med inskicket föreslås först.
+
+## 8. Migrationer
+
+Alla nedan är körda i testprojektet.
 
 | Migration | Innehåll |
 |---|---|
@@ -107,42 +130,47 @@ Alla nedan är körda i testprojektet utom den sista.
 | `20261001090000_club_brand_colors` | Klubbfärger |
 | `20261001120000_public_follower_accounts` | Följarkonton |
 | `20261001150000_team_show_matches` | Visa matcher |
-| `20261001170000_public_club_badge` | **Inte körd ännu.** Publikt klubbmärke |
+| `20261001170000_public_club_badge` | Publikt klubbmärke |
+| `20261001190000_main_position_and_roster_avatars` | Huvudposition och profilbilder i trupplistan |
+| `20261001210000_main_title` | Huvudtitel för ledare |
+| `20261002090000_intake_forms` | Tillfälliga kontaktsidor och tillägg i lag |
+| `20261002120000_intake_update_existing` | Inskick uppdaterar befintlig person |
 
-## 8. Verifiering
+## 9. Verifiering
 
-- **Flutter:** `flutter analyze` utan anmärkningar och 524/524 tester (senaste fulla körning 2026-10-01). Nya eller
-  uppdaterade test är bland annat `prof01_profile_test`, `msg09_inbox_layout_test`, `team02`, `team04`, `team08`, `team09`,
-  `pub02_self_service_surface_test` och `pub03_editorial_surface_test`.
-- **Publik sajt:** `npx tsc --noEmit` och 56/56 `node --test`, bland annat `club-theme.test.ts` och `public-signup.test.ts`.
-  `next build` passerar.
+- **Flutter:** `flutter analyze` utan anmärkningar och 528/528 tester (senaste fulla körning 2026-10-02). Nya eller
+  uppdaterade test är bland annat `prof01_profile_test`, `msg09_inbox_layout_test`, `team02`, `team04`, `team07`, `team08`,
+  `team09`, `pub02_self_service_surface_test` och `pub03_editorial_surface_test`.
+- **Publik sajt:** `npx tsc --noEmit` och 58/58 `node --test`, bland annat `club-theme.test.ts`, `public-signup.test.ts`
+  och `intake.test.ts`. `next build` passerar.
 - **Isolerade SQL-tester (PGlite):** `event_place`, `profile_contact`, `login_email_guard`, `profile_statistics`,
-  `team_sport_admin`, `club_brand_colors`, `public_follower_accounts`, `team_show_matches` och `public_club_badge`
-  (`node supabase/tests/<namn>.local.mjs`).
+  `team_sport_admin`, `club_brand_colors`, `public_follower_accounts`, `team_show_matches`, `public_club_badge`,
+  `main_position_avatars`, `main_title` och `intake_forms` (`node supabase/tests/<namn>.local.mjs`).
 - **Live (skrivskyddat):**
   - ändringspunkterna för patchade funktioner kontrollerades före varje migration och att de tillämpats efteråt;
   - den publika registreringsrouten avvisar fel ursprung (503), falsk Turnstile-token (400) och ogiltig indata (400).
-- **Produktägaren har verifierat:** sidornas design, lagpublicering efter rättelsen och att J-lagets matcher syns med
-  "Visa matcher".
+- **Produktägaren har verifierat:**
+  - sidornas design, lagpublicering efter rättelsen och att J-lagets matcher syns med "Visa matcher";
+  - kontaktuppdateringen med ett riktigt inskick, både som ny person och som uppdatering av en befintlig spelare
+    eller ledare.
 
-## 9. Driftsättning
+## 10. Driftsättning
 
-- `app.teamzoneapp.se` (Firebase Hosting, `teamzoneapp-b02a2`): senast driftsatt 2026-10-01 med `fe333da`.
-- `public.teamzoneapp.se` (App Hosting `teamzoneapp-public`, `europe-west4`): senast driftsatt 2026-10-01 med `83a0f6f`.
-  Den publika delen av PUB-11 är ännu inte driftsatt.
-- Galaxy S25 (debug-APK): senast installerad med `eb83321`. Senare ändringar är inte installerade.
+- `app.teamzoneapp.se` (Firebase Hosting, `teamzoneapp-b02a2`): senast driftsatt 2026-10-02 med `e776a42`.
+- `public.teamzoneapp.se` (App Hosting `teamzoneapp-public`, `europe-west4`): senast driftsatt 2026-10-02 med `303d166`.
+- Galaxy S25 (debug-APK): senast installerad med `e3f54d1`. Huvudtitel och kontaktuppdatering är inte installerade.
 
-## 10. Extern konfiguration
+## 11. Extern konfiguration
 
 - `PUBLIC_SITE_ORIGINS=https://public.teamzoneapp.se` i `public-site/apphosting.yaml`.
 - Cloudflare Turnstile-widgeten "TeamzoneApp public" tillåter `public.teamzoneapp.se` och `teamzoneapp.se`. Åtgärderna
-  `contact` och `signup` verifieras server-side.
+  `contact`, `signup` och `intake` verifieras server-side.
 - Supabase Auth: `https://public.teamzoneapp.se/**` är tillåten redirect-URL för bekräftelsemejl.
 
-## 11. Öppna punkter
+## 12. Öppna punkter
 
-- Kör `20261001170000_public_club_badge.sql` och driftsätt därefter app och publik sajt.
 - Fysisk enhetsgrind för perioden (S25/tablet) återstår. S25 har inte de senaste versionerna.
+- Inskick som ingen hanterar ligger kvar tills de läggs till eller tas bort; en automatisk gallring finns inte.
 - Den inloggade personliga startsidan i ny stil är inte visuellt kontrollerad av utvecklaren, eftersom det kräver inloggning.
 - Ett helt registreringsflöde för följarkonto (mejlbekräftelse) är inte genomfört end-to-end.
 - Publikt klubbmärke skalas inte om och metadata rensas inte; den generella bildbehandlaren (`public-media-worker`)
