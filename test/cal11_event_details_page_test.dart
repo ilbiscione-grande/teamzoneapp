@@ -11,8 +11,282 @@ import 'package:teamzone_app/src/features/match/match_services.dart';
 import 'package:teamzone_app/src/features/match/match_models.dart';
 import 'package:teamzone_app/src/features/roster/roster_models.dart';
 import 'package:teamzone_app/src/features/roster/roster_services.dart';
+import 'package:teamzone_app/src/features/overview/overview_models.dart';
+import 'package:teamzone_app/src/features/overview/overview_services.dart';
 
 void main() {
+  testWidgets(
+    'player personal conflict opens other club with no time editing',
+    (tester) async {
+      final calendar = _ConflictCalendar(responseRole: 'self');
+      await tester.pumpWidget(
+        _app(
+          calendar,
+          identity: const _PersonalIdentity(),
+          overview: _PersonalOverview(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('assistant-coach-mobile-fab')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Hantera'));
+      await tester.tap(find.text('Hantera'));
+      await tester.pumpAndSettle();
+      expect(find.text('Hantera din kalenderkrock'), findsOneWidget);
+      expect(find.text('Ändra tid'), findsNothing);
+      await tester.tap(find.text('Öppna aktivitet och svara').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Andra klubben · Handboll'), findsWidgets);
+      expect(find.text('Aktivitet two'), findsWidgets);
+      expect(find.text('Sök deltagare i klubben'), findsNothing);
+      await tester.ensureVisible(find.byTooltip('Acceptera'));
+      await tester.tap(find.byTooltip('Acceptera'));
+      await tester.pumpAndSettle();
+      expect(calendar.respondedCallupId, 'callup-pending');
+      expect(calendar.respondedResponse, 'accepted');
+      expect(calendar.respondedActingAsPersonId, isNull);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets('conflict edits chosen occurrence and retries same command', (
+    tester,
+  ) async {
+    final calendar = _ConflictCalendar();
+    await tester.pumpWidget(
+      _app(
+        calendar,
+        identity: const _AssistantIdentity(),
+        overview: _ConflictOverview(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('assistant-coach-mobile-fab')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Ändra tid'));
+    await tester.tap(find.text('Ändra tid'));
+    await tester.pumpAndSettle();
+    expect(find.text('Vilken aktivitet vill du flytta?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(ListTile, 'Aktivitet two'));
+    await tester.pumpAndSettle();
+    expect(find.text('Spara tid'), findsOneWidget);
+    await tester.tap(find.text('Spara tid'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Kunde inte bekräfta sparandet'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Spara tid'));
+    await tester.pumpAndSettle();
+    expect(calendar.editedIds, ['two', 'two']);
+    expect(calendar.commands.toSet(), hasLength(1));
+    expect(calendar.scopes, ['one', 'one']);
+    expect(calendar.patches.last.keys.toSet(), {'starts_at', 'ends_at'});
+    expect(find.text('Vilken aktivitet vill du flytta?'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('assistant rechecks match permission before opening editor', (
+    tester,
+  ) async {
+    final match = _ResultMatch();
+    final calendar = _ResultCalendar(match);
+    await tester.pumpWidget(
+      _app(
+        calendar,
+        match: match,
+        identity: const _AssistantIdentity(),
+        overview: _AssistantMatchOverview(match),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('assistant-coach-mobile-fab')));
+    await tester.pumpAndSettle();
+    calendar.canManage = false;
+    await tester.ensureVisible(find.byTooltip('Registrera resultat'));
+    await tester.tap(find.byTooltip('Registrera resultat'));
+    await tester.pumpAndSettle();
+    expect(find.text('Registrera slutresultat'), findsNothing);
+    expect(find.textContaining('Matchen kan inte följas upp'), findsOneWidget);
+    expect(match.calls, isEmpty);
+  });
+  testWidgets(
+    'assistant saves result then draft report without leaving assistant',
+    (tester) async {
+      final match = _ResultMatch()..failOnce = true;
+      await tester.pumpWidget(
+        _app(
+          _ResultCalendar(match),
+          match: match,
+          identity: const _AssistantIdentity(),
+          overview: _AssistantMatchOverview(match),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('assistant-coach-mobile-fab')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byTooltip('Registrera resultat'));
+      await tester.tap(find.byTooltip('Registrera resultat'));
+      await tester.pumpAndSettle();
+      expect(find.text('Registrera slutresultat'), findsOneWidget);
+      expect(find.text('Match A · F2012 · Testklubben'), findsOneWidget);
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Vårt lag'),
+        '3',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Motståndare'),
+        '1',
+      );
+      await tester.tap(find.text('Spara och avsluta match'));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Kunde inte bekräfta sparandet'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Spara och avsluta match'));
+      await tester.pumpAndSettle();
+      expect(match.calls.map((c) => c['commandId']).toSet(), hasLength(1));
+      expect(match.snapshot!.scoreUs, 3);
+      expect(find.byTooltip('Registrera resultat'), findsNothing);
+      await tester.ensureVisible(find.byTooltip('Skriv matchrapport'));
+      await tester.tap(find.byTooltip('Skriv matchrapport'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+        isFalse,
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Matchrapport'),
+        'En bra laginsats.',
+      );
+      await tester.tap(find.text('Spara utkast'));
+      await tester.pumpAndSettle();
+      expect(match.report.body, 'En bra laginsats.');
+      expect(match.report.published, isFalse);
+      expect(find.byTooltip('Skriv matchrapport'), findsNothing);
+      expect(find.text('Mina uppgifter'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('assistant does not open result editor after read failure', (
+    tester,
+  ) async {
+    final match = _ResultMatch()..loadFails = true;
+    await tester.pumpWidget(
+      _app(
+        _ResultCalendar(match),
+        match: match,
+        identity: const _AssistantIdentity(),
+        overview: _AssistantMatchOverview(match),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('assistant-coach-mobile-fab')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byTooltip('Registrera resultat'));
+    await tester.tap(find.byTooltip('Registrera resultat'));
+    await tester.pumpAndSettle();
+    expect(find.text('Registrera slutresultat'), findsNothing);
+    expect(
+      find.textContaining('Aktiviteten kunde inte öppnas'),
+      findsOneWidget,
+    );
+    expect(match.calls, isEmpty);
+  });
+  testWidgets(
+    'callup requirement saves one occurrence and retries the same command',
+    (tester) async {
+      final calendar = _CallupRequirementCalendar();
+      await _openParticipants(tester, calendar);
+      await tester.tap(find.text('Info'));
+      await tester.pumpAndSettle();
+      final toggle = find.byKey(const Key('event-callups-required'));
+      await tester.ensureVisible(toggle);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Kallelsebehovet kunde inte sparas'),
+        findsOneWidget,
+      );
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
+      expect(calendar.editKeys, hasLength(2));
+      expect(calendar.editKeys.toSet(), hasLength(1));
+      expect(calendar.editRevisions, [1, 1]);
+      expect(calendar.editScopes, ['one', 'one']);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('view-only event cannot change callup requirement', (
+    tester,
+  ) async {
+    await _openParticipants(
+      tester,
+      _SharedViewCalendar(),
+      identity: const _SharedTeamIdentity(),
+    );
+    await tester.tap(find.text('Info'));
+    await tester.pumpAndSettle();
+    final toggle = find.byKey(const Key('event-callups-required'));
+    await tester.ensureVisible(toggle);
+    expect(tester.widget<SwitchListTile>(toggle).onChanged, isNull);
+  });
+  testWidgets('assistant opens the event participants and reloads on return', (
+    tester,
+  ) async {
+    final overview = _AssistantOverview();
+    await tester.pumpWidget(
+      _app(
+        _Calendar(),
+        identity: const _AssistantIdentity(),
+        overview: overview,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('assistant-coach-mobile-fab')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byTooltip('Granska och påminn'));
+    await tester.tap(find.byTooltip('Granska och påminn'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sök deltagare i klubben'), findsOneWidget);
+    expect(find.text('Testklubben · F2012'), findsWidgets);
+    overview.done = true;
+    await tester.tap(find.byTooltip('Stäng').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Mina uppgifter'), findsOneWidget);
+    expect(find.byTooltip('Granska och påminn'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'assistant preserves event context when opened from participants',
+    (tester) async {
+      await tester.pumpWidget(
+        _app(
+          _Calendar(),
+          identity: const _AssistantIdentity(),
+          overview: _AssistantOverview(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Kalender'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Vy och filter'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Agenda').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Träning A'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('assistant-coach-mobile-fab')));
+      await tester.pumpAndSettle();
+      expect(find.text('Den här aktiviteten · F2012'), findsOneWidget);
+      expect(find.text('Här och nu'), findsOneWidget);
+      expect(find.byTooltip('Granska och påminn'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets('selection menu remains above compact list', (tester) async {
     final calendar = _Calendar();
     await _openParticipants(tester, calendar);
@@ -67,7 +341,12 @@ void main() {
       await tester.ensureVisible(find.text('Redigera matchrapport'));
       await tester.tap(find.text('Redigera matchrapport'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(SwitchListTile));
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(SwitchListTile),
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Spara och publicera'));
       await tester.pumpAndSettle();
@@ -83,7 +362,12 @@ void main() {
     await tester.ensureVisible(find.text('Skriv matchrapport'));
     await tester.tap(find.text('Skriv matchrapport'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(SwitchListTile),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Spara och publicera'));
     await tester.pumpAndSettle();
@@ -229,6 +513,8 @@ void main() {
     expect(archiveButton, findsOneWidget);
     expect(tester.widget<TextButton>(archiveButton).onPressed, isNull);
 
+    await tester.ensureVisible(archiveButton);
+    await tester.pumpAndSettle();
     await tester.tap(archiveButton);
     await tester.pump();
     expect(
@@ -350,12 +636,61 @@ void main() {
       findsNothing,
     );
   });
-  testWidgets('reminder is direct and sent state respects cooldown', (
+  testWidgets('bulk reminder previews recipients and allows deselection', (
+    tester,
+  ) async {
+    final calendar = _Calendar();
+    await _openParticipants(tester, calendar);
+    await tester.tap(find.byTooltip('Fler åtgärder'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Påminn alla obesvarade'));
+    await tester.pumpAndSettle();
+    expect(calendar.remindedCallupId, isNull);
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Pelle Pending'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Anna Accepterad'),
+      ),
+      findsNothing,
+    );
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Skicka 0 påminnelser'),
+          )
+          .onPressed,
+      isNull,
+    );
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Skicka 1 påminnelser'));
+    await tester.pumpAndSettle();
+    expect(calendar.remindedCallupId, 'callup-pending');
+  });
+  testWidgets('reminder requires review and sent state respects cooldown', (
     tester,
   ) async {
     final calendar = _Calendar();
     await _openParticipants(tester, calendar);
     await tester.tap(find.byTooltip('Påminn'));
+    await tester.pumpAndSettle();
+    expect(calendar.remindedCallupId, isNull);
+    expect(find.text('Ingen tidigare påminnelse'), findsOneWidget);
+    await tester.tap(find.text('Avbryt'));
+    await tester.pumpAndSettle();
+    expect(calendar.remindedCallupId, isNull);
+    await tester.tap(find.byTooltip('Påminn'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Skicka 1 påminnelser'));
     await tester.pumpAndSettle();
     expect(calendar.remindedCallupId, 'callup-pending');
     expect(find.text('Påminnelsen är skickad.'), findsOneWidget);
@@ -446,6 +781,7 @@ Widget _app(
   IdentityServices identity = const _Identity(),
   MatchServices match = const UnconfiguredMatchServices(),
   RosterServices roster = const UnconfiguredRosterServices(),
+  OverviewServices overview = const UnconfiguredOverviewServices(),
 }) => TeamZoneApp(
   environment: const AppEnvironment(name: 'cal11'),
   locale: const Locale('sv'),
@@ -454,6 +790,7 @@ Widget _app(
     calendar: calendar,
     match: match,
     roster: roster,
+    overview: overview,
     isConfigured: true,
   ),
 );
@@ -484,6 +821,7 @@ Future<void> _openResultMatch(
 class _ResultCalendar extends _Calendar {
   _ResultCalendar(this.match);
   final _ResultMatch match;
+  bool canManage = true;
   @override
   Future<EventDetails> getEventDetails(String eventId) async => EventDetails(
     id: 'event-1',
@@ -496,7 +834,9 @@ class _ResultCalendar extends _Calendar {
     allDay: false,
     timezone: 'Europe/Stockholm',
     revision: match.calls.isEmpty ? 1 : 2,
-    callerActions: const {'revise', 'complete', 'match_live'},
+    callerActions: canManage
+        ? const {'revise', 'complete', 'match_live'}
+        : const {},
     teams: const [
       {'team_id': 'team', 'name': 'F2012', 'relation': 'primary'},
       {
@@ -1022,8 +1362,9 @@ Future<void> _openParticipants(
   WidgetTester tester,
   _Calendar calendar, {
   RosterServices roster = const UnconfiguredRosterServices(),
+  IdentityServices identity = const _Identity(),
 }) async {
-  await tester.pumpWidget(_app(calendar, roster: roster));
+  await tester.pumpWidget(_app(calendar, roster: roster, identity: identity));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Kalender'));
   await tester.pumpAndSettle();
@@ -1070,5 +1411,230 @@ class _ParticipantRoster extends UnconfiguredRosterServices {
       matchesTotal: 2,
       matchesPlayed: 1,
     );
+  }
+}
+
+class _AssistantIdentity extends _Identity {
+  const _AssistantIdentity();
+  @override
+  Future<List<TeamZoneContext>> getContexts() async => const [
+    TeamZoneContext(
+      id: 'context',
+      clubId: 'club',
+      clubName: 'Testklubben',
+      teamId: 'team',
+      teamName: 'F2012',
+      rolePackage: 'leader',
+      capabilities: {
+        'team.read',
+        'event.manage',
+        'event.squad.manage',
+        'match.live',
+      },
+    ),
+  ];
+}
+
+class _PersonalIdentity extends _Identity {
+  const _PersonalIdentity();
+  @override
+  Future<List<TeamZoneContext>> getContexts() async => const [
+    TeamZoneContext(
+      id: 'context',
+      clubId: 'club',
+      clubName: 'Testklubben',
+      teamId: 'team',
+      teamName: 'Fotboll',
+      rolePackage: 'player',
+      capabilities: {'team.read'},
+    ),
+    TeamZoneContext(
+      id: 'other',
+      clubId: 'other-club',
+      clubName: 'Andra klubben',
+      teamId: 'other-team',
+      teamName: 'Handboll',
+      rolePackage: 'player',
+      capabilities: {'team.read'},
+    ),
+  ];
+}
+
+class _PersonalOverview extends UnconfiguredOverviewServices
+    implements PersonalCalendarConflictServices {
+  @override
+  Future<Map<String, dynamic>> loadPersonalCalendarConflicts() async => {
+    'generated_at': DateTime.now().toIso8601String(),
+    'tasks': [
+      {
+        'kind': 'personal_calendar_conflict',
+        'title': 'Möjlig personlig krock',
+        'count': 1,
+        'priority': 0,
+        'route': '/calendar?event=one&overlap=two',
+        'first_event': {
+          'event_id': 'one',
+          'context_id': 'context',
+          'response': 'accepted',
+        },
+        'second_event': {
+          'event_id': 'two',
+          'context_id': 'other',
+          'response': 'pending',
+        },
+      },
+    ],
+  };
+}
+
+class _ConflictCalendar extends _Calendar {
+  _ConflictCalendar({super.responseRole});
+  final editedIds = <String>[];
+  final commands = <String>[];
+  final scopes = <String>[];
+  final patches = <Map<String, dynamic>>[];
+  @override
+  Future<EventDetails> getEventDetails(String eventId) async => EventDetails(
+    id: eventId,
+    title: 'Aktivitet $eventId',
+    description: null,
+    type: 'training',
+    state: 'scheduled',
+    startsAt: DateTime.now().add(const Duration(days: 1)),
+    endsAt: DateTime.now().add(const Duration(days: 1, hours: 2)),
+    allDay: false,
+    timezone: 'Europe/Stockholm',
+    revision: 1,
+    callerActions: const {'revise'},
+    teams: const [
+      {'team_id': 'team', 'relation': 'primary'},
+    ],
+    audiences: const [],
+  );
+  @override
+  Future<int> reviseEvent({
+    required String eventId,
+    required String scope,
+    required Map<String, dynamic> patch,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {
+    editedIds.add(eventId);
+    scopes.add(scope);
+    commands.add(idempotencyKey);
+    patches.add(patch);
+    if (editedIds.length == 1) throw StateError('timeout');
+    return 2;
+  }
+}
+
+class _ConflictOverview extends UnconfiguredOverviewServices {
+  @override
+  Future<LeaderHomeProjection> loadLeaderHome(String contextId) async =>
+      LeaderHomeProjection(
+        generatedAt: DateTime.now(),
+        todayEvents: const [],
+        planningActions: const [],
+        tasks: const [
+          LeaderHomeTask(
+            kind: 'calendar_conflict',
+            title: 'Kalenderkrock',
+            count: 1,
+            route: '/calendar?event=one&overlap=two',
+            priority: 1,
+          ),
+        ],
+      );
+}
+
+class _AssistantMatchOverview extends UnconfiguredOverviewServices {
+  _AssistantMatchOverview(this.match);
+  final _ResultMatch match;
+  @override
+  Future<LeaderHomeProjection> loadLeaderHome(String contextId) async =>
+      LeaderHomeProjection(
+        generatedAt: DateTime.now(),
+        todayEvents: const [],
+        planningActions: const [],
+        tasks: [
+          if (match.report.body.trim().isEmpty)
+            LeaderHomeTask(
+              kind: match.snapshot?.state == 'completed'
+                  ? 'missing_match_report'
+                  : 'missing_match_result',
+              title: match.snapshot?.state == 'completed'
+                  ? 'Matchrapport saknas'
+                  : 'Resultat saknas',
+              count: 1,
+              route: '/calendar?event=event-1',
+              priority: 1,
+            ),
+        ],
+      );
+}
+
+class _AssistantOverview extends UnconfiguredOverviewServices {
+  bool done = false;
+  @override
+  Future<LeaderHomeProjection> loadLeaderHome(String contextId) async =>
+      LeaderHomeProjection(
+        generatedAt: DateTime(2026, 10, 2),
+        todayEvents: const [],
+        planningActions: const [],
+        tasks: done
+            ? []
+            : const [
+                LeaderHomeTask(
+                  kind: 'pending_callups',
+                  title: 'Obesvarade kallelser',
+                  count: 1,
+                  route: '/calendar?event=event-1',
+                  priority: 1,
+                ),
+              ],
+      );
+}
+
+class _CallupRequirementCalendar extends _Calendar {
+  bool callupsRequired = true;
+  final editKeys = <String>[];
+  final editRevisions = <int>[];
+  final editScopes = <String>[];
+  @override
+  Future<EventDetails> getEventDetails(String eventId) async {
+    final base = await super.getEventDetails(eventId);
+    return EventDetails(
+      id: base.id,
+      title: base.title,
+      description: base.description,
+      type: base.type,
+      state: base.state,
+      startsAt: base.startsAt,
+      endsAt: base.endsAt,
+      allDay: base.allDay,
+      timezone: base.timezone,
+      revision: callupsRequired ? 1 : 2,
+      callerActions: base.callerActions,
+      teams: base.teams,
+      audiences: base.audiences,
+      callupsRequired: callupsRequired,
+    );
+  }
+
+  @override
+  Future<int> reviseEvent({
+    required String eventId,
+    required String scope,
+    required Map<String, dynamic> patch,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {
+    editKeys.add(idempotencyKey);
+    editRevisions.add(expectedRevision);
+    editScopes.add(scope);
+    if (eventId != 'event-1') throw StateError('wrong event');
+    callupsRequired = patch['callups_required'] as bool;
+    if (editKeys.length == 1) throw StateError('response lost after commit');
+    return 2;
   }
 }

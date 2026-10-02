@@ -108,7 +108,10 @@ class _IntakeSurfaceState extends State<_IntakeSurface> {
               Text(
                 strings
                     .feature('Gäller till {date}')
-                    .replaceAll('{date}', _formatBirthDate(form.expiresAt.toLocal())),
+                    .replaceAll(
+                      '{date}',
+                      _formatBirthDate(form.expiresAt.toLocal()),
+                    ),
                 style: Theme.of(dialogContext).textTheme.bodySmall,
               ),
             ],
@@ -234,7 +237,8 @@ class _IntakeSurfaceState extends State<_IntakeSurface> {
                     DropdownMenuItem(value: item.id, child: Text(item.name)),
                 ],
                 onChanged: (value) => setDialog(
-                  () => team = data.teams.firstWhere((item) => item.id == value),
+                  () =>
+                      team = data.teams.firstWhere((item) => item.id == value),
                 ),
               ),
               const SizedBox(height: 16),
@@ -296,14 +300,18 @@ class _IntakeSurfaceState extends State<_IntakeSurface> {
     final (team, person) = choice;
     await _run(submission.id, () async {
       try {
-        await widget.roster.updatePersonFromIntake(
+        final status = await widget.roster.updatePersonFromIntake(
           submissionId: submission.id,
           teamId: team.id,
           personId: person.id,
         );
         _show(
           strings
-              .feature('{name}s uppgifter är uppdaterade.')
+              .feature(
+                status == 'pending_approval'
+                    ? 'Ändringsförslaget för {name} väntar på godkännande av personen eller en behörig vårdnadshavare.'
+                    : '{name}s uppgifter är uppdaterade.',
+              )
               .replaceAll('{name}', person.displayName),
         );
         widget.onPeopleAdded?.call();
@@ -690,7 +698,7 @@ class _IntakeMergeDialogState extends State<_IntakeMergeDialog> {
             Text(
               strings
                   .feature(
-                    'Telefon, e-post och adress från {name} sparas på personen du väljer. Namnet ändras inte.',
+                    'Telefon, e-post och adress från {name} föreslås för personen du väljer. För personer med konto krävs godkännande av personen eller en behörig vårdnadshavare. Namnet ändras inte.',
                   )
                   .replaceAll('{name}', widget.submission.fullName),
               style: Theme.of(context).textTheme.bodySmall,

@@ -109,6 +109,7 @@ class _MatchResultCardState extends State<_MatchResultCard> {
                   eventId: widget.event.id,
                   match: widget.match,
                   canManage: widget.canManage,
+                  onSaved: widget.onSaved,
                 ),
             ],
           );
@@ -123,10 +124,12 @@ class _RegisterResultDialog extends StatefulWidget {
     required this.event,
     required this.match,
     required this.snapshot,
+    this.contextLabel,
   });
   final EventDetails event;
   final MatchServices match;
   final MatchSnapshot? snapshot;
+  final String? contextLabel;
   @override
   State<_RegisterResultDialog> createState() => _RegisterResultDialogState();
 }
@@ -203,6 +206,10 @@ class _RegisterResultDialogState extends State<_RegisterResultDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (widget.contextLabel != null) ...[
+                  Text(widget.contextLabel!),
+                  const SizedBox(height: 12),
+                ],
                 TextFormField(
                   initialValue: _us,
                   enabled: !_busy,

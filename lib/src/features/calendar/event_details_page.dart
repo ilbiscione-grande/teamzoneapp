@@ -19,9 +19,16 @@ class _EventDetailsPage extends StatefulWidget {
     required this.match,
     required this.matchSpaceV2,
     required this.onNavigate,
+    this.initialParticipants = false,
+    this.initialPreparation = false,
+    this.onChanged,
+    super.key,
   });
 
   final String eventId;
+  final bool initialParticipants;
+  final bool initialPreparation;
+  final VoidCallback? onChanged;
   final TeamZoneContext contextValue;
   final CalendarServices calendar;
   final RosterServices roster;
@@ -75,7 +82,19 @@ class _EventDetailsPageState extends State<_EventDetailsPage> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         centerTitle: true,
-        title: _title == null ? null : Text(_title!),
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_title != null)
+              Text(_title!, maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(
+              '${widget.contextValue.clubName} · ${widget.contextValue.teamName ?? "Aktivitet"}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: strings.close,
@@ -111,6 +130,9 @@ class _EventDetailsPageState extends State<_EventDetailsPage> {
           // that, by replacing _load itself.
           return _EventDetailsBody(
             key: const ValueKey('event-details-body'),
+            initialParticipants: widget.initialParticipants,
+            initialPreparation: widget.initialPreparation,
+            onChanged: widget.onChanged,
             initialEvent: event,
             initialSquad: squad,
             eventId: widget.eventId,
@@ -140,10 +162,16 @@ class _EventDetailsBody extends StatefulWidget {
     required this.matchSpaceV2,
     required this.onDeleted,
     required this.onTitleChanged,
+    this.initialParticipants = false,
+    this.initialPreparation = false,
+    this.onChanged,
     super.key,
   });
 
   final EventDetails initialEvent;
+  final bool initialParticipants;
+  final bool initialPreparation;
+  final VoidCallback? onChanged;
   final SquadDetails initialSquad;
   final String eventId;
   final TeamZoneContext contextValue;
@@ -174,10 +202,50 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
   // track the swipe animation to shrink itself on every tab but Info.
   late final TabController _tabController = TabController(
     length: 4,
+    initialIndex: widget.initialPreparation
+        ? 2
+        : widget.initialParticipants
+        ? 1
+        : 0,
     vsync: this,
   )..addListener(_handleTabIndexChanged);
 
   int _resultRefresh = 0;
+  bool _savingCallupRequirement = false;
+  ({bool value, int revision, String key})? _callupRequirementCommand;
+
+  Future<void> _setCallupsRequired(bool value) async {
+    if (_savingCallupRequirement) return;
+    final previous = _callupRequirementCommand;
+    final command = previous != null && previous.value == value
+        ? previous
+        : (value: value, revision: event.revision, key: _newUuid());
+    _callupRequirementCommand = command;
+    setState(() => _savingCallupRequirement = true);
+    try {
+      await widget.calendar.reviseEvent(
+        eventId: event.id,
+        scope: 'one',
+        patch: {'callups_required': command.value},
+        expectedRevision: command.revision,
+        idempotencyKey: command.key,
+      );
+      _callupRequirementCommand = null;
+      await _refresh();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Kallelsebehovet kunde inte sparas. Försök igen eller öppna aktiviteten på nytt.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingCallupRequirement = false);
+    }
+  }
 
   Map<String, dynamic>? get _activeTeamRelation {
     final teamId = widget.contextValue.teamId;
@@ -246,6 +314,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
           this.squad = squad;
         });
         widget.onTitleChanged(event.title);
+        widget.onChanged?.call();
       }
     } catch (_) {
       if (mounted) {
@@ -273,6 +342,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
       setState(() {
         squad = updated;
       });
+      widget.onChanged?.call();
     }
   }
 
@@ -339,6 +409,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                   event: event,
                   people: [...squad.roster, ..._guestRosterFor(squad)],
                   services: widget.calendar.preparation,
+                  onChanged: widget.onChanged,
                   allowEdit: _contextCanCoManage,
                   onOpenMatchMode:
                       event.preparationActions.contains(
@@ -438,6 +509,25 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
             ),
           ),
         ..._typedInfoTiles(context, event),
+        Card(
+          child: SwitchListTile(
+            key: const Key('event-callups-required'),
+            title: const Text('Kallelse behövs'),
+            subtitle: const Text(
+              'Gäller den här aktiviteten. Stäng av för att slippa '
+              'assistentens påminnelse om saknade kallelser. Befintliga kallelser behålls.',
+            ),
+            value: event.callupsRequired,
+            onChanged:
+                !_savingCallupRequirement &&
+                    _contextCanCoManage &&
+                    event.can('revise') &&
+                    event.archivedAt == null &&
+                    event.state != 'cancelled'
+                ? _setCallupsRequired
+                : null,
+          ),
+        ),
         if (event.type == 'match')
           _MatchResultCard(
             key: ValueKey(_resultRefresh),

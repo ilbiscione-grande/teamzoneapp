@@ -26,6 +26,12 @@ String _profileErrorMessage(
   ProfileException(code: 'same_email') => strings.feature(
     'Det är redan din inloggningsadress.',
   ),
+  ProfileException(code: 'use_privacy_settings') => strings.feature(
+    'Ändra uppgifterna under Adresser och integritet.',
+  ),
+  ProfileException(code: 'use_address_settings') => strings.feature(
+    'Ändra adressen under Adresser och integritet.',
+  ),
   _ => strings.feature('Det gick inte att spara. Försök igen.'),
 };
 
@@ -98,6 +104,9 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
   MyProfileDetails? _details;
   // Kept for a retry of the same save.
   String? _saveKey;
+  Object? _saveInput;
+  String? _stagedAvatarId;
+  Uint8List? _stagedAvatarBytes;
 
   Future<MyProfileDetails> _reload() async {
     // An approved change is finished once the login email has changed.
@@ -248,19 +257,38 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
       _error = null;
     });
     try {
-      String? stagedId;
-      if (_pickedBytes != null) {
-        stagedId = await widget.profile.uploadAvatar(
+      final input = (
+        _name.text.trim(),
+        _text(_email),
+        _text(_phone),
+        _text(_street),
+        _text(_postal),
+        _text(_city),
+        _pickedBytes,
+        _removeAvatar,
+      );
+      if (_saveInput != input) {
+        _saveInput = input;
+        _saveKey = _newUuid();
+      }
+      if (_pickedBytes != null &&
+          (_stagedAvatarId == null ||
+              !identical(_stagedAvatarBytes, _pickedBytes))) {
+        _stagedAvatarId = await widget.profile.uploadAvatar(
           mimeType: _pickedMime!,
           bytes: _pickedBytes!,
           idempotencyKey: _newUuid(),
         );
       }
-      _saveKey ??= _newUuid();
+      if (_pickedBytes != null) _stagedAvatarBytes = _pickedBytes;
+      final stagedId = _pickedBytes == null ? null : _stagedAvatarId;
       await widget.profile.updateMyProfile(
         displayName: _name.text.trim(),
         contactEmail: _email.text.trim().isEmpty ? null : _email.text.trim(),
         phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+        street: _text(_street),
+        postalCode: _text(_postal),
+        city: _text(_city),
         avatarAction: stagedId != null
             ? 'replace'
             : _removeAvatar
@@ -270,18 +298,8 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
         expectedRevision: details.revision,
         idempotencyKey: _saveKey!,
       );
-      if (_text(_street) != details.streetAddress ||
-          _text(_postal) != details.postalCode ||
-          _text(_city) != details.city) {
-        await widget.profile.updateMyAddress(
-          street: _text(_street),
-          postalCode: _text(_postal),
-          city: _text(_city),
-        );
-      }
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
-      _saveKey = null;
       if (mounted) {
         setState(() {
           _busy = false;
@@ -481,7 +499,9 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
           ),
           FilledButton(
             key: const ValueKey('save-my-profile'),
-            onPressed: _busy || _details == null ? null : _save,
+            onPressed: _busy || _details == null || _details!.protected
+                ? null
+                : _save,
             child: Text(strings.feature('Spara')),
           ),
         ],
@@ -502,6 +522,19 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
         }
         final hasPicture =
             _pickedBytes != null || (_avatarUrl != null && !_removeAvatar);
+        if (details.protected) {
+          return ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              Text(
+                strings.feature(
+                  'Ändra uppgifterna under Adresser och integritet.',
+                ),
+              ),
+              _loginSection(strings, details),
+            ],
+          );
+        }
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
           children: [
@@ -580,43 +613,10 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
-              key: const ValueKey('my-profile-street'),
-              controller: _street,
-              maxLength: 120,
-              textCapitalization: TextCapitalization.words,
-              decoration: InputDecoration(
-                labelText: strings.feature('Gatuadress'),
-                prefixIcon: const Icon(Icons.home_outlined),
+            Text(
+              strings.feature(
+                'Hantera flera adresser och klubbval under Adresser och integritet.',
               ),
-            ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 130,
-                  child: TextField(
-                    key: const ValueKey('my-profile-postal'),
-                    controller: _postal,
-                    keyboardType: TextInputType.text,
-                    decoration: InputDecoration(
-                      labelText: strings.feature('Postnummer'),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    key: const ValueKey('my-profile-city'),
-                    controller: _city,
-                    maxLength: 80,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: InputDecoration(
-                      labelText: strings.feature('Ort'),
-                    ),
-                  ),
-                ),
-              ],
             ),
             const SizedBox(height: 8),
             Text(

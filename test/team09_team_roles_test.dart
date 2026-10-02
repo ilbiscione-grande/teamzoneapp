@@ -153,7 +153,10 @@ void main() {
     expect(find.byKey(const ValueKey('intake-qr-form-1')), findsOneWidget);
     // The submission is added to the team as a player with one tap.
     expect(find.text('Nina Ny'), findsOneWidget);
-    expect(find.text('2012-05-03 · 070-1234567 · nina@mail.se'), findsOneWidget);
+    expect(
+      find.text('2012-05-03 · 070-1234567 · nina@mail.se'),
+      findsOneWidget,
+    );
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('intake-add-sub-1')),
       150,
@@ -172,6 +175,10 @@ void main() {
   });
 
   testWidgets('sent details can update an existing person', (tester) async {
+    tester.view.physicalSize = const Size(1200, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final roster = _Roster(
       roles: [
         const TeamRole(personId: 'lisa', name: 'Lisa Ledare', role: 'leader'),
@@ -209,11 +216,23 @@ void main() {
     await tester.pumpAndSettle();
     // Nina Nilsson shares a name with "Nina Ny" and is listed first.
     expect(find.text('Möjlig matchning'), findsOneWidget);
-    expect(
-      tester.getTopLeft(find.text('Nina Nilsson')).dy,
-      lessThan(tester.getTopLeft(find.text('Olle Annan')).dy),
+    final choices = find.descendant(
+      of: find.byType(RadioGroup<String>),
+      matching: find.byType(ListView),
     );
+    final choiceList = tester.widget<ListView>(choices);
+    final rows =
+        (choiceList.childrenDelegate as SliverChildListDelegate).children;
+    expect((rows.first as RadioListTile<String>).value, 'nina');
     // Leaders can be chosen too.
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('intake-merge-lisa')),
+      80,
+      scrollable: find.descendant(
+        of: choices,
+        matching: find.byType(Scrollable),
+      ),
+    );
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('intake-merge-lisa')),
@@ -221,13 +240,24 @@ void main() {
       ),
       findsOneWidget,
     );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('intake-merge-nina')),
+      -80,
+      scrollable: find.descendant(
+        of: choices,
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.byKey(const ValueKey('intake-merge-nina')));
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('intake-merge-confirm')));
     await tester.pumpAndSettle();
     expect(roster.mergedIntake, [('sub-1', 'team', 'nina')]);
     expect(roster.acceptedIntake, isEmpty);
-    expect(find.text('Nina Nilssons uppgifter är uppdaterade.'), findsOneWidget);
+    expect(
+      find.text('Nina Nilssons uppgifter är uppdaterade.'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -323,9 +353,7 @@ void main() {
     expect(roster.calls, isEmpty);
     expect(roster.savedMainTitle, 'contact_person');
     expect(
-      find.text(
-        'Kontaktperson (huvudtitel) · Huvudtränare · Ungdomsansvarig',
-      ),
+      find.text('Kontaktperson (huvudtitel) · Huvudtränare · Ungdomsansvarig'),
       findsOneWidget,
     );
     await tester.tap(find.text('Thomas Emilson (du)').last);
@@ -1093,13 +1121,14 @@ class _Roster extends UnconfiguredRosterServices {
   final mergedIntake = <(String, String, String)>[];
 
   @override
-  Future<void> updatePersonFromIntake({
+  Future<String> updatePersonFromIntake({
     required String submissionId,
     required String teamId,
     required String personId,
   }) async {
     mergedIntake.add((submissionId, teamId, personId));
     intakeSubmissions.removeWhere((item) => item.id == submissionId);
+    return 'updated';
   }
 
   @override

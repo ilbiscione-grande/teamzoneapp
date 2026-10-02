@@ -14,6 +14,7 @@ class _PreparationTab extends StatefulWidget {
     required this.services,
     required this.allowEdit,
     this.onOpenMatchMode,
+    this.onChanged,
   });
 
   final EventDetails event;
@@ -26,6 +27,7 @@ class _PreparationTab extends StatefulWidget {
   /// The active team context may edit (the server decides per actor too).
   final bool allowEdit;
   final VoidCallback? onOpenMatchMode;
+  final VoidCallback? onChanged;
 
   @override
   State<_PreparationTab> createState() => _PreparationTabState();
@@ -118,6 +120,7 @@ class _PreparationTabState extends State<_PreparationTab> {
     try {
       await action();
       await _reload();
+      if (mounted) widget.onChanged?.call();
       return true;
     } on PreparationConflict {
       await _reload();
@@ -331,6 +334,7 @@ class _PreparationTabState extends State<_PreparationTab> {
     try {
       await _services.setItemDone(item.id, target);
       await _reload();
+      if (mounted) widget.onChanged?.call();
     } catch (_) {
       if (mounted) _snack('Kunde inte spara markeringen. Försök igen.');
     } finally {

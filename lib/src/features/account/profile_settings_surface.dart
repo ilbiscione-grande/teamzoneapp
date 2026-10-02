@@ -102,6 +102,7 @@ class _ProfileSettingsSurface extends StatefulWidget {
     this.onOwnProfileChanged,
     this.messaging,
     this.embedded = false,
+    this.openProfile = false,
     this.membership = const UnconfiguredMembershipServices(),
   });
 
@@ -120,6 +121,7 @@ class _ProfileSettingsSurface extends StatefulWidget {
 
   /// One list of all personal settings, for the profile page's tab.
   final bool embedded;
+  final bool openProfile;
 
   @override
   State<_ProfileSettingsSurface> createState() =>
@@ -559,6 +561,7 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
     final showClub = _adminClubs.isNotEmpty;
     return DefaultTabController(
       length: showClub ? 4 : 3,
+      initialIndex: widget.openProfile ? (showClub ? 3 : 2) : 0,
       child: Scaffold(
         appBar: AppBar(
           title: Text(strings.feature('Inställningar')),
@@ -774,6 +777,27 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
     _MyProfileCard(
       profile: widget.profileServices,
       onSaved: widget.onOwnProfileChanged,
+    ),
+    _ContactChangeRequests(
+      profile: widget.profileServices,
+      onChanged: widget.onOwnProfileChanged,
+    ),
+    ListTile(
+      key: const ValueKey('address-privacy-settings'),
+      leading: const Icon(Icons.privacy_tip_outlined),
+      title: Text(strings.feature('Adresser och integritet')),
+      subtitle: Text(
+        strings.feature('Flera adresser, klubbval och begränsad åtkomst'),
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => showDialog<void>(
+        context: context,
+        useRootNavigator: true,
+        builder: (_) => _AddressPrivacySettings(
+          profile: widget.profileServices,
+          onChanged: widget.onOwnProfileChanged,
+        ),
+      ),
     ),
   ];
 

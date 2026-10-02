@@ -157,7 +157,10 @@ void main() {
     );
     expect(surface, contains("Key('assistant-history-switch')"));
     expect(surface, contains("Key('assistant-area-filters')"));
-    expect(surface, contains("Key('assistant-area-preferences')"));
+    expect(
+      surface,
+      matches(RegExp(r"Key\(\s*'assistant-area-preferences'\s*,?\s*\)")),
+    );
   });
 
   test('responsive contract keeps mobile FAB and integrated wide panel', () {

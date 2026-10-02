@@ -63,38 +63,42 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
-  testWidgets('match publication refreshes without a false connection error', (
-    tester,
-  ) async {
-    final editorial = _Editorial();
-    await tester.pumpWidget(_app(editorial, canPublish: true));
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.byTooltip('Nyhetsredaktion'),
-      250,
-      scrollable: find.descendant(
-        of: find.byKey(const Key('app-navigation-panel-list')),
-        matching: find.byType(Scrollable),
-      ),
-    );
-    await tester.tap(find.byTooltip('Nyhetsredaktion'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Event och partners'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Hantera publicering'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Publicera'));
-    await tester.pumpAndSettle();
-    expect(editorial.eventPublished, isTrue);
-    expect(editorial.resultPublished, isFalse);
-    expect(editorial.managementLoads, 2);
-    expect(find.byType(SnackBar), findsNothing);
-    expect(tester.takeException(), isNull);
-    await tester.tap(find.byTooltip('Uppdatera').last);
-    await tester.pumpAndSettle();
-    expect(editorial.managementLoads, 3);
-    expect(tester.takeException(), isNull);
-  });
+  testWidgets(
+    'match presentation saves without individual visibility controls',
+    (tester) async {
+      final editorial = _Editorial();
+      await tester.pumpWidget(_app(editorial, canPublish: true));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byTooltip('Nyhetsredaktion'),
+        250,
+        scrollable: find.descendant(
+          of: find.byKey(const Key('app-navigation-panel-list')),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      await tester.tap(find.byTooltip('Nyhetsredaktion'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Event och partners'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Hantera publicering'));
+      await tester.pumpAndSettle();
+      expect(find.text('Gör privat'), findsNothing);
+      expect(find.widgetWithText(FilledButton, 'Publicera'), findsNothing);
+      await tester.tap(find.widgetWithText(FilledButton, 'Spara'));
+      await tester.pumpAndSettle();
+      expect(editorial.eventSaved, isTrue);
+      expect(editorial.eventPublished, isFalse);
+      expect(editorial.resultPublished, isFalse);
+      expect(editorial.managementLoads, 2);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.byTooltip('Uppdatera').last);
+      await tester.pumpAndSettle();
+      expect(editorial.managementLoads, 3);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'headline suggests a Swedish-safe address and previews unsaved text',
@@ -385,6 +389,7 @@ class _Editorial extends UnconfiguredEditorialServices {
   EditorialSaveInput? saved;
   String? transitionedTo;
   bool eventPublished = false;
+  bool eventSaved = false;
   bool resultPublished = false;
   int managementLoads = 0;
   bool teamResults = false, teamTraining = false, teamMatches = false;
@@ -447,6 +452,7 @@ class _Editorial extends UnconfiguredEditorialServices {
     required int expectedRevision,
     required String idempotencyKey,
   }) async {
+    eventSaved = true;
     eventPublished = state == 'published';
     resultPublished = publishResult;
   }

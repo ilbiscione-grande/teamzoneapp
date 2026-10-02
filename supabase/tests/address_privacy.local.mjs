@@ -1,0 +1,155 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {db,club,team,id,as,one} from './profile_contact.local.mjs';
+const read = name => fs.readFileSync(`supabase/migrations/${name}`,'utf8');
+try {
+ await db.exec(`
+  create role service_role;
+  alter table core.clubs add column status text default 'active';
+  alter table core.teams add column status text default 'active',add unique(id,club_id);
+  alter table core.club_people add column birth_date date,add column age_class text,add column person_id uuid default gen_random_uuid(),add unique(id,club_id);
+  alter table core.guardian_relations add column starts_at timestamptz default now()-interval '1 day',add column ends_at timestamptz;
+  create table internal.notification_outbox(id uuid default gen_random_uuid(),club_id uuid,domain_event_id uuid,event_type text,
+   aggregate_type text,aggregate_id uuid,recipient_profile_id uuid,recipient_person_id uuid,payload_ref jsonb,state text,
+   created_at timestamptz default now(),unique(domain_event_id,recipient_person_id));
+  create table core.publication_consents(subject_club_person_id uuid,state text,withdrawn_at timestamptz,withdrawn_by uuid,withdrawal_reason text,revision bigint default 1);
+  create table internal.publication_projection_jobs(club_id uuid,aggregate_type text,aggregate_id uuid,requested_revision bigint,action text,affected_paths text[],created_by uuid);
+  create table core.leader_verifications(profile_id uuid,adult_verified boolean,state text);
+  create table core.contact_controls(requester_profile_id uuid,target_profile_id uuid,control_type text,state text);
+  create function internal.actor_is_verified_adult_leader(target uuid) returns boolean language sql as $$select true$$;
+  create function internal.actors_share_active_club(a uuid,b uuid) returns boolean language sql as $$select false$$;
+ `);
+ const directory=read('20260921192106_msg02_search_cross_club_directory.sql');
+ await db.exec(directory.slice(0,directory.indexOf('insert into internal.migration_provenance')));
+ const requestSource=read('20260815073726_s06_enforce_cross_club_boundary.sql');
+ await db.exec(requestSource.slice(requestSource.indexOf('create or replace function internal.request_cross'),requestSource.indexOf('insert into internal.migration_provenance')));
+ const notification = read('20260827160606_msg08_notification_center.sql');
+ for (const name of ['notification_title','notification_preview']) {
+  const start=notification.indexOf('create function internal.'+name+'(');
+  const end=notification.indexOf('$$;',notification.indexOf('as $$',start)+5);
+  await db.exec(notification.slice(start,end+3));
+ }
+ const deep=read('20260924143236_msg08_event_notification_deep_link.sql');
+ await db.exec(deep.slice(deep.indexOf('create or replace function'),deep.indexOf('revoke all')));
+ for(const file of ['20261002090000_intake_forms.sql','20261002120000_intake_update_existing.sql','20261002120001_intake_contact_approval.sql']) await db.exec(read(file));
+ await db.exec(read('20261002120002_address_privacy_controls.sql'));
+ await db.exec(`insert into core.profile_privacy(profile_id,enabled,alias,private_name) values
+  ('${id(13)}',true,'Legacy alias','Legacy real name'),('${id(15)}',false,'Old alias','Original outsider');
+  update core.profiles set display_name='Legacy alias' where id='${id(13)}';
+  update core.profiles set display_name='Old alias' where id='${id(15)}';`);
+ await db.exec(read('20261002120003_restore_name_after_privacy.sql'));
+ assert.equal(await one('select display_name from core.profiles where id=$1',[id(15)]),'Original outsider');
+ await as(13);
+ await one('select api.save_profile_privacy($1,false,$2,$3,null,null,1)',[id(13),'Different submitted alias','Changed private name']);
+ assert.equal(await one('select display_name from core.profiles where id=$1',[id(13)]),'Legacy real name');
+ await as(12);
+ const address1=id(71),address2=id(72);
+ const save=(address,label,street,revision=0)=>one('select api.save_profile_address($1,$2,$3,$4,$5,$6,$7)',[id(12),address,label,street,'12345','Town',revision]);
+ await save(address1,'Hos mamma','Street 1');await save(address2,'Hos pappa','Street 2');
+ let settings=await one('select api.get_address_privacy($1)',[id(12)]);
+ assert(settings.addresses.some(a=>a.id===address1)&&settings.addresses.some(a=>a.id===address2));
+ await one('select api.choose_club_address($1,$2,$3)',[id(12),club,address1]);
+ await as(11);
+ assert.equal((await one('select api.get_person_contact($1,$2,$3)',[club,team,id(22)])).street_address,'Street 1');
+ await assert.rejects(()=>one('select api.get_address_privacy($1)',[id(12)]),/not_found/);
+ await assert.rejects(()=>save(address1,'Hijack','Stolen',1),/not_found/);
+ await as(12);
+ await assert.rejects(()=>save(address1,'Stale','Old',0),/stale_revision/);
+ await db.exec(`insert into core.clubs(id,name) values('${id(90)}','Other club');
+  insert into core.teams(id,club_id,name) values('${id(91)}','${id(90)}','Other team');
+  insert into core.club_people(id,club_id,display_name) values('${id(32)}','${id(90)}','Ada'),('${id(33)}','${id(90)}','Leader');
+  insert into core.person_account_links(club_id,club_person_id,profile_id) values('${id(90)}','${id(32)}','${id(12)}'),('${id(90)}','${id(33)}','${id(11)}');
+  insert into core.assignments(club_id,club_person_id,team_id,role_package) values('${id(90)}','${id(32)}','${id(91)}','player'),('${id(90)}','${id(33)}','${id(91)}','leader');`);
+ await one('select api.choose_club_address($1,$2,$3)',[id(12),id(90),address2]);
+ await as(11);
+ assert.equal((await one('select api.get_person_contact($1,$2,$3)',[id(90),id(91),id(32)])).street_address,'Street 2');
+ await as(12);await save(address1,'Hos mamma','Changed street',1);
+ // Intake approval adds a third option and changes only the source club choice.
+ await as(16);
+ const form=await one('select api.create_intake_form($1,$2)',[club,team]);
+ const propose=async()=>{
+  await as(16);
+  await one("select api.public_submit_intake($1,'Ada','0701111111','fresh@example.se','2012-05-03','Third street','22222','Third town',$2)",[form.token,crypto.randomUUID()]);
+  const submission=await one('select id from core.intake_submissions order by created_at desc limit 1');
+  return one('select api.process_intake_contact_update($1,$2,$3)',[submission,team,id(22)]);
+ };
+ const proposal=await propose();await as(12);
+ await one('select api.decide_contact_change($1,true)',[proposal.request_id]);
+ assert.equal(await one('select street_address from core.profiles where id=$1',[id(12)]),null);
+ assert.equal(await one('select count(*)::int from core.profile_addresses where profile_id=$1 and id in($2,$3)',[id(12),address1,address2]),2);
+ assert.equal(await one('select address_id from core.club_address_choices where profile_id=$1 and club_id=$2',[id(12),id(90)]),address2);
+ await one('select api.choose_club_address($1,$2,$3)',[id(12),club,address1]);
+ await as(11);
+ assert.equal((await one('select api.get_person_contact($1,$2,$3)',[id(90),id(91),id(32)])).street_address,'Street 2');
+ await as(12);
+ await db.exec(`insert into core.publication_consents(subject_club_person_id,state) values('${id(22)}','active')`);
+ const originalName=await one('select display_name from core.profiles where id=$1',[id(12)]);
+ const originalClubNames=(await db.query('select id,display_name from core.club_people where id in($1,$2)',[id(22),id(32)])).rows;
+ const protect=(enabled,revision)=>one('select api.save_profile_privacy($1,$2,$3,$4,$5,$6,$7)',[id(12),enabled,'Spelare A','Privat Namn','safe@example.se','0701234567',revision]);
+ await protect(true,0);
+ await db.exec(`insert into core.leader_verifications values('${id(12)}',true,'active');
+  insert into core.assignments(club_id,club_person_id,team_id,role_package) values('${club}','${id(22)}','${team}','leader');`);
+ await as(15);
+ assert.equal((await db.query('select * from internal.list_cross_club_leaders_for_actor($1)',['Spelare'])).rows.length,0);
+ await assert.rejects(()=>one('select internal.request_cross_club_contact_for_actor($1,$2,$3,$4)',[id(12),'match','Hello',crypto.randomUUID()]),/not_found/);
+ await as(12);
+ await assert.rejects(()=>propose(),/not_available/);await as(12);
+ await assert.rejects(()=>one("select api.update_my_profile_details('Actual name','raw@example.se','0701111111','keep',null,1,$1)",[crypto.randomUUID()]),/use_privacy_settings/);
+ await assert.rejects(()=>one("select api.update_my_address('Leak street','12345','Town')"),/use_address_settings/);
+ assert.equal(await one('select display_name from core.profiles where id=$1',[id(12)]),'Spelare A');
+ assert.equal(await one('select contact_email from core.profiles where id=$1',[id(12)]),null);
+ assert.equal(await one('select count(*)::int from core.club_people where id in($1,$2) and display_name=$3',[id(22),id(32),'Spelare A']),2);
+ assert.equal(await one('select state from core.publication_consents limit 1'),'withdrawn');
+ await assert.rejects(()=>db.exec(`insert into core.publication_consents(subject_club_person_id,state) values('${id(22)}','active')`),/not_available/);
+ await as(11);
+ const hidden=await one('select api.get_person_contact($1,$2,$3)',[club,team,id(22)]);
+ assert.equal(hidden.can_see_contact,false);assert.equal(hidden.street_address,undefined);assert.equal(hidden.contact_email,undefined);
+ assert.equal(hidden.protected,undefined); // ordinary viewers cannot inspect the protection marker
+ await assert.rejects(()=>protect(false,1),/not_found/);
+ await as(12);
+ await one('select api.set_private_contact_grant($1,$2,$3,true)',[id(12),club,id(11)]);
+ await as(11);
+ const visible=await one('select api.get_person_contact($1,$2,$3)',[club,team,id(22)]);
+ assert.equal(visible.contact_email,'safe@example.se');assert.equal(visible.street_address,'Changed street');
+ await db.exec(`update core.assignments set state='ended' where club_person_id='${id(21)}'`);
+ assert.equal((await one('select api.get_person_contact($1,$2,$3)',[club,team,id(22)])).can_see_contact,false);
+ await db.exec(`update core.assignments set state='active' where club_person_id='${id(21)}';
+  update core.person_account_links set state='ended' where club_person_id='${id(22)}'`);
+ assert.equal((await one('select api.get_person_contact($1,$2,$3)',[club,team,id(22)])).can_see_contact,false);
+ await db.exec(`update core.person_account_links set state='active' where club_person_id='${id(22)}'`);
+ assert.equal((await one('select api.get_person_contact($1,$2,$3)',[id(90),id(91),id(32)])).can_see_contact,false);
+ await as(12);await one('select api.set_private_contact_grant($1,$2,$3,false)',[id(12),club,id(11)]);
+ await as(11);assert.equal((await one('select api.get_person_contact($1,$2,$3)',[club,team,id(22)])).can_see_contact,false);
+ await db.exec(`update core.club_people set display_name='LEAK',contact_email='leak@example.se',birth_year=2012 where id='${id(22)}'`);
+ assert.equal(await one('select display_name from core.club_people where id=$1',[id(22)]),'Spelare A');
+ assert.equal(await one('select contact_email from core.club_people where id=$1',[id(22)]),null);
+ await db.exec(`insert into core.club_people(id,club_id,person_id,display_name) select '${id(35)}','${id(90)}',person_id,'Old identity' from core.club_people where id='${id(22)}'`);
+ assert.equal(await one('select display_name from core.club_people where id=$1',[id(35)]),'Spelare A');
+ await db.exec(`insert into core.club_people(id,club_id,display_name) values('${id(34)}','${club}','Fresh name');
+  insert into core.person_account_links(club_id,club_person_id,profile_id) values('${club}','${id(34)}','${id(12)}');
+  insert into internal.notification_outbox(recipient_profile_id,payload_ref,state) values('${id(12)}','{"text":"sensitive"}','pending');`);
+ assert.equal(await one('select display_name from core.club_people where id=$1',[id(34)]),'Spelare A');
+ assert.equal(await one('select state from internal.notification_outbox order by created_at desc limit 1'),'suppressed');
+ assert.deepEqual(await one('select payload_ref from internal.notification_outbox order by created_at desc limit 1'),{});
+ await as(16); // guardian linked to child in fixture
+ assert.equal((await one('select api.get_address_privacy($1)',[id(12)])).private_name,'Privat Namn');
+ await db.exec(`update core.guardian_relations set state='ended'`);
+ await assert.rejects(()=>one('select api.get_address_privacy($1)',[id(12)]),/not_found/);
+ await as(12);await protect(false,1);
+ assert.equal(await one('select contact_email from core.profiles where id=$1',[id(12)]),null);
+ assert.equal(await one('select display_name from core.profiles where id=$1',[id(12)]),originalName);
+ for(const person of originalClubNames) assert.equal(await one('select display_name from core.club_people where id=$1',[person.id]),person.display_name);
+ await db.query('update core.profiles set display_name=$1 where id=$2',['New real name',id(12)]);
+ await protect(true,2);
+ await one('select api.save_profile_privacy($1,true,$2,$3,null,null,3)',[id(12),'Spelare B','Edited private name']);
+ await protect(false,4);
+ assert.equal(await one('select display_name from core.profiles where id=$1',[id(12)]),'New real name');
+ for(const table of ['profile_addresses','profile_privacy','private_contact_grants','protected_person_bindings','club_address_choices']) {
+  assert.equal(await one(`select has_table_privilege('authenticated','core.${table}','select')`),false);
+ }
+ assert.equal(await one("select has_function_privilege('anon','api.get_address_privacy(uuid)','execute')"),false);
+ assert.equal(await one("select has_function_privilege('authenticated','internal.get_person_contact_without_address_privacy(uuid,uuid,uuid)','execute')"),false);
+ await one('select api.delete_profile_address($1,$2,$3)',[id(12),address1,2]);
+ assert.equal(await one('select address_id from core.club_address_choices where profile_id=$1 and club_id=$2',[id(12),club]),null);
+ console.log('PASS address privacy: club isolation, conflicts, owner/guardian, revoked grant/guardian, source masking, public consent, notifications, old routes, deletion');
+} finally {await db.close();}

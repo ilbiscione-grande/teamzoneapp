@@ -5,10 +5,12 @@ class _WrittenReportCard extends StatefulWidget {
     required this.eventId,
     required this.match,
     required this.canManage,
+    required this.onSaved,
   });
   final String eventId;
   final MatchServices match;
   final bool canManage;
+  final Future<void> Function() onSaved;
   @override
   State<_WrittenReportCard> createState() => _WrittenReportCardState();
 }
@@ -35,6 +37,7 @@ class _WrittenReportCardState extends State<_WrittenReportCard> {
       context,
     ).showSnackBar(const SnackBar(content: Text('Matchrapporten är sparad.')));
     _reload();
+    await widget.onSaved();
   }
 
   @override
@@ -100,10 +103,12 @@ class _WrittenReportDialog extends StatefulWidget {
     required this.eventId,
     required this.match,
     required this.report,
+    this.contextLabel,
   });
   final String eventId;
   final MatchServices match;
   final WrittenMatchReport report;
+  final String? contextLabel;
   @override
   State<_WrittenReportDialog> createState() => _WrittenReportDialogState();
 }
@@ -158,6 +163,10 @@ class _WrittenReportDialogState extends State<_WrittenReportDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (widget.contextLabel != null) ...[
+                  Text(widget.contextLabel!),
+                  const SizedBox(height: 12),
+                ],
                 TextFormField(
                   initialValue: _body,
                   enabled: !_busy,

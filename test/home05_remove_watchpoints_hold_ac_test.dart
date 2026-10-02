@@ -17,7 +17,7 @@ void main() {
     'lib/src/features/overview/overview_surface.dart',
   ).readAsStringSync();
   final assistant = File(
-    'lib/src/features/assistant_coach/assistant_coach_entry.dart',
+    'lib/src/features/assistant_coach/assistant_tasks.dart',
   ).readAsStringSync();
 
   test('legacy Watchpoint identity is retired at runtime', () {
@@ -50,7 +50,8 @@ void main() {
     // protects.
     expect(overview, contains("'Dina kallelser'"));
     expect(overview.toLowerCase(), isNot(contains('watchpoint')));
-    expect(assistant, contains('uniqueHomeAttention'));
+    expect(assistant, contains('overview.loadLeaderHome(context.id)'));
+    expect(assistant, contains('loadFreshLeaderHome(context.id)'));
     expect(assistant, contains("'Behöver din uppmärksamhet'"));
     expect(assistant.toLowerCase(), isNot(contains('watchpoint')));
     expect(assistant, isNot(contains('assistant_activation_gate')));

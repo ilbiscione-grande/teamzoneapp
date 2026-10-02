@@ -193,3 +193,4 @@ assert((await one(`select api.get_member_card($1,$2,$3)`, [club, team, id(22)]))
 await as(15);
 assert(await one(`select api.authorize_club_badge($1)`, [club]) === null, 'outsiders do not see the badge');
 console.log('PASS');
+export { db, club, team, id, as, one };

@@ -77,6 +77,8 @@ class _ProductShellState extends State<_ProductShell> {
   // `_handleSystemBack` don't leave duplicate entries a user would have to
   // press back through twice.
   final List<String> _locationHistory = [];
+  int _assistantTaskRevision = 0;
+  String? _renderedPageLocation;
   late final Future<bool> _supportAdminAccess;
   late Future<int> _pendingTeamRequests;
   // Your own profile picture for the menu; none on failure.
@@ -155,7 +157,8 @@ class _ProductShellState extends State<_ProductShell> {
       ),
       GoRoute(
         path: ProductRouteContract.settings,
-        builder: (_, _) => _ProfileSettingsSurface(
+        builder: (_, state) => _ProfileSettingsSurface(
+          openProfile: state.uri.queryParameters['tab'] == 'profile',
           editorial: widget.editorial,
           contexts: widget.contexts,
           roster: widget.roster,
@@ -177,26 +180,51 @@ class _ProductShellState extends State<_ProductShell> {
       ),
       GoRoute(
         path: ProductRouteContract.assistant,
-        builder: (_, _) => _AssistantCoachHoldingSurface(
+        builder: (_, state) => _AssistantCoachHoldingSurface(
+          page: AssistantPageContext(
+            state.uri.queryParameters['from'] ?? '/home',
+          ),
+          contexts: widget.contexts,
+          calendar: widget.calendar,
+          onOpenTask: _openAssistantTask,
           assistantIdentity: widget.assistantIdentity,
           assistantPresentation: widget.assistantPresentation,
           overview: widget.overview,
-          contextValue: widget.contextValue,
+          contextValue: _contextForLocation(
+            state.uri.queryParameters['from'] ?? '/home',
+          ),
           onNavigate: _navigateFromSurface,
         ),
       ),
       GoRoute(
         path: '${ProductRouteContract.calendar}/event/:eventId',
-        builder: (_, state) => _EventDetailsPage(
-          eventId: state.pathParameters['eventId']!,
-          contextValue: widget.contextValue,
-          calendar: widget.calendar,
-          roster: widget.roster,
-          match: widget.match,
-          matchSpaceV2: widget.matchSpaceV2,
-          onNavigate: (fallback) =>
-              _router.canPop() ? _router.pop() : _router.go(fallback),
-        ),
+        builder: (_, state) {
+          final requestedContext = state.uri.queryParameters['context'];
+          if (requestedContext != null &&
+              !widget.contexts.any(
+                (value) => value.matchesId(requestedContext),
+              )) {
+            return const _NotFoundSurface();
+          }
+          return _EventDetailsPage(
+            eventId: state.pathParameters['eventId']!,
+            key: ValueKey(
+              '${state.pathParameters['eventId']}:${state.uri.queryParameters['context']}:${state.uri.queryParameters['tab']}',
+            ),
+            initialParticipants:
+                state.uri.queryParameters['tab'] == 'participants',
+            initialPreparation:
+                state.uri.queryParameters['tab'] == 'preparation',
+            onChanged: () => setState(() => _assistantTaskRevision++),
+            contextValue: _contextForLocation(state.uri.toString()),
+            calendar: widget.calendar,
+            roster: widget.roster,
+            match: widget.match,
+            matchSpaceV2: widget.matchSpaceV2,
+            onNavigate: (fallback) =>
+                _router.canPop() ? _router.pop() : _router.go(fallback),
+          );
+        },
       ),
       GoRoute(
         path: '${ProductRouteContract.team}/member/:personId',
@@ -288,6 +316,315 @@ class _ProductShellState extends State<_ProductShell> {
     errorBuilder: (_, _) => const _NotFoundSurface(),
   );
 
+  TeamZoneContext _contextForLocation(String location) {
+    final id = Uri.tryParse(location)?.queryParameters['context'];
+    return widget.contexts.where((value) => value.matchesId(id)).firstOrNull ??
+        widget.contextValue;
+  }
+
+  String get _currentPageLocation =>
+      _router.routerDelegate.currentConfiguration.isEmpty
+      ? _router.routeInformationProvider.value.uri.toString()
+      : _router.state.uri.toString();
+
+  void _onPageChanged() {
+    final location = _currentPageLocation;
+    if (_renderedPageLocation == location) return;
+    _renderedPageLocation = location;
+    // The nested Router also reports its initial state during build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  void _openAssistant() {
+    final source = _currentPageLocation;
+    _router.push(
+      Uri(
+        path: ProductRouteContract.assistant,
+        queryParameters: {'from': source},
+      ).toString(),
+    );
+  }
+
+  Future<void> _openAssistantTask(AssistantTask task) async {
+    if (task.isPersonalConflict) {
+      await _openPersonalConflict(task);
+      return;
+    }
+    if (task.task.kind == 'calendar_conflict') {
+      await _editAssistantConflict(task);
+      return;
+    }
+    if (!task.isMatchFollowup) {
+      await _router.push(task.route);
+      return;
+    }
+    final event = await widget.calendar.getEventDetails(task.eventId);
+    final team = event.teams
+        .where((value) => value['team_id'] == task.context.teamId)
+        .firstOrNull;
+    final canManage =
+        team != null &&
+        (team['relation'] == 'primary' ||
+            (team['capabilities'] as List? ?? const []).contains('co_manage'));
+    if (!mounted) return;
+    if (task.stale ||
+        !task.context.can('match.live') ||
+        !canManage ||
+        !event.can('match_live') ||
+        event.type != 'match' ||
+        event.archivedAt != null ||
+        !['scheduled', 'completed'].contains(event.state) ||
+        event.endsAt.isAfter(DateTime.now())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Matchen kan inte följas upp här längre. Uppgifterna uppdateras.',
+          ),
+        ),
+      );
+      return;
+    }
+    final snapshot = await widget.match.getSnapshot(event.id);
+    if (!mounted) return;
+    final label =
+        '${event.title} · ${task.context.teamName} · ${task.context.clubName}';
+    bool? saved;
+    if (snapshot?.state != 'completed') {
+      saved = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => _RegisterResultDialog(
+          event: event,
+          match: widget.match,
+          snapshot: snapshot,
+          contextLabel: label,
+        ),
+      );
+    } else {
+      final report = await widget.match.getReport(event.id);
+      if (!mounted) return;
+      if (!report.canEdit || report.body.trim().isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Matchrapporten är redan skriven eller kan inte redigeras. Uppgifterna uppdateras.',
+            ),
+          ),
+        );
+        return;
+      }
+      saved = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => _WrittenReportDialog(
+          eventId: event.id,
+          match: widget.match,
+          report: report,
+          contextLabel: label,
+        ),
+      );
+    }
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            snapshot?.state == 'completed'
+                ? 'Matchrapporten är sparad.'
+                : 'Slutresultatet är sparat. Matchen är avslutad.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _openPersonalConflict(AssistantTask task) async {
+    final service = widget.overview;
+    if (service is! PersonalCalendarConflictServices ||
+        task.overlappingEvent == null) {
+      return;
+    }
+    final fresh = await (service as PersonalCalendarConflictServices)
+        .loadPersonalCalendarConflicts();
+    if (!mounted) return;
+    if (!(fresh['tasks'] as List).any(
+      (row) => row['route'] == task.task.route,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Den personliga krocken är inte längre aktuell. Listan uppdateras.',
+          ),
+        ),
+      );
+      return;
+    }
+    final events = [
+      await widget.calendar.getEventDetails(task.eventId),
+      await widget.calendar.getEventDetails(task.overlappingEvent!.id),
+    ];
+    if (!mounted) return;
+    bool canEdit(EventDetails event) {
+      final context = task.contextForEvent(event.id);
+      return context.can('event.manage') &&
+          event.can('revise') &&
+          event.archivedAt == null &&
+          event.state == 'scheduled' &&
+          event.teams.any(
+            (team) =>
+                team['team_id'] == context.teamId &&
+                (team['relation'] == 'primary' ||
+                    (team['capabilities'] as List? ?? const []).contains(
+                      'co_manage',
+                    )),
+          );
+    }
+
+    final choice = await showDialog<(EventDetails, bool)>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: const Text('Hantera din kalenderkrock'),
+        children: [
+          for (final event in events) ...[
+            ListTile(
+              title: Text(event.title),
+              subtitle: Text(task.eventContextLabel(event.id)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop((event, false)),
+              child: const Text('Öppna aktivitet och svara'),
+            ),
+            if (canEdit(event))
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop((event, true)),
+                child: const Text('Ändra tid'),
+              ),
+          ],
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Avbryt'),
+          ),
+        ],
+      ),
+    );
+    if (choice == null || !mounted) return;
+    final (selected, edit) = choice;
+    if (!edit) {
+      await _router.push(
+        Uri(
+          path: ProductRouteContract.calendarEvent(selected.id),
+          queryParameters: {
+            'context': task.contextForEvent(selected.id).id,
+            'tab': 'participants',
+          },
+        ).toString(),
+      );
+      return;
+    }
+    final event = await widget.calendar.getEventDetails(selected.id);
+    if (!mounted || !canEdit(event)) return;
+    await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _AssistantEventTimeDialog(
+        event: event,
+        calendar: widget.calendar,
+        teamLabel: task.eventContextLabel(event.id),
+      ),
+    );
+  }
+
+  Future<void> _editAssistantConflict(AssistantTask task) async {
+    if (task.stale ||
+        !task.context.can('event.manage') ||
+        task.overlappingEvent == null) {
+      return;
+    }
+    final first = await widget.calendar.getEventDetails(task.eventId);
+    final second = await widget.calendar.getEventDetails(
+      task.overlappingEvent!.id,
+    );
+    if (!mounted) return;
+    if (first.state != 'scheduled' ||
+        second.state != 'scheduled' ||
+        first.archivedAt != null ||
+        second.archivedAt != null ||
+        !first.startsAt.isBefore(second.endsAt) ||
+        !second.startsAt.isBefore(first.endsAt)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Krocken är inte längre aktuell. Uppgifterna uppdateras.',
+          ),
+        ),
+      );
+      return;
+    }
+    bool canEdit(EventDetails event) =>
+        event.can('revise') &&
+        event.teams.any(
+          (team) =>
+              team['team_id'] == task.context.teamId &&
+              (team['relation'] == 'primary' ||
+                  (team['capabilities'] as List? ?? const []).contains(
+                    'co_manage',
+                  )),
+        );
+    final selected = await showDialog<EventDetails>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: const Text('Vilken aktivitet vill du flytta?'),
+        children: [
+          for (final event in [first, second])
+            ListTile(
+              title: Text(event.title),
+              subtitle: Text(
+                '${task.context.clubName} · ${task.context.teamName}${canEdit(event) ? '' : ' · Kan endast visas'}',
+              ),
+              enabled: canEdit(event),
+              onTap: () => Navigator.of(dialogContext).pop(event),
+            ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Avbryt'),
+          ),
+        ],
+      ),
+    );
+    if (selected == null || !mounted) return;
+    final event = await widget.calendar.getEventDetails(selected.id);
+    if (!mounted) return;
+    if (!canEdit(event) ||
+        event.archivedAt != null ||
+        event.state != 'scheduled') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Aktiviteten kan inte ändras längre. Uppdatera och försök igen.',
+          ),
+        ),
+      );
+      return;
+    }
+    final saved = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _AssistantEventTimeDialog(
+        event: event,
+        calendar: widget.calendar,
+        teamLabel: '${task.context.clubName} · ${task.context.teamName}',
+      ),
+    );
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tiden är sparad. Kalenderkrocken kontrolleras igen.'),
+        ),
+      );
+    }
+  }
+
   void _navigateFromSurface(String path) {
     final location = ProductRouteContract.canonicalizeLocation(path);
     if (location.startsWith('${ProductRouteContract.calendar}/event/')) {
@@ -321,6 +658,7 @@ class _ProductShellState extends State<_ProductShell> {
     );
     _locationHistory.add(_router.routeInformationProvider.value.uri.toString());
     _router.routeInformationProvider.addListener(_recordLocation);
+    _router.routerDelegate.addListener(_onPageChanged);
   }
 
   Future<int> _loadPendingTeamRequests() async {
@@ -417,6 +755,7 @@ class _ProductShellState extends State<_ProductShell> {
   @override
   void dispose() {
     _router.routeInformationProvider.removeListener(_recordLocation);
+    _router.routerDelegate.removeListener(_onPageChanged);
     _router.dispose();
     super.dispose();
   }
@@ -427,7 +766,7 @@ class _ProductShellState extends State<_ProductShell> {
       listenable: _router.routeInformationProvider,
       builder: (context, _) {
         final strings = AppStrings.of(context);
-        final location = _router.routeInformationProvider.value.uri.path;
+        final location = Uri.parse(_currentPageLocation).path;
         final mediaSize = MediaQuery.sizeOf(context);
         final width = mediaSize.width;
         final usesSidebar = AppBreakpoints.usesNavigationRail(width);
@@ -579,9 +918,20 @@ class _ProductShellState extends State<_ProductShell> {
                               Positioned(
                                 right: 16,
                                 bottom: 16,
-                                child: _AssistantCoachMobileFab(
-                                  onPressed: () => _router.push(
-                                    ProductRouteContract.assistant,
+                                child: AssistantTaskBadge(
+                                  refreshToken: (
+                                    _assistantTaskRevision,
+                                    _currentPageLocation,
+                                    widget.contexts,
+                                    widget.contextValue.id,
+                                  ),
+                                  load: () => loadAssistantTasks(
+                                    contexts: widget.contexts,
+                                    overview: widget.overview,
+                                    loadEvent: widget.calendar.getEventDetails,
+                                  ),
+                                  child: _AssistantCoachMobileFab(
+                                    onPressed: _openAssistant,
                                   ),
                                 ),
                               ),
@@ -591,9 +941,22 @@ class _ProductShellState extends State<_ProductShell> {
                       if (showAssistantPanel &&
                           location != ProductRouteContract.assistant)
                         _AssistantCoachSidePanel(
-                          contextValue: widget.contextValue,
-                          onOpen: () =>
-                              _router.push(ProductRouteContract.assistant),
+                          contextValue: _contextForLocation(
+                            _currentPageLocation,
+                          ),
+                          tasks: AssistantTaskSections(
+                            key: ValueKey(_assistantTaskRevision),
+                            contexts: widget.contexts,
+                            activeContext: _contextForLocation(
+                              _currentPageLocation,
+                            ),
+                            page: AssistantPageContext(_currentPageLocation),
+                            overview: widget.overview,
+                            loadEvent: widget.calendar.getEventDetails,
+                            preparation: widget.calendar.preparation,
+                            onOpen: _openAssistantTask,
+                          ),
+                          onOpen: _openAssistant,
                         ),
                     ],
                   ),

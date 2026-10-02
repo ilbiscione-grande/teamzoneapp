@@ -68,7 +68,8 @@ void main() {
         ),
       );
       expect(shell, contains('onNavigate: _navigateFromSurface'));
-      expect(assistant, contains('widget.onNavigate(task.route)'));
+      expect(assistant, contains('onOpen: widget.onOpenTask'));
+      expect(shell, contains('_router.push(task.route)'));
       expect(assistant, isNot(contains('context.go(task.route)')));
     },
   );

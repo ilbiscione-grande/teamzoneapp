@@ -36,9 +36,11 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
   String _query = '';
   String? _expandedId;
   bool _busy = false;
+  bool _reviewingReminders = false;
   bool _permissionsFailed = false;
   String? _saveKey, _lockKey, _sendKey;
   String? _attendanceKey, _attendancePayload;
+  final Map<String, String> _reminderKeys = {};
   SquadDetails? _preparedSquad;
   bool _locked = false;
   DateTime? _expiry;
@@ -61,7 +63,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       _resolvedPermissions?.canRecord == true &&
       (_resolvedPermissions?.lateWindow != true ||
           _resolvedPermissions?.canCorrectLate == true);
-  bool get _working => _busy;
+  bool get _working => _busy || _reviewingReminders;
   bool get _selectionFrozen =>
       _saveKey != null || widget.squad.state == 'locked';
   Set<String> get _draftMemberIds => _selectedIds;
@@ -533,6 +535,10 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
   }
 
   Future<void> _manageCallup(EventRosterPerson person, String action) async {
+    if (action == 'remind') {
+      await _reviewReminders([person]);
+      return;
+    }
     final callupId = person.callupId;
     if (callupId == null) return;
     setState(() => _busy = true);
@@ -633,12 +639,85 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       ...widget.squad.roster,
       ..._guestRosterFor(widget.squad),
     ].where((person) => person.canRemindAt(now)).toList();
+    await _reviewReminders(eligible);
+  }
+
+  Future<void> _reviewReminders(List<EventRosterPerson> candidates) async {
+    if (_working || !_canManage || !widget.squad.can('remind_callup')) return;
+    final eligible = {
+      for (final person in candidates)
+        if (person.callupId != null && person.canRemindAt(DateTime.now()))
+          person.callupId!: person,
+    }.values.toList();
     if (eligible.isEmpty) return;
+    final selected = eligible.map((p) => p.callupId!).toSet();
+    setState(() => _reviewingReminders = true);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, update) => AlertDialog(
+          title: const Text('Granska påminnelser'),
+          content: SizedBox(
+            width: 420,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Endast obesvarade, giltiga kallelser visas. '
+                    'Minst sex timmar måste ha gått sedan senaste påminnelsen.',
+                  ),
+                  for (final person in eligible)
+                    CheckboxListTile(
+                      value: selected.contains(person.callupId),
+                      title: Text(person.name),
+                      subtitle: Text(
+                        person.callupLastRemindedAt == null
+                            ? 'Ingen tidigare påminnelse'
+                            : 'Senast: ${MaterialLocalizations.of(context).formatShortDate(person.callupLastRemindedAt!.toLocal())} '
+                                  '${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(person.callupLastRemindedAt!.toLocal()))}',
+                      ),
+                      onChanged: (value) => update(() {
+                        if (value == true) {
+                          selected.add(person.callupId!);
+                        } else {
+                          selected.remove(person.callupId);
+                        }
+                      }),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Avbryt'),
+            ),
+            FilledButton(
+              onPressed: selected.isEmpty
+                  ? null
+                  : () => Navigator.pop(dialogContext, true),
+              child: Text('Skicka ${selected.length} påminnelser'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _reviewingReminders = false);
+    if (confirmed != true) {
+      return;
+    }
     setState(() => _busy = true);
+    var sent = 0;
+    var failed = 0;
     try {
-      await Future.wait(
-        eligible.map(
-          (person) => widget.calendar.manageCallup(
+      for (final person in eligible.where(
+        (p) => selected.contains(p.callupId),
+      )) {
+        try {
+          await widget.calendar.manageCallup(
             callupId: person.callupId!,
             action: 'remind',
             expectedRevision:
@@ -647,11 +726,30 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                     .map((callup) => callup.revision)
                     .firstOrNull ??
                 0,
-            idempotencyKey: _newUuid(),
-          ),
-        ),
-      );
+            idempotencyKey: _reminderKeys.putIfAbsent(
+              '${person.callupId}:${widget.squad.callups.where((c) => c.id == person.callupId).firstOrNull?.revision}',
+              _newUuid,
+            ),
+          );
+          sent++;
+        } catch (_) {
+          failed++;
+        }
+      }
       await widget.onReload();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              failed > 0
+                  ? '$sent påminnelser skickade. $failed kunde inte skickas. Granska de uppdaterade kallelserna innan du försöker igen.'
+                  : sent == 1
+                  ? 'Påminnelsen är skickad.'
+                  : '$sent påminnelser är skickade.',
+            ),
+          ),
+        );
+      }
     } catch (_) {
       if (mounted) {
         _showError(
@@ -910,7 +1008,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
               _s.feature('Behörighet kunde inte hämtas. Försök igen'),
             ),
           ),
-        if (_working) const LinearProgressIndicator(minHeight: 2),
+        if (_busy) const LinearProgressIndicator(minHeight: 2),
         Expanded(
           child: CustomScrollView(
             slivers: [

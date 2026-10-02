@@ -61,7 +61,7 @@ abstract interface class RosterServices {
 
   /// Puts the sent phone, email and address on an existing person in the
   /// team instead of creating a new one.
-  Future<void> updatePersonFromIntake({
+  Future<String> updatePersonFromIntake({
     required String submissionId,
     required String teamId,
     required String personId,
@@ -319,7 +319,7 @@ class UnconfiguredRosterServices implements RosterServices {
   Future<void> dismissIntakeSubmission({required String submissionId}) =>
       Future.error(StateError('Supabase is not configured.'));
   @override
-  Future<void> updatePersonFromIntake({
+  Future<String> updatePersonFromIntake({
     required String submissionId,
     required String teamId,
     required String personId,
@@ -652,7 +652,10 @@ class SupabaseRosterServices implements RosterServices {
   Future<IntakeOverview> getIntakeOverview({required String clubId}) async {
     final value = await _client
         .schema('api')
-        .rpc<Object?>('get_intake_overview', params: {'target_club_id': clubId});
+        .rpc<Object?>(
+          'get_intake_overview',
+          params: {'target_club_id': clubId},
+        );
     if (value is! Map<String, dynamic>) {
       throw const FormatException('Intake overview is invalid.');
     }
@@ -713,21 +716,25 @@ class SupabaseRosterServices implements RosterServices {
   }
 
   @override
-  Future<void> updatePersonFromIntake({
+  Future<String> updatePersonFromIntake({
     required String submissionId,
     required String teamId,
     required String personId,
   }) async {
-    await _client
+    final result = await _client
         .schema('api')
         .rpc<Object?>(
-          'update_person_from_intake',
+          'process_intake_contact_update',
           params: {
             'target_submission_id': submissionId,
             'target_team_id': teamId,
             'target_person_id': personId,
           },
         );
+    if (result is! Map || result['status'] is! String) {
+      throw const FormatException('Invalid intake result.');
+    }
+    return result['status'] as String;
   }
 
   @override

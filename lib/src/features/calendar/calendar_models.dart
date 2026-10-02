@@ -147,6 +147,7 @@ class EventDetails {
     required this.callerActions,
     required this.teams,
     required this.audiences,
+    this.callupsRequired = true,
     this.locationName,
     this.locationPitch,
     this.locationSurface,
@@ -164,6 +165,7 @@ class EventDetails {
     this.meetingAgenda,
   });
   final String id, title, type, state, timezone;
+  final bool callupsRequired;
   final String? description, locationName;
 
   /// Optional pitch and surface of the place (free text).
@@ -192,6 +194,7 @@ class EventDetails {
     return EventDetails(
       id: json['id'] as String,
       title: json['title'] as String,
+      callupsRequired: json['callups_required'] as bool? ?? true,
       description: json['description'] as String?,
       type: json['event_type'] as String,
       state: json['state'] as String,

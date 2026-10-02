@@ -95,7 +95,7 @@ class _TeamEventVisibilitySurfaceState
           SwitchListTile(
             title: const Text('Visa matcher'),
             subtitle: const Text(
-              'Alla lagets matcher visas, både kommande och spelade, med motståndare och tid. Platsen visas bara om den publiceras för en enskild match. En match som görs privat i redaktionen döljs.',
+              'Alla lagets matcher visas, både kommande och spelade, med motståndare och tid. Platsen visas bara om den publiceras för en enskild match. Inställningen gäller alla lagets matcher.',
             ),
             value: _matches!,
             onChanged: _busy ? null : (v) => setState(() => _matches = v),

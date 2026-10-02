@@ -1601,76 +1601,51 @@ class AppStrings {
     'Redigera medlem': 'Edit member',
     'Klubbens färger': 'Club colours',
     'Klubbinställningar': 'Club settings',
-    'Uppdatera befintlig':
-        'Update existing',
-    'Uppdatera befintlig person':
-        'Update an existing person',
+    'Uppdatera befintlig': 'Update existing',
+    'Uppdatera befintlig person': 'Update an existing person',
     'Telefon, e-post och adress från {name} sparas på personen du väljer. Namnet ändras inte.':
         'Phone, email and address from {name} are saved on the person you choose. The name is not changed.',
-    'Truppen kunde inte hämtas.':
-        'The squad could not be loaded.',
-    'Inga personer hittades.':
-        'No people found.',
-    'Möjlig matchning':
-        'Possible match',
-    '{name}s uppgifter är uppdaterade.':
-        "{name}'s details are updated.",
+    'Truppen kunde inte hämtas.': 'The squad could not be loaded.',
+    'Inga personer hittades.': 'No people found.',
+    'Möjlig matchning': 'Possible match',
+    '{name}s uppgifter är uppdaterade.': "{name}'s details are updated.",
     'Personen kunde inte uppdateras. Försök igen.':
         'The person could not be updated. Try again.',
-    'Kontaktuppdatering':
-        'Contact update',
+    'Kontaktuppdatering': 'Contact update',
     'Tillfällig sida med QR-kod där personer fyller i sina uppgifter.':
         'A temporary page with a QR code where people fill in their details.',
-    'Aktiva sidor':
-        'Active pages',
+    'Aktiva sidor': 'Active pages',
     'Skapa en tillfällig sida där spelare, ledare eller föräldrar fyller i sina kontaktuppgifter utan att logga in. Sidan gäller i 14 dagar och delas med QR-kod eller länk. Det som skickas in hamnar här.':
         'Create a temporary page where players, leaders or parents fill in their contact details without signing in. The page is valid for 14 days and is shared with a QR code or link. What is sent ends up here.',
-    'Dela sidan':
-        'Share the page',
-    'Gäller till {date}':
-        'Valid until {date}',
-    'Visa QR-kod':
-        'Show QR code',
-    'Stäng sidan':
-        'Close the page',
-    'Stäng sidan?':
-        'Close the page?',
+    'Dela sidan': 'Share the page',
+    'Gäller till {date}': 'Valid until {date}',
+    'Visa QR-kod': 'Show QR code',
+    'Stäng sidan': 'Close the page',
+    'Stäng sidan?': 'Close the page?',
     'Sidan slutar fungera direkt. Redan inskickade uppgifter finns kvar. Du kan skapa en ny sida senare.':
         'The page stops working at once. Details already sent are kept. You can create a new page later.',
     'Sidan kunde inte stängas. Försök igen.':
         'The page could not be closed. Try again.',
     'Sidan kunde inte skapas. Kontrollera din behörighet.':
         'The page could not be created. Check your permissions.',
-    'Skapa sida för {team}':
-        'Create a page for {team}',
-    'Skapa sida för hela klubben':
-        'Create a page for the whole club',
+    'Skapa sida för {team}': 'Create a page for {team}',
+    'Skapa sida för hela klubben': 'Create a page for the whole club',
     'Kontaktuppgifterna kunde inte hämtas':
         'The contact details could not be loaded',
-    'klubbens sida':
-        "the club's page",
-    'Kopiera länk':
-        'Copy link',
-    'Länken är kopierad.':
-        'The link is copied.',
-    'Inskickade uppgifter':
-        'Submitted details',
-    'Inga inskickade uppgifter just nu.':
-        'No submitted details right now.',
-    'Via {source}':
-        'Via {source}',
-    'Lägg till i {team}':
-        'Add to {team}',
-    'Annat lag eller roll':
-        'Another team or role',
-    '{name} lades till i {team}.':
-        '{name} was added to {team}.',
+    'klubbens sida': "the club's page",
+    'Kopiera länk': 'Copy link',
+    'Länken är kopierad.': 'The link is copied.',
+    'Inskickade uppgifter': 'Submitted details',
+    'Inga inskickade uppgifter just nu.': 'No submitted details right now.',
+    'Via {source}': 'Via {source}',
+    'Lägg till i {team}': 'Add to {team}',
+    'Annat lag eller roll': 'Another team or role',
+    '{name} lades till i {team}.': '{name} was added to {team}.',
     'Personen kunde inte läggas till som ledare. Kontrollera att du får hantera lagets ledare.':
         "The person could not be added as a leader. Check that you may manage the team's leaders.",
     'Personen kunde inte läggas till. Försök igen.':
         'The person could not be added. Try again.',
-    'Ta bort uppgifterna?':
-        'Remove the details?',
+    'Ta bort uppgifterna?': 'Remove the details?',
     '{name}s uppgifter tas bort utan att läggas till.':
         "{name}'s details are removed without being added.",
     'Uppgifterna kunde inte tas bort. Försök igen.':
@@ -1807,6 +1782,64 @@ class AppStrings {
     'Av säkerhetsskäl granskar supporten varje byte. Därefter bekräftar du via en länk i e-posten.':
         'For security, support reviews every change. Then you confirm with a link in the email.',
     'Mina uppgifter': 'My details',
+    'Adresser och integritet': 'Addresses and privacy',
+    'Ta bort åtkomst': 'Remove access',
+    'Flera adresser, klubbval och begränsad åtkomst':
+        'Multiple addresses, club choices and restricted access',
+    'Uppgifterna kunde inte hämtas.': 'Could not load the details.',
+    'Ändringen kunde inte sparas. Uppdatera innan du försöker igen.':
+        'Could not save the change. Refresh before trying again.',
+    'Namn på adressen': 'Address label',
+    'Begränsa personuppgifter': 'Restrict personal details',
+    'Stäng av begränsningen': 'Turn off restricted access',
+    'Visningsnamn i laget': 'Team display name',
+    'Privat namn': 'Private name',
+    'Säker kontakt-e-post': 'Safe contact email',
+    'Säkert telefonnummer': 'Safe phone number',
+    'Dina adresser': 'Your addresses',
+    'Adresser delas bara med de klubbar du väljer. Ingen huvudadress krävs.':
+        'Addresses are shared only with clubs you choose. No primary address is required.',
+    'Ta bort adressen?': 'Delete this address?',
+    'Klubbar som använder adressen får ingen vald adress.':
+        'Clubs using this address will no longer have a selected address.',
+    'Lägg till adress': 'Add address',
+    'Kontaktadress per klubb': 'Contact address per club',
+    'Ingen adress delas': 'No address shared',
+    'Begränsad åtkomst': 'Restricted access',
+    'Bara du och behörig vårdnadshavare kan ändra dessa inställningar. Utvalda kontaktpersoner får läsa säker kontaktväg och klubbens valda adress.':
+        'Only you and an authorized guardian can change these settings. Selected contacts can read safe contact details and the address selected for their club.',
+    'Ändra säker kontaktväg': 'Edit safe contact details',
+    'Ändra uppgifterna under Adresser och integritet.':
+        'Edit these details under Addresses and privacy.',
+    'Ändra adressen under Adresser och integritet.':
+        'Edit the address under Addresses and privacy.',
+    'Hantera flera adresser och klubbval under Adresser och integritet.':
+        'Manage multiple addresses and club choices under Addresses and privacy.',
+    'Använd ett visningsnamn som inte avslöjar identiteten. Namn, kontaktuppgifter, födelsedata och profilbild tas bort från vanliga vyer. Granska även tidigare fritext, foton och exporter. Vanliga aviseringar stängs av.':
+        'Choose a display name that does not reveal identity. Name, contact details, birth details and profile photo are removed from ordinary views. Also review previous free text, photos and exports. Ordinary notifications are disabled.',
+    'Namnet från före skyddat läge återställs. Kontaktuppgifter, bilder och publiceringssamtycken återställs inte automatiskt.':
+        'The name from before restricted access is restored. Contact details, photos and publication consents are not restored automatically.',
+    'Kontaktuppdateringar': 'Contact updates',
+    'För dig och barn du är behörig vårdnadshavare för.':
+        'For you and children you are authorized to represent.',
+    'Förslagen kunde inte hämtas.': 'Could not load change requests.',
+    'Inga väntande ändringsförslag.': 'No pending change requests.',
+    'Godkända uppgifter gäller i alla lag och klubbar. Inloggningsadressen ändras inte.':
+        'Approved details apply to all teams and clubs. Your login email stays the same.',
+    'Nuvarande': 'Current',
+    'Föreslaget': 'Proposed',
+    'Godkänn ändringen': 'Approve change',
+    'Uppgifterna har ändrats sedan förslaget skapades. Avvisa och be om ett nytt förslag.':
+        'The details have changed since this request was created. Reject it and ask for a new request.',
+    'Förslaget kunde inte hanteras. Uppdatera listan och försök igen.':
+        'Could not process this request. Refresh the list and try again.',
+    'Kontaktuppgifterna är uppdaterade i alla dina lag och klubbar.':
+        'Contact details have been updated across all your teams and clubs.',
+    'Ändringsförslaget är avvisat.': 'The change request was rejected.',
+    'Ändringsförslaget för {name} väntar på godkännande av personen eller en behörig vårdnadshavare.':
+        'The change request for {name} is awaiting approval by the person or an authorized guardian.',
+    'Telefon, e-post och adress från {name} föreslås för personen du väljer. För personer med konto krävs godkännande av personen eller en behörig vårdnadshavare. Namnet ändras inte.':
+        'Phone, email and address from {name} are proposed for the selected person. Account holders or an authorized guardian must approve the change. The name stays the same.',
     'Profilen kunde inte laddas': 'The profile could not be loaded',
     'Byt bild': 'Change picture',
     'Lägg till bild': 'Add picture',

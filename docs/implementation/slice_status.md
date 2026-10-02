@@ -2,6 +2,12 @@
 
 Updated: 2026-10-02
 
+Multiple addresses and restricted personal data:
+[design, behavior and verification](address-privacy.md).
+
+Latest review corrections and approved account-contact workflow:
+[2026-10-02 verification](../evidence/review_fixes_2026-10-02.md).
+
 This is the mutable execution status for the rebuild. The approved specification
 under `docs/specification/source/` is an immutable snapshot and is not edited to
 record implementation progress. Where the snapshot assumes migration from a

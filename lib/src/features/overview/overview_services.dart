@@ -11,6 +11,25 @@ abstract interface class OverviewServices {
   });
 }
 
+/// Actions must not use a cached projection after authorization was revoked.
+abstract interface class FreshLeaderOverviewServices {
+  Future<LeaderHomeProjection> loadFreshLeaderHome(String contextId);
+}
+
+abstract interface class AssistantTaskStateServices {
+  Future<void> setAssistantTaskState({
+    required String contextId,
+    required String kind,
+    required String route,
+    required String status,
+    int? snoozeMinutes,
+  });
+}
+
+abstract interface class PersonalCalendarConflictServices {
+  Future<Map<String, dynamic>> loadPersonalCalendarConflicts();
+}
+
 class UnconfiguredOverviewServices implements OverviewServices {
   const UnconfiguredOverviewServices();
   @override
@@ -29,13 +48,51 @@ class UnconfiguredOverviewServices implements OverviewServices {
   }) => Future.error(StateError('Overview backend is not configured.'));
 }
 
-class SupabaseOverviewServices implements OverviewServices {
+class SupabaseOverviewServices
+    implements
+        OverviewServices,
+        FreshLeaderOverviewServices,
+        PersonalCalendarConflictServices,
+        AssistantTaskStateServices {
   SupabaseOverviewServices(this._client);
   final SupabaseClient _client;
   MainSurfacesProjection? _cached;
   final Map<String, LeaderHomeProjection> _leaderCache = {};
   final Map<String, PlayerHomeProjection> _playerCache = {};
   final Map<String, GuardianHomeProjection> _guardianCache = {};
+
+  @override
+  Future<Map<String, dynamic>> loadPersonalCalendarConflicts() async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>('get_personal_calendar_conflicts');
+    if (value is! Map<String, dynamic>) {
+      throw const FormatException('Invalid personal conflicts');
+    }
+    return value;
+  }
+
+  @override
+  Future<void> setAssistantTaskState({
+    required String contextId,
+    required String kind,
+    required String route,
+    required String status,
+    int? snoozeMinutes,
+  }) async {
+    await _client
+        .schema('api')
+        .rpc(
+          'set_assistant_task_state',
+          params: {
+            'context_id': contextId,
+            'task_kind': kind,
+            'task_route': route,
+            'new_status': status,
+            'snooze_minutes': snoozeMinutes,
+          },
+        );
+  }
 
   @override
   Future<MainSurfacesProjection> load({
@@ -62,18 +119,23 @@ class SupabaseOverviewServices implements OverviewServices {
   @override
   Future<LeaderHomeProjection> loadLeaderHome(String contextId) async {
     try {
-      final value = await _client
-          .schema('api')
-          .rpc<Object?>('get_leader_home', params: {'context_id': contextId});
-      if (value is! Map<String, dynamic>) {
-        throw const FormatException('Invalid leader home response.');
-      }
-      return _leaderCache[contextId] = LeaderHomeProjection.fromJson(value);
+      return await loadFreshLeaderHome(contextId);
     } catch (_) {
       final cached = _leaderCache[contextId];
       if (cached != null) return cached.asStale();
       rethrow;
     }
+  }
+
+  @override
+  Future<LeaderHomeProjection> loadFreshLeaderHome(String contextId) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>('get_leader_home', params: {'context_id': contextId});
+    if (value is! Map<String, dynamic>) {
+      throw const FormatException('Invalid leader home response.');
+    }
+    return _leaderCache[contextId] = LeaderHomeProjection.fromJson(value);
   }
 
   @override

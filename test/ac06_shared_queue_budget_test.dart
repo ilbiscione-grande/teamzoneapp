@@ -139,7 +139,10 @@ void main() {
     final source = File(
       'lib/src/features/assistant_coach/assistant_coach_entry.dart',
     ).readAsStringSync();
-    expect(source, contains("Key('assistant-shared-queue-contract')"));
+    expect(
+      source,
+      matches(RegExp(r"Key\(\s*'assistant-shared-queue-contract'\s*,?\s*\)")),
+    );
     expect(source, contains('Alla områden delar en kö'));
     expect(source, contains('Systemmeddelanden påverkas inte'));
   });

@@ -914,6 +914,23 @@ Supabase-testprojektet; runtime förblir avstängd tills flödet är verifierat.
 
 ### AC-02 – Responsiv AC-ingång
 
+**Uppdatering 2026-10-02:** HOME-05-uppgifterna har nu en kontextanpassad
+presentation med **Här och nu** och **Mina uppgifter**, inklusive överblick
+över behöriga ledarlag och direktlänkar till eventets deltagarflik. Detta
+återanvänder befintliga domänprojektioner och aktiverar inte AC-01-signalkön.
+Se [implementation och verifiering](../evidence/assistant_context_tasks_2026-10-02.md).
+
+**Nästa leverans 2026-10-02:** den godkända 48-timmarsregeln för aktiviteter
+utan utskickade kallelser är implementerad, med **Kallelse behövs** som undantag
+på Info-fliken. Databasdelen är införd och rollback-verifierad i auditprojektet.
+Se [regel, gränser och tester](../evidence/assistant_missing_callups_2026-10-02.md).
+
+**2026-10-02 – påminnelser och matchuppföljning:** Kallelsepåminnelser har mottagargranskning med senaste påminnelse och möjlighet att avmarkera före utskick. Assistenten visar saknat slutresultat respektive matchrapport för matcher som slutat under de senaste sju dagarna, med lag- och matchbehörighet. Sparad rapport uppdaterar assistentpanelen. Testdatabasen är uppdaterad; klientändringarna är lokala. Se [implementation och verifiering](../evidence/assistant_reminders_match_followup_2026-10-02.md).
+
+**2026-10-02 – kalenderkrockar och förberedelser:** Assistenten visar synliga, överlappande aktiviteter i samma lag inom sju dagar och kvarvarande material-/uppgiftspunkter inför aktiviteter inom 48 timmar. Krockpar visas en gång med länkar till båda aktiviteterna. Checklistans genväg öppnar Förberedelser direkt. Testdatabasen är uppdaterad; klientändringarna är lokala. Se [regler och verifiering](../evidence/assistant_conflicts_preparation_2026-10-02.md).
+
+**2026-10-02 – kompakt assistent:** Kortens detaljer och assistentinställningarna är hopfällda. Åtgärda, Skjut upp och Arkivera finns direkt på korten. Uppskjutning/arkivering sparas privat på kontot, kan återställas och påverkar inte domänuppgiften. Se [beteende och verifiering](../evidence/assistant_compact_ui_2026-10-02.md).
+
 **Status:** `[~]`  
 **Paritet:** HOME-09  
 **Beroenden:** AC-01

@@ -6,12 +6,23 @@ import 'package:teamzone_app/src/features/account/profile_models.dart';
 /// Own profile, profile pictures, team members' contact details and
 /// support-approved login email changes.
 abstract interface class ProfileServices {
+  Future<List<Map<String, dynamic>>> listPrivacySubjects();
+  Future<Map<String, dynamic>> getAddressPrivacy(String profileId);
+  Future<void> saveAddressPrivacyCommand(
+    String command,
+    Map<String, dynamic> values,
+  );
+  Future<List<ContactChangeRequest>> listContactChanges();
+  Future<void> decideContactChange(String requestId, {required bool approve});
   Future<MyProfileDetails> getMyProfile();
   Future<int> updateMyProfile({
     required String displayName,
     required String? contactEmail,
     required String? phone,
     required String avatarAction,
+    required String? street,
+    required String? postalCode,
+    required String? city,
     String? stagedAvatarId,
     required int expectedRevision,
     required String idempotencyKey,
@@ -110,6 +121,20 @@ abstract interface class ProfileServices {
 }
 
 class UnconfiguredProfileServices implements ProfileServices {
+  @override
+  Future<List<Map<String, dynamic>>> listPrivacySubjects() async => [];
+  @override
+  Future<Map<String, dynamic>> getAddressPrivacy(String profileId) => _fail();
+  @override
+  Future<void> saveAddressPrivacyCommand(
+    String command,
+    Map<String, dynamic> values,
+  ) => _fail();
+  @override
+  Future<List<ContactChangeRequest>> listContactChanges() async => const [];
+  @override
+  Future<void> decideContactChange(String requestId, {required bool approve}) =>
+      _fail();
   const UnconfiguredProfileServices();
   static Future<T> _fail<T>() =>
       Future.error(StateError('Supabase is not configured.'));
@@ -121,6 +146,9 @@ class UnconfiguredProfileServices implements ProfileServices {
     required String? contactEmail,
     required String? phone,
     required String avatarAction,
+    required String? street,
+    required String? postalCode,
+    required String? city,
     String? stagedAvatarId,
     required int expectedRevision,
     required String idempotencyKey,
@@ -222,6 +250,57 @@ class UnconfiguredProfileServices implements ProfileServices {
 }
 
 class SupabaseProfileServices implements ProfileServices {
+  @override
+  Future<List<Map<String, dynamic>>> listPrivacySubjects() async =>
+      ((await _rpc('list_address_privacy_subjects')) as List)
+          .map((v) => Map<String, dynamic>.from(v as Map))
+          .toList();
+  @override
+  Future<Map<String, dynamic>> getAddressPrivacy(String profileId) async =>
+      Map<String, dynamic>.from(
+        (await _rpc('get_address_privacy', {'target': profileId})) as Map,
+      );
+  @override
+  Future<void> saveAddressPrivacyCommand(
+    String command,
+    Map<String, dynamic> values,
+  ) async {
+    if (!const {
+      'save_profile_address',
+      'delete_profile_address',
+      'choose_club_address',
+      'save_profile_privacy',
+      'set_private_contact_grant',
+    }.contains(command)) {
+      throw ArgumentError.value(command);
+    }
+    await _rpc(command, values);
+  }
+
+  @override
+  Future<List<ContactChangeRequest>> listContactChanges() async {
+    final data = await _rpc('list_contact_change_requests', {});
+    if (data is! List) throw const FormatException('Invalid contact requests.');
+    return data
+        .map(
+          (item) => ContactChangeRequest.fromJson(
+            Map<String, dynamic>.from(item as Map),
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<void> decideContactChange(
+    String requestId, {
+    required bool approve,
+  }) async {
+    await _rpc('decide_contact_change', {
+      'target_request_id': requestId,
+      'approve': approve,
+    });
+  }
+
   const SupabaseProfileServices(this._client);
   final SupabaseClient _client;
 
@@ -273,14 +352,20 @@ class SupabaseProfileServices implements ProfileServices {
     required String? contactEmail,
     required String? phone,
     required String avatarAction,
+    required String? street,
+    required String? postalCode,
+    required String? city,
     String? stagedAvatarId,
     required int expectedRevision,
     required String idempotencyKey,
   }) async {
-    final value = await _rpc('update_my_profile_details', {
+    final value = await _rpc('update_my_profile_details_v2', {
       'new_display_name': displayName,
       'new_contact_email': contactEmail,
       'new_phone': phone,
+      'new_street': street,
+      'new_postal': postalCode,
+      'new_city': city,
       'avatar_action': avatarAction,
       'staged_avatar_id': stagedAvatarId,
       'expected_revision': expectedRevision,

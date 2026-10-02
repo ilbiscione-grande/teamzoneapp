@@ -12,8 +12,34 @@ import 'package:teamzone_app/src/features/calendar/calendar_services.dart';
 import 'package:teamzone_app/src/features/calendar/preparation_models.dart';
 import 'package:teamzone_app/src/features/match/match_models.dart';
 import 'package:teamzone_app/src/features/match/match_services.dart';
+import 'package:teamzone_app/src/features/overview/overview_models.dart';
+import 'package:teamzone_app/src/features/overview/overview_services.dart';
 
 void main() {
+  testWidgets(
+    'assistant opens preparation directly and completion clears task',
+    (tester) async {
+      final prep = _Prep()
+        ..items = [
+          const PreparationItem(id: 'ball', kind: 'material', label: 'Bollar'),
+        ];
+      await _openPreparation(
+        tester,
+        _Calendar('training', prep),
+        fromAssistant: true,
+      );
+      expect(find.text('MATERIAL'), findsOneWidget);
+      expect(find.text('Bollar'), findsOneWidget);
+      await tester.tap(find.text('Bollar'));
+      await tester.pumpAndSettle();
+      expect(prep.items.single.done, isTrue);
+      await tester.tap(find.byTooltip('Stäng').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Mina uppgifter'), findsOneWidget);
+      expect(find.byTooltip('Öppna förberedelser'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
   group('Träning', () {
     testWidgets('focus from earlier use, custom focus and removal', (
       tester,
@@ -535,6 +561,7 @@ Future<void> _openPreparation(
   _Calendar calendar, {
   MatchServices match = const UnconfiguredMatchServices(),
   IdentityServices identity = const _Identity(),
+  bool fromAssistant = false,
 }) async {
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1;
@@ -547,12 +574,21 @@ Future<void> _openPreparation(
       services: AppServices(
         identity: identity,
         calendar: calendar,
+        overview: _PreparationOverview(calendar.preparation as _Prep),
         match: match,
         isConfigured: true,
       ),
     ),
   );
   await tester.pumpAndSettle();
+  if (fromAssistant) {
+    await tester.tap(find.byKey(const Key('assistant-coach-mobile-fab')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byTooltip('Öppna förberedelser'));
+    await tester.tap(find.byTooltip('Öppna förberedelser'));
+    await tester.pumpAndSettle();
+    return;
+  }
   await tester.tap(find.text('Kalender'));
   await tester.pumpAndSettle();
   await tester.tap(find.byTooltip('Vy och filter'));
@@ -575,6 +611,29 @@ Future<void> _openMatchMode(WidgetTester tester) async {
 Future<void> _closeMatchMode(WidgetTester tester) async {
   expect(tester.takeException(), isNull);
   await tester.pumpWidget(const SizedBox());
+}
+
+class _PreparationOverview extends UnconfiguredOverviewServices {
+  _PreparationOverview(this.prep);
+  final _Prep prep;
+  @override
+  Future<LeaderHomeProjection> loadLeaderHome(String contextId) async =>
+      LeaderHomeProjection(
+        generatedAt: DateTime.now(),
+        todayEvents: const [],
+        planningActions: const [],
+        tasks: prep.items.any((i) => i.kind == 'material' && !i.done)
+            ? [
+                const LeaderHomeTask(
+                  kind: 'unfinished_preparation',
+                  title: 'Förberedelser återstår',
+                  count: 1,
+                  route: '/calendar?event=event-1',
+                  priority: 5,
+                ),
+              ]
+            : [],
+      );
 }
 
 class _Prep implements EventPreparationServices {
@@ -1066,7 +1125,12 @@ class _Identity implements IdentityServices {
       teamId: 'team',
       teamName: 'F2012',
       rolePackage: 'leader',
-      capabilities: {'team.read', 'event.manage', 'club.memberships.manage'},
+      capabilities: {
+        'team.read',
+        'event.manage',
+        'event.logistics',
+        'club.memberships.manage',
+      },
     ),
   ];
   @override

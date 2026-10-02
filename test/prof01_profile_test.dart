@@ -13,6 +13,170 @@ import 'package:teamzone_app/src/features/roster/roster_models.dart';
 import 'package:teamzone_app/src/features/roster/roster_services.dart';
 
 void main() {
+  testWidgets('multiple addresses and club choice use the new settings', (
+    tester,
+  ) async {
+    final profile = _Profile();
+    await _openSettingsProfile(tester, profile);
+    final entry = find.byKey(const ValueKey('address-privacy-settings'));
+    await tester.ensureVisible(entry);
+    await tester.tap(entry);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('privacy-add-address')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('privacy-address_label')),
+      'Hos pappa',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('privacy-new_street')),
+      'Andra gatan 2',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('privacy-new_postal')),
+      '12345',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('privacy-new_city')),
+      'Vetlanda',
+    );
+    await tester.tap(find.byKey(const ValueKey('privacy-save-fields')));
+    await tester.pumpAndSettle();
+    expect(profile.privacyCommands.single.$1, 'save_profile_address');
+    expect(profile.privacyCommands.single.$2['address_label'], 'Hos pappa');
+    expect(profile.privacyCommands.single.$2['target'], 'profile');
+    expect(find.text('Hos mamma'), findsWidgets);
+    expect(find.text('Hos pappa'), findsOneWidget);
+    final clubChoice = find.byKey(const ValueKey('club-address-club-null'));
+    await tester.ensureVisible(clubChoice);
+    await tester.tap(clubChoice);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hos pappa').last);
+    await tester.pumpAndSettle();
+    expect(profile.privacyCommands.last.$1, 'choose_club_address');
+    expect(profile.privacyCommands.last.$2['club'], 'club');
+    expect(profile.privacyCommands.last.$2['address_id'], isNotNull);
+  });
+  testWidgets(
+    'protection requires deliberate alias and save, cancellation writes nothing',
+    (tester) async {
+      final profile = _Profile();
+      await _openSettingsProfile(tester, profile);
+      final entry = find.byKey(const ValueKey('address-privacy-settings'));
+      await tester.ensureVisible(entry);
+      await tester.tap(entry);
+      await tester.pumpAndSettle();
+      final toggle = find.byKey(const ValueKey('privacy-protection'));
+      await tester.scrollUntilVisible(
+        toggle,
+        200,
+        scrollable: find.descendant(
+          of: find.byKey(const ValueKey('privacy-settings-list')),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const ValueKey('privacy-new_alias')))
+            .controller!
+            .text,
+        isEmpty,
+      );
+      await tester.tap(find.text('Avbryt'));
+      await tester.pumpAndSettle();
+      expect(profile.privacyCommands, isEmpty);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('privacy-new_alias')),
+        'Spelare A',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('privacy-new_safe_email')),
+        'safe@example.se',
+      );
+      await tester.tap(find.byKey(const ValueKey('privacy-save-fields')));
+      await tester.pumpAndSettle();
+      expect(profile.privacyCommands.single.$1, 'save_profile_privacy');
+      expect(profile.privacyCommands.single.$2['enable_protection'], true);
+      expect(profile.privacyCommands.single.$2['new_alias'], 'Spelare A');
+      final subject = find.byKey(const ValueKey('privacy-subject-profile'));
+      final privacyScroll = find.descendant(
+        of: find.byKey(const ValueKey('privacy-settings-list')),
+        matching: find.byType(Scrollable),
+      );
+      await tester.scrollUntilVisible(subject, -200, scrollable: privacyScroll);
+      expect(
+        find.descendant(of: subject, matching: find.text('Spelare A')),
+        findsWidgets,
+      );
+      await tester.scrollUntilVisible(toggle, 200, scrollable: privacyScroll);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('privacy-save-fields')));
+      await tester.pumpAndSettle();
+      expect(profile.privacyCommands.last.$2['enable_protection'], false);
+      await tester.scrollUntilVisible(subject, -200, scrollable: privacyScroll);
+      expect(
+        find.descendant(of: subject, matching: find.text('Ada Andersson')),
+        findsWidgets,
+      );
+    },
+  );
+  for (final conflict in [false, true]) {
+    testWidgets('contact proposal approval, conflict=$conflict', (
+      tester,
+    ) async {
+      final profile = _Profile()
+        ..changes = [
+          ContactChangeRequest(
+            id: 'change',
+            name: 'Barn Spelare',
+            clubName: 'Testklubben',
+            before: {'email': 'old@example.se'},
+            proposed: {'email': 'new@example.se'},
+            conflict: conflict,
+          ),
+        ];
+      await _openSettingsProfile(tester, profile);
+      final button = find.byKey(const ValueKey('approve-contact-change'));
+      await tester.ensureVisible(button);
+      await tester.pumpAndSettle();
+      expect(find.text('Nuvarande: old@example.se'), findsOneWidget);
+      expect(find.text('Föreslaget: new@example.se'), findsOneWidget);
+      expect(tester.widget<FilledButton>(button).onPressed == null, conflict);
+      await tester.tap(conflict ? find.text('Avvisa') : button);
+      await tester.pumpAndSettle();
+      expect(profile.decisions, [('change', !conflict)]);
+      expect(
+        find.byKey(const ValueKey('contact-request-change')),
+        findsNothing,
+      );
+    });
+  }
+  testWidgets('lost profile response retries the same complete save once', (
+    tester,
+  ) async {
+    final profile = _Profile()..loseResponse = true;
+    await _openSettingsProfile(tester, profile);
+    await tester.tap(find.byKey(const ValueKey('my-profile-card')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('my-profile-phone')),
+      '0701234567',
+    );
+    await tester.tap(find.byKey(const ValueKey('save-my-profile')));
+    await tester.pumpAndSettle();
+    expect(profile.revision, 2);
+    await tester.tap(find.byKey(const ValueKey('save-my-profile')));
+    await tester.pumpAndSettle();
+    expect(profile.revision, 2);
+    expect(profile.saveKeys.length, 2);
+    expect(profile.saveKeys.toSet().length, 1);
+    expect(find.byKey(const ValueKey('save-my-profile')), findsNothing);
+  });
   testWidgets('own details are edited from the settings profile tab', (
     tester,
   ) async {
@@ -145,7 +309,10 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Ladda upp klubbmärke'), findsOneWidget);
-    expect(find.byKey(const ValueKey('club-verification-club')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('club-verification-club')),
+      findsOneWidget,
+    );
     await tester.tap(find.byKey(const ValueKey('club-colors-club')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('club-primary-#0b1f3a')));
@@ -480,17 +647,83 @@ Widget _app(
   _Roster roster = const _Roster(),
   bool clubAdmin = false,
 }) => TeamZoneApp(
-      environment: const AppEnvironment(name: 'prof01'),
-      locale: const Locale('sv'),
-      services: AppServices(
-        identity: _Identity(clubAdmin: clubAdmin),
-        roster: roster,
-        profile: profile,
-        isConfigured: true,
-      ),
-    );
+  environment: const AppEnvironment(name: 'prof01'),
+  locale: const Locale('sv'),
+  services: AppServices(
+    identity: _Identity(clubAdmin: clubAdmin),
+    roster: roster,
+    profile: profile,
+    isConfigured: true,
+  ),
+);
 
 class _Profile extends UnconfiguredProfileServices {
+  final List<(String, Map<String, dynamic>)> privacyCommands = [];
+  final List<Map<String, dynamic>> addresses = [
+    {
+      'id': 'address-1',
+      'label': 'Hos mamma',
+      'street': 'Första gatan 1',
+      'postal': '12345',
+      'city': 'Vetlanda',
+      'revision': 1,
+    },
+  ];
+  String? clubAddress;
+  bool privacyEnabled = false;
+  @override
+  Future<List<Map<String, dynamic>>> listPrivacySubjects() async => [
+    {'id': 'profile', 'name': 'Ada Andersson'},
+  ];
+  @override
+  Future<Map<String, dynamic>> getAddressPrivacy(String profileId) async => {
+    'profile_id': 'profile',
+    'name': privacyEnabled ? 'Spelare A' : 'Ada Andersson',
+    'protected': privacyEnabled,
+    'alias': privacyEnabled ? 'Spelare A' : 'Ada Andersson',
+    'revision': 0,
+    'addresses': List.of(addresses),
+    'clubs': [
+      {'id': 'club', 'name': 'Testklubben', 'address_id': clubAddress},
+    ],
+    'grants': [],
+    'candidates': [],
+  };
+  @override
+  Future<void> saveAddressPrivacyCommand(
+    String command,
+    Map<String, dynamic> values,
+  ) async {
+    privacyCommands.add((command, values));
+    if (command == 'save_profile_address') {
+      addresses.add({
+        'id': values['address_id'],
+        'label': values['address_label'],
+        'street': values['new_street'],
+        'postal': values['new_postal'],
+        'city': values['new_city'],
+        'revision': 1,
+      });
+    }
+    if (command == 'choose_club_address') {
+      clubAddress = values['address_id'] as String?;
+    }
+    if (command == 'save_profile_privacy') {
+      privacyEnabled = values['enable_protection'] == true;
+    }
+  }
+
+  List<ContactChangeRequest> changes = [];
+  final List<(String, bool)> decisions = [];
+  @override
+  Future<List<ContactChangeRequest>> listContactChanges() async =>
+      List.of(changes);
+  @override
+  Future<void> decideContactChange(String id, {required bool approve}) async {
+    decisions.add((id, approve));
+    changes.removeWhere((item) => item.id == id);
+  }
+
   Object? failWith;
   (String, String?, String?)? saved;
   (String, String)? requested;
@@ -529,6 +762,10 @@ class _Profile extends UnconfiguredProfileServices {
   String? email;
   String? phone;
   int revision = 1;
+  String? postal;
+  bool loseResponse = false;
+  final saveKeys = <String>[];
+  final receipts = <String, int>{};
 
   @override
   Future<MyProfileDetails> getMyProfile() async => MyProfileDetails(
@@ -547,16 +784,31 @@ class _Profile extends UnconfiguredProfileServices {
     required String? contactEmail,
     required String? phone,
     required String avatarAction,
+    required String? street,
+    required String? postalCode,
+    required String? city,
     String? stagedAvatarId,
     required int expectedRevision,
     required String idempotencyKey,
   }) async {
+    saveKeys.add(idempotencyKey);
+    if (receipts.containsKey(idempotencyKey)) return receipts[idempotencyKey]!;
     if (failWith != null) throw failWith!;
+    if (postalCode == '!') throw const ProfileException('invalid_address');
+    if (expectedRevision != revision) {
+      throw const ProfileException('stale_revision');
+    }
     saved = (displayName, contactEmail, phone);
     name = displayName;
     email = contactEmail;
     this.phone = phone;
-    return ++revision;
+    postal = postalCode;
+    receipts[idempotencyKey] = ++revision;
+    if (loseResponse) {
+      loseResponse = false;
+      throw StateError('lost response');
+    }
+    return revision;
   }
 
   @override

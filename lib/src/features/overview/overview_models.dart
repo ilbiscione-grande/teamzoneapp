@@ -269,15 +269,24 @@ class LeaderHomeTask {
     required this.count,
     required this.route,
     required this.priority,
+    this.assistantStatus = 'active',
+    this.snoozedUntil,
   });
   final String kind, title, route;
   final int count, priority;
+  final String assistantStatus;
+  final DateTime? snoozedUntil;
   factory LeaderHomeTask.fromJson(Map<String, dynamic> json) => LeaderHomeTask(
     kind: json['kind'] as String,
     title: json['title'] as String,
     count: (json['count'] as num).toInt(),
     route: json['route'] as String,
     priority: (json['priority'] as num).toInt(),
+    assistantStatus:
+        (json['assistant_state'] as Map?)?['status'] as String? ?? 'active',
+    snoozedUntil: DateTime.tryParse(
+      (json['assistant_state'] as Map?)?['until_at'] as String? ?? '',
+    ),
   );
 }
 

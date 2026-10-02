@@ -44,6 +44,7 @@ class _PublicationManagementSurfaceState
   }
 
   Future<void> _event(PublicEventItem item) async {
+    final teamControlled = item.eventType == 'match';
     var title = item.publicTitle ?? item.title;
     var publishLocation = item.publishLocation;
     final publish = await showDialog<bool>(
@@ -83,19 +84,28 @@ class _PublicationManagementSurfaceState
                 ),
                 if (item.eventType == 'match' || item.eventType == 'training')
                   const Text(
-                    'Matchresultat och träningstider styrs för hela laget under Inställningar → Laginställningar.',
+                    'Matcher, matchresultat och träningstider styrs för hela laget under Inställningar → Laginställningar.',
                   ),
               ],
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(AppStrings.of(context).feature('Gör privat')),
+              onPressed: () =>
+                  Navigator.pop(context, teamControlled ? null : false),
+              child: Text(
+                teamControlled
+                    ? AppStrings.of(context).cancel
+                    : AppStrings.of(context).feature('Gör privat'),
+              ),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: Text(AppStrings.of(context).feature('Publicera')),
+              child: Text(
+                AppStrings.of(
+                  context,
+                ).feature(teamControlled ? 'Spara' : 'Publicera'),
+              ),
             ),
           ],
         ),
@@ -106,10 +116,10 @@ class _PublicationManagementSurfaceState
     await _run(
       () => widget.editorial.configureEvent(
         eventId: item.id,
-        state: publish ? 'published' : 'private',
+        state: teamControlled ? 'private' : (publish ? 'published' : 'private'),
         publicTitle: value.isEmpty ? null : value,
         publishLocation: publishLocation,
-        publishResult: publish && item.publishResult,
+        publishResult: !teamControlled && publish && item.publishResult,
         expectedRevision: item.revision,
         idempotencyKey: _newUuid(),
       ),

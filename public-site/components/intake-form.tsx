@@ -49,6 +49,11 @@ export function IntakeForm({ token, receiver }: { token: string; receiver: strin
   }
 
   return <form className="pz-form-card" onSubmit={submit} aria-label="Kontaktuppgifter">
+    <p className="pz-small" role="note"><strong>Behöver dina personuppgifter särskild hantering?</strong>{" "}
+      Lämna inte skyddade uppgifter i det här formuläret. Har du ett konto kan du använda
+      Inställningar → Profil → Adresser och integritet. Annars behöver du och klubben först
+      komma överens om en säker kontaktväg. Uppgifterna i formuläret kan läsas av lagets behöriga ledare.
+    </p>
     <label className="field">Namn<input name="fullName" autoComplete="name" required minLength={2} maxLength={120} value={values.fullName} onChange={set("fullName")} disabled={state === "sending"} /></label>
     <div className="pz-form-row">
       <label className="field">Telefon<input name="phone" type="tel" autoComplete="tel" required maxLength={30} value={values.phone} onChange={set("phone")} disabled={state === "sending"} /></label>

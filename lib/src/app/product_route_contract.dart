@@ -88,7 +88,7 @@ class ProductRouteContract {
     final location = canonicalizeLocation(platformRoute);
     final uri = Uri.tryParse(location);
     final path = uri?.path ?? location;
-    if (path.startsWith('$calendar/event/')) return path;
+    if (path.startsWith('$calendar/event/')) return uri?.toString() ?? path;
     if (path.startsWith('$team/member/')) return path;
     if (!canonicalPaths.contains(path)) return home;
     if (path == team || path == calendar || path == inbox) {

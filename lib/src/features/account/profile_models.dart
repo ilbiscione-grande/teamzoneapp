@@ -1,3 +1,26 @@
+class ContactChangeRequest {
+  const ContactChangeRequest({
+    required this.id,
+    required this.name,
+    required this.clubName,
+    required this.before,
+    required this.proposed,
+    this.conflict = false,
+  });
+  final String id, name, clubName;
+  final Map<String, String?> before, proposed;
+  final bool conflict;
+  factory ContactChangeRequest.fromJson(Map<String, dynamic> json) =>
+      ContactChangeRequest(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        clubName: json['club_name'] as String,
+        before: Map<String, String?>.from(json['before'] as Map),
+        proposed: Map<String, String?>.from(json['proposed'] as Map),
+        conflict: json['conflict'] == true,
+      );
+}
+
 /// The signed-in person's own account details (shared across clubs).
 class MyProfileDetails {
   const MyProfileDetails({
@@ -7,6 +30,7 @@ class MyProfileDetails {
     this.contactEmail,
     this.phone,
     this.hasAvatar = false,
+    this.protected = false,
     this.loginEmail,
     this.emailChange,
     this.streetAddress,
@@ -17,6 +41,7 @@ class MyProfileDetails {
   final String? contactEmail, phone, loginEmail;
   final String? streetAddress, postalCode, city;
   final bool hasAvatar;
+  final bool protected;
   final int revision;
 
   /// Latest request to change the login email, if any.
@@ -29,6 +54,7 @@ class MyProfileDetails {
         contactEmail: json['contact_email'] as String?,
         phone: json['phone'] as String?,
         hasAvatar: json['has_avatar'] as bool? ?? false,
+        protected: json['protected'] == true,
         loginEmail: json['login_email'] as String?,
         streetAddress: json['street_address'] as String?,
         postalCode: json['postal_code'] as String?,
