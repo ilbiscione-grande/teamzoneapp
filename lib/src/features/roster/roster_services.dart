@@ -38,6 +38,26 @@ abstract interface class RosterServices {
     required String idempotencyKey,
   });
   Future<TeamOverview> getTeamOverview({required String teamId});
+
+  /// Sign-up forms and the details sent through them (TEAM-15).
+  Future<IntakeOverview> getIntakeOverview({required String clubId});
+
+  /// The active contact page for the club (team null) or a team; a new one
+  /// is valid for 14 days.
+  Future<IntakeFormLink> createIntakeForm({
+    required String clubId,
+    String? teamId,
+  });
+  Future<void> closeIntakeForm({required String formId});
+
+  /// Adds the person to the team as player or leader; returns their id.
+  Future<String> acceptIntakeSubmission({
+    required String submissionId,
+    required String teamId,
+    required String role,
+    required String idempotencyKey,
+  });
+  Future<void> dismissIntakeSubmission({required String submissionId});
   Future<TeamProfileEditData> getTeamProfileEdit({required String teamId});
   Future<String> uploadTeamImage({
     required String teamId,
@@ -269,6 +289,28 @@ abstract interface class RosterServices {
 }
 
 class UnconfiguredRosterServices implements RosterServices {
+  @override
+  Future<IntakeOverview> getIntakeOverview({required String clubId}) =>
+      Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<IntakeFormLink> createIntakeForm({
+    required String clubId,
+    String? teamId,
+  }) => Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<void> closeIntakeForm({required String formId}) =>
+      Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<String> acceptIntakeSubmission({
+    required String submissionId,
+    required String teamId,
+    required String role,
+    required String idempotencyKey,
+  }) => Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<void> dismissIntakeSubmission({required String submissionId}) =>
+      Future.error(StateError('Supabase is not configured.'));
+
   const UnconfiguredRosterServices();
 
   @override
@@ -592,6 +634,80 @@ class UnconfiguredRosterServices implements RosterServices {
 }
 
 class SupabaseRosterServices implements RosterServices {
+  @override
+  Future<IntakeOverview> getIntakeOverview({required String clubId}) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>('get_intake_overview', params: {'target_club_id': clubId});
+    if (value is! Map<String, dynamic>) {
+      throw const FormatException('Intake overview is invalid.');
+    }
+    return IntakeOverview.fromJson(value);
+  }
+
+  @override
+  Future<IntakeFormLink> createIntakeForm({
+    required String clubId,
+    String? teamId,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'create_intake_form',
+          params: {'target_club_id': clubId, 'target_team_id': teamId},
+        );
+    if (value is! Map<String, dynamic>) {
+      throw const FormatException('Contact page is invalid.');
+    }
+    return IntakeFormLink(
+      id: value['id'] as String,
+      token: value['token'] as String,
+      expiresAt: DateTime.parse(value['expires_at'] as String),
+      teamId: teamId,
+    );
+  }
+
+  @override
+  Future<void> closeIntakeForm({required String formId}) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>('close_intake_form', params: {'target_form_id': formId});
+  }
+
+  @override
+  Future<String> acceptIntakeSubmission({
+    required String submissionId,
+    required String teamId,
+    required String role,
+    required String idempotencyKey,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'accept_intake_submission',
+          params: {
+            'target_submission_id': submissionId,
+            'target_team_id': teamId,
+            'new_role': role,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+    if (value is! String) {
+      throw const FormatException('Intake acceptance is invalid.');
+    }
+    return value;
+  }
+
+  @override
+  Future<void> dismissIntakeSubmission({required String submissionId}) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'dismiss_intake_submission',
+          params: {'target_submission_id': submissionId},
+        );
+  }
+
   SupabaseRosterServices(this._client);
 
   @override

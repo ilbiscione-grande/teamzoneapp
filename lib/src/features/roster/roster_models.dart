@@ -653,3 +653,106 @@ class TeamRoleException implements Exception {
   const TeamRoleException(this.code);
   final String code;
 }
+
+/// TEAM-15: sign-up forms shared as links and the details sent through them.
+class IntakeOverview {
+  const IntakeOverview({
+    required this.canManageClub,
+    required this.teams,
+    required this.forms,
+    required this.submissions,
+  });
+  final bool canManageClub;
+
+  /// Teams the viewer may add people to.
+  final List<IntakeTeam> teams;
+  final List<IntakeFormLink> forms;
+  final List<IntakeSubmission> submissions;
+
+  factory IntakeOverview.fromJson(Map<String, dynamic> json) => IntakeOverview(
+    canManageClub: json['can_manage_club'] == true,
+    teams: (json['teams'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(
+          (item) => IntakeTeam(
+            id: item['id'] as String,
+            name: item['name'] as String? ?? '',
+          ),
+        )
+        .toList(growable: false),
+    forms: (json['forms'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(
+          (item) => IntakeFormLink(
+            id: item['id'] as String,
+            token: item['token'] as String,
+            expiresAt: DateTime.parse(item['expires_at'] as String),
+            teamId: item['team_id'] as String?,
+            teamName: item['team_name'] as String?,
+          ),
+        )
+        .toList(growable: false),
+    submissions: (json['submissions'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(IntakeSubmission.fromJson)
+        .toList(growable: false),
+  );
+}
+
+class IntakeTeam {
+  const IntakeTeam({required this.id, required this.name});
+  final String id, name;
+}
+
+class IntakeFormLink {
+  const IntakeFormLink({
+    required this.id,
+    required this.token,
+    required this.expiresAt,
+    this.teamId,
+    this.teamName,
+  });
+  final String id, token;
+
+  /// The page closes by itself at this time (14 days after creation).
+  final DateTime expiresAt;
+
+  /// Null for the club-wide form.
+  final String? teamId, teamName;
+}
+
+class IntakeSubmission {
+  const IntakeSubmission({
+    required this.id,
+    required this.fullName,
+    required this.phone,
+    required this.email,
+    required this.birthDate,
+    required this.streetAddress,
+    required this.postalCode,
+    required this.city,
+    required this.createdAt,
+    this.teamId,
+    this.teamName,
+  });
+  final String id, fullName, phone, email, streetAddress, postalCode, city;
+  final DateTime birthDate, createdAt;
+
+  /// The team whose link was used; null for the club-wide link.
+  final String? teamId, teamName;
+
+  factory IntakeSubmission.fromJson(Map<String, dynamic> json) =>
+      IntakeSubmission(
+        id: json['id'] as String,
+        fullName: json['full_name'] as String? ?? '',
+        phone: json['phone'] as String? ?? '',
+        email: json['email'] as String? ?? '',
+        birthDate: DateTime.parse(json['birth_date'] as String),
+        streetAddress: json['street_address'] as String? ?? '',
+        postalCode: json['postal_code'] as String? ?? '',
+        city: json['city'] as String? ?? '',
+        createdAt: DateTime.parse(json['created_at'] as String),
+        teamId: json['team_id'] as String?,
+        teamName: json['team_name'] as String?,
+      );
+}

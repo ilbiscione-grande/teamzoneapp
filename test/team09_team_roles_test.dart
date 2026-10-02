@@ -130,6 +130,64 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('sign-up form link and one-tap adding to the team', (
+    tester,
+  ) async {
+    final roster = _Roster();
+    await _openRoster(tester, roster);
+    await _openIntake(tester);
+    expect(find.text('Kontaktuppdatering'), findsOneWidget);
+    // Creating the team's page shows its QR code and direct link at once.
+    await tester.tap(find.byKey(const ValueKey('intake-create-team')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('intake-qr')), findsOneWidget);
+    expect(
+      find.text(
+        'https://public.teamzoneapp.se/anmalan/0123456789abcdef0123456789abcdef',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Gäller till 2026-10-16'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Stäng'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('intake-qr-form-1')), findsOneWidget);
+    // The submission is added to the team as a player with one tap.
+    expect(find.text('Nina Ny'), findsOneWidget);
+    expect(find.text('2012-05-03 · 070-1234567 · nina@mail.se'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('intake-add-sub-1')),
+      150,
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('intake-surface')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('intake-add-sub-1')));
+    await tester.pumpAndSettle();
+    expect(roster.acceptedIntake, [('sub-1', 'team', 'player')]);
+    expect(find.text('Nina Ny lades till i F2012.'), findsOneWidget);
+    expect(find.text('Inga inskickade uppgifter just nu.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a submission can be added as a leader instead', (tester) async {
+    final roster = _Roster();
+    await _openRoster(tester, roster);
+    await _openIntake(tester);
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('intake-choose-sub-1')),
+    );
+    await tester.tap(find.byKey(const ValueKey('intake-choose-sub-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ledare').last);
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('intake-confirm')));
+    await tester.pumpAndSettle();
+    expect(roster.acceptedIntake, [('sub-1', 'team', 'leader')]);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('failed save retains selections and retries same command', (
     tester,
   ) async {
@@ -898,6 +956,18 @@ Future<void> _openNewPersonForm(
   await tester.pumpAndSettle();
 }
 
+Future<void> _openIntake(WidgetTester tester) async {
+  await tester.tap(find.byTooltip('Hantera'));
+  await tester.pumpAndSettle();
+  await tester.scrollUntilVisible(
+    find.byKey(const ValueKey('open-intake')),
+    100,
+    scrollable: find.byType(Scrollable).last,
+  );
+  await tester.tap(find.byKey(const ValueKey('open-intake')));
+  await tester.pumpAndSettle();
+}
+
 Future<void> _openRolesSheet(WidgetTester tester) async {
   await tester.tap(find.byTooltip('Hantera'));
   await tester.pumpAndSettle();
@@ -945,6 +1015,59 @@ Future<void> _openRoster(
 }
 
 class _Roster extends UnconfiguredRosterServices {
+  final intakeSubmissions = <IntakeSubmission>[
+    IntakeSubmission(
+      id: 'sub-1',
+      fullName: 'Nina Ny',
+      phone: '070-1234567',
+      email: 'nina@mail.se',
+      birthDate: DateTime(2012, 5, 3),
+      streetAddress: 'Storgatan 1',
+      postalCode: '575 31',
+      city: 'Eksjö',
+      createdAt: DateTime(2026, 10, 2),
+    ),
+  ];
+  final intakeForms = <IntakeFormLink>[];
+  final acceptedIntake = <(String, String, String)>[];
+
+  @override
+  Future<IntakeOverview> getIntakeOverview({required String clubId}) async =>
+      IntakeOverview(
+        canManageClub: false,
+        teams: const [IntakeTeam(id: 'team', name: 'F2012')],
+        forms: [...intakeForms],
+        submissions: [...intakeSubmissions],
+      );
+
+  @override
+  Future<IntakeFormLink> createIntakeForm({
+    required String clubId,
+    String? teamId,
+  }) async {
+    final form = IntakeFormLink(
+      id: 'form-1',
+      token: '0123456789abcdef0123456789abcdef',
+      expiresAt: DateTime(2026, 10, 16, 12),
+      teamId: teamId,
+      teamName: 'F2012',
+    );
+    intakeForms.add(form);
+    return form;
+  }
+
+  @override
+  Future<String> acceptIntakeSubmission({
+    required String submissionId,
+    required String teamId,
+    required String role,
+    required String idempotencyKey,
+  }) async {
+    acceptedIntake.add((submissionId, teamId, role));
+    intakeSubmissions.removeWhere((item) => item.id == submissionId);
+    return 'new-person';
+  }
+
   final detailKeys = <String>[];
   String? savedMainPosition;
   String? savedMainTitle;

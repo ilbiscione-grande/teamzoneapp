@@ -134,3 +134,16 @@
   .pz-search { flex-direction: column; }
   .pz-mark { width: 34px; height: 34px; font-size: 1rem; }
 }
+
+/* Sign-up form for a club or team (/anmalan/<token>) */
+.pz-intake { display: grid; justify-items: center; }
+.pz-form-card { display: grid; gap: 14px; width: min(640px, 100%); padding: clamp(22px, 4vw, 36px); border-radius: 8px; background: white; border: 1px solid var(--cs-line); border-top: 4px solid var(--cs-ink); }
+.pz-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.pz-form-row.narrow-first { grid-template-columns: minmax(110px, .5fr) 1fr; }
+.pz-form-card .primary-button { min-height: 50px; }
+.pz-form-card .pz-small a { color: var(--cs-brand); font-weight: 600; }
+.pz-sent h2 { margin: 0; font-size: 2rem; line-height: 1; font-weight: 800; text-transform: uppercase; }
+.pz-sent .cs-kicker { margin: 0; color: var(--cs-brand); }
+.pz-sent p { margin: 0; color: var(--cs-muted); line-height: 1.6; }
+.pz-sent .cs-button { justify-self: start; }
+@media (max-width: 560px) { .pz-form-row, .pz-form-row.narrow-first { grid-template-columns: 1fr; } }

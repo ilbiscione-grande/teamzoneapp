@@ -1601,6 +1601,66 @@ class AppStrings {
     'Redigera medlem': 'Edit member',
     'Klubbens färger': 'Club colours',
     'Klubbinställningar': 'Club settings',
+    'Kontaktuppdatering':
+        'Contact update',
+    'Tillfällig sida med QR-kod där personer fyller i sina uppgifter.':
+        'A temporary page with a QR code where people fill in their details.',
+    'Aktiva sidor':
+        'Active pages',
+    'Skapa en tillfällig sida där spelare, ledare eller föräldrar fyller i sina kontaktuppgifter utan att logga in. Sidan gäller i 14 dagar och delas med QR-kod eller länk. Det som skickas in hamnar här.':
+        'Create a temporary page where players, leaders or parents fill in their contact details without signing in. The page is valid for 14 days and is shared with a QR code or link. What is sent ends up here.',
+    'Dela sidan':
+        'Share the page',
+    'Gäller till {date}':
+        'Valid until {date}',
+    'Visa QR-kod':
+        'Show QR code',
+    'Stäng sidan':
+        'Close the page',
+    'Stäng sidan?':
+        'Close the page?',
+    'Sidan slutar fungera direkt. Redan inskickade uppgifter finns kvar. Du kan skapa en ny sida senare.':
+        'The page stops working at once. Details already sent are kept. You can create a new page later.',
+    'Sidan kunde inte stängas. Försök igen.':
+        'The page could not be closed. Try again.',
+    'Sidan kunde inte skapas. Kontrollera din behörighet.':
+        'The page could not be created. Check your permissions.',
+    'Skapa sida för {team}':
+        'Create a page for {team}',
+    'Skapa sida för hela klubben':
+        'Create a page for the whole club',
+    'Kontaktuppgifterna kunde inte hämtas':
+        'The contact details could not be loaded',
+    'klubbens sida':
+        "the club's page",
+    'Kopiera länk':
+        'Copy link',
+    'Länken är kopierad.':
+        'The link is copied.',
+    'Inskickade uppgifter':
+        'Submitted details',
+    'Inga inskickade uppgifter just nu.':
+        'No submitted details right now.',
+    'Via {source}':
+        'Via {source}',
+    'Lägg till i {team}':
+        'Add to {team}',
+    'Annat lag eller roll':
+        'Another team or role',
+    '{name} lades till i {team}.':
+        '{name} was added to {team}.',
+    'Personen kunde inte läggas till som ledare. Kontrollera att du får hantera lagets ledare.':
+        "The person could not be added as a leader. Check that you may manage the team's leaders.",
+    'Personen kunde inte läggas till. Försök igen.':
+        'The person could not be added. Try again.',
+    'Ta bort uppgifterna?':
+        'Remove the details?',
+    '{name}s uppgifter tas bort utan att läggas till.':
+        "{name}'s details are removed without being added.",
+    'Uppgifterna kunde inte tas bort. Försök igen.':
+        'The details could not be removed. Try again.',
+    'Kontrollera din behörighet och anslutning och försök igen.':
+        'Check your permissions and connection and try again.',
     'Huvudposition': 'Main position',
     'Huvudtitel': 'Main title',
     'huvudtitel': 'main title',

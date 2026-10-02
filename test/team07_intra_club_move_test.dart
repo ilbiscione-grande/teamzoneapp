@@ -22,6 +22,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Hantera'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Flytta spelare'),
+      100,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.tap(find.text('Flytta spelare'));
     await tester.pumpAndSettle();
     expect(find.text('Ada Spelare'), findsOneWidget);

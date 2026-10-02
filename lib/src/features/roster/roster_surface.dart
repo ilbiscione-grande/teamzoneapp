@@ -688,6 +688,38 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                               },
                             ),
                             ListTile(
+                              key: const ValueKey('open-intake'),
+                              leading: const Icon(Icons.assignment_outlined),
+                              title: Text(
+                                AppStrings.of(
+                                  context,
+                                ).feature('Kontaktuppdatering'),
+                              ),
+                              subtitle: Text(
+                                AppStrings.of(context).feature(
+                                  'Tillfällig sida med QR-kod där personer fyller i sina uppgifter.',
+                                ),
+                              ),
+                              onTap: () {
+                                Navigator.pop(sheetContext);
+                                Navigator.of(
+                                  context,
+                                  rootNavigator: true,
+                                ).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => _IntakeSurface(
+                                      contextValue: widget.contextValue,
+                                      roster: widget.roster,
+                                      onPeopleAdded: () {
+                                        unawaited(_data.refresh());
+                                        _refreshTeamRoles();
+                                      },
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            ListTile(
                               leading: const Icon(
                                 Icons.mark_email_unread_outlined,
                               ),

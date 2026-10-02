@@ -12,6 +12,8 @@ const bypassPrefixes = [
   "/_next/",
   "/api/",
   "/media/public/",
+  // Sign-up forms are addressed by an opaque token, not by club.
+  "/anmalan/",
   "/favicon.ico",
   "/robots.txt",
 ];
