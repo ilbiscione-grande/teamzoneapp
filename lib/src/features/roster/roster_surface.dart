@@ -543,14 +543,10 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                                     : leader.name,
                               ),
                               subtitle: Text(
-                                [
-                                  ...roles.map(
-                                    (role) => _roleLabel(strings, role),
-                                  ),
-                                  if (_titlesSummary(strings, leader)
-                                      case final titles when titles.isNotEmpty)
-                                    titles,
-                                ].join(' · '),
+                                _leadTitleLabel(strings, leader) ??
+                                    roles
+                                        .map((role) => _roleLabel(strings, role))
+                                        .join(' · '),
                               ),
                               trailing: canOpenPersonDetails
                                   ? const Icon(Icons.chevron_right)

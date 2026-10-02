@@ -64,11 +64,34 @@ String _sportLabel(AppStrings strings, String sport) =>
 bool _isLeaderRole(String role) =>
     role == 'leader' || role == 'club_functionary';
 
-/// "Huvudtränare · Ungdomsansvarig"
-String _titlesSummary(AppStrings strings, TeamRole role) => [
-  ...role.titles.map((key) => _titleLabel(strings, key)),
-  ...role.customTitles,
-].join(' · ');
+/// A catalog key or own title as shown.
+String _anyTitleLabel(AppStrings strings, String title) =>
+    _teamTitleLabels.containsKey(title) ? _titleLabel(strings, title) : title;
+
+/// The title shown for a leader in lists: the main title, else the first.
+String? _leadTitleLabel(AppStrings strings, TeamRole? role) {
+  if (role == null) return null;
+  final title =
+      role.mainTitle ??
+      role.titles.firstOrNull ??
+      role.customTitles.firstOrNull;
+  return title == null ? null : _anyTitleLabel(strings, title);
+}
+
+/// "Huvudtränare (huvudtitel) · Kassör", or "Huvudtränare" alone.
+String _titlesSummary(AppStrings strings, TeamRole role) {
+  final main = role.mainTitle;
+  final others = [
+    ...role.titles,
+    ...role.customTitles,
+  ].where((title) => title != main).toList();
+  if (main != null && others.isEmpty) return _anyTitleLabel(strings, main);
+  return [
+    if (main != null)
+      '${_anyTitleLabel(strings, main)} (${strings.feature('huvudtitel')})',
+    ...others.map((title) => _anyTitleLabel(strings, title)),
+  ].join(' · ');
+}
 
 /// A catalog key or own position label as shown.
 String _anyPositionLabel(AppStrings strings, String position) =>
@@ -179,6 +202,7 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
   late List<String> _customTitles = [..._person.customTitles];
   late List<String> _customPositions = [..._person.customPositions];
   late String? _main = _person.mainPosition;
+  late String? _mainTitle = _person.mainTitle;
   late int _revision = _person.detailsRevision;
   final _customTitle = TextEditingController();
   final _customPosition = TextEditingController();
@@ -210,10 +234,20 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
       final chosen = _chosenPositions;
       if (_main != null && !chosen.contains(_main)) _main = null;
       if (_main == null && chosen.isNotEmpty) _main = chosen.first;
+      final titles = _chosenTitles;
+      if (_mainTitle != null && !titles.contains(_mainTitle)) _mainTitle = null;
+      if (_mainTitle == null && titles.isNotEmpty) _mainTitle = titles.first;
       _key = _newUuid();
       _error = null;
     });
   }
+
+  /// Chosen titles in catalog order, then own titles.
+  List<String> get _chosenTitles => [
+    for (final key in _teamTitleLabels.keys)
+      if (_titles.contains(key)) key,
+    ..._customTitles,
+  ];
 
   /// Chosen positions in catalog order, then own labels. A general position
   /// implied by a chosen detailed one is left out, as in the summary.
@@ -260,6 +294,7 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
           _customTitles = [...person.customTitles];
           _customPositions = [...person.customPositions];
           _main = person.mainPosition;
+          _mainTitle = person.mainTitle;
           _revision = person.detailsRevision;
           _key = _newUuid();
           _error = null;
@@ -297,6 +332,7 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
             customTitles: _isLeader ? _customTitles : const [],
             customPositions: _isPlayer ? _customPositions : const [],
             mainPosition: _isPlayer ? _main : null,
+            mainTitle: _isLeader ? _mainTitle : null,
             expectedRevision: _revision,
             idempotencyKey: _key,
           )
@@ -439,6 +475,35 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
                     _customTitle,
                     strings.feature('Egen titel'),
                   ),
+                  if (_chosenTitles.length > 1) ...[
+                    _heading(strings.feature('Huvudtitel')),
+                    Text(
+                      strings.feature(
+                        'Visas i trupplistan och lagväljaren i stället för rollen.',
+                      ),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      key: const ValueKey('main-title'),
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        for (final title in _chosenTitles)
+                          ChoiceChip(
+                            key: ValueKey('main-title-$title'),
+                            avatar: _mainTitle == title
+                                ? const Icon(Icons.star, size: 18)
+                                : null,
+                            label: Text(_anyTitleLabel(strings, title)),
+                            selected: _mainTitle == title,
+                            onSelected: _busy || _stale
+                                ? null
+                                : (_) => _changed(() => _mainTitle = title),
+                          ),
+                      ],
+                    ),
+                  ],
                 ],
                 if (_isPlayer) ...[
                   _heading(

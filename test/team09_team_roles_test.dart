@@ -192,14 +192,22 @@ void main() {
     );
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pump();
+    // Head coach was chosen first; contact person is picked as main instead.
+    final contact = find.byKey(const ValueKey('main-title-contact_person'));
+    await tester.ensureVisible(contact);
+    await tester.tap(contact);
+    await tester.pump();
     await tester.tap(find.byKey(const ValueKey('save-team-person-details')));
     await tester.pumpAndSettle();
     expect(roster.roles.single.titles, ['contact_person', 'head_coach']);
     expect(roster.roles.single.customTitles, ['Ungdomsansvarig']);
     expect(roster.roles.single.positions, isEmpty);
     expect(roster.calls, isEmpty);
+    expect(roster.savedMainTitle, 'contact_person');
     expect(
-      find.text('Kontaktperson · Huvudtränare · Ungdomsansvarig'),
+      find.text(
+        'Kontaktperson (huvudtitel) · Huvudtränare · Ungdomsansvarig',
+      ),
       findsOneWidget,
     );
     await tester.tap(find.text('Thomas Emilson (du)').last);
@@ -616,7 +624,14 @@ void main() {
     await _openRoster(tester, roster);
     expect(find.text('SPELARE (1)'), findsOneWidget);
     expect(find.text('LEDARE (1)'), findsOneWidget);
-    expect(find.text('Ledare · Huvudtränare'), findsOneWidget);
+    // A leader is shown by title rather than by role.
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('roster-leader-lars')),
+        matching: find.text('Huvudtränare'),
+      ),
+      findsOneWidget,
+    );
     expect(
       tester.getTopLeft(find.text('Ada Spelare')).dy,
       lessThan(tester.getTopLeft(find.text('Lars Ledare')).dy),
@@ -718,7 +733,9 @@ void main() {
     await _openRoster(tester, _Roster(), identity: const _TitledIdentity());
     await tester.tap(find.byTooltip('Öppna menyn'));
     await tester.pumpAndSettle();
-    expect(find.text('Huvudtränare · Klubbfunktionär'), findsOneWidget);
+    // The title is shown instead of the leader and functionary roles.
+    expect(find.text('Huvudtränare'), findsOneWidget);
+    expect(find.textContaining('Klubbfunktionär'), findsNothing);
     expect(find.textContaining('Ledare'), findsNothing);
   });
 
@@ -930,6 +947,7 @@ Future<void> _openRoster(
 class _Roster extends UnconfiguredRosterServices {
   final detailKeys = <String>[];
   String? savedMainPosition;
+  String? savedMainTitle;
   List<String> grantable = const [];
   final permissionCalls = <(String, List<String>, List<String>, String?)>[];
 
@@ -998,11 +1016,13 @@ class _Roster extends UnconfiguredRosterServices {
     required List<String> customTitles,
     required List<String> customPositions,
     String? mainPosition,
+    String? mainTitle,
     required int expectedRevision,
     required String idempotencyKey,
   }) async {
     detailKeys.add(idempotencyKey);
     savedMainPosition = mainPosition;
+    savedMainTitle = mainTitle;
     if (failWith != null) throw failWith!;
     roles = [
       for (final r in roles)
@@ -1019,6 +1039,7 @@ class _Roster extends UnconfiguredRosterServices {
             customTitles: customTitles,
             customPositions: customPositions,
             mainPosition: mainPosition,
+            mainTitle: mainTitle,
             detailsRevision: expectedRevision + 1,
           ),
     ];

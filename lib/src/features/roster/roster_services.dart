@@ -33,6 +33,7 @@ abstract interface class RosterServices {
     required List<String> customTitles,
     required List<String> customPositions,
     String? mainPosition,
+    String? mainTitle,
     required int expectedRevision,
     required String idempotencyKey,
   });
@@ -299,6 +300,7 @@ class UnconfiguredRosterServices implements RosterServices {
     required List<String> customTitles,
     required List<String> customPositions,
     String? mainPosition,
+    String? mainTitle,
     required int expectedRevision,
     required String idempotencyKey,
   }) => Future.error(StateError('Supabase is not configured.'));
@@ -661,13 +663,14 @@ class SupabaseRosterServices implements RosterServices {
     required List<String> customTitles,
     required List<String> customPositions,
     String? mainPosition,
+    String? mainTitle,
     required int expectedRevision,
     required String idempotencyKey,
   }) async {
     final result = await _client
         .schema('api')
         .rpc<Object?>(
-          'set_team_person_details_v3',
+          'set_team_person_details_v4',
           params: {
             'target_club_id': clubId,
             'target_team_id': teamId,
@@ -677,6 +680,7 @@ class SupabaseRosterServices implements RosterServices {
             'new_custom_titles': customTitles,
             'new_custom_positions': customPositions,
             'new_main_position': mainPosition,
+            'new_main_title': mainTitle,
             'expected_revision': expectedRevision,
             'idempotency_key': idempotencyKey,
           },

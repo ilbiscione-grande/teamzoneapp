@@ -1634,15 +1634,22 @@ bool _assistantUsesFab(BuildContext context) {
 /// What you are in a context. Your titles replace the plain leader role,
 /// e.g. "Huvudtränare · Klubbfunktionär"; otherwise the roles, e.g.
 /// "Klubbfunktionär · Ledare".
+/// "Huvudtränare" rather than "Ledare · Klubbfunktionär": your main title
+/// (or first title) replaces the leader roles; playing is still shown.
 String _contextRolesLabel(AppStrings strings, TeamZoneContext context) {
   final titles = [
     ...context.titles.map((key) => _titleLabel(strings, key)),
     ...context.customTitles,
   ];
+  if (titles.isEmpty) {
+    return context.roles.map(strings.domainValue).join(' · ');
+  }
+  final main = context.mainTitle == null
+      ? titles.first
+      : _titleLabel(strings, context.mainTitle!);
   return [
-    ...titles,
-    for (final role in context.roles)
-      if (titles.isEmpty || role != 'leader') strings.domainValue(role),
+    main,
+    if (context.roles.contains('player')) strings.domainValue('player'),
   ].join(' · ');
 }
 

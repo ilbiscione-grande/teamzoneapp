@@ -1602,6 +1602,10 @@ class AppStrings {
     'Klubbens färger': 'Club colours',
     'Klubbinställningar': 'Club settings',
     'Huvudposition': 'Main position',
+    'Huvudtitel': 'Main title',
+    'huvudtitel': 'main title',
+    'Visas i trupplistan och lagväljaren i stället för rollen.':
+        'Shown in the squad list and team picker instead of the role.',
     'huvudposition': 'main position',
     'Övriga valda positioner är alternativa positioner.':
         'The other chosen positions are alternative positions.',

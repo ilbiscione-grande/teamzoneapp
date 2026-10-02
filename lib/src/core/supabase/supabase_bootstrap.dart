@@ -333,6 +333,7 @@ class SupabaseIdentityServices
             context.withTitles(
               strings(row['titles']),
               strings(row['custom_titles']),
+              mainTitle: row['main_title'] as String?,
             )
           else
             context,

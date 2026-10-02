@@ -514,6 +514,7 @@ class TeamRole {
     this.customTitles = const [],
     this.customPositions = const [],
     this.mainPosition,
+    this.mainTitle,
     this.detailsRevision = 0,
     this.permissions,
     this.permissionTemplate,
@@ -530,6 +531,10 @@ class TeamRole {
   /// The main playing position: one of [positions] or [customPositions];
   /// the others are alternatives.
   final String? mainPosition;
+
+  /// The main title: one of [titles] or [customTitles], shown instead of the
+  /// leader role.
+  final String? mainTitle;
   final int detailsRevision;
 
   /// A leader's panel capabilities in this team; only sent to viewers who
@@ -547,6 +552,7 @@ class TeamRole {
     customTitles: _strings(json['custom_titles']),
     customPositions: _strings(json['custom_positions']),
     mainPosition: json['main_position'] as String?,
+    mainTitle: json['main_title'] as String?,
     detailsRevision: (json['details_revision'] as num?)?.toInt() ?? 0,
     permissions: json['permissions'] is List
         ? _strings(json['permissions'])

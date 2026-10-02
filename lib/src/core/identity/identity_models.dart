@@ -33,6 +33,7 @@ class TeamZoneContext {
     this.aliasIds = const {},
     this.titles = const [],
     this.customTitles = const [],
+    this.mainTitle,
   });
 
   /// The primary assignment. Role-bound server calls (homes, messaging) use it.
@@ -60,8 +61,14 @@ class TeamZoneContext {
   final List<String> titles;
   final List<String> customTitles;
 
-  TeamZoneContext withTitles(List<String> titles, List<String> customTitles) =>
-      TeamZoneContext(
+  /// The title you chose as your main one, shown instead of the role.
+  final String? mainTitle;
+
+  TeamZoneContext withTitles(
+    List<String> titles,
+    List<String> customTitles, {
+    String? mainTitle,
+  }) => TeamZoneContext(
         id: id,
         clubId: clubId,
         clubName: clubName,
@@ -73,6 +80,7 @@ class TeamZoneContext {
         aliasIds: aliasIds,
         titles: titles,
         customTitles: customTitles,
+        mainTitle: mainTitle,
       );
 
   List<String> get roles => rolePackages.isEmpty ? [rolePackage] : rolePackages;
