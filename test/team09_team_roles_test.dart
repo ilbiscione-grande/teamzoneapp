@@ -173,6 +173,9 @@ void main() {
 
   testWidgets('sent details can update an existing person', (tester) async {
     final roster = _Roster(
+      roles: [
+        const TeamRole(personId: 'lisa', name: 'Lisa Ledare', role: 'leader'),
+      ],
       people: [
         const RosterPersonSummary(
           id: 'olle',
@@ -209,6 +212,14 @@ void main() {
     expect(
       tester.getTopLeft(find.text('Nina Nilsson')).dy,
       lessThan(tester.getTopLeft(find.text('Olle Annan')).dy),
+    );
+    // Leaders can be chosen too.
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('intake-merge-lisa')),
+        matching: find.text('Ledare'),
+      ),
+      findsOneWidget,
     );
     await tester.tap(find.byKey(const ValueKey('intake-merge-nina')));
     await tester.pump();

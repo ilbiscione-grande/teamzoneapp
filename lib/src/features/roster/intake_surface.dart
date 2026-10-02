@@ -621,15 +621,43 @@ class _IntakeMergeDialogState extends State<_IntakeMergeDialog> {
   final _search = TextEditingController();
   RosterPersonSummary? _selected;
 
+  /// Leaders by person id; they come from the team's roles, not the squad.
+  Set<String> _leaders = const {};
+
+  /// Active players and the team's leaders.
   Future<List<RosterPersonSummary>> _load() async {
     final team = _team;
     if (team == null) return const [];
-    final people = await widget.roster
-        .listPeople(clubId: widget.clubId, teamId: team.id)
-        .timeout(const Duration(seconds: 15));
-    return people
-        .where((person) => person.assignmentState == 'active')
-        .toList(growable: false);
+    final (people, roles) = await (
+      widget.roster.listPeople(clubId: widget.clubId, teamId: team.id),
+      widget.roster
+          .listTeamRoles(clubId: widget.clubId, teamId: team.id)
+          .then<TeamRoles?>((value) => value, onError: (_) => null),
+    ).wait.timeout(const Duration(seconds: 15));
+    final active = [
+      for (final person in people)
+        if (person.assignmentState == 'active') person,
+    ];
+    final known = {for (final person in active) person.id};
+    final leaders = <String>{};
+    for (final role in roles?.roles ?? const <TeamRole>[]) {
+      if (role.role == 'player') continue;
+      leaders.add(role.personId);
+      if (known.add(role.personId)) {
+        active.add(
+          RosterPersonSummary(
+            id: role.personId,
+            displayName: role.name,
+            safeguardingRequired: false,
+            teamId: team.id,
+            teamName: team.name,
+            assignmentState: 'active',
+          ),
+        );
+      }
+    }
+    if (mounted) setState(() => _leaders = leaders);
+    return active;
   }
 
   @override
@@ -747,8 +775,17 @@ class _IntakeMergeDialogState extends State<_IntakeMergeDialog> {
                             key: ValueKey('intake-merge-${person.id}'),
                             value: person.id,
                             title: Text(person.displayName),
-                            subtitle: _likelyMatch(person)
-                                ? Text(strings.feature('Möjlig matchning'))
+                            subtitle:
+                                _likelyMatch(person) ||
+                                    _leaders.contains(person.id)
+                                ? Text(
+                                    [
+                                      if (_leaders.contains(person.id))
+                                        strings.feature('Ledare'),
+                                      if (_likelyMatch(person))
+                                        strings.feature('Möjlig matchning'),
+                                    ].join(' · '),
+                                  )
                                 : null,
                           ),
                       ],
