@@ -509,6 +509,23 @@ class SupabaseMembershipServices implements MembershipServices {
     required int expectedRevision,
     required String idempotencyKey,
   }) async {
+    if (status == 'approved') {
+      final value = await _client
+          .schema('api')
+          .rpc<Object?>(
+            'approve_protected_name_support_case',
+            params: {
+              'target_case_id': caseId,
+              'case_resolution_note': resolutionNote,
+              'expected_revision': expectedRevision,
+              'idempotency_key': idempotencyKey,
+            },
+          );
+      if (value is! num) {
+        throw const FormatException('Invalid protected-name approval.');
+      }
+      return value.toInt();
+    }
     final value = await _client
         .schema('api')
         .rpc<Object?>(

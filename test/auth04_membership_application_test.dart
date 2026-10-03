@@ -451,6 +451,33 @@ void main() {
     expect(worker, contains('Underlag och personuppgifter visas endast'));
     expect(worker, isNot(contains('evidence_summary')));
   });
+
+  test('protected-name approval completes official club registration', () {
+    final sql = File(
+      'supabase/migrations/20261003171000_complete_protected_name_registration.sql',
+    ).readAsStringSync();
+    expect(sql, contains('approve_protected_name_support_case_for_admin'));
+    expect(sql, contains("status='resolved'"));
+    expect(sql, contains("verification_status='official'"));
+    expect(sql, contains("'club_functionary'"));
+    expect(sql, contains("'club.memberships.manage'"));
+    expect(sql, contains("'event.attendance.correct_late'"));
+    expect(sql, contains("'support.protected_name.approve.v1'"));
+    expect(
+      sql,
+      contains(
+        'grant execute on function\n  internal.approve_protected_name_support_case_for_admin',
+      ),
+    );
+    expect(
+      sql,
+      isNot(
+        contains(
+          'grant execute on function\n  api.approve_protected_name_support_case(uuid,text,bigint,uuid)\nto anon',
+        ),
+      ),
+    );
+  });
 }
 
 class _WaitingIdentity implements IdentityServices {

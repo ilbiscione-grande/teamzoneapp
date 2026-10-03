@@ -251,29 +251,44 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
     final strings = AppStrings.of(context);
     var note = '';
     if (status != 'in_review') {
+      final approvesRegistration = status == 'approved';
       final formKey = GlobalKey<FormState>();
       final value = await showDialog<String>(
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: Text(
             strings.feature(
-              status == 'resolved' ? 'Lös ärende' : 'Avslå ärende',
+              approvesRegistration ? 'Godkänn och registrera' : 'Avslå ärende',
             ),
           ),
           content: Form(
             key: formKey,
-            child: TextFormField(
-              autofocus: true,
-              minLines: 3,
-              maxLines: 7,
-              maxLength: 1000,
-              decoration: InputDecoration(
-                labelText: strings.feature('Beslutsanteckning'),
-              ),
-              onChanged: (value) => note = value,
-              validator: (value) => (value?.trim().length ?? 0) < 5
-                  ? strings.feature('Ange minst 5 tecken.')
-                  : null,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (approvesRegistration) ...[
+                  Text(
+                    strings.feature(
+                      'Klubben och laget skapas eller kopplas till en befintlig officiell klubb. Sökanden blir klubbfunktionär och får administrativ behörighet.',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                TextFormField(
+                  autofocus: true,
+                  minLines: 3,
+                  maxLines: 7,
+                  maxLength: 1000,
+                  decoration: InputDecoration(
+                    labelText: strings.feature('Beslutsanteckning'),
+                  ),
+                  onChanged: (value) => note = value,
+                  validator: (value) => (value?.trim().length ?? 0) < 5
+                      ? strings.feature('Ange minst 5 tecken.')
+                      : null,
+                ),
+              ],
             ),
           ),
           actions: [
@@ -287,7 +302,11 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
                   Navigator.pop(dialogContext, note.trim());
                 }
               },
-              child: Text(strings.feature('Spara beslut')),
+              child: Text(
+                strings.feature(
+                  approvesRegistration ? 'Godkänn och registrera' : 'Avslå',
+                ),
+              ),
             ),
           ],
         ),
@@ -658,11 +677,16 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
                                               ),
                                             ),
                                           ),
-                                        FilledButton(
+                                        FilledButton.icon(
                                           onPressed: () =>
-                                              _update(item, 'resolved'),
-                                          child: Text(
-                                            strings.feature('Lös ärende'),
+                                              _update(item, 'approved'),
+                                          icon: const Icon(
+                                            Icons.domain_add_outlined,
+                                          ),
+                                          label: Text(
+                                            strings.feature(
+                                              'Godkänn och registrera',
+                                            ),
                                           ),
                                         ),
                                         TextButton(
