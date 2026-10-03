@@ -193,6 +193,13 @@ class AppStrings {
   }
 
   static const Map<String, String> _featureEnglish = {
+    'Hantera din kalenderkrock': 'Manage your calendar conflict',
+    'Öppna aktivitet och svara': 'Open activity and respond',
+    'Ändra tid': 'Change time',
+    'Vilken aktivitet vill du flytta?':
+        'Which activity would you like to move?',
+    'Tiden är sparad. Kalenderkrocken kontrolleras igen.':
+        'Time saved. Checking the calendar conflict again.',
     'Återaktivera i laget': 'Reactivate in team',
     'Event': 'Event',
     'Spelarövergång': 'Player transfer',

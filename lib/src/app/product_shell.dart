@@ -484,7 +484,9 @@ class _ProductShellState extends State<_ProductShell> {
     final choice = await showDialog<(EventDetails, bool)>(
       context: context,
       builder: (dialogContext) => SimpleDialog(
-        title: const Text('Hantera din kalenderkrock'),
+        title: Text(
+          AppStrings.of(context).feature('Hantera din kalenderkrock'),
+        ),
         children: [
           for (final event in events) ...[
             ListTile(
@@ -493,17 +495,19 @@ class _ProductShellState extends State<_ProductShell> {
             ),
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop((event, false)),
-              child: const Text('Öppna aktivitet och svara'),
+              child: Text(
+                AppStrings.of(context).feature('Öppna aktivitet och svara'),
+              ),
             ),
             if (canEdit(event))
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop((event, true)),
-                child: const Text('Ändra tid'),
+                child: Text(AppStrings.of(context).feature('Ändra tid')),
               ),
           ],
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Avbryt'),
+            child: Text(AppStrings.of(context).feature('Avbryt')),
           ),
         ],
       ),
@@ -574,7 +578,9 @@ class _ProductShellState extends State<_ProductShell> {
     final selected = await showDialog<EventDetails>(
       context: context,
       builder: (dialogContext) => SimpleDialog(
-        title: const Text('Vilken aktivitet vill du flytta?'),
+        title: Text(
+          AppStrings.of(context).feature('Vilken aktivitet vill du flytta?'),
+        ),
         children: [
           for (final event in [first, second])
             ListTile(
@@ -587,7 +593,7 @@ class _ProductShellState extends State<_ProductShell> {
             ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Avbryt'),
+            child: Text(AppStrings.of(context).feature('Avbryt')),
           ),
         ],
       ),
@@ -618,8 +624,12 @@ class _ProductShellState extends State<_ProductShell> {
     );
     if (saved == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tiden är sparad. Kalenderkrocken kontrolleras igen.'),
+        SnackBar(
+          content: Text(
+            AppStrings.of(
+              context,
+            ).feature('Tiden är sparad. Kalenderkrocken kontrolleras igen.'),
+          ),
         ),
       );
     }

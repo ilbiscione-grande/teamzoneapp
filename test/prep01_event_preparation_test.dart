@@ -16,30 +16,27 @@ import 'package:teamzone_app/src/features/overview/overview_models.dart';
 import 'package:teamzone_app/src/features/overview/overview_services.dart';
 
 void main() {
-  testWidgets(
-    'assistant opens preparation directly and completion clears task',
-    (tester) async {
-      final prep = _Prep()
-        ..items = [
-          const PreparationItem(id: 'ball', kind: 'material', label: 'Bollar'),
-        ];
-      await _openPreparation(
-        tester,
-        _Calendar('training', prep),
-        fromAssistant: true,
-      );
-      expect(find.text('MATERIAL'), findsOneWidget);
-      expect(find.text('Bollar'), findsOneWidget);
-      await tester.tap(find.text('Bollar'));
-      await tester.pumpAndSettle();
-      expect(prep.items.single.done, isTrue);
-      await tester.tap(find.byTooltip('Stäng').first);
-      await tester.pumpAndSettle();
-      expect(find.text('Mina uppgifter'), findsOneWidget);
-      expect(find.byTooltip('Öppna förberedelser'), findsNothing);
-      expect(tester.takeException(), isNull);
-    },
-  );
+  testWidgets('assistant opens inline preparation and completion clears task', (
+    tester,
+  ) async {
+    final prep = _Prep()
+      ..items = [
+        const PreparationItem(id: 'ball', kind: 'material', label: 'Bollar'),
+      ];
+    await _openPreparation(
+      tester,
+      _Calendar('training', prep),
+      fromAssistant: true,
+    );
+    expect(find.text('Återstående punkter'), findsOneWidget);
+    expect(find.text('Bollar'), findsOneWidget);
+    await tester.tap(find.text('Bollar'));
+    await tester.pumpAndSettle();
+    expect(prep.items.single.done, isTrue);
+    expect(find.text('Mina uppgifter'), findsOneWidget);
+    expect(find.byTooltip('Öppna förberedelser'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
   group('Träning', () {
     testWidgets('focus from earlier use, custom focus and removal', (
       tester,
