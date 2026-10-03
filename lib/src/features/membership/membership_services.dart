@@ -59,6 +59,16 @@ abstract interface class MembershipServices {
   Future<List<ProtectedNameSupportCase>> listProtectedNameSupportCases({
     String? status,
   });
+  Future<List<ProtectedNameSupportCase>> listMyProtectedNameSupportCases();
+  Future<List<ProtectedNameSupportMessage>> listProtectedNameSupportMessages({
+    required String caseId,
+  });
+  Future<String> sendProtectedNameSupportMessage({
+    required String caseId,
+    required String body,
+    required bool asSupport,
+    required String idempotencyKey,
+  });
   Future<int> updateProtectedNameSupportCase({
     required String caseId,
     required String status,
@@ -180,6 +190,23 @@ class UnconfiguredMembershipServices implements MembershipServices {
   Future<List<ProtectedNameSupportCase>> listProtectedNameSupportCases({
     String? status,
   }) async => const [];
+
+  @override
+  Future<List<ProtectedNameSupportCase>>
+  listMyProtectedNameSupportCases() async => const [];
+
+  @override
+  Future<List<ProtectedNameSupportMessage>> listProtectedNameSupportMessages({
+    required String caseId,
+  }) async => const [];
+
+  @override
+  Future<String> sendProtectedNameSupportMessage({
+    required String caseId,
+    required String body,
+    required bool asSupport,
+    required String idempotencyKey,
+  }) => Future.error(StateError('Supabase is not configured.'));
 
   @override
   Future<int> updateProtectedNameSupportCase({
@@ -499,6 +526,60 @@ class SupabaseMembershipServices implements MembershipServices {
         .whereType<Map<String, dynamic>>()
         .map(ProtectedNameSupportCase.fromJson)
         .toList(growable: false);
+  }
+
+  @override
+  Future<List<ProtectedNameSupportCase>>
+  listMyProtectedNameSupportCases() async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>('list_my_protected_name_support_case_details');
+    if (value is! List) throw const FormatException('Invalid support cases.');
+    return value
+        .whereType<Map<String, dynamic>>()
+        .map(ProtectedNameSupportCase.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<List<ProtectedNameSupportMessage>> listProtectedNameSupportMessages({
+    required String caseId,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'list_protected_name_support_messages',
+          params: {'target_case_id': caseId},
+        );
+    if (value is! List) throw const FormatException('Invalid support thread.');
+    return value
+        .whereType<Map<String, dynamic>>()
+        .map(ProtectedNameSupportMessage.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<String> sendProtectedNameSupportMessage({
+    required String caseId,
+    required String body,
+    required bool asSupport,
+    required String idempotencyKey,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'send_protected_name_support_message',
+          params: {
+            'target_case_id': caseId,
+            'message_body': body,
+            'send_as_support': asSupport,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+    if (value is! String) {
+      throw const FormatException('Invalid support message response.');
+    }
+    return value;
   }
 
   @override

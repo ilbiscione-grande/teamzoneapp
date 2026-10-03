@@ -37,6 +37,29 @@ class ProtectedNameSupportCase {
       );
 }
 
+class ProtectedNameSupportMessage {
+  const ProtectedNameSupportMessage({
+    required this.id,
+    required this.senderKind,
+    required this.senderName,
+    required this.body,
+    required this.createdAt,
+  });
+
+  final String id, senderKind, senderName, body;
+  final DateTime createdAt;
+  bool get isFromSupport => senderKind == 'support';
+
+  factory ProtectedNameSupportMessage.fromJson(Map<String, dynamic> json) =>
+      ProtectedNameSupportMessage(
+        id: json['message_id'] as String,
+        senderKind: json['sender_kind'] as String,
+        senderName: json['sender_name'] as String,
+        body: json['body'] as String,
+        createdAt: DateTime.parse(json['created_at'] as String),
+      );
+}
+
 class GlobalPersonErasureCase {
   const GlobalPersonErasureCase({
     required this.id,

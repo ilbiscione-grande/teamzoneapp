@@ -126,6 +126,25 @@ void main() {
     expect(membership.appliedTeamId, 'team');
   });
 
+  testWidgets('waiting room exposes the requester support inbox', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'audit'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _WaitingIdentity(),
+          membership: _MembershipFake(),
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mina supportärenden'), findsOneWidget);
+  });
+
   test('club verification tolerates a deleted requester profile name', () {
     final request = ClubVerificationRequest.fromJson({
       'request_id': 'request',
@@ -478,6 +497,34 @@ void main() {
       ),
     );
   });
+
+  test('protected-name support conversation is case-bound and private', () {
+    final sql = File(
+      'supabase/migrations/20261003180000_protected_name_support_conversation.sql',
+    ).readAsStringSync();
+    expect(
+      sql,
+      contains('create table internal.protected_name_support_messages'),
+    );
+    expect(sql, contains('sender_kind in (\'requester\',\'support\')'));
+    expect(sql, contains('internal.actor_is_support_admin()'));
+    expect(sql, contains('support_case.requester_profile_id=actor_id'));
+    expect(sql, contains("status not in ('pending','in_review')"));
+    expect(sql, contains("'support.protected_name.message.v1'"));
+    expect(
+      sql,
+      contains("values('protected_name',support_case.id,next_revision)"),
+    );
+    expect(sql, isNot(contains("jsonb_build_object('body'")));
+    expect(
+      sql,
+      isNot(
+        contains(
+          'grant execute on function\n  api.send_protected_name_support_message(uuid,text,boolean,uuid)\nto anon',
+        ),
+      ),
+    );
+  });
 }
 
 class _WaitingIdentity implements IdentityServices {
@@ -621,6 +668,23 @@ class _MembershipFake implements MembershipServices {
   Future<List<ProtectedNameSupportCase>> listProtectedNameSupportCases({
     String? status,
   }) async => const [];
+
+  @override
+  Future<List<ProtectedNameSupportCase>>
+  listMyProtectedNameSupportCases() async => const [];
+
+  @override
+  Future<List<ProtectedNameSupportMessage>> listProtectedNameSupportMessages({
+    required String caseId,
+  }) async => const [];
+
+  @override
+  Future<String> sendProtectedNameSupportMessage({
+    required String caseId,
+    required String body,
+    required bool asSupport,
+    required String idempotencyKey,
+  }) async => 'message';
 
   @override
   Future<int> updateProtectedNameSupportCase({

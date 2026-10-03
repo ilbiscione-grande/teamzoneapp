@@ -337,6 +337,22 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
     }
   }
 
+  Future<void> _openConversation(ProtectedNameSupportCase item) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (_) => _ProtectedNameSupportConversationSheet(
+        membership: widget.membership,
+        supportCase: item,
+        asSupport: true,
+      ),
+    );
+    if (mounted) _reload();
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
@@ -660,6 +676,19 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
                                     const SizedBox(height: 12),
                                     Text(item.resolutionNote!),
                                   ],
+                                  const SizedBox(height: 12),
+                                  OutlinedButton.icon(
+                                    onPressed: () => _openConversation(item),
+                                    icon: const Icon(Icons.forum_outlined),
+                                    label: Text(
+                                      strings.feature(
+                                        item.status == 'pending' ||
+                                                item.status == 'in_review'
+                                            ? 'Svara eller be om uppgifter'
+                                            : 'Visa meddelanden',
+                                      ),
+                                    ),
+                                  ),
                                   if (item.status == 'pending' ||
                                       item.status == 'in_review') ...[
                                     const SizedBox(height: 12),
@@ -707,6 +736,368 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
                       ),
                     );
                   },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProtectedNameSupportConversationSheet extends StatefulWidget {
+  const _ProtectedNameSupportConversationSheet({
+    required this.membership,
+    required this.supportCase,
+    required this.asSupport,
+  });
+
+  final MembershipServices membership;
+  final ProtectedNameSupportCase supportCase;
+  final bool asSupport;
+
+  @override
+  State<_ProtectedNameSupportConversationSheet> createState() =>
+      _ProtectedNameSupportConversationSheetState();
+}
+
+class _ProtectedNameSupportConversationSheetState
+    extends State<_ProtectedNameSupportConversationSheet> {
+  final _message = TextEditingController();
+  late Future<List<ProtectedNameSupportMessage>> _messages = _load();
+  bool _sending = false;
+  String? _error;
+
+  bool get _isOpen =>
+      widget.supportCase.status == 'pending' ||
+      widget.supportCase.status == 'in_review';
+
+  Future<List<ProtectedNameSupportMessage>> _load() => widget.membership
+      .listProtectedNameSupportMessages(caseId: widget.supportCase.id)
+      .timeout(const Duration(seconds: 15));
+
+  void _reload() => setState(() => _messages = _load());
+
+  Future<void> _send() async {
+    final body = _message.text.trim();
+    if (_sending || body.length < 2 || body.length > 2000) return;
+    setState(() {
+      _sending = true;
+      _error = null;
+    });
+    try {
+      await widget.membership
+          .sendProtectedNameSupportMessage(
+            caseId: widget.supportCase.id,
+            body: body,
+            asSupport: widget.asSupport,
+            idempotencyKey: _newUuid(),
+          )
+          .timeout(const Duration(seconds: 15));
+      _message.clear();
+      _reload();
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _error = AppStrings.of(
+            context,
+          ).feature('Meddelandet kunde inte skickas. Försök igen.'),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  String _timestamp(BuildContext context, DateTime value) {
+    final local = value.toLocal();
+    final material = MaterialLocalizations.of(context);
+    return '${material.formatShortDate(local)} ${material.formatTimeOfDay(TimeOfDay.fromDateTime(local))}';
+  }
+
+  @override
+  void dispose() {
+    _message.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final theme = Theme.of(context);
+    return AnimatedPadding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      duration: const Duration(milliseconds: 150),
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.82,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.supportCase.clubName,
+                    style: theme.textTheme.titleLarge,
+                  ),
+                  Text(
+                    '${widget.supportCase.teamName} · ${strings.domainValue(widget.supportCase.status)}',
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: FutureBuilder<List<ProtectedNameSupportMessage>>(
+                future: _messages,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: OutlinedButton(
+                        onPressed: _reload,
+                        child: Text(strings.retry),
+                      ),
+                    );
+                  }
+                  final messages = snapshot.data ?? const [];
+                  return ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      Align(
+                        alignment: widget.asSupport
+                            ? Alignment.centerLeft
+                            : Alignment.centerRight,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 560),
+                          child: Card(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    strings.feature(
+                                      widget.asSupport
+                                          ? 'Sökandens ursprungliga meddelande'
+                                          : 'Ditt ursprungliga meddelande',
+                                    ),
+                                    style: theme.textTheme.labelLarge,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  SelectableText(widget.supportCase.message),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    _timestamp(
+                                      context,
+                                      widget.supportCase.createdAt,
+                                    ),
+                                    style: theme.textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      for (final message in messages) ...[
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment:
+                              (widget.asSupport && message.isFromSupport) ||
+                                  (!widget.asSupport && !message.isFromSupport)
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 560),
+                            child: Card(
+                              color:
+                                  (widget.asSupport && message.isFromSupport) ||
+                                      (!widget.asSupport &&
+                                          !message.isFromSupport)
+                                  ? theme.colorScheme.primaryContainer
+                                  : theme.colorScheme.surfaceContainerHighest,
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      message.senderName,
+                                      style: theme.textTheme.labelLarge,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    SelectableText(message.body),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      _timestamp(context, message.createdAt),
+                                      style: theme.textTheme.bodySmall,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                },
+              ),
+            ),
+            if (_isOpen)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: _message,
+                      enabled: !_sending,
+                      minLines: 2,
+                      maxLines: 5,
+                      maxLength: 2000,
+                      decoration: InputDecoration(
+                        labelText: strings.feature('Skriv ett svar'),
+                        errorText: _error,
+                        suffixIcon: IconButton(
+                          tooltip: strings.feature('Skicka svar'),
+                          onPressed: _sending ? null : _send,
+                          icon: _sending
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.send_outlined),
+                        ),
+                      ),
+                      onSubmitted: (_) => _send(),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  strings.feature(
+                    'Ärendet är avslutat och kan inte få fler meddelanden.',
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MyProtectedNameSupportCasesSheet extends StatefulWidget {
+  const _MyProtectedNameSupportCasesSheet({required this.membership});
+
+  final MembershipServices membership;
+
+  @override
+  State<_MyProtectedNameSupportCasesSheet> createState() =>
+      _MyProtectedNameSupportCasesSheetState();
+}
+
+class _MyProtectedNameSupportCasesSheetState
+    extends State<_MyProtectedNameSupportCasesSheet> {
+  late Future<List<ProtectedNameSupportCase>> _cases = _load();
+
+  Future<List<ProtectedNameSupportCase>> _load() => widget.membership
+      .listMyProtectedNameSupportCases()
+      .timeout(const Duration(seconds: 15));
+
+  void _reload() => setState(() => _cases = _load());
+
+  Future<void> _open(ProtectedNameSupportCase item) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (_) => _ProtectedNameSupportConversationSheet(
+        membership: widget.membership,
+        supportCase: item,
+        asSupport: false,
+      ),
+    );
+    if (mounted) _reload();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return SizedBox(
+      height: MediaQuery.sizeOf(context).height * 0.8,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: Text(
+              strings.feature('Mina supportärenden'),
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: FutureBuilder<List<ProtectedNameSupportCase>>(
+              future: _cases,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: OutlinedButton(
+                      onPressed: _reload,
+                      child: Text(strings.retry),
+                    ),
+                  );
+                }
+                final items = snapshot.data ?? const [];
+                if (items.isEmpty) {
+                  return Center(
+                    child: Text(strings.feature('Du har inga supportärenden.')),
+                  );
+                }
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    _reload();
+                    await _cases;
+                  },
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: items.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      return Card(
+                        child: ListTile(
+                          leading: const Icon(Icons.support_agent_outlined),
+                          title: Text(item.clubName),
+                          subtitle: Text(
+                            '${item.teamName} · ${strings.domainValue(item.status)}',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => _open(item),
+                        ),
+                      );
+                    },
+                  ),
                 );
               },
             ),

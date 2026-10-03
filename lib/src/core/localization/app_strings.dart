@@ -348,6 +348,17 @@ class AppStrings {
     'Ärendet är skickat. TeamZone granskar uppgifterna och återkommer i appen.':
         'The case has been submitted. TeamZone will review the details and respond in the app.',
     'Supportärenden': 'Support cases',
+    'Mina supportärenden': 'My support cases',
+    'Du har inga supportärenden.': 'You have no support cases.',
+    'Svara eller be om uppgifter': 'Reply or request details',
+    'Visa meddelanden': 'View messages',
+    'Sökandens ursprungliga meddelande': "Requester's original message",
+    'Ditt ursprungliga meddelande': 'Your original message',
+    'Skriv ett svar': 'Write a reply',
+    'Meddelandet kunde inte skickas. Försök igen.':
+        'The message could not be sent. Please try again.',
+    'Ärendet är avslutat och kan inte få fler meddelanden.':
+        'The case is closed and cannot receive more messages.',
     'Kontoradering · hög risk': 'Account erasure · high risk',
     'Skyddat klubbnamn': 'Protected club name',
     'Påbörja granskning': 'Start review',

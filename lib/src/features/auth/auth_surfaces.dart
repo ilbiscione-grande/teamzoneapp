@@ -921,6 +921,23 @@ class _WaitingRoomState extends State<_WaitingRoom> {
                 icon: const Icon(Icons.add_business_outlined),
                 label: Text(strings.feature('Skapa klubb och första lag')),
               ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _pending
+                    ? null
+                    : () => showModalBottomSheet<void>(
+                        context: context,
+                        useRootNavigator: true,
+                        isScrollControlled: true,
+                        useSafeArea: true,
+                        showDragHandle: true,
+                        builder: (_) => _MyProtectedNameSupportCasesSheet(
+                          membership: widget.membership,
+                        ),
+                      ),
+                icon: const Icon(Icons.support_agent_outlined),
+                label: Text(strings.feature('Mina supportärenden')),
+              ),
             ],
           ),
         ),
