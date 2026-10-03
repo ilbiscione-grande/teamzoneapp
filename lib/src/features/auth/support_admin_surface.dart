@@ -13,6 +13,7 @@ class _SupportAdminSurface extends StatefulWidget {
 class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
   Future<List<ProtectedNameSupportCase>>? _cases;
   Future<List<GlobalPersonErasureCase>>? _erasures;
+  Future<List<ClubVerificationRequest>>? _verifications;
   String? _status;
 
   @override
@@ -29,6 +30,16 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
       _erasures = widget.membership.listGlobalPersonErasureCases().timeout(
         const Duration(seconds: 15),
       );
+      _verifications = widget.membership
+          .listClubVerificationRequests(
+            status: switch (_status) {
+              'pending' => 'pending',
+              'resolved' => 'approved',
+              'rejected' => 'rejected',
+              _ => null,
+            },
+          )
+          .timeout(const Duration(seconds: 15));
     });
   }
 
@@ -39,6 +50,86 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
     'rejected' => item.state == 'rejected',
     _ => false,
   };
+
+  bool _showVerification(ClubVerificationRequest item) => switch (_status) {
+    null => true,
+    'pending' => item.status == 'pending',
+    'resolved' => item.status == 'approved',
+    'rejected' => item.status == 'rejected',
+    _ => false,
+  };
+
+  Future<void> _decideVerification(
+    ClubVerificationRequest item, {
+    required bool approve,
+  }) async {
+    final strings = AppStrings.of(context);
+    var reason = '';
+    final formKey = GlobalKey<FormState>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      useRootNavigator: true,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          strings.feature(
+            approve ? 'Godkänn officiell klubb' : 'Avslå klubbverifiering',
+          ),
+        ),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            autofocus: true,
+            minLines: 3,
+            maxLines: 6,
+            maxLength: 1000,
+            decoration: InputDecoration(
+              labelText: strings.feature('Beslutsmotivering'),
+            ),
+            onChanged: (value) => reason = value,
+            validator: (value) => (value?.trim().length ?? 0) < 5
+                ? strings.feature('Ange minst 5 tecken.')
+                : null,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(strings.cancel),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                Navigator.pop(dialogContext, true);
+              }
+            },
+            child: Text(strings.feature(approve ? 'Godkänn' : 'Avslå')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await widget.membership.decideClubVerificationRequest(
+        requestId: item.id,
+        approve: approve,
+        decisionReason: reason.trim(),
+        expectedRevision: item.revision,
+        idempotencyKey: _newUuid(),
+      );
+      if (mounted) _reload();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            strings.feature(
+              'Verifieringen kunde inte uppdateras. Läs om kön och försök igen.',
+            ),
+          ),
+        ),
+      );
+    }
+  }
 
   Future<void> _decideErasure(
     GlobalPersonErasureCase item, {
@@ -277,6 +368,84 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
               },
             ),
           ),
+          FutureBuilder<List<ClubVerificationRequest>>(
+            future: _verifications,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done ||
+                  snapshot.hasError) {
+                return const SizedBox.shrink();
+              }
+              final items = (snapshot.data ?? const [])
+                  .where(_showVerification)
+                  .toList(growable: false);
+              if (items.isEmpty) return const SizedBox.shrink();
+              return ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 310),
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  itemCount: items.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Chip(
+                              avatar: const Icon(
+                                Icons.verified_outlined,
+                                size: 18,
+                              ),
+                              label: Text(strings.feature('Officiell klubb')),
+                            ),
+                            Text(
+                              item.clubName,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            Text(
+                              '${item.requesterName} · ${strings.domainValue(item.status)}',
+                            ),
+                            const SizedBox(height: 10),
+                            SelectableText(item.evidenceSummary),
+                            if (item.decisionReason != null) ...[
+                              const SizedBox(height: 10),
+                              Text(item.decisionReason!),
+                            ],
+                            if (item.status == 'pending') ...[
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  FilledButton.icon(
+                                    onPressed: () => _decideVerification(
+                                      item,
+                                      approve: true,
+                                    ),
+                                    icon: const Icon(Icons.verified_outlined),
+                                    label: Text(strings.feature('Godkänn')),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => _decideVerification(
+                                      item,
+                                      approve: false,
+                                    ),
+                                    child: Text(strings.feature('Avslå')),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
           Expanded(
             child: FutureBuilder<List<ProtectedNameSupportCase>>(
               future: _cases,
@@ -341,7 +510,11 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
                     return RefreshIndicator(
                       onRefresh: () async {
                         _reload();
-                        await Future.wait([_cases!, _erasures!]);
+                        await Future.wait([
+                          _cases!,
+                          _erasures!,
+                          _verifications!,
+                        ]);
                       },
                       child: ListView.separated(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),

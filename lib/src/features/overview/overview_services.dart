@@ -77,16 +77,18 @@ class SupabaseOverviewServices
     Set<String> hiddenKinds,
     int expectedRevision, {
     bool currentTeamOnly = false,
+    bool welcomeMessageVisible = true,
   }) async => AssistantTaskPreferences.fromJson(
     Map<String, dynamic>.from(
       await _client
               .schema('api')
               .rpc(
-                'set_assistant_task_preferences_v2',
+                'set_assistant_task_preferences_v3',
                 params: {
                   'hidden_kinds': hiddenKinds.toList()..sort(),
                   'expected_revision': expectedRevision,
                   'current_team_only': currentTeamOnly,
+                  'welcome_message_visible': welcomeMessageVisible,
                 },
               )
           as Map,

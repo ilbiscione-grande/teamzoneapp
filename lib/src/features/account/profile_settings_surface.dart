@@ -390,11 +390,6 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
     }
   }
 
-  Widget _buildGeneralTab(BuildContext context, AppStrings strings) => ListView(
-    padding: const EdgeInsets.all(16),
-    children: _generalItems(context, strings),
-  );
-
   Widget _buildTeamTab(BuildContext context, AppStrings strings) => ListView(
     padding: const EdgeInsets.all(16),
     children: _teamItems(context, strings),
@@ -523,64 +518,87 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
     ];
   }
 
-  Widget _buildProfileTab(BuildContext context, AppStrings strings) => ListView(
-    padding: const EdgeInsets.all(16),
-    children: _profileItems(context, strings),
-  );
-
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
+    final showTeam = widget.contexts.any((item) => item.teamId != null);
+    final showClub = _adminClubs.isNotEmpty;
     if (widget.embedded) {
-      return ListView(
-        key: const ValueKey('personal-settings'),
-        padding: const EdgeInsets.all(16),
-        children: [
-          ..._myDetailsItems(context, strings),
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 16),
-          ..._generalItems(context, strings),
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 16),
-          ..._teamItems(context, strings, includeTeamSettings: false),
-          if (_adminClubs.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            const Divider(),
-            const SizedBox(height: 16),
-            ..._clubItems(context, strings),
+      final sections = <(String, Widget)>[
+        (
+          strings.feature('Personligt'),
+          ListView(
+            key: const ValueKey('personal-settings'),
+            padding: const EdgeInsets.all(16),
+            children: [
+              ..._generalItems(context, strings),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 16),
+              ..._privacyItems(context, strings),
+            ],
+          ),
+        ),
+        if (showTeam)
+          (
+            strings.feature('Lag'),
+            ListView(
+              key: const ValueKey('team-settings'),
+              padding: const EdgeInsets.all(16),
+              children: _teamItems(context, strings),
+            ),
+          ),
+        if (showClub)
+          (strings.feature('Klubb'), _buildClubTab(context, strings)),
+      ];
+      return DefaultTabController(
+        length: sections.length,
+        child: Column(
+          children: [
+            Material(
+              color: Theme.of(context).colorScheme.surface,
+              child: TabBar(
+                isScrollable: true,
+                tabs: [for (final section in sections) Tab(text: section.$1)],
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [for (final section in sections) section.$2],
+              ),
+            ),
           ],
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 16),
-          ..._privacyItems(context, strings),
-        ],
+        ),
       );
     }
-    final showClub = _adminClubs.isNotEmpty;
     return DefaultTabController(
-      length: showClub ? 4 : 3,
-      initialIndex: widget.openProfile ? (showClub ? 3 : 2) : 0,
+      length: 1 + (showTeam ? 1 : 0) + (showClub ? 1 : 0),
       child: Scaffold(
         appBar: AppBar(
           title: Text(strings.feature('Inställningar')),
           bottom: TabBar(
             tabs: [
-              Tab(text: strings.feature('Allmänt')),
-              Tab(text: strings.feature('Lag')),
+              Tab(text: strings.feature('Personligt')),
+              if (showTeam) Tab(text: strings.feature('Lag')),
               if (showClub) Tab(text: strings.feature('Klubb')),
-              Tab(text: strings.feature('Profil')),
             ],
           ),
         ),
         body: SafeArea(
           child: TabBarView(
             children: [
-              _buildGeneralTab(context, strings),
-              _buildTeamTab(context, strings),
+              ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  ..._generalItems(context, strings),
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 16),
+                  ..._privacyItems(context, strings),
+                ],
+              ),
+              if (showTeam) _buildTeamTab(context, strings),
               if (showClub) _buildClubTab(context, strings),
-              _buildProfileTab(context, strings),
             ],
           ),
         ),
@@ -766,47 +784,6 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
           ),
         ),
     ],
-  ];
-
-  List<Widget> _myDetailsItems(BuildContext context, AppStrings strings) => [
-    Text(
-      strings.feature('Mina uppgifter'),
-      style: Theme.of(context).textTheme.titleMedium,
-    ),
-    const SizedBox(height: 8),
-    _MyProfileCard(
-      profile: widget.profileServices,
-      onSaved: widget.onOwnProfileChanged,
-    ),
-    _ContactChangeRequests(
-      profile: widget.profileServices,
-      onChanged: widget.onOwnProfileChanged,
-    ),
-    ListTile(
-      key: const ValueKey('address-privacy-settings'),
-      leading: const Icon(Icons.privacy_tip_outlined),
-      title: Text(strings.feature('Adresser och integritet')),
-      subtitle: Text(
-        strings.feature('Flera adresser, klubbval och begränsad åtkomst'),
-      ),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => showDialog<void>(
-        context: context,
-        useRootNavigator: true,
-        builder: (_) => _AddressPrivacySettings(
-          profile: widget.profileServices,
-          onChanged: widget.onOwnProfileChanged,
-        ),
-      ),
-    ),
-  ];
-
-  List<Widget> _profileItems(BuildContext context, AppStrings strings) => [
-    ..._myDetailsItems(context, strings),
-    const SizedBox(height: 24),
-    const Divider(),
-    const SizedBox(height: 16),
-    ..._privacyItems(context, strings),
   ];
 
   /// Terms, privacy choices and account deletion.

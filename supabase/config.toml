@@ -397,6 +397,9 @@ verify_jwt = false
 [functions.person-erasure-worker]
 verify_jwt = true
 
+[functions.support-email-worker]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

@@ -16,3 +16,28 @@ The private preferences table is accessible through actor-scoped RPCs. Revision 
 - Security advisors retain the existing private-table informational findings and leaked-password-protection warning; no preferences-table finding.
 
 No public hosting deployment or phone installation is part of this change.
+
+## Follow-up: dismissible welcome message
+
+A compact welcome message now appears immediately above the Current, Snoozed
+and Archived controls. It briefly explains what the assistant can help with and
+has a close action in its top-right corner. Closing it saves
+`welcome_message_visible=false` in the signed-in account's existing private
+assistant preferences. Assistant settings expose “Visa välkomstmeddelande” so
+the user can explicitly restore it on every device.
+
+The v3 preference setter updates task visibility, team scope and welcome
+visibility under the existing revision lock. The v1/v2 setters remain available
+and preserve the new field, preventing an older installed client from silently
+turning a dismissed message back on. The internal table remains inaccessible to
+client roles; only the authenticated actor-scoped RPC is executable.
+
+Verification: the PGlite contract covers defaults, account isolation, safe
+retry, conflicts, invalid input, legacy preservation and ACL. Five focused
+preference widget tests cover dismissing and restoring the message, all 17
+assistant context/layout tests pass, the real settings navigation test passes,
+and Flutter analyze reports no issues. Migration
+`20261003083806_assistant_welcome_message_visibility.sql` is applied to the
+audit project; the hosted column is non-null boolean with default true,
+authenticated has RPC execute, anon does not, and the post-migration advisors
+reported no findings related to this preference or RPC.

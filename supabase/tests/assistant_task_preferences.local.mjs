@@ -42,14 +42,29 @@ try {
  assert.equal((await load()).current_team_only,false,'scope account isolation');
  await db.query("select set_config('test.actor',$1,false)",[a]);
  assert.deepEqual(await saveScope([],4,false),{hidden_kinds:[],revision:5,current_team_only:false});
+ await db.exec(fs.readFileSync('supabase/migrations/20261003083806_assistant_welcome_message_visibility.sql','utf8'));
+ const saveWelcome=(hidden,revision,scope,welcome)=>value('select api.set_assistant_task_preferences_v3($1,$2,$3,$4) value',[hidden,revision,scope,welcome]);
+ assert.deepEqual(await load(),{hidden_kinds:[],revision:5,current_team_only:false,welcome_message_visible:true});
+ const dismissed=await saveWelcome([],5,false,false);
+ assert.deepEqual(dismissed,{hidden_kinds:[],revision:6,current_team_only:false,welcome_message_visible:false});
+ assert.deepEqual(await saveWelcome([],5,false,false),dismissed,'welcome retry');
+ assert.equal((await saveScope([],6,true)).welcome_message_visible,false,'v2 client preserves welcome choice');
+ assert.equal((await save(['pending_callups'],7)).welcome_message_visible,false,'v1 client preserves welcome choice');
+ await assert.rejects(saveWelcome([],7,true,true),/revision_conflict/);
+ await assert.rejects(saveWelcome([],8,true,null),/invalid_preferences/);
+ await db.query("select set_config('test.actor',$1,false)",[b]);
+ assert.equal((await load()).welcome_message_visible,true,'welcome account isolation');
+ await db.query("select set_config('test.actor',$1,false)",[a]);
  await db.query("select set_config('test.actor','',false)");
  await assert.rejects(load(),/unauthenticated/);
  await assert.rejects(save([],0),/unauthenticated/);
  await assert.rejects(saveScope([],0,true),/unauthenticated/);
+ await assert.rejects(saveWelcome([],0,true,true),/unauthenticated/);
  assert.equal(await value("select has_function_privilege('anon','api.set_assistant_task_preferences_v2(text[],bigint,boolean)','execute') value"),false);
+ assert.equal(await value("select has_function_privilege('anon','api.set_assistant_task_preferences_v3(text[],bigint,boolean,boolean)','execute') value"),false);
  const acl=await value(`select jsonb_build_object('anon',has_function_privilege('anon','api.get_assistant_task_preferences()','execute'),
  'read',has_function_privilege('authenticated','api.get_assistant_task_preferences()','execute'),
  'table',has_table_privilege('authenticated','internal.assistant_task_preferences','select,insert,update,delete')) value`);
  assert.deepEqual(acl,{anon:false,read:true,table:false});
- console.log('PASS: defaults, persistence, isolation, validation, revision conflicts, retry, reset and ACL');
+ console.log('PASS: defaults, persistence, isolation, validation, revisions, legacy preservation, welcome dismissal and ACL');
 } finally { await db.close(); }

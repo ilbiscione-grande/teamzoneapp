@@ -16,16 +16,19 @@ class AssistantTaskPreferences {
     this.hiddenKinds = const {},
     this.revision = 0,
     this.currentTeamOnly = false,
+    this.welcomeMessageVisible = true,
   });
   factory AssistantTaskPreferences.fromJson(Map<String, dynamic> json) =>
       AssistantTaskPreferences(
         hiddenKinds: (json['hidden_kinds'] as List).cast<String>().toSet(),
         revision: (json['revision'] as num).toInt(),
         currentTeamOnly: json['current_team_only'] == true,
+        welcomeMessageVisible: json['welcome_message_visible'] != false,
       );
   final Set<String> hiddenKinds;
   final int revision;
   final bool currentTeamOnly;
+  final bool welcomeMessageVisible;
   bool shows(String kind) => !hiddenKinds.contains(kind);
 }
 
@@ -35,6 +38,7 @@ abstract interface class AssistantTaskPreferencesServices {
     Set<String> hiddenKinds,
     int expectedRevision, {
     bool currentTeamOnly = false,
+    bool welcomeMessageVisible = true,
   });
 }
 
@@ -52,6 +56,7 @@ class _AssistantTaskVisibilitySettingsState
   Set<String> _hidden = {};
   bool _loading = true, _saving = false;
   bool _currentTeamOnly = false;
+  bool _welcomeMessageVisible = true;
   String? _error;
 
   @override
@@ -72,6 +77,7 @@ class _AssistantTaskVisibilitySettingsState
           _saved = value;
           _hidden = {...value.hiddenKinds};
           _currentTeamOnly = value.currentTeamOnly;
+          _welcomeMessageVisible = value.welcomeMessageVisible;
         });
       }
     } catch (_) {
@@ -96,11 +102,14 @@ class _AssistantTaskVisibilitySettingsState
         {..._hidden},
         _saved!.revision,
         currentTeamOnly: _currentTeamOnly,
+        welcomeMessageVisible: _welcomeMessageVisible,
       );
       if (!mounted) return;
       setState(() {
         _saved = value;
         _hidden = {...value.hiddenKinds};
+        _currentTeamOnly = value.currentTeamOnly;
+        _welcomeMessageVisible = value.welcomeMessageVisible;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Dina visningsinställningar är sparade.')),
@@ -137,6 +146,19 @@ class _AssistantTaskVisibilitySettingsState
           'Dina val följer kontot mellan enheter och gäller även räknaren på assistentknappen. Du ser bara uppgifter du har behörighet till.',
         ),
         if (_saved != null) ...[
+          const SizedBox(height: 16),
+          SwitchListTile(
+            key: const Key('assistant-welcome-message-setting'),
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Visa välkomstmeddelande'),
+            subtitle: const Text(
+              'Visar en kort introduktion ovanför assistentens statusknappar.',
+            ),
+            value: _welcomeMessageVisible,
+            onChanged: _saving
+                ? null
+                : (visible) => setState(() => _welcomeMessageVisible = visible),
+          ),
           const SizedBox(height: 24),
           Text(
             'Visa uppgifter från',

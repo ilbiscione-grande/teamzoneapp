@@ -221,12 +221,14 @@ class AssistantTaskSnapshot {
     this.settingsFailed = false,
     this.filtersActive = false,
     this.currentTeamOnly = false,
+    this.preferences = const AssistantTaskPreferences(),
   });
   final List<AssistantTask> tasks;
   final List<TeamZoneContext> failedContexts;
   final bool personalFailed;
   final bool settingsFailed, filtersActive;
   final bool currentTeamOnly;
+  final AssistantTaskPreferences preferences;
 }
 
 Future<AssistantTaskSnapshot> loadAssistantTasks({
@@ -242,7 +244,12 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
           .loadAssistantTaskPreferences()
           .timeout(const Duration(seconds: 15));
     } catch (_) {
-      return const AssistantTaskSnapshot([], [], settingsFailed: true);
+      return const AssistantTaskSnapshot(
+        [],
+        [],
+        settingsFailed: true,
+        preferences: AssistantTaskPreferences(welcomeMessageVisible: false),
+      );
     }
   }
   final tasks = <String, AssistantTask>{};
@@ -427,6 +434,7 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
     filtersActive:
         preferences.hiddenKinds.isNotEmpty || preferences.currentTeamOnly,
     currentTeamOnly: preferences.currentTeamOnly,
+    preferences: preferences,
   );
 }
 
@@ -457,6 +465,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
     with WidgetsBindingObserver {
   late Future<AssistantTaskSnapshot> _data;
   bool _opening = false;
+  bool _welcomeDismissed = false;
   String _bucket = 'active';
   String _category = 'all';
   final _categoryScroll = ScrollController();
@@ -606,6 +615,33 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
     }
   }
 
+  Future<void> _dismissWelcome(AssistantTaskPreferences preferences) async {
+    final service = widget.overview;
+    if (service is! AssistantTaskPreferencesServices || _welcomeDismissed) {
+      return;
+    }
+    final preferencesService = service as AssistantTaskPreferencesServices;
+    setState(() => _welcomeDismissed = true);
+    try {
+      final saved = await preferencesService.saveAssistantTaskPreferences(
+        preferences.hiddenKinds,
+        preferences.revision,
+        currentTeamOnly: preferences.currentTeamOnly,
+        welcomeMessageVisible: false,
+      );
+      if (!saved.welcomeMessageVisible) return;
+      throw StateError('welcome preference was not saved');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _welcomeDismissed = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Välkomstmeddelandet kunde inte döljas. Försök igen.'),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -668,6 +704,46 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (data.preferences.welcomeMessageVisible &&
+                  !_welcomeDismissed) ...[
+                Container(
+                  key: const Key('assistant-welcome-message'),
+                  padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Hej! Jag är din assistent.',
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Jag hjälper dig att hitta det som behöver göras och komma vidare.',
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        key: const Key('assistant-dismiss-welcome'),
+                        tooltip: 'Dölj välkomstmeddelandet',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => _dismissWelcome(data.preferences),
+                        icon: const Icon(Icons.close, size: 20),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               Row(
                 children: [
                   for (final entry in const {

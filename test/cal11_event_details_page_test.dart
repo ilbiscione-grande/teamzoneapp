@@ -1756,11 +1756,13 @@ class _TaskSettingsOverview extends _AssistantOverview
     Set<String> hiddenKinds,
     int expectedRevision, {
     bool currentTeamOnly = false,
+    bool welcomeMessageVisible = true,
   }) async {
     if (expectedRevision != preference.revision) throw StateError('conflict');
     return preference = AssistantTaskPreferences(
       hiddenKinds: hiddenKinds,
       currentTeamOnly: currentTeamOnly,
+      welcomeMessageVisible: welcomeMessageVisible,
       revision: expectedRevision + 1,
     );
   }

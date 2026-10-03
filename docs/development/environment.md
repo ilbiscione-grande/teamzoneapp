@@ -36,3 +36,18 @@ No Docker-compatible runtime or local PostgreSQL server is required. New and pat
 External settings that must match: the Turnstile widget allows `public.teamzoneapp.se` and `teamzoneapp.se`, and Supabase Auth allows `https://public.teamzoneapp.se/**` as a redirect URL for follower confirmation emails.
 
 Secrets are supplied outside Git. Flutter/web/mobile clients may only receive a Supabase publishable key; secret/service-role keys remain server-side. There is no committed `.env` file in this repo (only `.env.example` with placeholders) and no `.vscode/launch.json` — get the real `SUPABASE_URL`/`SUPABASE_PUBLISHABLE_KEY` values from the Supabase dashboard or `supabase projects list`/CLI access to the linked project.
+
+## Support email environment
+
+Support notifications use Supabase, Resend, Netlify DNS and ImprovMX. The
+complete topology, secret names, DNS records, recipient rules, rotation and
+troubleshooting procedure are documented in
+[support_email_runbook.md](../operations/support_email_runbook.md). The
+machine-readable service list is [ops/service_inventory.json](../../ops/service_inventory.json),
+and secret names without values are kept in
+[ops/secret_inventory.json](../../ops/secret_inventory.json).
+
+`RESEND_API_KEY` and `SUPPORT_WORKER_TOKEN` are backend-only secrets.
+`SUPPORT_EMAIL_FROM` and `SUPPORT_PORTAL_URL` are non-secret runtime
+configuration stored with the Edge Function settings. None of these values are
+Flutter build defines or public-site variables.

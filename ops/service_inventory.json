@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "policy": "service-metadata-only-no-secret-values",
+  "services": [
+    {
+      "name": "Supabase",
+      "project": "TeamzoneApp",
+      "projectRef": "hgcshgunvooyudvrcpig",
+      "purpose": ["auth", "database", "storage", "edge-functions", "vault", "cron"]
+    },
+    {
+      "name": "Firebase",
+      "project": "teamzoneapp-b02a2",
+      "purpose": ["flutter-web-hosting", "public-site-app-hosting", "crash-reporting", "operations-functions"]
+    },
+    {
+      "name": "Resend",
+      "domain": "teamzoneapp.se",
+      "purpose": ["outbound-transactional-email"],
+      "notes": "TeamzoneApp and Teamzone6 use separate API keys in the same provider account."
+    },
+    {
+      "name": "ImprovMX",
+      "domain": "teamzoneapp.se",
+      "purpose": ["inbound-email-forwarding"],
+      "notes": "support@teamzoneapp.se forwards to the operational Gmail inbox."
+    },
+    {
+      "name": "Netlify DNS",
+      "domain": "teamzoneapp.se",
+      "purpose": ["authoritative-dns", "email-mx-records", "hosting-domain-records"]
+    },
+    {
+      "name": "Gmail",
+      "purpose": ["support-notification-inbox"],
+      "notes": "Operational recipient only; TeamZone has no Gmail API integration."
+    },
+    {
+      "name": "Cloudflare Turnstile",
+      "purpose": ["public-form-captcha"]
+    },
+    {
+      "name": "Stripe",
+      "purpose": ["billing-provider"]
+    }
+  ]
+}

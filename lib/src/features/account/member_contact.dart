@@ -4,14 +4,9 @@ part of '../../app/teamzone_app.dart';
 /// leaders. The person edits their own; leaders keep them for members
 /// without an account.
 class _PersonContactTiles extends StatelessWidget {
-  const _PersonContactTiles({
-    required this.contact,
-    required this.isSelf,
-    required this.onEditOwn,
-  });
+  const _PersonContactTiles({required this.contact, required this.isSelf});
   final PersonContact contact;
   final bool isSelf;
-  final VoidCallback onEditOwn;
 
   @override
   Widget build(BuildContext context) {
@@ -62,17 +57,6 @@ class _PersonContactTiles extends StatelessWidget {
               strings.feature('Ifyllt av klubben.'),
               style: Theme.of(context).textTheme.bodySmall,
             ),
-          ),
-        if (isSelf)
-          ListTile(
-            key: const ValueKey('edit-own-profile'),
-            leading: const Icon(Icons.edit_outlined),
-            title: Text(strings.feature('Redigera mina uppgifter')),
-            subtitle: Text(
-              strings.feature('Namn, kontaktuppgifter och profilbild.'),
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: onEditOwn,
           ),
       ],
     );

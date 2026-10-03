@@ -18,7 +18,9 @@ void main() {
   ) async {
     final profile = _Profile();
     await _openSettingsProfile(tester, profile);
-    final entry = find.byKey(const ValueKey('address-privacy-settings'));
+    await tester.tap(find.widgetWithText(Tab, 'Kontakt'));
+    await tester.pumpAndSettle();
+    final entry = find.byKey(const ValueKey('edit-profile-addresses'));
     await tester.ensureVisible(entry);
     await tester.tap(entry);
     await tester.pumpAndSettle();
@@ -62,7 +64,9 @@ void main() {
     (tester) async {
       final profile = _Profile();
       await _openSettingsProfile(tester, profile);
-      final entry = find.byKey(const ValueKey('address-privacy-settings'));
+      await tester.tap(find.widgetWithText(Tab, 'Kontakt'));
+      await tester.pumpAndSettle();
+      final entry = find.byKey(const ValueKey('edit-profile-addresses'));
       await tester.ensureVisible(entry);
       await tester.tap(entry);
       await tester.pumpAndSettle();
@@ -141,6 +145,8 @@ void main() {
           ),
         ];
       await _openSettingsProfile(tester, profile);
+      await tester.tap(find.widgetWithText(Tab, 'Kontakt'));
+      await tester.pumpAndSettle();
       final button = find.byKey(const ValueKey('approve-contact-change'));
       await tester.ensureVisible(button);
       await tester.pumpAndSettle();
@@ -161,7 +167,7 @@ void main() {
   ) async {
     final profile = _Profile()..loseResponse = true;
     await _openSettingsProfile(tester, profile);
-    await tester.tap(find.byKey(const ValueKey('my-profile-card')));
+    await tester.tap(find.widgetWithText(Tab, 'Kontakt'));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('my-profile-phone')),
@@ -177,14 +183,12 @@ void main() {
     expect(profile.saveKeys.toSet().length, 1);
     expect(find.byKey(const ValueKey('save-my-profile')), findsNothing);
   });
-  testWidgets('own details are edited from the settings profile tab', (
+  testWidgets('own details are edited from the profile app bar', (
     tester,
   ) async {
     final profile = _Profile();
     await _openSettingsProfile(tester, profile);
-    expect(find.byKey(const ValueKey('my-profile-card')), findsOneWidget);
-    expect(find.text('Lägg till kontaktuppgifter'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('my-profile-card')));
+    await tester.tap(find.widgetWithText(Tab, 'Kontakt'));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('my-profile-email')),
@@ -206,11 +210,8 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('save-my-profile')));
     await tester.pumpAndSettle();
     expect(profile.saved, ('Ada Andersson', 'ada@mail.se', '070-123 45 67'));
-    // The card shows the new details.
-    expect(find.textContaining('ada@mail.se'), findsOneWidget);
     // A new name shows in the menu straight away.
-    await tester.tap(find.byKey(const ValueKey('my-profile-card')));
-    await tester.pumpAndSettle();
+    await _openSettingsProfile(tester, profile);
     await tester.enterText(
       find.byKey(const ValueKey('my-profile-name')),
       'Ada Nyberg',
@@ -228,8 +229,6 @@ void main() {
     tester,
   ) async {
     await _openSettingsProfile(tester, _Profile());
-    await tester.tap(find.byKey(const ValueKey('my-profile-card')));
-    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('pick-avatar')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('avatar-camera')), findsOneWidget);
@@ -326,7 +325,7 @@ void main() {
   testWidgets('login address change goes through support', (tester) async {
     final profile = _Profile();
     await _openSettingsProfile(tester, profile);
-    await tester.tap(find.byKey(const ValueKey('my-profile-card')));
+    await tester.tap(find.widgetWithText(Tab, 'Kontakt'));
     await tester.pumpAndSettle();
     final request = find.byKey(const ValueKey('request-login-email'));
     await tester.scrollUntilVisible(
@@ -366,7 +365,8 @@ void main() {
     );
     await tester.tap(find.byTooltip('Stäng'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('my-profile-card')));
+    await _openSettingsProfile(tester, profile);
+    await tester.tap(find.widgetWithText(Tab, 'Kontakt'));
     await tester.pumpAndSettle();
     final confirm = find.byKey(const ValueKey('confirm-login-email'));
     await tester.scrollUntilVisible(
@@ -570,10 +570,11 @@ void main() {
       ),
       findsOneWidget,
     );
+    await tester.tap(find.byKey(const ValueKey('edit-own-profile-appbar')));
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(Tab, 'Inställningar'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('personal-settings')), findsOneWidget);
-    expect(find.text('Mina uppgifter'), findsOneWidget);
     await tester.dragUntilVisible(
       find.byKey(const ValueKey('setting-week-numbers')),
       find.byKey(const ValueKey('personal-settings')),
@@ -611,19 +612,15 @@ Future<void> _openSettings(
 }
 
 Future<void> _openSettingsProfile(WidgetTester tester, _Profile profile) async {
-  await tester.pumpWidget(_app(profile));
+  await tester.pumpWidget(_app(profile, roster: const _Roster(self: true)));
   await tester.pumpAndSettle();
-  await tester.scrollUntilVisible(
-    find.text('Inställningar').last,
-    250,
-    scrollable: find.descendant(
-      of: find.byKey(const Key('app-navigation-panel-list')),
-      matching: find.byType(Scrollable),
-    ),
-  );
-  await tester.tap(find.text('Inställningar').last);
+  await tester.tap(find.text('Laget'));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Profil'));
+  await tester.tap(find.text('Trupp'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Ada Spelare'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const ValueKey('edit-own-profile-appbar')));
   await tester.pumpAndSettle();
 }
 

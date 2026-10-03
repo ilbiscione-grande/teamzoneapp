@@ -545,7 +545,9 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                               subtitle: Text(
                                 _leadTitleLabel(strings, leader) ??
                                     roles
-                                        .map((role) => _roleLabel(strings, role))
+                                        .map(
+                                          (role) => _roleLabel(strings, role),
+                                        )
                                         .join(' · '),
                               ),
                               trailing: canOpenPersonDetails
@@ -702,10 +704,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                               ),
                               onTap: () {
                                 Navigator.pop(sheetContext);
-                                Navigator.of(
-                                  context,
-                                  rootNavigator: true,
-                                ).push(
+                                Navigator.of(context, rootNavigator: true).push(
                                   MaterialPageRoute<void>(
                                     builder: (_) => _IntakeSurface(
                                       contextValue: widget.contextValue,
@@ -3761,14 +3760,12 @@ class _RosterPersonDetailsView extends StatelessWidget {
     required this.canManage,
     required this.onRolesChanged,
     this.contact,
-    this.onEditOwnProfile,
     this.onOpenMemberCard,
   });
   final Future<RosterPersonDetails> future;
 
   /// Contact details and picture URL for the person.
   final Future<(PersonContact, String?)>? contact;
-  final VoidCallback? onEditOwnProfile;
   final void Function(RosterPersonDetails person)? onOpenMemberCard;
 
   /// The team's roles, loaded once and shared by the role, title and
@@ -3881,11 +3878,7 @@ class _RosterPersonDetailsView extends StatelessWidget {
             builder: (context, snapshot) {
               final value = snapshot.data?.$1;
               if (value == null) return const SizedBox.shrink();
-              return _PersonContactTiles(
-                contact: value,
-                isSelf: person.isSelf,
-                onEditOwn: () => onEditOwnProfile?.call(),
-              );
+              return _PersonContactTiles(contact: value, isSelf: person.isSelf);
             },
           ),
           _PersonRoleTile(
@@ -3894,6 +3887,7 @@ class _RosterPersonDetailsView extends StatelessWidget {
             person: person,
             roles: roles,
             onChanged: (held) => onRolesChanged(person, held),
+            interactive: !person.isSelf,
           ),
           _PersonTeamDetailsTile(
             roster: roster,
@@ -3901,6 +3895,7 @@ class _RosterPersonDetailsView extends StatelessWidget {
             teamId: person.teamId,
             personId: person.id,
             roles: roles,
+            interactive: !person.isSelf,
           ),
           _PersonPermissionsTile(
             contextValue: contextValue,
@@ -4045,6 +4040,42 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
     _refresh();
   }
 
+  Future<void> _editOwnProfile(RosterPersonDetails person) async {
+    await _openMyProfileEditor(
+      context,
+      widget.profileServices,
+      onProfileChanged: widget.onOwnProfileChanged,
+      teamDetails: ListView(
+        key: const ValueKey('edit-team-role-tab'),
+        padding: const EdgeInsets.all(20),
+        children: [
+          Text(
+            '${widget.contextValue.clubName} · ${person.teamName}',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          _PersonRoleTile(
+            contextValue: widget.contextValue,
+            roster: widget.roster,
+            person: person,
+            roles: _roles,
+          ),
+          _PersonTeamDetailsTile(
+            roster: widget.roster,
+            clubId: widget.contextValue.clubId,
+            teamId: person.teamId,
+            personId: person.id,
+            roles: _roles,
+          ),
+        ],
+      ),
+      settings: widget.personalSettings?.call(),
+    );
+    if (!mounted) return;
+    widget.onOwnProfileChanged?.call();
+    _refresh();
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
@@ -4069,18 +4100,23 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
         ),
         title: Text(strings.feature('Medlemsuppgifter')),
         actions: [
-          // Team and account actions for someone else; your own details
-          // are edited from the Medlemsinfo tab.
-          if (allowed && canManage)
+          if (allowed)
             FutureBuilder<RosterPersonDetails>(
               future: _load,
               builder: (context, snapshot) {
                 final person = snapshot.data;
-                if (person == null ||
-                    person.isSelf ||
-                    person.assignmentState != 'active') {
+                if (person == null || person.assignmentState != 'active') {
                   return const SizedBox.shrink();
                 }
+                if (person.isSelf) {
+                  return IconButton(
+                    key: const ValueKey('edit-own-profile-appbar'),
+                    tooltip: strings.feature('Redigera profil'),
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () => _editOwnProfile(person),
+                  );
+                }
+                if (!canManage) return const SizedBox.shrink();
                 return IconButton(
                   key: const ValueKey('edit-member'),
                   tooltip: strings.feature('Redigera medlem'),
@@ -4122,15 +4158,6 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
                   roster: widget.roster,
                   canManage: canManage,
                   onRolesChanged: _rolesChanged,
-                  onEditOwnProfile: () async {
-                    if (await _openMyProfileEditor(
-                      context,
-                      widget.profileServices,
-                    )) {
-                      widget.onOwnProfileChanged?.call();
-                      _refresh();
-                    }
-                  },
                   onOpenMemberCard: (person) => _openMemberCard(
                     context,
                     profile: widget.profileServices,
@@ -4141,10 +4168,9 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
                 );
                 final person = snapshot.data;
                 if (person == null) return view;
-                // Statistics for yourself and those who manage the team;
-                // settings only on your own profile.
+                // Statistics for yourself and those who manage the team.
+                // Own settings live in the app-bar edit flow.
                 final showStats = person.isSelf || canManage;
-                final settings = person.isSelf ? widget.personalSettings : null;
                 final tabs = <(String, Widget)>[
                   (strings.feature('Medlemsinfo'), view),
                   if (showStats)
@@ -4159,8 +4185,6 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
                         homeMember: person.homeMember,
                       ),
                     ),
-                  if (settings != null)
-                    (strings.feature('Inställningar'), settings()),
                 ];
                 if (tabs.length == 1) return view;
                 return DefaultTabController(

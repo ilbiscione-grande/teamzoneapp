@@ -411,6 +411,29 @@ void main() {
     expect(sql, contains("actor_profile_id=actor_id"));
     expect(sql, contains("command_type='club.verification.request.v1'"));
   });
+
+  test('support queue joins club verification without emailing evidence', () {
+    final sql = File(
+      'supabase/migrations/20261003094810_support_club_verification_queue.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(sql, contains('internal.actor_is_support_admin()'));
+    expect(sql, contains('expected_revision'));
+    expect(sql, contains('support.club_verification.decide.v1'));
+    expect(sql, contains('create table internal.support_email_outbox'));
+    expect(sql, contains("'club_verification','protected_name'"));
+    final tableStart = sql.indexOf(
+      'create table internal.support_email_outbox',
+    );
+    final tableEnd = sql.indexOf(');', tableStart);
+    final outboxDefinition = sql.substring(tableStart, tableEnd);
+    expect(outboxDefinition, isNot(contains('evidence_summary')));
+    expect(outboxDefinition, isNot(contains('email_address')));
+    final worker = File(
+      'supabase/functions/support-email-worker/index.ts',
+    ).readAsStringSync();
+    expect(worker, contains('Underlag och personuppgifter visas endast'));
+    expect(worker, isNot(contains('evidence_summary')));
+  });
 }
 
 class _WaitingIdentity implements IdentityServices {
@@ -587,4 +610,18 @@ class _MembershipFake implements MembershipServices {
     required String clubId,
   }) async =>
       const ClubVerificationStatus(clubId: 'club', status: 'unofficial');
+
+  @override
+  Future<List<ClubVerificationRequest>> listClubVerificationRequests({
+    String? status,
+  }) async => const [];
+
+  @override
+  Future<int> decideClubVerificationRequest({
+    required String requestId,
+    required bool approve,
+    required String decisionReason,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async => expectedRevision + 1;
 }

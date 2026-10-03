@@ -1937,19 +1937,25 @@ class _AppNavigationPanel extends StatelessWidget {
                       onTap: () => _go(ProductRouteContract.publication),
                     ),
                 ],
-                FutureBuilder<bool>(
-                  future: supportAdminAccess,
-                  builder: (context, snapshot) => snapshot.data == true
-                      ? _NavPanelRow(
-                          icon: Icons.support_agent_outlined,
-                          label: strings.feature('Supportärenden'),
-                          selected: currentLocation.startsWith(
-                            ProductRouteContract.support,
-                          ),
-                          onTap: () => _go(ProductRouteContract.support),
-                        )
-                      : const SizedBox.shrink(),
-                ),
+                if (MediaQuery.sizeOf(context).width >=
+                        AppBreakpoints.desktop &&
+                    (kIsWeb ||
+                        defaultTargetPlatform == TargetPlatform.windows ||
+                        defaultTargetPlatform == TargetPlatform.macOS ||
+                        defaultTargetPlatform == TargetPlatform.linux))
+                  FutureBuilder<bool>(
+                    future: supportAdminAccess,
+                    builder: (context, snapshot) => snapshot.data == true
+                        ? _NavPanelRow(
+                            icon: Icons.support_agent_outlined,
+                            label: strings.feature('Supportärenden'),
+                            selected: currentLocation.startsWith(
+                              ProductRouteContract.support,
+                            ),
+                            onTap: () => _go(ProductRouteContract.support),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
               ],
             ),
           ),

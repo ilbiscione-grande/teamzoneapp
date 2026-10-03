@@ -21,12 +21,14 @@ class Preferences extends fixtures.Overview
     Set<String> hiddenKinds,
     int expectedRevision, {
     bool currentTeamOnly = false,
+    bool welcomeMessageVisible = true,
   }) async {
     if (failSave) throw StateError('offline');
     expect(expectedRevision, value.revision);
     return value = AssistantTaskPreferences(
       hiddenKinds: hiddenKinds,
       currentTeamOnly: currentTeamOnly,
+      welcomeMessageVisible: welcomeMessageVisible,
       revision: expectedRevision + 1,
     );
   }
@@ -198,6 +200,83 @@ void main() {
       await tester.pumpAndSettle();
       expect(service.value.hiddenKinds, {'personal_calendar_conflict'});
       expect(service.value.currentTeamOnly, true);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'welcome message dismissal persists and settings can restore it',
+    (tester) async {
+      final service = Preferences()..homes['a'] = fixtures.home([]);
+      final context = fixtures.team('a');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: AssistantTaskSections(
+                contexts: [context],
+                activeContext: context,
+                page: const AssistantPageContext('/home'),
+                overview: service,
+                loadEvent: fixtures.event,
+                onOpen: (_) async {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('assistant-welcome-message')),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('assistant-dismiss-welcome')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('assistant-welcome-message')), findsNothing);
+      expect(service.value.welcomeMessageVisible, isFalse);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: AssistantTaskVisibilitySettings(services: service),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final setting = find.byKey(
+        const Key('assistant-welcome-message-setting'),
+      );
+      expect(tester.widget<SwitchListTile>(setting).value, isFalse);
+      await tester.tap(setting);
+      await tester.ensureVisible(find.text('Spara visningsinställningar'));
+      await tester.tap(find.text('Spara visningsinställningar'));
+      await tester.pumpAndSettle();
+      expect(service.value.welcomeMessageVisible, isTrue);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: AssistantTaskSections(
+                contexts: [context],
+                activeContext: context,
+                page: const AssistantPageContext('/home'),
+                overview: service,
+                loadEvent: fixtures.event,
+                onOpen: (_) async {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('assistant-welcome-message')),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     },
   );

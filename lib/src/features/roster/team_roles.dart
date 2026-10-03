@@ -613,6 +613,7 @@ class _PersonRoleTile extends StatefulWidget {
     required this.person,
     this.roles,
     this.onChanged,
+    this.interactive = true,
   });
   final TeamZoneContext contextValue;
   final RosterServices roster;
@@ -621,6 +622,7 @@ class _PersonRoleTile extends StatefulWidget {
 
   /// Called after a successful change with the roles the person now holds.
   final ValueChanged<List<String>>? onChanged;
+  final bool interactive;
 
   @override
   State<_PersonRoleTile> createState() => _PersonRoleTileState();
@@ -642,6 +644,8 @@ class _PersonRoleTileState extends State<_PersonRoleTile> {
     final isPlayer = roles.contains('player');
     final isLeader = roles.contains('leader');
     final self = widget.person.isSelf;
+    final canChangeOwnLeader =
+        self && widget.contextValue.can('club.memberships.manage');
     final name = widget.person.displayName;
     final options = <(String, IconData, String?, String?, String)>[
       if (!isLeader)
@@ -660,7 +664,7 @@ class _PersonRoleTileState extends State<_PersonRoleTile> {
           'leader',
           '$name ${strings.feature('är nu ledare i laget.')}',
         ),
-      if (isLeader && !isPlayer && !self)
+      if (isLeader && !isPlayer && (!self || canChangeOwnLeader))
         (
           strings.feature('Byt från ledare till spelare'),
           Icons.swap_horiz,
@@ -668,7 +672,7 @@ class _PersonRoleTileState extends State<_PersonRoleTile> {
           'player',
           '$name ${strings.feature('är nu spelare i laget.')}',
         ),
-      if (isLeader && !self)
+      if (isLeader && (!self || canChangeOwnLeader))
         (
           strings.feature('Ta bort ledarrollen'),
           Icons.remove_moderator_outlined,
@@ -702,7 +706,7 @@ class _PersonRoleTileState extends State<_PersonRoleTile> {
                 title: Text(options[i].$1),
                 onTap: () => Navigator.pop(sheetContext, i),
               ),
-            if (self && isLeader)
+            if (self && isLeader && !canChangeOwnLeader)
               ListTile(
                 leading: const Icon(Icons.lock_outline),
                 subtitle: Text(
@@ -760,8 +764,12 @@ class _PersonRoleTileState extends State<_PersonRoleTile> {
                 ? strings.feature('Ingen roll')
                 : roles.map((role) => _roleLabel(strings, role)).join(', '),
           ),
-          trailing: value.canManage ? const Icon(Icons.chevron_right) : null,
-          onTap: value.canManage ? () => _choose(value) : null,
+          trailing: value.canManage && widget.interactive
+              ? const Icon(Icons.chevron_right)
+              : null,
+          onTap: value.canManage && widget.interactive
+              ? () => _choose(value)
+              : null,
         );
       },
     );

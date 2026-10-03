@@ -27,22 +27,30 @@ String _profileErrorMessage(
     'Det är redan din inloggningsadress.',
   ),
   ProfileException(code: 'use_privacy_settings') => strings.feature(
-    'Ändra uppgifterna under Adresser och integritet.',
+    'Ändra uppgifterna under Kontakt.',
   ),
   ProfileException(code: 'use_address_settings') => strings.feature(
-    'Ändra adressen under Adresser och integritet.',
+    'Ändra adressen under Kontakt.',
   ),
   _ => strings.feature('Det gick inte att spara. Försök igen.'),
 };
 
 Future<bool> _openMyProfileEditor(
   BuildContext context,
-  ProfileServices profile,
-) async =>
+  ProfileServices profile, {
+  Widget? teamDetails,
+  Widget? settings,
+  VoidCallback? onProfileChanged,
+}) async =>
     await showDialog<bool>(
       context: context,
       useRootNavigator: true,
-      builder: (_) => _MyProfileEditor(profile: profile),
+      builder: (_) => _MyProfileEditor(
+        profile: profile,
+        teamDetails: teamDetails,
+        settings: settings,
+        onProfileChanged: onProfileChanged,
+      ),
     ) ??
     false;
 
@@ -81,13 +89,22 @@ class _ProfileAvatar extends StatelessWidget {
 }
 
 class _MyProfileEditor extends StatefulWidget {
-  const _MyProfileEditor({required this.profile});
+  const _MyProfileEditor({
+    required this.profile,
+    this.teamDetails,
+    this.settings,
+    this.onProfileChanged,
+  });
   final ProfileServices profile;
+  final Widget? teamDetails;
+  final Widget? settings;
+  final VoidCallback? onProfileChanged;
   @override
   State<_MyProfileEditor> createState() => _MyProfileEditorState();
 }
 
-class _MyProfileEditorState extends State<_MyProfileEditor> {
+class _MyProfileEditorState extends State<_MyProfileEditor>
+    with SingleTickerProviderStateMixin {
   late Future<MyProfileDetails> _load = _reload();
   final _name = TextEditingController();
   final _email = TextEditingController();
@@ -107,6 +124,22 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
   Object? _saveInput;
   String? _stagedAvatarId;
   Uint8List? _stagedAvatarBytes;
+  late final TabController _tabs;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs =
+        TabController(
+          length:
+              2 +
+              (widget.teamDetails == null ? 0 : 1) +
+              (widget.settings == null ? 0 : 1),
+          vsync: this,
+        )..addListener(() {
+          if (!_tabs.indexIsChanging && mounted) setState(() {});
+        });
+  }
 
   Future<MyProfileDetails> _reload() async {
     // An approved change is finished once the login email has changed.
@@ -139,6 +172,7 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
 
   @override
   void dispose() {
+    _tabs.dispose();
     _name.dispose();
     _email.dispose();
     _phone.dispose();
@@ -211,23 +245,35 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
       _useAvatar(bytes, 'jpg');
       return;
     }
-    final pick = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
-      withData: true,
+    final XFile? image;
+    try {
+      image = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 82,
+      );
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = strings.feature('Bilden kunde inte öppnas.'));
+      }
+      return;
+    }
+    if (image == null) return;
+    final bytes = await image.readAsBytes();
+    if (!mounted) return;
+    _useAvatar(
+      bytes,
+      image.mimeType?.split('/').last ?? image.name.split('.').last,
     );
-    final file = pick?.files.single;
-    final bytes = file?.bytes;
-    if (file == null || bytes == null || !mounted) return;
-    _useAvatar(bytes, file.extension);
   }
 
   void _useAvatar(Uint8List bytes, String? fileExtension) {
     if (bytes.length > 2097152) {
       setState(
-        () => _error = AppStrings.of(
-          context,
-        ).feature('Bilden får vara högst 2 MB.'),
+        () => _error = AppStrings.of(context).feature(
+          'Bilden kunde inte komprimeras till rätt storlek. Välj en annan bild.',
+        ),
       );
       return;
     }
@@ -298,6 +344,7 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
         expectedRevision: details.revision,
         idempotencyKey: _saveKey!,
       );
+      widget.onProfileChanged?.call();
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
       if (mounted) {
@@ -493,17 +540,18 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
           ),
           Expanded(
             child: Text(
-              strings.feature('Mina uppgifter'),
+              strings.feature('Redigera profil'),
               style: theme.textTheme.titleLarge,
             ),
           ),
-          FilledButton(
-            key: const ValueKey('save-my-profile'),
-            onPressed: _busy || _details == null || _details!.protected
-                ? null
-                : _save,
-            child: Text(strings.feature('Spara')),
-          ),
+          if (_tabs.index < 2)
+            FilledButton(
+              key: const ValueKey('save-my-profile'),
+              onPressed: _busy || _details == null || _details!.protected
+                  ? null
+                  : _save,
+              child: Text(strings.feature('Spara')),
+            ),
         ],
       ),
     );
@@ -526,17 +574,14 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              Text(
-                strings.feature(
-                  'Ändra uppgifterna under Adresser och integritet.',
-                ),
-              ),
+              Text(strings.feature('Ändra uppgifterna under Kontakt.')),
               _loginSection(strings, details),
             ],
           );
         }
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+        final profile = ListView(
+          key: const ValueKey('edit-profile-tab'),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
           children: [
             Center(
               child: _ProfileAvatar(
@@ -573,14 +618,6 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
                   ),
               ],
             ),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  _error!,
-                  style: TextStyle(color: theme.colorScheme.error),
-                ),
-              ),
             const SizedBox(height: 12),
             TextField(
               key: const ValueKey('my-profile-name'),
@@ -593,6 +630,12 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
               ),
               onChanged: (_) => setState(() {}),
             ),
+          ],
+        );
+        final contact = ListView(
+          key: const ValueKey('edit-contact-tab'),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          children: [
             TextField(
               key: const ValueKey('my-profile-email'),
               controller: _email,
@@ -613,10 +656,29 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
               ),
             ),
             const SizedBox(height: 12),
-            Text(
-              strings.feature(
-                'Hantera flera adresser och klubbval under Adresser och integritet.',
+            ListTile(
+              key: const ValueKey('edit-profile-addresses'),
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.home_outlined),
+              title: Text(strings.feature('Adresser')),
+              subtitle: Text(
+                strings.feature(
+                  'Hantera adresser och välj kontaktadress per klubb.',
+                ),
               ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showDialog<void>(
+                context: context,
+                useRootNavigator: true,
+                builder: (_) => _AddressPrivacySettings(
+                  profile: widget.profile,
+                  onChanged: widget.onProfileChanged,
+                ),
+              ),
+            ),
+            _ContactChangeRequests(
+              profile: widget.profile,
+              onChanged: widget.onProfileChanged,
             ),
             const SizedBox(height: 8),
             Text(
@@ -629,6 +691,15 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
             _loginSection(strings, details),
           ],
         );
+        return TabBarView(
+          controller: _tabs,
+          children: [
+            profile,
+            contact,
+            if (widget.teamDetails != null) widget.teamDetails!,
+            if (widget.settings != null) widget.settings!,
+          ],
+        );
       },
     );
     final content = Column(
@@ -636,7 +707,29 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
       children: [
         header,
         const Divider(height: 1),
+        TabBar(
+          controller: _tabs,
+          isScrollable: true,
+          tabs: [
+            Tab(text: strings.feature('Profil')),
+            Tab(text: strings.feature('Kontakt')),
+            if (widget.teamDetails != null)
+              Tab(text: strings.feature('Roll/titel')),
+            if (widget.settings != null)
+              Tab(text: strings.feature('Inställningar')),
+          ],
+        ),
         if (_busy) const LinearProgressIndicator(minHeight: 2),
+        if (_error != null)
+          Container(
+            key: const ValueKey('profile-edit-error'),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            color: theme.colorScheme.errorContainer,
+            child: Text(
+              _error!,
+              style: TextStyle(color: theme.colorScheme.onErrorContainer),
+            ),
+          ),
         Expanded(child: body),
       ],
     );
@@ -646,7 +739,7 @@ class _MyProfileEditorState extends State<_MyProfileEditor> {
             clipBehavior: Clip.antiAlias,
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                maxWidth: 560,
+                maxWidth: 720,
                 maxHeight: MediaQuery.sizeOf(context).height * .9,
               ),
               child: content,
@@ -744,96 +837,6 @@ class _LoginEmailRequestDialogState extends State<_LoginEmailRequestDialog> {
           child: Text(strings.feature('Skicka till support')),
         ),
       ],
-    );
-  }
-}
-
-/// "Mina uppgifter" summary at the top of the settings profile tab.
-class _MyProfileCard extends StatefulWidget {
-  const _MyProfileCard({required this.profile, this.onSaved});
-  final ProfileServices profile;
-  final VoidCallback? onSaved;
-  @override
-  State<_MyProfileCard> createState() => _MyProfileCardState();
-}
-
-class _MyProfileCardState extends State<_MyProfileCard> {
-  late Future<(MyProfileDetails, String?)> _load = _reload();
-
-  Future<(MyProfileDetails, String?)> _reload() async {
-    final details = await widget.profile.getMyProfile().timeout(
-      const Duration(seconds: 15),
-    );
-    String? url;
-    if (details.hasAvatar) {
-      try {
-        url = await widget.profile.avatarUrl(details.profileId);
-      } catch (_) {}
-    }
-    return (details, url);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = AppStrings.of(context);
-    return FutureBuilder<(MyProfileDetails, String?)>(
-      future: _load,
-      builder: (context, snapshot) {
-        final value = snapshot.data;
-        if (value == null) {
-          return snapshot.hasError
-              ? ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.sync_problem),
-                  title: Text(strings.feature('Profilen kunde inte laddas')),
-                  trailing: IconButton(
-                    tooltip: strings.feature('Försök igen'),
-                    onPressed: () => setState(() {
-                      _load = _reload();
-                    }),
-                    icon: const Icon(Icons.refresh),
-                  ),
-                )
-              : const LinearProgressIndicator(minHeight: 2);
-        }
-        final (details, url) = value;
-        final lines = [
-          details.contactEmail,
-          details.phone,
-        ].whereType<String>().toList();
-        return Card(
-          margin: EdgeInsets.zero,
-          child: ListTile(
-            key: const ValueKey('my-profile-card'),
-            contentPadding: const EdgeInsets.all(12),
-            leading: _ProfileAvatar(
-              name: details.displayName,
-              url: url,
-              radius: 26,
-            ),
-            title: Text(
-              details.displayName.isEmpty
-                  ? strings.feature('Namn saknas')
-                  : details.displayName,
-            ),
-            subtitle: Text(
-              lines.isEmpty
-                  ? strings.feature('Lägg till kontaktuppgifter')
-                  : lines.join('\n'),
-            ),
-            trailing: const Icon(Icons.edit_outlined),
-            onTap: () async {
-              final saved = await _openMyProfileEditor(context, widget.profile);
-              if (saved && mounted) {
-                widget.onSaved?.call();
-                setState(() {
-                  _load = _reload();
-                });
-              }
-            },
-          ),
-        );
-      },
     );
   }
 }

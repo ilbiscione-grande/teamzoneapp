@@ -80,6 +80,16 @@ abstract interface class MembershipServices {
   Future<ClubVerificationStatus> getClubVerificationStatus({
     required String clubId,
   });
+  Future<List<ClubVerificationRequest>> listClubVerificationRequests({
+    String? status,
+  });
+  Future<int> decideClubVerificationRequest({
+    required String requestId,
+    required bool approve,
+    required String decisionReason,
+    required int expectedRevision,
+    required String idempotencyKey,
+  });
 }
 
 class UnconfiguredMembershipServices implements MembershipServices {
@@ -201,6 +211,20 @@ class UnconfiguredMembershipServices implements MembershipServices {
   @override
   Future<ClubVerificationStatus> getClubVerificationStatus({
     required String clubId,
+  }) => Future.error(StateError('Supabase is not configured.'));
+
+  @override
+  Future<List<ClubVerificationRequest>> listClubVerificationRequests({
+    String? status,
+  }) async => const [];
+
+  @override
+  Future<int> decideClubVerificationRequest({
+    required String requestId,
+    required bool approve,
+    required String decisionReason,
+    required int expectedRevision,
+    required String idempotencyKey,
   }) => Future.error(StateError('Supabase is not configured.'));
 }
 
@@ -572,5 +596,50 @@ class SupabaseMembershipServices implements MembershipServices {
       throw const FormatException('Invalid verification status.');
     }
     return ClubVerificationStatus.fromJson(value);
+  }
+
+  @override
+  Future<List<ClubVerificationRequest>> listClubVerificationRequests({
+    String? status,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'list_club_verification_requests',
+          params: {'requested_status': status},
+        );
+    if (value is! List) {
+      throw const FormatException('Invalid club verification queue.');
+    }
+    return value
+        .whereType<Map<String, dynamic>>()
+        .map(ClubVerificationRequest.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<int> decideClubVerificationRequest({
+    required String requestId,
+    required bool approve,
+    required String decisionReason,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'decide_club_verification_request',
+          params: {
+            'target_request_id': requestId,
+            'approve': approve,
+            'case_decision_reason': decisionReason,
+            'expected_revision': expectedRevision,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+    if (value is! num) {
+      throw const FormatException('Invalid club verification decision.');
+    }
+    return value.toInt();
   }
 }

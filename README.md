@@ -71,6 +71,16 @@ npm run build
 Server configuration lives in `public-site/apphosting.yaml` and secrets in
 Firebase App Hosting; see [`docs/development/environment.md`](docs/development/environment.md).
 
+### External services and support email
+
+The current service inventory is recorded in
+[`ops/service_inventory.json`](ops/service_inventory.json). Support case email
+uses Supabase for the private queue and scheduled worker, Resend for outbound
+delivery, Netlify DNS for the domain's MX records and ImprovMX for forwarding
+`support@teamzoneapp.se` to the operational inbox. Configuration, security,
+rotation and troubleshooting are documented in
+[`docs/operations/support_email_runbook.md`](docs/operations/support_email_runbook.md).
+
 ### Isolated SQL tests
 
 Migrations are checked in an in-memory PostgreSQL (PGlite) before they are run

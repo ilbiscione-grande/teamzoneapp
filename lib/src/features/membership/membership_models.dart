@@ -233,3 +233,38 @@ class ClubVerificationStatus {
         resolvedAt: DateTime.tryParse(json['resolved_at'] as String? ?? ''),
       );
 }
+
+class ClubVerificationRequest {
+  const ClubVerificationRequest({
+    required this.id,
+    required this.clubId,
+    required this.clubName,
+    required this.requesterName,
+    required this.evidenceSummary,
+    required this.status,
+    required this.createdAt,
+    required this.resolvedAt,
+    required this.decisionReason,
+    required this.revision,
+  });
+
+  final String id, clubId, clubName, requesterName, evidenceSummary, status;
+  final DateTime createdAt;
+  final DateTime? resolvedAt;
+  final String? decisionReason;
+  final int revision;
+
+  factory ClubVerificationRequest.fromJson(Map<String, dynamic> json) =>
+      ClubVerificationRequest(
+        id: json['request_id'] as String,
+        clubId: json['club_id'] as String,
+        clubName: json['club_name'] as String,
+        requesterName: json['requester_name'] as String,
+        evidenceSummary: json['evidence_summary'] as String,
+        status: json['status'] as String,
+        createdAt: DateTime.parse(json['created_at'] as String),
+        resolvedAt: DateTime.tryParse(json['resolved_at'] as String? ?? ''),
+        decisionReason: json['decision_reason'] as String?,
+        revision: (json['revision'] as num).toInt(),
+      );
+}

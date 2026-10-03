@@ -60,6 +60,7 @@ try {
   ('${club}','${t1}','${pQ}',now()-interval '1 day');
  `);
  await db.exec(read('supabase/migrations/20260929090000_team09_team_roles.sql'));
+ await db.exec(read('supabase/migrations/20261003090342_club_functionary_self_team_role.sql'));
  await db.exec('begin');
  const call=(fn,args)=>one(`select api.${fn}(${args.map((_,i)=>'$'+(i+1)).join(',')}) v`,args).then(r=>r.v);
  await as(func);
@@ -91,8 +92,9 @@ try {
  await call('change_team_role',[club,t2,pL,'leader','player',key(6)]);
  assert.equal(await active(pL,t2,'leader'),0);
  assert.equal(await active(pL,t2,'player'),1);
- await rejects(()=>call('change_team_role',[club,t2,pF,'leader','player',key(7)]),'23514','cannot demote own leader role');
- await rejects(()=>call('remove_team_role',[club,t2,pF,'leader',key(8)]),'23514','cannot remove own leader role');
+ // A club membership administrator may correct their own team role.
+ await call('change_team_role',[club,t2,pF,'leader','player',key(7)]);
+ await call('change_team_role',[club,t2,pF,'player','leader',key(8)]);
  await rejects(()=>call('add_team_role',[club,t2,pQ,'player',key(9)]),'23514','player with home in another team');
  await rejects(()=>call('add_team_role',[club,t2,pQ,'club_functionary',key(10)]),'22023','no club mandate here');
  await call('add_team_role',[club,t2,pQ,'leader',key(11)]);
@@ -102,7 +104,7 @@ try {
  const listed=await call('list_team_roles',[club,t2]);
  assert.equal(listed.can_manage,true);
  assert.deepEqual(listed.roles.map(r=>[r.name,r.role]),[['Frida Funktionär','leader'],['Pelle Spelare','leader'],['Lars Ledare','player']]);
- assert.equal((await one(`select count(*)::int n from audit.command_events where command_type like 'roster.role.%'`)).n,7);
+ assert.equal((await one(`select count(*)::int n from audit.command_events where command_type like 'roster.role.%'`)).n,9);
  // The new leader can now manage team 2 roles; outsiders cannot.
  await as(leader);
  await rejects(()=>call('add_team_role',[club,t2,pQ,'leader',key(13)]),'42501','ended leader role has no rights');
@@ -110,5 +112,5 @@ try {
  await rejects(()=>call('list_team_roles',[club,t2]),'42501');
  await rejects(()=>call('add_team_role',[club,t2,pQ,'leader',key(14)]),'42501');
  assert.equal((await one("select has_function_privilege('anon','api.add_team_role(uuid,uuid,uuid,text,uuid)','execute') v")).v,false);
- console.log('PASS: add self/club leader, idempotency, capability bundle, player<->leader changes, own-role guard, home-team guard, remove, list, audit and authorization');
+ console.log('PASS: add self/club leader, idempotency, capability bundle, player<->leader changes, club-admin own-role change, home-team guard, remove, list, audit and authorization');
 } finally {await db.close();}

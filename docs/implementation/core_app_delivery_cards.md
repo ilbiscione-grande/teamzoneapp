@@ -222,6 +222,16 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 
 **Verifiering:** homoglyph/normalisering, reserverat namn, nekad klientmutation och tillgänglig statusvisning.
 
+**Supportdrift 2026-10-03:** Officiella klubbansökningar och tre övriga
+plattformstyper samlas i `/support` och aviseras genom en privat Supabase-outbox,
+minutcron och Edge Function till Resend. `support@teamzoneapp.se` tas emot genom
+ImprovMX och vidarebefordras till den operativa inkorgen. Endast det separata
+mottagarregistret får mejl; supportadministratörernas privata kontoadresser
+används enbart för behörighet och spårbara beslut. Se
+[`../operations/support_email_runbook.md`](../operations/support_email_runbook.md)
+och
+[`../evidence/support_club_verification_queue_2026-10-03.md`](../evidence/support_club_verification_queue_2026-10-03.md).
+
 ### AUTH-07 – Villkor, integritet och frivilliga samtycken
 
 **Status:** `[~]` – tekniskt hosted-verifierad och publika placeholderroutes driftsatta; juridiskt slutligt innehåll och fysisk slutgrind återstår och blockerar extern publik lansering

@@ -624,9 +624,11 @@ class _PersonTeamDetailsTile extends StatefulWidget {
     required this.teamId,
     required this.personId,
     this.roles,
+    this.interactive = true,
   });
   final RosterServices roster;
   final String clubId, teamId, personId;
+  final bool interactive;
 
   /// Already loaded team roles, shared with the other profile tiles.
   final Future<TeamRoles>? roles;
@@ -686,10 +688,10 @@ class _PersonTeamDetailsTileState extends State<_PersonTeamDetailsTile> {
           subtitle: Text(
             summary.isEmpty ? strings.feature('Inga valda') : summary,
           ),
-          trailing: data.canEditDetails
+          trailing: data.canEditDetails && widget.interactive
               ? const Icon(Icons.chevron_right)
               : null,
-          onTap: !data.canEditDetails
+          onTap: !data.canEditDetails || !widget.interactive
               ? null
               : () async {
                   final saved = await _editTeamPersonDetails(
