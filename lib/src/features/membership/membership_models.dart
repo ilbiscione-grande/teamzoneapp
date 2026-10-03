@@ -254,17 +254,21 @@ class ClubVerificationRequest {
   final String? decisionReason;
   final int revision;
 
-  factory ClubVerificationRequest.fromJson(Map<String, dynamic> json) =>
-      ClubVerificationRequest(
-        id: json['request_id'] as String,
-        clubId: json['club_id'] as String,
-        clubName: json['club_name'] as String,
-        requesterName: json['requester_name'] as String,
-        evidenceSummary: json['evidence_summary'] as String,
-        status: json['status'] as String,
-        createdAt: DateTime.parse(json['created_at'] as String),
-        resolvedAt: DateTime.tryParse(json['resolved_at'] as String? ?? ''),
-        decisionReason: json['decision_reason'] as String?,
-        revision: (json['revision'] as num).toInt(),
-      );
+  factory ClubVerificationRequest.fromJson(Map<String, dynamic> json) {
+    final requesterName = (json['requester_name'] as String?)?.trim();
+    return ClubVerificationRequest(
+      id: json['request_id'] as String,
+      clubId: json['club_id'] as String,
+      clubName: json['club_name'] as String,
+      requesterName: requesterName == null || requesterName.isEmpty
+          ? 'Okänd användare'
+          : requesterName,
+      evidenceSummary: json['evidence_summary'] as String,
+      status: json['status'] as String,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      resolvedAt: DateTime.tryParse(json['resolved_at'] as String? ?? ''),
+      decisionReason: json['decision_reason'] as String?,
+      revision: (json['revision'] as num).toInt(),
+    );
+  }
 }

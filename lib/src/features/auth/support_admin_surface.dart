@@ -371,9 +371,35 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
           FutureBuilder<List<ClubVerificationRequest>>(
             future: _verifications,
             builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done ||
-                  snapshot.hasError) {
+              if (snapshot.connectionState != ConnectionState.done) {
                 return const SizedBox.shrink();
+              }
+              if (snapshot.hasError) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              strings.feature(
+                                'Klubbverifieringarna kunde inte laddas.',
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _reload,
+                            child: Text(strings.retry),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
               }
               final items = (snapshot.data ?? const [])
                   .where(_showVerification)

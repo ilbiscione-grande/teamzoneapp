@@ -126,6 +126,23 @@ void main() {
     expect(membership.appliedTeamId, 'team');
   });
 
+  test('club verification tolerates a deleted requester profile name', () {
+    final request = ClubVerificationRequest.fromJson({
+      'request_id': 'request',
+      'club_id': 'club',
+      'club_name': 'Testklubben',
+      'requester_name': null,
+      'evidence_summary': 'Underlag finns',
+      'status': 'approved',
+      'created_at': '2026-09-11T14:48:18Z',
+      'resolved_at': '2026-09-11T14:51:26Z',
+      'decision_reason': 'Kontrollerad',
+      'revision': 2,
+    });
+
+    expect(request.requesterName, 'Okänd användare');
+  });
+
   testWidgets(
     'repeated application explains that the existing one is pending',
     (tester) async {
