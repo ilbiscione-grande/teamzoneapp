@@ -81,6 +81,7 @@ class _ProductShellState extends State<_ProductShell> {
   String? _renderedPageLocation;
   late final Future<bool> _supportAdminAccess;
   late Future<int> _pendingTeamRequests;
+  late Future<AssistantIdentityPreference> _assistantPreference;
   // Your own profile picture for the menu; none on failure.
   late Future<_OwnSummary> _ownSummary = _loadOwnSummary();
 
@@ -187,6 +188,8 @@ class _ProductShellState extends State<_ProductShell> {
           contexts: widget.contexts,
           calendar: widget.calendar,
           onOpenTask: _openAssistantTask,
+          onOpenSettings: () => _openAssistant(settings: true),
+          settingsOnly: state.uri.queryParameters['settings'] == '1',
           assistantIdentity: widget.assistantIdentity,
           assistantPresentation: widget.assistantPresentation,
           overview: widget.overview,
@@ -337,14 +340,23 @@ class _ProductShellState extends State<_ProductShell> {
     });
   }
 
-  void _openAssistant() {
-    final source = _currentPageLocation;
-    _router.push(
+  Future<void> _openAssistant({bool settings = false}) async {
+    final current = Uri.parse(_currentPageLocation);
+    final source = current.path == ProductRouteContract.assistant
+        ? current.queryParameters['from'] ?? '/home'
+        : _currentPageLocation;
+    await _router.push(
       Uri(
         path: ProductRouteContract.assistant,
-        queryParameters: {'from': source},
+        queryParameters: {'from': source, if (settings) 'settings': '1'},
       ).toString(),
     );
+    if (mounted) {
+      setState(() {
+        _assistantTaskRevision++;
+        _assistantPreference = widget.assistantIdentity.getPreference();
+      });
+    }
   }
 
   Future<void> _openAssistantTask(AssistantTask task) async {
@@ -663,6 +675,7 @@ class _ProductShellState extends State<_ProductShell> {
         .timeout(const Duration(seconds: 15))
         .catchError((_) => false);
     _pendingTeamRequests = _loadPendingTeamRequests();
+    _assistantPreference = widget.assistantIdentity.getPreference();
     unawaited(
       Future.sync(widget.profileServices.recordActivity).catchError((_) {}),
     );
@@ -937,11 +950,15 @@ class _ProductShellState extends State<_ProductShell> {
                                   ),
                                   load: () => loadAssistantTasks(
                                     contexts: widget.contexts,
+                                    activeContext: _contextForLocation(
+                                      _currentPageLocation,
+                                    ),
                                     overview: widget.overview,
                                     loadEvent: widget.calendar.getEventDetails,
                                   ),
                                   child: _AssistantCoachMobileFab(
                                     onPressed: _openAssistant,
+                                    preference: _assistantPreference,
                                   ),
                                 ),
                               ),
@@ -967,6 +984,10 @@ class _ProductShellState extends State<_ProductShell> {
                             onOpen: _openAssistantTask,
                           ),
                           onOpen: _openAssistant,
+                          onSettings: () => _openAssistant(settings: true),
+                          preference: _assistantPreference,
+                          onRefresh: () =>
+                              setState(() => _assistantTaskRevision++),
                         ),
                     ],
                   ),

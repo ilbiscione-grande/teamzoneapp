@@ -5,6 +5,7 @@ import '../../core/identity/identity_models.dart';
 import '../calendar/calendar_models.dart';
 import '../calendar/preparation_services.dart';
 import 'assistant_preparation_checklist.dart';
+import 'assistant_task_preferences.dart';
 import '../overview/overview_models.dart';
 import '../overview/overview_services.dart';
 
@@ -14,11 +15,12 @@ class AssistantPageContext {
   const AssistantPageContext(this.location);
   final String location;
 
+  Uri? get _uri =>
+      Uri.tryParse(ProductRouteContract.canonicalizeLocation(location));
+  String get path => _uri?.path ?? location;
+
   String? get eventId {
-    final uri = Uri.tryParse(
-      ProductRouteContract.canonicalizeLocation(location),
-    );
-    final segments = uri?.pathSegments ?? const <String>[];
+    final segments = _uri?.pathSegments ?? const <String>[];
     return segments.length == 3 &&
             segments[0] == 'calendar' &&
             segments[1] == 'event' &&
@@ -27,16 +29,48 @@ class AssistantPageContext {
         : null;
   }
 
-  String get label => eventId != null
-      ? 'Den här aktiviteten'
-      : switch (Uri.tryParse(location)?.path) {
-          '/home' => 'Överblick',
-          '/calendar' => 'Kalendern',
-          '/team' => 'Laget',
-          _ => 'Aktuellt lag',
-        };
+  String get label {
+    if (eventId != null) return 'Den här aktiviteten';
+    if (path.startsWith('${ProductRouteContract.team}/member/')) return 'Laget';
+    return switch (path) {
+      '/home' => 'Överblick',
+      '/calendar' => 'Kalendern',
+      '/team' => 'Laget',
+      '/statistics' => 'Statistik',
+      '/development' => 'Utveckling',
+      '/inbox' => 'Inkorgen',
+      _ => 'Aktuellt lag',
+    };
+  }
 
-  bool get isHome => Uri.tryParse(location)?.path == '/home';
+  bool get isHome => path == ProductRouteContract.home;
+
+  bool isRelevant(AssistantTask task) {
+    final currentEventId = eventId;
+    if (currentEventId != null) {
+      return task.eventId == currentEventId ||
+          task.overlappingEvent?.id == currentEventId;
+    }
+    return switch (path) {
+      ProductRouteContract.calendar => true,
+      ProductRouteContract.team => {
+        'pending_callups',
+        'missing_callups',
+        'missing_attendance',
+      }.contains(task.task.kind),
+      _ when path.startsWith('${ProductRouteContract.team}/member/') => {
+        'pending_callups',
+        'missing_callups',
+        'missing_attendance',
+      }.contains(task.task.kind),
+      ProductRouteContract.statistics => {
+        'missing_attendance',
+        'missing_match_result',
+        'missing_match_report',
+      }.contains(task.task.kind),
+      _ => false,
+    };
+  }
 }
 
 class AssistantTask {
@@ -68,6 +102,38 @@ class AssistantTask {
   final TeamZoneContext? overlappingContext;
   final String? response, overlappingResponse;
   bool get isPersonalConflict => task.kind == 'personal_calendar_conflict';
+  bool get isImportant {
+    if (task.kind == 'calendar_conflict' || isPersonalConflict) return true;
+    if (!{
+      'pending_callups',
+      'missing_callups',
+      'unfinished_preparation',
+    }.contains(task.kind)) {
+      return false;
+    }
+    final start = startsAt;
+    return start != null &&
+        !start.isBefore(generatedAt) &&
+        !start.isAfter(generatedAt.add(const Duration(days: 1)));
+  }
+
+  bool inCategory(String category) => switch (category) {
+    'important' => isImportant,
+    'preparation' => task.kind == 'unfinished_preparation',
+    'matches' =>
+      isMatchFollowup ||
+          eventDetails?.type == 'match' ||
+          overlappingEvent?.type == 'match',
+    'training' =>
+      eventDetails?.type == 'training' || overlappingEvent?.type == 'training',
+    'other' =>
+      !isMatchFollowup &&
+          !{
+            eventDetails?.type,
+            overlappingEvent?.type,
+          }.any((t) => t == 'match' || t == 'training'),
+    _ => true,
+  };
   TeamZoneContext contextForEvent(String id) =>
       id == overlappingEvent?.id ? overlappingContext ?? context : context;
   String eventContextLabel(String id) {
@@ -152,22 +218,43 @@ class AssistantTaskSnapshot {
     this.tasks,
     this.failedContexts, {
     this.personalFailed = false,
+    this.settingsFailed = false,
+    this.filtersActive = false,
+    this.currentTeamOnly = false,
   });
   final List<AssistantTask> tasks;
   final List<TeamZoneContext> failedContexts;
   final bool personalFailed;
+  final bool settingsFailed, filtersActive;
+  final bool currentTeamOnly;
 }
 
 Future<AssistantTaskSnapshot> loadAssistantTasks({
   required List<TeamZoneContext> contexts,
+  TeamZoneContext? activeContext,
   required OverviewServices overview,
   required Future<EventDetails> Function(String) loadEvent,
 }) async {
+  var preferences = const AssistantTaskPreferences();
+  if (overview is AssistantTaskPreferencesServices) {
+    try {
+      preferences = await (overview as AssistantTaskPreferencesServices)
+          .loadAssistantTaskPreferences()
+          .timeout(const Duration(seconds: 15));
+    } catch (_) {
+      return const AssistantTaskSnapshot([], [], settingsFailed: true);
+    }
+  }
   final tasks = <String, AssistantTask>{};
   final failed = <TeamZoneContext>[];
   final leaders = {
     for (final context in contexts)
-      if (context.rolePackage == 'leader' && context.teamId != null)
+      if (context.rolePackage == 'leader' &&
+          context.teamId != null &&
+          (!preferences.currentTeamOnly ||
+              (activeContext?.teamId != null &&
+                  context.clubId == activeContext!.clubId &&
+                  context.teamId == activeContext.teamId)))
         context.id: context,
   };
   // Bound requests: teams are read in order and metadata is shared per event.
@@ -182,6 +269,7 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
                   : overview.loadLeaderHome(context.id))
               .timeout(const Duration(seconds: 15));
       for (final task in home.tasks) {
+        if (!preferences.shows(task.kind)) continue;
         final capability = switch (task.kind) {
           'pending_callups' || 'missing_callups' => 'event.squad.manage',
           'missing_attendance' => 'event.attendance.manage',
@@ -248,7 +336,8 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
       failed.add(context);
     }
   }
-  if (overview is PersonalCalendarConflictServices) {
+  if (overview is PersonalCalendarConflictServices &&
+      preferences.shows('personal_calendar_conflict')) {
     final personal = <AssistantTask>[];
     try {
       final value = await (overview as PersonalCalendarConflictServices)
@@ -265,6 +354,14 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
             .where((c) => c.id == second['context_id'])
             .firstOrNull;
         if (firstContext == null || secondContext == null) continue;
+        if (preferences.currentTeamOnly &&
+            !(activeContext?.teamId != null &&
+                ((firstContext.clubId == activeContext!.clubId &&
+                        firstContext.teamId == activeContext.teamId) ||
+                    (secondContext.clubId == activeContext.clubId &&
+                        secondContext.teamId == activeContext.teamId)))) {
+          continue;
+        }
         final a = events[first['event_id']] ??= await loadEvent(
           first['event_id'] as String,
         ).timeout(const Duration(seconds: 15));
@@ -312,7 +409,7 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
   final sorted = tasks.values.toList()
     ..sort((a, b) {
       int rank(AssistantTask item) => switch (item.task.kind) {
-        'calendar_conflict' || 'personal_calendar_conflict' => 0,
+        _ when item.isImportant => 0,
         'missing_attendance' => 1,
         _ => 2,
       };
@@ -323,7 +420,14 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
       );
       return date != 0 ? date : a.key.compareTo(b.key);
     });
-  return AssistantTaskSnapshot(sorted, failed, personalFailed: personalFailed);
+  return AssistantTaskSnapshot(
+    sorted,
+    failed,
+    personalFailed: personalFailed,
+    filtersActive:
+        preferences.hiddenKinds.isNotEmpty || preferences.currentTeamOnly,
+    currentTeamOnly: preferences.currentTeamOnly,
+  );
 }
 
 class AssistantTaskSections extends StatefulWidget {
@@ -354,6 +458,8 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
   late Future<AssistantTaskSnapshot> _data;
   bool _opening = false;
   String _bucket = 'active';
+  String _category = 'all';
+  final _categoryScroll = ScrollController();
   String? _expandedKey;
   Timer? _wakeTimer;
   @override
@@ -366,6 +472,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
   Future<AssistantTaskSnapshot> _load() async {
     final result = await loadAssistantTasks(
       contexts: widget.contexts,
+      activeContext: widget.activeContext,
       overview: widget.overview,
       loadEvent: widget.loadEvent,
     );
@@ -398,10 +505,10 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
   void didUpdateWidget(covariant AssistantTaskSections oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.contexts != widget.contexts ||
-        oldWidget.activeContext.id != widget.activeContext.id ||
-        oldWidget.page.location != widget.page.location) {
+        oldWidget.activeContext.id != widget.activeContext.id) {
       _data = _load();
     }
+    if (oldWidget.page.location != widget.page.location) _expandedKey = null;
   }
 
   @override
@@ -411,6 +518,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
 
   @override
   void dispose() {
+    _categoryScroll.dispose();
     _wakeTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -502,16 +610,6 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Row(
-        children: [
-          const Expanded(child: Text('Behöver din uppmärksamhet')),
-          IconButton(
-            tooltip: 'Uppdatera uppgifter',
-            onPressed: _opening ? null : _refresh,
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
       FutureBuilder<AssistantTaskSnapshot>(
         future: _data,
         builder: (context, snapshot) {
@@ -527,8 +625,26 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
             );
           }
           final data = snapshot.requireData;
-          final visible = data.tasks
+          final bucketTasks = data.tasks
               .where((t) => t.task.assistantStatus == _bucket)
+              .toList();
+          final categories = <String, String>{
+            'all': 'Alla',
+            'important': 'Viktigt',
+            'preparation': 'Förberedelser',
+            'matches': 'Matcher',
+            'training': 'Träningar',
+            'other': 'Övrigt',
+          };
+          final counts = {
+            for (final key in categories.keys)
+              key: bucketTasks.where((t) => t.inCategory(key)).length,
+          };
+          final selectedCategory = (counts[_category] ?? 0) > 0
+              ? _category
+              : 'all';
+          final visible = bucketTasks
+              .where((t) => t.inCategory(selectedCategory))
               .toList();
           final here = visible
               .where(
@@ -542,9 +658,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                                 widget.activeContext.clubId &&
                             task.overlappingContext?.teamId ==
                                 widget.activeContext.teamId)) &&
-                    (widget.page.eventId == null ||
-                        task.eventId == widget.page.eventId ||
-                        task.overlappingEvent?.id == widget.page.eventId),
+                    widget.page.isRelevant(task),
               )
               .toList();
           final hereKeys = here.map((task) => task.key).toSet();
@@ -560,23 +674,86 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                     'active': 'Aktuellt',
                     'snoozed': 'Uppskjutet',
                     'archived': 'Arkiverat',
-                  }.entries)
-                    Expanded(
-                      child: IconButton.filledTonal(
-                        key: ValueKey('assistant-filter-${entry.key}'),
-                        tooltip:
-                            '${entry.value} (${data.tasks.where((t) => t.task.assistantStatus == entry.key).length})',
-                        icon: Icon(switch (entry.key) {
-                          'snoozed' => Icons.snooze_outlined,
-                          'archived' => Icons.archive_outlined,
-                          _ => Icons.inbox_outlined,
-                        }),
-                        isSelected: _bucket == entry.key,
-                        onPressed: () => setState(() => _bucket = entry.key),
+                  }.entries) ...[
+                    IconButton.filledTonal(
+                      key: ValueKey('assistant-filter-${entry.key}'),
+                      tooltip:
+                          '${entry.value} (${data.tasks.where((t) => t.task.assistantStatus == entry.key).length})',
+                      style: IconButton.styleFrom(
+                        fixedSize: const Size(52, 44),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
+                      icon: Icon(switch (entry.key) {
+                        'snoozed' => Icons.snooze_outlined,
+                        'archived' => Icons.archive_outlined,
+                        _ => Icons.inbox_outlined,
+                      }),
+                      isSelected: _bucket == entry.key,
+                      onPressed: () => setState(() {
+                        _bucket = entry.key;
+                        _category = 'all';
+                        _expandedKey = null;
+                      }),
                     ),
+                    if (entry.key != 'archived') const SizedBox(width: 10),
+                  ],
                 ],
               ),
+              const SizedBox(height: 16),
+              if (bucketTasks.isNotEmpty) ...[
+                Scrollbar(
+                  controller: _categoryScroll,
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    controller: _categoryScroll,
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      children: [
+                        for (final category in categories.entries)
+                          if (category.key == 'all' ||
+                              counts[category.key]! > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ChoiceChip(
+                                key: ValueKey(
+                                  'assistant-category-${category.key}',
+                                ),
+                                label: Text(
+                                  '${category.value} (${counts[category.key]})',
+                                ),
+                                selected: selectedCategory == category.key,
+                                onSelected: (_) => setState(() {
+                                  _category = category.key;
+                                  _expandedKey = null;
+                                }),
+                              ),
+                            ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (data.currentTeamOnly) ...[
+                Text(
+                  widget.activeContext.teamId == null
+                      ? 'Välj ett lag i appen för att se dess uppgifter.'
+                      : 'Visar: ${widget.activeContext.clubName} · ${widget.activeContext.teamName}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 16),
+              ],
+              if (selectedCategory == 'important') ...[
+                const Text(
+                  'Kalenderkrockar och uppgifter inför aktiviteter som börjar inom ett dygn.',
+                ),
+                const SizedBox(height: 16),
+              ],
+              if (data.settingsFailed)
+                const Text(
+                  'Dina visningsinställningar kunde inte hämtas. Försök uppdatera.',
+                ),
               if (data.personalFailed)
                 const Text(
                   'Dina personliga kalenderkrockar kunde inte kontrolleras. Försök uppdatera.',
@@ -596,30 +773,35 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                 Text(
                   '${widget.page.label} · ${widget.activeContext.teamName ?? widget.activeContext.clubName}',
                 ),
-                for (final task in here) _card(context, task),
+                const SizedBox(height: 12),
+                ..._cards(context, here),
                 const SizedBox(height: 20),
               ],
-              Text(
-                _bucket == 'active'
-                    ? 'Mina uppgifter'
-                    : _bucket == 'snoozed'
-                    ? 'Uppskjutna uppgifter'
-                    : 'Arkiverade uppgifter',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
+              if (_bucket != 'active' && (remaining.isNotEmpty || here.isEmpty))
+                Text(
+                  _bucket == 'snoozed'
+                      ? 'Uppskjutna uppgifter'
+                      : 'Arkiverade uppgifter',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              if (_bucket != 'active') const SizedBox(height: 12),
               if (_bucket != 'active')
                 const Text(
                   'Visar uppgifter som fortfarande är relevanta och som du har behörighet att se.',
                 ),
-              if (remaining.isEmpty)
+              if (remaining.isEmpty && here.isEmpty)
                 Text(
-                  data.failedContexts.isNotEmpty || data.personalFailed
+                  data.settingsFailed
+                      ? 'Uppgifterna visas när dina inställningar har hämtats.'
+                      : data.failedContexts.isNotEmpty || data.personalFailed
                       ? 'Alla lag kunde inte kontrolleras.'
+                      : data.filtersActive
+                      ? 'Inga fler uppgifter att visa med dina inställningar.'
                       : here.isNotEmpty
                       ? 'Övriga uppgifter är klara.'
                       : 'Inga aktuella uppgifter att visa.',
                 ),
-              for (final task in remaining) _card(context, task),
+              ..._cards(context, remaining),
             ],
           );
         },
@@ -627,7 +809,97 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
     ],
   );
 
-  Widget _card(BuildContext context, AssistantTask item) {
+  Iterable<Widget> _cards(
+    BuildContext context,
+    List<AssistantTask> tasks,
+  ) sync* {
+    final groups = <String, List<AssistantTask>>{};
+    for (final task in tasks) {
+      final groupKey = '${task.context.id}:${task.eventId}';
+      (groups[groupKey] ??= []).add(task);
+    }
+    for (final group in groups.values) {
+      yield group.length == 1
+          ? _card(context, group.single)
+          : _groupCard(context, group);
+    }
+  }
+
+  Widget _groupCard(BuildContext context, List<AssistantTask> items) {
+    final item = items.first;
+    final date = item.startsAt?.toLocal();
+    final material = MaterialLocalizations.of(context);
+    return Card(
+      key: ValueKey('assistant-task-group-${item.context.id}:${item.eventId}'),
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ListTile(
+            key: ValueKey(
+              'assistant-group-header-${item.context.id}:${item.eventId}',
+            ),
+            contentPadding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+            title: Text(
+              [
+                item.context.clubName,
+                if (item.context.teamName != null) item.context.teamName!,
+              ].join(' · '),
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 6),
+                Text(
+                  item.eventTitle ?? 'Aktivitet',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                if (date != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '${material.formatShortDate(date)} ${material.formatTimeOfDay(TimeOfDay.fromDateTime(date))}',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ],
+                const SizedBox(height: 6),
+                Text(
+                  '${items.length} saker att hantera',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          for (var index = 0; index < items.length; index++) ...[
+            _card(context, items[index], grouped: true),
+            if (index < items.length - 1)
+              const Divider(height: 1, indent: 16, endIndent: 16),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _card(
+    BuildContext context,
+    AssistantTask item, {
+    bool grouped = false,
+  }) {
     final date = item.startsAt?.toLocal();
     final observed = item.generatedAt.toLocal();
     final material = MaterialLocalizations.of(context);
@@ -643,6 +915,17 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
         ? item.task.title
         : '${item.task.title} (${item.task.count})';
     return Card(
+      margin: grouped ? EdgeInsets.zero : const EdgeInsets.only(bottom: 16),
+      elevation: 0,
+      color: grouped ? Colors.transparent : null,
+      shape: grouped
+          ? const RoundedRectangleBorder()
+          : RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+            ),
       key: ValueKey('assistant-task-${item.key}'),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -651,51 +934,68 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
           ListTile(
             key: ValueKey('assistant-expand-${item.key}'),
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 2,
+              horizontal: 16,
+              vertical: 12,
             ),
             title: Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: EdgeInsets.only(bottom: grouped ? 0 : 8),
               child: Semantics(
                 header: true,
                 child: Text(
-                  [
-                        item.context.clubName,
-                        if (item.context.teamName != null)
-                          item.context.teamName!,
-                      ].join(' · ') +
-                      (item.isPersonalConflict
-                          ? '\n↔ ${item.eventContextLabel(item.overlappingEvent!.id)}'
-                          : ''),
+                  grouped
+                      ? title
+                      : [
+                              item.context.clubName,
+                              if (item.context.teamName != null)
+                                item.context.teamName!,
+                            ].join(' · ') +
+                            (item.isPersonalConflict
+                                ? '\n↔ ${item.eventContextLabel(item.overlappingEvent!.id)}'
+                                : ''),
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: grouped ? FontWeight.w600 : FontWeight.bold,
+                    color: grouped
+                        ? Theme.of(context).colorScheme.onSurface
+                        : Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ),
             ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.titleSmall),
-                Text(
-                  item.eventTitle ?? 'Aktivitet',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (item.overlappingEvent != null)
-                  Text(
-                    '↔ ${item.overlappingEvent!.title}',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+            subtitle: grouped
+                ? item.overlappingEvent == null
+                      ? null
+                      : Text(
+                          '↔ ${item.overlappingEvent!.title}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        item.eventTitle ?? 'Aktivitet',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (item.overlappingEvent != null)
+                        Text(
+                          '↔ ${item.overlappingEvent!.title}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      if (date != null) const SizedBox(height: 6),
+                      if (date != null)
+                        Text(
+                          '${material.formatShortDate(date)} ${material.formatTimeOfDay(TimeOfDay.fromDateTime(date))}',
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                    ],
                   ),
-                if (date != null)
-                  Text(
-                    '${material.formatShortDate(date)} ${material.formatTimeOfDay(TimeOfDay.fromDateTime(date))}',
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-              ],
-            ),
             trailing: Icon(expanded ? Icons.expand_less : Icons.expand_more),
             onTap: () =>
                 setState(() => _expandedKey = expanded ? null : item.key),
@@ -799,8 +1099,9 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                 ],
               ),
             ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 8, 8),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
             child: Row(
               children: [
                 Expanded(
@@ -809,7 +1110,8 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                     child: FilledButton.tonal(
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
-                        minimumSize: const Size(0, 48),
+                        minimumSize: const Size(0, 44),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       onPressed: item.stale || _opening
                           ? null
@@ -837,12 +1139,13 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                   ),
                 ),
                 if (item.task.assistantStatus == 'active') ...[
+                  const SizedBox(width: 8),
                   Expanded(
                     child: PopupMenuButton<int>(
                       tooltip: 'Skjut upp',
                       enabled: canOrganize,
                       child: SizedBox(
-                        height: 48,
+                        height: 44,
                         child: Center(
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
@@ -867,6 +1170,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Tooltip(
                       message: item.overlappingEvent != null
@@ -875,7 +1179,8 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                       child: TextButton(
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
-                          minimumSize: const Size(0, 48),
+                          minimumSize: const Size(0, 44),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         onPressed: canOrganize
                             ? () => _setDisposition(item, 'archived')
@@ -893,7 +1198,8 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                       ),
                     ),
                   ),
-                ] else
+                ] else ...[
+                  const SizedBox(width: 8),
                   Expanded(
                     child: TextButton(
                       onPressed: canOrganize
@@ -902,6 +1208,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                       child: const Text('Återställ'),
                     ),
                   ),
+                ],
               ],
             ),
           ),

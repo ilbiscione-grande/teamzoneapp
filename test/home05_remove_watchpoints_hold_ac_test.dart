@@ -41,18 +41,14 @@ void main() {
   });
 
   test('deterministic home tasks remain independent of AC', () {
-    // "Behöver din uppmärksamhet" moved from Home to the assistant page on
-    // 2026-09-07 (product decision, confirmed explicitly after this test's
-    // original intent was raised) — but it still isn't gated by AC-01 or
-    // any generated signal: same direct overview.loadLeaderHome() query
-    // Home used, no assistant_activation_gate/queue involvement. That
-    // independence, not the literal file it lives in, is what this test
-    // protects.
+    // The assistant's deterministic tasks remain independent of AC-01 even
+    // though the old generic attention banner has been removed from both
+    // Home and the assistant UI.
     expect(overview, contains("'Dina kallelser'"));
     expect(overview.toLowerCase(), isNot(contains('watchpoint')));
     expect(assistant, contains('overview.loadLeaderHome(context.id)'));
     expect(assistant, contains('loadFreshLeaderHome(context.id)'));
-    expect(assistant, contains("'Behöver din uppmärksamhet'"));
+    expect(assistant, isNot(contains("'Behöver din uppmärksamhet'")));
     expect(assistant.toLowerCase(), isNot(contains('watchpoint')));
     expect(assistant, isNot(contains('assistant_activation_gate')));
     expect(assistant, isNot(contains('AssistantQueuePost')));

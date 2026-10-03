@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/overview/overview_models.dart';
+import '../assistant_coach/assistant_task_preferences.dart';
 
 abstract interface class OverviewServices {
   Future<MainSurfacesProjection> load({required List<String> contextIds});
@@ -53,6 +54,7 @@ class SupabaseOverviewServices
         OverviewServices,
         FreshLeaderOverviewServices,
         PersonalCalendarConflictServices,
+        AssistantTaskPreferencesServices,
         AssistantTaskStateServices {
   SupabaseOverviewServices(this._client);
   final SupabaseClient _client;
@@ -60,6 +62,36 @@ class SupabaseOverviewServices
   final Map<String, LeaderHomeProjection> _leaderCache = {};
   final Map<String, PlayerHomeProjection> _playerCache = {};
   final Map<String, GuardianHomeProjection> _guardianCache = {};
+
+  @override
+  Future<AssistantTaskPreferences> loadAssistantTaskPreferences() async =>
+      AssistantTaskPreferences.fromJson(
+        Map<String, dynamic>.from(
+          await _client.schema('api').rpc('get_assistant_task_preferences')
+              as Map,
+        ),
+      );
+
+  @override
+  Future<AssistantTaskPreferences> saveAssistantTaskPreferences(
+    Set<String> hiddenKinds,
+    int expectedRevision, {
+    bool currentTeamOnly = false,
+  }) async => AssistantTaskPreferences.fromJson(
+    Map<String, dynamic>.from(
+      await _client
+              .schema('api')
+              .rpc(
+                'set_assistant_task_preferences_v2',
+                params: {
+                  'hidden_kinds': hiddenKinds.toList()..sort(),
+                  'expected_revision': expectedRevision,
+                  'current_team_only': currentTeamOnly,
+                },
+              )
+          as Map,
+    ),
+  );
 
   @override
   Future<Map<String, dynamic>> loadPersonalCalendarConflicts() async {

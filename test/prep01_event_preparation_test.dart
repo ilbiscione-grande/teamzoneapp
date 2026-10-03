@@ -33,7 +33,7 @@ void main() {
     await tester.tap(find.text('Bollar'));
     await tester.pumpAndSettle();
     expect(prep.items.single.done, isTrue);
-    expect(find.text('Mina uppgifter'), findsOneWidget);
+    expect(find.text('Mina uppgifter'), findsNothing);
     expect(find.byTooltip('Öppna förberedelser'), findsNothing);
     expect(tester.takeException(), isNull);
   });

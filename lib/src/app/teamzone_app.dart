@@ -31,6 +31,7 @@ import 'package:teamzone_app/src/features/calendar/calendar_services.dart';
 import 'package:teamzone_app/src/features/calendar/preparation_models.dart';
 import 'package:teamzone_app/src/features/assistant_coach/assistant_identity.dart';
 import 'package:teamzone_app/src/features/assistant_coach/assistant_tasks.dart';
+import 'package:teamzone_app/src/features/assistant_coach/assistant_task_preferences.dart';
 import 'package:teamzone_app/src/features/assistant_coach/assistant_task_badge.dart';
 import 'package:teamzone_app/src/features/assistant_coach/assistant_queue.dart';
 import 'package:teamzone_app/src/features/assistant_coach/assistant_presentation.dart';

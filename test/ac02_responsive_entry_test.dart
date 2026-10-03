@@ -19,6 +19,8 @@ void main() {
     ).readAsStringSync();
     expect(source, contains("Key('assistant-coach-mobile-fab')"));
     expect(source, contains("Key('assistant-coach-side-panel')"));
+    expect(source, contains("Key('assistant-panel-refresh')"));
+    expect(source, contains("Key('assistant-refresh-button')"));
     expect(source, contains("Key('assistant-coach-holding-surface')"));
     expect(source, contains('Semantics('));
     expect(source, contains('FocusTraversalGroup('));

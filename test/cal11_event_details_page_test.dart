@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teamzone_app/src/app/teamzone_app.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
@@ -13,8 +14,106 @@ import 'package:teamzone_app/src/features/roster/roster_models.dart';
 import 'package:teamzone_app/src/features/roster/roster_services.dart';
 import 'package:teamzone_app/src/features/overview/overview_models.dart';
 import 'package:teamzone_app/src/features/overview/overview_services.dart';
+import 'package:teamzone_app/src/features/assistant_coach/assistant_task_preferences.dart';
+import 'package:teamzone_app/src/features/assistant_coach/assistant_identity.dart';
 
 void main() {
+  testWidgets('assistant avatar is account-saved and shown in the header', (
+    tester,
+  ) async {
+    final assistantIdentity = _AvatarAssistantIdentity();
+    await tester.pumpWidget(
+      _app(
+        _Calendar(),
+        identity: const _AssistantIdentity(),
+        assistantIdentity: assistantIdentity,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('assistant-coach-mobile-fab')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('assistant-refresh-button')), findsOneWidget);
+    expect(find.text('Behöver din uppmärksamhet'), findsNothing);
+    await tester.tap(find.byKey(const Key('assistant-settings-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('assistant-avatar-options')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('assistant-avatar-woman_3')));
+    await tester.pumpAndSettle();
+    expect(assistantIdentity.preference.avatarKey, 'woman_3');
+    expect(
+      find.byKey(const ValueKey('assistant-avatar-woman_3')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byType(BackButton).last);
+    await tester.pumpAndSettle();
+    final avatar = tester.widget<CircleAvatar>(
+      find.byKey(const Key('assistant-avatar')).first,
+    );
+    expect(
+      (avatar.backgroundImage! as AssetImage).assetName,
+      'assets/images/assistant/woman_3.png',
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'assistant settings live in header and saved choices refresh cards and badge',
+    (tester) async {
+      final overview = _TaskSettingsOverview();
+      await tester.pumpWidget(
+        _app(
+          _Calendar(),
+          identity: const _AssistantIdentity(),
+          overview: overview,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('assistant-coach-mobile-fab')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('assistant-context-banner')), findsNothing);
+      expect(find.text('Inställningar och om assistenten'), findsNothing);
+      expect(
+        find.ancestor(
+          of: find.byKey(const Key('assistant-display-name')),
+          matching: find.byType(AppBar),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.ancestor(
+          of: find.byKey(const Key('assistant-settings-button')),
+          matching: find.byType(AppBar),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('assistant-settings-button')));
+      await tester.pumpAndSettle();
+      expect(find.text('Visa i min assistent'), findsOneWidget);
+      expect(find.byKey(const Key('assistant-name-settings')), findsOneWidget);
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('assistant-visible-pending_callups')),
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('assistant-visible-pending_callups')),
+      );
+      await tester.ensureVisible(find.text('Spara visningsinställningar'));
+      await tester.tap(find.text('Spara visningsinställningar'));
+      await tester.pumpAndSettle();
+      expect(overview.preference.hiddenKinds, {'pending_callups'});
+      await tester.tap(find.byType(BackButton).last);
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Granska och påminn'), findsNothing);
+      await tester.tap(find.byType(BackButton).last);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<Badge>(find.byKey(const Key('assistant-task-count')))
+            .isLabelVisible,
+        isFalse,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets(
     'player personal conflict opens other club with no time editing',
     (tester) async {
@@ -163,7 +262,7 @@ void main() {
       expect(match.report.body, 'En bra laginsats.');
       expect(match.report.published, isFalse);
       expect(find.byTooltip('Skriv matchrapport'), findsNothing);
-      expect(find.text('Mina uppgifter'), findsOneWidget);
+      expect(find.text('Mina uppgifter'), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
@@ -255,7 +354,7 @@ void main() {
     overview.done = true;
     await tester.tap(find.byTooltip('Stäng').first);
     await tester.pumpAndSettle();
-    expect(find.text('Mina uppgifter'), findsOneWidget);
+    expect(find.text('Mina uppgifter'), findsNothing);
     expect(find.byTooltip('Granska och påminn'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -287,6 +386,45 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('desktop assistant follows page and event navigation', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    tester.view.physicalSize = const Size(1800, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      _app(
+        _Calendar(),
+        identity: const _AssistantIdentity(),
+        overview: _AssistantOverview(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('assistant-coach-side-panel')), findsOneWidget);
+    expect(find.text('Här och nu'), findsNothing);
+
+    await tester.tap(find.text('Kalender').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Kalendern · F2012'), findsOneWidget);
+    expect(find.text('Här och nu'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Vy och filter'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Agenda').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Träning A').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Den här aktiviteten · F2012'), findsOneWidget);
+    expect(find.text('Här och nu'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
   testWidgets('selection menu remains above compact list', (tester) async {
     final calendar = _Calendar();
     await _openParticipants(tester, calendar);
@@ -782,6 +920,8 @@ Widget _app(
   MatchServices match = const UnconfiguredMatchServices(),
   RosterServices roster = const UnconfiguredRosterServices(),
   OverviewServices overview = const UnconfiguredOverviewServices(),
+  AssistantIdentityServices assistantIdentity =
+      const UnconfiguredAssistantIdentityServices(),
 }) => TeamZoneApp(
   environment: const AppEnvironment(name: 'cal11'),
   locale: const Locale('sv'),
@@ -791,9 +931,41 @@ Widget _app(
     match: match,
     roster: roster,
     overview: overview,
+    assistantIdentity: assistantIdentity,
     isConfigured: true,
   ),
 );
+
+class _AvatarAssistantIdentity implements AssistantIdentityServices {
+  AssistantIdentityPreference preference = const AssistantIdentityPreference(
+    revision: 0,
+  );
+
+  @override
+  Future<AssistantIdentityPreference> getPreference() async => preference;
+
+  @override
+  Future<AssistantIdentityPreference> savePreference({
+    required String? customName,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async => preference = AssistantIdentityPreference(
+    customName: customName,
+    avatarKey: preference.avatarKey,
+    revision: expectedRevision + 1,
+  );
+
+  @override
+  Future<AssistantIdentityPreference> saveAvatarPreference({
+    required String? avatarKey,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async => preference = AssistantIdentityPreference(
+    customName: preference.customName,
+    avatarKey: avatarKey,
+    revision: expectedRevision + 1,
+  );
+}
 
 Future<void> _openResultMatch(
   WidgetTester tester,
@@ -1571,6 +1743,27 @@ class _AssistantMatchOverview extends UnconfiguredOverviewServices {
             ),
         ],
       );
+}
+
+class _TaskSettingsOverview extends _AssistantOverview
+    implements AssistantTaskPreferencesServices {
+  AssistantTaskPreferences preference = const AssistantTaskPreferences();
+  @override
+  Future<AssistantTaskPreferences> loadAssistantTaskPreferences() async =>
+      preference;
+  @override
+  Future<AssistantTaskPreferences> saveAssistantTaskPreferences(
+    Set<String> hiddenKinds,
+    int expectedRevision, {
+    bool currentTeamOnly = false,
+  }) async {
+    if (expectedRevision != preference.revision) throw StateError('conflict');
+    return preference = AssistantTaskPreferences(
+      hiddenKinds: hiddenKinds,
+      currentTeamOnly: currentTeamOnly,
+      revision: expectedRevision + 1,
+    );
+  }
 }
 
 class _AssistantOverview extends UnconfiguredOverviewServices {

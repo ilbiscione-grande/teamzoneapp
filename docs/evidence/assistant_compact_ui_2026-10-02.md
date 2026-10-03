@@ -114,3 +114,50 @@ resolved conflicts; unresolved ones remain visible.
 43 calendar/assistant tests passed, including choosing the second activity,
 single-occurrence/time-only payload and retry after failure. Existing assistant
 tests recheck overlap after event changes. Logs: `.tmp-conflict-tests.log`.
+
+## Follow-up: quieter list header and action spacing
+
+The generic “Behöver din uppmärksamhet” row is removed. Refresh now sits beside
+the assistant name and settings action in both the full-page app bar and the
+desktop side-panel header. The active list no longer repeats “Mina uppgifter”;
+the snoozed and archived headings remain because they describe a changed state.
+
+Card actions use a 44-pixel visual height with eight pixels between actions.
+They still share the row equally and retain tooltips and the existing action
+behavior. Eleven focused responsive, assistant, match and preparation tests
+passed at desktop and narrow-panel sizes. Flutter analyze and diff checks passed.
+
+The status controls (Current, Snoozed and Archived) were subsequently clarified
+as the controls that needed reducing. They now use fixed 52 × 44 pixel icon
+buttons with 10 pixels between them, stay on one row and keep their count in the
+tooltip. A 248-pixel-wide panel test verifies their width, gaps and shared row.
+
+## Follow-up: activity warning groups
+
+Visible warnings with the same team context and activity ID now share one
+outlined activity card. The shared header identifies the club, team, activity,
+start time and number of matters to handle. Each warning remains a separate row
+inside the card, with its own expandable explanation and its existing action,
+snooze and archive controls. A single warning keeps the compact single-card
+layout. Status and category filters run before grouping, so the displayed count
+only describes the warnings currently visible to the user.
+
+The focused assistant suite passed all 16 tests, including a two-warning group
+beside an ungrouped activity. Flutter analyze reported no issues.
+
+## Follow-up: page-aware assistant context
+
+The assistant now separates its page-specific “Här och nu” section from the
+account-wide task list with explicit relevance rules. Calendar shows the active
+team's event tasks, an event page shows only that event (including the other
+side of a calendar conflict), Team highlights callup and attendance work, and
+Statistics highlights attendance and match follow-up. Home, Inbox and unrelated
+administrative pages do not claim unrelated tasks are relevant to the page.
+Changing pages updates the presentation without reloading the task projection;
+changing team context still performs an authorized reload.
+
+The 17-case assistant suite verifies each relevance rule and live page changes.
+A desktop shell test also navigates Home → Calendar → event and verifies that
+the persistent side panel changes from global view to Calendar and then to the
+specific activity. The existing mobile event-context navigation test still
+passes.

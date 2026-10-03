@@ -10,10 +10,35 @@ const _assistantTransparencyPoints = <String>[
   'Avfärdade förslag kan visas och återställas utan att Inbox-historik ändras.',
 ];
 
+class _AssistantAvatar extends StatelessWidget {
+  const _AssistantAvatar({required this.avatarKey, required this.size});
+
+  final String? avatarKey;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final asset = assistantAvatarAsset(avatarKey);
+    return CircleAvatar(
+      key: const Key('assistant-avatar'),
+      radius: size / 2,
+      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+      backgroundImage: asset == null ? null : AssetImage(asset),
+      child: asset == null
+          ? Icon(Icons.assistant_outlined, size: size * 0.55)
+          : null,
+    );
+  }
+}
+
 class _AssistantCoachMobileFab extends StatelessWidget {
-  const _AssistantCoachMobileFab({required this.onPressed});
+  const _AssistantCoachMobileFab({
+    required this.onPressed,
+    required this.preference,
+  });
 
   final VoidCallback onPressed;
+  final Future<AssistantIdentityPreference> preference;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -23,7 +48,11 @@ class _AssistantCoachMobileFab extends StatelessWidget {
       key: const Key('assistant-coach-mobile-fab'),
       tooltip: assistantBaseName,
       onPressed: onPressed,
-      child: const Icon(Icons.assistant_outlined),
+      child: FutureBuilder<AssistantIdentityPreference>(
+        future: preference,
+        builder: (context, snapshot) =>
+            _AssistantAvatar(avatarKey: snapshot.data?.avatarKey, size: 48),
+      ),
     ),
   );
 }
@@ -33,11 +62,17 @@ class _AssistantCoachSidePanel extends StatelessWidget {
     required this.contextValue,
     required this.onOpen,
     required this.tasks,
+    required this.onSettings,
+    required this.preference,
+    required this.onRefresh,
   });
 
   final TeamZoneContext contextValue;
   final VoidCallback onOpen;
   final Widget tasks;
+  final VoidCallback onSettings;
+  final Future<AssistantIdentityPreference> preference;
+  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -55,17 +90,35 @@ class _AssistantCoachSidePanel extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.assistant_outlined),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      assistantBaseName,
-                      style: Theme.of(context).textTheme.titleMedium,
+              FutureBuilder<AssistantIdentityPreference>(
+                future: preference,
+                builder: (context, snapshot) => Row(
+                  children: [
+                    _AssistantAvatar(
+                      avatarKey: snapshot.data?.avatarKey,
+                      size: 40,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        snapshot.data?.displayName ?? assistantBaseName,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    IconButton(
+                      key: const Key('assistant-panel-refresh'),
+                      tooltip: 'Uppdatera uppgifter',
+                      onPressed: onRefresh,
+                      icon: const Icon(Icons.refresh),
+                    ),
+                    IconButton(
+                      key: const Key('assistant-panel-settings'),
+                      tooltip: 'Assistentinställningar',
+                      onPressed: onSettings,
+                      icon: const Icon(Icons.settings_outlined),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 12),
               tasks,
@@ -102,6 +155,8 @@ class _AssistantCoachHoldingSurface extends StatefulWidget {
     required this.page,
     required this.calendar,
     required this.onOpenTask,
+    required this.onOpenSettings,
+    this.settingsOnly = false,
   });
 
   final AssistantIdentityServices assistantIdentity;
@@ -113,6 +168,8 @@ class _AssistantCoachHoldingSurface extends StatefulWidget {
   final AssistantPageContext page;
   final CalendarServices calendar;
   final Future<void> Function(AssistantTask) onOpenTask;
+  final Future<void> Function() onOpenSettings;
+  final bool settingsOnly;
 
   @override
   State<_AssistantCoachHoldingSurface> createState() =>
@@ -125,6 +182,18 @@ class _AssistantCoachHoldingSurfaceState
   late Future<List<AssistantAreaPreference>> _areaPreferences;
   late Set<String> _selectedAreaKeys;
   bool _showHistory = false;
+  bool _savingAvatar = false;
+  int _taskRevision = 0;
+
+  Future<void> _openSettings() async {
+    await widget.onOpenSettings();
+    if (!mounted) return;
+    setState(() {
+      _taskRevision++;
+      _preference = widget.assistantIdentity.getPreference();
+      _areaPreferences = widget.assistantPresentation.getAreaPreferences();
+    });
+  }
 
   @override
   void initState() {
@@ -189,7 +258,9 @@ class _AssistantCoachHoldingSurfaceState
         idempotencyKey: _newUuid(),
       );
       if (!mounted) return;
-      setState(() => _preference = Future.value(saved));
+      setState(() {
+        _preference = Future.value(saved);
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Assistentens namn har sparats.')),
       );
@@ -198,6 +269,38 @@ class _AssistantCoachHoldingSurfaceState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Namnet kunde inte sparas. Försök igen.')),
       );
+    }
+  }
+
+  Future<void> _setAvatar(
+    AssistantIdentityPreference preference,
+    String? avatarKey,
+  ) async {
+    if (_savingAvatar || preference.avatarKey == avatarKey) return;
+    setState(() => _savingAvatar = true);
+    try {
+      final saved = await widget.assistantIdentity.saveAvatarPreference(
+        avatarKey: avatarKey,
+        expectedRevision: preference.revision,
+        idempotencyKey: _newUuid(),
+      );
+      if (!mounted) return;
+      setState(() => _preference = Future.value(saved));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Assistentens profilbild har sparats.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _preference = widget.assistantIdentity.getPreference();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profilbilden kunde inte sparas. Försök igen.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _savingAvatar = false);
     }
   }
 
@@ -215,17 +318,49 @@ class _AssistantCoachHoldingSurfaceState
             }
           },
         ),
-        title: const Text(assistantBaseName),
+        title: FutureBuilder<AssistantIdentityPreference>(
+          future: _preference,
+          builder: (context, snapshot) => Row(
+            children: [
+              if (!widget.settingsOnly) ...[
+                _AssistantAvatar(avatarKey: snapshot.data?.avatarKey, size: 36),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Text(
+                  widget.settingsOnly
+                      ? 'Assistentinställningar'
+                      : snapshot.data?.displayName ?? assistantBaseName,
+                  key: const Key('assistant-display-name'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          if (!widget.settingsOnly) ...[
+            IconButton(
+              key: const Key('assistant-refresh-button'),
+              tooltip: 'Uppdatera uppgifter',
+              onPressed: () => setState(() => _taskRevision++),
+              icon: const Icon(Icons.refresh),
+            ),
+            IconButton(
+              key: const Key('assistant-settings-button'),
+              tooltip: 'Assistentinställningar',
+              onPressed: _openSettings,
+              icon: const Icon(Icons.settings_outlined),
+            ),
+          ],
+        ],
       ),
       body: FutureBuilder<AssistantIdentityPreference>(
         future: _preference,
         builder: (context, snapshot) {
           final preference =
               snapshot.data ?? const AssistantIdentityPreference(revision: 0);
-          final presentationContext =
-              AssistantPresentationContext.fromTeamZoneContext(
-                widget.contextValue,
-              );
           final areas = relevantAssistantAreas(widget.contextValue);
           return FutureBuilder<List<AssistantAreaPreference>>(
             future: _areaPreferences,
@@ -248,174 +383,233 @@ class _AssistantCoachHoldingSurfaceState
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              preference.displayName,
-                              key: const Key('assistant-display-name'),
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w600,
+                            if (!widget.settingsOnly)
+                              AssistantTaskSections(
+                                key: ValueKey(_taskRevision),
+                                contexts: widget.contexts,
+                                activeContext: widget.contextValue,
+                                page: widget.page,
+                                overview: widget.overview,
+                                loadEvent: widget.calendar.getEventDetails,
+                                preparation: widget.calendar.preparation,
+                                onOpen: widget.onOpenTask,
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            if (preference.customName != null)
-                              const Text(assistantBaseName),
-                            const SizedBox(height: 12),
-                            AssistantContextBanner(value: presentationContext),
-                            const SizedBox(height: 12),
-                            AssistantTaskSections(
-                              contexts: widget.contexts,
-                              activeContext: widget.contextValue,
-                              page: widget.page,
-                              overview: widget.overview,
-                              loadEvent: widget.calendar.getEventDetails,
-                              preparation: widget.calendar.preparation,
-                              onOpen: widget.onOpenTask,
-                            ),
-                            const SizedBox(height: 24),
-                            ExpansionTile(
-                              key: const Key('assistant-settings-expand'),
-                              title: const Text(
-                                'Inställningar och om assistenten',
-                              ),
-                              children: [
-                                const AssistantDigitalFunctionNotice(),
-                                const Text(
-                                  _assistantHoldingMessage,
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 12),
-                                const Text(
-                                  'Ingen analys körs med AI och inga automatiska åtgärder utförs.',
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 16),
-                                OutlinedButton.icon(
-                                  key: const Key('assistant-name-settings'),
-                                  onPressed:
-                                      snapshot.connectionState ==
-                                          ConnectionState.waiting
-                                      ? null
-                                      : () => _editName(preference),
-                                  icon: const Icon(Icons.edit_outlined),
-                                  label: const Text('Namnge min assistent'),
-                                ),
-                                const SizedBox(height: 20),
-                                const _AssistantTransparencyList(),
-                                const SizedBox(height: 20),
-                                const Divider(),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Min kö',
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.titleMedium,
-                                ),
-                                const SizedBox(height: 8),
-                                SegmentedButton<bool>(
-                                  key: const Key('assistant-history-switch'),
-                                  segments: const [
-                                    ButtonSegment(
-                                      value: false,
-                                      label: Text('Aktuellt'),
+                            if (widget.settingsOnly)
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (widget.overview
+                                      is AssistantTaskPreferencesServices)
+                                    AssistantTaskVisibilitySettings(
+                                      services:
+                                          widget.overview
+                                              as AssistantTaskPreferencesServices,
+                                    )
+                                  else
+                                    const Text(
+                                      'Visningsinställningar är inte tillgängliga just nu.',
                                     ),
-                                    ButtonSegment(
-                                      value: true,
-                                      label: Text('Historik'),
-                                    ),
-                                  ],
-                                  selected: {_showHistory},
-                                  onSelectionChanged: (value) => setState(
-                                    () => _showHistory = value.single,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Wrap(
-                                  key: const Key('assistant-area-filters'),
-                                  alignment: WrapAlignment.center,
-                                  spacing: 8,
-                                  runSpacing: 4,
-                                  children: [
-                                    for (final area in visibleAreas)
-                                      FilterChip(
-                                        avatar: const Icon(
-                                          Icons.filter_alt_outlined,
-                                          size: 16,
-                                        ),
-                                        label: Text(area.label),
-                                        selected: _selectedAreaKeys.contains(
-                                          area.key,
-                                        ),
-                                        onSelected: (selected) => setState(() {
-                                          if (selected) {
-                                            _selectedAreaKeys.add(area.key);
-                                          } else {
-                                            _selectedAreaKeys.remove(area.key);
-                                          }
-                                        }),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(Icons.lock_outline, size: 16),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        _showHistory
-                                            ? 'Ingen verifierad historik ännu'
-                                            : 'Inga områden är aktiverade ännu',
-                                      ),
-                                    ),
-                                    IconButton(
-                                      key: const Key(
-                                        'assistant-area-preferences',
-                                      ),
-                                      tooltip: 'Områdesinställningar',
-                                      onPressed:
-                                          areaSnapshot.connectionState ==
-                                              ConnectionState.waiting
-                                          ? null
-                                          : () => _editAreaPreferences(
-                                              areas,
-                                              areaPreferences,
-                                            ),
-                                      icon: const Icon(Icons.tune_outlined),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Container(
-                                  key: const Key(
-                                    'assistant-shared-queue-contract',
-                                  ),
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(
+                                  const SizedBox(height: 24),
+                                  const Divider(),
+                                  Text(
+                                    'Utseende och namn',
+                                    style: Theme.of(
                                       context,
-                                    ).colorScheme.surfaceContainerLow,
-                                    borderRadius: BorderRadius.circular(12),
+                                    ).textTheme.titleLarge,
                                   ),
-                                  child: const Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Välj profilbild för din assistent. Valet följer ditt konto mellan enheter.',
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Wrap(
+                                    key: const Key('assistant-avatar-options'),
+                                    spacing: 12,
+                                    runSpacing: 12,
                                     children: [
-                                      Icon(Icons.notifications_none_outlined),
-                                      SizedBox(width: 10),
+                                      for (final option
+                                          in const <(String?, String)>[
+                                            (null, 'Standard'),
+                                            ('woman', 'Kvinna 1'),
+                                            ('woman_2', 'Kvinna 2'),
+                                            ('woman_3', 'Kvinna 3'),
+                                            ('man', 'Man 1'),
+                                            ('man_2', 'Man 2'),
+                                            ('man_3', 'Man 3'),
+                                          ])
+                                        ChoiceChip(
+                                          key: ValueKey(
+                                            'assistant-avatar-${option.$1 ?? 'default'}',
+                                          ),
+                                          avatar: _AssistantAvatar(
+                                            avatarKey: option.$1,
+                                            size: 40,
+                                          ),
+                                          label: Text(option.$2),
+                                          selected:
+                                              preference.avatarKey == option.$1,
+                                          onSelected:
+                                              _savingAvatar ||
+                                                  snapshot.connectionState ==
+                                                      ConnectionState.waiting
+                                              ? null
+                                              : (_) => _setAvatar(
+                                                  preference,
+                                                  option.$1,
+                                                ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  OutlinedButton.icon(
+                                    key: const Key('assistant-name-settings'),
+                                    onPressed:
+                                        snapshot.connectionState ==
+                                            ConnectionState.waiting
+                                        ? null
+                                        : () => _editName(preference),
+                                    icon: const Icon(Icons.edit_outlined),
+                                    label: const Text('Namnge min assistent'),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  const Divider(),
+                                  Text(
+                                    'Om assistenten',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleLarge,
+                                  ),
+                                  const AssistantDigitalFunctionNotice(),
+                                  const Text(
+                                    _assistantHoldingMessage,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    'Ingen analys körs med AI och inga automatiska åtgärder utförs.',
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 20),
+                                  const _AssistantTransparencyList(),
+                                  const SizedBox(height: 20),
+                                  const Divider(),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Min kö',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  SegmentedButton<bool>(
+                                    key: const Key('assistant-history-switch'),
+                                    segments: const [
+                                      ButtonSegment(
+                                        value: false,
+                                        label: Text('Aktuellt'),
+                                      ),
+                                      ButtonSegment(
+                                        value: true,
+                                        label: Text('Historik'),
+                                      ),
+                                    ],
+                                    selected: {_showHistory},
+                                    onSelectionChanged: (value) => setState(
+                                      () => _showHistory = value.single,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    key: const Key('assistant-area-filters'),
+                                    alignment: WrapAlignment.center,
+                                    spacing: 8,
+                                    runSpacing: 4,
+                                    children: [
+                                      for (final area in visibleAreas)
+                                        FilterChip(
+                                          avatar: const Icon(
+                                            Icons.filter_alt_outlined,
+                                            size: 16,
+                                          ),
+                                          label: Text(area.label),
+                                          selected: _selectedAreaKeys.contains(
+                                            area.key,
+                                          ),
+                                          onSelected: (selected) => setState(
+                                            () {
+                                              if (selected) {
+                                                _selectedAreaKeys.add(area.key);
+                                              } else {
+                                                _selectedAreaKeys.remove(
+                                                  area.key,
+                                                );
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.lock_outline, size: 16),
+                                      const SizedBox(width: 6),
                                       Expanded(
                                         child: Text(
-                                          'Alla områden delar en kö och notifieringsbudget '
-                                          '($assistantDirectLimitPer24Hours direkta och '
-                                          '$assistantDigestLimitPer24Hours sammanfattning per dygn). '
-                                          'Systemmeddelanden påverkas inte.',
+                                          _showHistory
+                                              ? 'Ingen verifierad historik ännu'
+                                              : 'Inga områden är aktiverade ännu',
                                         ),
+                                      ),
+                                      IconButton(
+                                        key: const Key(
+                                          'assistant-area-preferences',
+                                        ),
+                                        tooltip: 'Områdesinställningar',
+                                        onPressed:
+                                            areaSnapshot.connectionState ==
+                                                ConnectionState.waiting
+                                            ? null
+                                            : () => _editAreaPreferences(
+                                                areas,
+                                                areaPreferences,
+                                              ),
+                                        icon: const Icon(Icons.tune_outlined),
                                       ),
                                     ],
                                   ),
-                                ),
-                              ],
-                            ),
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    key: const Key(
+                                      'assistant-shared-queue-contract',
+                                    ),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.surfaceContainerLow,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Icon(Icons.notifications_none_outlined),
+                                        SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            'Alla områden delar en kö och notifieringsbudget '
+                                            '($assistantDirectLimitPer24Hours direkta och '
+                                            '$assistantDigestLimitPer24Hours sammanfattning per dygn). '
+                                            'Systemmeddelanden påverkas inte.',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                           ],
                         ),
                       ),

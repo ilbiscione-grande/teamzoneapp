@@ -194,10 +194,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Plats saknas'), findsNWidgets(2));
     expect(find.text('Träning two'), findsOneWidget);
-    expect(
-      tester.getTopLeft(find.text('Träning one').first).dy,
-      lessThan(tester.getTopLeft(find.text('Mina uppgifter')).dy),
-    );
+    expect(find.text('Här och nu'), findsOneWidget);
+    expect(find.text('Mina uppgifter'), findsNothing);
     await tester.ensureVisible(find.text('Ändra tid'));
     await tester.tap(find.text('Ändra tid'));
     await tester.pumpAndSettle();
@@ -276,6 +274,47 @@ void main() {
         '/calendar/event/two?context=b&tab=participants',
       ),
       '/calendar/event/two?context=b&tab=participants',
+    );
+
+    final pending = AssistantTask(
+      context: team('a'),
+      task: task('one'),
+      eventId: 'one',
+      generatedAt: DateTime(2026, 10, 2),
+      stale: false,
+    );
+    final attendance = AssistantTask(
+      context: team('a'),
+      task: task('two', kind: 'missing_attendance'),
+      eventId: 'two',
+      generatedAt: DateTime(2026, 10, 2),
+      stale: false,
+    );
+    expect(const AssistantPageContext('/calendar').isRelevant(pending), isTrue);
+    expect(const AssistantPageContext('/team').isRelevant(pending), isTrue);
+    expect(
+      const AssistantPageContext('/team/member/person').isRelevant(attendance),
+      isTrue,
+    );
+    expect(
+      const AssistantPageContext('/statistics').isRelevant(pending),
+      isFalse,
+    );
+    expect(
+      const AssistantPageContext('/statistics').isRelevant(attendance),
+      isTrue,
+    );
+    expect(
+      const AssistantPageContext('/inbox').isRelevant(attendance),
+      isFalse,
+    );
+    expect(
+      const AssistantPageContext('/calendar/event/one').isRelevant(pending),
+      isTrue,
+    );
+    expect(
+      const AssistantPageContext('/calendar/event/one').isRelevant(attendance),
+      isFalse,
     );
   });
 
@@ -372,6 +411,20 @@ void main() {
         )
         .toSet();
     expect(filterPositions, hasLength(1));
+    final filterRects = ['active', 'snoozed', 'archived']
+        .map(
+          (id) => tester.getRect(find.byKey(ValueKey('assistant-filter-$id'))),
+        )
+        .toList();
+    expect(filterRects.every((rect) => rect.width <= 52), isTrue);
+    expect(
+      filterRects[1].left - filterRects[0].right,
+      greaterThanOrEqualTo(10),
+    );
+    expect(
+      filterRects[2].left - filterRects[1].right,
+      greaterThanOrEqualTo(10),
+    );
     final actionCenters = [
       'Åtgärda',
       'Skjut upp',
@@ -390,6 +443,38 @@ void main() {
     expect(find.text('Varför visas detta?'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('warnings for the same activity share one activity card', (
+    tester,
+  ) async {
+    final overview = Overview()
+      ..homes['a'] = home([
+        task('one'),
+        task('one', kind: 'missing_attendance'),
+        task('two'),
+      ]);
+    await tester.pumpWidget(app(overview, location: '/home'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('assistant-task-group-a:one')),
+      findsOneWidget,
+    );
+    expect(find.text('Träning one'), findsOneWidget);
+    expect(find.text('2 saker att hantera'), findsOneWidget);
+    expect(find.text('Obesvarade kallelser (2)'), findsNWidgets(2));
+    expect(find.text('Närvaro saknas (2)'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('assistant-task-group-a:two')),
+      findsNothing,
+    );
+
+    await tester.tap(find.text('Närvaro saknas (2)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Varför visas detta?'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('archive restore snooze and failed save preserve domain tasks', (
     tester,
   ) async {
@@ -431,17 +516,13 @@ void main() {
     await tester.pumpWidget(app(overview));
     await tester.pumpAndSettle();
     expect(find.text('Här och nu'), findsOneWidget);
-    expect(find.text('Mina uppgifter'), findsOneWidget);
+    expect(find.text('Mina uppgifter'), findsNothing);
     expect(find.text('Träning one'), findsOneWidget);
     expect(find.text('Träning two'), findsOneWidget);
     expect(find.text('Träning three'), findsOneWidget);
     expect(
       tester.getTopLeft(find.text('Träning one')).dy,
-      lessThan(tester.getTopLeft(find.text('Mina uppgifter')).dy),
-    );
-    expect(
-      tester.getTopLeft(find.text('Träning two')).dy,
-      greaterThan(tester.getTopLeft(find.text('Mina uppgifter')).dy),
+      lessThan(tester.getTopLeft(find.text('Träning two')).dy),
     );
   });
 
@@ -456,8 +537,38 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       tester.getTopLeft(find.text('Träning two')).dy,
-      lessThan(tester.getTopLeft(find.text('Mina uppgifter')).dy),
+      lessThan(tester.getTopLeft(find.text('Träning one')).dy),
     );
+  });
+
+  testWidgets('team statistics and inbox show different contextual tasks', (
+    tester,
+  ) async {
+    final overview = Overview()
+      ..homes['a'] = home([
+        task('one'),
+        task('two', kind: 'missing_attendance'),
+      ]);
+
+    await tester.pumpWidget(app(overview, location: '/team'));
+    await tester.pumpAndSettle();
+    expect(find.text('Laget · Lag a'), findsOneWidget);
+    expect(find.text('Här och nu'), findsOneWidget);
+
+    await tester.pumpWidget(app(overview, location: '/statistics'));
+    await tester.pumpAndSettle();
+    expect(find.text('Statistik · Lag a'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Träning two')).dy,
+      lessThan(tester.getTopLeft(find.text('Träning one')).dy),
+    );
+
+    await tester.pumpWidget(app(overview, location: '/inbox'));
+    await tester.pumpAndSettle();
+    expect(find.text('Här och nu'), findsNothing);
+    expect(find.text('Inkorgen · Lag a'), findsNothing);
+    expect(find.text('Träning one'), findsOneWidget);
+    expect(find.text('Träning two'), findsOneWidget);
   });
 
   testWidgets('completed task disappears after returning from action', (
@@ -505,7 +616,7 @@ void main() {
     expect(find.text('Övriga uppgifter är klara.'), findsNothing);
     overview.failures.clear();
     overview.homes['a'] = home([task('one')]);
-    await tester.tap(find.byTooltip('Uppdatera uppgifter'));
+    await tester.pumpWidget(app(overview));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('assistant-task-error')), findsNothing);
     expect(find.text('Träning one'), findsOneWidget);

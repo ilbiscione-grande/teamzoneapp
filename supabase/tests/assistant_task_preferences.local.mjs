@@ -1,0 +1,55 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import { PGlite } from '../../.tmp-search-test/node_modules/@electric-sql/pglite/dist/index.js';
+const db = new PGlite();
+const a='00000000-0000-0000-0000-000000000001', b='00000000-0000-0000-0000-000000000002';
+const value = async (sql,params=[]) => (await db.query(sql,params)).rows[0].value;
+const load=()=>value('select api.get_assistant_task_preferences() value');
+const save=(hidden,revision)=>value('select api.set_assistant_task_preferences($1,$2) value',[hidden,revision]);
+try {
+ await db.exec(`create schema core; create schema internal; create schema api; create schema auth;
+ create role anon; create role authenticated;
+ create table core.profiles(id uuid primary key);
+ insert into core.profiles values('${a}'),('${b}');
+ create table internal.migration_provenance(migration_name text,source_kind text,source_reference text);
+ create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('test.actor',true),'')::uuid $$;
+ select set_config('test.actor','${a}',false);`);
+ await db.exec(fs.readFileSync('supabase/migrations/20261003063110_assistant_task_visibility_preferences.sql','utf8'));
+ assert.deepEqual(await load(),{hidden_kinds:[],revision:0});
+ const saved=await save(['pending_callups','calendar_conflict','pending_callups'],0);
+ assert.deepEqual(saved,{hidden_kinds:['calendar_conflict','pending_callups'],revision:1});
+ assert.deepEqual(await save(['pending_callups','calendar_conflict'],0),saved,'safe identical retry');
+ await assert.rejects(save(['missing_attendance'],0),/revision_conflict/);
+ await assert.rejects(save(['unknown'],1),/invalid_preferences/);
+ await assert.rejects(save([null],1),/invalid_preferences/);
+ assert.deepEqual(await load(),saved,'failure leaves choices intact');
+ await db.query("select set_config('test.actor',$1,false)",[b]);
+ assert.deepEqual(await load(),{hidden_kinds:[],revision:0},'account isolation');
+ await save(['missing_attendance'],0);
+ await db.query("select set_config('test.actor',$1,false)",[a]);
+ assert.deepEqual(await load(),saved);
+ assert.deepEqual(await save([],1),{hidden_kinds:[],revision:2},'restore defaults');
+ await db.exec(fs.readFileSync('supabase/migrations/20261003064829_assistant_task_team_scope.sql','utf8'));
+ const saveScope=(hidden,revision,scope)=>value('select api.set_assistant_task_preferences_v2($1,$2,$3) value',[hidden,revision,scope]);
+ assert.deepEqual(await load(),{hidden_kinds:[],revision:2,current_team_only:false});
+ const scoped=await saveScope([],2,true);
+ assert.deepEqual(scoped,{hidden_kinds:[],revision:3,current_team_only:true});
+ assert.deepEqual(await saveScope([],2,true),scoped,'scope retry');
+ await assert.rejects(saveScope([],2,false),/revision_conflict/);
+ await assert.rejects(saveScope([],3,null),/invalid_preferences/);
+ assert.equal((await save(['pending_callups'],3)).current_team_only,true,'legacy client preserves scope');
+ await db.query("select set_config('test.actor',$1,false)",[b]);
+ assert.equal((await load()).current_team_only,false,'scope account isolation');
+ await db.query("select set_config('test.actor',$1,false)",[a]);
+ assert.deepEqual(await saveScope([],4,false),{hidden_kinds:[],revision:5,current_team_only:false});
+ await db.query("select set_config('test.actor','',false)");
+ await assert.rejects(load(),/unauthenticated/);
+ await assert.rejects(save([],0),/unauthenticated/);
+ await assert.rejects(saveScope([],0,true),/unauthenticated/);
+ assert.equal(await value("select has_function_privilege('anon','api.set_assistant_task_preferences_v2(text[],bigint,boolean)','execute') value"),false);
+ const acl=await value(`select jsonb_build_object('anon',has_function_privilege('anon','api.get_assistant_task_preferences()','execute'),
+ 'read',has_function_privilege('authenticated','api.get_assistant_task_preferences()','execute'),
+ 'table',has_table_privilege('authenticated','internal.assistant_task_preferences','select,insert,update,delete')) value`);
+ assert.deepEqual(acl,{anon:false,read:true,table:false});
+ console.log('PASS: defaults, persistence, isolation, validation, revision conflicts, retry, reset and ACL');
+} finally { await db.close(); }

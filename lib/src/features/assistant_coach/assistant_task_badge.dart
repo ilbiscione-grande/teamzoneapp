@@ -51,6 +51,7 @@ class _AssistantTaskBadgeState extends State<AssistantTaskBadge>
       final snapshot = await widget.load();
       if (!mounted || generation != _generation) return;
       final complete =
+          !snapshot.settingsFailed &&
           !snapshot.personalFailed &&
           snapshot.failedContexts.isEmpty &&
           snapshot.tasks.every((task) => !task.stale);
