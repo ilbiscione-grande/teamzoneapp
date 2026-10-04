@@ -111,6 +111,21 @@ class _ProductShellState extends State<_ProductShell> {
     });
   }
 
+  Future<void> _openMySupportCases() async {
+    _scaffoldKey.currentState?.closeDrawer();
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (_) =>
+          _MyProtectedNameSupportCasesSheet(membership: widget.membership),
+    );
+  }
+
   late final GoRouter _router = GoRouter(
     navigatorKey: _productNavigatorKey,
     initialLocation: _initialProductLocation(
@@ -814,6 +829,7 @@ class _ProductShellState extends State<_ProductShell> {
           pendingTeamRequests: _pendingTeamRequests,
           onTeamRequestsChanged: _refreshPendingTeamRequests,
           onSignOut: widget.onSignOut,
+          onOpenMySupportCases: _openMySupportCases,
           closeDrawer: usesSidebar
               ? null
               : () => _scaffoldKey.currentState?.closeDrawer(),
@@ -1712,6 +1728,7 @@ class _AppNavigationPanel extends StatelessWidget {
     required this.pendingTeamRequests,
     required this.onTeamRequestsChanged,
     required this.onSignOut,
+    required this.onOpenMySupportCases,
     required this.closeDrawer,
     required this.onOpenOwnProfile,
     required this.ownSummary,
@@ -1730,6 +1747,7 @@ class _AppNavigationPanel extends StatelessWidget {
   final Future<int> pendingTeamRequests;
   final VoidCallback onTeamRequestsChanged;
   final Future<void> Function() onSignOut;
+  final Future<void> Function() onOpenMySupportCases;
   final VoidCallback onOpenOwnProfile;
   final Future<_OwnSummary> ownSummary;
   // Null on tablet/desktop, where this panel is a permanent sidebar rather
@@ -1956,6 +1974,11 @@ class _AppNavigationPanel extends StatelessWidget {
                           )
                         : const SizedBox.shrink(),
                   ),
+                _NavPanelRow(
+                  icon: Icons.forum_outlined,
+                  label: strings.feature('Mina supportärenden'),
+                  onTap: onOpenMySupportCases,
+                ),
               ],
             ),
           ),
