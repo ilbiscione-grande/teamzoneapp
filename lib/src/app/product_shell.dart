@@ -1974,15 +1974,18 @@ class _AppNavigationPanel extends StatelessWidget {
                           )
                         : const SizedBox.shrink(),
                   ),
-                _NavPanelRow(
-                  icon: Icons.forum_outlined,
-                  label: strings.feature('Mina supportärenden'),
-                  onTap: onOpenMySupportCases,
-                ),
               ],
             ),
           ),
           const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+            child: TextButton.icon(
+              onPressed: onOpenMySupportCases,
+              icon: const Icon(Icons.forum_outlined),
+              label: Text(strings.feature('Mina supportärenden')),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.all(8),
             child: Row(
