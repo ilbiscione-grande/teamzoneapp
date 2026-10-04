@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/membership/membership_models.dart';
 
@@ -63,11 +65,20 @@ abstract interface class MembershipServices {
   Future<List<ProtectedNameSupportMessage>> listProtectedNameSupportMessages({
     required String caseId,
   });
+  Future<void> markProtectedNameSupportCaseRead({required String caseId});
+  Future<StagedProtectedNameSupportFile> stageProtectedNameSupportFile({
+    required String caseId,
+    required String name,
+    required String mimeType,
+    required Uint8List bytes,
+  });
+  Future<String> protectedNameSupportFileUrl({required String fileId});
   Future<String> sendProtectedNameSupportMessage({
     required String caseId,
     required String body,
     required bool asSupport,
     required String idempotencyKey,
+    List<String> stagedFileIds = const [],
   });
   Future<int> updateProtectedNameSupportCase({
     required String caseId,
@@ -201,11 +212,29 @@ class UnconfiguredMembershipServices implements MembershipServices {
   }) async => const [];
 
   @override
+  Future<void> markProtectedNameSupportCaseRead({
+    required String caseId,
+  }) async {}
+
+  @override
+  Future<StagedProtectedNameSupportFile> stageProtectedNameSupportFile({
+    required String caseId,
+    required String name,
+    required String mimeType,
+    required Uint8List bytes,
+  }) => Future.error(StateError('Supabase is not configured.'));
+
+  @override
+  Future<String> protectedNameSupportFileUrl({required String fileId}) =>
+      Future.error(StateError('Supabase is not configured.'));
+
+  @override
   Future<String> sendProtectedNameSupportMessage({
     required String caseId,
     required String body,
     required bool asSupport,
     required String idempotencyKey,
+    List<String> stagedFileIds = const [],
   }) => Future.error(StateError('Supabase is not configured.'));
 
   @override
@@ -559,21 +588,92 @@ class SupabaseMembershipServices implements MembershipServices {
   }
 
   @override
+  Future<void> markProtectedNameSupportCaseRead({
+    required String caseId,
+  }) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'mark_protected_name_support_case_read',
+          params: {'target_case_id': caseId},
+        );
+  }
+
+  @override
+  Future<StagedProtectedNameSupportFile> stageProtectedNameSupportFile({
+    required String caseId,
+    required String name,
+    required String mimeType,
+    required Uint8List bytes,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'stage_protected_name_support_file',
+          params: {
+            'target_case_id': caseId,
+            'file_name': name,
+            'mime_type': mimeType,
+            'size_bytes': bytes.length,
+          },
+        );
+    if (value is! Map) {
+      throw const FormatException('Invalid staged support file.');
+    }
+    final staged = StagedProtectedNameSupportFile.fromJson(
+      Map<String, dynamic>.from(value),
+    );
+    await _client.storage
+        .from(staged.bucket)
+        .uploadBinary(
+          staged.objectKey,
+          bytes,
+          fileOptions: FileOptions(contentType: mimeType, upsert: false),
+        );
+    return staged;
+  }
+
+  @override
+  Future<String> protectedNameSupportFileUrl({required String fileId}) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'authorize_protected_name_support_file',
+          params: {'target_file_id': fileId},
+        );
+    if (value is! Map) {
+      throw const FormatException('Invalid support file authorization.');
+    }
+    final row = Map<String, dynamic>.from(value);
+    final bucket = row['bucket_id'] as String?;
+    final objectKey = row['object_key'] as String?;
+    final expiresIn = (row['expires_in_seconds'] as num?)?.toInt() ?? 120;
+    if (bucket != 'support-case-files' || objectKey == null) {
+      throw const FormatException('Invalid support file authorization.');
+    }
+    return _client.storage
+        .from('support-case-files')
+        .createSignedUrl(objectKey, expiresIn.clamp(30, 300).toInt());
+  }
+
+  @override
   Future<String> sendProtectedNameSupportMessage({
     required String caseId,
     required String body,
     required bool asSupport,
     required String idempotencyKey,
+    List<String> stagedFileIds = const [],
   }) async {
     final value = await _client
         .schema('api')
         .rpc<Object?>(
-          'send_protected_name_support_message',
+          'send_protected_name_support_message_v2',
           params: {
             'target_case_id': caseId,
             'message_body': body,
             'send_as_support': asSupport,
             'idempotency_key': idempotencyKey,
+            'staged_file_ids': stagedFileIds,
           },
         );
     if (value is! String) {

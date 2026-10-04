@@ -679,7 +679,11 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
                                   const SizedBox(height: 12),
                                   OutlinedButton.icon(
                                     onPressed: () => _openConversation(item),
-                                    icon: const Icon(Icons.forum_outlined),
+                                    icon: Badge.count(
+                                      count: item.unreadCount,
+                                      isLabelVisible: item.unreadCount > 0,
+                                      child: const Icon(Icons.forum_outlined),
+                                    ),
                                     label: Text(
                                       strings.feature(
                                         item.status == 'pending' ||
@@ -766,22 +770,32 @@ class _ProtectedNameSupportConversationSheetState
     extends State<_ProtectedNameSupportConversationSheet> {
   final _message = TextEditingController();
   late Future<List<ProtectedNameSupportMessage>> _messages = _load();
+  final List<StagedProtectedNameSupportFile> _stagedFiles = [];
   bool _sending = false;
+  bool _uploading = false;
   String? _error;
 
   bool get _isOpen =>
       widget.supportCase.status == 'pending' ||
       widget.supportCase.status == 'in_review';
 
-  Future<List<ProtectedNameSupportMessage>> _load() => widget.membership
-      .listProtectedNameSupportMessages(caseId: widget.supportCase.id)
-      .timeout(const Duration(seconds: 15));
+  Future<List<ProtectedNameSupportMessage>> _load() async {
+    final messages = await widget.membership
+        .listProtectedNameSupportMessages(caseId: widget.supportCase.id)
+        .timeout(const Duration(seconds: 15));
+    await widget.membership
+        .markProtectedNameSupportCaseRead(caseId: widget.supportCase.id)
+        .timeout(const Duration(seconds: 15));
+    return messages;
+  }
 
   void _reload() => setState(() => _messages = _load());
 
   Future<void> _send() async {
     final body = _message.text.trim();
-    if (_sending || body.length < 2 || body.length > 2000) return;
+    if (_sending || _uploading || body.length > 2000) return;
+    if (body.isNotEmpty && body.length < 2) return;
+    if (body.isEmpty && _stagedFiles.isEmpty) return;
     setState(() {
       _sending = true;
       _error = null;
@@ -793,9 +807,11 @@ class _ProtectedNameSupportConversationSheetState
             body: body,
             asSupport: widget.asSupport,
             idempotencyKey: _newUuid(),
+            stagedFileIds: _stagedFiles.map((file) => file.id).toList(),
           )
           .timeout(const Duration(seconds: 15));
       _message.clear();
+      _stagedFiles.clear();
       _reload();
     } catch (_) {
       if (mounted) {
@@ -807,6 +823,117 @@ class _ProtectedNameSupportConversationSheetState
       }
     } finally {
       if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  String? _mimeTypeFor(String name) {
+    final extension = name.split('.').last.toLowerCase();
+    return switch (extension) {
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      'pdf' => 'application/pdf',
+      'txt' => 'text/plain',
+      'csv' => 'text/csv',
+      'doc' => 'application/msword',
+      'docx' =>
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'xls' => 'application/vnd.ms-excel',
+      'xlsx' =>
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'ppt' => 'application/vnd.ms-powerpoint',
+      'pptx' =>
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'odt' => 'application/vnd.oasis.opendocument.text',
+      'ods' => 'application/vnd.oasis.opendocument.spreadsheet',
+      _ => null,
+    };
+  }
+
+  Future<void> _pickFiles() async {
+    if (_uploading || _sending || _stagedFiles.length >= 5) return;
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      withData: true,
+      type: FileType.custom,
+      allowedExtensions: const [
+        'jpg',
+        'jpeg',
+        'png',
+        'webp',
+        'pdf',
+        'txt',
+        'csv',
+        'doc',
+        'docx',
+        'xls',
+        'xlsx',
+        'ppt',
+        'pptx',
+        'odt',
+        'ods',
+      ],
+    );
+    if (!mounted || result == null) return;
+    final selected = result.files.take(5 - _stagedFiles.length).toList();
+    if (selected.any((file) => file.size > 10 * 1024 * 1024)) {
+      setState(
+        () => _error = AppStrings.of(
+          context,
+        ).feature('En bilaga får vara högst 10 MB.'),
+      );
+      return;
+    }
+    setState(() {
+      _uploading = true;
+      _error = null;
+    });
+    try {
+      for (final file in selected) {
+        final bytes = file.bytes;
+        final mimeType = _mimeTypeFor(file.name);
+        if (bytes == null || mimeType == null) {
+          throw const FormatException('Unsupported support attachment.');
+        }
+        final staged = await widget.membership
+            .stageProtectedNameSupportFile(
+              caseId: widget.supportCase.id,
+              name: file.name,
+              mimeType: mimeType,
+              bytes: bytes,
+            )
+            .timeout(const Duration(seconds: 45));
+        if (mounted) setState(() => _stagedFiles.add(staged));
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _error = AppStrings.of(
+            context,
+          ).feature('Bilagan kunde inte laddas upp. Försök igen.'),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  Future<void> _openAttachment(ProtectedNameSupportAttachment file) async {
+    try {
+      final url = await widget.membership
+          .protectedNameSupportFileUrl(fileId: file.id)
+          .timeout(const Duration(seconds: 15));
+      final opened = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!opened) throw StateError('Could not open support attachment.');
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppStrings.of(context).safeError)),
+        );
+      }
     }
   }
 
@@ -933,7 +1060,26 @@ class _ProtectedNameSupportConversationSheetState
                                       style: theme.textTheme.labelLarge,
                                     ),
                                     const SizedBox(height: 4),
-                                    SelectableText(message.body),
+                                    if (message.body.isNotEmpty)
+                                      SelectableText(message.body),
+                                    for (final file in message.attachments)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 6),
+                                        child: ActionChip(
+                                          avatar: Icon(
+                                            file.mimeType.startsWith('image/')
+                                                ? Icons.image_outlined
+                                                : Icons.attach_file,
+                                            size: 18,
+                                          ),
+                                          label: Text(
+                                            file.name,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          onPressed: () =>
+                                              _openAttachment(file),
+                                        ),
+                                      ),
                                     const SizedBox(height: 6),
                                     Text(
                                       _timestamp(context, message.createdAt),
@@ -957,26 +1103,65 @@ class _ProtectedNameSupportConversationSheetState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (_stagedFiles.isNotEmpty)
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          for (final file in _stagedFiles)
+                            InputChip(
+                              avatar: const Icon(Icons.attach_file, size: 18),
+                              label: Text(file.name),
+                              onDeleted: _sending || _uploading
+                                  ? null
+                                  : () => setState(
+                                      () => _stagedFiles.remove(file),
+                                    ),
+                            ),
+                        ],
+                      ),
                     TextField(
                       controller: _message,
-                      enabled: !_sending,
+                      enabled: !_sending && !_uploading,
                       minLines: 2,
                       maxLines: 5,
                       maxLength: 2000,
                       decoration: InputDecoration(
                         labelText: strings.feature('Skriv ett svar'),
                         errorText: _error,
-                        suffixIcon: IconButton(
-                          tooltip: strings.feature('Skicka svar'),
-                          onPressed: _sending ? null : _send,
-                          icon: _sending
-                              ? const SizedBox.square(
-                                  dimension: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.send_outlined),
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              tooltip: strings.feature('Bifoga fil'),
+                              onPressed:
+                                  _sending ||
+                                      _uploading ||
+                                      _stagedFiles.length >= 5
+                                  ? null
+                                  : _pickFiles,
+                              icon: _uploading
+                                  ? const SizedBox.square(
+                                      dimension: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.attach_file),
+                            ),
+                            IconButton(
+                              tooltip: strings.feature('Skicka svar'),
+                              onPressed: _sending || _uploading ? null : _send,
+                              icon: _sending
+                                  ? const SizedBox.square(
+                                      dimension: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.send_outlined),
+                            ),
+                          ],
                         ),
                       ),
                       onSubmitted: (_) => _send(),
@@ -1092,7 +1277,15 @@ class _MyProtectedNameSupportCasesSheetState
                           subtitle: Text(
                             '${item.teamName} · ${strings.domainValue(item.status)}',
                           ),
-                          trailing: const Icon(Icons.chevron_right),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (item.unreadCount > 0)
+                                Badge.count(count: item.unreadCount),
+                              const SizedBox(width: 8),
+                              const Icon(Icons.chevron_right),
+                            ],
+                          ),
                           onTap: () => _open(item),
                         ),
                       );

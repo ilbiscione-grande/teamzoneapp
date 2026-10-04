@@ -349,6 +349,8 @@ class AppStrings {
         'The case has been submitted. TeamZone will review the details and respond in the app.',
     'Supportärenden': 'Support cases',
     'Mina supportärenden': 'My support cases',
+    '{count} supportärenden': '{count} support cases',
+    '{count} nya supportsvar': '{count} new support replies',
     'Du har inga supportärenden.': 'You have no support cases.',
     'Svara eller be om uppgifter': 'Reply or request details',
     'Visa meddelanden': 'View messages',
@@ -357,6 +359,9 @@ class AppStrings {
     'Skriv ett svar': 'Write a reply',
     'Meddelandet kunde inte skickas. Försök igen.':
         'The message could not be sent. Please try again.',
+    'En bilaga får vara högst 10 MB.': 'An attachment may be at most 10 MB.',
+    'Bilagan kunde inte laddas upp. Försök igen.':
+        'The attachment could not be uploaded. Please try again.',
     'Ärendet är avslutat och kan inte få fler meddelanden.':
         'The case is closed and cannot receive more messages.',
     'Kontoradering · hög risk': 'Account erasure · high risk',

@@ -5,6 +5,7 @@ class _InboxSurface extends StatefulWidget {
     required this.contextValue,
     required this.contexts,
     required this.messaging,
+    required this.membership,
     this.initialThreadId,
     this.initialAction,
     required this.onNavigate,
@@ -12,6 +13,7 @@ class _InboxSurface extends StatefulWidget {
   final TeamZoneContext contextValue;
   final List<TeamZoneContext> contexts;
   final MessagingServices messaging;
+  final MembershipServices membership;
   final String? initialThreadId;
   // Set by the swipe-up quick actions sheet's "Skicka meddelande" shortcut
   // (ProductRouteContract.inboxCompose) to open the compose dialog
@@ -30,6 +32,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
   StreamSubscription<void>? _notificationSync;
   VoidCallback? _refreshOpenNotifications;
   StreamSubscription<void>? _browserOnlineSync;
+  Timer? _supportRefreshTimer;
   Timer? _resyncDebounce;
   Timer? _staleResync;
   int _staleResyncAttempt = 0;
@@ -49,6 +52,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
   bool _settingsPending = false;
   bool _announcementArchiveExpanded = false;
   int _notificationUnread = 0;
+  late Future<List<ProtectedNameSupportCase>> _supportCases;
   // Defaults to just the active team/club; the filter dialog lets the user
   // widen this to other connections. Reset to the (new) active context
   // whenever it changes -- see didUpdateWidget.
@@ -187,12 +191,16 @@ class _InboxSurfaceState extends State<_InboxSurface>
         thread.type,
       ].whereType<String>().join(' '),
     );
+    _supportCases = _loadSupportCases();
     _data.addListener(_syncList);
     _subscribeToInbox();
     _subscribeToNotifications();
     _browserOnlineSync = browserOnlineSignals().listen(
       (_) => unawaited(_resyncFromSignal()),
     );
+    _supportRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() => _supportCases = _loadSupportCases());
+    });
     unawaited(_data.load());
     unawaited(_refreshNotificationBadge());
     _openInitialAction();
@@ -234,6 +242,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
       unawaited(_resyncFromSignal());
+      setState(() => _supportCases = _loadSupportCases());
     }
   }
 
@@ -530,6 +539,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
   }
 
   Future<void> _refresh() async {
+    setState(() => _supportCases = _loadSupportCases());
     final succeeded = await _data.refresh();
     if (succeeded) {
       _clearStaleResync();
@@ -542,6 +552,65 @@ class _InboxSurfaceState extends State<_InboxSurface>
       ).showSnackBar(SnackBar(content: Text(AppStrings.of(context).safeError)));
     }
   }
+
+  Future<List<ProtectedNameSupportCase>> _loadSupportCases() => widget
+      .membership
+      .listMyProtectedNameSupportCases()
+      .timeout(const Duration(seconds: 15));
+
+  Future<void> _openSupportCases() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (_) =>
+          _MyProtectedNameSupportCasesSheet(membership: widget.membership),
+    );
+    if (mounted) setState(() => _supportCases = _loadSupportCases());
+  }
+
+  Widget _supportInboxEntry(
+    BuildContext context,
+  ) => FutureBuilder<List<ProtectedNameSupportCase>>(
+    future: _supportCases,
+    builder: (context, snapshot) {
+      final items = snapshot.data ?? const <ProtectedNameSupportCase>[];
+      if (items.isEmpty) return const SizedBox.shrink();
+      final unread = items.fold<int>(0, (sum, item) => sum + item.unreadCount);
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+        child: Card(
+          color: unread > 0
+              ? Theme.of(context).colorScheme.secondaryContainer
+              : null,
+          child: ListTile(
+            leading: const Icon(Icons.support_agent_outlined),
+            title: Text(AppStrings.of(context).feature('Mina supportärenden')),
+            subtitle: Text(
+              unread > 0
+                  ? AppStrings.of(context)
+                        .feature('{count} nya supportsvar')
+                        .replaceFirst('{count}', '$unread')
+                  : AppStrings.of(context)
+                        .feature('{count} supportärenden')
+                        .replaceFirst('{count}', '${items.length}'),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (unread > 0) Badge.count(count: unread),
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right),
+              ],
+            ),
+            onTap: _openSupportCases,
+          ),
+        ),
+      );
+    },
+  );
 
   void _scheduleStaleResync() {
     if (_staleResync?.isActive == true || !mounted) return;
@@ -657,6 +726,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
     WidgetsBinding.instance.removeObserver(this);
     _data.removeListener(_syncList);
     _resyncDebounce?.cancel();
+    _supportRefreshTimer?.cancel();
     _clearStaleResync();
     unawaited(_inboxSync?.cancel());
     unawaited(_notificationSync?.cancel());
@@ -708,336 +778,380 @@ class _InboxSurfaceState extends State<_InboxSurface>
         tooltip: strings.newMessage,
         child: const Icon(Icons.edit),
       ),
-      body: ListenableBuilder(
-        listenable: Listenable.merge([_data, _list]),
-        builder: (context, _) {
-          final state = _data.state;
-          if (state.phase == AsyncDataPhase.loading) {
-            return AppLoadingIndicator(label: AppStrings.of(context).loading);
-          }
-          if (state.phase == AsyncDataPhase.failed) {
-            return Center(
-              child: _StateCard(
-                icon: Icons.sync_problem,
-                title: strings.couldNotLoad,
-                message: strings.safeError,
-                action: FilledButton(
-                  onPressed: _data.load,
-                  child: Text(strings.retry),
-                ),
-              ),
-            );
-          }
-          final threads = _list.visibleItems;
-          final attentionAnnouncements = threads
-              .where(
-                (thread) =>
-                    thread.type == 'announcement' && thread.unreadCount > 0,
-              )
-              .toList(growable: false);
-          final archivedAnnouncements = threads
-              .where(
-                (thread) =>
-                    thread.type == 'announcement' && thread.unreadCount == 0,
-              )
-              .toList(growable: false);
-          final conversations = threads
-              .where((thread) => thread.type != 'announcement')
-              .toList(growable: false);
-          final clubs = _groupByClub(conversations);
-          if (state.phase == AsyncDataPhase.empty) {
-            return Center(
-              child: _StateCard(
-                icon: Icons.inbox_outlined,
-                title: strings.inboxEmpty,
-                message: strings.inboxSafeEmpty,
-                action: FilledButton.icon(
-                  onPressed: _compose,
-                  icon: const Icon(Icons.edit),
-                  label: Text(strings.newMessage),
-                ),
-              ),
-            );
-          }
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-                child: SearchBar(
-                  leading: const Icon(Icons.search),
-                  hintText: AppStrings.of(context).feature('Sök i inkorgen'),
-                  onChanged: _list.setQuery,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(4, 4, 12, 0),
-                child: Row(
-                  children: [
-                    IconButton(
-                      tooltip: strings.feature('Filtrera inkorgen'),
-                      onPressed: _showFilterSheet,
-                      icon: Badge(
-                        isLabelVisible:
-                            _filter != 'all' || _selectedContextIds.length > 1,
-                        smallSize: 8,
-                        child: const Icon(Icons.filter_list),
+      body: Column(
+        children: [
+          _supportInboxEntry(context),
+          Expanded(
+            child: ListenableBuilder(
+              listenable: Listenable.merge([_data, _list]),
+              builder: (context, _) {
+                final state = _data.state;
+                if (state.phase == AsyncDataPhase.loading) {
+                  return AppLoadingIndicator(
+                    label: AppStrings.of(context).loading,
+                  );
+                }
+                if (state.phase == AsyncDataPhase.failed) {
+                  return Center(
+                    child: _StateCard(
+                      icon: Icons.sync_problem,
+                      title: strings.couldNotLoad,
+                      message: strings.safeError,
+                      action: FilledButton(
+                        onPressed: _data.load,
+                        child: Text(strings.retry),
                       ),
                     ),
-                    const Spacer(),
-                    if (compact)
-                      IconButton(
-                        tooltip: strings.feature('Markera alla som lästa'),
-                        onPressed:
-                            state.data?.any((item) => item.unreadCount > 0) ==
-                                true
-                            ? _markAllRead
-                            : null,
-                        icon: const Icon(Icons.done_all),
-                      )
-                    else
-                      TextButton.icon(
-                        onPressed:
-                            state.data?.any((item) => item.unreadCount > 0) ==
-                                true
-                            ? _markAllRead
-                            : null,
-                        icon: const Icon(Icons.done_all),
-                        label: Text(strings.feature('Markera alla som lästa')),
+                  );
+                }
+                final threads = _list.visibleItems;
+                final attentionAnnouncements = threads
+                    .where(
+                      (thread) =>
+                          thread.type == 'announcement' &&
+                          thread.unreadCount > 0,
+                    )
+                    .toList(growable: false);
+                final archivedAnnouncements = threads
+                    .where(
+                      (thread) =>
+                          thread.type == 'announcement' &&
+                          thread.unreadCount == 0,
+                    )
+                    .toList(growable: false);
+                final conversations = threads
+                    .where((thread) => thread.type != 'announcement')
+                    .toList(growable: false);
+                final clubs = _groupByClub(conversations);
+                if (state.phase == AsyncDataPhase.empty) {
+                  return Center(
+                    child: _StateCard(
+                      icon: Icons.inbox_outlined,
+                      title: strings.inboxEmpty,
+                      message: strings.inboxSafeEmpty,
+                      action: FilledButton.icon(
+                        onPressed: _compose,
+                        icon: const Icon(Icons.edit),
+                        label: Text(strings.newMessage),
                       ),
-                    if (compact)
-                      PopupMenuButton<String>(
-                        tooltip: strings.feature('Fler inkorgsåtgärder'),
-                        onSelected: _handleCompactAction,
-                        itemBuilder: (context) => [
-                          _compactAction(
-                            context,
-                            value: 'requests',
-                            icon: Icons.mark_email_unread_outlined,
-                            label: 'Förfrågningar',
-                          ),
-                          _compactAction(
-                            context,
-                            value: 'cross_club',
-                            icon: Icons.travel_explore,
-                            label: 'Ledarkontakt',
-                          ),
-                          _compactAction(
-                            context,
-                            value: 'notifications',
-                            icon: Icons.notifications_outlined,
-                            label: 'Notiser',
-                          ),
-                          _compactAction(
-                            context,
-                            value: 'settings',
-                            icon: Icons.settings_outlined,
-                            label: 'Inställningar',
-                          ),
-                        ],
-                        icon: const Icon(Icons.more_vert),
+                    ),
+                  );
+                }
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                      child: SearchBar(
+                        leading: const Icon(Icons.search),
+                        hintText: AppStrings.of(
+                          context,
+                        ).feature('Sök i inkorgen'),
+                        onChanged: _list.setQuery,
                       ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: threads.isEmpty
-                    ? _StateCard(
-                        icon: Icons.search_off,
-                        title: AppStrings.of(
-                          context,
-                        ).feature('Inga matchande konversationer'),
-                        message: AppStrings.of(
-                          context,
-                        ).feature('Ändra sökningen eller rensa filtret.'),
-                        action: TextButton(
-                          onPressed: _list.clearQueryAndFilter,
-                          child: Text(
-                            AppStrings.of(context).feature(
-                              _list.query.isNotEmpty
-                                  ? 'Rensa sökning'
-                                  : 'Rensa filter',
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 4, 12, 0),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            tooltip: strings.feature('Filtrera inkorgen'),
+                            onPressed: _showFilterSheet,
+                            icon: Badge(
+                              isLabelVisible:
+                                  _filter != 'all' ||
+                                  _selectedContextIds.length > 1,
+                              smallSize: 8,
+                              child: const Icon(Icons.filter_list),
                             ),
                           ),
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _refresh,
-                        child: ListView(
-                          padding: const EdgeInsets.all(12),
-                          children: [
-                            if (state.isStale)
-                              Card(
-                                child: ListTile(
-                                  leading: const Icon(Icons.cloud_off),
-                                  title: Text(strings.offlineData),
-                                  subtitle: state.lastUpdated == null
-                                      ? null
-                                      : Text(
-                                          strings.lastUpdated(
-                                            state.lastUpdated!,
-                                          ),
-                                        ),
+                          const Spacer(),
+                          if (compact)
+                            IconButton(
+                              tooltip: strings.feature(
+                                'Markera alla som lästa',
+                              ),
+                              onPressed:
+                                  state.data?.any(
+                                        (item) => item.unreadCount > 0,
+                                      ) ==
+                                      true
+                                  ? _markAllRead
+                                  : null,
+                              icon: const Icon(Icons.done_all),
+                            )
+                          else
+                            TextButton.icon(
+                              onPressed:
+                                  state.data?.any(
+                                        (item) => item.unreadCount > 0,
+                                      ) ==
+                                      true
+                                  ? _markAllRead
+                                  : null,
+                              icon: const Icon(Icons.done_all),
+                              label: Text(
+                                strings.feature('Markera alla som lästa'),
+                              ),
+                            ),
+                          if (compact)
+                            PopupMenuButton<String>(
+                              tooltip: strings.feature('Fler inkorgsåtgärder'),
+                              onSelected: _handleCompactAction,
+                              itemBuilder: (context) => [
+                                _compactAction(
+                                  context,
+                                  value: 'requests',
+                                  icon: Icons.mark_email_unread_outlined,
+                                  label: 'Förfrågningar',
+                                ),
+                                _compactAction(
+                                  context,
+                                  value: 'cross_club',
+                                  icon: Icons.travel_explore,
+                                  label: 'Ledarkontakt',
+                                ),
+                                _compactAction(
+                                  context,
+                                  value: 'notifications',
+                                  icon: Icons.notifications_outlined,
+                                  label: 'Notiser',
+                                ),
+                                _compactAction(
+                                  context,
+                                  value: 'settings',
+                                  icon: Icons.settings_outlined,
+                                  label: 'Inställningar',
+                                ),
+                              ],
+                              icon: const Icon(Icons.more_vert),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: threads.isEmpty
+                          ? _StateCard(
+                              icon: Icons.search_off,
+                              title: AppStrings.of(
+                                context,
+                              ).feature('Inga matchande konversationer'),
+                              message: AppStrings.of(
+                                context,
+                              ).feature('Ändra sökningen eller rensa filtret.'),
+                              action: TextButton(
+                                onPressed: _list.clearQueryAndFilter,
+                                child: Text(
+                                  AppStrings.of(context).feature(
+                                    _list.query.isNotEmpty
+                                        ? 'Rensa sökning'
+                                        : 'Rensa filter',
+                                  ),
                                 ),
                               ),
-                            if (attentionAnnouncements.isNotEmpty) ...[
-                              Container(
-                                margin: const EdgeInsets.only(bottom: 8),
+                            )
+                          : RefreshIndicator(
+                              onRefresh: _refresh,
+                              child: ListView(
                                 padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.tertiaryContainer,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.tertiary,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.campaign),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        strings.feature(
-                                          'Behöver din uppmärksamhet',
-                                        ),
-                                        style: Theme.of(
+                                children: [
+                                  if (state.isStale)
+                                    Card(
+                                      child: ListTile(
+                                        leading: const Icon(Icons.cloud_off),
+                                        title: Text(strings.offlineData),
+                                        subtitle: state.lastUpdated == null
+                                            ? null
+                                            : Text(
+                                                strings.lastUpdated(
+                                                  state.lastUpdated!,
+                                                ),
+                                              ),
+                                      ),
+                                    ),
+                                  if (attentionAnnouncements.isNotEmpty) ...[
+                                    Container(
+                                      margin: const EdgeInsets.only(bottom: 8),
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(
                                           context,
-                                        ).textTheme.titleMedium,
+                                        ).colorScheme.tertiaryContainer,
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.tertiary,
+                                        ),
                                       ),
-                                    ),
-                                    Badge(
-                                      label: Text(
-                                        '${attentionAnnouncements.length}',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              for (final thread in attentionAnnouncements)
-                                Card(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.tertiaryContainer,
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  child: ListTile(
-                                    leading: const Icon(Icons.campaign),
-                                    title: Text(
-                                      thread.subject ??
-                                          strings.feature('Viktigt anslag'),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    subtitle: Text(
-                                      '${thread.preview ?? strings.noMessages}\n${_inboxTime(context, thread.lastAt)}',
-                                      maxLines: 3,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    trailing: const Icon(
-                                      Icons.priority_high_rounded,
-                                    ),
-                                    onTap: () => _openThread(thread),
-                                  ),
-                                ),
-                            ],
-                            for (final club in clubs) ...[
-                              Builder(
-                                builder: (context) {
-                                  final expanded = _isClubExpanded(
-                                    club.club,
-                                    clubs.length,
-                                  );
-                                  return _InboxClubHeader(
-                                    key: ValueKey('inbox-club-${club.club}'),
-                                    title: strings.inboxGroupTitle(club.club),
-                                    count: club.threads.length,
-                                    unread: club.threads.fold(
-                                      0,
-                                      (sum, thread) => sum + thread.unreadCount,
-                                    ),
-                                    expanded: expanded,
-                                    onTap: () => setState(
-                                      () =>
-                                          _clubExpanded[club.club] = !expanded,
-                                    ),
-                                  );
-                                },
-                              ),
-                              if (_isClubExpanded(club.club, clubs.length))
-                                for (final group in _groupThreads(
-                                  club.threads,
-                                )) ...[
-                                  // Team headings inside a club; a club with
-                                  // only its own club-wide threads needs none.
-                                  if (group.title != club.club ||
-                                      _groupThreads(club.threads).length > 1)
-                                    _InboxTeamHeading(
-                                      title: group.title == club.club
-                                          ? strings.feature('Hela klubben')
-                                          : strings.inboxGroupTitle(
-                                              group.title,
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.campaign),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              strings.feature(
+                                                'Behöver din uppmärksamhet',
+                                              ),
+                                              style: Theme.of(
+                                                context,
+                                              ).textTheme.titleMedium,
                                             ),
-                                      subtitle: group.title == 'Flera lag'
-                                          ? group.subtitle
-                                          : null,
-                                      count: group.threads.length,
+                                          ),
+                                          Badge(
+                                            label: Text(
+                                              '${attentionAnnouncements.length}',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  for (final thread in group.threads)
-                                    _threadCard(context, strings, thread),
-                                ],
-                            ],
-                            if (archivedAnnouncements.isNotEmpty)
-                              Card(
-                                margin: const EdgeInsets.only(top: 8),
-                                child: ExpansionTile(
-                                  initiallyExpanded:
-                                      _announcementArchiveExpanded,
-                                  onExpansionChanged: (expanded) => setState(
-                                    () =>
-                                        _announcementArchiveExpanded = expanded,
-                                  ),
-                                  leading: const Icon(Icons.archive_outlined),
-                                  title: Text(
-                                    '${strings.feature('Arkiverade anslag')} (${archivedAnnouncements.length})',
-                                  ),
-                                  children: [
-                                    for (final thread in archivedAnnouncements)
-                                      ListTile(
+                                    for (final thread in attentionAnnouncements)
+                                      Card(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.tertiaryContainer,
+                                        margin: const EdgeInsets.only(
+                                          bottom: 8,
+                                        ),
+                                        child: ListTile(
+                                          leading: const Icon(Icons.campaign),
+                                          title: Text(
+                                            thread.subject ??
+                                                strings.feature(
+                                                  'Viktigt anslag',
+                                                ),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          subtitle: Text(
+                                            '${thread.preview ?? strings.noMessages}\n${_inboxTime(context, thread.lastAt)}',
+                                            maxLines: 3,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          trailing: const Icon(
+                                            Icons.priority_high_rounded,
+                                          ),
+                                          onTap: () => _openThread(thread),
+                                        ),
+                                      ),
+                                  ],
+                                  for (final club in clubs) ...[
+                                    Builder(
+                                      builder: (context) {
+                                        final expanded = _isClubExpanded(
+                                          club.club,
+                                          clubs.length,
+                                        );
+                                        return _InboxClubHeader(
+                                          key: ValueKey(
+                                            'inbox-club-${club.club}',
+                                          ),
+                                          title: strings.inboxGroupTitle(
+                                            club.club,
+                                          ),
+                                          count: club.threads.length,
+                                          unread: club.threads.fold(
+                                            0,
+                                            (sum, thread) =>
+                                                sum + thread.unreadCount,
+                                          ),
+                                          expanded: expanded,
+                                          onTap: () => setState(
+                                            () => _clubExpanded[club.club] =
+                                                !expanded,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    if (_isClubExpanded(
+                                      club.club,
+                                      clubs.length,
+                                    ))
+                                      for (final group in _groupThreads(
+                                        club.threads,
+                                      )) ...[
+                                        // Team headings inside a club; a club with
+                                        // only its own club-wide threads needs none.
+                                        if (group.title != club.club ||
+                                            _groupThreads(club.threads).length >
+                                                1)
+                                          _InboxTeamHeading(
+                                            title: group.title == club.club
+                                                ? strings.feature(
+                                                    'Hela klubben',
+                                                  )
+                                                : strings.inboxGroupTitle(
+                                                    group.title,
+                                                  ),
+                                            subtitle: group.title == 'Flera lag'
+                                                ? group.subtitle
+                                                : null,
+                                            count: group.threads.length,
+                                          ),
+                                        for (final thread in group.threads)
+                                          _threadCard(context, strings, thread),
+                                      ],
+                                  ],
+                                  if (archivedAnnouncements.isNotEmpty)
+                                    Card(
+                                      margin: const EdgeInsets.only(top: 8),
+                                      child: ExpansionTile(
+                                        initiallyExpanded:
+                                            _announcementArchiveExpanded,
+                                        onExpansionChanged: (expanded) =>
+                                            setState(
+                                              () =>
+                                                  _announcementArchiveExpanded =
+                                                      expanded,
+                                            ),
                                         leading: const Icon(
-                                          Icons.campaign_outlined,
+                                          Icons.archive_outlined,
                                         ),
                                         title: Text(
-                                          thread.subject ??
-                                              strings.feature('Anslag'),
+                                          '${strings.feature('Arkiverade anslag')} (${archivedAnnouncements.length})',
                                         ),
-                                        subtitle: Text(
-                                          '${thread.preview ?? strings.noMessages}\n${_inboxTime(context, thread.lastAt)}',
-                                          maxLines: 3,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        onTap: () => _openThread(thread),
+                                        children: [
+                                          for (final thread
+                                              in archivedAnnouncements)
+                                            ListTile(
+                                              leading: const Icon(
+                                                Icons.campaign_outlined,
+                                              ),
+                                              title: Text(
+                                                thread.subject ??
+                                                    strings.feature('Anslag'),
+                                              ),
+                                              subtitle: Text(
+                                                '${thread.preview ?? strings.noMessages}\n${_inboxTime(context, thread.lastAt)}',
+                                                maxLines: 3,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              onTap: () => _openThread(thread),
+                                            ),
+                                        ],
                                       ),
-                                  ],
-                                ),
+                                    ),
+                                  if (_list.hasMore)
+                                    TextButton.icon(
+                                      onPressed: _list.loadMore,
+                                      icon: const Icon(Icons.expand_more),
+                                      label: Text(
+                                        AppStrings.of(
+                                          context,
+                                        ).feature('Visa fler'),
+                                      ),
+                                    ),
+                                ],
                               ),
-                            if (_list.hasMore)
-                              TextButton.icon(
-                                onPressed: _list.loadMore,
-                                icon: const Icon(Icons.expand_more),
-                                label: Text(
-                                  AppStrings.of(context).feature('Visa fler'),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-              ),
-            ],
-          );
-        },
+                            ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

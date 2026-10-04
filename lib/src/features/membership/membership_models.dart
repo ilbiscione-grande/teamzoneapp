@@ -11,6 +11,8 @@ class ProtectedNameSupportCase {
     required this.resolutionNote,
     required this.revision,
     required this.createdAt,
+    required this.updatedAt,
+    this.unreadCount = 0,
   });
 
   final String id;
@@ -22,6 +24,8 @@ class ProtectedNameSupportCase {
   final String? resolutionNote;
   final int revision;
   final DateTime createdAt;
+  final DateTime updatedAt;
+  final int unreadCount;
 
   factory ProtectedNameSupportCase.fromJson(Map<String, dynamic> json) =>
       ProtectedNameSupportCase(
@@ -34,6 +38,54 @@ class ProtectedNameSupportCase {
         resolutionNote: json['resolution_note'] as String?,
         revision: (json['revision'] as num).toInt(),
         createdAt: DateTime.parse(json['created_at'] as String),
+        updatedAt: DateTime.parse(
+          (json['updated_at'] ?? json['created_at']) as String,
+        ),
+        unreadCount: (json['unread_count'] as num?)?.toInt() ?? 0,
+      );
+}
+
+class ProtectedNameSupportAttachment {
+  const ProtectedNameSupportAttachment({
+    required this.id,
+    required this.name,
+    required this.mimeType,
+    required this.sizeBytes,
+  });
+
+  final String id, name, mimeType;
+  final int sizeBytes;
+
+  factory ProtectedNameSupportAttachment.fromJson(Map<String, dynamic> json) =>
+      ProtectedNameSupportAttachment(
+        id: json['file_id'] as String,
+        name: json['name'] as String,
+        mimeType: json['mime_type'] as String,
+        sizeBytes: (json['size_bytes'] as num).toInt(),
+      );
+}
+
+class StagedProtectedNameSupportFile {
+  const StagedProtectedNameSupportFile({
+    required this.id,
+    required this.bucket,
+    required this.objectKey,
+    required this.name,
+    required this.mimeType,
+    required this.sizeBytes,
+  });
+
+  final String id, bucket, objectKey, name, mimeType;
+  final int sizeBytes;
+
+  factory StagedProtectedNameSupportFile.fromJson(Map<String, dynamic> json) =>
+      StagedProtectedNameSupportFile(
+        id: json['file_id'] as String,
+        bucket: json['bucket_id'] as String,
+        objectKey: json['object_key'] as String,
+        name: json['name'] as String,
+        mimeType: json['mime_type'] as String,
+        sizeBytes: (json['size_bytes'] as num).toInt(),
       );
 }
 
@@ -44,10 +96,12 @@ class ProtectedNameSupportMessage {
     required this.senderName,
     required this.body,
     required this.createdAt,
+    this.attachments = const [],
   });
 
   final String id, senderKind, senderName, body;
   final DateTime createdAt;
+  final List<ProtectedNameSupportAttachment> attachments;
   bool get isFromSupport => senderKind == 'support';
 
   factory ProtectedNameSupportMessage.fromJson(Map<String, dynamic> json) =>
@@ -55,8 +109,12 @@ class ProtectedNameSupportMessage {
         id: json['message_id'] as String,
         senderKind: json['sender_kind'] as String,
         senderName: json['sender_name'] as String,
-        body: json['body'] as String,
+        body: json['body'] as String? ?? '',
         createdAt: DateTime.parse(json['created_at'] as String),
+        attachments: (json['attachments'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(ProtectedNameSupportAttachment.fromJson)
+            .toList(growable: false),
       );
 }
 

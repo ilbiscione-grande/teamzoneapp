@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -525,6 +526,79 @@ void main() {
       ),
     );
   });
+
+  test('support inbox unread cursors and attachments stay private', () {
+    final sql = File(
+      'supabase/migrations/20261004133943_support_inbox_unread_attachments.sql',
+    ).readAsStringSync().toLowerCase();
+    expect(sql, contains('create table internal.protected_name_support_reads'));
+    expect(sql, contains('create table internal.protected_name_support_files'));
+    expect(sql, contains("'support-case-files'"));
+    expect(
+      sql,
+      contains(
+        "values('support-case-files','support-case-files',false,10485760",
+      ),
+    );
+    expect(sql, contains('unread_count bigint'));
+    expect(sql, contains('mark_protected_name_support_case_read'));
+    expect(sql, contains('authorize_protected_name_support_file'));
+    expect(
+      sql,
+      contains('internal.actor_can_access_protected_name_support_case'),
+    );
+    expect(
+      sql,
+      isNot(
+        contains(
+          'grant execute on function\n  api.authorize_protected_name_support_file(uuid)\nto anon',
+        ),
+      ),
+    );
+
+    final shell = File('lib/src/app/product_shell.dart').readAsStringSync();
+    expect(shell, isNot(contains('onOpenMySupportCases')));
+    final inbox = File(
+      'lib/src/features/messaging/inbox_surface.dart',
+    ).readAsStringSync();
+    expect(inbox, contains('_supportInboxEntry(context)'));
+    expect(inbox, contains('Badge.count(count: unread)'));
+  });
+
+  test('support models parse unread counts and message attachments', () {
+    final supportCase = ProtectedNameSupportCase.fromJson({
+      'case_id': 'case',
+      'requester_profile_id': 'profile',
+      'candidate_club_name': 'Klubb',
+      'candidate_team_name': 'Lag',
+      'status': 'in_review',
+      'message': 'Ursprungligt meddelande',
+      'resolution_note': null,
+      'revision': 3,
+      'created_at': '2026-10-04T10:00:00Z',
+      'updated_at': '2026-10-04T11:00:00Z',
+      'unread_count': 2,
+    });
+    final message = ProtectedNameSupportMessage.fromJson({
+      'message_id': 'message',
+      'sender_kind': 'support',
+      'sender_name': 'Support',
+      'body': null,
+      'created_at': '2026-10-04T11:00:00Z',
+      'attachments': [
+        {
+          'file_id': 'file',
+          'name': 'underlag.pdf',
+          'mime_type': 'application/pdf',
+          'size_bytes': 1234,
+        },
+      ],
+    });
+
+    expect(supportCase.unreadCount, 2);
+    expect(message.body, isEmpty);
+    expect(message.attachments.single.name, 'underlag.pdf');
+  });
 }
 
 class _WaitingIdentity implements IdentityServices {
@@ -679,11 +753,29 @@ class _MembershipFake implements MembershipServices {
   }) async => const [];
 
   @override
+  Future<void> markProtectedNameSupportCaseRead({
+    required String caseId,
+  }) async {}
+
+  @override
+  Future<StagedProtectedNameSupportFile> stageProtectedNameSupportFile({
+    required String caseId,
+    required String name,
+    required String mimeType,
+    required Uint8List bytes,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<String> protectedNameSupportFileUrl({required String fileId}) =>
+      throw UnimplementedError();
+
+  @override
   Future<String> sendProtectedNameSupportMessage({
     required String caseId,
     required String body,
     required bool asSupport,
     required String idempotencyKey,
+    List<String> stagedFileIds = const [],
   }) async => 'message';
 
   @override

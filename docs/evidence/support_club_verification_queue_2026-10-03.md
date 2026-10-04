@@ -63,3 +63,25 @@
 Samlad tjänstetopologi, DNS, hemlighetsnamn, mottagarregler, rotation,
 statusdefinitioner och felsökning finns i
 [`../operations/support_email_runbook.md`](../operations/support_email_runbook.md).
+
+## Inkorg, oläststatus och bilagor – 2026-10-04
+
+- Inloggade sökande hittar sina supportärenden högst upp i Inkorgen. Länken är
+  borttagen från appens sidomeny. Vänteläget före ett aktivt lag behåller sin
+  egen ingång eftersom det saknar produktens Inkorg.
+- En kontobunden läsmarkör per ärende räknar nya supportsvar för sökanden och
+  nya användarsvar för supporten. Räknaren nollställs när konversationen öppnas
+  och Inkorgen läser om värdet var 30:e sekund samt vid återgång till appen.
+- Båda parter kan skicka upp till fem bilder eller dokument per meddelande,
+  högst 10 MB per fil. Tillåtna format är JPEG, PNG, WebP, PDF, text, CSV,
+  Word, Excel, PowerPoint samt ODT och ODS.
+- Bilagorna ligger i den privata Supabase Storage-bucketen
+  `support-case-files`. Uppladdning kräver en tidsbegränsad, ärendebunden
+  stagingpost. Läsning kräver att kontot är sökanden eller en aktiv
+  supportadministratör; klienten får endast en kortlivad signerad URL.
+- Migration `20261004133943_support_inbox_unread_attachments` är applicerad i
+  auditprojektet. Ett transaktionellt rollprov verifierade båda
+  oläst-riktningarna, markera-som-läst, bilagekopplingen, nekad åtkomst för ett
+  tredje konto och att `anon` saknar körbehörighet.
+- Riktad Flutter-analys är ren och
+  `test/auth04_membership_application_test.dart` passerar 23/23 tester.
