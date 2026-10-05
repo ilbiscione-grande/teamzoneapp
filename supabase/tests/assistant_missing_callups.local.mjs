@@ -53,7 +53,7 @@ try {
       select internal.actor_has_capability(club_id,owning_team_id,'event.manage') from core.events where id=e $$;
     create table core.person_account_links(profile_id uuid,club_person_id uuid,club_id uuid,state text);
     create table core.callups(id uuid default gen_random_uuid(),event_id uuid,club_id uuid,club_person_id uuid,
-      state text,revision bigint,expires_at timestamptz,created_at timestamptz default now());
+      state text,revision bigint,expires_at timestamptz,last_reminded_at timestamptz,created_at timestamptz default now());
     create table core.attendance_facts(id uuid,event_id uuid,club_person_id uuid);
     create table core.match_workspaces(event_id uuid primary key,state text);
     create table core.match_reports(event_id uuid primary key,body text);
@@ -74,6 +74,7 @@ try {
   await db.exec(read('20261002132339_assistant_match_followup.sql'));
   await db.exec(read('20261002135847_assistant_conflicts_preparation.sql'));
   await db.exec(read('20261002142418_assistant_task_disposition.sql'));
+  await db.exec(read('20261005140000_assistant_pending_callups_reminder_quiet.sql'));
 
   const create = async (n, hours, extras = '') => db.exec(`
     insert into core.events(id,club_id,owning_team_id,event_type,title,state,starts_at,ends_at,timezone,created_by,assembly_minutes_before)
@@ -133,6 +134,12 @@ try {
     values('${id(100)}','${club}','${actor}','pending',1,now()+interval '1 day');`);
   assert.deepEqual(await missing(), [id(101)]);
   assert((await tasks()).some(t => t.kind === 'pending_callups'));
+  // A reminder quiets the warning for 6 hours, then it returns.
+  await db.exec(`update core.callups set last_reminded_at=now() where event_id='${id(100)}';`);
+  assert(!(await tasks()).some(t => t.kind === 'pending_callups'));
+  await db.exec(`update core.callups set last_reminded_at=now()-interval '7 hours' where event_id='${id(100)}';`);
+  assert((await tasks()).some(t => t.kind === 'pending_callups'));
+  console.log('PASS: a reminder quiets unanswered callups for 6 hours');
   await db.exec(`update core.callups set state='cancelled';`);
   assert.deepEqual(await missing(), [id(101)]); // Issued once, no new reminder.
   await create(200, -24, `update core.events set event_type='match' where id='${id(200)}';`);

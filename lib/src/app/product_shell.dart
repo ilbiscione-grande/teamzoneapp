@@ -1777,18 +1777,21 @@ Future<void> _showQuickActionsMenu({
               ],
               if (groups.more.isNotEmpty) ...[
                 sectionTitle(strings.feature('Fler genvägar')),
-                Padding(
+                // One scrolling row, so "Gör nu" keeps the room.
+                SingleChildScrollView(
+                  key: const Key('quick-actions-more'),
+                  scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: Wrap(
-                    key: const Key('quick-actions-more'),
-                    spacing: 8,
-                    runSpacing: 8,
+                  child: Row(
                     children: [
                       for (final action in groups.more)
-                        ActionChip(
-                          avatar: Icon(action.icon, size: 18),
-                          label: Text(action.label),
-                          onPressed: () => open(action),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ActionChip(
+                            avatar: Icon(action.icon, size: 18),
+                            label: Text(action.label),
+                            onPressed: () => open(action),
+                          ),
                         ),
                     ],
                   ),

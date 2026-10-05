@@ -371,7 +371,15 @@ void main() {
       ),
       findsOneWidget,
     );
-    // Destinations share one horizontally scrolling row.
+    // Further actions and destinations each share one scrolling row.
+    expect(
+      tester
+          .widget<SingleChildScrollView>(
+            find.byKey(const Key('quick-actions-more')),
+          )
+          .scrollDirection,
+      Axis.horizontal,
+    );
     final goTo = find.byKey(const Key('quick-actions-go-to'));
     expect(
       tester.widget<SingleChildScrollView>(goTo).scrollDirection,
