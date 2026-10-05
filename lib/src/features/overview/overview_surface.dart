@@ -54,7 +54,7 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
     _notificationSync = null;
     if (widget.destination.path != '/home') return;
     _notificationSync = widget.messaging
-        .watchNotificationInvalidations()
+        .watchNotificationInvalidations(includeTeamUpdatePoll: false)
         .listen((_) {
           _homeRefreshDebounce?.cancel();
           _homeRefreshDebounce = Timer(const Duration(milliseconds: 250), () {
@@ -104,10 +104,15 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
     }
   }
 
+  /// A background refresh keeps the shown projection if the reload fails, so
+  /// a passing network hiccup never swaps Home for an error card.
+  Future<T?> _orPrevious<T>(Future<T?> previous, Future<T?> next) async =>
+      await next ?? await previous;
+
   Future<void> _refresh({bool showError = true}) async {
-    final leaderHome = _reloadLeaderHome();
-    final playerHome = _reloadPlayerHome();
-    final guardianHome = _reloadGuardianHome();
+    final leaderHome = _orPrevious(_leaderHome, _reloadLeaderHome());
+    final playerHome = _orPrevious(_playerHome, _reloadPlayerHome());
+    final guardianHome = _orPrevious(_guardianHome, _reloadGuardianHome());
     if (mounted) {
       setState(() {
         _leaderHome = leaderHome;
@@ -206,7 +211,8 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
                   FutureBuilder<LeaderHomeProjection?>(
                     future: _leaderHome,
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState != ConnectionState.done) {
+                      if (snapshot.connectionState != ConnectionState.done &&
+                          !snapshot.hasData) {
                         return const AppLoadingIndicator(
                           label: 'Laddar dagens lagarbete',
                         );
@@ -237,7 +243,8 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
                   FutureBuilder<PlayerHomeProjection?>(
                     future: _playerHome,
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState != ConnectionState.done) {
+                      if (snapshot.connectionState != ConnectionState.done &&
+                          !snapshot.hasData) {
                         return const AppLoadingIndicator(
                           label: 'Laddar din lagöversikt',
                         );
@@ -266,9 +273,13 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
                   )
                 else if (widget.contextValue.rolePackage == 'guardian')
                   FutureBuilder<GuardianHomeProjection?>(
+                    // A new child starts empty instead of showing the
+                    // previous child's overview while loading.
+                    key: ValueKey(_guardianChildId),
                     future: _guardianHome,
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState != ConnectionState.done) {
+                      if (snapshot.connectionState != ConnectionState.done &&
+                          !snapshot.hasData) {
                         return const AppLoadingIndicator(
                           label: 'Laddar barnets lagöversikt',
                         );

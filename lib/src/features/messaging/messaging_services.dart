@@ -86,7 +86,14 @@ abstract interface class MessagingServices {
     String idempotencyKey,
   );
   Future<NotificationCenter> listNotifications();
-  Stream<void> watchNotificationInvalidations();
+
+  /// Signals that the notification center may have changed. Team updates for
+  /// followers have no realtime broadcast, so they are also polled; surfaces
+  /// that never show team updates (Home) pass `includeTeamUpdatePoll: false`
+  /// to avoid reloading every 45 seconds.
+  Stream<void> watchNotificationInvalidations({
+    bool includeTeamUpdatePoll = true,
+  });
   Future<void> setNotificationState(
     String notificationId,
     String state,
@@ -197,7 +204,9 @@ class UnconfiguredMessagingServices implements MessagingServices {
   @override
   Future<NotificationCenter> listNotifications() => _fail();
   @override
-  Stream<void> watchNotificationInvalidations() => const Stream<void>.empty();
+  Stream<void> watchNotificationInvalidations({
+    bool includeTeamUpdatePoll = true,
+  }) => const Stream<void>.empty();
   @override
   Future<void> setNotificationState(String a, String b, String c) => _fail();
   @override
@@ -700,7 +709,9 @@ class SupabaseMessagingServices implements MessagingServices {
       );
 
   @override
-  Stream<void> watchNotificationInvalidations() {
+  Stream<void> watchNotificationInvalidations({
+    bool includeTeamUpdatePoll = true,
+  }) {
     late final StreamController<void> controller;
     RealtimeChannel? channel;
     Timer? teamUpdatesPoll;
@@ -710,9 +721,11 @@ class SupabaseMessagingServices implements MessagingServices {
         if (profileId == null) {
           throw StateError('Unauthenticated notification center.');
         }
-        teamUpdatesPoll = Timer.periodic(const Duration(seconds: 45), (_) {
-          if (!controller.isClosed) controller.add(null);
-        });
+        if (includeTeamUpdatePoll) {
+          teamUpdatesPoll = Timer.periodic(const Duration(seconds: 45), (_) {
+            if (!controller.isClosed) controller.add(null);
+          });
+        }
         await _client.realtime.setAuth(
           _client.auth.currentSession?.accessToken,
         );

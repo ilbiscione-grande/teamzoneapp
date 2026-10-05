@@ -174,15 +174,34 @@ Future<void> _open(WidgetTester tester, _Editorial editorial) async {
     ),
   );
   await tester.pumpAndSettle();
+  // Public pages live under their own settings tab.
   await tester.scrollUntilVisible(
-    find.byTooltip('Publika sidor'),
+    find.text('Inställningar').last,
     250,
     scrollable: find.descendant(
       of: find.byKey(const Key('app-navigation-panel-list')),
       matching: find.byType(Scrollable),
     ),
   );
-  await tester.tap(find.byTooltip('Publika sidor'));
+  await tester.tap(find.text('Inställningar').last);
+  await tester.pumpAndSettle();
+  await tester.tap(find.widgetWithText(Tab, 'Publika sidor'));
+  await tester.pumpAndSettle();
+  final publicPages = find.widgetWithText(
+    ListTile,
+    'Publik klubbsida och lagsidor',
+  );
+  await tester.scrollUntilVisible(
+    publicPages,
+    250,
+    scrollable: find
+        .descendant(
+          of: find.byType(ListView).last,
+          matching: find.byType(Scrollable),
+        )
+        .first,
+  );
+  await tester.tap(publicPages);
   await tester.pumpAndSettle();
 }
 

@@ -6,6 +6,7 @@ import 'package:teamzone_app/src/app/teamzone_app.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
 import 'package:teamzone_app/src/core/identity/identity_services.dart';
+import 'package:teamzone_app/src/core/preferences/theme_persistence.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 import 'package:teamzone_app/src/features/account/profile_models.dart';
 import 'package:teamzone_app/src/features/account/profile_services.dart';
@@ -284,6 +285,41 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('light, dark or system is chosen in personal settings', (
+    tester,
+  ) async {
+    final persistence = MemoryThemePersistence();
+    await tester.pumpWidget(_app(_Profile(), themePersistence: persistence));
+    await tester.pumpAndSettle();
+    Brightness brightness() =>
+        Theme.of(tester.element(find.byType(Scaffold).first)).brightness;
+    expect(brightness(), Brightness.light);
+    await tester.scrollUntilVisible(
+      find.text('Inställningar').last,
+      250,
+      scrollable: find.descendant(
+        of: find.byKey(const Key('app-navigation-panel-list')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.tap(find.text('Inställningar').last);
+    await tester.pumpAndSettle();
+    final selector = find.byKey(const ValueKey('setting-theme-mode'));
+    expect(selector, findsOneWidget);
+    await tester.tap(
+      find.descendant(of: selector, matching: find.text('Mörkt')),
+    );
+    await tester.pumpAndSettle();
+    expect(brightness(), Brightness.dark);
+    expect(await persistence.readBrightnessMode(), 'dark');
+    await tester.tap(
+      find.descendant(of: selector, matching: find.text('Ljust')),
+    );
+    await tester.pumpAndSettle();
+    expect(brightness(), Brightness.light);
+    expect(await persistence.readBrightnessMode(), 'light');
+  });
+
   testWidgets('club settings are a tab for club administrators only', (
     tester,
   ) async {
@@ -302,7 +338,8 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.byKey(const ValueKey('club-public-club')), findsOneWidget);
+    // Public pages have their own settings tab.
+    expect(find.byKey(const ValueKey('club-public-club')), findsNothing);
     expect(
       find.byKey(const ValueKey('club-badge-upload-club')),
       findsOneWidget,
@@ -643,6 +680,7 @@ Widget _app(
   _Profile profile, {
   _Roster roster = const _Roster(),
   bool clubAdmin = false,
+  ThemePersistence themePersistence = const StatelessThemePersistence(),
 }) => TeamZoneApp(
   environment: const AppEnvironment(name: 'prof01'),
   locale: const Locale('sv'),
@@ -650,6 +688,7 @@ Widget _app(
     identity: _Identity(clubAdmin: clubAdmin),
     roster: roster,
     profile: profile,
+    themePersistence: themePersistence,
     isConfigured: true,
   ),
 );

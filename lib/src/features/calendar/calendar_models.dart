@@ -100,11 +100,14 @@ class CalendarProjection {
     ),
   };
 
+  bool _matchesFilters(CalendarEventSummary event) =>
+      (teamId == null || event.owningTeamId == teamId) &&
+      (eventType == null || event.type == eventType);
+
   List<CalendarEventSummary> get visibleEvents {
     final result = events
         .where((event) {
-          if (teamId != null && event.owningTeamId != teamId) return false;
-          if (eventType != null && event.type != eventType) return false;
+          if (!_matchesFilters(event)) return false;
           final localStart = event.startsAt.toLocal();
           final localEnd = event.endsAt.toLocal();
           if (mode == CalendarViewMode.agenda) {
@@ -119,16 +122,23 @@ class CalendarProjection {
     });
   }
 
+  /// Events on one day, also outside the selected period: a month grid's
+  /// leading and trailing days from the neighbouring months show theirs.
   List<CalendarEventSummary> eventsOn(DateTime date) {
     final start = DateTime(date.year, date.month, date.day);
     final end = start.add(const Duration(days: 1));
-    return visibleEvents
+    final result = events
         .where(
           (event) =>
+              _matchesFilters(event) &&
               event.endsAt.toLocal().isAfter(start) &&
               event.startsAt.toLocal().isBefore(end),
         )
         .toList(growable: false);
+    return result..sort((left, right) {
+      final time = left.startsAt.compareTo(right.startsAt);
+      return time == 0 ? left.id.compareTo(right.id) : time;
+    });
   }
 }
 

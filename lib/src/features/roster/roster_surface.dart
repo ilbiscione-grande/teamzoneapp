@@ -4267,7 +4267,7 @@ Future<void> _archivePersonFromDetails({
       ],
     ),
   );
-  reasonController.dispose();
+  disposeAfterDialog([reasonController]);
   if (reason == null || !context.mounted) return;
 
   try {
@@ -5954,83 +5954,114 @@ class _ClubVerificationSheetState extends State<_ClubVerificationSheet> {
         24,
         MediaQuery.viewInsetsOf(context).bottom + 24,
       ),
-      child: FutureBuilder<ClubVerificationStatus>(
-        future: _load,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return AppLoadingIndicator(
-              label: strings.feature('Laddar klubbstatus'),
-            );
-          }
-          if (snapshot.hasError || !snapshot.hasData) {
-            return _StateCard(
-              icon: Icons.sync_problem,
-              title: strings.feature('Klubbstatus kunde inte laddas'),
-              message: strings.feature('Försök igen om en stund.'),
-              action: FilledButton(
-                onPressed: () => setState(_reload),
-                child: Text(strings.feature('Försök igen')),
-              ),
-            );
-          }
-          final value = snapshot.data!;
-          final presentation = _presentation(value, strings);
-          final canRequest = const {
-            'unofficial',
-            'rejected',
-            'revoked',
-          }.contains(value.status);
-          return ListView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Outside the FutureBuilder so the full-height sheet can always be
+          // closed, also while loading, on errors and after sending.
+          Row(
             children: [
-              Text(
-                strings.feature('Klubbverifiering'),
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 20),
-              Semantics(
-                label: '${presentation.$2}. ${presentation.$3}',
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(presentation.$1),
-                  title: Text(presentation.$2),
-                  subtitle: Text(presentation.$3),
+              Expanded(
+                child: Text(
+                  strings.feature('Klubbverifiering'),
+                  style: Theme.of(context).textTheme.headlineSmall,
                 ),
               ),
-              if (canRequest) ...[
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _evidence,
-                  enabled: !_pending,
-                  minLines: 4,
-                  maxLines: 7,
-                  maxLength: 1000,
-                  decoration: InputDecoration(
-                    labelText: strings.feature('Underlag för granskning'),
-                    helperText: strings.feature(
-                      'Beskriv din roll och hur TeamZone kan verifiera kopplingen till klubben.',
-                    ),
-                  ),
-                ),
-                if (_error != null)
-                  Semantics(liveRegion: true, child: Text(_error!)),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: _pending ? null : _request,
-                  icon: _pending
-                      ? const SizedBox.square(
-                          dimension: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.send_outlined),
-                  label: Text(strings.feature('Skicka för granskning')),
-                ),
-              ],
+              IconButton(
+                key: const Key('club-verification-close'),
+                tooltip: strings.close,
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close),
+              ),
             ],
-          );
-        },
+          ),
+          const SizedBox(height: 12),
+          Expanded(child: _buildStatus(context, strings)),
+        ],
       ),
     );
   }
+
+  Widget _buildStatus(
+    BuildContext context,
+    AppStrings strings,
+  ) => FutureBuilder<ClubVerificationStatus>(
+    future: _load,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return AppLoadingIndicator(
+          label: strings.feature('Laddar klubbstatus'),
+        );
+      }
+      if (snapshot.hasError || !snapshot.hasData) {
+        return _StateCard(
+          icon: Icons.sync_problem,
+          title: strings.feature('Klubbstatus kunde inte laddas'),
+          message: strings.feature('Försök igen om en stund.'),
+          action: FilledButton(
+            onPressed: () => setState(_reload),
+            child: Text(strings.feature('Försök igen')),
+          ),
+        );
+      }
+      final value = snapshot.data!;
+      final presentation = _presentation(value, strings);
+      final canRequest = const {
+        'unofficial',
+        'rejected',
+        'revoked',
+      }.contains(value.status);
+      return ListView(
+        children: [
+          Semantics(
+            label: '${presentation.$2}. ${presentation.$3}',
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(presentation.$1),
+              title: Text(presentation.$2),
+              subtitle: Text(presentation.$3),
+            ),
+          ),
+          if (canRequest) ...[
+            const SizedBox(height: 16),
+            TextField(
+              controller: _evidence,
+              enabled: !_pending,
+              minLines: 4,
+              maxLines: 7,
+              maxLength: 1000,
+              decoration: InputDecoration(
+                labelText: strings.feature('Underlag för granskning'),
+                helperText: strings.feature(
+                  'Beskriv din roll och hur TeamZone kan verifiera kopplingen till klubben.',
+                ),
+              ),
+            ),
+            if (_error != null)
+              Semantics(liveRegion: true, child: Text(_error!)),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _pending ? null : _request,
+              icon: _pending
+                  ? const SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.send_outlined),
+              label: Text(strings.feature('Skicka för granskning')),
+            ),
+          ] else ...[
+            const SizedBox(height: 16),
+            FilledButton.tonal(
+              key: const Key('club-verification-done'),
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(strings.close),
+            ),
+          ],
+        ],
+      );
+    },
+  );
 }
 
 class _MembershipReviewSheet extends StatefulWidget {

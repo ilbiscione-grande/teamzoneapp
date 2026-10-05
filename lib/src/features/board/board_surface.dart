@@ -50,7 +50,7 @@ class _BoardSurfaceState extends State<_BoardSurface> {
         ],
       ),
     );
-    controller.dispose();
+    disposeAfterDialog([controller]);
     return result == null || result.length < 3 ? null : result;
   }
 

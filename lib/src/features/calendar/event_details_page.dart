@@ -622,7 +622,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
               TextButton.icon(
                 onPressed: _deleteDraft,
                 icon: const Icon(Icons.delete_outline),
-                label: Text(strings.feature('Ta bort utkast')),
+                label: Text(strings.feature('Ta bort event')),
               ),
             if (_contextCanCoManage &&
                 (event.can('archive') || event.can('cancel')))
@@ -867,9 +867,11 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(strings.feature('Ta bort utkast?')),
-        content: const Text(
-          'Endast detta opublicerade event utan kallelser eller historik tas bort. Åtgärden går inte att ångra.',
+        title: Text(strings.feature('Ta bort eventet?')),
+        content: Text(
+          strings.feature(
+            'Eventet tas bort helt. Det går bara när inga kallelser har skickats. Åtgärden går inte att ångra.',
+          ),
         ),
         actions: [
           TextButton(
@@ -892,13 +894,13 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(strings.feature('Utkastet har tagits bort.'))),
+        SnackBar(content: Text(strings.feature('Eventet har tagits bort.'))),
       );
       widget.onDeleted();
     } catch (_) {
       if (mounted) {
         _showError(
-          'Utkastet kan inte tas bort. Det kan ha ändrats eller fått historik.',
+          'Eventet kan inte tas bort. Det kan ha ändrats eller fått kallelser.',
         );
       }
     }
@@ -935,7 +937,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         ],
       ),
     );
-    controller.dispose();
+    disposeAfterDialog([controller]);
     if (reason == null || !mounted) return;
     try {
       await widget.calendar.archiveEvent(

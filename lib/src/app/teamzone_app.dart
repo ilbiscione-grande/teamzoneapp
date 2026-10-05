@@ -68,6 +68,7 @@ import 'package:teamzone_app/src/shared/forms/app_form_controller.dart';
 import 'package:teamzone_app/src/shared/lists/app_list_controller.dart';
 import 'package:teamzone_app/src/shared/theme/app_theme.dart';
 import 'package:teamzone_app/src/shared/widgets/app_states.dart';
+import 'package:teamzone_app/src/shared/widgets/dialog_controllers.dart';
 import 'package:teamzone_app/src/shared/widgets/browser_offline_notice.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -138,6 +139,7 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
   String? _pendingInvitationToken;
   bool _showInvitationSignIn = false;
   AppColorTheme _colorTheme = AppColorTheme.green;
+  ThemeMode _themeMode = ThemeMode.system;
 
   @override
   void initState() {
@@ -186,9 +188,22 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
   }
 
   Future<void> _loadColorTheme() async {
-    final id = await widget.services.themePersistence.readColorThemeId();
+    final persistence = widget.services.themePersistence;
+    final id = await persistence.readColorThemeId();
+    final mode = await persistence.readBrightnessMode();
     if (!mounted) return;
-    setState(() => _colorTheme = AppColorTheme.fromId(id));
+    setState(() {
+      _colorTheme = AppColorTheme.fromId(id);
+      _themeMode = ThemeMode.values.firstWhere(
+        (value) => value.name == mode,
+        orElse: () => ThemeMode.system,
+      );
+    });
+  }
+
+  Future<void> _setThemeMode(ThemeMode mode) async {
+    setState(() => _themeMode = mode);
+    await widget.services.themePersistence.writeBrightnessMode(mode.name);
   }
 
   Future<void> _setColorTheme(AppColorTheme colorTheme) async {
@@ -253,7 +268,7 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
             title: 'TeamZone',
             theme: theme,
             darkTheme: darkTheme,
-            themeMode: ThemeMode.system,
+            themeMode: _themeMode,
             supportedLocales: const [Locale('sv'), Locale('en')],
             localizationsDelegates: GlobalMaterialLocalizations.delegates,
             locale: widget.locale,
@@ -265,7 +280,7 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
             title: 'TeamZone',
             theme: theme,
             darkTheme: darkTheme,
-            themeMode: ThemeMode.system,
+            themeMode: _themeMode,
             supportedLocales: const [Locale('sv'), Locale('en')],
             localizationsDelegates: GlobalMaterialLocalizations.delegates,
             locale: widget.locale,
@@ -276,6 +291,8 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
     return AppColorThemeScope(
       colorTheme: _colorTheme,
       onColorThemeChanged: _setColorTheme,
+      themeMode: _themeMode,
+      onThemeModeChanged: _setThemeMode,
       child: materialApp,
     );
   }

@@ -6,6 +6,7 @@ class _InboxSurface extends StatefulWidget {
     required this.contexts,
     required this.messaging,
     required this.membership,
+    this.supportAdminAccess,
     this.initialThreadId,
     this.initialAction,
     required this.onNavigate,
@@ -14,6 +15,9 @@ class _InboxSurface extends StatefulWidget {
   final List<TeamZoneContext> contexts;
   final MessagingServices messaging;
   final MembershipServices membership;
+
+  /// Shows the support queue entry for support admins (desktop/web).
+  final Future<bool>? supportAdminAccess;
   final String? initialThreadId;
   // Set by the swipe-up quick actions sheet's "Skicka meddelande" shortcut
   // (ProductRouteContract.inboxCompose) to open the compose dialog
@@ -53,6 +57,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
   bool _announcementArchiveExpanded = false;
   int _notificationUnread = 0;
   late Future<List<ProtectedNameSupportCase>> _supportCases;
+  late Future<int?> _supportQueue;
   // Defaults to just the active team/club; the filter dialog lets the user
   // widen this to other connections. Reset to the (new) active context
   // whenever it changes -- see didUpdateWidget.
@@ -191,7 +196,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
         thread.type,
       ].whereType<String>().join(' '),
     );
-    _supportCases = _loadSupportCases();
+    _reloadSupport();
     _data.addListener(_syncList);
     _subscribeToInbox();
     _subscribeToNotifications();
@@ -199,7 +204,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
       (_) => unawaited(_resyncFromSignal()),
     );
     _supportRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (mounted) setState(() => _supportCases = _loadSupportCases());
+      if (mounted) setState(_reloadSupport);
     });
     unawaited(_data.load());
     unawaited(_refreshNotificationBadge());
@@ -242,7 +247,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
       unawaited(_resyncFromSignal());
-      setState(() => _supportCases = _loadSupportCases());
+      setState(_reloadSupport);
     }
   }
 
@@ -539,7 +544,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
   }
 
   Future<void> _refresh() async {
-    setState(() => _supportCases = _loadSupportCases());
+    setState(_reloadSupport);
     final succeeded = await _data.refresh();
     if (succeeded) {
       _clearStaleResync();
@@ -551,6 +556,79 @@ class _InboxSurfaceState extends State<_InboxSurface>
         context,
       ).showSnackBar(SnackBar(content: Text(AppStrings.of(context).safeError)));
     }
+  }
+
+  void _reloadSupport() {
+    _supportCases = _loadSupportCases();
+    _supportQueue = _loadSupportQueue();
+  }
+
+  /// Unread user messages in the support queue, or null when the account is
+  /// not a support admin. Access is still enforced by the server; this only
+  /// decides whether to show the entry. A failed count still shows it.
+  Future<int?> _loadSupportQueue() async {
+    final access = widget.supportAdminAccess;
+    if (access == null || !await access) return null;
+    try {
+      final cases = await widget.membership
+          .listProtectedNameSupportCases()
+          .timeout(const Duration(seconds: 15));
+      return cases.fold<int>(0, (sum, item) => sum + item.unreadCount);
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// The support queue is a desktop/web workspace, as before when it sat in
+  /// the navigation panel.
+  bool _supportQueueFits(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >= AppBreakpoints.desktop &&
+      (kIsWeb ||
+          defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.macOS ||
+          defaultTargetPlatform == TargetPlatform.linux);
+
+  Widget _supportQueueEntry(BuildContext context) {
+    if (!_supportQueueFits(context)) return const SizedBox.shrink();
+    return FutureBuilder<int?>(
+      future: _supportQueue,
+      builder: (context, snapshot) {
+        final unread = snapshot.data;
+        if (unread == null) return const SizedBox.shrink();
+        final strings = AppStrings.of(context);
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          child: Card(
+            key: const Key('inbox-support-queue'),
+            color: unread > 0
+                ? Theme.of(context).colorScheme.secondaryContainer
+                : null,
+            child: ListTile(
+              leading: const Icon(Icons.support_agent_outlined),
+              title: Text(strings.feature('Supportkö')),
+              subtitle: Text(
+                unread > 0
+                    ? strings
+                          .feature('{count} nya meddelanden från användare')
+                          .replaceFirst('{count}', '$unread')
+                    : strings.feature(
+                        'Verifieringar, skyddade namn och kontoärenden',
+                      ),
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (unread > 0) Badge.count(count: unread),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
+              onTap: () => widget.onNavigate(ProductRouteContract.support),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<List<ProtectedNameSupportCase>> _loadSupportCases() => widget
@@ -568,7 +646,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
       builder: (_) =>
           _MyProtectedNameSupportCasesSheet(membership: widget.membership),
     );
-    if (mounted) setState(() => _supportCases = _loadSupportCases());
+    if (mounted) setState(_reloadSupport);
   }
 
   Widget _supportInboxEntry(
@@ -780,6 +858,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
       ),
       body: Column(
         children: [
+          _supportQueueEntry(context),
           _supportInboxEntry(context),
           Expanded(
             child: ListenableBuilder(

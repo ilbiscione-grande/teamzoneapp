@@ -122,11 +122,17 @@ class AppColorThemeScope extends InheritedWidget {
     required this.colorTheme,
     required this.onColorThemeChanged,
     required super.child,
+    this.themeMode = ThemeMode.system,
+    this.onThemeModeChanged,
     super.key,
   });
 
   final AppColorTheme colorTheme;
   final ValueChanged<AppColorTheme> onColorThemeChanged;
+
+  /// Light, dark or following the device.
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode>? onThemeModeChanged;
 
   static AppColorThemeScope of(BuildContext context) {
     final scope = context
@@ -137,5 +143,5 @@ class AppColorThemeScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(AppColorThemeScope oldWidget) =>
-      colorTheme != oldWidget.colorTheme;
+      colorTheme != oldWidget.colorTheme || themeMode != oldWidget.themeMode;
 }

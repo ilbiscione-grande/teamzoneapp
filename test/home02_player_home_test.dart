@@ -47,7 +47,10 @@ void main() {
       contains('notification_outbox_center_invalidation'),
     );
     expect(shell, contains('messaging: widget.messaging'));
-    expect(surface, contains('.watchNotificationInvalidations()'));
+    expect(
+      surface,
+      contains('.watchNotificationInvalidations(includeTeamUpdatePoll: false)'),
+    );
     expect(surface, contains('const Duration(milliseconds: 250)'));
     expect(surface, contains('_refresh(showError: false)'));
     expect(surface, contains('unawaited(_notificationSync?.cancel())'));

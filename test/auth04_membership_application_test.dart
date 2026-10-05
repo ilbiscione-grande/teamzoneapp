@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teamzone_app/src/app/teamzone_app.dart';
@@ -145,6 +145,64 @@ void main() {
 
     expect(find.text('Mina supportärenden'), findsOneWidget);
   });
+
+  for (final admin in [true, false]) {
+    testWidgets('support queue sits in the inbox, not the menu '
+        '(admin: $admin)', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      tester.view.physicalSize = const Size(1600, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final membership = _MembershipFake()
+        ..supportAdmin = admin
+        ..supportQueue = [
+          ProtectedNameSupportCase(
+            id: 'case',
+            requesterProfileId: 'requester',
+            clubName: 'Skyddad IF',
+            teamName: 'P2014',
+            status: 'pending',
+            message: 'Vi äger namnet.',
+            resolutionNote: null,
+            revision: 1,
+            createdAt: DateTime.utc(2026, 10, 4),
+            updatedAt: DateTime.utc(2026, 10, 4),
+            unreadCount: 2,
+          ),
+        ];
+      await tester.pumpWidget(
+        TeamZoneApp(
+          environment: const AppEnvironment(name: 'audit'),
+          locale: const Locale('sv'),
+          services: AppServices(
+            identity: _CoachIdentity(),
+            membership: membership,
+            isConfigured: true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Supportärenden'), findsNothing);
+      expect(find.text('Nyhetsredaktion'), findsNothing);
+      expect(find.text('Publika sidor'), findsNothing);
+
+      await tester.tap(find.text('Inbox').first);
+      await tester.pumpAndSettle();
+      final queue = find.byKey(const Key('inbox-support-queue'));
+      if (!admin) {
+        expect(queue, findsNothing);
+        debugDefaultTargetPlatformOverride = null;
+        return;
+      }
+      expect(queue, findsOneWidget);
+      expect(find.text('2 nya meddelanden från användare'), findsOneWidget);
+      await tester.tap(queue);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('inbox-support-queue')), findsNothing);
+      debugDefaultTargetPlatformOverride = null;
+    });
+  }
 
   test('club verification tolerates a deleted requester profile name', () {
     final request = ClubVerificationRequest.fromJson({
@@ -601,6 +659,35 @@ void main() {
   });
 }
 
+class _CoachIdentity implements IdentityServices {
+  @override
+  SessionStatus get sessionStatus => SessionStatus.authenticated;
+  @override
+  Stream<SessionStatus> get sessionChanges => const Stream.empty();
+  @override
+  Future<TeamZoneProfile> getProfile() async =>
+      const TeamZoneProfile(id: 'profile', displayName: 'Coach', locale: 'sv');
+  @override
+  Future<List<TeamZoneContext>> getContexts() async => const [
+    TeamZoneContext(
+      id: 'context',
+      clubId: 'club',
+      clubName: 'Testklubben',
+      teamId: 'team',
+      teamName: 'F2012',
+      rolePackage: 'club_functionary',
+      capabilities: {'team.read'},
+    ),
+  ];
+  @override
+  Future<void> signIn({
+    required String email,
+    required String password,
+  }) async {}
+  @override
+  Future<void> signOut() async {}
+}
+
 class _WaitingIdentity implements IdentityServices {
   @override
   SessionStatus get sessionStatus => SessionStatus.authenticated;
@@ -735,13 +822,16 @@ class _MembershipFake implements MembershipServices {
     return 'support-case';
   }
 
+  bool supportAdmin = false;
+  List<ProtectedNameSupportCase> supportQueue = const [];
+
   @override
-  Future<bool> isSupportAdmin() async => false;
+  Future<bool> isSupportAdmin() async => supportAdmin;
 
   @override
   Future<List<ProtectedNameSupportCase>> listProtectedNameSupportCases({
     String? status,
-  }) async => const [];
+  }) async => supportQueue;
 
   @override
   Future<List<ProtectedNameSupportCase>>

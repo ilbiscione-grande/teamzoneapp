@@ -61,7 +61,7 @@ class _DomainManagementSurfaceState extends State<_DomainManagementSurface> {
       ),
     );
     final hostname = controller.text.trim().toLowerCase();
-    controller.dispose();
+    disposeAfterDialog([controller]);
     if (accepted != true || hostname.isEmpty) return;
     setState(() => _busy = true);
     try {

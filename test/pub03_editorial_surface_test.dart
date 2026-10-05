@@ -18,18 +18,7 @@ void main() {
     final editorial = _Editorial();
     await tester.pumpWidget(_app(editorial, canPublish: true));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('Inställningar').last,
-      250,
-      scrollable: find.descendant(
-        of: find.byKey(const Key('app-navigation-panel-list')),
-        matching: find.byType(Scrollable),
-      ),
-    );
-    await tester.tap(find.text('Inställningar').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Lag'));
-    await tester.pumpAndSettle();
+    await _openPublicPagesSettings(tester);
     await tester.scrollUntilVisible(
       find.text('Publika matcher, resultat och träningstider'),
       250,
@@ -69,15 +58,7 @@ void main() {
       final editorial = _Editorial();
       await tester.pumpWidget(_app(editorial, canPublish: true));
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.byTooltip('Nyhetsredaktion'),
-        250,
-        scrollable: find.descendant(
-          of: find.byKey(const Key('app-navigation-panel-list')),
-          matching: find.byType(Scrollable),
-        ),
-      );
-      await tester.tap(find.byTooltip('Nyhetsredaktion'));
+      await _openNewsroom(tester);
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Event och partners'));
       await tester.pumpAndSettle();
@@ -106,15 +87,7 @@ void main() {
       final editorial = _Editorial();
       await tester.pumpWidget(_app(editorial, canPublish: true));
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.byTooltip('Nyhetsredaktion'),
-        250,
-        scrollable: find.descendant(
-          of: find.byKey(const Key('app-navigation-panel-list')),
-          matching: find.byType(Scrollable),
-        ),
-      );
-      await tester.tap(find.byTooltip('Nyhetsredaktion'));
+      await _openNewsroom(tester);
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Ny artikel'));
       await tester.pumpAndSettle();
@@ -156,15 +129,7 @@ void main() {
   ) async {
     await tester.pumpWidget(_app(_Editorial(), canPublish: true));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.byTooltip('Nyhetsredaktion'),
-      250,
-      scrollable: find.descendant(
-        of: find.byKey(const Key('app-navigation-panel-list')),
-        matching: find.byType(Scrollable),
-      ),
-    );
-    await tester.tap(find.byTooltip('Nyhetsredaktion'));
+    await _openNewsroom(tester);
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Ny artikel'));
     await tester.pumpAndSettle();
@@ -207,15 +172,7 @@ void main() {
     final editorial = _Editorial();
     await tester.pumpWidget(_app(editorial, canPublish: true));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.byTooltip('Nyhetsredaktion'),
-      250,
-      scrollable: find.descendant(
-        of: find.byKey(const Key('app-navigation-panel-list')),
-        matching: find.byType(Scrollable),
-      ),
-    );
-    await tester.tap(find.byTooltip('Nyhetsredaktion'));
+    await _openNewsroom(tester);
     await tester.pumpAndSettle();
     expect(find.text('Inga artiklar ännu'), findsOneWidget);
     await tester.tap(find.byTooltip('Ny artikel'));
@@ -255,15 +212,7 @@ void main() {
     final editorial = _Editorial()..saved = _draft();
     await tester.pumpWidget(_app(editorial, canPublish: true));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.byTooltip('Nyhetsredaktion'),
-      250,
-      scrollable: find.descendant(
-        of: find.byKey(const Key('app-navigation-panel-list')),
-        matching: find.byType(Scrollable),
-      ),
-    );
-    await tester.tap(find.byTooltip('Nyhetsredaktion'));
+    await _openNewsroom(tester);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Säsongen startar'));
     await tester.pumpAndSettle();
@@ -290,15 +239,7 @@ void main() {
     final editorial = _Editorial(clubPublished: true)..saved = _draft();
     await tester.pumpWidget(_app(editorial, canPublish: true));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.byTooltip('Nyhetsredaktion'),
-      250,
-      scrollable: find.descendant(
-        of: find.byKey(const Key('app-navigation-panel-list')),
-        matching: find.byType(Scrollable),
-      ),
-    );
-    await tester.tap(find.byTooltip('Nyhetsredaktion'));
+    await _openNewsroom(tester);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Säsongen startar'));
     await tester.pumpAndSettle();
@@ -328,6 +269,18 @@ void main() {
     await tester.pumpWidget(_app(_Editorial(), canPublish: false));
     await tester.pumpAndSettle();
     expect(find.byTooltip('Nyhetsredaktion'), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text('Inställningar').last,
+      250,
+      scrollable: find.descendant(
+        of: find.byKey(const Key('app-navigation-panel-list')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.tap(find.text('Inställningar').last);
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(Tab, 'Publika sidor'), findsNothing);
+    expect(find.widgetWithText(ListTile, 'Nyheter'), findsNothing);
   });
 
   test(
@@ -371,6 +324,38 @@ void main() {
       ),
     );
   });
+}
+
+/// Settings › Publika sidor, where the newsroom sits next to the public pages.
+Future<void> _openPublicPagesSettings(WidgetTester tester) async {
+  await tester.scrollUntilVisible(
+    find.text('Inställningar').last,
+    250,
+    scrollable: find.descendant(
+      of: find.byKey(const Key('app-navigation-panel-list')),
+      matching: find.byType(Scrollable),
+    ),
+  );
+  await tester.tap(find.text('Inställningar').last);
+  await tester.pumpAndSettle();
+  await tester.tap(find.widgetWithText(Tab, 'Publika sidor'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openNewsroom(WidgetTester tester) async {
+  await _openPublicPagesSettings(tester);
+  final news = find.widgetWithText(ListTile, 'Nyheter');
+  await tester.scrollUntilVisible(
+    news,
+    250,
+    scrollable: find
+        .descendant(
+          of: find.byType(ListView).last,
+          matching: find.byType(Scrollable),
+        )
+        .first,
+  );
+  await tester.tap(news);
 }
 
 Widget _app(_Editorial editorial, {required bool canPublish}) => TeamZoneApp(

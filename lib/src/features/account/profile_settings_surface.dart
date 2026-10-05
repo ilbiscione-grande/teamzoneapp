@@ -419,7 +419,7 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
       const SizedBox(height: 8),
       Text(
         strings.feature(
-          'För klubbens administratörer: klubbmärke, färger, publik sida och verifiering.',
+          'För klubbens administratörer: klubbmärke, färger och verifiering.',
         ),
         style: theme.textTheme.bodyMedium,
       ),
@@ -473,25 +473,6 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
                 ),
               ),
               ListTile(
-                key: ValueKey('club-public-${club.clubId}'),
-                leading: const Icon(Icons.public),
-                title: Text(strings.feature('Publik klubbsida och lagsidor')),
-                subtitle: Text(
-                  strings.feature(
-                    'Synlighet, webbadress och vad som visas publikt.',
-                  ),
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => _PublicationSelfServiceSurface(
-                      clubId: club.clubId,
-                      editorial: widget.editorial,
-                    ),
-                  ),
-                ),
-              ),
-              ListTile(
                 key: ValueKey('club-verification-${club.clubId}'),
                 leading: const Icon(Icons.verified_outlined),
                 title: Text(strings.feature('Klubbverifiering')),
@@ -523,6 +504,7 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
     final strings = AppStrings.of(context);
     final showTeam = widget.contexts.any((item) => item.teamId != null);
     final showClub = _adminClubs.isNotEmpty;
+    final showPublic = _publicPageContexts.isNotEmpty;
     if (widget.embedded) {
       final sections = <(String, Widget)>[
         (
@@ -550,6 +532,11 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
           ),
         if (showClub)
           (strings.feature('Klubb'), _buildClubTab(context, strings)),
+        if (showPublic)
+          (
+            strings.feature('Publika sidor'),
+            _buildPublicPagesTab(context, strings),
+          ),
       ];
       return DefaultTabController(
         length: sections.length,
@@ -572,7 +559,8 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
       );
     }
     return DefaultTabController(
-      length: 1 + (showTeam ? 1 : 0) + (showClub ? 1 : 0),
+      length:
+          1 + (showTeam ? 1 : 0) + (showClub ? 1 : 0) + (showPublic ? 1 : 0),
       child: Scaffold(
         appBar: AppBar(
           title: Text(strings.feature('Inställningar')),
@@ -581,6 +569,7 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
               Tab(text: strings.feature('Personligt')),
               if (showTeam) Tab(text: strings.feature('Lag')),
               if (showClub) Tab(text: strings.feature('Klubb')),
+              if (showPublic) Tab(text: strings.feature('Publika sidor')),
             ],
           ),
         ),
@@ -599,6 +588,7 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
               ),
               if (showTeam) _buildTeamTab(context, strings),
               if (showClub) _buildClubTab(context, strings),
+              if (showPublic) _buildPublicPagesTab(context, strings),
             ],
           ),
         ),
@@ -607,6 +597,41 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
   }
 
   List<Widget> _generalItems(BuildContext context, AppStrings strings) => [
+    Text(
+      strings.feature('Ljust eller mörkt'),
+      style: Theme.of(context).textTheme.titleMedium,
+    ),
+    const SizedBox(height: 8),
+    Builder(
+      builder: (context) {
+        final scope = AppColorThemeScope.of(context);
+        return SegmentedButton<ThemeMode>(
+          key: const ValueKey('setting-theme-mode'),
+          segments: [
+            ButtonSegment(
+              value: ThemeMode.system,
+              icon: const Icon(Icons.brightness_auto_outlined),
+              label: Text(strings.feature('System')),
+            ),
+            ButtonSegment(
+              value: ThemeMode.light,
+              icon: const Icon(Icons.light_mode_outlined),
+              label: Text(strings.feature('Ljust')),
+            ),
+            ButtonSegment(
+              value: ThemeMode.dark,
+              icon: const Icon(Icons.dark_mode_outlined),
+              label: Text(strings.feature('Mörkt')),
+            ),
+          ],
+          selected: {scope.themeMode},
+          onSelectionChanged: (selection) =>
+              scope.onThemeModeChanged?.call(selection.single),
+        );
+      },
+    ),
+    const SizedBox(height: 24),
+    const Divider(),
     Text(
       strings.feature('Färgtema'),
       style: Theme.of(context).textTheme.titleMedium,
@@ -712,11 +737,7 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
     ],
   ];
 
-  List<Widget> _teamItems(
-    BuildContext context,
-    AppStrings strings, {
-    bool includeTeamSettings = true,
-  }) => [
+  List<Widget> _teamItems(BuildContext context, AppStrings strings) => [
     Text(
       strings.feature('Mina lagkopplingar'),
       style: Theme.of(context).textTheme.titleMedium,
@@ -757,34 +778,133 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
             ),
           ),
         ),
-    if (includeTeamSettings) ...[
-      const SizedBox(height: 24),
-      const Divider(),
-      Text('Laginställningar', style: Theme.of(context).textTheme.titleMedium),
-      for (final item in {
-        for (final item in widget.contexts)
-          if (item.teamId != null &&
-              (item.capabilities.contains('publication.manage') ||
-                  item.capabilities.contains('team.roster.manage')))
-            item.teamId!: item,
-      }.values)
-        ListTile(
-          leading: const Icon(Icons.public),
-          title: Text(item.teamName ?? item.clubName),
-          subtitle: const Text('Publika matcher, resultat och träningstider'),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => _TeamEventVisibilitySurface(
-                teamId: item.teamId!,
-                teamName: item.teamName ?? item.clubName,
-                editorial: widget.editorial,
+  ];
+
+  /// Contexts that may work with public pages: publishers and the team
+  /// leaders who apply for and follow their team page.
+  List<TeamZoneContext> get _publicPageContexts => [
+    for (final item in widget.contexts)
+      if (item.capabilities.contains('publication.manage') ||
+          item.capabilities.contains('team.roster.manage'))
+        item,
+  ];
+
+  Widget _buildPublicPagesTab(BuildContext context, AppStrings strings) =>
+      ListView(
+        key: const ValueKey('public-pages-settings'),
+        padding: const EdgeInsets.all(16),
+        children: _publicPageItems(context, strings),
+      );
+
+  /// One card per club: the club and team pages, the teams' public
+  /// activities and the newsroom.
+  List<Widget> _publicPageItems(BuildContext context, AppStrings strings) {
+    final byClub = <String, List<TeamZoneContext>>{};
+    for (final item in _publicPageContexts) {
+      byClub.putIfAbsent(item.clubId, () => []).add(item);
+    }
+    final theme = Theme.of(context);
+    return [
+      Text(
+        strings.feature('Publika sidor'),
+        style: theme.textTheme.titleMedium,
+      ),
+      const SizedBox(height: 8),
+      Text(
+        strings.feature(
+          'Klubbens och lagens publika sidor, vad som visas och nyheter.',
+        ),
+        style: theme.textTheme.bodyMedium,
+      ),
+      for (final items in byClub.values) ...[
+        const SizedBox(height: 16),
+        Card(
+          key: ValueKey('public-pages-${items.first.clubId}'),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ListTile(
+                title: Text(
+                  items.first.clubName,
+                  style: theme.textTheme.titleMedium,
+                ),
               ),
-            ),
+              const Divider(height: 1),
+              ListTile(
+                key: ValueKey('club-public-${items.first.clubId}'),
+                leading: const Icon(Icons.public),
+                title: Text(strings.feature('Publik klubbsida och lagsidor')),
+                subtitle: Text(
+                  strings.feature(
+                    'Synlighet, webbadress och vad som visas publikt.',
+                  ),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => _PublicationSelfServiceSurface(
+                      clubId: items.first.clubId,
+                      editorial: widget.editorial,
+                    ),
+                  ),
+                ),
+              ),
+              for (final item in {
+                for (final item in items)
+                  if (item.teamId != null) item.teamId!: item,
+              }.values)
+                ListTile(
+                  key: ValueKey('team-public-${item.teamId}'),
+                  leading: const Icon(Icons.event_available_outlined),
+                  title: Text(item.teamName ?? item.clubName),
+                  subtitle: Text(
+                    strings.feature(
+                      'Publika matcher, resultat och träningstider',
+                    ),
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => _TeamEventVisibilitySurface(
+                        teamId: item.teamId!,
+                        teamName: item.teamName ?? item.clubName,
+                        editorial: widget.editorial,
+                      ),
+                    ),
+                  ),
+                ),
+              // One newsroom per club, opened from a publishing context.
+              for (final item
+                  in items
+                      .where((item) => item.can('publication.manage'))
+                      .take(1))
+                ListTile(
+                  key: ValueKey('club-news-${item.clubId}'),
+                  leading: const Icon(Icons.newspaper_outlined),
+                  title: Text(strings.feature('Nyheter')),
+                  subtitle: Text(
+                    strings.feature(
+                      'Skriv och publicera nyheter på klubbens publika sida.',
+                    ),
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => _EditorialSurface(
+                        contextValue: item,
+                        contexts: widget.contexts,
+                        editorial: widget.editorial,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
-    ],
-  ];
+      ],
+    ];
+  }
 
   /// Terms, privacy choices and account deletion.
   List<Widget> _privacyItems(BuildContext context, AppStrings strings) => [

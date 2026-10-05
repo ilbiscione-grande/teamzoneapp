@@ -115,20 +115,18 @@ class _CalendarWorkspace extends StatelessWidget {
                 ),
               Row(
                 children: [
-                  // The date navigation scrolls if a narrow screen can't fit
-                  // it; the single view-and-filter button stays pinned.
+                  // The date navigation uses the whole row, with the period
+                  // centred between the arrows; the view-and-filter button
+                  // stays pinned to the right.
                   Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: showArchived
-                          ? const SizedBox.shrink()
-                          : _CalendarDateNavigation(
-                              mode: mode,
-                              selectedDate: selectedDate,
-                              onChanged: onDateChanged,
-                              showWeekNumber: showWeekNumbers,
-                            ),
-                    ),
+                    child: showArchived
+                        ? const SizedBox.shrink()
+                        : _CalendarDateNavigation(
+                            mode: mode,
+                            selectedDate: selectedDate,
+                            onChanged: onDateChanged,
+                            showWeekNumber: showWeekNumbers,
+                          ),
                   ),
                   // View mode, filters and display options share one button.
                   IconButton(
@@ -198,13 +196,18 @@ class _CalendarWorkspace extends StatelessWidget {
                       .toList(growable: false),
                   onEvent: onEvent,
                 )
-              : _CalendarModeBody(
-                  projection: projection,
-                  onDate: onDateChanged,
-                  onEvent: onEvent,
-                  showQuarterHourMarks: showQuarterHourMarks,
-                  monthEventScope: monthEventScope,
-                  onMonthEventScopeChanged: onMonthEventScopeChanged,
+              : _CalendarSwipe(
+                  mode: mode,
+                  selectedDate: selectedDate,
+                  onDateChanged: onDateChanged,
+                  child: _CalendarModeBody(
+                    projection: projection,
+                    onDate: onDateChanged,
+                    onEvent: onEvent,
+                    showQuarterHourMarks: showQuarterHourMarks,
+                    monthEventScope: monthEventScope,
+                    onMonthEventScopeChanged: onMonthEventScopeChanged,
+                  ),
                 ),
         ),
       ],
@@ -552,25 +555,20 @@ class _CalendarDateNavigation extends StatelessWidget {
             ? _compactMonthYear(localizations.formatMonthYear(selectedDate))
             : localizations.formatMonthYear(selectedDate),
       CalendarViewMode.week =>
-        '${localizations.formatMediumDate(weekStart)} – ${localizations.formatMediumDate(weekStart.add(const Duration(days: 6)))}',
-      CalendarViewMode.agenda ||
-      CalendarViewMode.day => localizations.formatFullDate(selectedDate),
+        compact
+            ? '${localizations.formatShortMonthDay(weekStart)} – ${localizations.formatShortMonthDay(weekStart.add(const Duration(days: 6)))}'
+            : '${localizations.formatMediumDate(weekStart)} – ${localizations.formatMediumDate(weekStart.add(const Duration(days: 6)))}',
+      CalendarViewMode.agenda || CalendarViewMode.day =>
+        compact
+            ? localizations.formatMediumDate(selectedDate)
+            : localizations.formatFullDate(selectedDate),
     };
     final title = mode == CalendarViewMode.agenda
         ? strings.calendarFrom(periodTitle)
         : periodTitle;
-    DateTime move(int direction) => switch (mode) {
-      CalendarViewMode.month => DateTime(
-        selectedDate.year,
-        selectedDate.month + direction,
-        1,
-      ),
-      CalendarViewMode.week => selectedDate.add(Duration(days: 7 * direction)),
-      CalendarViewMode.agenda ||
-      CalendarViewMode.day => selectedDate.add(Duration(days: direction)),
-    };
+    DateTime move(int direction) =>
+        _calendarStep(mode, selectedDate, direction);
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
         if (showWeekNumber)
           Tooltip(
@@ -591,11 +589,7 @@ class _CalendarDateNavigation extends StatelessWidget {
           onPressed: () => onChanged(move(-1)),
           icon: const Icon(Icons.chevron_left, size: 20),
         ),
-        SizedBox(
-          // A fixed width rather than Expanded: this row now lives inside a
-          // horizontally scrolling header (see _CalendarWorkspace), which
-          // gives unbounded width and would make Expanded throw.
-          width: 128,
+        Expanded(
           child: Tooltip(
             message: strings.feature('Välj datum'),
             child: TextButton(
@@ -630,21 +624,62 @@ class _CalendarDateNavigation extends StatelessWidget {
           visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          tooltip: AppStrings.of(context).feature('Idag'),
-          onPressed: () => onChanged(DateTime.now()),
-          icon: const Icon(Icons.today_outlined, size: 20),
+          tooltip: AppStrings.of(context).feature('Nästa period'),
+          onPressed: () => onChanged(move(1)),
+          icon: const Icon(Icons.chevron_right, size: 20),
         ),
         IconButton(
           visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          tooltip: AppStrings.of(context).feature('Nästa period'),
-          onPressed: () => onChanged(move(1)),
-          icon: const Icon(Icons.chevron_right, size: 20),
+          tooltip: AppStrings.of(context).feature('Idag'),
+          onPressed: () => onChanged(DateTime.now()),
+          icon: const Icon(Icons.today_outlined, size: 20),
         ),
       ],
     );
   }
+}
+
+/// The previous (-1) or next (+1) period of a view, shared by the arrows and
+/// the horizontal swipe.
+DateTime _calendarStep(CalendarViewMode mode, DateTime date, int direction) =>
+    switch (mode) {
+      CalendarViewMode.month => DateTime(date.year, date.month + direction, 1),
+      CalendarViewMode.week => date.add(Duration(days: 7 * direction)),
+      CalendarViewMode.agenda ||
+      CalendarViewMode.day => date.add(Duration(days: direction)),
+    };
+
+/// Swiping sideways over the calendar steps to the next or previous period,
+/// like the arrows. Vertical scrolling and horizontal scrollables inside win
+/// their own gestures; only a deliberate fling changes the period.
+class _CalendarSwipe extends StatelessWidget {
+  const _CalendarSwipe({
+    required this.mode,
+    required this.selectedDate,
+    required this.onDateChanged,
+    required this.child,
+  });
+  final CalendarViewMode mode;
+  final DateTime selectedDate;
+  final ValueChanged<DateTime> onDateChanged;
+  final Widget child;
+
+  static const double _minFlingVelocity = 300;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    key: const Key('calendarSwipeArea'),
+    behavior: HitTestBehavior.translucent,
+    onHorizontalDragEnd: (details) {
+      final velocity = details.primaryVelocity ?? 0;
+      if (velocity.abs() < _minFlingVelocity) return;
+      // Swiping left (negative velocity) shows the next period.
+      onDateChanged(_calendarStep(mode, selectedDate, velocity < 0 ? 1 : -1));
+    },
+    child: child,
+  );
 }
 
 /// ISO-8601 week number (weeks start on Monday, week 1 contains the year's
@@ -989,7 +1024,7 @@ bool _isSameDay(DateTime a, DateTime b) =>
 /// thinner half-hour lines, an optional even thinner quarter-hour line, and
 /// events rendered as positioned, readable cards (side-by-side when they
 /// overlap) instead of a plain list.
-class _CalendarDayTimeline extends StatelessWidget {
+class _CalendarDayTimeline extends StatefulWidget {
   const _CalendarDayTimeline({
     required this.date,
     required this.events,
@@ -1001,12 +1036,35 @@ class _CalendarDayTimeline extends StatelessWidget {
   final ValueChanged<CalendarEventSummary> onEvent;
   final bool showQuarterHours;
 
+  /// The day view opens at the afternoon, when most team activities are.
+  static const int initialHour = 15;
+
+  @override
+  State<_CalendarDayTimeline> createState() => _CalendarDayTimelineState();
+}
+
+class _CalendarDayTimelineState extends State<_CalendarDayTimeline> {
   static const double _hourHeight = 64;
   static const double _labelWidth = 44;
   static const double _minCardHeight = 34;
 
+  // Kept while swiping between days, so a chosen position is not lost.
+  late final ScrollController _scroll = ScrollController(
+    initialScrollOffset: _CalendarDayTimeline.initialHour * _hourHeight,
+  );
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final date = widget.date;
+    final events = widget.events;
+    final onEvent = widget.onEvent;
+    final showQuarterHours = widget.showQuarterHours;
     final dayStart = DateTime(date.year, date.month, date.day);
     final allDayEvents = events.where((event) => event.allDay).toList();
     final positioned = _layoutDayEvents(events, dayStart);
@@ -1026,6 +1084,8 @@ class _CalendarDayTimeline extends StatelessWidget {
           ),
         Expanded(
           child: SingleChildScrollView(
+            key: const Key('calendarDayTimelineScroll'),
+            controller: _scroll,
             padding: const EdgeInsets.fromLTRB(12, 8, 16, 24),
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -2751,6 +2811,9 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
   CalendarViewMode _viewMode = CalendarViewMode.month;
   _MonthEventScope _monthEventScope = _MonthEventScope.selectedDay;
   DateTime _selectedDate = DateTime.now();
+  // The loaded date window follows the selected date (see _reload and
+  // _changeDate) instead of being fixed around today.
+  late DateTime _windowAnchor = _selectedDate;
   Set<String>? _teamFilter;
   String? _eventTypeFilter;
   bool _showArchived = false;
@@ -2940,12 +3003,37 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
         contextIds: _filteredContextIds,
       );
     }
-    final now = DateTime.now();
     return widget.calendar.listCalendar(
       contextIds: _filteredContextIds,
-      from: DateTime(now.year, now.month - 1),
-      to: DateTime(now.year, now.month + 11),
+      from: _windowFrom(_windowAnchor),
+      to: _windowTo(_windowAnchor),
     );
+  }
+
+  // From the month before the anchor, so a month grid's leading days from
+  // the previous month have their events, to eleven months ahead.
+  static DateTime _windowFrom(DateTime anchor) =>
+      DateTime(anchor.year, anchor.month - 1);
+  static DateTime _windowTo(DateTime anchor) =>
+      DateTime(anchor.year, anchor.month + 11);
+
+  /// Selects a date and reloads around it once any visible day (a month
+  /// grid reaches up to a week into the neighbouring months) falls outside
+  /// the loaded window. Shown events stay visible while reloading.
+  void _changeDate(DateTime value) {
+    final needFrom = DateTime(
+      value.year,
+      value.month,
+    ).subtract(const Duration(days: 7));
+    final needTo = DateTime(value.year, value.month + 2);
+    final outside =
+        needFrom.isBefore(_windowFrom(_windowAnchor)) ||
+        needTo.isAfter(_windowTo(_windowAnchor));
+    setState(() {
+      _selectedDate = value;
+      if (outside) _windowAnchor = value;
+    });
+    if (outside && !_showArchived) unawaited(_data.refresh());
   }
 
   Future<void> _refresh() async {
@@ -3098,7 +3186,7 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
               onDismissStale: () =>
                   setState(() => _staleBannerDismissed = true),
               onModeChanged: (value) => setState(() => _viewMode = value),
-              onDateChanged: (value) => setState(() => _selectedDate = value),
+              onDateChanged: _changeDate,
               onTeamChanged: (value) {
                 if (setEquals(value, _teamFilter)) return;
                 setState(() => _teamFilter = value);

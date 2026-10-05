@@ -351,6 +351,19 @@ class AppStrings {
     'Mina supportärenden': 'My support cases',
     '{count} supportärenden': '{count} support cases',
     '{count} nya supportsvar': '{count} new support replies',
+    'Supportkö': 'Support queue',
+    'Ljust eller mörkt': 'Light or dark',
+    'System': 'System',
+    'Ljust': 'Light',
+    'Mörkt': 'Dark',
+    '{count} nya meddelanden från användare': '{count} new messages from users',
+    'Verifieringar, skyddade namn och kontoärenden':
+        'Verifications, protected names and account cases',
+    'Nyheter': 'News',
+    'Skriv och publicera nyheter på klubbens publika sida.':
+        'Write and publish news on the club’s public site.',
+    'Klubbens och lagens publika sidor, vad som visas och nyheter.':
+        'Public club and team pages, what is shown and news.',
     'Du har inga supportärenden.': 'You have no support cases.',
     'Svara eller be om uppgifter': 'Reply or request details',
     'Visa meddelanden': 'View messages',
@@ -421,6 +434,8 @@ class AppStrings {
     'Röd': 'Red',
     'Orange': 'Orange',
     'Genvägar': 'Shortcuts',
+    'Gör nu': 'Do now',
+    'Gå till': 'Go to',
     'Planera aktivitet': 'Plan an activity',
     'Hantera laget': 'Manage the team',
     'Öppna inkorgen': 'Open the inbox',
@@ -489,7 +504,7 @@ class AppStrings {
     'Dela med laget': 'Share with this team',
     'Standard: Kan se': 'Default: Can view',
     'Rättighet': 'Permission',
-    'Ta bort utkast': 'Delete draft',
+    'Ta bort event': 'Delete event',
     'Arkivera event': 'Archive event',
     'Urval': 'Selection',
     'Deltagaruppgifter är inte tillgängliga':
@@ -510,9 +525,13 @@ class AppStrings {
     'Kan samredigera eventet': 'Can co-edit the event',
     'Mottagare (ger endast synlighet)': 'Recipient (visibility only)',
     'Delningen har sparats.': 'Sharing has been saved.',
-    'Ta bort utkast?': 'Delete draft?',
+    'Ta bort eventet?': 'Delete the event?',
+    'Eventet tas bort helt. Det går bara när inga kallelser har skickats. Åtgärden går inte att ångra.':
+        'The event is deleted completely. This is only possible while no callups have been sent. It cannot be undone.',
     'Ta bort': 'Delete',
-    'Utkastet har tagits bort.': 'The draft has been deleted.',
+    'Eventet har tagits bort.': 'The event has been deleted.',
+    'Eventet kan inte tas bort. Det kan ha ändrats eller fått kallelser.':
+        'The event cannot be deleted. It may have changed or received callups.',
     'Arkivera': 'Archive',
     'Eventet har arkiverats.': 'The event has been archived.',
     'Eventet kunde inte arkiveras.': 'The event could not be archived.',
@@ -1686,9 +1705,11 @@ class AppStrings {
     'Ladda upp klubbmärke': 'Upload club badge',
     'Byt klubbmärke': 'Change club badge',
     'Klubb': 'Club',
-    'För klubbens administratörer: klubbmärke, färger, publik sida och verifiering.':
-        "For the club's administrators: badge, colours, public page and verification.",
+    'För klubbens administratörer: klubbmärke, färger och verifiering.':
+        "For the club's administrators: badge, colours and verification.",
     'Publik klubbsida och lagsidor': 'Public club and team pages',
+    'Publika matcher, resultat och träningstider':
+        'Public matches, results and training times',
     'Synlighet, webbadress och vad som visas publikt.':
         'Visibility, web address and what is shown publicly.',
     'Färger på klubbens publika sidor.': "Colours on the club's public pages.",

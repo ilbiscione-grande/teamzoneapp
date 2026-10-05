@@ -55,7 +55,7 @@ class _EconomySurfaceState extends State<_EconomySurface> {
         ],
       ),
     );
-    controller.dispose();
+    disposeAfterDialog([controller]);
     return result == null || result.length < 3 ? null : result;
   }
 
@@ -99,7 +99,7 @@ class _EconomySurfaceState extends State<_EconomySurface> {
         ],
       ),
     );
-    controller.dispose();
+    disposeAfterDialog([controller]);
     if (name == null || name.isEmpty) return;
     await _run(
       () => widget.economy.createAccount(

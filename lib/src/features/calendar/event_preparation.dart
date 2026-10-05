@@ -776,7 +776,7 @@ class _PreparationTabState extends State<_PreparationTab> {
         ],
       ),
     );
-    controller.dispose();
+    disposeAfterDialog([controller]);
     return value == null || value.isEmpty ? null : value;
   }
 

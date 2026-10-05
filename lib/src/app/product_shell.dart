@@ -64,6 +64,30 @@ class _ProductShellState extends State<_ProductShell> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final GlobalKey<NavigatorState> _productNavigatorKey =
       GlobalKey<NavigatorState>();
+  // The page area right under the app bar, see _scrollsUnderAppBar.
+  final GlobalKey _pageAreaKey = GlobalKey();
+
+  /// The app bar only takes its scrolled-under colour when the page itself
+  /// scrolls beneath it. A list under a fixed header (the calendar grid,
+  /// a pinned filter row) never reaches the app bar, so its scrolling must
+  /// not recolour it.
+  bool _scrollsUnderAppBar(ScrollNotification notification) {
+    if (notification.depth != 0 || notification.metrics.axis != Axis.vertical) {
+      return false;
+    }
+    final scrollable = notification.context?.findRenderObject();
+    final page = _pageAreaKey.currentContext?.findRenderObject();
+    if (scrollable is! RenderBox ||
+        page is! RenderBox ||
+        !scrollable.attached ||
+        !page.attached) {
+      return true;
+    }
+    final gap =
+        scrollable.localToGlobal(Offset.zero).dy -
+        page.localToGlobal(Offset.zero).dy;
+    return gap < 1;
+  }
 
   // Every distinct location the user has navigated to, oldest first, so
   // system back can step back through previously visited pages instead of
@@ -294,6 +318,7 @@ class _ProductShellState extends State<_ProductShell> {
                   contexts: widget.contexts,
                   messaging: widget.messaging,
                   membership: widget.membership,
+                  supportAdminAccess: _supportAdminAccess,
                   initialThreadId: state.uri.queryParameters['thread'],
                   initialAction: state.uri.queryParameters['action'],
                   onNavigate: _navigateFromSurface,
@@ -809,7 +834,6 @@ class _ProductShellState extends State<_ProductShell> {
           onNavigate: _router.go,
           onContextChanged: widget.onContextChanged,
           membership: widget.membership,
-          supportAdminAccess: _supportAdminAccess,
           onContextsChanged: widget.onContextsChanged,
           onTeamCreated: widget.onTeamCreated,
           pendingTeamRequests: _pendingTeamRequests,
@@ -842,6 +866,7 @@ class _ProductShellState extends State<_ProductShell> {
                 ? null
                 : AppBar(
                     automaticallyImplyLeading: false,
+                    notificationPredicate: _scrollsUnderAppBar,
                     title: InkWell(
                       onTap: () => _showContextPicker(
                         context: context,
@@ -914,6 +939,7 @@ class _ProductShellState extends State<_ProductShell> {
                         ),
                       Expanded(
                         child: Stack(
+                          key: _pageAreaKey,
                           children: [
                             Positioned.fill(
                               child: Router(
@@ -1609,32 +1635,143 @@ Future<void> _showQuickActionsMenu({
 }) {
   final strings = AppStrings.of(context);
   final actions = _quickActionsFor(context, contextValue);
+  // Shortcuts that start doing something (their route carries an
+  // ?action=) lead as prominent buttons; plain destinations follow as a
+  // grid of icons.
+  final doNow = [
+    for (final action in actions)
+      if (action.route.contains('action=')) action,
+  ];
+  final goTo = [
+    for (final action in actions)
+      if (!action.route.contains('action=')) action,
+  ];
   return showModalBottomSheet<void>(
     context: context,
     useSafeArea: true,
-    builder: (sheetContext) => SafeArea(
-      child: ListView(
-        shrinkWrap: true,
-        children: [
-          ListTile(
-            title: Text(
-              strings.feature('Genvägar'),
-              style: Theme.of(sheetContext).textTheme.titleMedium,
-            ),
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (sheetContext) {
+      final theme = Theme.of(sheetContext);
+      void open(_QuickAction action) {
+        Navigator.of(sheetContext).pop();
+        onNavigate(action.route);
+      }
+
+      Widget sectionTitle(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(
+          text,
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
           ),
-          for (final action in actions)
-            ListTile(
-              leading: Icon(action.icon),
-              title: Text(action.label),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                onNavigate(action.route);
-              },
-            ),
-        ],
-      ),
-    ),
+        ),
+      );
+
+      return SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                strings.feature('Genvägar'),
+                style: theme.textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              if (doNow.isNotEmpty) ...[
+                sectionTitle(strings.feature('Gör nu')),
+                for (final action in doNow)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: FilledButton.tonalIcon(
+                      style: FilledButton.styleFrom(
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                      ),
+                      onPressed: () => open(action),
+                      icon: Icon(action.icon),
+                      label: Text(action.label),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+              ],
+              if (goTo.isNotEmpty) ...[
+                sectionTitle(strings.feature('Gå till')),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final columns = constraints.maxWidth >= 480 ? 4 : 3;
+                    final width =
+                        (constraints.maxWidth - (columns - 1) * 8) / columns;
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final action in goTo)
+                          SizedBox(
+                            width: width,
+                            child: _QuickActionTile(
+                              action: action,
+                              onTap: () => open(action),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    },
   );
+}
+
+/// One destination in the quick actions grid: a tonal icon over its label.
+class _QuickActionTile extends StatelessWidget {
+  const _QuickActionTile({required this.action, required this.onTap});
+  final _QuickAction action;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: theme.colorScheme.secondaryContainer,
+                foregroundColor: theme.colorScheme.onSecondaryContainer,
+                child: Icon(action.icon, size: 22),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                action.label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelMedium,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Team name (larger) on top, club name (smaller) underneath — used both as
@@ -1707,7 +1844,6 @@ class _AppNavigationPanel extends StatelessWidget {
     required this.onNavigate,
     required this.onContextChanged,
     required this.membership,
-    required this.supportAdminAccess,
     required this.onContextsChanged,
     required this.onTeamCreated,
     required this.pendingTeamRequests,
@@ -1725,7 +1861,6 @@ class _AppNavigationPanel extends StatelessWidget {
   final ValueChanged<String> onNavigate;
   final ValueChanged<TeamZoneContext> onContextChanged;
   final MembershipServices membership;
-  final Future<bool> supportAdminAccess;
   final Future<void> Function() onContextsChanged;
   final Future<void> Function(String teamId) onTeamCreated;
   final Future<int> pendingTeamRequests;
@@ -1752,9 +1887,7 @@ class _AppNavigationPanel extends StatelessWidget {
     final hasAdminLinks =
         contextValue.can('club.billing.manage') ||
         _hasEconomyCapability(contextValue) ||
-        _hasBoardCapability(contextValue) ||
-        contextValue.can('publication.manage') ||
-        contextValue.can('team.roster.manage');
+        _hasBoardCapability(contextValue);
     // The panel always renders in the current theme's accent color rather
     // than following light/dark system mode: it's a deep, dark gradient in
     // every color theme (lighter accent at the top fading toward near-black
@@ -1924,39 +2057,7 @@ class _AppNavigationPanel extends StatelessWidget {
                       label: strings.feature('Styrelse'),
                       onTap: () => _go('/board'),
                     ),
-                  if (contextValue.can('publication.manage'))
-                    _NavPanelRow(
-                      icon: Icons.newspaper_outlined,
-                      label: strings.feature('Nyhetsredaktion'),
-                      onTap: () => _go(ProductRouteContract.editorial),
-                    ),
-                  if (contextValue.can('publication.manage') ||
-                      contextValue.can('team.roster.manage'))
-                    _NavPanelRow(
-                      icon: Icons.public_outlined,
-                      label: strings.feature('Publika sidor'),
-                      onTap: () => _go(ProductRouteContract.publication),
-                    ),
                 ],
-                if (MediaQuery.sizeOf(context).width >=
-                        AppBreakpoints.desktop &&
-                    (kIsWeb ||
-                        defaultTargetPlatform == TargetPlatform.windows ||
-                        defaultTargetPlatform == TargetPlatform.macOS ||
-                        defaultTargetPlatform == TargetPlatform.linux))
-                  FutureBuilder<bool>(
-                    future: supportAdminAccess,
-                    builder: (context, snapshot) => snapshot.data == true
-                        ? _NavPanelRow(
-                            icon: Icons.support_agent_outlined,
-                            label: strings.feature('Supportärenden'),
-                            selected: currentLocation.startsWith(
-                              ProductRouteContract.support,
-                            ),
-                            onTap: () => _go(ProductRouteContract.support),
-                          )
-                        : const SizedBox.shrink(),
-                  ),
               ],
             ),
           ),

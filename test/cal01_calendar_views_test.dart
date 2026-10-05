@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -257,6 +258,158 @@ void main() {
       }
     }
   });
+
+  test('a month grid day from the neighbouring month keeps its events', () {
+    final projection = CalendarProjection(
+      events: [
+        _event(
+          id: 'next-month',
+          startsAt: DateTime(2026, 11, 2, 18),
+          endsAt: DateTime(2026, 11, 2, 19),
+        ),
+        _event(
+          id: 'other-type',
+          type: 'match',
+          startsAt: DateTime(2026, 11, 2, 10),
+          endsAt: DateTime(2026, 11, 2, 11),
+        ),
+      ],
+      mode: CalendarViewMode.month,
+      selectedDate: DateTime(2026, 10, 5),
+      eventType: 'training',
+    );
+    // Outside October, so not in the month's own list...
+    expect(projection.visibleEvents, isEmpty);
+    // ...but still shown on the grid's trailing 2 November cell, filtered.
+    expect(projection.eventsOn(DateTime(2026, 11, 2)).map((e) => e.id), [
+      'next-month',
+    ]);
+  });
+
+  testWidgets('swiping sideways changes period and reloads further away', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final calendar = _RecordingCalendar();
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'cal01-swipe'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: const _Identity(),
+          calendar: calendar,
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kalender'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Vy och filter'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Månad').last);
+    await tester.pumpAndSettle();
+
+    String title() => tester
+        .widget<Text>(
+          find.descendant(
+            of: find.byTooltip('Välj datum'),
+            matching: find.byType(Text),
+          ),
+        )
+        .data!;
+    final area = find.byKey(const Key('calendarSwipeArea'));
+    final current = title();
+    await tester.fling(area, const Offset(-300, 0), 1000);
+    await tester.pumpAndSettle();
+    final next = title();
+    expect(next, isNot(current));
+    await tester.fling(area, const Offset(300, 0), 1000);
+    await tester.pumpAndSettle();
+    expect(title(), current);
+
+    // The loaded window follows the selected month: two months back is
+    // outside the initial window (from last month) and reloads around it.
+    final now = DateTime.now();
+    expect(calendar.requestedFrom.single, DateTime(now.year, now.month - 1));
+    await tester.fling(area, const Offset(300, 0), 1000);
+    await tester.pumpAndSettle();
+    await tester.fling(area, const Offset(300, 0), 1000);
+    await tester.pumpAndSettle();
+    expect(calendar.requestedFrom.last, DateTime(now.year, now.month - 3));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'scrolling under the fixed calendar header keeps the app bar colour',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(_app());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Kalender'));
+      await tester.pumpAndSettle();
+      // Colour and elevation together: the scrolled-under state changes
+      // either, depending on the theme.
+      (Color?, double) appBarColor() {
+        final material = tester.widget<Material>(
+          find
+              .descendant(
+                of: find.byType(AppBar).first,
+                matching: find.byType(Material),
+              )
+              .first,
+        );
+        return (material.color, material.elevation);
+      }
+
+      // Unscrolled, before the day timeline opens at 15:00.
+      final before = appBarColor();
+      await tester.tap(find.byTooltip('Vy och filter'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Dag').last);
+      await tester.pumpAndSettle();
+      expect(appBarColor(), before);
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byKey(const Key('calendarDayTimelineScroll'))),
+      );
+      await gesture.moveBy(const Offset(0, 150));
+      await tester.pumpAndSettle();
+      expect(appBarColor(), before);
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('day view opens at 15:00', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kalender'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Vy och filter'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Dag').last);
+    await tester.pumpAndSettle();
+    final scrollable = tester.state<ScrollableState>(
+      find.descendant(
+        of: find.byKey(const Key('calendarDayTimelineScroll')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    // 15:00 at the top, or as close as the end of the day allows on a
+    // screen taller than 15:00–24:00.
+    final position = scrollable.position;
+    expect(position.pixels, min(15 * 64.0, position.maxScrollExtent));
+    expect(position.pixels, greaterThan(14 * 64));
+    expect(tester.takeException(), isNull);
+  });
 }
 
 Widget _app() => TeamZoneApp(
@@ -363,6 +516,7 @@ class _Calendar extends UnconfiguredCalendarServices {
 
 class _RecordingCalendar extends UnconfiguredCalendarServices {
   List<String> requestedContextIds = const [];
+  final List<DateTime> requestedFrom = [];
 
   @override
   Future<List<CalendarEventSummary>> listCalendar({
@@ -371,6 +525,7 @@ class _RecordingCalendar extends UnconfiguredCalendarServices {
     required DateTime to,
   }) async {
     requestedContextIds = List.of(contextIds);
+    requestedFrom.add(from);
     return const [];
   }
 }

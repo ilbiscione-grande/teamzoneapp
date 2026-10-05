@@ -125,7 +125,12 @@ void main() {
         responseInvalidationMigration,
         contains("'notification:center:'||target_profile_id::text"),
       );
-      expect(surface, contains('.watchNotificationInvalidations()'));
+      expect(
+        surface,
+        contains(
+          '.watchNotificationInvalidations(includeTeamUpdatePoll: false)',
+        ),
+      );
     },
   );
 
