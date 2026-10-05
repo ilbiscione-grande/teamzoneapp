@@ -232,6 +232,13 @@ används enbart för behörighet och spårbara beslut. Se
 och
 [`../evidence/support_club_verification_queue_2026-10-03.md`](../evidence/support_club_verification_queue_2026-10-03.md).
 
+**Supportflöde 2026-10-04:** Ett godkänt ärende om skyddat klubbnamn kan
+slutföra skapandet av officiell klubb, första lag, sökandens klubbfunktionärsroll
+och publik kontext i en idempotent transaktion. Support och sökande kan föra en
+ärendebunden dialog med privata bilagor. Sökanden hittar ärendet i Inbox med
+oläst-räknare; konton utan aktiv lagkontext behåller ingången i vänteläget. Se
+[samlad iteration 2026-10-02–2026-10-04](../evidence/core_app_iteration_2026-10-02_10-04.md).
+
 ### AUTH-07 – Villkor, integritet och frivilliga samtycken
 
 **Status:** `[~]` – tekniskt hosted-verifierad och publika placeholderroutes driftsatta; juridiskt slutligt innehåll och fysisk slutgrind återstår och blockerar extern publik lansering
@@ -925,8 +932,8 @@ Supabase-testprojektet; runtime förblir avstängd tills flödet är verifierat.
 ### AC-02 – Responsiv AC-ingång
 
 **Uppdatering 2026-10-02:** HOME-05-uppgifterna har nu en kontextanpassad
-presentation med **Här och nu** och **Mina uppgifter**, inklusive överblick
-över behöriga ledarlag och direktlänkar till eventets deltagarflik. Detta
+presentation med **Här och nu** och en kontoomfattande uppgiftslista, inklusive
+överblick över behöriga ledarlag och direktlänkar till eventets deltagarflik. Detta
 återanvänder befintliga domänprojektioner och aktiverar inte AC-01-signalkön.
 Se [implementation och verifiering](../evidence/assistant_context_tasks_2026-10-02.md).
 
@@ -935,11 +942,19 @@ utan utskickade kallelser är implementerad, med **Kallelse behövs** som undant
 på Info-fliken. Databasdelen är införd och rollback-verifierad i auditprojektet.
 Se [regel, gränser och tester](../evidence/assistant_missing_callups_2026-10-02.md).
 
-**2026-10-02 – påminnelser och matchuppföljning:** Kallelsepåminnelser har mottagargranskning med senaste påminnelse och möjlighet att avmarkera före utskick. Assistenten visar saknat slutresultat respektive matchrapport för matcher som slutat under de senaste sju dagarna, med lag- och matchbehörighet. Sparad rapport uppdaterar assistentpanelen. Testdatabasen är uppdaterad; klientändringarna är lokala. Se [implementation och verifiering](../evidence/assistant_reminders_match_followup_2026-10-02.md).
+**2026-10-02 – påminnelser och matchuppföljning:** Kallelsepåminnelser har mottagargranskning med senaste påminnelse och möjlighet att avmarkera före utskick. Assistenten visar saknat slutresultat respektive matchrapport för matcher som slutat under de senaste sju dagarna, med lag- och matchbehörighet. Sparad rapport uppdaterar assistentpanelen. Databasmigrationen är applicerad i auditprojektet och klienten är automatiskt verifierad. Se [implementation och verifiering](../evidence/assistant_reminders_match_followup_2026-10-02.md).
 
-**2026-10-02 – kalenderkrockar och förberedelser:** Assistenten visar synliga, överlappande aktiviteter i samma lag inom sju dagar och kvarvarande material-/uppgiftspunkter inför aktiviteter inom 48 timmar. Krockpar visas en gång med länkar till båda aktiviteterna. Checklistans genväg öppnar Förberedelser direkt. Testdatabasen är uppdaterad; klientändringarna är lokala. Se [regler och verifiering](../evidence/assistant_conflicts_preparation_2026-10-02.md).
+**2026-10-02 – kalenderkrockar och förberedelser:** Assistenten visar synliga, överlappande aktiviteter i samma lag inom sju dagar och kvarvarande material-/uppgiftspunkter inför aktiviteter inom 48 timmar. Krockpar visas en gång med länkar till båda aktiviteterna. Checklistans genväg öppnar Förberedelser direkt. Databasmigrationen är applicerad i auditprojektet och klienten är automatiskt verifierad. Se [regler och verifiering](../evidence/assistant_conflicts_preparation_2026-10-02.md).
 
 **2026-10-02 – kompakt assistent:** Kortens detaljer och assistentinställningarna är hopfällda. Åtgärda, Skjut upp och Arkivera finns direkt på korten. Uppskjutning/arkivering sparas privat på kontot, kan återställas och påverkar inte domänuppgiften. Se [beteende och verifiering](../evidence/assistant_compact_ui_2026-10-02.md).
+
+**Statussynk 2026-10-04:** Varningar grupperas per aktivitet, `Här och nu`
+följer aktuell sida och den kontoomfattande listan kan filtreras på kategori och
+aktuellt lag. Personliga krockar kan hittas mellan användarens lag och klubbar.
+FAB:en visar antal aktiva uppgifter. Användaren kan styra uppgiftstyper,
+lagomfattning, välkomstmeddelande, namn och en av sex profilbilder. Assistentens
+namn, uppdatering och inställningar ligger i sidhuvudet. Samlad nulägesbeskrivning:
+[iteration 2026-10-02–2026-10-04](../evidence/core_app_iteration_2026-10-02_10-04.md).
 
 **Status:** `[~]`  
 **Paritet:** HOME-09  
@@ -962,13 +977,15 @@ Se [regel, gränser och tester](../evidence/assistant_missing_callups_2026-10-02
 
 ### AC-04 – Min assistent-identitet och personligt namn
 
-**Status:** `[~]` – lokalt implementerad och Flutter-verifierad; SQL-runtime klar 2026-09-04, sportigt standardnamn och fysisk kontosynk-verifiering återstår.
+**Status:** `[~]` – kontoägda namn- och avatarpreferenser är applicerade och
+automatiskt verifierade i auditprojektet; sportigt standardnamn och fysisk
+kontosynk-verifiering återstår.
 
 **Beroenden:** AC-02
 
 - [x] Byt ny användarcopy från paraplyet Assistant Coach till **Min assistent** utan att bryta tekniska AC-ID:n, routes eller historik.
 - [ ] Besluta sportigt, internationellt standardnamn efter separat clearance.
-- [~] Skapa privat, revisionerad och kontosynkad namnpreferens med reset och säker fallback; lokalt implementerad, runtime/kontosynk återstår.
+- [x] Skapa privat, revisionerad och kontosynkad namnpreferens med reset och säker fallback. Samma profil har en separat, tillåten avatarpreferens med sex bundlade bilder och standardikon.
 - [x] Namnet är endast presentation och förekommer aldrig i authorization, RLS eller capabilitybeslut.
 - [x] Varna för möjlig sammanblandning med systemavsändare, verklig funktionär eller legitimerad yrkesperson.
 
@@ -1203,6 +1220,9 @@ Beskrivning: [`event-preparations-v1.md`](event-preparations-v1.md).
 - [x] Ny meddelandedialog väljer direkt- eller gruppmeddelande efter antal mottagare.
 - [x] Filterdialogen scrollar och går att stänga.
 - [x] Notiser kan markeras som lästa eller arkiveras direkt i listan.
+- [x] Egna supportärenden ligger i Inbox med räknare för olästa supportsvar och
+  privat tvåvägsdialog. Användare och support kan bifoga upp till fem privata
+  filer per meddelande, högst 10 MB per fil.
 
 ### PROF-01 – Egen profil, kontaktuppgifter och profilbild
 
@@ -1212,6 +1232,12 @@ Beskrivning: [`event-preparations-v1.md`](event-preparations-v1.md).
   med kameran.
 - [x] Uppgifterna är synliga för personen och lagets ledare. Klubben fyller i uppgifter för personer utan konto.
 - [x] Visningsnamnet slår igenom i klubbens register, drawer och profil.
+- [x] Redigering öppnas från appbarens redigeringsikon och samlar profil,
+  kontaktuppgifter, roll/titel och behörighetsstyrda inställningar. Stora
+  källbilder skalas och komprimeras före uppladdning.
+- [x] Kontot kan ha flera adresser, välja kontaktadress per klubb och använda
+  skyddat läge. Det tidigare vanliga visningsnamnet återställs när skyddat läge
+  stängs av.
 
 ### PROF-02 – Byte av inloggningsmejl via support
 
@@ -1231,7 +1257,9 @@ Beskrivning: [`event-preparations-v1.md`](event-preparations-v1.md).
 
 **Status:** `[~]` – hosted och automatiskt verifierad
 
-- [x] Flikarna Medlemsinfo, Statistik och Inställningar (den sista bara på den egna profilen).
+- [x] Visningssidan har Medlemsinfo och Statistik. Den egna profilens redigerare
+  har separata flikar för profil, kontaktuppgifter, roll/titel och inställningar;
+  lag- och klubbinställningar visas bara med rätt behörighet.
 - [x] Statistiken gäller alltid den visade personen: närvaro, matcher, mål, assist, kort, kallelsesvar och appanvändning.
   Personen själv och lagets ledare kan se den.
 
@@ -1353,6 +1381,10 @@ Grundappens ursprungliga ordning:
 
 | Datum | Ändring | Status |
 |---|---|---|
+| 2026-10-04 | **Supportdialogen flyttad till Inbox.** Egna ärenden har oläst-räknare och privat tvåvägsdialog. Både användare och support kan bifoga bilder och dokument via privat Storage och kortlivade signerade länkar. | MSG-09, AUTH-06 `[~]` |
+| 2026-10-03 | **Supportdrift och officiell klubb.** `/support` visar den fullständiga kön, skyddat namn kan godkännas till en färdig officiell klubb/lag-koppling och parterna kan begära komplettering i ärendet. Supabase Cron/`pg_net` och Edge Function skickar notifieringar via Resend; ImprovMX vidarebefordrar inkommande `support@teamzoneapp.se`. | AUTH-06 `[~]` |
+| 2026-10-03 | **Personlig och kontextuell assistent.** Kategorier, aktuellt-lag-filter, sidkontext, grupperade aktivitetsvarningar, välkomstmeddelande, FAB-räknare, eget namn och sex profilbilder är infört. | AC-02, AC-04, AC-07 `[~]` |
+| 2026-10-02 | **Deterministiska assistentuppgifter och kontodataskydd.** Kallelsebehov, påminnelser, matchuppföljning, förberedelser och kalenderkrockar har införts. Kontaktändringar kräver godkännande, flera adresser och skyddat läge stöds och tidigare visningsnamn återställs när skyddet tas bort. | AC-01–03, PROF-01 `[~]` |
 | 2026-10-02 | **Kontaktuppdatering.** Tillfälliga kontaktsidor med QR-kod och direktlänk som gäller i 14 dagar. Inskick läggs till i ett lag med ett tryck eller uppdaterar en befintlig spelare eller ledare. Produktägaren har verifierat flödet med ett riktigt inskick. | TEAM-15–16 `[~]` |
 | 2026-10-01 | **Huvudposition, huvudtitel och profilbilder i trupplistan.** Spelare har huvudposition och alternativa positioner, ledare en huvudtitel som visas i stället för rollen, och trupplistan visar profilbilder. Publikt klubbmärke (PUB-11) är nu migrerat och driftsatt. | TEAM-13–14, PUB-11 `[~]` |
 | 2026-10-01 | **Våg 10 dokumenterad.** Nya kort TEAM-09–12, CAL-12–14, MSG-09, PROF-01–04, AUTH-08, PUB-10–13 och SET-01 samlar arbetet sedan 2026-09-26 med evidens i `core_app_iteration_2026-09-27_10-01.md`. Alla migrationer till och med `20261001150000` är körda i testprojektet; `20261001170000_public_club_badge` väntar. Flutter 524/524, publik sajt 56/56 och nio isolerade SQL-tester passerar. | Våg 10 `[~]` |

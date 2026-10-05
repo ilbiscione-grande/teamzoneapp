@@ -16,6 +16,9 @@ event preparations and match mode, member profiles, follower accounts on the
 public site, a club-site design with club colours, club settings, main positions
 and titles, and temporary contact pages with QR codes (wave 10 in
 [`docs/implementation/core_app_delivery_cards.md`](docs/implementation/core_app_delivery_cards.md)).
+The latest consolidated delta covers the deterministic personal assistant,
+account/contact privacy and the official-club support operation through 2026-10-04:
+[`docs/evidence/core_app_iteration_2026-10-02_10-04.md`](docs/evidence/core_app_iteration_2026-10-02_10-04.md).
 
 Current progress is tracked in
 [`docs/implementation/slice_status.md`](docs/implementation/slice_status.md).

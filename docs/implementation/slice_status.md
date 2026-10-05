@@ -1,6 +1,9 @@
 # TeamZone implementation slice status
 
-Updated: 2026-10-02
+Updated: 2026-10-04
+
+Latest consolidated implementation delta:
+[2026-10-02–2026-10-04](../evidence/core_app_iteration_2026-10-02_10-04.md).
 
 Multiple addresses and restricted personal data:
 [design, behavior and verification](address-privacy.md).
@@ -245,7 +248,7 @@ remain partial only for the explicit gates stated on each card; deferred
 imports, workspaces/webtools, generative AI and production provisioning are not
 silently counted as current implementation work.
 
-### Wave 10 – extensions after the core app (2026-09-27 – 2026-10-02)
+### Wave 10 – extensions after the core app (2026-09-27 – 2026-10-04)
 
 The product owner's follow-up priorities are tracked as wave 10 in
 [`core_app_delivery_cards.md`](core_app_delivery_cards.md#14-våg-10--utbyggnad-efter-grundappen):
@@ -263,3 +266,11 @@ public site 58/58, twelve isolated PGlite SQL tests) and partly accepted by the
 product owner, with a combined physical device gate outstanding. Every migration
 up to `20261002120000` is applied to the audit project. Evidence:
 [`core_app_iteration_2026-09-27_10-01.md`](../evidence/core_app_iteration_2026-09-27_10-01.md).
+
+The follow-up iteration adds deterministic assistant tasks, personal cross-team
+calendar conflicts, assistant preferences and profiles, approved shared-contact
+updates, multiple-address and protected-identity handling, profile-editor
+reorganization, the web support operation for official clubs, case conversations,
+private support attachments and requester cases in Inbox. Its scope, migrations,
+security boundaries and links to focused verification are consolidated in
+[`core_app_iteration_2026-10-02_10-04.md`](../evidence/core_app_iteration_2026-10-02_10-04.md).
