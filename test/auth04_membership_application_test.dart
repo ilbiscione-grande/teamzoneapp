@@ -384,7 +384,8 @@ void main() {
     expect(reviewer, contains('.decide('));
     expect(reviewer, contains('.createTeam('));
     expect(reviewer, isNot(contains('controller.dispose();')));
-    expect(reviewer, contains("action != 'applications'"));
+    // The applications deep link stays gated on club.memberships.manage.
+    expect(reviewer, contains("action == 'applications'"));
     expect(reviewer, contains('onOpenApplications'));
     expect(reviewer, contains('_showMembershipReviews'));
     final shell = File('lib/src/app/product_shell.dart').readAsStringSync();

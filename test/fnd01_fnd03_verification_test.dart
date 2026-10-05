@@ -331,6 +331,99 @@ void main() {
     expect(find.text('Open editor'), findsOneWidget);
   });
 
+  testWidgets('quick actions lead with the current page\'s own actions', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(_leaderVerifiedApp());
+    await tester.pumpAndSettle();
+
+    Future<void> openSheet() async {
+      await tester.fling(find.text('Hem'), const Offset(0, -300), 1000);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> closeSheet() async {
+      Navigator.of(tester.element(find.byType(BottomSheet))).pop();
+      await tester.pumpAndSettle();
+    }
+
+    // Within the sheet: the page behind it can show the same labels.
+    Finder inSheet(String text) => find.descendant(
+      of: find.byType(BottomSheet),
+      matching: find.text(text),
+    );
+    bool above(String first, String second) =>
+        tester.getTopLeft(inSheet(first)).dy <
+        tester.getTopLeft(inSheet(second)).dy;
+
+    // Home: each page's main action leads; the rest are one tap away.
+    await openSheet();
+    expect(above('Skapa nytt event', 'Ny match'), isTrue);
+    expect(above('Bjud in spelare', 'Ledare och roller'), isTrue);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('quick-actions-more')),
+        matching: find.text('Ny match'),
+      ),
+      findsOneWidget,
+    );
+    // Destinations share one horizontally scrolling row.
+    final goTo = find.byKey(const Key('quick-actions-go-to'));
+    expect(
+      tester.widget<SingleChildScrollView>(goTo).scrollDirection,
+      Axis.horizontal,
+    );
+    expect(
+      find.descendant(of: goTo, matching: find.text('Öppna inkorgen')),
+      findsOneWidget,
+    );
+    await closeSheet();
+
+    // Team page: managing the team comes first.
+    await tester.tap(find.text('Laget'));
+    await tester.pumpAndSettle();
+    await openSheet();
+    expect(above('Ledare och roller', 'Skapa nytt event'), isTrue);
+    expect(above('Kontaktuppdatering', 'Skapa nytt event'), isTrue);
+    expect(above('Medlemsansökningar', 'Skicka meddelande'), isTrue);
+    await closeSheet();
+
+    // Inbox: new message and announcement come first.
+    await tester.tap(find.text('Inbox'));
+    await tester.pumpAndSettle();
+    await openSheet();
+    expect(above('Skicka meddelande', 'Skapa nytt event'), isTrue);
+    expect(above('Nytt informationsmeddelande', 'Bjud in spelare'), isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('"Ny match" opens the editor with match preselected', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(_leaderVerifiedApp());
+    await tester.pumpAndSettle();
+    await tester.fling(find.text('Hem'), const Offset(0, -300), 1000);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ny match'));
+    await tester.pumpAndSettle();
+    expect(find.text('Skapa event'), findsOneWidget);
+    expect(
+      tester
+          .widget<ChoiceChip>(find.byKey(const ValueKey('event-type-match')))
+          .selected,
+      isTrue,
+    );
+    expect(find.text('Motståndare *'), findsOneWidget);
+  });
+
   testWidgets(
     '"Skapa nytt event" opens the create-event dialog immediately, not '
     'just the calendar page',

@@ -311,6 +311,7 @@ class _ProductShellState extends State<_ProductShell> {
                   },
                   matchSpaceV2: widget.matchSpaceV2,
                   initialAction: state.uri.queryParameters['action'],
+                  initialEventType: state.uri.queryParameters['type'],
                 )
               : destination.path == '/inbox'
               ? _InboxSurface(
@@ -1071,6 +1072,7 @@ class _ProductShellState extends State<_ProductShell> {
                                   _showQuickActionsMenu(
                                     context: context,
                                     contextValue: widget.contextValue,
+                                    currentLocation: _currentPageLocation,
                                     onNavigate: _router.go,
                                   );
                                 }
@@ -1518,9 +1520,18 @@ Future<void> _showTeamCreationRequests({
   );
 }
 
-/// One row in the swipe-up quick actions sheet: an icon, a label and the
-/// route it navigates to.
+/// One shortcut in the swipe-up quick actions sheet: an icon, a label and
+/// the route it navigates to. A route with an `?action=` starts doing
+/// something on its page; one without just opens a destination.
 typedef _QuickAction = ({IconData icon, String label, String route});
+
+extension on _QuickAction {
+  bool get startsAction =>
+      Uri.parse(route).queryParameters.containsKey('action');
+
+  /// The destination the shortcut belongs to, e.g. '/team'.
+  String get page => Uri.parse(route).path;
+}
 
 /// Builds the role-aware shortcut list for the swipe-up quick actions
 /// sheet: "a shortcut to every important function for that particular
@@ -1529,6 +1540,9 @@ typedef _QuickAction = ({IconData icon, String label, String route});
 /// already used to gate the drawer's admin links, not a separate
 /// per-role-package list, so it stays correct for scoped/partial roles
 /// (e.g. a team-only leader) without extra cases.
+///
+/// Within each page the first action is that page's main one: it is what
+/// the sheet leads with on pages that have no actions of their own.
 List<_QuickAction> _quickActionsFor(
   BuildContext context,
   TeamZoneContext contextValue,
@@ -1537,92 +1551,157 @@ List<_QuickAction> _quickActionsFor(
   final canManageRoster =
       contextValue.can('club.memberships.manage') ||
       contextValue.can('team.roster.manage');
-  final actions = <_QuickAction>[];
-  // Specific actions first — the whole point of this sheet is to skip the
-  // page and land directly in the thing you actually want to do, not just
-  // navigate faster (per feedback: "lite mer specifika genvägar, t ex
-  // skapa nytt event, bjud in spelare, skicka meddelande").
-  if (contextValue.can('event.manage')) {
-    actions.add((
-      icon: Icons.add_circle_outline,
-      label: strings.feature('Skapa nytt event'),
-      route: ProductRouteContract.calendarCreateEvent(),
-    ));
+  final canManageEvents = contextValue.can('event.manage');
+  final canAnnounce =
+      contextValue.rolePackage == 'leader' ||
+      contextValue.can('club.memberships.manage');
+  return [
+    // Calendar.
+    if (canManageEvents) ...[
+      (
+        icon: Icons.add_circle_outline,
+        label: strings.feature('Skapa nytt event'),
+        route: ProductRouteContract.calendarCreateEvent(),
+      ),
+      (
+        icon: Icons.directions_run,
+        label: strings.feature('Ny träning'),
+        route: ProductRouteContract.calendarCreateEvent(type: 'training'),
+      ),
+      (
+        icon: Icons.sports_soccer,
+        label: strings.feature('Ny match'),
+        route: ProductRouteContract.calendarCreateEvent(type: 'match'),
+      ),
+    ],
+    // Team.
+    if (canManageRoster) ...[
+      (
+        icon: Icons.person_add_alt_1,
+        label: strings.feature('Bjud in spelare'),
+        route: ProductRouteContract.teamInvite(),
+      ),
+      (
+        icon: Icons.shield_outlined,
+        label: strings.feature('Ledare och roller'),
+        route: ProductRouteContract.teamRoles(),
+      ),
+      (
+        icon: Icons.assignment_outlined,
+        label: strings.feature('Kontaktuppdatering'),
+        route: ProductRouteContract.teamIntake(),
+      ),
+    ],
+    if (contextValue.can('club.memberships.manage'))
+      (
+        icon: Icons.how_to_reg_outlined,
+        label: strings.feature('Medlemsansökningar'),
+        route: ProductRouteContract.teamApplications(),
+      ),
+    // Inbox.
+    (
+      icon: Icons.edit_outlined,
+      label: strings.feature('Skicka meddelande'),
+      route: ProductRouteContract.inboxCompose(),
+    ),
+    if (canAnnounce)
+      (
+        icon: Icons.campaign_outlined,
+        label: strings.feature('Nytt informationsmeddelande'),
+        route: ProductRouteContract.inboxAnnouncement(),
+      ),
+    // Destinations.
+    (
+      icon: _destinationFor(ProductRouteContract.calendar).icon,
+      label: strings.destination(ProductRouteContract.calendar),
+      route: ProductRouteContract.calendar,
+    ),
+    (
+      icon: _destinationFor(ProductRouteContract.team).icon,
+      label: canManageRoster
+          ? strings.feature('Hantera laget')
+          : strings.destination(ProductRouteContract.team),
+      route: ProductRouteContract.team,
+    ),
+    (
+      icon: _destinationFor(ProductRouteContract.inbox).icon,
+      label: strings.feature('Öppna inkorgen'),
+      route: ProductRouteContract.inbox,
+    ),
+    if (contextValue.can('event.manage') ||
+        contextValue.can('event.attendance.manage'))
+      (
+        icon: _destinationFor(ProductRouteContract.statistics).icon,
+        label: strings.destination(ProductRouteContract.statistics),
+        route: ProductRouteContract.statistics,
+      ),
+    if (contextValue.can('club.billing.manage'))
+      (
+        icon: Icons.payments_outlined,
+        label: strings.feature('Abonnemang'),
+        route: ProductRouteContract.billing,
+      ),
+    if (_hasEconomyCapability(contextValue))
+      (
+        icon: Icons.account_balance_wallet_outlined,
+        label: strings.feature('Ekonomi'),
+        route: ProductRouteContract.economy,
+      ),
+    if (_hasBoardCapability(contextValue))
+      (
+        icon: Icons.badge_outlined,
+        label: strings.feature('Styrelse'),
+        route: ProductRouteContract.board,
+      ),
+    if (contextValue.can('publication.manage'))
+      (
+        icon: Icons.newspaper_outlined,
+        label: strings.feature('Nyhetsredaktion'),
+        route: ProductRouteContract.editorial,
+      ),
+    if (contextValue.can('publication.manage') ||
+        contextValue.can('team.roster.manage'))
+      (
+        icon: Icons.public_outlined,
+        label: strings.feature('Publika sidor'),
+        route: ProductRouteContract.publication,
+      ),
+  ];
+}
+
+/// Splits the actions for the page the user is on: that page's own actions
+/// lead ("Gör nu"); elsewhere each page's main action does. Every other
+/// action stays reachable under "Fler genvägar".
+({List<_QuickAction> doNow, List<_QuickAction> more, List<_QuickAction> goTo})
+_groupQuickActions(List<_QuickAction> actions, String currentLocation) {
+  final current = Uri.parse(currentLocation).path;
+  final startsAction = [
+    for (final action in actions)
+      if (action.startsAction) action,
+  ];
+  var doNow = [
+    for (final action in startsAction)
+      if (current == action.page || current.startsWith('${action.page}/'))
+        action,
+  ];
+  if (doNow.isEmpty) {
+    final seenPages = <String>{};
+    doNow = [
+      for (final action in startsAction)
+        if (seenPages.add(action.page)) action,
+    ];
   }
-  actions.add((
-    icon: _destinationFor(ProductRouteContract.calendar).icon,
-    label: strings.destination(ProductRouteContract.calendar),
-    route: ProductRouteContract.calendar,
-  ));
-  if (canManageRoster) {
-    actions.add((
-      icon: Icons.person_add_alt_1,
-      label: strings.feature('Bjud in spelare'),
-      route: ProductRouteContract.teamInvite(),
-    ));
-  }
-  actions.add((
-    icon: _destinationFor(ProductRouteContract.team).icon,
-    label: canManageRoster
-        ? strings.feature('Hantera laget')
-        : strings.destination(ProductRouteContract.team),
-    route: ProductRouteContract.team,
-  ));
-  actions.add((
-    icon: Icons.edit_outlined,
-    label: strings.feature('Skicka meddelande'),
-    route: ProductRouteContract.inboxCompose(),
-  ));
-  actions.add((
-    icon: _destinationFor(ProductRouteContract.inbox).icon,
-    label: strings.feature('Öppna inkorgen'),
-    route: ProductRouteContract.inbox,
-  ));
-  if (contextValue.can('event.manage') ||
-      contextValue.can('event.attendance.manage')) {
-    actions.add((
-      icon: _destinationFor(ProductRouteContract.statistics).icon,
-      label: strings.destination(ProductRouteContract.statistics),
-      route: ProductRouteContract.statistics,
-    ));
-  }
-  if (contextValue.can('club.billing.manage')) {
-    actions.add((
-      icon: Icons.payments_outlined,
-      label: strings.feature('Abonnemang'),
-      route: ProductRouteContract.billing,
-    ));
-  }
-  if (_hasEconomyCapability(contextValue)) {
-    actions.add((
-      icon: Icons.account_balance_wallet_outlined,
-      label: strings.feature('Ekonomi'),
-      route: ProductRouteContract.economy,
-    ));
-  }
-  if (_hasBoardCapability(contextValue)) {
-    actions.add((
-      icon: Icons.badge_outlined,
-      label: strings.feature('Styrelse'),
-      route: ProductRouteContract.board,
-    ));
-  }
-  if (contextValue.can('publication.manage')) {
-    actions.add((
-      icon: Icons.newspaper_outlined,
-      label: strings.feature('Nyhetsredaktion'),
-      route: ProductRouteContract.editorial,
-    ));
-  }
-  if (contextValue.can('publication.manage') ||
-      contextValue.can('team.roster.manage')) {
-    actions.add((
-      icon: Icons.public_outlined,
-      label: strings.feature('Publika sidor'),
-      route: ProductRouteContract.publication,
-    ));
-  }
-  return actions;
+  return (
+    doNow: doNow,
+    more: [
+      for (final action in startsAction)
+        if (!doNow.contains(action)) action,
+    ],
+    goTo: [
+      for (final action in actions)
+        if (!action.startsAction) action,
+    ],
+  );
 }
 
 /// The swipe-up quick actions sheet, opened from the Home button in the
@@ -1631,21 +1710,14 @@ List<_QuickAction> _quickActionsFor(
 Future<void> _showQuickActionsMenu({
   required BuildContext context,
   required TeamZoneContext contextValue,
+  required String currentLocation,
   required ValueChanged<String> onNavigate,
 }) {
   final strings = AppStrings.of(context);
-  final actions = _quickActionsFor(context, contextValue);
-  // Shortcuts that start doing something (their route carries an
-  // ?action=) lead as prominent buttons; plain destinations follow as a
-  // grid of icons.
-  final doNow = [
-    for (final action in actions)
-      if (action.route.contains('action=')) action,
-  ];
-  final goTo = [
-    for (final action in actions)
-      if (!action.route.contains('action=')) action,
-  ];
+  final groups = _groupQuickActions(
+    _quickActionsFor(context, contextValue),
+    currentLocation,
+  );
   return showModalBottomSheet<void>(
     context: context,
     useSafeArea: true,
@@ -1659,7 +1731,7 @@ Future<void> _showQuickActionsMenu({
       }
 
       Widget sectionTitle(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
         child: Text(
           text,
           style: theme.textTheme.labelLarge?.copyWith(
@@ -1670,21 +1742,24 @@ Future<void> _showQuickActionsMenu({
 
       return SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          padding: const EdgeInsets.only(bottom: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                strings.feature('Genvägar'),
-                style: theme.textTheme.titleLarge,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  strings.feature('Genvägar'),
+                  style: theme.textTheme.titleLarge,
+                ),
               ),
               const SizedBox(height: 16),
-              if (doNow.isNotEmpty) ...[
+              if (groups.doNow.isNotEmpty) ...[
                 sectionTitle(strings.feature('Gör nu')),
-                for (final action in doNow)
+                for (final action in groups.doNow)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                     child: FilledButton.tonalIcon(
                       style: FilledButton.styleFrom(
                         alignment: Alignment.centerLeft,
@@ -1700,28 +1775,47 @@ Future<void> _showQuickActionsMenu({
                   ),
                 const SizedBox(height: 8),
               ],
-              if (goTo.isNotEmpty) ...[
+              if (groups.more.isNotEmpty) ...[
+                sectionTitle(strings.feature('Fler genvägar')),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Wrap(
+                    key: const Key('quick-actions-more'),
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final action in groups.more)
+                        ActionChip(
+                          avatar: Icon(action.icon, size: 18),
+                          label: Text(action.label),
+                          onPressed: () => open(action),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+              if (groups.goTo.isNotEmpty) ...[
                 sectionTitle(strings.feature('Gå till')),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final columns = constraints.maxWidth >= 480 ? 4 : 3;
-                    final width =
-                        (constraints.maxWidth - (columns - 1) * 8) / columns;
-                    return Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final action in goTo)
-                          SizedBox(
-                            width: width,
+                SingleChildScrollView(
+                  key: const Key('quick-actions-go-to'),
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final action in groups.goTo)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: SizedBox(
+                            width: 96,
                             child: _QuickActionTile(
                               action: action,
                               onTap: () => open(action),
                             ),
                           ),
-                      ],
-                    );
-                  },
+                        ),
+                    ],
+                  ),
                 ),
               ],
             ],

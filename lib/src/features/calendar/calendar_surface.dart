@@ -10,6 +10,7 @@ class _CalendarSurface extends StatefulWidget {
     required this.onNavigate,
     required this.matchSpaceV2,
     this.initialAction,
+    this.initialEventType,
   });
 
   final TeamZoneContext contextValue;
@@ -23,6 +24,9 @@ class _CalendarSurface extends StatefulWidget {
   // (ProductRouteContract.calendarCreateEvent) to open the create-event
   // dialog immediately on arrival — see _openInitialAction.
   final String? initialAction;
+
+  /// Event type preselected by a create shortcut (`&type=match`).
+  final String? initialEventType;
 
   @override
   State<_CalendarSurface> createState() => _CalendarSurfaceState();
@@ -1817,10 +1821,14 @@ class _EventEditorDialog extends StatefulWidget {
     required this.teamName,
     required this.locationSuggestions,
     this.initial,
+    this.initialType,
   });
   final String teamName;
   final List<SavedEventPlace> locationSuggestions;
   final EventDetails? initial;
+
+  /// Preselected type for a new event, e.g. from the quick actions sheet.
+  final String? initialType;
   @override
   State<_EventEditorDialog> createState() => _EventEditorDialogState();
 }
@@ -1843,7 +1851,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     text: widget.initial?.timezone ?? 'Europe/Stockholm',
   );
   late final TextEditingController _interval = TextEditingController(text: '1');
-  late String _type = widget.initial?.type ?? 'training';
+  late String _type = widget.initial?.type ?? widget.initialType ?? 'training';
   late final TextEditingController _assembly = TextEditingController(
     text: (widget.initial?.assemblyMinutesBefore ?? _defaultAssembly(_type))
         .toString(),
@@ -2897,6 +2905,17 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
   /// same condition that gates that FAB rather than trusting the shortcut
   /// having been gated correctly, since this can be reached via a direct
   /// deep link.
+  // Only the editor's own types; anything else falls back to its default.
+  String? get _allowedInitialType =>
+      const {
+        'training',
+        'match',
+        'meeting',
+        'activity',
+      }.contains(widget.initialEventType)
+      ? widget.initialEventType
+      : null;
+
   void _openInitialAction() {
     if (widget.initialAction != 'create' || _openedInitialAction) return;
     final canCreate =
@@ -2905,7 +2924,7 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
     if (!canCreate) return;
     _openedInitialAction = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(_createEvent());
+      if (mounted) unawaited(_createEvent(type: _allowedInitialType));
     });
   }
 
@@ -2984,7 +3003,8 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
       _data.replaceScope(scopeKey: _scopeKey, loader: _reload);
       _listenForInvalidations();
     }
-    if (oldWidget.initialAction != widget.initialAction) {
+    if (oldWidget.initialAction != widget.initialAction ||
+        oldWidget.initialEventType != widget.initialEventType) {
       _openedInitialAction = false;
       _openInitialAction();
     }
@@ -3051,7 +3071,7 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
     }
   }
 
-  Future<void> _createEvent() async {
+  Future<void> _createEvent({String? type}) async {
     final teamId = widget.contextValue.teamId;
     if (teamId == null) return;
     List<SavedEventPlace> suggestions;
@@ -3069,6 +3089,7 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
       builder: (_) => _EventEditorDialog(
         teamName: widget.contextValue.teamName ?? '',
         locationSuggestions: suggestions,
+        initialType: type,
       ),
     );
     if (value == null || !mounted) return;

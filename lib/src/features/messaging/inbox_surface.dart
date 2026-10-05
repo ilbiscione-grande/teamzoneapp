@@ -213,14 +213,18 @@ class _InboxSurfaceState extends State<_InboxSurface>
 
   bool _openedInitialAction = false;
 
-  /// Handles ?action=compose from the swipe-up quick actions sheet
-  /// (ProductRouteContract.inboxCompose): opens the compose dialog
-  /// immediately, same dialog as the page's own FAB.
+  /// Handles ?action=compose and ?action=announce from the swipe-up quick
+  /// actions sheet (ProductRouteContract.inboxCompose / inboxAnnouncement):
+  /// opens the compose dialog immediately, same dialog as the page's own
+  /// FAB, as a message or an announcement.
   void _openInitialAction() {
-    if (widget.initialAction != 'compose' || _openedInitialAction) return;
+    final action = widget.initialAction;
+    if ((action != 'compose' && action != 'announce') || _openedInitialAction) {
+      return;
+    }
     _openedInitialAction = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(_compose());
+      if (mounted) unawaited(_compose(announcement: action == 'announce'));
     });
   }
 
@@ -1326,7 +1330,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
     }
   }
 
-  Future<void> _compose() async {
+  Future<void> _compose({bool announcement = false}) async {
     final strings = AppStrings.of(context);
     List<AllowedRecipient> recipients;
     try {
@@ -1362,6 +1366,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
         canCreateAnnouncement:
             widget.contextValue.rolePackage == 'leader' ||
             clubMessagingContext != null,
+        startAsAnnouncement: announcement,
       ),
     );
     if (draft == null || !mounted) return;
@@ -2138,11 +2143,15 @@ class _ComposeDialog extends StatefulWidget {
     required this.canCreateAnnouncement,
     required this.teamName,
     required this.clubName,
+    this.startAsAnnouncement = false,
   });
   final List<AllowedRecipient> recipients;
   final bool hasTeamScope;
   final bool canUseClubScope;
   final bool canCreateAnnouncement;
+
+  /// Opens in announcement mode when the account may create one.
+  final bool startAsAnnouncement;
   final String? teamName;
   final String clubName;
   @override
@@ -2157,7 +2166,9 @@ class _ComposeDialogState extends State<_ComposeDialog> {
   final Set<String> _audienceRoles = {};
   // Message or announcement; for a message the thread type follows the
   // number of recipients (see _type).
-  String _mode = 'message';
+  late String _mode = widget.startAsAnnouncement && widget.canCreateAnnouncement
+      ? 'announcement'
+      : 'message';
   late String _scope = widget.hasTeamScope ? 'team' : 'club';
   String? _validationError;
 

@@ -106,11 +106,28 @@ class _RosterSurfaceState extends State<_RosterSurface> {
 
   bool _openedInitialAction = false;
 
+  /// The temporary contact page with QR code, from the manage menu or a
+  /// quick action.
+  void _openIntake() => unawaited(
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _IntakeSurface(
+          contextValue: widget.contextValue,
+          roster: widget.roster,
+          onPeopleAdded: () {
+            unawaited(_data.refresh());
+            _refreshTeamRoles();
+          },
+        ),
+      ),
+    ),
+  );
+
   /// Opens a capability-checked management sheet requested by a team deep
   /// link. This supports both invitations and the separate application queue.
   void _openInitialAction() {
     final action = widget.initialAction;
-    if ((action != 'invite' && action != 'applications') ||
+    if (!const {'invite', 'applications', 'roles', 'intake'}.contains(action) ||
         _openedInitialAction) {
       return;
     }
@@ -120,8 +137,18 @@ class _RosterSurfaceState extends State<_RosterSurface> {
               widget.contextValue.can('team.roster.manage');
     if (!canManage) return;
     _openedInitialAction = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // The roles and invitation sheets take the loaded roster, so a deep
+    // link waits for it instead of opening them with an empty list.
+    _afterRosterLoaded(() {
       if (!mounted) return;
+      if (action == 'roles') {
+        _openTeamRoles();
+        return;
+      }
+      if (action == 'intake') {
+        _openIntake();
+        return;
+      }
       showModalBottomSheet<void>(
         context: context,
         useRootNavigator: true,
@@ -140,6 +167,25 @@ class _RosterSurfaceState extends State<_RosterSurface> {
               ),
       );
     });
+  }
+
+  void _afterRosterLoaded(VoidCallback run) {
+    void attempt() {
+      if (!mounted) return;
+      if (_data.state.phase == AsyncDataPhase.loading) {
+        late final VoidCallback listener;
+        listener = () {
+          if (_data.state.phase == AsyncDataPhase.loading) return;
+          _data.removeListener(listener);
+          if (mounted) run();
+        };
+        _data.addListener(listener);
+        return;
+      }
+      run();
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
   }
 
   void _syncList() {
@@ -704,18 +750,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                               ),
                               onTap: () {
                                 Navigator.pop(sheetContext);
-                                Navigator.of(context, rootNavigator: true).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => _IntakeSurface(
-                                      contextValue: widget.contextValue,
-                                      roster: widget.roster,
-                                      onPeopleAdded: () {
-                                        unawaited(_data.refresh());
-                                        _refreshTeamRoles();
-                                      },
-                                    ),
-                                  ),
-                                );
+                                _openIntake();
                               },
                             ),
                             ListTile(

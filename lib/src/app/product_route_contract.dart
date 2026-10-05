@@ -61,12 +61,23 @@ class ProductRouteContract {
   /// swipe-up quick actions sheet. Each destination reads its own
   /// `action` query parameter once and opens the matching flow — see
   /// `initialAction` on the calendar/team/inbox surfaces.
-  static String calendarCreateEvent() =>
-      Uri(path: calendar, queryParameters: {'action': 'create'}).toString();
+  /// [type] preselects the event type ('training', 'match', ...).
+  static String calendarCreateEvent({String? type}) => Uri(
+    path: calendar,
+    queryParameters: {'action': 'create', 'type': ?type},
+  ).toString();
   static String teamInvite() =>
       Uri(path: team, queryParameters: {'action': 'invite'}).toString();
+  static String teamRoles() =>
+      Uri(path: team, queryParameters: {'action': 'roles'}).toString();
+  static String teamIntake() =>
+      Uri(path: team, queryParameters: {'action': 'intake'}).toString();
+  static String teamApplications() =>
+      Uri(path: team, queryParameters: {'action': 'applications'}).toString();
   static String inboxCompose() =>
       Uri(path: inbox, queryParameters: {'action': 'compose'}).toString();
+  static String inboxAnnouncement() =>
+      Uri(path: inbox, queryParameters: {'action': 'announce'}).toString();
 
   /// Older server projections used /calendar?event=... before EventDetails
   /// became a page. Keep those links actionable without changing unrelated
