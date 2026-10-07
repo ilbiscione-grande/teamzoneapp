@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/core/supabase/measured_rpc.dart';
 import 'package:teamzone_app/src/features/publication/editorial_models.dart';
@@ -64,7 +66,9 @@ abstract interface class EditorialServices {
   });
   Future<List<EditorialArticle>> listArticles(String clubId);
   Future<EditorialArticle> getArticle(String articleId);
-  Future<void> saveArticle(EditorialSaveInput input);
+
+  /// The saved article's id and revision; null if the server did not say.
+  Future<EditorialSaveResult?> saveArticle(EditorialSaveInput input);
   Future<void> transition({
     required String articleId,
     required String state,
@@ -72,6 +76,28 @@ abstract interface class EditorialServices {
     required int expectedRevision,
     required String idempotencyKey,
   });
+
+  /// Uploads a news image privately (JPEG, PNG or WebP); returns its asset
+  /// id. It is published only after public-media-worker has processed it.
+  Future<String> uploadNewsImage({
+    required String clubId,
+    required Uint8List bytes,
+    required String mimeType,
+  });
+
+  /// Sets (or with a null [assetId] removes) the hero image; returns the new
+  /// article revision.
+  Future<int> setArticleHero({
+    required String articleId,
+    required String? assetId,
+    required String? alt,
+    required int expectedRevision,
+    required String idempotencyKey,
+  });
+
+  /// Asks the worker to process pending images now; a missed call is picked
+  /// up by the next one.
+  Future<void> startImageProcessing();
 }
 
 class UnconfiguredEditorialServices implements EditorialServices {
@@ -157,7 +183,7 @@ class UnconfiguredEditorialServices implements EditorialServices {
   @override
   Future<EditorialArticle> getArticle(String articleId) => _fail();
   @override
-  Future<void> saveArticle(EditorialSaveInput input) => _fail();
+  Future<EditorialSaveResult?> saveArticle(EditorialSaveInput input) => _fail();
   @override
   Future<void> transition({
     required String articleId,
@@ -166,6 +192,22 @@ class UnconfiguredEditorialServices implements EditorialServices {
     required int expectedRevision,
     required String idempotencyKey,
   }) => _fail();
+  @override
+  Future<String> uploadNewsImage({
+    required String clubId,
+    required Uint8List bytes,
+    required String mimeType,
+  }) => _fail();
+  @override
+  Future<int> setArticleHero({
+    required String articleId,
+    required String? assetId,
+    required String? alt,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) => _fail();
+  @override
+  Future<void> startImageProcessing() async {}
 }
 
 class SupabaseEditorialServices implements EditorialServices {
@@ -398,23 +440,92 @@ class SupabaseEditorialServices implements EditorialServices {
   }
 
   @override
-  Future<void> saveArticle(EditorialSaveInput input) async => measuredRpc(
-    _client,
-    operation: 'save_editorial_article',
-    params: {
-      'club_id': input.clubId,
-      'article_id': input.articleId,
-      'slug': input.slug,
-      'title': input.title,
-      'summary': input.summary,
-      'blocks': input.blocks.map((block) => block.toJson()).toList(),
-      'author_label': input.authorLabel,
-      'publish_to_club': input.publishToClub,
-      'team_ids': input.teamIds.toList(),
-      'expected_revision': input.expectedRevision,
-      'idempotency_key': input.idempotencyKey,
-    },
-  );
+  Future<EditorialSaveResult?> saveArticle(EditorialSaveInput input) async {
+    final value = await measuredRpc(
+      _client,
+      operation: 'save_editorial_article',
+      params: {
+        'club_id': input.clubId,
+        'article_id': input.articleId,
+        'slug': input.slug,
+        'title': input.title,
+        'summary': input.summary,
+        'blocks': input.blocks.map((block) => block.toJson()).toList(),
+        'author_label': input.authorLabel,
+        'publish_to_club': input.publishToClub,
+        'team_ids': input.teamIds.toList(),
+        'expected_revision': input.expectedRevision,
+        'idempotency_key': input.idempotencyKey,
+      },
+    );
+    if (value is! Map ||
+        value['article_id'] is! String ||
+        value['revision'] is! num) {
+      return null;
+    }
+    return EditorialSaveResult(
+      articleId: value['article_id'] as String,
+      revision: (value['revision'] as num).toInt(),
+    );
+  }
+
+  @override
+  Future<String> uploadNewsImage({
+    required String clubId,
+    required Uint8List bytes,
+    required String mimeType,
+  }) async {
+    final staged = await _query('stage_public_media', {
+      'club_id': clubId,
+      'purpose': 'editorial_hero',
+      'content_type': mimeType,
+      'size_bytes': bytes.length,
+    });
+    if (staged is! Map ||
+        staged['bucket_id'] != 'public-media-source' ||
+        staged['object_key'] is! String ||
+        staged['asset_id'] is! String) {
+      throw const FormatException('Invalid staged news image.');
+    }
+    await _client.storage
+        .from('public-media-source')
+        .uploadBinary(
+          staged['object_key'] as String,
+          bytes,
+          fileOptions: FileOptions(contentType: mimeType, upsert: false),
+        );
+    return staged['asset_id'] as String;
+  }
+
+  @override
+  Future<int> setArticleHero({
+    required String articleId,
+    required String? assetId,
+    required String? alt,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {
+    final value = await _query('set_editorial_article_hero', {
+      'article_id': articleId,
+      'asset_id': assetId,
+      'alt': alt,
+      'expected_revision': expectedRevision,
+      'idempotency_key': idempotencyKey,
+    });
+    if (value is! Map || value['revision'] is! num) {
+      throw const FormatException('Invalid hero image response.');
+    }
+    return (value['revision'] as num).toInt();
+  }
+
+  @override
+  Future<void> startImageProcessing() async {
+    try {
+      await _client.functions.invoke('public-media-worker', body: {});
+    } catch (_) {
+      // Processed by a later call; the image stays private until then.
+    }
+  }
 
   @override
   Future<void> transition({

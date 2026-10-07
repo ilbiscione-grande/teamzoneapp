@@ -12,7 +12,9 @@ export async function GET(_request:Request,context:{params:Promise<{token:string
   if(!error&&resolved&&!resolved.not_found){
    const {data:file,error:downloadError}=await client.storage.from(resolved.bucket_id).download(resolved.object_key);
    if(downloadError||!file)return new Response("Not found",{status:404});
-   return new Response(file,{headers:{"content-type":"image/webp","cache-control":"public, max-age=60, s-maxage=31536000, immutable","x-content-type-options":"nosniff"}});
+   // Not immutable: a removed or replaced image (a wrong photo of a child)
+   // must stop being served within an hour, not linger in a shared cache.
+   return new Response(file,{headers:{"content-type":"image/webp","cache-control":"public, max-age=300, s-maxage=3600","x-content-type-options":"nosniff","content-security-policy":"default-src 'none'; sandbox"}});
   }
   // A published club's badge. Its address changes when the badge is replaced;
   // a short shared cache lets removal and unpublishing take effect.

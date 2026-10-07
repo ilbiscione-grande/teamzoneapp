@@ -593,8 +593,20 @@ class AppStrings {
     'Välj minst en klubb- eller lagkanal.':
         'Select at least one club or team channel.',
     'Spara utkast': 'Save draft',
-    'Bilder är inte aktiverade ännu. Endast strukturerad text publiceras.':
-        'Images are not enabled yet. Only structured text is published.',
+    'Bilden bearbetas': 'Image is being processed',
+    'Bild': 'Image',
+    'Bilden kunde inte bearbetas': 'The image could not be processed',
+    'Bilden godkändes inte': 'The image was not accepted',
+    'Ingen bild vald': 'No image selected',
+    'Bildbeskrivning': 'Image description',
+    'Läses upp för den som inte kan se bilden.':
+        'Read aloud to people who cannot see the image.',
+    'Ta bort bilden': 'Remove image',
+    'Bilden kunde inte öppnas.': 'The image could not be opened.',
+    'Bilden stöds inte. Välj en JPEG-, PNG- eller WebP-bild under 10 MB.':
+        'The image is not supported. Choose a JPEG, PNG or WebP image under 10 MB.',
+    'Bilden skalas ner och platsuppgifter och annan metadata tas bort innan den publiceras.':
+        'The image is scaled down and location data and other metadata are removed before it is published.',
     'Event och partners': 'Events and partners',
     'Förhandsgranska händelse': 'Preview event',
     'Publik titel': 'Public title',

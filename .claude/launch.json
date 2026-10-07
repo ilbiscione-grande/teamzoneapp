@@ -13,6 +13,15 @@
         "build/web"
       ],
       "port": 5000
+    },
+    {
+      "name": "public-site",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "process.env.TEAMZONE_LOCAL_PUBLIC_VIEW='1';require('child_process').spawn('npm',['run','dev','--','-p','5001'],{cwd:'public-site',stdio:'inherit',shell:true}).on('exit',c=>process.exit(c??0))"
+      ],
+      "port": 5001
     }
   ]
 }

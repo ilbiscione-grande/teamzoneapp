@@ -35,7 +35,15 @@ void main() {
     expect(service, contains("_query('get_publication_management'"));
     expect(service, contains("operation: 'configure_event_publication'"));
     expect(service, contains("operation: 'save_public_partner'"));
-    expect(service, isNot(contains(".from('")));
+    // No direct table access; the only Storage use is the private,
+    // policy-checked news image upload.
+    expect(service, isNot(matches(RegExp(r"_client\s*\.from\("))));
+    expect(
+      RegExp(
+        r"\.from\('([a-z-]+)'\)",
+      ).allMatches(service).map((match) => match.group(1)).toSet(),
+      {'public-media-source'},
+    );
     expect(surface, contains('Partnerlogotyp kommer senare'));
     expect(
       surface,

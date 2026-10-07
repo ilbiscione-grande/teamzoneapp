@@ -210,7 +210,8 @@ class _EditorialSurfaceState extends State<_EditorialSurface> {
                   leading: Icon(_articleIcon(article.state)),
                   title: Text(article.title),
                   subtitle: Text(
-                    '${strings.domainValue(article.state)} · /${article.slug}\n'
+                    '${strings.domainValue(article.state)} · /${article.slug}'
+                    '${article.mediaStatus == 'none' ? '' : ' · ${strings.feature(_heroStateLabel(article.mediaStatus))}'}\n'
                     '${[if (article.publishToClub) strings.feature('Klubbens publika sida'), for (final teamId in article.teamIds) widget.contexts.where((value) => value.teamId == teamId).map((value) => value.teamName).firstOrNull ?? strings.feature('Vald publik lagsida')].join(' · ')}',
                   ),
                   isThreeLine: true,
@@ -327,6 +328,66 @@ class _EditorialEditorState extends State<_EditorialEditor> {
   late final Set<String> _teams = {...?widget.article?.teamIds};
   late bool _automaticSlug = widget.article == null;
   bool _saving = false;
+  // Hero image: a newly picked image, or removal of the saved one.
+  Uint8List? _newImage;
+  String? _newImageType;
+  bool _removeImage = false;
+  late final TextEditingController _alt = TextEditingController(
+    text: widget.article?.heroAlt,
+  );
+
+  bool get _hasHero =>
+      _newImage != null ||
+      (widget.article?.heroAssetId != null && !_removeImage);
+
+  bool get _imageChanged =>
+      _newImage != null ||
+      _removeImage ||
+      (widget.article?.heroAssetId != null &&
+          _alt.text.trim() != (widget.article?.heroAlt ?? ''));
+
+  /// Picks a photo; the picker scales and re-encodes it, and the server
+  /// strips metadata and converts it again before anything is public.
+  Future<void> _pickImage() async {
+    final strings = AppStrings.of(context);
+    final XFile? picked;
+    try {
+      picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 2560,
+        maxHeight: 2560,
+        imageQuality: 90,
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(strings.feature('Bilden kunde inte öppnas.'))),
+        );
+      }
+      return;
+    }
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    final type = _newsImageType(bytes);
+    if (!mounted) return;
+    if (type == null || bytes.length > 10485760) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            strings.feature(
+              'Bilden stöds inte. Välj en JPEG-, PNG- eller WebP-bild under 10 MB.',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+    setState(() {
+      _newImage = bytes;
+      _newImageType = type;
+      _removeImage = false;
+    });
+  }
 
   bool get _hasUnsavedChanges {
     final article = widget.article;
@@ -339,7 +400,8 @@ class _EditorialEditorState extends State<_EditorialEditor> {
             article.blocks.map((block) => block.text).join('\n\n').trim() ||
         _club != article.publishToClub ||
         _teams.length != article.teamIds.length ||
-        !_teams.containsAll(article.teamIds);
+        !_teams.containsAll(article.teamIds) ||
+        _imageChanged;
   }
 
   @override
@@ -387,6 +449,7 @@ class _EditorialEditorState extends State<_EditorialEditor> {
     _summary.dispose();
     _author.dispose();
     _body.dispose();
+    _alt.dispose();
     super.dispose();
   }
 
@@ -396,7 +459,7 @@ class _EditorialEditorState extends State<_EditorialEditor> {
     }
     setState(() => _saving = true);
     try {
-      await widget.editorial.saveArticle(
+      final saved = await widget.editorial.saveArticle(
         EditorialSaveInput(
           clubId: widget.clubId,
           articleId: widget.article?.id,
@@ -411,6 +474,28 @@ class _EditorialEditorState extends State<_EditorialEditor> {
           idempotencyKey: _newUuid(),
         ),
       );
+      // The image is set after the text, on the article's new revision.
+      if (_imageChanged && saved != null) {
+        final assetId = _newImage != null
+            ? await widget.editorial.uploadNewsImage(
+                clubId: widget.clubId,
+                bytes: _newImage!,
+                mimeType: _newImageType!,
+              )
+            : _removeImage
+            ? null
+            : widget.article?.heroAssetId;
+        await widget.editorial.setArticleHero(
+          articleId: saved.articleId,
+          assetId: assetId,
+          alt: assetId == null || _alt.text.trim().isEmpty
+              ? null
+              : _alt.text.trim(),
+          expectedRevision: saved.revision,
+          idempotencyKey: _newUuid(),
+        );
+        if (_newImage != null) await widget.editorial.startImageProcessing();
+      }
       if (mounted) {
         Navigator.pop(context, true);
       }
@@ -555,6 +640,7 @@ class _EditorialEditorState extends State<_EditorialEditor> {
               maxLines: 16,
               validator: _required,
             ),
+            _heroImageSection(context, strings),
             TextFormField(
               controller: _author,
               decoration: InputDecoration(
@@ -616,15 +702,89 @@ class _EditorialEditorState extends State<_EditorialEditor> {
                 label: Text(strings.feature('Publicera nu')),
               ),
             ],
-            const SizedBox(height: 12),
-            Text(
-              strings.feature(
-                'Bilder är inte aktiverade ännu. Endast strukturerad text publiceras.',
-              ),
-              textAlign: TextAlign.center,
-            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _heroImageSection(BuildContext context, AppStrings strings) {
+    final article = widget.article;
+    final savedPath = article?.heroPath;
+    final Widget preview;
+    if (_newImage != null) {
+      preview = Image.memory(_newImage!, fit: BoxFit.cover);
+    } else if (!_removeImage && savedPath != null) {
+      preview = Image.network(
+        '$_publicSiteOrigin$savedPath',
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => const Icon(Icons.broken_image_outlined),
+      );
+    } else if (!_removeImage && article?.heroAssetId != null) {
+      preview = Center(
+        child: Text(strings.feature(_heroStateLabel(article!.mediaStatus))),
+      );
+    } else {
+      preview = Center(child: Text(strings.feature('Ingen bild vald')));
+    }
+    return Card(
+      key: const ValueKey('editorial-hero-image'),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AspectRatio(aspectRatio: 16 / 9, child: preview),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: Text(
+              strings.feature(
+                'Bilden skalas ner och platsuppgifter och annan metadata tas bort innan den publiceras.',
+              ),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+          if (_hasHero)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: TextField(
+                controller: _alt,
+                maxLength: 200,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  labelText: strings.feature('Bildbeskrivning'),
+                  helperText: strings.feature(
+                    'Läses upp för den som inte kan se bilden.',
+                  ),
+                ),
+              ),
+            ),
+          OverflowBar(
+            alignment: MainAxisAlignment.end,
+            children: [
+              if (_hasHero)
+                TextButton.icon(
+                  key: const ValueKey('editorial-hero-remove'),
+                  onPressed: _saving
+                      ? null
+                      : () => setState(() {
+                          _newImage = null;
+                          _newImageType = null;
+                          _removeImage = article?.heroAssetId != null;
+                        }),
+                  icon: const Icon(Icons.delete_outline),
+                  label: Text(strings.feature('Ta bort bilden')),
+                ),
+              TextButton.icon(
+                key: const ValueKey('editorial-hero-pick'),
+                onPressed: _saving ? null : _pickImage,
+                icon: const Icon(Icons.image_outlined),
+                label: Text(
+                  strings.feature(_hasHero ? 'Byt bild' : 'Välj bild'),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -642,6 +802,37 @@ class _EditorialEditorState extends State<_EditorialEditor> {
           'Använd 2–100 tecken: små bokstäver, siffror och bindestreck.',
         );
 }
+
+/// The news image format from the file's signature (JPEG, PNG or WebP).
+String? _newsImageType(Uint8List bytes) {
+  if (bytes.length >= 3 &&
+      bytes[0] == 0xff &&
+      bytes[1] == 0xd8 &&
+      bytes[2] == 0xff) {
+    return 'image/jpeg';
+  }
+  if (bytes.length >= 8 &&
+      bytes[0] == 0x89 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x4e &&
+      bytes[3] == 0x47) {
+    return 'image/png';
+  }
+  if (bytes.length >= 12 &&
+      String.fromCharCodes(bytes.sublist(0, 4)) == 'RIFF' &&
+      String.fromCharCodes(bytes.sublist(8, 12)) == 'WEBP') {
+    return 'image/webp';
+  }
+  return null;
+}
+
+String _heroStateLabel(String state) => switch (state) {
+  'pending' => 'Bilden bearbetas',
+  'ready' => 'Bild',
+  'failed' => 'Bilden kunde inte bearbetas',
+  'rejected' => 'Bilden godkändes inte',
+  _ => 'Ingen bild vald',
+};
 
 String _suggestArticleSlug(String title) {
   final folded = title.toLowerCase().trim().replaceAllMapped(

@@ -4,6 +4,7 @@ import { WrittenMatchReport } from "../../../components/written-match-report";
 import { notFound } from "next/navigation";
 import { InactiveState } from "../../../components/inactive-state";
 import { FollowButton } from "../../../components/follow-button";
+import { AdminEntry } from "../../../components/admin/admin-entry";
 import { ClubFooter, ClubHeader, Crest, Empty, EventCard, NewsGrid, ResultCard, SectionHead, clubSiteClass, ClubTheme, initials, type CalendarEvent, type NewsItem, type ResultItem } from "../../../components/club-site";
 import { canonicalUrl, getClubPage, getPublications, getTeamEvents, getTeamResults, getTeamPage } from "../../../lib/page-data";
 
@@ -55,7 +56,7 @@ export default async function TeamPage({ params }: Props) {
               <p className="cs-kicker">Lagkanal · <Link href={`/${clubSlug}`}>{club.name}</Link></p>
               <h1>{team.name}</h1>
               <div className="cs-hero-meta">{team.age_class && <span>{team.age_class}</span>}<span className={`cs-verified${club.official ? " official" : ""}`}>{club.official ? "officiellt verifierad klubb" : "inofficiell klubb"}</span></div>
-              <div className="cs-hero-actions"><FollowButton channel={{ kind: "team", id: team.id, name: team.name, slug: team.slug, club_slug: club.slug }} /></div>
+              <div className="cs-hero-actions"><FollowButton channel={{ kind: "team", id: team.id, name: team.name, slug: team.slug, club_slug: club.slug }} /><AdminEntry clubSlug={club.slug} section="matcher" /></div>
             </div>
           </div>
         </section>

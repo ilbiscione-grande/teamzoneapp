@@ -1,0 +1,88 @@
+/* Page administration on the public site (/<club>/admin). Builds on the club
+   theme variables from club-site.css, so a club's colours carry over. */
+.ad-shell { width: min(960px, calc(100% - 32px)); margin: 28px auto 64px; display: grid; gap: 18px; flex: 1; align-content: start; }
+.ad-top { display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap; }
+.ad-top h1 { margin: 0; font-size: clamp(1.8rem, 5vw, 2.6rem); line-height: 1; text-transform: uppercase; }
+.ad-kicker { margin: 0 0 6px; color: var(--cs-muted); font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; }
+
+.ad-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; border-bottom: 1px solid var(--cs-line); scrollbar-width: none; }
+.ad-tabs::-webkit-scrollbar { display: none; }
+.ad-tabs button { flex: none; border: 0; background: none; padding: 10px 14px; font: inherit; font-weight: 600; color: var(--cs-muted); border-bottom: 3px solid transparent; cursor: pointer; }
+.ad-tabs button[aria-current="page"] { color: var(--cs-text); border-bottom-color: var(--cs-brand); }
+
+.ad-panel { background: var(--cs-bg); border: 1px solid var(--cs-line); border-radius: 12px; padding: clamp(16px, 3vw, 24px); display: grid; gap: 14px; }
+.ad-panel-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; flex-wrap: wrap; }
+.ad-panel h2 { margin: 0; font-size: 1.4rem; text-transform: uppercase; }
+.ad-panel-head p, .ad-muted { margin: 4px 0 0; color: var(--cs-muted); }
+.ad-message { text-align: center; justify-items: center; padding: 40px 20px; }
+.ad-message h1 { margin: 0; font-size: 1.8rem; text-transform: uppercase; }
+.ad-message p { margin: 0; max-width: 46ch; color: var(--cs-muted); }
+
+.ad-button { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 9px 18px; border-radius: 6px; border: 2px solid var(--cs-brand); background: var(--cs-brand); color: white; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; position: relative; }
+.ad-button.ghost { background: transparent; color: var(--cs-text); border-color: var(--cs-line); }
+.ad-button:disabled, .ad-button.disabled { opacity: .55; cursor: default; }
+.ad-link { border: 0; background: none; padding: 4px 2px; font: inherit; font-weight: 600; color: var(--cs-brand); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.ad-link:disabled { opacity: .5; cursor: default; }
+.ad-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.ad-message .ad-actions { justify-content: center; }
+
+.ad-form { display: grid; gap: 14px; }
+.ad-form label, .ad-form-row { display: grid; gap: 6px; font-weight: 600; }
+.ad-form input:not([type="checkbox"]):not([type="color"]):not([type="file"]), .ad-form textarea, .ad-form select, .ad-form-row select, .ad-inline input, .ad-inline textarea {
+  width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--cs-line); border-radius: 6px; font: inherit; font-weight: 400; color: var(--cs-text); background: white;
+}
+.ad-form textarea { resize: vertical; }
+.ad-form small { color: var(--cs-muted); font-weight: 400; overflow-wrap: anywhere; }
+.ad-form fieldset { border: 1px solid var(--cs-line); border-radius: 8px; padding: 10px 14px; display: grid; gap: 8px; margin: 0; }
+.ad-form legend { font-weight: 600; padding: 0 4px; }
+.ad-check { display: flex !important; grid-template-columns: none; align-items: start; gap: 10px !important; font-weight: 400 !important; }
+.ad-check input { margin-top: 3px; width: 18px; height: 18px; flex: none; }
+.ad-inline { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: end; gap: 10px; padding-top: 8px; }
+.ad-inline label { display: grid; gap: 6px; flex: 1 1 220px; font-weight: 600; }
+.ad-file { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+.ad-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.ad-list li { display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; align-items: center; padding: 12px 0; border-top: 1px solid var(--cs-line); }
+.ad-list li:first-child { border-top: 0; }
+.ad-list-main { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-width: 0; }
+.ad-list-main small { flex-basis: 100%; color: var(--cs-muted); overflow-wrap: anywhere; }
+.ad-list-actions { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: flex-end; }
+.ad-state { font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--cs-bg-alt); color: var(--cs-muted); }
+.ad-state.published { background: #dff3e7; color: #146c3a; }
+.ad-state.scheduled, .ad-state.listed { background: #fff3cd; color: #7a5a00; }
+.ad-state.unpublished { background: #fde2e2; color: #9b2c2c; }
+.ad-empty { margin: 0; padding: 18px; text-align: center; color: var(--cs-muted); background: var(--cs-bg-alt); border-radius: 8px; }
+
+.ad-notice { margin: 0; padding: 10px 14px; border-radius: 8px; }
+.ad-notice.success { background: #dff3e7; color: #146c3a; }
+.ad-notice.error { background: #fde2e2; color: #9b2c2c; }
+
+.ad-preview { border: 1px dashed var(--cs-line); border-radius: 8px; padding: 10px 14px; }
+.ad-preview summary { cursor: pointer; font-weight: 600; }
+.ad-preview article p { line-height: 1.6; }
+.ad-lead { font-weight: 600; }
+
+.ad-color-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.ad-color { display: flex; gap: 8px; align-items: center; }
+.ad-color input[type="color"] { width: 46px; height: 42px; padding: 2px; border: 1px solid var(--cs-line); border-radius: 6px; background: white; flex: none; }
+.ad-swatch { display: flex; align-items: center; gap: 12px; padding: 18px; border-radius: 10px; color: white; }
+.ad-swatch span { width: 28px; height: 28px; border-radius: 50%; flex: none; }
+.ad-swatch strong { text-transform: uppercase; letter-spacing: .04em; }
+.ad-badge { display: grid; place-items: center; min-height: 120px; }
+.ad-badge img { max-width: 160px; max-height: 160px; object-fit: contain; }
+
+/* Entry from the public page, only for signed-in administrators. */
+.ad-entry { display: inline-flex; align-items: center; gap: 6px; }
+
+@media (max-width: 560px) {
+  .ad-list li { grid-template-columns: 1fr; }
+  .ad-list-actions { justify-content: flex-start; }
+  .ad-actions { justify-content: stretch; }
+  .ad-actions > * { flex: 1 1 auto; }
+}
+
+/* News hero image in the editor. */
+.ad-hero { gap: 10px !important; }
+.ad-hero .ad-actions { justify-content: flex-start; }
+.ad-hero-preview { display: block; width: 100%; max-height: 320px; object-fit: cover; border-radius: 8px; background: var(--cs-bg-alt); }
+canvas.ad-hero-preview { height: auto; }

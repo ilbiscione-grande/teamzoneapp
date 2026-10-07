@@ -235,6 +235,92 @@ void main() {
     expect(editorial.transitionedTo, isNull);
   });
 
+  testWidgets('a draft shows its image state and the image can be removed', (
+    tester,
+  ) async {
+    final editorial = _Editorial(heroAssetId: 'asset')..saved = _draft();
+    await tester.pumpWidget(_app(editorial, canPublish: true));
+    await tester.pumpAndSettle();
+    await _openNewsroom(tester);
+    await tester.pumpAndSettle();
+    // The list tells that the image is still being processed.
+    expect(find.textContaining('Bilden bearbetas'), findsOneWidget);
+    await tester.tap(find.text('Säsongen startar'));
+    await tester.pumpAndSettle();
+    final hero = find.byKey(const ValueKey('editorial-hero-image'));
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('editorial-hero-remove')),
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView).last,
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    expect(
+      find.descendant(of: hero, matching: find.text('Bilden bearbetas')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: hero,
+        matching: find.widgetWithText(TextField, 'Bildbeskrivning'),
+      ),
+      findsOneWidget,
+    );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('editorial-hero-remove')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('editorial-hero-remove')));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: hero, matching: find.text('Ingen bild vald')),
+      findsOneWidget,
+    );
+    await tester.scrollUntilVisible(
+      find.text('Spara utkast'),
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView).last,
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.tap(find.text('Spara utkast'));
+    await tester.pumpAndSettle();
+    // Removed on the article's new revision after the text was saved.
+    expect(editorial.heroCalls, [(null, 2)]);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('saving without image changes leaves the image alone', (
+    tester,
+  ) async {
+    final editorial = _Editorial(heroAssetId: 'asset')..saved = _draft();
+    await tester.pumpWidget(_app(editorial, canPublish: true));
+    await tester.pumpAndSettle();
+    await _openNewsroom(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Säsongen startar'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Spara utkast'),
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView).last,
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.tap(find.text('Spara utkast'));
+    await tester.pumpAndSettle();
+    expect(editorial.heroCalls, isEmpty);
+  });
+
   testWidgets('editor confirms publication for a ready club', (tester) async {
     final editorial = _Editorial(clubPublished: true)..saved = _draft();
     await tester.pumpWidget(_app(editorial, canPublish: true));
@@ -369,9 +455,11 @@ Widget _app(_Editorial editorial, {required bool canPublish}) => TeamZoneApp(
 );
 
 class _Editorial extends UnconfiguredEditorialServices {
-  _Editorial({this.clubPublished = false});
+  _Editorial({this.clubPublished = false, this.heroAssetId});
   final bool clubPublished;
   EditorialSaveInput? saved;
+  String? heroAssetId;
+  final List<(String?, int)> heroCalls = [];
   String? transitionedTo;
   bool eventPublished = false;
   bool eventSaved = false;
@@ -478,13 +566,29 @@ class _Editorial extends UnconfiguredEditorialServices {
             publishToClub: saved!.publishToClub,
             teamIds: saved!.teamIds,
             revision: 1,
-            mediaStatus: 'not_configured',
+            mediaStatus: heroAssetId == null ? 'none' : 'pending',
+            heroAssetId: heroAssetId,
+            heroAlt: heroAssetId == null ? null : 'Laget firar',
           ),
         ];
 
   @override
-  Future<void> saveArticle(EditorialSaveInput input) async {
+  Future<EditorialSaveResult?> saveArticle(EditorialSaveInput input) async {
     saved = input;
+    return const EditorialSaveResult(articleId: 'article', revision: 2);
+  }
+
+  @override
+  Future<int> setArticleHero({
+    required String articleId,
+    required String? assetId,
+    required String? alt,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {
+    heroCalls.add((assetId, expectedRevision));
+    heroAssetId = assetId;
+    return expectedRevision + 1;
   }
 }
 

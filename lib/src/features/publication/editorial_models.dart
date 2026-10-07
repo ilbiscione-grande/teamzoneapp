@@ -31,10 +31,20 @@ class EditorialArticle {
     this.summary,
     this.authorLabel,
     this.publishAt,
+    this.heroAssetId,
+    this.heroAlt,
+    this.heroPath,
   });
 
-  final String id, slug, title, state, mediaStatus;
+  final String id, slug, title, state;
+
+  /// The hero image: none, pending, ready, failed or rejected.
+  final String mediaStatus;
   final String? summary, authorLabel;
+
+  /// Hero image reference, its description and, once processed, its public
+  /// path on the public site (`/media/public/<token>`).
+  final String? heroAssetId, heroAlt, heroPath;
   final List<EditorialBlock> blocks;
   final bool publishToClub;
   final Set<String> teamIds;
@@ -62,8 +72,18 @@ class EditorialArticle {
             .whereType<String>()
             .toSet(),
         revision: (json['revision'] as num).toInt(),
-        mediaStatus: json['media_status'] as String? ?? 'not_configured',
+        mediaStatus: json['media_status'] as String? ?? 'none',
+        heroAssetId: json['hero_asset_id'] as String?,
+        heroAlt: json['hero_alt'] as String?,
+        heroPath: json['hero_path'] as String?,
       );
+}
+
+/// The saved article's id and new revision.
+class EditorialSaveResult {
+  const EditorialSaveResult({required this.articleId, required this.revision});
+  final String articleId;
+  final int revision;
 }
 
 class EditorialSaveInput {

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ContactForm } from "../../components/contact-form";
 import { InactiveState } from "../../components/inactive-state";
 import { FollowButton } from "../../components/follow-button";
+import { AdminEntry } from "../../components/admin/admin-entry";
 import { ClubFooter, ClubHeader, Crest, Empty, EventCard, NewsGrid, SectionHead, clubSiteClass, ClubTheme, initials, type CalendarEvent, type NewsItem } from "../../components/club-site";
 import { canonicalUrl, getClubEvents, getClubPage, getPublications } from "../../lib/page-data";
 
@@ -53,7 +54,7 @@ export default async function ClubPage({ params }: Props) {
               <p className="cs-kicker">Klubbsida{club.locality ? ` · ${club.locality}` : ""}</p>
               <h1>{club.name}</h1>
               <div className="cs-hero-meta"><span className={`cs-verified${club.official ? " official" : ""}`}>{club.official ? "Officiellt verifierad klubb" : "Inofficiell klubb"}</span>{teams.length > 0 && <span>{teams.length} lag</span>}</div>
-              <div className="cs-hero-actions"><FollowButton channel={{ kind: "club", id: club.id, name: club.name, slug: club.slug }} /><a className="cs-button ghost" href="#kontakt">Kontakta klubben</a></div>
+              <div className="cs-hero-actions"><FollowButton channel={{ kind: "club", id: club.id, name: club.name, slug: club.slug }} /><a className="cs-button ghost" href="#kontakt">Kontakta klubben</a><AdminEntry clubSlug={club.slug} /></div>
             </div>
           </div>
         </section>

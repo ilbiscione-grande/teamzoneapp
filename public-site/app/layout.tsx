@@ -1,6 +1,7 @@
 import "./globals.css";
 import "./club-site.css";
 import "./portal.css";
+import "./admin.css";
 import { PersonalAccount } from "../components/personal-account";
 
 export const metadata = {
