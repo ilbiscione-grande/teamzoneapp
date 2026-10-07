@@ -31,7 +31,9 @@ void main() {
       'lib/src/features/calendar/event_details_page.dart',
     ).readAsStringSync();
 
-    expect(source, contains("event.can('manage_roster')"));
+    // Follow-up actions come from api.get_event_followup (is_leader,
+    // can_edit_targets, can_record_values) rather than client checks.
+    expect(source, contains('_FollowupTab('));
     expect(source, contains("event.can('manage_sharing')"));
     expect(source, contains("event.can('revise')"));
     expect(source, contains('_ParticipantsTab('));

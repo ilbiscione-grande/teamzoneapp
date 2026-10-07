@@ -9,6 +9,7 @@ import 'package:teamzone_app/src/core/identity/identity_services.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_models.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_services.dart';
+import 'package:teamzone_app/src/features/calendar/followup_models.dart';
 import 'package:teamzone_app/src/features/calendar/preparation_models.dart';
 import 'package:teamzone_app/src/features/match/match_models.dart';
 import 'package:teamzone_app/src/features/match/match_services.dart';
@@ -36,6 +37,73 @@ void main() {
     expect(find.text('Mina uppgifter'), findsNothing);
     expect(find.byTooltip('Öppna förberedelser'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+  group('Mål och uppföljning', () {
+    testWidgets('goal set in preparation is followed up with a value', (
+      tester,
+    ) async {
+      final prep = _Prep()..ended = true;
+      await _openPreparation(tester, _Calendar('training', prep));
+      expect(find.text('MÅL FÖR TRÄNINGEN'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('kpi-add-goal')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Skott på mål'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const ValueKey('kpi-target')), '5');
+      await tester.tap(find.byKey(const ValueKey('kpi-save-goal')));
+      await tester.pumpAndSettle();
+      expect(prep.kpis.single.comparator, 'gte');
+      expect(prep.kpis.single.target, 5);
+      expect(find.text('minst 5'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Uppföljning'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Uppföljning'));
+      await tester.pumpAndSettle();
+      expect(find.text('Registrera närvaro för 1 personer'), findsOneWidget);
+      expect(find.text('Fyll i 1 nyckeltal'), findsOneWidget);
+      expect(find.text('80 %'), findsOneWidget);
+      expect(find.text('+8 mot snitt'), findsOneWidget);
+      expect(find.text('Avböjt: sjukdom 1'), findsOneWidget);
+      expect(find.byKey(const ValueKey('attendance-trend')), findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        find.text('Fyll i värde'),
+        200,
+        scrollable: find.descendant(
+          of: find.byKey(const ValueKey('event-followup')),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Fyll i värde'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const ValueKey('kpi-value')), '6');
+      await tester.tap(find.byKey(const ValueKey('kpi-save-value')));
+      await tester.pumpAndSettle();
+      expect(prep.recorded.single, ('kpi-0', 6.0));
+      expect(find.text('1 av 1 uppnådda'), findsOneWidget);
+      expect(find.text('Fyll i 1 nyckeltal'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('read-only user sees no goal section without goals', (
+      tester,
+    ) async {
+      await _openPreparation(
+        tester,
+        _Calendar('training', _Prep(canEdit: false)),
+      );
+      expect(find.byKey(const ValueKey('kpi-goals-section')), findsNothing);
+      await tester.ensureVisible(find.text('Uppföljning'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Uppföljning'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('followup-todos')), findsNothing);
+      expect(find.byKey(const ValueKey('followup-metrics')), findsOneWidget);
+      expect(find.byKey(const ValueKey('followup-goals')), findsNothing);
+    });
   });
   group('Träning', () {
     testWidgets('focus from earlier use, custom focus and removal', (
@@ -791,6 +859,144 @@ class _Prep implements EventPreparationServices {
   Future<void> deleteFile(String fileId) async {
     files = files.where((f) => f.id != fileId).toList();
   }
+
+  // --- KPI goals and follow-up ---------------------------------------------
+
+  List<EventKpi> kpis = [];
+  bool ended = false;
+  int _kpiIds = 0;
+  final recorded = <(String, double?)>[];
+
+  static const catalog = [
+    KpiCatalogEntry(
+      key: 'attendance_rate',
+      label: 'Närvaro',
+      valueType: 'percent',
+      direction: 'higher',
+      source: 'auto',
+    ),
+    KpiCatalogEntry(
+      key: 'shots_on_target',
+      label: 'Skott på mål',
+      valueType: 'count',
+      direction: 'higher',
+      source: 'manual',
+    ),
+  ];
+
+  @override
+  Future<List<KpiCatalogEntry>> getKpiCatalog(String eventId) async => catalog;
+
+  @override
+  Future<EventKpi> saveKpiTarget({
+    required String eventId,
+    String? targetId,
+    required String kpiKey,
+    String? label,
+    String? valueType,
+    required String comparator,
+    required double target,
+    required bool visibleToPlayers,
+    int expectedRevision = 0,
+  }) async {
+    final entry = catalog.where((e) => e.key == kpiKey).firstOrNull;
+    final kpi = EventKpi(
+      id: targetId ?? 'kpi-${_kpiIds++}',
+      kpiKey: kpiKey,
+      label: entry?.label ?? label!,
+      valueType: entry?.valueType ?? valueType!,
+      direction: comparator == 'lte' ? 'lower' : 'higher',
+      source: entry?.source ?? 'manual',
+      comparator: comparator,
+      target: target,
+      visibleToPlayers: visibleToPlayers,
+      revision: expectedRevision + 1,
+      status: 'pending',
+    );
+    kpis = [...kpis.where((k) => k.id != kpi.id), kpi];
+    return kpi;
+  }
+
+  @override
+  Future<void> deleteKpiTarget(String eventId, String targetId) async {
+    kpis = kpis.where((k) => k.id != targetId).toList();
+  }
+
+  @override
+  Future<EventKpi> recordKpiValue(
+    String targetId,
+    double? value,
+    int expectedRevision,
+  ) async {
+    recorded.add((targetId, value));
+    final k = kpis.firstWhere((k) => k.id == targetId);
+    final achieved = value != null && value >= k.target;
+    final kpi = EventKpi(
+      id: k.id,
+      kpiKey: k.kpiKey,
+      label: k.label,
+      valueType: k.valueType,
+      direction: k.direction,
+      source: k.source,
+      comparator: k.comparator,
+      target: k.target,
+      visibleToPlayers: k.visibleToPlayers,
+      revision: k.revision + 1,
+      actual: value,
+      status: value == null ? 'missing' : (achieved ? 'achieved' : 'missed'),
+    );
+    kpis = [for (final x in kpis) x.id == k.id ? kpi : x];
+    return kpi;
+  }
+
+  @override
+  Future<EventFollowup> getFollowup(String eventId) async => EventFollowup(
+    eventId: eventId,
+    eventType: 'training',
+    ended: ended,
+    isLeader: canEdit,
+    canEditTargets: canEdit,
+    canRecordValues: canEdit,
+    summary: const AttendanceSummary(
+      called: 10,
+      accepted: 8,
+      declined: 1,
+      pending: 1,
+      present: 7,
+      late: 1,
+      absent: 1,
+      registered: 9,
+      unregistered: 1,
+      lateMinutesAverage: 6,
+      attendanceRate: 80,
+      responseRate: 90,
+    ),
+    teamAverageAttendance: 72,
+    declineReasons: const {'illness': 1},
+    attendanceTrend: [
+      KpiTrendPoint(
+        eventId: 'old',
+        startsAt: DateTime.utc(2026, 9, 1),
+        current: false,
+        actual: 70,
+      ),
+      KpiTrendPoint(
+        eventId: eventId,
+        startsAt: DateTime.utc(2026, 9, 8),
+        current: true,
+        actual: 80,
+      ),
+    ],
+    kpis: [...kpis],
+    todos: [
+      if (ended && canEdit) const FollowupTodo(kind: 'attendance', count: 1),
+      if (ended && canEdit && kpis.any((k) => k.isManual && k.actual == null))
+        FollowupTodo(
+          kind: 'kpi_values',
+          count: kpis.where((k) => k.isManual && k.actual == null).length,
+        ),
+    ],
+  );
 
   @override
   Future<String> signedFileUrl(String fileId) async => 'https://example.test';

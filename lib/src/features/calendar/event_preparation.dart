@@ -158,6 +158,13 @@ class _PreparationTabState extends State<_PreparationTab> {
     final type = widget.event.type;
     final sections = <Widget?>[
       if (type == 'match' && widget.onOpenMatchMode != null) _matchModeCard(),
+      _KpiGoalsSection(
+        key: ValueKey('kpi-goals-${widget.event.id}'),
+        event: widget.event,
+        services: widget.services,
+        allowEdit: widget.allowEdit,
+        onChanged: widget.onChanged,
+      ),
       ...switch (type) {
         'training' => [
           _focusSection(data),

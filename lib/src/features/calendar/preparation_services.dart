@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:teamzone_app/src/features/calendar/followup_models.dart';
 import 'package:teamzone_app/src/features/calendar/preparation_models.dart';
 
 abstract interface class EventPreparationServices {
@@ -50,6 +51,33 @@ abstract interface class EventPreparationServices {
   /// Invalidations for one event's preparation and match data (several
   /// leaders may work on the same event). Carries no data; refetch on event.
   Stream<void> watchEventLive(String eventId);
+
+  /// KPIs that can be set as goals for this event (type and team sport).
+  Future<List<KpiCatalogEntry>> getKpiCatalog(String eventId);
+
+  /// Creates ([targetId] null) or edits a KPI goal. A catalog KPI takes its
+  /// label and type from the catalog; [kpiKey] 'custom' uses [label] and
+  /// [valueType].
+  Future<EventKpi> saveKpiTarget({
+    required String eventId,
+    String? targetId,
+    required String kpiKey,
+    String? label,
+    String? valueType,
+    required String comparator,
+    required double target,
+    required bool visibleToPlayers,
+    int expectedRevision = 0,
+  });
+  Future<void> deleteKpiTarget(String eventId, String targetId);
+
+  /// Enters (or with null clears) the value of a manual KPI.
+  Future<EventKpi> recordKpiValue(
+    String targetId,
+    double? value,
+    int expectedRevision,
+  );
+  Future<EventFollowup> getFollowup(String eventId);
 }
 
 class UnconfiguredEventPreparationServices implements EventPreparationServices {
@@ -110,6 +138,30 @@ class UnconfiguredEventPreparationServices implements EventPreparationServices {
   Future<String> signedFileUrl(String fileId) => _fail();
   @override
   Stream<void> watchEventLive(String eventId) => const Stream.empty();
+  @override
+  Future<List<KpiCatalogEntry>> getKpiCatalog(String eventId) => _fail();
+  @override
+  Future<EventKpi> saveKpiTarget({
+    required String eventId,
+    String? targetId,
+    required String kpiKey,
+    String? label,
+    String? valueType,
+    required String comparator,
+    required double target,
+    required bool visibleToPlayers,
+    int expectedRevision = 0,
+  }) => _fail();
+  @override
+  Future<void> deleteKpiTarget(String eventId, String targetId) => _fail();
+  @override
+  Future<EventKpi> recordKpiValue(
+    String targetId,
+    double? value,
+    int expectedRevision,
+  ) => _fail();
+  @override
+  Future<EventFollowup> getFollowup(String eventId) => _fail();
 }
 
 class SupabaseEventPreparationServices implements EventPreparationServices {
@@ -337,4 +389,71 @@ class SupabaseEventPreparationServices implements EventPreparationServices {
     );
     return controller.stream;
   }
+
+  @override
+  Future<List<KpiCatalogEntry>> getKpiCatalog(String eventId) async {
+    final value = await _rpc('get_event_kpi_catalog', {'p_event_id': eventId});
+    if (value is! List) throw const FormatException('Invalid KPI catalog.');
+    return [
+      for (final entry in value)
+        if (entry is Map)
+          KpiCatalogEntry.fromJson(Map<String, dynamic>.from(entry)),
+    ];
+  }
+
+  @override
+  Future<EventKpi> saveKpiTarget({
+    required String eventId,
+    String? targetId,
+    required String kpiKey,
+    String? label,
+    String? valueType,
+    required String comparator,
+    required double target,
+    required bool visibleToPlayers,
+    int expectedRevision = 0,
+  }) async => EventKpi.fromJson(
+    _map(
+      await _rpc('save_event_kpi_target', {
+        'p_event_id': eventId,
+        'p_target_id': targetId,
+        'p_kpi_key': kpiKey,
+        'p_label': label,
+        'p_value_type': valueType,
+        'p_comparator': comparator,
+        'p_target': target,
+        'p_visible': visibleToPlayers,
+        'p_expected_revision': expectedRevision,
+      }),
+    ),
+  );
+
+  @override
+  Future<void> deleteKpiTarget(String eventId, String targetId) async {
+    await _rpc('delete_event_kpi_target', {
+      'p_event_id': eventId,
+      'p_target_id': targetId,
+    });
+  }
+
+  @override
+  Future<EventKpi> recordKpiValue(
+    String targetId,
+    double? value,
+    int expectedRevision,
+  ) async => EventKpi.fromJson(
+    _map(
+      await _rpc('record_event_kpi_value', {
+        'p_target_id': targetId,
+        'p_value': value,
+        'p_expected_revision': expectedRevision,
+      }),
+    ),
+  );
+
+  @override
+  Future<EventFollowup> getFollowup(String eventId) async =>
+      EventFollowup.fromJson(
+        _map(await _rpc('get_event_followup', {'p_event_id': eventId})),
+      );
 }

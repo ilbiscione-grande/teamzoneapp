@@ -418,7 +418,19 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                       ? _showMatchSpace
                       : null,
                 ),
-                _scroll(_followUp(context)),
+                _FollowupTab(
+                  key: const ValueKey('event-followup-tab'),
+                  event: event,
+                  services: widget.calendar.preparation,
+                  allowRecord: _contextCanCoManage || _contextCanManageRoster,
+                  onOpenParticipants: () => _tabController.animateTo(1),
+                  onOpenMatchMode:
+                      event.preparationActions.contains(
+                        EventPreparationAction.matchSpace,
+                      )
+                      ? _showMatchSpace
+                      : null,
+                ),
               ],
             ),
           ),
@@ -733,32 +745,6 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
   String _formatMoment(BuildContext context, DateTime value) {
     final localizations = MaterialLocalizations.of(context);
     return '${localizations.formatMediumDate(value)} · ${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(value))}';
-  }
-
-  Widget _followUp(BuildContext context) {
-    final attendance = squad.attendance;
-    final recorded = attendance
-        .where((entry) => entry.status != 'unknown')
-        .length;
-    final strings = AppStrings.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          strings.feature('Uppföljning'),
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 8),
-        Text(strings.attendanceSummary(recorded, attendance.length)),
-        const SizedBox(height: 20),
-        if (_contextCanManageRoster && event.can('manage_roster'))
-          OutlinedButton.icon(
-            onPressed: () => _tabController.animateTo(1),
-            icon: const Icon(Icons.fact_check_outlined),
-            label: Text(strings.feature('Registrera eller granska närvaro')),
-          ),
-      ],
-    );
   }
 
   String _eventDateTimeLabel(BuildContext context, EventDetails event) {
