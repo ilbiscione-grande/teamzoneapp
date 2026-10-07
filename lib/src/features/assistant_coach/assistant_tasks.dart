@@ -745,34 +745,57 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                 const SizedBox(height: 12),
               ],
               Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   for (final entry in const {
-                    'active': 'Aktuellt',
-                    'snoozed': 'Uppskjutet',
-                    'archived': 'Arkiverat',
-                  }.entries) ...[
-                    IconButton.filledTonal(
-                      key: ValueKey('assistant-filter-${entry.key}'),
-                      tooltip:
-                          '${entry.value} (${data.tasks.where((t) => t.task.assistantStatus == entry.key).length})',
-                      style: IconButton.styleFrom(
-                        fixedSize: const Size(52, 44),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    'active': ('Aktuellt', 'Uppgifter'),
+                    'snoozed': ('Uppskjutet', 'Uppskjutna'),
+                    'archived': ('Arkiverat', 'Arkiverade'),
+                  }.entries)
+                    Flexible(
+                      child: SizedBox(
+                        width: 96,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton.filledTonal(
+                              key: ValueKey('assistant-filter-${entry.key}'),
+                              tooltip:
+                                  '${entry.value.$1} (${data.tasks.where((t) => t.task.assistantStatus == entry.key).length})',
+                              style: IconButton.styleFrom(
+                                fixedSize: const Size(52, 44),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              icon: Icon(switch (entry.key) {
+                                'snoozed' => Icons.snooze_outlined,
+                                'archived' => Icons.archive_outlined,
+                                _ => Icons.inbox_outlined,
+                              }),
+                              isSelected: _bucket == entry.key,
+                              onPressed: () => setState(() {
+                                _bucket = entry.key;
+                                _category = 'all';
+                                _expandedKey = null;
+                              }),
+                            ),
+                            const SizedBox(height: 4),
+                            ExcludeSemantics(
+                              child: Text(
+                                entry.value.$2,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      fontWeight: _bucket == entry.key
+                                          ? FontWeight.w700
+                                          : null,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      icon: Icon(switch (entry.key) {
-                        'snoozed' => Icons.snooze_outlined,
-                        'archived' => Icons.archive_outlined,
-                        _ => Icons.inbox_outlined,
-                      }),
-                      isSelected: _bucket == entry.key,
-                      onPressed: () => setState(() {
-                        _bucket = entry.key;
-                        _category = 'all';
-                        _expandedKey = null;
-                      }),
                     ),
-                    if (entry.key != 'archived') const SizedBox(width: 10),
-                  ],
                 ],
               ),
               const SizedBox(height: 16),

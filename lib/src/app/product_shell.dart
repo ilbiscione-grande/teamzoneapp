@@ -824,7 +824,12 @@ class _ProductShellState extends State<_ProductShell> {
         // EventDetails is a full page with its own header (centered title,
         // close button) — showing the shell's own context-picker bar above
         // it as well would stack two app bars.
+        // On phones Min assistent opens full screen: its own app bar and
+        // back button, without the shell bar or bottom navigation.
+        final assistantFullscreen =
+            !showAssistantPanel && location == ProductRouteContract.assistant;
         final hidesShellAppBar =
+            assistantFullscreen ||
             location.startsWith('${ProductRouteContract.calendar}/event/') ||
             location.startsWith('${ProductRouteContract.team}/member/');
         final navigationPanel = _AppNavigationPanel(
@@ -1022,7 +1027,7 @@ class _ProductShellState extends State<_ProductShell> {
                 ),
               ],
             ),
-            bottomNavigationBar: usesSidebar
+            bottomNavigationBar: usesSidebar || assistantFullscreen
                 ? null
                 : LayoutBuilder(
                     builder: (context, constraints) {

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:teamzone_app/src/app/teamzone_app.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
@@ -11,6 +12,11 @@ import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Portrait only: turning the phone never rotates the app. A view that
+  // needs landscape sets its own orientations and restores these after.
+  await SystemChrome.setPreferredOrientations(const [
+    DeviceOrientation.portraitUp,
+  ]);
   configureAppUrlStrategy();
   const environment = AppEnvironment.fromDefines();
   final observability = AppObservability(

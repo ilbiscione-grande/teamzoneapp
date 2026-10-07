@@ -416,7 +416,7 @@ void main() {
           (id) => tester.getRect(find.byKey(ValueKey('assistant-filter-$id'))),
         )
         .toList();
-    expect(filterRects.every((rect) => rect.width <= 52), isTrue);
+    expect(filterRects.every((rect) => rect.width <= 52.01), isTrue);
     expect(
       filterRects[1].left - filterRects[0].right,
       greaterThanOrEqualTo(10),

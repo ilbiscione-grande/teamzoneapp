@@ -353,6 +353,11 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
   bool _present(EventRosterPerson p) =>
       const ['present', 'late', 'partial'].contains(_attendance(p));
 
+  /// Only someone who got a callup is expected to come (and so can be
+  /// actively absent). Without any callups on the event, everyone is.
+  bool _expected(EventRosterPerson p) =>
+      p.isCalled || !_people.any((person) => person.isCalled);
+
   Future<void> _setAttendance(EventRosterPerson person, String status) async {
     if (!_canRecordAttendance || _working) return;
     int? minutes;
@@ -420,7 +425,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
   Future<void> _markRemainingAbsent() async {
     if (!_canRecordAttendance || _working) return;
     final remaining = _people
-        .where((p) => _attendance(p) == 'unknown')
+        .where((p) => _expected(p) && _attendance(p) == 'unknown')
         .toList();
     if (remaining.isEmpty) return;
     if (remaining.length + _stagedStatus.length > 100) {
@@ -1029,7 +1034,10 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                     child: TextButton.icon(
                       onPressed:
                           _working ||
-                              !people.any((p) => _attendance(p) == 'unknown')
+                              !people.any(
+                                (p) =>
+                                    _expected(p) && _attendance(p) == 'unknown',
+                              )
                           ? null
                           : _markRemainingAbsent,
                       icon: const Icon(Icons.group_off_outlined, size: 18),
@@ -1203,18 +1211,25 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         .join()
         .toUpperCase();
     final status = _attendance(p);
+    final expected = _expected(p);
     final canRespond = !_working && _canRespond(p);
     final attendanceLabel = switch (status) {
       'present' => _s.feature('Närvarande'),
-      'absent' => _s.feature('Frånvarande'),
+      'absent' when expected => _s.feature('Frånvarande'),
       'late' => _s.feature('Sen'),
       'partial' => _s.feature('Delvis närvarande'),
+      _ when !expected => _s.feature('Ej kallad'),
       _ => _s.feature('Ej registrerad'),
     };
     VoidCallback? primary;
     if (_eventEnded) {
       if (_canRecordAttendance && !_working) {
-        primary = () => _setAttendance(p, _present(p) ? 'absent' : 'present');
+        // Without a callup nobody is expected: tapping again clears the
+        // walk-in instead of marking an absence.
+        primary = () => _setAttendance(
+          p,
+          _present(p) ? (expected ? 'absent' : 'unknown') : 'present',
+        );
       }
     } else if (!p.isCalled) {
       if (_canManage && !_working && !_selectionFrozen) {
@@ -1287,11 +1302,15 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                               _smallAction(
                                 _present(p)
                                     ? Icons.check_circle
+                                    : !expected
+                                    ? Icons.remove_circle_outline
                                     : status == 'absent'
                                     ? Icons.cancel
                                     : Icons.remove_circle,
                                 _present(p)
                                     ? Colors.green
+                                    : !expected
+                                    ? Colors.blueGrey.shade300
                                     : status == 'absent'
                                     ? Colors.red
                                     : Colors.blueGrey,

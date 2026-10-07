@@ -299,17 +299,27 @@ void main() {
       await _openParticipants(tester, calendar);
       await tester.tap(find.text('Info'));
       await tester.pumpAndSettle();
-      final toggle = find.byKey(const Key('event-callups-required'));
-      await tester.ensureVisible(toggle);
+      final toggle = find.byKey(
+        const ValueKey('event-action-callups-required'),
+      );
+      await _openEventMenu(tester);
+      expect(
+        tester.widget<CheckedPopupMenuItem<Object?>>(toggle).checked,
+        isTrue,
+      );
       await tester.tap(toggle);
       await tester.pumpAndSettle();
       expect(
         find.textContaining('Kallelsebehovet kunde inte sparas'),
         findsOneWidget,
       );
+      await _openEventMenu(tester);
       await tester.tap(toggle);
       await tester.pumpAndSettle();
-      expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
+      expect(
+        find.byKey(const Key('event-callups-not-required')),
+        findsOneWidget,
+      );
       expect(calendar.editKeys, hasLength(2));
       expect(calendar.editKeys.toSet(), hasLength(1));
       expect(calendar.editRevisions, [1, 1]);
@@ -328,9 +338,10 @@ void main() {
     );
     await tester.tap(find.text('Info'));
     await tester.pumpAndSettle();
-    final toggle = find.byKey(const Key('event-callups-required'));
-    await tester.ensureVisible(toggle);
-    expect(tester.widget<SwitchListTile>(toggle).onChanged, isNull);
+    expect(
+      find.byKey(const ValueKey('event-action-callups-required')),
+      findsNothing,
+    );
   });
   testWidgets('assistant opens the event participants and reloads on return', (
     tester,
@@ -463,7 +474,7 @@ void main() {
     (tester) async {
       final match = _ResultMatch()..snapshot = _ResultMatch.completed(3, 1);
       await _openResultMatch(tester, match);
-      await tester.ensureVisible(find.text('Skriv matchrapport'));
+      await _openEventMenu(tester);
       await tester.tap(find.text('Skriv matchrapport'));
       await tester.pumpAndSettle();
       final field = find.descendant(
@@ -475,8 +486,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(match.report.published, isFalse);
       expect(match.report.body, 'Vi vann efter en stark andra halvlek.');
-      expect(find.text('Internt utkast'), findsOneWidget);
-      await tester.ensureVisible(find.text('Redigera matchrapport'));
+      expect(find.textContaining('Internt utkast'), findsOneWidget);
+      await _openEventMenu(tester);
       await tester.tap(find.text('Redigera matchrapport'));
       await tester.pumpAndSettle();
       await tester.tap(
@@ -497,7 +508,7 @@ void main() {
   testWidgets('empty report cannot be published', (tester) async {
     final match = _ResultMatch()..snapshot = _ResultMatch.completed(0, 0);
     await _openResultMatch(tester, match);
-    await tester.ensureVisible(find.text('Skriv matchrapport'));
+    await _openEventMenu(tester);
     await tester.tap(find.text('Skriv matchrapport'));
     await tester.pumpAndSettle();
     await tester.tap(
@@ -523,7 +534,7 @@ void main() {
   ) async {
     final match = _ResultMatch();
     await _openResultMatch(tester, match);
-    await tester.ensureVisible(find.text('Registrera resultat'));
+    await _openEventMenu(tester);
     await tester.tap(find.text('Registrera resultat'));
     await tester.pumpAndSettle();
     final fields = find.descendant(
@@ -543,7 +554,9 @@ void main() {
     expect(match.calls.single, containsPair('scoreOpponent', 0));
     expect(match.calls.single, containsPair('expectedRevision', 0));
     expect(match.calls.single, containsPair('expectedEventRevision', 1));
-    expect(find.text('Vårt lag 3–0 Motståndare'), findsOneWidget);
+    expect(find.byKey(const Key('event-result-header')), findsOneWidget);
+    expect(find.text('3–0'), findsOneWidget);
+    await _openEventMenu(tester);
     expect(find.text('Ändra resultat'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -555,7 +568,7 @@ void main() {
       ..snapshot = _ResultMatch.completed(2, 1)
       ..failOnce = true;
     await _openResultMatch(tester, match);
-    await tester.ensureVisible(find.text('Ändra resultat'));
+    await _openEventMenu(tester);
     await tester.tap(find.text('Ändra resultat'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Spara rättelse'));
@@ -583,7 +596,8 @@ void main() {
 
   testWidgets('failed snapshot disables result mutation', (tester) async {
     await _openResultMatch(tester, _ResultMatch()..loadFails = true);
-    expect(find.text('Resultatet kunde inte laddas.'), findsOneWidget);
+    expect(find.byKey(const Key('event-result-header')), findsNothing);
+    await _openEventMenu(tester);
     expect(find.text('Registrera resultat'), findsNothing);
   });
 
@@ -592,7 +606,7 @@ void main() {
   ) async {
     await _openResultMatch(tester, _ResultMatch(), shared: true);
     expect(find.text('Registrera resultat'), findsNothing);
-    expect(find.text('Inget resultat registrerat'), findsOneWidget);
+    expect(find.byKey(const Key('event-result-header')), findsNothing);
   });
 
   testWidgets('archived event is read-only and can be restored', (
@@ -647,14 +661,9 @@ void main() {
     await tester.tap(find.text('Träning A'));
     await tester.pumpAndSettle();
 
-    final archiveButton = find.widgetWithText(TextButton, 'Arkivera event');
-    expect(archiveButton, findsOneWidget);
-    expect(tester.widget<TextButton>(archiveButton).onPressed, isNull);
-
-    await tester.ensureVisible(archiveButton);
+    await _openEventMenu(tester);
+    await tester.tap(find.text('Arkivera event'));
     await tester.pumpAndSettle();
-    await tester.tap(archiveButton);
-    await tester.pump();
     expect(
       find.text(
         'Eventet måste vara inställt eller genomfört innan det kan arkiveras.',
@@ -1832,4 +1841,9 @@ class _CallupRequirementCalendar extends _Calendar {
     if (editKeys.length == 1) throw StateError('response lost after commit');
     return 2;
   }
+}
+
+Future<void> _openEventMenu(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('event-actions-menu')));
+  await tester.pumpAndSettle();
 }

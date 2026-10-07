@@ -40,8 +40,26 @@ class _EventDetailsPage extends StatefulWidget {
   State<_EventDetailsPage> createState() => _EventDetailsPageState();
 }
 
+/// One entry in the event's "⋮" menu. The body owns the actions (they
+/// depend on its live event state); the page's app bar only shows them.
+typedef _EventMenuAction = ({
+  String key,
+  IconData icon,
+  String label,
+  VoidCallback onTap,
+  bool? checked,
+});
+
 class _EventDetailsPageState extends State<_EventDetailsPage> {
   Future<(EventDetails, SquadDetails)>? _load;
+  final _menu = ValueNotifier<List<_EventMenuAction>>(const []);
+
+  @override
+  void dispose() {
+    _menu.dispose();
+    super.dispose();
+  }
+
   // Kept separately from _load's snapshot so the AppBar title stays correct
   // after _EventDetailsBody refreshes the event in place (a rename via
   // "Redigera", say) without this page itself reloading.
@@ -96,6 +114,36 @@ class _EventDetailsPageState extends State<_EventDetailsPage> {
           ],
         ),
         actions: [
+          ValueListenableBuilder<List<_EventMenuAction>>(
+            valueListenable: _menu,
+            builder: (context, actions, _) => actions.isEmpty
+                ? const SizedBox.shrink()
+                : PopupMenuButton<_EventMenuAction>(
+                    key: const Key('event-actions-menu'),
+                    tooltip: strings.feature('Åtgärder för eventet'),
+                    icon: const Icon(Icons.more_vert),
+                    onSelected: (action) => action.onTap(),
+                    itemBuilder: (_) => [
+                      for (final action in actions)
+                        action.checked == null
+                            ? PopupMenuItem(
+                                key: ValueKey('event-action-${action.key}'),
+                                value: action,
+                                child: ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: Icon(action.icon),
+                                  title: Text(action.label),
+                                ),
+                              )
+                            : CheckedPopupMenuItem(
+                                key: ValueKey('event-action-${action.key}'),
+                                value: action,
+                                checked: action.checked!,
+                                child: Text(action.label),
+                              ),
+                    ],
+                  ),
+          ),
           IconButton(
             tooltip: strings.close,
             onPressed: _goBackToCalendar,
@@ -143,6 +191,7 @@ class _EventDetailsPageState extends State<_EventDetailsPage> {
             matchSpaceV2: widget.matchSpaceV2,
             onDeleted: _goBackToCalendar,
             onTitleChanged: _updateTitle,
+            menu: _menu,
           );
         },
       ),
@@ -162,6 +211,7 @@ class _EventDetailsBody extends StatefulWidget {
     required this.matchSpaceV2,
     required this.onDeleted,
     required this.onTitleChanged,
+    required this.menu,
     this.initialParticipants = false,
     this.initialPreparation = false,
     this.onChanged,
@@ -181,6 +231,7 @@ class _EventDetailsBody extends StatefulWidget {
   final bool matchSpaceV2;
   final VoidCallback onDeleted;
   final ValueChanged<String> onTitleChanged;
+  final ValueNotifier<List<_EventMenuAction>> menu;
 
   @override
   State<_EventDetailsBody> createState() => _EventDetailsBodyState();
@@ -210,7 +261,10 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     vsync: this,
   )..addListener(_handleTabIndexChanged);
 
-  int _resultRefresh = 0;
+  MatchSnapshot? _matchSnapshot;
+  WrittenMatchReport? _report;
+  bool _matchLoaded = false;
+  String _menuSignature = '';
   bool _savingCallupRequirement = false;
   ({bool value, int revision, String key})? _callupRequirementCommand;
 
@@ -289,6 +343,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => widget.onTitleChanged(event.title),
     );
+    unawaited(_loadMatch());
   }
 
   @override
@@ -315,6 +370,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         });
         widget.onTitleChanged(event.title);
         widget.onChanged?.call();
+        await _loadMatch();
       }
     } catch (_) {
       if (mounted) {
@@ -349,11 +405,14 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
+    _publishMenu(strings);
+    final resultHeader = _resultHeader();
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          ?resultHeader,
           // Mirrors the reference app's header-collapse: the status
           // circles shrink and the surrounding padding tightens on every
           // tab except Info, tracking the swipe itself rather than
@@ -521,32 +580,25 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
             ),
           ),
         ..._typedInfoTiles(context, event),
-        Card(
-          child: SwitchListTile(
-            key: const Key('event-callups-required'),
-            title: const Text('Kallelse behövs'),
+        if (!event.callupsRequired)
+          ListTile(
+            key: const Key('event-callups-not-required'),
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.unsubscribe_outlined),
+            title: const Text('Kallelse behövs inte'),
             subtitle: const Text(
-              'Gäller den här aktiviteten. Stäng av för att slippa '
-              'assistentens påminnelse om saknade kallelser. Befintliga kallelser behålls.',
+              'Assistenten påminner inte om saknade kallelser. Ändras i menyn ⋮.',
             ),
-            value: event.callupsRequired,
-            onChanged:
-                !_savingCallupRequirement &&
-                    _contextCanCoManage &&
-                    event.can('revise') &&
-                    event.archivedAt == null &&
-                    event.state != 'cancelled'
-                ? _setCallupsRequired
-                : null,
           ),
-        ),
-        if (event.type == 'match')
-          _MatchResultCard(
-            key: ValueKey(_resultRefresh),
-            event: event,
-            match: widget.match,
-            canManage: _contextCanCoManage && event.can('match_live'),
-            onSaved: _refresh,
+        if (_report case final report? when report.body.isNotEmpty)
+          ListTile(
+            key: const Key('event-match-report'),
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.article_outlined),
+            title: const Text('Matchrapport'),
+            subtitle: Text(
+              '${report.body}\n${report.published ? 'Publiceras tillsammans med synligt slutresultat' : 'Internt utkast'}',
+            ),
           ),
         if (ownerTeam != null)
           ListTile(
@@ -592,20 +644,6 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                 icon: const Icon(Icons.unarchive_outlined),
                 label: Text(strings.feature('Återställ från arkiv')),
               ),
-            if (_contextCanCoManage && event.can('revise'))
-              OutlinedButton.icon(
-                onPressed: _revise,
-                icon: const Icon(Icons.edit_outlined),
-                label: Text(strings.feature('Redigera')),
-              ),
-            if ((widget.contextValue.teamId == null ||
-                    _activeContextIsPrimary) &&
-                event.can('manage_sharing'))
-              OutlinedButton.icon(
-                onPressed: _showSharing,
-                icon: const Icon(Icons.share_outlined),
-                label: Text(strings.feature('Dela med andra lag')),
-              ),
             if (_contextCanCoManage &&
                 event.can('cancel') &&
                 event.state == 'draft')
@@ -613,60 +651,6 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                 onPressed: () => _transition('scheduled'),
                 icon: const Icon(Icons.publish_outlined),
                 label: Text(strings.feature('Publicera event')),
-              ),
-            if (_contextCanCoManage &&
-                event.can('cancel') &&
-                event.state == 'cancelled')
-              FilledButton.tonalIcon(
-                onPressed: () => _transition('scheduled'),
-                icon: const Icon(Icons.restore),
-                label: Text(strings.feature('Återställ event')),
-              ),
-            if (_contextCanCoManage &&
-                event.can('cancel') &&
-                event.state != 'cancelled')
-              TextButton.icon(
-                onPressed: () => _transition('cancelled'),
-                icon: const Icon(Icons.event_busy),
-                label: Text(strings.feature('Ställ in')),
-              ),
-            if (_contextCanCoManage && event.can('delete'))
-              TextButton.icon(
-                onPressed: _deleteDraft,
-                icon: const Icon(Icons.delete_outline),
-                label: Text(strings.feature('Ta bort event')),
-              ),
-            if (_contextCanCoManage &&
-                (event.can('archive') || event.can('cancel')))
-              Semantics(
-                button: true,
-                enabled: event.can('archive'),
-                child: Tooltip(
-                  message: event.can('archive')
-                      ? strings.feature('Arkivera event')
-                      : strings.feature(
-                          'Eventet måste vara inställt eller genomfört innan det kan arkiveras.',
-                        ),
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: event.can('archive')
-                        ? null
-                        : () => ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                strings.feature(
-                                  'Eventet måste vara inställt eller genomfört innan det kan arkiveras.',
-                                ),
-                              ),
-                            ),
-                          ),
-                    child: TextButton.icon(
-                      onPressed: event.can('archive') ? _archive : null,
-                      icon: const Icon(Icons.archive_outlined),
-                      label: Text(strings.feature('Arkivera event')),
-                    ),
-                  ),
-                ),
               ),
           ],
         ),
@@ -995,10 +979,294 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
       ),
     );
     if (!mounted) return;
-    setState(() {
-      _resultRefresh++;
-    });
     await _refresh();
+  }
+
+  // --- Match result and report (header and ⋮ menu) -------------------------
+
+  Future<void> _loadMatch() async {
+    if (event.type != 'match') return;
+    try {
+      final snapshot = await widget.match.getSnapshot(event.id);
+      WrittenMatchReport? report;
+      if (snapshot?.state == 'completed') {
+        try {
+          report = await widget.match.getReport(event.id);
+        } catch (_) {
+          report = null;
+        }
+      }
+      if (!mounted) return;
+      setState(() {
+        _matchSnapshot = snapshot;
+        _report = report;
+        _matchLoaded = true;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _matchLoaded = false);
+    }
+  }
+
+  bool get _canRegisterResult =>
+      event.type == 'match' &&
+      _matchLoaded &&
+      _contextCanCoManage &&
+      event.can('match_live') &&
+      event.archivedAt == null &&
+      ['scheduled', 'completed'].contains(event.state) &&
+      !event.startsAt.isAfter(DateTime.now());
+
+  Future<void> _editResult() async {
+    final saved = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _RegisterResultDialog(
+        event: event,
+        match: widget.match,
+        snapshot: _matchSnapshot,
+      ),
+    );
+    if (saved != true || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Slutresultatet är sparat. Matchen är avslutad.'),
+      ),
+    );
+    await _refresh();
+  }
+
+  Future<void> _editReport(WrittenMatchReport report) async {
+    final saved = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _WrittenReportDialog(
+        eventId: event.id,
+        match: widget.match,
+        report: report,
+      ),
+    );
+    if (saved != true || !mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Matchrapporten är sparad.')));
+    await _refresh();
+  }
+
+  void _explainArchive() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          AppStrings.of(context).feature(
+            'Eventet måste vara inställt eller genomfört innan det kan arkiveras.',
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<_EventMenuAction> _menuActions(AppStrings strings) {
+    final completed = _matchSnapshot?.state == 'completed';
+    final report = _report;
+    return [
+      if (_contextCanCoManage && event.can('revise'))
+        (
+          key: 'edit',
+          icon: Icons.edit_outlined,
+          label: strings.feature('Redigera'),
+          onTap: _revise,
+          checked: null,
+        ),
+      if (_canRegisterResult)
+        (
+          key: 'result',
+          icon: Icons.scoreboard_outlined,
+          label: completed ? 'Ändra resultat' : 'Registrera resultat',
+          onTap: _editResult,
+          checked: null,
+        ),
+      if (completed &&
+          report != null &&
+          report.canEdit &&
+          _contextCanCoManage &&
+          event.can('match_live'))
+        (
+          key: 'report',
+          icon: Icons.edit_note,
+          label: report.body.isEmpty
+              ? 'Skriv matchrapport'
+              : 'Redigera matchrapport',
+          onTap: () => _editReport(_report ?? report),
+          checked: null,
+        ),
+      if ((widget.contextValue.teamId == null || _activeContextIsPrimary) &&
+          event.can('manage_sharing'))
+        (
+          key: 'share',
+          icon: Icons.share_outlined,
+          label: strings.feature('Dela med andra lag'),
+          onTap: _showSharing,
+          checked: null,
+        ),
+      if (_contextCanCoManage &&
+          event.can('revise') &&
+          event.archivedAt == null &&
+          event.state != 'cancelled')
+        (
+          key: 'callups-required',
+          icon: Icons.mark_email_unread_outlined,
+          label: 'Kallelse behövs',
+          onTap: () {
+            if (!_savingCallupRequirement) {
+              _setCallupsRequired(!event.callupsRequired);
+            }
+          },
+          checked: event.callupsRequired,
+        ),
+      if (_contextCanCoManage &&
+          event.can('cancel') &&
+          event.state == 'cancelled')
+        (
+          key: 'restore',
+          icon: Icons.restore,
+          label: strings.feature('Återställ event'),
+          onTap: () => _transition('scheduled'),
+          checked: null,
+        ),
+      if (_contextCanCoManage &&
+          event.can('cancel') &&
+          event.state != 'cancelled')
+        (
+          key: 'cancel',
+          icon: Icons.event_busy,
+          label: strings.feature('Ställ in'),
+          onTap: () => _transition('cancelled'),
+          checked: null,
+        ),
+      if (_contextCanCoManage && event.can('delete'))
+        (
+          key: 'delete',
+          icon: Icons.delete_outline,
+          label: strings.feature('Ta bort event'),
+          onTap: _deleteDraft,
+          checked: null,
+        ),
+      if (_contextCanCoManage && (event.can('archive') || event.can('cancel')))
+        (
+          key: 'archive',
+          icon: Icons.archive_outlined,
+          label: strings.feature('Arkivera event'),
+          onTap: () => event.can('archive') ? _archive() : _explainArchive(),
+          checked: null,
+        ),
+    ];
+  }
+
+  /// Hands the current actions to the app bar's ⋮ menu after the frame,
+  /// only when something visible changed.
+  void _publishMenu(AppStrings strings) {
+    final actions = _menuActions(strings);
+    final signature = actions
+        .map((a) => '${a.key}:${a.label}:${a.checked}')
+        .join('|');
+    if (signature == _menuSignature) {
+      // Same entries; still refresh the callbacks without notifying.
+      return;
+    }
+    _menuSignature = signature;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.menu.value = actions;
+    });
+  }
+
+  /// The score under the title: large on Info, small on the other tabs,
+  /// absent until the match has a result.
+  Widget? _resultHeader() {
+    final snapshot = _matchSnapshot;
+    if (event.type != 'match' ||
+        snapshot == null ||
+        !{'live', 'completed'}.contains(snapshot.state)) {
+      return null;
+    }
+    final ours =
+        event.teams
+            .where((team) => team['relation'] == 'primary')
+            .map((team) => team['name'])
+            .whereType<String>()
+            .firstOrNull ??
+        'Vårt lag';
+    final opponent = event.opponentName?.trim().isNotEmpty == true
+        ? event.opponentName!.trim()
+        : 'Motståndare';
+    final home = event.homeAway != 'away';
+    final left = home ? ours : opponent, right = home ? opponent : ours;
+    final leftScore = home ? snapshot.scoreUs : snapshot.scoreOpponent;
+    final rightScore = home ? snapshot.scoreOpponent : snapshot.scoreUs;
+    final colors = Theme.of(context).colorScheme;
+    return AnimatedBuilder(
+      key: const Key('event-result-header'),
+      animation: _tabController.animation!,
+      builder: (context, _) {
+        final expanded = (1 - _tabController.animation!.value.clamp(0.0, 1.0))
+            .clamp(0.0, 1.0);
+        final nameStyle = TextStyle(
+          fontSize: 12 + 3 * expanded,
+          fontWeight: FontWeight.w600,
+        );
+        return Semantics(
+          label:
+              '${snapshot.state == 'completed' ? 'Slutresultat' : 'Pågår'}: $left $leftScore, $right $rightScore',
+          child: ExcludeSemantics(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20, 4 + 6 * expanded, 20, 0),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          left,
+                          textAlign: TextAlign.end,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: nameStyle,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          '$leftScore–$rightScore',
+                          style: TextStyle(
+                            fontSize: 18 + 14 * expanded,
+                            fontWeight: FontWeight.w800,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          right,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: nameStyle,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (expanded > .5)
+                    Text(
+                      snapshot.state == 'completed' ? 'Slutresultat' : 'Pågår',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _showSharing() async {
