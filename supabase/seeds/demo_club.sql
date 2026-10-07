@@ -10,23 +10,14 @@
 --
 -- Everything created here has club_people.provenance = 'demo_seed'.
 -- The script stops if the club already exists.
-
-begin;
-
--- Club administrator: an existing, confirmed TeamZone account.
-create temporary table demo_settings on commit drop as
-select 'coach.emilson@gmail.com'::text as admin_email;
-
-create function pg_temp.demo_person(target_club uuid, admin_profile uuid, name text,
-  born integer default null, protected_child boolean default false)
-returns uuid language sql as $$
- insert into core.club_people(club_id,display_name,birth_year,safeguarding_required,provenance,created_by)
- values(target_club,name,born,protected_child,'demo_seed',admin_profile) returning id
-$$;
+--
+-- Everything runs in one DO block, which is atomic on its own: the SQL editor
+-- may run statements in separate sessions, so no temporary objects are used.
 
 do $demo$
 declare
- admin_email text := (select admin_email from demo_settings);
+ -- Club administrator: an existing, confirmed TeamZone account.
+ admin_email text := 'coach.emilson@gmail.com';
  admin_profile uuid;
  club uuid;
  since timestamptz := now() - interval '30 days';
@@ -90,8 +81,9 @@ begin
  returning id into club;
 
  -- The administrator, linked to the existing account.
- admin_person := pg_temp.demo_person(club, admin_profile,
-  coalesce(nullif(btrim((select display_name from core.profiles where id=admin_profile)),''),'Klubbadministratör'));
+ insert into core.club_people(club_id,display_name,birth_year,safeguarding_required,provenance,created_by)
+ values(club,coalesce(nullif(btrim((select display_name from core.profiles where id=admin_profile)),''),'Klubbadministratör'),
+  null,false,'demo_seed',admin_profile) returning id into admin_person;
  insert into core.person_account_links(club_id,club_person_id,profile_id,state,verified_at,created_by)
  values(club,admin_person,admin_profile,'active',now(),admin_profile);
 
@@ -99,7 +91,8 @@ begin
  for i in 1..6 loop
   first_name := case when i % 2 = 0 then female[(i*5) % array_length(female,1) + 1] else male[(i*7) % array_length(male,1) + 1] end;
   last_name := surnames[(i*11) % array_length(surnames,1) + 1];
-  person := pg_temp.demo_person(club, admin_profile, first_name||' '||last_name, 1960 + i*3);
+  insert into core.club_people(club_id,display_name,birth_year,safeguarding_required,provenance,created_by)
+  values(club,first_name||' '||last_name,1960 + i*3,false,'demo_seed',admin_profile) returning id into person;
   insert into core.assignments(club_id,team_id,club_person_id,role_package,state,starts_at,created_by)
   values(club,null,person,'club_functionary','active',since,admin_profile) returning id into assignment;
   if i <= 5 then
@@ -139,7 +132,8 @@ begin
     else female[(team_number*13 + i*7) % array_length(female,1) + 1] end;
    last_name := surnames[(team_number*17 + i*5) % array_length(surnames,1) + 1];
    born := team_row.born_from + (i % (team_row.born_to - team_row.born_from + 1));
-   person := pg_temp.demo_person(club, admin_profile, first_name||' '||last_name, born, team_row.youth);
+   insert into core.club_people(club_id,display_name,birth_year,safeguarding_required,provenance,created_by)
+   values(club,first_name||' '||last_name,born,team_row.youth,'demo_seed',admin_profile) returning id into person;
    player_ids := player_ids || person;
    insert into core.team_assignments(club_id,team_id,club_person_id,kind,state,starts_at,created_by)
    values(club,team_uuid,person,'home','active',since,admin_profile);
@@ -159,7 +153,8 @@ begin
    if team_row.name = 'P2012' and i = 2 then
     last_name := (select split_part(display_name,' ',2) from core.club_people where id=player_ids[3]);
    end if;
-   person := pg_temp.demo_person(club, admin_profile, first_name||' '||last_name, 1972 + team_number + i);
+   insert into core.club_people(club_id,display_name,birth_year,safeguarding_required,provenance,created_by)
+   values(club,first_name||' '||last_name,1972 + team_number + i,false,'demo_seed',admin_profile) returning id into person;
    insert into core.assignments(club_id,team_id,club_person_id,role_package,state,starts_at,created_by)
    values(club,team_uuid,person,'leader','active',since,admin_profile) returning id into assignment;
    title := leader_titles[i];
@@ -188,7 +183,8 @@ begin
      first_name := case when i % 2 = 0
       then female[(team_number*7 + i*5) % array_length(female,1) + 1]
       else male[(team_number*7 + i*5) % array_length(male,1) + 1] end;
-     guardian := pg_temp.demo_person(club, admin_profile, first_name||' '||last_name, 1975 + (i % 10));
+     insert into core.club_people(club_id,display_name,birth_year,safeguarding_required,provenance,created_by)
+     values(club,first_name||' '||last_name,1975 + (i % 10),false,'demo_seed',admin_profile) returning id into guardian;
      if team_row.name = 'F2013' and i = 1 then
       sibling_guardian := guardian;
       sibling_surname := last_name;
@@ -222,4 +218,3 @@ left join core.team_assignments ta on ta.team_id=t.id
 left join core.assignments a on a.team_id=t.id and a.state='active'
 group by t.name,t.sport order by t.name;
 
-commit;

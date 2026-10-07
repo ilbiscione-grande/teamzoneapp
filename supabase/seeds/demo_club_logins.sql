@@ -9,9 +9,9 @@
 -- 3. Run this script in the SQL editor. It can be run again at any time:
 --    missing accounts are skipped, linked accounts are left as they are.
 --
--- No passwords are stored or set here.
+-- No passwords are stored or set here. Everything runs in one DO block,
+-- which is atomic on its own; no temporary objects are needed.
 
-begin;
 
 do $logins$
 declare
@@ -101,4 +101,3 @@ left join core.teams t on t.id=a.team_id
 where l.state='active'
 group by u.email,p.display_name order by u.email;
 
-commit;
