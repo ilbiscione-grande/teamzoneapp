@@ -16,7 +16,16 @@ import {
 // (gateway-verified JWT); it drains the pending queue, so a missed call is
 // picked up by the next one.
 
-const jsonHeaders = { "content-type": "application/json" };
+// Called from the browser (public site admin, also on club domains) with the
+// user's bearer token and no cookies, so any origin may ask; the gateway
+// still requires a valid JWT. Without these headers the browser's preflight
+// failed and uploads were never processed.
+const corsHeaders = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
+  "access-control-allow-methods": "POST, OPTIONS",
+};
+const jsonHeaders = { ...corsHeaders, "content-type": "application/json" };
 const magickFormats = { jpeg: MagickFormat.Jpeg, png: MagickFormat.Png, webp: MagickFormat.WebP } as const;
 
 let magickReady: Promise<void> | null = null;
@@ -55,7 +64,8 @@ function toVariant(source: Uint8Array): { bytes: Uint8Array; width: number; heig
 Deno.serve(async (request) => {
   const requestId = correlationId(request);
   const respond = (response: Response) => withCorrelation(response, requestId);
-  if (request.method !== "POST") return respond(new Response("Method not allowed", { status: 405 }));
+  if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (request.method !== "POST") return respond(new Response("Method not allowed", { status: 405, headers: corsHeaders }));
   const url = Deno.env.get("SUPABASE_URL");
   const secretKeys = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}");
   const secret = secretKeys.default ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");

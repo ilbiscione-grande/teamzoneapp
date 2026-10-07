@@ -32,10 +32,36 @@ class _EditorialSurfaceState extends State<_EditorialSurface> {
 
   void _changed() {
     if (mounted) setState(() {});
+    _processPendingImages();
+  }
+
+  // An image still waiting (for example if the call to the worker after the
+  // upload was lost) is processed while the newsroom is open: ask the
+  // worker, then check again a few times.
+  int _processingRounds = 0;
+  Timer? _processingTimer;
+  void _processPendingImages() {
+    final articles = _data.state.data;
+    final pending =
+        articles?.any((article) => article.mediaStatus == 'pending') ?? false;
+    if (!pending) {
+      _processingRounds = 0;
+      return;
+    }
+    if (_processingTimer?.isActive == true || _processingRounds >= 4) return;
+    _processingRounds++;
+    _processingTimer = Timer(
+      _processingRounds == 1 ? Duration.zero : const Duration(seconds: 5),
+      () async {
+        await widget.editorial.startImageProcessing();
+        if (mounted) await _data.refresh();
+      },
+    );
   }
 
   @override
   void dispose() {
+    _processingTimer?.cancel();
     _data
       ..removeListener(_changed)
       ..dispose();

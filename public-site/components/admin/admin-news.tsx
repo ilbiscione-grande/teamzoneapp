@@ -59,6 +59,23 @@ export function AdminNews({ env, clubSlug }: { env: AdminEnv; clubSlug: string }
   }, [rpc, scope.clubId]);
   useEffect(() => { void load(); }, [load]);
 
+  // An image still waiting (for example if the upload call to the worker was
+  // lost) is processed when the newsroom is open: ask the worker, then check
+  // again a few times.
+  const pendingImages = articles?.some(article => article.media_status === "pending") ?? false;
+  const processingRounds = useRef(0);
+  useEffect(() => {
+    if (!pendingImages) { processingRounds.current = 0; return; }
+    if (processingRounds.current >= 4) return;
+    processingRounds.current++;
+    let disposed = false;
+    const timer = setTimeout(async () => {
+      await startImageProcessing(client);
+      if (!disposed) await load();
+    }, processingRounds.current === 1 ? 0 : 5000);
+    return () => { disposed = true; clearTimeout(timer); };
+  }, [pendingImages, articles, client, load]);
+
   async function save(publish: boolean) {
     if (!draft) return;
     const slug = draft.slug.trim();
