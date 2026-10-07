@@ -77,6 +77,16 @@ abstract interface class EventPreparationServices {
     double? value,
     int expectedRevision,
   );
+
+  /// One +1/−1 tap on a counted KPI during a live match. The command id is
+  /// fixed by the caller, so a retry never counts twice.
+  Future<void> recordKpiTick({
+    required String commandId,
+    required String eventId,
+    required String targetId,
+    required int delta,
+    required int minute,
+  });
   Future<EventFollowup> getFollowup(String eventId);
 }
 
@@ -160,6 +170,14 @@ class UnconfiguredEventPreparationServices implements EventPreparationServices {
     double? value,
     int expectedRevision,
   ) => _fail();
+  @override
+  Future<void> recordKpiTick({
+    required String commandId,
+    required String eventId,
+    required String targetId,
+    required int delta,
+    required int minute,
+  }) => _fail();
   @override
   Future<EventFollowup> getFollowup(String eventId) => _fail();
 }
@@ -450,6 +468,23 @@ class SupabaseEventPreparationServices implements EventPreparationServices {
       }),
     ),
   );
+
+  @override
+  Future<void> recordKpiTick({
+    required String commandId,
+    required String eventId,
+    required String targetId,
+    required int delta,
+    required int minute,
+  }) async {
+    await _rpc('record_match_kpi_v2', {
+      'p_command_id': commandId,
+      'p_event_id': eventId,
+      'p_target_id': targetId,
+      'p_delta': delta,
+      'p_minute': minute,
+    });
+  }
 
   @override
   Future<EventFollowup> getFollowup(String eventId) async =>

@@ -41,6 +41,11 @@ class _MatchModePageState extends State<_MatchModePage>
   StreamSubscription<void>? _liveSubscription;
   Timer? _liveDebounce;
 
+  // KPI goals from Förberedelser. Counted goals get +/− during the match;
+  // taps waiting for the server are shown as pending, never as saved.
+  EventFollowup? _followup;
+  final _pendingTicks = <String, int>{};
+
   // Before the first command there is no snapshot; the event's own
   // capability ('match_live' is the match-day permission) decides until then.
   bool get _canManage =>
@@ -82,6 +87,7 @@ class _MatchModePageState extends State<_MatchModePage>
   }
 
   Future<void> _refresh() async {
+    unawaited(_refreshKpis());
     try {
       final value = await widget.match.getSnapshot(widget.event.id);
       if (!mounted) return;
@@ -98,6 +104,78 @@ class _MatchModePageState extends State<_MatchModePage>
         });
       }
     }
+  }
+
+  Future<void> _refreshKpis() async {
+    try {
+      final value = await widget.live.getFollowup(widget.event.id);
+      if (mounted) setState(() => _followup = value);
+    } catch (_) {
+      // Goals are optional here; the match works without them.
+    }
+  }
+
+  List<EventKpi> get _manualKpis =>
+      (_followup?.kpis ?? const <EventKpi>[]).where((k) => k.isManual).toList();
+
+  Future<void> _tick(EventKpi kpi, int delta) async {
+    final key = _newUuid();
+    final minute = _minuteNow;
+    Future<void> send() async {
+      setState(() {
+        _pendingTicks.update(kpi.id, (v) => v + delta, ifAbsent: () => delta);
+        _error = null;
+        _retry = null;
+      });
+      try {
+        await widget.live.recordKpiTick(
+          commandId: key,
+          eventId: widget.event.id,
+          targetId: kpi.id,
+          delta: delta,
+          minute: minute,
+        );
+        await _refreshKpis();
+      } catch (error) {
+        if (mounted) {
+          setState(() {
+            _error = _isPermissionDenied(error)
+                ? 'Du saknar behörighet att ändra matchen.'
+                : '${kpi.label} kunde inte sparas.';
+            _retry = _isPermissionDenied(error) ? null : send;
+          });
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            final left = (_pendingTicks[kpi.id] ?? 0) - delta;
+            if (left == 0) {
+              _pendingTicks.remove(kpi.id);
+            } else {
+              _pendingTicks[kpi.id] = left;
+            }
+          });
+        }
+      }
+    }
+
+    await send();
+  }
+
+  Future<void> _enterKpiValue(EventKpi kpi) async {
+    final result = await showDialog<(bool, double?)>(
+      context: context,
+      builder: (_) => _KpiValueDialog(kpi: kpi),
+    );
+    if (result == null || !result.$1 || !mounted) return;
+    try {
+      await widget.live.recordKpiValue(kpi.id, result.$2, kpi.revision);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = '${kpi.label} kunde inte sparas.');
+      }
+    }
+    await _refreshKpis();
   }
 
   bool _isRejection(Object error) {
@@ -629,6 +707,7 @@ class _MatchModePageState extends State<_MatchModePage>
                           ),
                         ),
                       const SizedBox(height: 8),
+                      if (_manualKpis.isNotEmpty) _kpiSection(),
                       _eventsSection(),
                       _squadSection(),
                     ],
@@ -972,6 +1051,72 @@ class _MatchModePageState extends State<_MatchModePage>
       ),
     ),
   );
+
+  Widget _kpiSection() {
+    final colors = Theme.of(context).colorScheme;
+    final live = _canManage && _state == 'live';
+    final canEnter =
+        !widget.readOnly &&
+        _state == 'completed' &&
+        (_followup?.canRecordValues ?? false);
+    return Column(
+      key: const ValueKey('match-kpis'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Divider(height: 1),
+        _sectionHeader('Nyckeltal'),
+        for (final kpi in _manualKpis)
+          () {
+            final pending = _pendingTicks[kpi.id] ?? 0;
+            final counter = kpi.valueType == 'count';
+            final value = counter ? (kpi.actual ?? 0) + pending : kpi.actual;
+            return ListTile(
+              key: ValueKey('match-kpi-${kpi.id}'),
+              dense: true,
+              title: Text(kpi.label),
+              subtitle: Text(
+                'Mål: ${_kpiGoalText(kpi)}'
+                '${!counter && kpi.actual == null && _state != 'completed' ? ' · fylls i efteråt' : ''}',
+              ),
+              onTap: canEnter ? () => _enterKpiValue(kpi) : null,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (live && counter)
+                    IconButton(
+                      tooltip: 'Minska ${kpi.label}',
+                      onPressed: (value ?? 0) > 0 ? () => _tick(kpi, -1) : null,
+                      icon: const Icon(Icons.remove),
+                    ),
+                  SizedBox(
+                    width: 44,
+                    child: Text(
+                      counter
+                          ? (value ?? 0).toInt().toString()
+                          : _kpiValueText(kpi.valueType, value),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                        color: pending != 0 ? colors.onSurfaceVariant : null,
+                      ),
+                    ),
+                  ),
+                  if (live && counter)
+                    IconButton.filledTonal(
+                      tooltip: 'Öka ${kpi.label}',
+                      onPressed: () => _tick(kpi, 1),
+                      icon: const Icon(Icons.add),
+                    ),
+                  if (canEnter) const Icon(Icons.edit_outlined, size: 18),
+                ],
+              ),
+            );
+          }(),
+      ],
+    );
+  }
 
   Widget _eventsSection() {
     final snapshot = _snapshot;

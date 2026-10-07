@@ -63,6 +63,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Registrera närvaro för 1 personer'), findsOneWidget);
       expect(find.text('Fyll i 1 nyckeltal'), findsOneWidget);
+      expect(find.byKey(const ValueKey('followup-fill-kpis')), findsOneWidget);
       expect(find.text('80 %'), findsOneWidget);
       expect(find.text('+8 mot snitt'), findsOneWidget);
       expect(find.text('Avböjt: sjukdom 1'), findsOneWidget);
@@ -436,6 +437,57 @@ void main() {
       expect(find.text('F2012'), findsWidgets);
       expect(find.text('Vetlanda'), findsWidgets);
       expect(find.text('Starta match'), findsOneWidget);
+      await _closeMatchMode(tester);
+    });
+
+    testWidgets('KPI goals are counted live in match mode', (tester) async {
+      final prep = _Prep();
+      await prep.saveKpiTarget(
+        eventId: 'event-1',
+        kpiKey: 'shots_on_target',
+        comparator: 'gte',
+        target: 3,
+        visibleToPlayers: false,
+      );
+      await prep.saveKpiTarget(
+        eventId: 'event-1',
+        kpiKey: 'custom',
+        label: 'Alla spelade en halvlek',
+        valueType: 'boolean',
+        comparator: 'eq',
+        target: 1,
+        visibleToPlayers: false,
+      );
+      final match = _Match();
+      await _openPreparation(tester, _Calendar('match', prep), match: match);
+      await _openMatchMode(tester);
+      expect(find.text('NYCKELTAL'), findsOneWidget);
+      expect(find.byTooltip('Öka Skott på mål'), findsNothing);
+      await tester.tap(find.text('Starta match'));
+      await _pumpFrames(tester);
+
+      await tester.ensureVisible(find.byTooltip('Öka Skott på mål'));
+      await tester.tap(find.byTooltip('Öka Skott på mål'));
+      await _pumpFrames(tester);
+      await tester.tap(find.byTooltip('Öka Skott på mål'));
+      await _pumpFrames(tester);
+      await tester.tap(find.byTooltip('Minska Skott på mål'));
+      await _pumpFrames(tester);
+      expect(prep.ticks.map((t) => t.$3), [1, 1, -1]);
+      expect(prep.ticks.map((t) => t.$1).toSet(), hasLength(3));
+      expect(prep.kpis.first.actual, 1);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('match-kpi-kpi-0')),
+          matching: find.text('1'),
+        ),
+        findsOneWidget,
+      );
+      // Only counted goals get buttons; the rest are entered afterwards.
+      expect(find.byTooltip('Öka Alla spelade en halvlek'), findsNothing);
+      expect(find.text('Mål: Ja · fylls i efteråt'), findsOneWidget);
+      // Ticks are KPI facts, not match events.
+      expect(match.facts, isEmpty);
       await _closeMatchMode(tester);
     });
 
@@ -947,6 +999,23 @@ class _Prep implements EventPreparationServices {
     );
     kpis = [for (final x in kpis) x.id == k.id ? kpi : x];
     return kpi;
+  }
+
+  final ticks = <(String, String, int)>[];
+
+  @override
+  Future<void> recordKpiTick({
+    required String commandId,
+    required String eventId,
+    required String targetId,
+    required int delta,
+    required int minute,
+  }) async {
+    if (ticks.any((t) => t.$1 == commandId)) return;
+    ticks.add((commandId, targetId, delta));
+    final k = kpis.firstWhere((k) => k.id == targetId);
+    await recordKpiValue(targetId, (k.actual ?? 0) + delta, k.revision);
+    recorded.removeLast();
   }
 
   @override

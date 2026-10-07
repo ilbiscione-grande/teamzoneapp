@@ -541,13 +541,14 @@ class _FollowupTabState extends State<_FollowupTab> {
     }
   }
 
-  Future<void> _recordValue(EventKpi kpi) async {
+  /// Returns false when the dialog was cancelled.
+  Future<bool> _recordValue(EventKpi kpi) async {
     final result = await showDialog<(bool, double?)>(
       context: context,
       useRootNavigator: true,
       builder: (_) => _KpiValueDialog(kpi: kpi),
     );
-    if (result == null || !result.$1 || !mounted) return;
+    if (result == null || !result.$1 || !mounted) return false;
     try {
       await widget.services.recordKpiValue(kpi.id, result.$2, kpi.revision);
     } catch (_) {
@@ -558,6 +559,16 @@ class _FollowupTabState extends State<_FollowupTab> {
       }
     }
     await _reload();
+    return mounted;
+  }
+
+  /// Steps through every manual KPI still without a value.
+  Future<void> _recordMissing(EventFollowup data) async {
+    for (final kpi in data.kpis.where((k) => k.isManual && k.actual == null)) {
+      final latest =
+          _data?.kpis.where((k) => k.id == kpi.id).firstOrNull ?? kpi;
+      if (!await _recordValue(latest)) return;
+    }
   }
 
   @override
@@ -669,6 +680,12 @@ class _FollowupTabState extends State<_FollowupTab> {
                   onPressed: widget.onOpenParticipants,
                   child: const Text('Registrera'),
                 ),
+                'kpi_values' when widget.allowRecord && data.canRecordValues =>
+                  TextButton(
+                    key: const ValueKey('followup-fill-kpis'),
+                    onPressed: () => _recordMissing(data),
+                    child: const Text('Fyll i'),
+                  ),
                 'match_result' when widget.onOpenMatchMode != null =>
                   TextButton(
                     onPressed: widget.onOpenMatchMode,
