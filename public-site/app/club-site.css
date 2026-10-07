@@ -256,3 +256,24 @@ img.cs-crest { border-radius: 0; filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
   .cs-section-head { align-items: flex-start; flex-direction: column; gap: 8px; }
   .cs-footer-grid { grid-template-columns: 1fr; }
 }
+
+/* Team page: news lead, with match and calendar beside them from tablet
+   width (two columns) and below them on phones. */
+.cs-team-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: clamp(24px, 3vw, 40px); align-items: start; }
+.cs-team-main { min-width: 0; }
+.cs-team-main .cs-news { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cs-team-main .cs-news-card.featured > a, .cs-team-main .cs-news-card.featured.plain { grid-template-columns: 1fr; }
+.cs-team-main .cs-news-card.featured .cs-news-media { min-height: 0; aspect-ratio: 16 / 9; }
+.cs-team-side { display: grid; gap: 22px; min-width: 0; padding-top: 6px; }
+.cs-side-block { display: grid; gap: 10px; }
+.cs-side-label { margin: 0; color: var(--cs-muted); font-size: .78rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.cs-side-events { display: grid; gap: 12px; }
+.cs-team-side .cs-event h3 { font-size: 1.25rem; }
+.cs-team-side .cs-more { justify-self: start; }
+@media (max-width: 960px) {
+  .cs-team-main .cs-news { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .cs-team-grid { grid-template-columns: 1fr; }
+  .cs-team-side { padding-top: 0; }
+}

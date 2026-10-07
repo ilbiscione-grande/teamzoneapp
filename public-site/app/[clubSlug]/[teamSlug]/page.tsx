@@ -45,7 +45,7 @@ export default async function TeamPage({ params }: Props) {
     return (
       <main className={clubSiteClass(club)}><ClubTheme club={club} />
         <ClubHeader clubName={club.name} clubHref={clubHref} crest={club.profile_media_path}>
-          <a href="#oversikt">Översikt</a>{results.length > 0 && <a href="#resultat">Resultat</a>}<a href="#handelser">Kalender</a><a href="#nyheter">Nyheter</a><Link href={`/${clubSlug}`}>Till {club.name}</Link>
+          <a href="#nyheter">Nyheter</a><a href="#oversikt">Översikt</a>{results.length > 0 && <a href="#resultat">Resultat</a>}<a href="#handelser">Kalender</a><Link href={`/${clubSlug}`}>Till {club.name}</Link>
         </ClubHeader>
 
         <section className="cs-hero team">
@@ -61,19 +61,28 @@ export default async function TeamPage({ params }: Props) {
           </div>
         </section>
 
-        {(next || latest) && (
-          <section className="cs-matchbar" aria-label="Matchcenter">
-            <div className="cs-wrap">
-              <SectionHead title="Matchcenter" />
-              <div className="cs-center">
-                {next && <div><p className="cs-center-label">Nästa</p><EventCard event={next} hero /></div>}
-                {latest && <div><p className="cs-center-label">Senaste resultat</p><ResultCard result={latest} teamName={team.name} /></div>}
-              </div>
+        {/* News lead the page. From tablet width the next match, latest
+            result and the coming events sit in a narrower right column;
+            on phones they follow the news. */}
+        <section id="nyheter" className="cs-section cs-team-top">
+          <div className="cs-wrap cs-team-grid">
+            <div className="cs-team-main">
+              <SectionHead kicker="Från laget" title="Nyheter" />
+              {news.length ? <NewsGrid items={news} clubSlug={clubSlug} clubName={club.name} crest={club.profile_media_path} /> : <Empty text="Laget har inte publicerat några nyheter ännu." />}
             </div>
-          </section>
-        )}
+            <aside className="cs-team-side" aria-label="Matcher och kalender">
+              {next && <div className="cs-side-block"><p className="cs-side-label">Nästa</p><EventCard event={next} /></div>}
+              {latest && <div className="cs-side-block"><p className="cs-side-label">Senaste resultat</p><ResultCard result={latest} teamName={team.name} /></div>}
+              <div className="cs-side-block">
+                <p className="cs-side-label">Kommande</p>
+                {later.length ? <div className="cs-side-events">{later.slice(0, 3).map(event => <EventCard key={event.id} event={event} />)}</div> : <Empty text={next ? "Inga fler händelser är publicerade." : "Inga kommande händelser är publicerade."} />}
+                <a className="cs-more" href="#handelser">Hela kalendern →</a>
+              </div>
+            </aside>
+          </div>
+        </section>
 
-        <section id="oversikt" className="cs-section">
+        <section id="oversikt" className="cs-section alt">
           <div className="cs-wrap cs-about">
             <div><p className="cs-kicker">Laget</p><h2 className="cs-title">{team.name}</h2><p className="cs-lead">{team.description || "Lagets publicerade information och innehåll samlas här."}</p></div>
             <dl className="cs-facts">
@@ -85,7 +94,7 @@ export default async function TeamPage({ params }: Props) {
         </section>
 
         {results.length > 0 && (
-          <section id="resultat" className="cs-section alt">
+          <section id="resultat" className="cs-section">
             <div className="cs-wrap">
               <SectionHead kicker="Färdigspelat" title="Senaste slutresultaten" />
               <div className="cs-results">{results.map(result => <ResultCard key={result.id} result={result} teamName={team.name}><WrittenMatchReport text={result.report_text} /></ResultCard>)}</div>
@@ -93,19 +102,12 @@ export default async function TeamPage({ params }: Props) {
           </section>
         )}
 
-        <section id="handelser" className="cs-section">
+        <section id="handelser" className={`cs-section${results.length > 0 ? " alt" : ""}`}>
           <div className="cs-wrap">
             <SectionHead kicker="Kalender" title="Kommande händelser" />
             {upcoming.length ? <div className="cs-events">{(next ? [next, ...later] : later).map(event => <EventCard key={event.id} event={event} />)}</div> : <Empty text="Inga kommande händelser är publicerade." />}
             <h3 className="cs-subhead">Tidigare</h3>
             {previous.length ? <div className="cs-events past">{previous.map(event => <EventCard key={event.id} event={event} />)}</div> : <Empty text="Inga tidigare händelser är publicerade." />}
-          </div>
-        </section>
-
-        <section id="nyheter" className="cs-section alt">
-          <div className="cs-wrap">
-            <SectionHead kicker="Från laget" title="Nyheter" />
-            {news.length ? <NewsGrid items={news} clubSlug={clubSlug} clubName={club.name} crest={club.profile_media_path} /> : <Empty text="Laget har inte publicerat några nyheter ännu." />}
           </div>
         </section>
 
