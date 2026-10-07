@@ -19,6 +19,9 @@ and titles, and temporary contact pages with QR codes (wave 10 in
 The latest consolidated delta covers the deterministic personal assistant,
 account/contact privacy and the official-club support operation through 2026-10-04:
 [`docs/evidence/core_app_iteration_2026-10-02_10-04.md`](docs/evidence/core_app_iteration_2026-10-02_10-04.md).
+The 2026-10-05 worklist (leaner navigation menu, calendar navigation, theme
+mode, page-aware quick actions and event deletion before callups) is in
+[`docs/evidence/core_app_iteration_2026-10-05.md`](docs/evidence/core_app_iteration_2026-10-05.md).
 
 Current progress is tracked in
 [`docs/implementation/slice_status.md`](docs/implementation/slice_status.md).

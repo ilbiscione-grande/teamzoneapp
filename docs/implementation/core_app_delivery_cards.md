@@ -97,6 +97,10 @@ Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående 
 - [x] Android back, web refresh samt browser back/forward bevarar rätt behörig kontext.
 - [x] Centrala breakpointtokens används utan lokala konkurrerande gränser.
 - [x] Navigationsskalet (appbar, drawer/sidopanel, bottom nav) byggdes om 2026-09-07 efter en referensbild.
+- [x] Appbaren byter färg bara vid helsidescroll, inte när en lista under ett fast sidhuvud scrollar (2026-10-05).
+- [x] Genvägsmenyn (svep upp på Hem) leder med den aktuella sidans åtgärder under "Gör nu"; övriga åtgärder och
+  destinationer ligger i varsin horisontellt scrollande rad. Nya direktlänkar för lagets roller och
+  kontaktuppdatering, informationsmeddelande och förvald eventtyp (2026-10-05).
 
 **Verifiering:** phone/tablet/desktop widgetmatris samt navigationstest för cold link, refresh och back.
 
@@ -436,6 +440,8 @@ Riktade CAL-01/CAL-03/CAL-06/CAL-11-tester är gröna.
 - [x] Arkiverade event listas separat med orsak och datum, öppnas skrivskyddat och kan återställas med bevarad ursprungsstatus.
 
 **Verifierat 2026-09-20:** delete, cancel, återställning från cancel, archive, separat arkivlista, skrivskyddad arkivdetalj och återställning från arkiv. Hosted recovery-migration och 15 riktade regressionstester är gröna.
+
+**Uppdatering 2026-10-05:** "Ta bort event" gäller nu även planerade och inställda engångsevent så länge ingen kallelse har skickats och eventet saknar skickad trupp, närvaro, matchläge, sponsorlöfte, publik publicering och delning med andra lag (`20261005090000`). Annars ställs eventet in och arkiveras som tidigare; serietillfällen arkiveras alltid. Arkivering kraschade på telefon (`_dependents.isEmpty`) och är rättad. Se [iteration 2026-10-05](../evidence/core_app_iteration_2026-10-05.md).
 
 ### CAL-05 – EventDetails informationsarkitektur
 
@@ -948,6 +954,8 @@ Se [regel, gränser och tester](../evidence/assistant_missing_callups_2026-10-02
 
 **2026-10-02 – kompakt assistent:** Kortens detaljer och assistentinställningarna är hopfällda. Åtgärda, Skjut upp och Arkivera finns direkt på korten. Uppskjutning/arkivering sparas privat på kontot, kan återställas och påverkar inte domänuppgiften. Se [beteende och verifiering](../evidence/assistant_compact_ui_2026-10-02.md).
 
+**2026-10-05 – påminnelse släcker varningen:** En obesvarad kallelse som har påmints de senaste sex timmarna räknas inte i "Obesvarade kallelser", vilket motsvarar spärrtiden för ny påminnelse (`20261005140000`). Är den fortfarande obesvarad därefter kommer varningen tillbaka.
+
 **Statussynk 2026-10-04:** Varningar grupperas per aktivitet, `Här och nu`
 följer aktuell sida och den kontoomfattande listan kan filtreras på kategori och
 aktuellt lag. Personliga krockar kan hittas mellan användarens lag och klubbar.
@@ -1211,6 +1219,9 @@ Beskrivning: [`event-preparations-v1.md`](event-preparations-v1.md).
 
 - [x] "Vy och filter" i en knapp, Dag/Månad i listans rubrikrad, flera lag samtidigt och sparad standardvy.
 - [x] "Planerad" är borttaget från korten. Utkast markeras med en liten ikon.
+- [x] Datumraden använder hela titelraden med perioden centrerad mellan pilarna (2026-10-05).
+- [x] Svep i sidled byter period i alla vyer, och månadsvyn visar event på dagarna från grannmånaderna. Hämtat datumintervall följer valt datum.
+- [x] Dagvyn öppnas vid 15:00, och appbaren byter inte färg när bara kalenderns lista scrollar.
 
 ### MSG-09 – Inbox per klubb, ny meddelandedialog och notisåtgärder
 
@@ -1223,6 +1234,8 @@ Beskrivning: [`event-preparations-v1.md`](event-preparations-v1.md).
 - [x] Egna supportärenden ligger i Inbox med räknare för olästa supportsvar och
   privat tvåvägsdialog. Användare och support kan bifoga upp till fem privata
   filer per meddelande, högst 10 MB per fil.
+- [x] Supportadministratörer når supportkön från ett kort i Inbox med antal nya
+  användarmeddelanden, i stället för från sidomenyn (webb och desktop, 2026-10-05).
 
 ### PROF-01 – Egen profil, kontaktuppgifter och profilbild
 
@@ -1310,7 +1323,11 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 **Status:** `[~]` – hosted och automatiskt verifierad
 
 - [x] Inställningar har fliken Klubb, bara för klubbadministratörer: klubbmärke med förhandsvisning och uppladdning,
-  klubbfärger, publik klubbsida och lagsidor samt klubbverifiering.
+  klubbfärger och klubbverifiering.
+- [x] Fliken Publika sidor (2026-10-05) samlar per klubb den publika klubbsidan och lagsidorna, lagens publika
+  matcher, resultat och träningstider samt nyhetsredaktionen. Den ersätter raderna Publika sidor och
+  Nyhetsredaktion i sidomenyn och visas för den som får publicera eller hantera ett lag.
+- [x] Personliga inställningar har valet System, Ljust eller Mörkt, sparat på enheten.
 - [x] Samma sektion finns under Inställningar på den egna profilen.
 - [x] Lag som aldrig publicerats får en föreslagen webbadress, och ett ogiltigt värde förklaras.
 
@@ -1381,6 +1398,7 @@ Grundappens ursprungliga ordning:
 
 | Datum | Ändring | Status |
 |---|---|---|
+| 2026-10-05 | **Teamzone 2027-listan och smalare sidomeny.** Supportkön ligger i Inbox och publika sidor och nyhetsredaktion i en egen inställningsflik. Arkiveringskrasch, blinkande Hem (45-sekunderspoll), klubbverifieringens stängning och borttagning av felbokade event utan skickade kallelser är åtgärdade. Kalendern har centrerad datumrad, svep, grannmånadernas event, datumintervall som följer valt datum, dagvy från 15:00 och appbar som bara färgas vid helsidescroll. Ljust/mörkt/system-läge, sidanpassad genvägsmeny och påminnelse som släcker kallelsevarningen i sex timmar. Migrationerna `20261005090000` och `20261005140000` är körda i testprojektet; se `core_app_iteration_2026-10-05.md`. | CAL-04, CAL-14, MSG-09, SET-01, FND-03, AC-02 `[~]` |
 | 2026-10-04 | **Supportdialogen flyttad till Inbox.** Egna ärenden har oläst-räknare och privat tvåvägsdialog. Både användare och support kan bifoga bilder och dokument via privat Storage och kortlivade signerade länkar. | MSG-09, AUTH-06 `[~]` |
 | 2026-10-03 | **Supportdrift och officiell klubb.** `/support` visar den fullständiga kön, skyddat namn kan godkännas till en färdig officiell klubb/lag-koppling och parterna kan begära komplettering i ärendet. Supabase Cron/`pg_net` och Edge Function skickar notifieringar via Resend; ImprovMX vidarebefordrar inkommande `support@teamzoneapp.se`. | AUTH-06 `[~]` |
 | 2026-10-03 | **Personlig och kontextuell assistent.** Kategorier, aktuellt-lag-filter, sidkontext, grupperade aktivitetsvarningar, välkomstmeddelande, FAB-räknare, eget namn och sex profilbilder är infört. | AC-02, AC-04, AC-07 `[~]` |

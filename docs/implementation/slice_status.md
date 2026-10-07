@@ -1,9 +1,10 @@
 # TeamZone implementation slice status
 
-Updated: 2026-10-04
+Updated: 2026-10-05
 
-Latest consolidated implementation delta:
-[2026-10-02–2026-10-04](../evidence/core_app_iteration_2026-10-02_10-04.md).
+Latest consolidated implementation deltas:
+[2026-10-02–2026-10-04](../evidence/core_app_iteration_2026-10-02_10-04.md) and
+[2026-10-05](../evidence/core_app_iteration_2026-10-05.md).
 
 Multiple addresses and restricted personal data:
 [design, behavior and verification](address-privacy.md).
@@ -248,7 +249,7 @@ remain partial only for the explicit gates stated on each card; deferred
 imports, workspaces/webtools, generative AI and production provisioning are not
 silently counted as current implementation work.
 
-### Wave 10 – extensions after the core app (2026-09-27 – 2026-10-04)
+### Wave 10 – extensions after the core app (2026-09-27 – 2026-10-05)
 
 The product owner's follow-up priorities are tracked as wave 10 in
 [`core_app_delivery_cards.md`](core_app_delivery_cards.md#14-våg-10--utbyggnad-efter-grundappen):
@@ -274,3 +275,16 @@ reorganization, the web support operation for official clubs, case conversations
 private support attachments and requester cases in Inbox. Its scope, migrations,
 security boundaries and links to focused verification are consolidated in
 [`core_app_iteration_2026-10-02_10-04.md`](../evidence/core_app_iteration_2026-10-02_10-04.md).
+
+On 2026-10-05 the product owner's "Teamzone 2027" worklist was delivered: the
+support queue moved into Inbox and the public pages and newsroom into a
+"Publika sidor" settings tab; archiving no longer crashes; events without sent
+callups can be deleted; Home no longer flashes on a 45-second poll; club
+verification can always be closed; the calendar gained a centred date row,
+swipe navigation, neighbouring-month events, a date window that follows the
+selection, a 15:00 day view and full-page-only app bar tinting; system, light
+and dark mode are selectable; the quick actions sheet is page aware; and a
+reminder quiets the unanswered-callups warning for six hours. Migrations
+`20261005090000` and `20261005140000` are applied to the audit project.
+Evidence:
+[`core_app_iteration_2026-10-05.md`](../evidence/core_app_iteration_2026-10-05.md).
