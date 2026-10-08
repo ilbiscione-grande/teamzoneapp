@@ -162,10 +162,14 @@ class LeaderHomeProjection {
     required this.tasks,
     required this.planningActions,
     this.nextEvent,
+    this.upcomingEvents = const [],
     this.isStale = false,
   });
   final DateTime generatedAt;
   final List<LeaderHomeEvent> todayEvents;
+
+  /// Scheduled events after today (up to two weeks, at most six).
+  final List<LeaderHomeEvent> upcomingEvents;
   final List<LeaderHomeTask> tasks;
   final List<LeaderHomeAction> planningActions;
   final LeaderHomeEvent? nextEvent;
@@ -189,6 +193,9 @@ class LeaderHomeProjection {
       nextEvent: json['next_event'] == null
           ? null
           : LeaderHomeEvent.fromJson(_map(json['next_event'])),
+      upcomingEvents: _maps(
+        json['upcoming_events'],
+      ).map(LeaderHomeEvent.fromJson).toList(growable: false),
     );
   }
 
@@ -198,6 +205,7 @@ class LeaderHomeProjection {
     tasks: tasks,
     planningActions: planningActions,
     nextEvent: nextEvent,
+    upcomingEvents: upcomingEvents,
     isStale: true,
   );
 }
@@ -245,11 +253,14 @@ class LeaderHomeCallup {
     required this.revision,
     required this.canRespond,
     this.expiresAt,
+    this.declineReasonCode,
+    this.declineReasonText,
   });
   final String id, state;
   final int revision;
   final bool canRespond;
   final DateTime? expiresAt;
+  final String? declineReasonCode, declineReasonText;
   factory LeaderHomeCallup.fromJson(Map<String, dynamic> json) =>
       LeaderHomeCallup(
         id: json['callup_id'] as String,
@@ -259,6 +270,8 @@ class LeaderHomeCallup {
         expiresAt: json['expires_at'] == null
             ? null
             : DateTime.parse(json['expires_at'] as String),
+        declineReasonCode: json['decline_reason_code'] as String?,
+        declineReasonText: json['decline_reason_text'] as String?,
       );
 }
 
@@ -315,6 +328,8 @@ class PlayerHomeProjection {
     required this.callups,
     required this.unreadMessageCount,
     this.nextEvent,
+    this.todayEvents = const [],
+    this.upcomingEvents = const [],
     this.isStale = false,
   });
   final DateTime generatedAt;
@@ -322,6 +337,9 @@ class PlayerHomeProjection {
   final List<PlayerHomeCallup> callups;
   final int unreadMessageCount;
   final LeaderHomeEvent? nextEvent;
+
+  /// The team's events today and in the coming days (for the day card).
+  final List<LeaderHomeEvent> todayEvents, upcomingEvents;
   final bool isStale;
   factory PlayerHomeProjection.fromJson(Map<String, dynamic> json) {
     if (json['schema_version'] != 1 || json['role_package'] != 'player') {
@@ -337,6 +355,12 @@ class PlayerHomeProjection {
       nextEvent: json['next_event'] == null
           ? null
           : LeaderHomeEvent.fromJson(_map(json['next_event'])),
+      todayEvents: _maps(
+        json['today_events'],
+      ).map(LeaderHomeEvent.fromJson).toList(growable: false),
+      upcomingEvents: _maps(
+        json['upcoming_events'],
+      ).map(LeaderHomeEvent.fromJson).toList(growable: false),
     );
   }
 
@@ -346,6 +370,8 @@ class PlayerHomeProjection {
     callups: callups,
     unreadMessageCount: unreadMessageCount,
     nextEvent: nextEvent,
+    todayEvents: todayEvents,
+    upcomingEvents: upcomingEvents,
     isStale: true,
   );
 }
@@ -425,6 +451,8 @@ class GuardianHomeProjection {
     required this.callups,
     required this.unreadMessageCount,
     this.nextEvent,
+    this.todayEvents = const [],
+    this.upcomingEvents = const [],
     this.isStale = false,
   });
   final DateTime generatedAt;
@@ -434,6 +462,7 @@ class GuardianHomeProjection {
   final List<PlayerHomeCallup> callups;
   final int unreadMessageCount;
   final LeaderHomeEvent? nextEvent;
+  final List<LeaderHomeEvent> todayEvents, upcomingEvents;
   final bool isStale;
   GuardianHomeChild get selectedChild =>
       children.firstWhere((child) => child.id == selectedChildId);
@@ -455,6 +484,12 @@ class GuardianHomeProjection {
       nextEvent: json['next_event'] == null
           ? null
           : LeaderHomeEvent.fromJson(_map(json['next_event'])),
+      todayEvents: _maps(
+        json['today_events'],
+      ).map(LeaderHomeEvent.fromJson).toList(growable: false),
+      upcomingEvents: _maps(
+        json['upcoming_events'],
+      ).map(LeaderHomeEvent.fromJson).toList(growable: false),
     );
   }
 
@@ -466,6 +501,8 @@ class GuardianHomeProjection {
     callups: callups,
     unreadMessageCount: unreadMessageCount,
     nextEvent: nextEvent,
+    todayEvents: todayEvents,
+    upcomingEvents: upcomingEvents,
     isStale: true,
   );
 }

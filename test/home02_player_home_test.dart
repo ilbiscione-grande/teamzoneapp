@@ -62,10 +62,7 @@ void main() {
     expect(surface, contains('declineReasonCode: reasonCode'));
     expect(surface, contains('declineReasonText: reasonText'));
     expect(surface, contains('response: callup.state'));
-    expect(
-      surface,
-      contains('onRespond: (response) => _respond(callup, response)'),
-    );
+    expect(surface, contains('_respond(callup, response)'));
     expect(surface, contains("strings.feature('Avböj')"));
     expect(surface, contains("strings.feature('Acceptera')"));
     // "Maybe" was removed as a quick-response option (2026-09-07):

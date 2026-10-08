@@ -223,9 +223,9 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
                           title: strings.couldNotLoad,
                           message: strings.safeError,
                           action: FilledButton(
-                            onPressed: () => setState(
-                              () => _leaderHome = _reloadLeaderHome(),
-                            ),
+                            onPressed: () => setState(() {
+                              _leaderHome = _reloadLeaderHome();
+                            }),
                             child: Text(strings.retry),
                           ),
                         );
@@ -234,8 +234,9 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
                         value: snapshot.data!,
                         calendar: widget.calendar,
                         onNavigate: widget.onNavigate,
-                        onChanged: () =>
-                            setState(() => _leaderHome = _reloadLeaderHome()),
+                        onChanged: () => setState(() {
+                          _leaderHome = _reloadLeaderHome();
+                        }),
                       );
                     },
                   )
@@ -255,9 +256,9 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
                           title: strings.couldNotLoad,
                           message: strings.safeError,
                           action: FilledButton(
-                            onPressed: () => setState(
-                              () => _playerHome = _reloadPlayerHome(),
-                            ),
+                            onPressed: () => setState(() {
+                              _playerHome = _reloadPlayerHome();
+                            }),
                             child: Text(strings.retry),
                           ),
                         );
@@ -266,8 +267,9 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
                         value: snapshot.data!,
                         calendar: widget.calendar,
                         onNavigate: widget.onNavigate,
-                        onChanged: () =>
-                            setState(() => _playerHome = _reloadPlayerHome()),
+                        onChanged: () => setState(() {
+                          _playerHome = _reloadPlayerHome();
+                        }),
                       );
                     },
                   )
@@ -290,9 +292,9 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
                           title: strings.couldNotLoad,
                           message: strings.safeError,
                           action: FilledButton(
-                            onPressed: () => setState(
-                              () => _guardianHome = _reloadGuardianHome(),
-                            ),
+                            onPressed: () => setState(() {
+                              _guardianHome = _reloadGuardianHome();
+                            }),
                             child: Text(strings.retry),
                           ),
                         );
@@ -305,9 +307,9 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
                           _guardianChildId = childId;
                           _guardianHome = _reloadGuardianHome();
                         }),
-                        onChanged: () => setState(
-                          () => _guardianHome = _reloadGuardianHome(),
-                        ),
+                        onChanged: () => setState(() {
+                          _guardianHome = _reloadGuardianHome();
+                        }),
                       );
                     },
                   )
@@ -489,6 +491,8 @@ class _GuardianHomeContent extends StatelessWidget {
             callups: value.callups,
             unreadMessageCount: value.unreadMessageCount,
             nextEvent: value.nextEvent,
+            todayEvents: value.todayEvents,
+            upcomingEvents: value.upcomingEvents,
             isStale: value.isStale,
           ),
           calendar: calendar,
@@ -652,10 +656,49 @@ class _PlayerHomeContentState extends State<_PlayerHomeContent> {
       canonicalKey: (callup) => 'event:${callup.eventId}',
       priority: (_) => homeAttentionPriority('callup'),
     );
-    final next =
-        callups.any((callup) => callup.eventId == widget.value.nextEvent?.id)
-        ? null
-        : widget.value.nextEvent;
+    final byEvent = {for (final callup in callups) callup.eventId: callup};
+    // The day card shows the callup (own, or the child's) on its event.
+    LeaderHomeEvent withCallup(LeaderHomeEvent event) {
+      final callup = byEvent[event.id];
+      if (callup == null) return event;
+      return LeaderHomeEvent(
+        id: event.id,
+        title: event.title,
+        type: event.type,
+        state: event.state,
+        startsAt: event.startsAt,
+        endsAt: event.endsAt,
+        locationName: event.locationName,
+        address: event.address,
+        myCallup: LeaderHomeCallup(
+          id: callup.id,
+          state: callup.state,
+          revision: callup.revision,
+          canRespond: callup.canRespond && !widget.value.isStale,
+          expiresAt: callup.expiresAt,
+          declineReasonCode: callup.declineReasonCode,
+          declineReasonText: callup.declineReasonText,
+        ),
+      );
+    }
+
+    final day = _HomeDaySections.build(
+      today: widget.value.todayEvents.map(withCallup).toList(),
+      upcoming: widget.value.upcomingEvents.map(withCallup).toList(),
+      next: widget.value.nextEvent == null
+          ? null
+          : withCallup(widget.value.nextEvent!),
+      onNavigate: widget.onNavigate,
+      pendingCallupId: _pendingCallupId,
+      onRespond: (shown, response) {
+        final callup = callups.where((c) => c.id == shown.id).firstOrNull;
+        if (callup != null) _respond(callup, response);
+      },
+    );
+    // Callups for events further ahead than the day card and lists.
+    final otherCallups = callups
+        .where((callup) => !day.shown.contains(callup.eventId))
+        .toList();
     final teamAndMessages = Column(
       children: [
         Card(
@@ -686,82 +729,88 @@ class _PlayerHomeContentState extends State<_PlayerHomeContent> {
           ),
       ],
     );
-    final callupSection = _LeaderHomeSection(
-      title: widget.callupTitle,
-      icon: Icons.how_to_reg_outlined,
-      emptyText: 'Du har inga aktuella kallelser',
-      children: [
-        for (final callup in callups)
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: Column(
-              children: [
-                ListTile(
-                  title: Text(callup.eventTitle),
-                  subtitle: Text(_playerCallupSubtitle(context, callup)),
-                  isThreeLine:
-                      _playerCallupDeclineReason(context, callup) != null,
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => widget.onNavigate(
-                    ProductRouteContract.calendarEvent(callup.eventId),
-                  ),
-                ),
-                if (callup.canRespond && !widget.value.isStale)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                    child: Wrap(
-                      spacing: 8,
-                      children: [
-                        if (widget.actingAsName != null)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Text(
-                              'Svarar som vårdnadshavare för ${widget.actingAsName}',
-                            ),
-                          ),
-                        _CallupResponseButtons(
-                          busy: _pendingCallupId != null,
-                          saving: _pendingCallupId == callup.id,
-                          response: callup.state,
-                          compact: false,
-                          onRespond: (response) => _respond(callup, response),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-      ],
-    );
-    final nextSection = next == null
-        ? const SizedBox.shrink()
+    final callupSection = otherCallups.isEmpty
+        ? null
         : _LeaderHomeSection(
-            title: 'Nästa aktivitet',
-            icon: Icons.event_available_outlined,
+            title: day.shown.isEmpty ? widget.callupTitle : 'Fler kallelser',
+            icon: Icons.how_to_reg_outlined,
             emptyText: '',
             children: [
-              // The player home's own callup response flow lives in the
-              // callupSection above, driven by own_callups — next.myCallup
-              // is always null here (only the leader home populates it),
-              // so respond is never actually reachable through this tile.
-              _LeaderEventTile(
-                event: next,
-                onNavigate: widget.onNavigate,
-                pendingCallupId: null,
-                onRespond: (callup, response) {},
-              ),
+              for (final callup in otherCallups)
+                Card(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        title: Text(callup.eventTitle),
+                        subtitle: Text(_playerCallupSubtitle(context, callup)),
+                        isThreeLine:
+                            _playerCallupDeclineReason(context, callup) != null,
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => widget.onNavigate(
+                          ProductRouteContract.calendarEvent(callup.eventId),
+                        ),
+                      ),
+                      if (callup.canRespond && !widget.value.isStale)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                          child: Wrap(
+                            spacing: 8,
+                            children: [
+                              if (widget.actingAsName != null)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  child: Text(
+                                    'Svarar som vårdnadshavare för ${widget.actingAsName}',
+                                  ),
+                                ),
+                              _CallupResponseButtons(
+                                busy: _pendingCallupId != null,
+                                saving: _pendingCallupId == callup.id,
+                                response: callup.state,
+                                compact: false,
+                                onRespond: (response) =>
+                                    _respond(callup, response),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
             ],
           );
     final wide = MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
     final content = !wide
-        ? Column(children: [callupSection, teamAndMessages, nextSection])
-        : Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ? Column(
             children: [
-              Expanded(child: callupSection),
-              const SizedBox(width: 12),
-              Expanded(child: Column(children: [teamAndMessages, nextSection])),
+              day.hero,
+              ?day.today,
+              ?day.upcoming,
+              ?callupSection,
+              teamAndMessages,
+            ],
+          )
+        : Column(
+            children: [
+              day.hero,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      children: [?day.today, ?day.upcoming, ?callupSection],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: teamAndMessages),
+                ],
+              ),
             ],
           );
     if (!widget.value.isStale) return content;
@@ -787,9 +836,9 @@ String _playerCallupSubtitle(BuildContext context, PlayerHomeCallup callup) {
   final material = MaterialLocalizations.of(context);
   final starts = callup.startsAt.toLocal();
   final state = switch (callup.state) {
-    'accepted' => 'Kommer',
-    'declined' => 'Kan inte',
-    _ => 'Obesvarad',
+    'accepted' => 'Accepterat',
+    'declined' => 'Avböjt',
+    _ => 'Obesvarat',
   };
   final summary =
       '$state · ${material.formatCompactDate(starts)} · ${material.formatTimeOfDay(TimeOfDay.fromDateTime(starts))}';
@@ -804,8 +853,16 @@ String? _playerCallupDeclineReason(
   PlayerHomeCallup callup,
 ) {
   if (callup.state != 'declined') return null;
-  final strings = AppStrings.of(context);
-  final label = switch (callup.declineReasonCode) {
+  return _callupDeclineReason(
+    AppStrings.of(context),
+    callup.declineReasonCode,
+    callup.declineReasonText,
+  );
+}
+
+/// "Sjukdom", or "Annat – egen text" when a text was given.
+String? _callupDeclineReason(AppStrings strings, String? code, String? text) {
+  final label = switch (code) {
     'illness' => strings.feature('Sjukdom'),
     'injury' => strings.feature('Skada'),
     'unavailable' => strings.feature('Inte tillgänglig'),
@@ -814,7 +871,7 @@ String? _playerCallupDeclineReason(
     _ => null,
   };
   if (label == null) return null;
-  final detail = callup.declineReasonText?.trim();
+  final detail = text?.trim();
   return detail == null || detail.isEmpty ? label : '$label – $detail';
 }
 
@@ -894,15 +951,17 @@ class _LeaderHomeContentState extends State<_LeaderHomeContent> {
     final wide = MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
     // "Behöver din uppmärksamhet" moved to Min assistent — all of that
     // kind of information goes through the assistant now, not Home.
-    final today = _LeaderHomeSection(
-      title: 'Idag',
-      icon: Icons.today_outlined,
-      emptyText: 'Inga aktiviteter idag',
-      children: [
-        for (final event in value.todayEvents)
-          _HomeDayEventRow(event: event, onNavigate: onNavigate),
-      ],
+    final day = _HomeDaySections.build(
+      today: value.todayEvents,
+      upcoming: value.upcomingEvents,
+      next: value.nextEvent,
+      onNavigate: onNavigate,
+      pendingCallupId: _pendingCallupId,
+      onRespond: _respond,
     );
+    final heroCard = day.hero;
+    final todaySection = day.today;
+    final upcomingSection = day.upcoming;
     final planning = _LeaderHomeSection(
       title: wide ? 'Planering och administration' : 'Snabbåtgärder',
       icon: Icons.dashboard_customize_outlined,
@@ -921,47 +980,19 @@ class _LeaderHomeContentState extends State<_LeaderHomeContent> {
           ),
       ],
     );
-    final uniqueNext =
-        value.todayEvents.any((event) => event.id == value.nextEvent?.id)
-        ? null
-        : value.nextEvent;
-    final hero = value.nextEvent == null
-        ? null
-        : _HomeHeroEventCard(
-            event: value.nextEvent!,
-            onNavigate: onNavigate,
-            pendingCallupId: _pendingCallupId,
-            onRespond: _respond,
-          );
-    final next = uniqueNext == null
-        ? const _LeaderHomeSection(
-            title: 'Nästa aktivitet',
-            icon: Icons.event_available_outlined,
-            emptyText: 'Ingen kommande aktivitet är planerad',
-            children: [],
-          )
-        : _LeaderHomeSection(
-            title: 'Nästa aktivitet',
-            icon: Icons.event_available_outlined,
-            emptyText: '',
-            children: [
-              _LeaderEventTile(
-                event: uniqueNext,
-                onNavigate: onNavigate,
-                pendingCallupId: _pendingCallupId,
-                onRespond: _respond,
-              ),
-            ],
-          );
     final content = !wide
-        ? Column(children: [?hero, today, planning])
+        ? Column(
+            children: [heroCard, ?todaySection, ?upcomingSection, planning],
+          )
         : Column(
             children: [
-              today,
+              heroCard,
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: next),
+                  Expanded(
+                    child: Column(children: [?todaySection, ?upcomingSection]),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(child: planning),
                 ],
@@ -982,6 +1013,92 @@ class _LeaderHomeContentState extends State<_LeaderHomeContent> {
         ),
         content,
       ],
+    );
+  }
+}
+
+/// The top of every Home: one card that follows the day (what is on now,
+/// otherwise next today, otherwise the next coming event), then the rest of
+/// today and the coming days. Each event appears once, so "today" and
+/// "next" never contradict each other. Events carry the viewer's own
+/// callup (or the child's), answered right where the event is shown.
+class _HomeDaySections {
+  const _HomeDaySections._(this.hero, this.today, this.upcoming, this.shown);
+  final Widget hero;
+  final Widget? today, upcoming;
+
+  /// Event ids shown in the card or the lists.
+  final Set<String> shown;
+
+  static _HomeDaySections build({
+    required List<LeaderHomeEvent> today,
+    required List<LeaderHomeEvent> upcoming,
+    required LeaderHomeEvent? next,
+    required ValueChanged<String> onNavigate,
+    required String? pendingCallupId,
+    required void Function(LeaderHomeCallup callup, String response) onRespond,
+  }) {
+    final now = DateTime.now();
+    final active = today.where((event) => event.state != 'cancelled').toList();
+    final hero =
+        active
+            .where(
+              (event) =>
+                  !event.startsAt.isAfter(now) && event.endsAt.isAfter(now),
+            )
+            .firstOrNull ??
+        active.where((event) => event.startsAt.isAfter(now)).firstOrNull ??
+        upcoming.firstOrNull ??
+        next;
+    final restOfToday = active.where((event) => event.id != hero?.id).toList();
+    final coming = upcoming
+        .where((event) => event.id != hero?.id)
+        .take(4)
+        .toList();
+    Widget row(LeaderHomeEvent event, {required bool isToday}) => _HomeEventRow(
+      event: event,
+      now: now,
+      isToday: isToday,
+      onNavigate: onNavigate,
+      pendingCallupId: pendingCallupId,
+      onRespond: onRespond,
+    );
+    return _HomeDaySections._(
+      hero == null
+          ? const _LeaderHomeSection(
+              title: 'Nästa aktivitet',
+              icon: Icons.event_available_outlined,
+              emptyText: 'Ingen kommande aktivitet är planerad',
+              children: [],
+            )
+          : _HomeHeroEventCard(
+              event: hero,
+              now: now,
+              onNavigate: onNavigate,
+              pendingCallupId: pendingCallupId,
+              onRespond: onRespond,
+            ),
+      restOfToday.isEmpty
+          ? null
+          : _LeaderHomeSection(
+              title: 'Resten av idag',
+              icon: Icons.today_outlined,
+              emptyText: '',
+              children: [
+                for (final event in restOfToday) row(event, isToday: true),
+              ],
+            ),
+      coming.isEmpty
+          ? null
+          : _LeaderHomeSection(
+              title: 'Kommande',
+              icon: Icons.date_range_outlined,
+              emptyText: '',
+              children: [
+                for (final event in coming) row(event, isToday: false),
+              ],
+            ),
+      {?hero?.id, ...restOfToday.map((e) => e.id), ...coming.map((e) => e.id)},
     );
   }
 }
@@ -1017,16 +1134,17 @@ class _LeaderHomeSection extends StatelessWidget {
   );
 }
 
-String _leaderCallupStatusLabel(String state) => switch (state) {
-  'accepted' => 'Kommer',
-  'declined' => 'Kan inte',
-  _ => 'Obesvarad',
+/// The answer to a callup as shown on Home.
+String _callupStateLabel(String state) => switch (state) {
+  'accepted' => 'Accepterat',
+  'declined' => 'Avböjt',
+  _ => 'Obesvarat',
 };
 
-/// The compact response buttons ("Acceptera"/"Avböj"), shared by
-/// the leader home's own-callup card and the Deltagare tab's roster rows
-/// (both self- and manager-response alike) — same three actions either
-/// way, just a different callup revision/reason behind onRespond.
+/// Acceptera/Avböj for one callup, shared by Home and the Deltagare tab.
+/// Unanswered: both are neutral outlines. Answered: the chosen one is
+/// filled in its colour and reads "Accepterat"/"Avböjt" with a check; the
+/// other stays an outline so the answer can still be changed.
 class _CallupResponseButtons extends StatelessWidget {
   const _CallupResponseButtons({
     required this.busy,
@@ -1034,6 +1152,7 @@ class _CallupResponseButtons extends StatelessWidget {
     required this.response,
     required this.compact,
     required this.onRespond,
+    this.onDark = false,
   });
   final bool busy;
   final bool saving;
@@ -1041,164 +1160,212 @@ class _CallupResponseButtons extends StatelessWidget {
   final bool compact;
   final ValueChanged<String> onRespond;
 
+  /// On the coloured hero card: outlines and text in white.
+  final bool onDark;
+
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     final disabled = busy || saving;
-    final accepted = response == 'accepted';
-    final declined = response == 'declined';
     Widget button({
       required String value,
       required String label,
+      required String chosenLabel,
       required IconData icon,
-      required bool selected,
       required Color selectedColor,
     }) {
-      final onPressed = disabled ? null : () => onRespond(value);
+      final selected = response == value;
+      // Choosing the current answer again changes nothing.
+      final onPressed = disabled
+          ? null
+          : selected
+          ? () {}
+          : () => onRespond(value);
+      final text = selected ? chosenLabel : label;
       if (compact) {
         return Tooltip(
-          message: label,
-          child: selected
-              ? IconButton.filled(
-                  visualDensity: VisualDensity.compact,
-                  style: IconButton.styleFrom(
-                    backgroundColor: selectedColor,
-                    foregroundColor: Colors.white,
+          message: text,
+          child: Semantics(
+            selected: selected,
+            child: selected
+                ? IconButton.filled(
+                    visualDensity: VisualDensity.compact,
+                    style: IconButton.styleFrom(
+                      backgroundColor: selectedColor,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: onPressed,
+                    icon: Icon(icon),
+                  )
+                : IconButton.outlined(
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onPressed,
+                    icon: Icon(icon),
                   ),
-                  onPressed: onPressed,
-                  icon: Icon(icon),
-                )
-              : IconButton.outlined(
-                  visualDensity: VisualDensity.compact,
-                  onPressed: onPressed,
-                  icon: Icon(icon),
-                ),
+          ),
         );
       }
-      final style = selected
-          ? FilledButton.styleFrom(
-              backgroundColor: selectedColor,
-              foregroundColor: Colors.white,
-              visualDensity: VisualDensity.compact,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            )
-          : OutlinedButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            );
-      return selected
-          ? FilledButton.icon(
-              style: style,
-              onPressed: onPressed,
-              icon: Icon(icon, size: 18),
-              label: Text(label),
-            )
-          : OutlinedButton.icon(
-              style: style,
-              onPressed: onPressed,
-              icon: Icon(icon, size: 18),
-              label: Text(label),
-            );
+      final side = BorderSide(
+        color: onDark ? Colors.white70 : Theme.of(context).colorScheme.outline,
+      );
+      const padding = EdgeInsets.symmetric(horizontal: 14, vertical: 8);
+      return Semantics(
+        selected: selected,
+        child: selected
+            ? FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: selectedColor,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: selectedColor.withValues(alpha: .6),
+                  disabledForegroundColor: Colors.white,
+                  visualDensity: VisualDensity.compact,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: padding,
+                ),
+                onPressed: onPressed,
+                icon: const Icon(Icons.check_circle, size: 18),
+                label: Text(text),
+              )
+            : OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: onDark ? Colors.white : null,
+                  side: side,
+                  visualDensity: VisualDensity.compact,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: padding,
+                ),
+                onPressed: onPressed,
+                icon: Icon(icon, size: 18),
+                label: Text(text),
+              ),
+      );
     }
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      spacing: 8,
-      children: [
-        button(
-          value: 'accepted',
-          label: saving
-              ? strings.feature('Sparar…')
-              : strings.feature('Acceptera'),
-          icon: Icons.check,
-          selected: accepted,
-          selectedColor: Colors.green.shade700,
-        ),
-        button(
-          value: 'declined',
-          label: strings.feature('Avböj'),
-          icon: Icons.close,
-          selected: declined,
-          selectedColor: Colors.red.shade700,
-        ),
-      ],
-    );
+    final buttons = [
+      button(
+        value: 'accepted',
+        label: saving
+            ? strings.feature('Sparar…')
+            : strings.feature('Acceptera'),
+        chosenLabel: strings.feature('Accepterat'),
+        icon: Icons.check,
+        selectedColor: Colors.green.shade700,
+      ),
+      button(
+        value: 'declined',
+        label: strings.feature('Avböj'),
+        chosenLabel: strings.feature('Avböjt'),
+        icon: Icons.close,
+        selectedColor: Colors.red.shade700,
+      ),
+    ];
+    // Full-width buttons wrap on narrow screens instead of overflowing.
+    return compact
+        ? Row(mainAxisSize: MainAxisSize.min, spacing: 8, children: buttons)
+        : Wrap(spacing: 8, runSpacing: 6, children: buttons);
   }
 }
 
-class _LeaderEventTile extends StatelessWidget {
-  const _LeaderEventTile({
-    required this.event,
-    required this.onNavigate,
-    required this.pendingCallupId,
-    required this.onRespond,
-  });
-  final LeaderHomeEvent event;
-  final ValueChanged<String> onNavigate;
-  final String? pendingCallupId;
-  final void Function(LeaderHomeCallup callup, String response) onRespond;
-  @override
-  Widget build(BuildContext context) {
-    final local = event.startsAt.toLocal();
-    final material = MaterialLocalizations.of(context);
-    final place = [
-      event.locationName,
-      event.address,
-    ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' · ');
-    final callup = event.myCallup;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ListTile(
-          title: Text(event.title),
-          subtitle: Text(
-            '${material.formatCompactDate(local)} · ${material.formatTimeOfDay(TimeOfDay.fromDateTime(local))}'
-            '${place.isEmpty ? '' : '\n$place'}'
-            '${callup == null ? '' : '\n${AppStrings.of(context).feature('Din kallelse')}: '
-                      '${AppStrings.of(context).feature(_leaderCallupStatusLabel(callup.state))}'}',
-          ),
-          isThreeLine: place.isNotEmpty || callup != null,
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => onNavigate(ProductRouteContract.calendarEvent(event.id)),
-        ),
-        if (callup != null && callup.canRespond)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: _CallupResponseButtons(
-              busy: pendingCallupId != null,
-              saving: pendingCallupId == callup.id,
-              response: callup.state,
-              compact: MediaQuery.sizeOf(context).width < 600,
-              onRespond: (response) => onRespond(callup, response),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-/// The Home page's hero card for the single next upcoming event, styled
-/// after the mockup's "NEXT" card: the current color theme's radial accent
-/// gradient (see AppColorTheme.menuGradient — the same one the navigation
-/// panel uses) with light text, regardless of the rest of the app's
-/// light/dark mode. Full width, matching the cards below it.
-class _HomeHeroEventCard extends StatelessWidget {
-  const _HomeHeroEventCard({
-    required this.event,
-    required this.onNavigate,
-    required this.pendingCallupId,
-    required this.onRespond,
-  });
-  final LeaderHomeEvent event;
-  final ValueChanged<String> onNavigate;
-  final String? pendingCallupId;
-  final void Function(LeaderHomeCallup callup, String response) onRespond;
+/// The own (or child's) callup: an icon in the answer's colour and
+/// "Din kallelse: Obesvarat – svara gärna", "Accepterat" or
+/// "Avböjt – Sjukdom".
+class _CallupStatus extends StatelessWidget {
+  const _CallupStatus({required this.callup, this.onDark = false});
+  final LeaderHomeCallup callup;
+  final bool onDark;
 
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
+    final colors = Theme.of(context).colorScheme;
+    final (icon, color) = switch (callup.state) {
+      'accepted' => (Icons.check_circle, Colors.green.shade600),
+      'declined' => (Icons.cancel, Colors.red.shade600),
+      _ => (Icons.help, Colors.amber.shade700),
+    };
+    final reason = callup.state == 'declined'
+        ? _callupDeclineReason(
+            strings,
+            callup.declineReasonCode,
+            callup.declineReasonText,
+          )
+        : null;
+    final answer = [
+      strings.feature(_callupStateLabel(callup.state)),
+      if (callup.state == 'pending' && callup.canRespond)
+        strings.feature('svara gärna'),
+      ?reason,
+    ].join(' – ');
+    final text = onDark ? Colors.white : colors.onSurface;
+    return Row(
+      key: ValueKey('callup-status-${callup.state}'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: onDark ? Colors.white : null,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 20, color: color),
+        ),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: '${strings.feature('Din kallelse')}: '),
+                TextSpan(
+                  text: answer,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: text),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The Home page's hero card: what is on now, later today, tomorrow or
+/// next, on the current color theme's accent gradient (see
+/// AppColorTheme.menuGradient) with light text. Full width, matching the
+/// cards below it.
+class _HomeHeroEventCard extends StatelessWidget {
+  const _HomeHeroEventCard({
+    required this.event,
+    required this.now,
+    required this.onNavigate,
+    required this.pendingCallupId,
+    required this.onRespond,
+  });
+  final LeaderHomeEvent event;
+  final DateTime now;
+  final ValueChanged<String> onNavigate;
+  final String? pendingCallupId;
+  final void Function(LeaderHomeCallup callup, String response) onRespond;
+
+  String _moment(MaterialLocalizations material) {
+    final start = event.startsAt.toLocal();
+    final time = material.formatTimeOfDay(TimeOfDay.fromDateTime(start));
+    final today = DateUtils.dateOnly(now);
+    final day = DateUtils.dateOnly(start);
+    if (!event.startsAt.isAfter(now) && event.endsAt.isAfter(now)) {
+      final end = material.formatTimeOfDay(
+        TimeOfDay.fromDateTime(event.endsAt.toLocal()),
+      );
+      return 'PÅGÅR NU · SLUTAR $end';
+    }
+    if (day == today) return 'SENARE IDAG · $time';
+    if (day == today.add(const Duration(days: 1))) return 'IMORGON · $time';
+    return 'NÄSTA · ${material.formatMediumDate(start).toUpperCase()} · $time';
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final local = event.startsAt.toLocal();
     final material = MaterialLocalizations.of(context);
     final place = [
@@ -1207,8 +1374,9 @@ class _HomeHeroEventCard extends StatelessWidget {
     ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' · ');
     final gradient = AppColorThemeScope.of(context).colorTheme.menuGradient;
     final callup = event.myCallup;
-    final busy = pendingCallupId != null;
+    final textStyle = Theme.of(context).textTheme.bodyMedium;
     return Card(
+      key: const Key('home-hero-event'),
       margin: const EdgeInsets.only(bottom: 12),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -1222,7 +1390,7 @@ class _HomeHeroEventCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'NÄSTA',
+                  _moment(material),
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: Colors.white70,
                     letterSpacing: 1.2,
@@ -1240,64 +1408,31 @@ class _HomeHeroEventCard extends StatelessWidget {
                 Text(
                   '${material.formatFullDate(local)} · '
                   '${material.formatTimeOfDay(TimeOfDay.fromDateTime(local))}',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: Colors.white),
+                  style: textStyle?.copyWith(color: Colors.white),
                 ),
                 if (place.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
                       place,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                      style: textStyle?.copyWith(color: Colors.white70),
                     ),
                   ),
                 if (callup != null) ...[
                   Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      '${strings.feature('Din kallelse')}: '
-                      '${strings.feature(_leaderCallupStatusLabel(callup.state))}',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
-                    ),
+                    padding: const EdgeInsets.only(top: 10),
+                    child: _CallupStatus(callup: callup, onDark: true),
                   ),
                   if (callup.canRespond)
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
-                      child: Wrap(
-                        spacing: 8,
-                        children: [
-                          OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.white70),
-                            ),
-                            onPressed: busy
-                                ? null
-                                : () => onRespond(callup, 'declined'),
-                            child: Text(strings.feature('Avböj')),
-                          ),
-                          FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: Theme.of(
-                                context,
-                              ).colorScheme.primary,
-                            ),
-                            onPressed: busy
-                                ? null
-                                : () => onRespond(callup, 'accepted'),
-                            child: Text(
-                              pendingCallupId == callup.id
-                                  ? strings.feature('Sparar…')
-                                  : strings.feature('Acceptera'),
-                            ),
-                          ),
-                        ],
+                      child: _CallupResponseButtons(
+                        busy: pendingCallupId != null,
+                        saving: pendingCallupId == callup.id,
+                        response: callup.state,
+                        compact: false,
+                        onDark: true,
+                        onRespond: (response) => onRespond(callup, response),
                       ),
                     ),
                 ],
@@ -1310,51 +1445,107 @@ class _HomeHeroEventCard extends StatelessWidget {
   }
 }
 
-/// One row in the Home page's "Idag" list: a compact date badge (weekday +
-/// day of month, matching the mockup's day-strip rows) followed by the
-/// event's title and time.
-class _HomeDayEventRow extends StatelessWidget {
-  const _HomeDayEventRow({required this.event, required this.onNavigate});
+/// One row under "Resten av idag" or "Kommande": a date badge, title and
+/// time, whether it is on now or finished, and the own callup with
+/// Acceptera/Avböj while it can still be answered.
+class _HomeEventRow extends StatelessWidget {
+  const _HomeEventRow({
+    required this.event,
+    required this.now,
+    required this.isToday,
+    required this.onNavigate,
+    required this.pendingCallupId,
+    required this.onRespond,
+  });
   final LeaderHomeEvent event;
+  final DateTime now;
+  final bool isToday;
   final ValueChanged<String> onNavigate;
+  final String? pendingCallupId;
+  final void Function(LeaderHomeCallup callup, String response) onRespond;
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final local = event.startsAt.toLocal();
     final material = MaterialLocalizations.of(context);
     final colors = Theme.of(context).colorScheme;
-    return ListTile(
-      leading: Container(
-        width: 44,
-        height: 44,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: colors.secondaryContainer,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              material.narrowWeekdays[local.weekday % 7].toUpperCase(),
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: colors.onSecondaryContainer,
+    final finished = !event.endsAt.isAfter(now);
+    final ongoing = !finished && !event.startsAt.isAfter(now);
+    final callup = event.myCallup;
+    final time = material.formatTimeOfDay(TimeOfDay.fromDateTime(local));
+    final details = [
+      if (isToday) time else '${material.formatShortDate(local)} · $time',
+      if (finished) strings.feature('Avslutad'),
+      if (ongoing) strings.feature('Pågår'),
+    ];
+    return Opacity(
+      opacity: finished ? .55 : 1,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ListTile(
+            leading: Container(
+              width: 44,
+              height: 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: colors.secondaryContainer,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    material.narrowWeekdays[local.weekday % 7].toUpperCase(),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: colors.onSecondaryContainer,
+                    ),
+                  ),
+                  Text(
+                    '${local.day}',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: colors.onSecondaryContainer,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
             ),
-            Text(
-              '${local.day}',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: colors.onSecondaryContainer,
-                fontWeight: FontWeight.bold,
+            title: Text(event.title),
+            subtitle: Text(details.join(' · ')),
+            trailing: finished
+                ? Icon(Icons.check, color: colors.onSurfaceVariant)
+                : const Icon(Icons.chevron_right),
+            onTap: () =>
+                onNavigate(ProductRouteContract.calendarEvent(event.id)),
+          ),
+          if (callup != null && !finished)
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                72,
+                0,
+                16,
+                callup.canRespond ? 6 : 10,
+              ),
+              child: _CallupStatus(callup: callup),
+            ),
+          if (callup != null && callup.canRespond && !finished)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(72, 0, 16, 10),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _CallupResponseButtons(
+                  busy: pendingCallupId != null,
+                  saving: pendingCallupId == callup.id,
+                  response: callup.state,
+                  compact: false,
+                  onRespond: (response) => onRespond(callup, response),
+                ),
               ),
             ),
-          ],
-        ),
+        ],
       ),
-      title: Text(event.title),
-      subtitle: Text(material.formatTimeOfDay(TimeOfDay.fromDateTime(local))),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => onNavigate(ProductRouteContract.calendarEvent(event.id)),
     );
   }
 }

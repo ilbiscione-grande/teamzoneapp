@@ -38,6 +38,184 @@ void main() {
     expect(find.byTooltip('Öppna förberedelser'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('Hem följer dagen och kallelser besvaras direkt', (tester) async {
+    final now = DateTime.now();
+    final later = now.add(const Duration(minutes: 1));
+    final prep = _Prep()
+      ..homeToday = [
+        LeaderHomeEvent(
+          id: 'meeting',
+          title: 'Ledarmöte',
+          type: 'meeting',
+          state: 'scheduled',
+          startsAt: now.subtract(const Duration(hours: 3)),
+          endsAt: now.subtract(const Duration(hours: 2)),
+        ),
+        LeaderHomeEvent(
+          id: 'match',
+          title: 'Kvällsmatch',
+          type: 'match',
+          state: 'scheduled',
+          startsAt: later,
+          endsAt: later.add(const Duration(minutes: 50)),
+          myCallup: const LeaderHomeCallup(
+            id: 'c-match',
+            state: 'pending',
+            revision: 1,
+            canRespond: true,
+          ),
+        ),
+      ]
+      ..homeUpcoming = [
+        LeaderHomeEvent(
+          id: 'training',
+          title: 'Torsdagsträning',
+          type: 'training',
+          state: 'scheduled',
+          startsAt: later.add(const Duration(days: 2)),
+          endsAt: later.add(const Duration(days: 2, hours: 1)),
+          myCallup: const LeaderHomeCallup(
+            id: 'c-training',
+            state: 'accepted',
+            revision: 2,
+            canRespond: true,
+          ),
+        ),
+        LeaderHomeEvent(
+          id: 'friday',
+          title: 'Fredagsträning',
+          type: 'training',
+          state: 'scheduled',
+          startsAt: later.add(const Duration(days: 3)),
+          endsAt: later.add(const Duration(days: 3, hours: 1)),
+          myCallup: const LeaderHomeCallup(
+            id: 'c-friday',
+            state: 'declined',
+            revision: 2,
+            canRespond: true,
+            declineReasonCode: 'illness',
+          ),
+        ),
+      ];
+    await _openHome(tester, _Calendar('training', prep));
+    final hero = find.byKey(const Key('home-hero-event'));
+    expect(
+      find.descendant(of: hero, matching: find.textContaining('SENARE IDAG')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: hero, matching: find.text('Kvällsmatch')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: hero,
+        matching: find.textContaining('Obesvarat – svara gärna'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Resten av idag'), findsOneWidget);
+    expect(find.textContaining('Avslutad'), findsOneWidget);
+    expect(find.text('Kommande'), findsOneWidget);
+    // An answered callup shows its choice filled and keeps the other open.
+    expect(find.widgetWithText(FilledButton, 'Accepterat'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Avböj'), findsNWidgets(2));
+    // A declined callup is filled red and says why.
+    expect(find.widgetWithText(FilledButton, 'Avböjt'), findsOneWidget);
+    expect(find.textContaining('Avböjt – Sjukdom'), findsOneWidget);
+    expect(find.byKey(const ValueKey('callup-status-pending')), findsOneWidget);
+    expect(find.text('Nästa aktivitet'), findsNothing);
+
+    await tester.tap(
+      find.descendant(
+        of: hero,
+        matching: find.widgetWithText(OutlinedButton, 'Acceptera'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(prep.responses, [('c-match', 'accepted')]);
+    expect(find.widgetWithText(FilledButton, 'Accepterat'), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('spelarens Hem visar kallelsen i dagens kort', (tester) async {
+    final now = DateTime.now();
+    final later = now.add(const Duration(minutes: 1));
+    PlayerHomeCallup callup(
+      String id,
+      String event,
+      String state,
+      DateTime at,
+    ) => PlayerHomeCallup(
+      id: id,
+      eventId: event,
+      state: state,
+      revision: 1,
+      eventTitle: event,
+      eventType: 'training',
+      startsAt: at,
+      endsAt: at.add(const Duration(hours: 1)),
+      canRespond: true,
+      responseRole: 'player',
+    );
+    LeaderHomeEvent event(String id, String title, DateTime at) =>
+        LeaderHomeEvent(
+          id: id,
+          title: title,
+          type: 'training',
+          state: 'scheduled',
+          startsAt: at,
+          endsAt: at.add(const Duration(hours: 1)),
+        );
+    final prep = _Prep()
+      ..homeToday = [event('evening', 'Kvällsträning', later)]
+      ..homeUpcoming = [
+        event('match', 'Lördagsmatch', later.add(const Duration(days: 2))),
+      ]
+      ..playerCallups = [
+        callup('c-evening', 'evening', 'pending', later),
+        callup(
+          'c-match',
+          'match',
+          'accepted',
+          later.add(const Duration(days: 2)),
+        ),
+        callup('c-cup', 'cup', 'pending', later.add(const Duration(days: 40))),
+      ];
+    await _openHome(
+      tester,
+      _Calendar('training', prep),
+      identity: const _PlayerIdentity(),
+    );
+    final hero = find.byKey(const Key('home-hero-event'));
+    expect(
+      find.descendant(of: hero, matching: find.text('Kvällsträning')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: hero,
+        matching: find.textContaining('Obesvarat – svara gärna'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Kommande'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Accepterat'), findsOneWidget);
+    // A callup beyond the card and lists keeps its own section.
+    expect(find.text('Fler kallelser'), findsOneWidget);
+    expect(find.text('cup'), findsOneWidget);
+    expect(find.text('Dina kallelser'), findsNothing);
+
+    await tester.tap(
+      find.descendant(
+        of: hero,
+        matching: find.widgetWithText(OutlinedButton, 'Acceptera'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(prep.responses, [('c-evening', 'accepted')]);
+    expect(find.widgetWithText(FilledButton, 'Accepterat'), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
+  });
   group('Mål och uppföljning', () {
     testWidgets('goal set in preparation is followed up with a value', (
       tester,
@@ -673,6 +851,30 @@ Future<void> _pumpFrames(WidgetTester tester) async {
   }
 }
 
+Future<void> _openHome(
+  WidgetTester tester,
+  _Calendar calendar, {
+  IdentityServices identity = const _Identity(),
+}) async {
+  tester.view.physicalSize = const Size(390, 1400);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  await tester.pumpWidget(
+    TeamZoneApp(
+      environment: const AppEnvironment(name: 'prep01', matchSpaceV2: true),
+      locale: const Locale('sv'),
+      services: AppServices(
+        identity: identity,
+        calendar: calendar,
+        overview: _PreparationOverview(calendar.preparation as _Prep),
+        isConfigured: true,
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 Future<void> _openPreparation(
   WidgetTester tester,
   _Calendar calendar, {
@@ -734,10 +936,49 @@ class _PreparationOverview extends UnconfiguredOverviewServices {
   _PreparationOverview(this.prep);
   final _Prep prep;
   @override
+  Future<PlayerHomeProjection> loadPlayerHome(String contextId) async =>
+      PlayerHomeProjection(
+        generatedAt: DateTime.now(),
+        team: const PlayerHomeTeam(
+          teamId: 'team',
+          teamName: 'F2012',
+          clubName: 'Testklubben',
+          memberCount: 14,
+        ),
+        callups: prep.playerCallups,
+        unreadMessageCount: 0,
+        todayEvents: prep.homeToday,
+        upcomingEvents: prep.homeUpcoming,
+      );
+  @override
+  Future<MainSurfacesProjection> load({
+    required List<String> contextIds,
+  }) async => MainSurfacesProjection.fromJson({
+    'schema_version': 1,
+    'generated_at': DateTime.now().toUtc().toIso8601String(),
+    'sync_cursor': 'djE=',
+    'contexts': const [],
+    'actions': const [],
+    'home': {
+      'upcoming_count': 0,
+      'pending_callup_count': 0,
+      'next_event': null,
+    },
+    'inbox': {'messages_available': false, 'pending_notification_count': 0},
+    'statistics': {
+      'present': 0,
+      'late': 0,
+      'partial': 0,
+      'absent': 0,
+      'unknown': 0,
+    },
+  });
+  @override
   Future<LeaderHomeProjection> loadLeaderHome(String contextId) async =>
       LeaderHomeProjection(
         generatedAt: DateTime.now(),
-        todayEvents: const [],
+        todayEvents: prep.homeToday,
+        upcomingEvents: prep.homeUpcoming,
         planningActions: const [],
         tasks: prep.items.any((i) => i.kind == 'material' && !i.done)
             ? [
@@ -758,6 +999,9 @@ class _Prep implements EventPreparationServices {
   final bool canEdit;
   final PreparationPermissions? permissions;
   List<PreparationItem> items = [];
+  List<LeaderHomeEvent> homeToday = [], homeUpcoming = [];
+  List<PlayerHomeCallup> playerCallups = [];
+  final responses = <(String, String)>[];
   PreparationNote note = const PreparationNote();
   List<EventFile> files = [];
   List<String> suggestions = [];
@@ -1271,6 +1515,54 @@ class _Calendar extends UnconfiguredCalendarServices {
   final String type;
   final _Prep prep;
 
+  @override
+  Future<void> respondCallup({
+    required String callupId,
+    required String response,
+    String? actingAsPersonId,
+    String? declineReasonCode,
+    String? declineReasonText,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {
+    prep.responses.add((callupId, response));
+    LeaderHomeEvent answer(LeaderHomeEvent e) => e.myCallup?.id != callupId
+        ? e
+        : LeaderHomeEvent(
+            id: e.id,
+            title: e.title,
+            type: e.type,
+            state: e.state,
+            startsAt: e.startsAt,
+            endsAt: e.endsAt,
+            myCallup: LeaderHomeCallup(
+              id: callupId,
+              state: response,
+              revision: expectedRevision + 1,
+              canRespond: true,
+            ),
+          );
+    prep.playerCallups = [
+      for (final c in prep.playerCallups)
+        c.id != callupId
+            ? c
+            : PlayerHomeCallup(
+                id: c.id,
+                eventId: c.eventId,
+                state: response,
+                revision: c.revision + 1,
+                eventTitle: c.eventTitle,
+                eventType: c.eventType,
+                startsAt: c.startsAt,
+                endsAt: c.endsAt,
+                canRespond: true,
+                responseRole: c.responseRole,
+              ),
+    ];
+    prep.homeToday = prep.homeToday.map(answer).toList();
+    prep.homeUpcoming = prep.homeUpcoming.map(answer).toList();
+  }
+
   String get title => switch (type) {
     'match' => 'Match A',
     'meeting' => 'Möte A',
@@ -1412,6 +1704,22 @@ class _Identity implements IdentityServices {
   }) async {}
   @override
   Future<void> signOut() async {}
+}
+
+class _PlayerIdentity extends _Identity {
+  const _PlayerIdentity();
+  @override
+  Future<List<TeamZoneContext>> getContexts() async => const [
+    TeamZoneContext(
+      id: 'player-context',
+      clubId: 'club',
+      clubName: 'Testklubben',
+      teamId: 'team',
+      teamName: 'F2012',
+      rolePackage: 'player',
+      capabilities: {'team.read'},
+    ),
+  ];
 }
 
 class _SharedTeamIdentity extends _Identity {

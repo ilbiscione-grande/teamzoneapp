@@ -48,11 +48,10 @@ void main() {
       overviewSurface,
       contains("canonicalKey: (callup) => 'event:\${callup.eventId}'"),
     );
-    expect(
-      overviewSurface,
-      contains('callup.eventId == widget.value.nextEvent?.id'),
-    );
-    expect(overviewSurface, contains('event.id == value.nextEvent?.id'));
+    // Home shows each event once: in the day card or a list, and a
+    // callup gets its own row only when its event is not shown there.
+    expect(overviewSurface, contains('event.id != hero?.id'));
+    expect(overviewSurface, contains('!day.shown.contains(callup.eventId)'));
   });
 
   test('screen density changes while data and actions stay identical', () {
