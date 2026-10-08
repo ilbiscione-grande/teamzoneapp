@@ -1,10 +1,11 @@
 # TeamZone implementation slice status
 
-Updated: 2026-10-05
+Updated: 2026-10-08
 
 Latest consolidated implementation deltas:
-[2026-10-02–2026-10-04](../evidence/core_app_iteration_2026-10-02_10-04.md) and
-[2026-10-05](../evidence/core_app_iteration_2026-10-05.md).
+[2026-10-02–2026-10-04](../evidence/core_app_iteration_2026-10-02_10-04.md),
+[2026-10-05](../evidence/core_app_iteration_2026-10-05.md) and
+[2026-10-07–2026-10-08](../evidence/core_app_iteration_2026-10-07_10-08.md).
 
 Multiple addresses and restricted personal data:
 [design, behavior and verification](address-privacy.md).
@@ -249,7 +250,7 @@ remain partial only for the explicit gates stated on each card; deferred
 imports, workspaces/webtools, generative AI and production provisioning are not
 silently counted as current implementation work.
 
-### Wave 10 – extensions after the core app (2026-09-27 – 2026-10-05)
+### Wave 10 – extensions after the core app (2026-09-27 – 2026-10-08)
 
 The product owner's follow-up priorities are tracked as wave 10 in
 [`core_app_delivery_cards.md`](core_app_delivery_cards.md#14-våg-10--utbyggnad-efter-grundappen):
@@ -288,3 +289,15 @@ reminder quiets the unanswered-callups warning for six hours. Migrations
 `20261005090000` and `20261005140000` are applied to the audit project.
 Evidence:
 [`core_app_iteration_2026-10-05.md`](../evidence/core_app_iteration_2026-10-05.md).
+
+On 2026-10-07 – 2026-10-08 the public site got its own page administration
+and news images; events got KPI goals in Förberedelser, an Uppföljning tab and
+live KPI counters in Matchläge (match analysis is reserved for the coming
+match module); event details moved their actions to a "⋮" menu with the
+result under the title; Hem shows one card that follows the day for leaders,
+players and guardians with callups answered in place; events are visible to
+their audience; absence counts only when a person was called; players and
+guardians can answer club functionaries; and Demoklubben IF seeds exist for
+demos. Migrations `20261007090000`–`20261012120000` are applied to the
+audit project. Evidence:
+[`core_app_iteration_2026-10-07_10-08.md`](../evidence/core_app_iteration_2026-10-07_10-08.md).

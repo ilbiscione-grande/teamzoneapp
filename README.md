@@ -22,6 +22,10 @@ account/contact privacy and the official-club support operation through 2026-10-
 The 2026-10-05 worklist (leaner navigation menu, calendar navigation, theme
 mode, page-aware quick actions and event deletion before callups) is in
 [`docs/evidence/core_app_iteration_2026-10-05.md`](docs/evidence/core_app_iteration_2026-10-05.md).
+Public page administration and news images, event KPIs and follow-up, the
+event "⋮" menu, a Hem that follows the day for every role, audience-based
+event visibility and the demo club (2026-10-07 – 2026-10-08) are in
+[`docs/evidence/core_app_iteration_2026-10-07_10-08.md`](docs/evidence/core_app_iteration_2026-10-07_10-08.md).
 
 Current progress is tracked in
 [`docs/implementation/slice_status.md`](docs/implementation/slice_status.md).
