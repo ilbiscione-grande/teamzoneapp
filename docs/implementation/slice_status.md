@@ -1,11 +1,12 @@
 # TeamZone implementation slice status
 
-Updated: 2026-10-08
+Updated: 2026-10-09
 
 Latest consolidated implementation deltas:
 [2026-10-02–2026-10-04](../evidence/core_app_iteration_2026-10-02_10-04.md),
-[2026-10-05](../evidence/core_app_iteration_2026-10-05.md) and
-[2026-10-07–2026-10-08](../evidence/core_app_iteration_2026-10-07_10-08.md).
+[2026-10-05](../evidence/core_app_iteration_2026-10-05.md),
+[2026-10-07–2026-10-08](../evidence/core_app_iteration_2026-10-07_10-08.md) and
+[2026-10-08–2026-10-09](../evidence/core_app_iteration_2026-10-08_10-09.md).
 
 Multiple addresses and restricted personal data:
 [design, behavior and verification](address-privacy.md).
@@ -301,3 +302,23 @@ guardians can answer club functionaries; and Demoklubben IF seeds exist for
 demos. Migrations `20261007090000`–`20261012120000` are applied to the
 audit project. Evidence:
 [`core_app_iteration_2026-10-07_10-08.md`](../evidence/core_app_iteration_2026-10-07_10-08.md).
+
+On 2026-10-08 – 2026-10-09 a temporary, removable attendance export to laget.se
+was added, isolated in `lib/src/features/attendance_export/` and schema
+`attendance_export`. Existing code only has hooks marked
+`attendance-export:hook`, and a removal script exists. It covers team
+integration settings, member links (manual or imported from the sync tool),
+export of an ended event's recorded attendance to the verified JSON contract,
+direct sync through a local sync agent with approval of the exact preview and
+read-back verification, and automatic lookup of the laget.se activity. Creating
+laget.se activities is deferred. Verified end to end against laget.se. The same
+iteration moved Statistik from the bottom bar to Laget → Statistik, a team view
+for team managers (attendance over a period, per month, lowest attendance and
+every member). The fifth bottom-bar button now follows the role (Arbetsytor for
+leaders, Ekonomi or Styrelse for club functionaries, Inställningar for everyone
+else), and users can choose it themselves. Arbetsytor is a placeholder for the
+coming modules. Attendance taps cycle back to unregistered, undone late
+corrections are no longer staged, and the event status circles explain
+themselves. Migrations `20261013090000`–`20261016090000` are applied to the
+audit project. Evidence:
+[`core_app_iteration_2026-10-08_10-09.md`](../evidence/core_app_iteration_2026-10-08_10-09.md).

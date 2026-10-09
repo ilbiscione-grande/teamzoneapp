@@ -26,6 +26,10 @@ Public page administration and news images, event KPIs and follow-up, the
 event "⋮" menu, a Hem that follows the day for every role, audience-based
 event visibility and the demo club (2026-10-07 – 2026-10-08) are in
 [`docs/evidence/core_app_iteration_2026-10-07_10-08.md`](docs/evidence/core_app_iteration_2026-10-07_10-08.md).
+The temporary, removable attendance export to laget.se with member import, a
+local sync agent and automatic activity lookup, team statistics under Laget, a
+role-aware fifth menu button and attendance fixes (2026-10-08 – 2026-10-09) are in
+[`docs/evidence/core_app_iteration_2026-10-08_10-09.md`](docs/evidence/core_app_iteration_2026-10-08_10-09.md).
 
 Current progress is tracked in
 [`docs/implementation/slice_status.md`](docs/implementation/slice_status.md).
