@@ -407,7 +407,18 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       Future<void>.delayed(const Duration(seconds: 1), controller.dispose);
       if (minutes == null || !mounted) return;
     }
+    // Back to what is already saved: nothing left to change for this person
+    // (so a late correction no longer counts it or asks for a reason).
+    final unchanged =
+        status == (person.attendanceStatus ?? 'unknown') &&
+        (minutes == null || minutes == person.attendanceMinutes);
     setState(() {
+      if (unchanged) {
+        _stagedStatus.remove(person.personId);
+        _stagedRevisions.remove(person.personId);
+        _stagedMinutes.remove(person.personId);
+        return;
+      }
       _stagedStatus[person.personId] = status;
       _stagedRevisions.putIfAbsent(
         person.personId,
@@ -419,6 +430,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         _stagedMinutes.remove(person.personId);
       }
     });
+    if (unchanged) return;
     if (_resolvedPermissions?.lateWindow != true) await _saveAttendance();
   }
 
@@ -1224,12 +1236,15 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
     VoidCallback? primary;
     if (_eventEnded) {
       if (_canRecordAttendance && !_working) {
-        // Without a callup nobody is expected: tapping again clears the
-        // walk-in instead of marking an absence.
-        primary = () => _setAttendance(
-          p,
-          _present(p) ? (expected ? 'absent' : 'unknown') : 'present',
-        );
+        // Taps cycle Ej registrerad → Närvarande → Frånvarande → Ej
+        // registrerad, so a mistaken tap can always be undone. Without a
+        // callup nobody is expected: a walk-in goes straight back to
+        // unregistered instead of becoming an absence.
+        primary = () => _setAttendance(p, switch (status) {
+          'unknown' => 'present',
+          'absent' => 'unknown',
+          _ => expected ? 'absent' : 'unknown',
+        });
       }
     } else if (!p.isCalled) {
       if (_canManage && !_working && !_selectionFrozen) {

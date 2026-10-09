@@ -425,12 +425,20 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                     0.0,
                     1.0,
                   );
+              final scale = 0.82 + 0.18 * expanded;
               return Padding(
                 padding: EdgeInsets.fromLTRB(20, 8 + 4 * expanded, 20, 0),
-                child: Transform.scale(
-                  scale: 0.82 + 0.18 * expanded,
+                // Transform.scale only shrinks the paint; heightFactor
+                // shrinks the layout too, so the gap to the tab row stays
+                // constant and the tabs move up with the circles.
+                child: Align(
                   alignment: Alignment.topCenter,
-                  child: child,
+                  heightFactor: scale,
+                  child: Transform.scale(
+                    scale: scale,
+                    alignment: Alignment.topCenter,
+                    child: child,
+                  ),
                 ),
               );
             },
@@ -1685,36 +1693,52 @@ class _StatusHeaderRow extends StatelessWidget {
     // read fine at a glance; a tooltip on each circle covers the rest.
     final showLabels =
         MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
+    final sv = strings.isSwedish;
     final circles = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         _StatusCircle(
           count: draft,
           label: strings.feature('Utkast'),
+          description: sv
+              ? '$draft i urvalet som inte har kallats än'
+              : '$draft selected but not called yet',
           color: Colors.blueGrey,
           showLabel: showLabels,
         ),
         _StatusCircle(
           count: called,
           label: strings.feature('Kallade'),
+          description: sv
+              ? '$called har fått kallelse'
+              : '$called have been called',
           color: Colors.indigo,
           showLabel: showLabels,
         ),
         _StatusCircle(
           count: accepted,
           label: strings.domainValue('accepted'),
+          description: sv
+              ? '$accepted har tackat ja'
+              : '$accepted have accepted',
           color: Colors.green,
           showLabel: showLabels,
         ),
         _StatusCircle(
           count: unanswered,
           label: strings.feature('Obesvarade'),
+          description: sv
+              ? '$unanswered har inte svarat på kallelsen'
+              : '$unanswered have not answered',
           color: Colors.amber.shade800,
           showLabel: showLabels,
         ),
         _StatusCircle(
           count: declined,
           label: strings.domainValue('declined'),
+          description: sv
+              ? '$declined har tackat nej'
+              : '$declined have declined',
           color: Colors.red,
           showLabel: showLabels,
         ),
@@ -1722,6 +1746,9 @@ class _StatusHeaderRow extends StatelessWidget {
           _StatusCircle(
             count: attended,
             label: strings.feature('Deltog'),
+            description: sv
+                ? '$attended registrerade som närvarande (även sena och delvis)'
+                : '$attended registered as attended (incl. late and partial)',
             color: Colors.teal,
             showLabel: showLabels,
           ),
@@ -1746,19 +1773,24 @@ class _StatusCircle extends StatelessWidget {
   const _StatusCircle({
     required this.count,
     required this.label,
+    required this.description,
     required this.color,
     required this.showLabel,
   });
   final int count;
-  final String label;
+  final String label, description;
   final Color color;
   final bool showLabel;
 
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(right: 14),
+    // Hover on desktop and web, a tap on phones (long-press is hard to
+    // discover there); the label leads, the description explains.
     child: Tooltip(
-      message: label,
+      message: '$label: $description',
+      triggerMode: TooltipTriggerMode.tap,
+      showDuration: const Duration(seconds: 3),
       child: Column(
         children: [
           Container(

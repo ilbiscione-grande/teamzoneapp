@@ -83,9 +83,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilterChip, 'Alla lag'));
     await tester.pumpAndSettle();
     expect(find.text('Alla eventtyper'), findsOneWidget);
-    await tester.ensureVisible(find.text('Klar'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Klar'));
+    await tester.tap(find.byKey(const Key('calendarFilterClose')));
     await tester.pumpAndSettle();
     await selectView('Månad');
     // Today's cell shows an event-count badge instead of cropped titles...
@@ -160,7 +158,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Visa arkiverade event'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Klar'));
+    await tester.tap(find.byKey(const Key('calendarFilterClose')));
     await tester.pumpAndSettle();
 
     expect(find.text('Arkiverade event'), findsOneWidget);

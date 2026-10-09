@@ -901,6 +901,99 @@ void main() {
     expect(bulk.every((c) => c['status'] == 'absent'), isTrue);
     expect(calendar.dispatches, isEmpty);
   });
+  testWidgets('a tap cycles present, absent and back to unregistered', (
+    tester,
+  ) async {
+    final calendar = _Calendar(ended: true);
+    await _openParticipants(tester, calendar);
+    final row = find.byKey(const ValueKey('participant-row-accepted-1'));
+    Future<String> tap() async {
+      await tester.ensureVisible(row);
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+      return calendar.attendanceChanges.last.single['status'] as String;
+    }
+
+    // Called and present: present → absent → unregistered → present.
+    expect(await tap(), 'absent');
+    expect(await tap(), 'unknown');
+    expect(await tap(), 'present');
+
+    // A walk-in without callup goes straight back to unregistered.
+    final walkIn = find.text('Ulla Uncalled');
+    await tester.ensureVisible(walkIn);
+    await tester.tap(walkIn);
+    await tester.pumpAndSettle();
+    expect(calendar.attendanceChanges.last.single['status'], 'present');
+    await tester.tap(walkIn);
+    await tester.pumpAndSettle();
+    expect(calendar.attendanceChanges.last.single['status'], 'unknown');
+  });
+  testWidgets('status circles explain themselves; tabs follow the shrink', (
+    tester,
+  ) async {
+    await _openParticipants(tester, _Calendar(ended: true));
+    expect(
+      find.byTooltip(RegExp(r'^Kallade: \d+ har fått kallelse$')),
+      findsOneWidget,
+    );
+    expect(
+      find.byTooltip(RegExp(r'^Deltog: \d+ registrerade')),
+      findsOneWidget,
+    );
+    final tabs = find.byType(TabBar).first;
+    final collapsedTop = tester.getTopLeft(tabs).dy;
+    await tester.tap(find.text('Info'));
+    await tester.pumpAndSettle();
+    final expandedTop = tester.getTopLeft(tabs).dy;
+    // The circles shrink on the other tabs; the tab row moves up with them
+    // instead of leaving a growing gap.
+    expect(collapsedTop, lessThan(expandedTop));
+  });
+  testWidgets('a late change undone again is no longer staged', (tester) async {
+    final calendar = _Calendar(ended: true, late: true);
+    await _openParticipants(tester, calendar);
+    // Both were called: one saved as present, one as absent.
+    // skipOffstage: rows scrolled into the lazy list's cache are offstage.
+    final present = find.byKey(
+      const ValueKey('participant-row-accepted-1'),
+      skipOffstage: false,
+    );
+    final absent = find.byKey(
+      const ValueKey('participant-row-declined-1'),
+      skipOffstage: false,
+    );
+    Future<void> tapRow(Finder row) async {
+      // Centre the row; at the edge the staged-changes box covers it.
+      await Scrollable.ensureVisible(tester.element(row), alignment: 0.5);
+      await tester.pumpAndSettle();
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+    }
+
+    await tapRow(present); // present -> absent
+    await tapRow(absent); // absent -> unregistered
+    expect(find.text('2 ändringar'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextField, 'Orsak till sen ändring'),
+      findsOneWidget,
+    );
+
+    // unregistered -> present -> absent: saved state again, one change left.
+    await tapRow(absent);
+    await tapRow(absent);
+    expect(find.text('1 ändringar'), findsOneWidget);
+
+    // absent -> unregistered -> present: nothing left to save.
+    await tapRow(present);
+    await tapRow(present);
+    expect(find.textContaining('ändringar'), findsNothing);
+    expect(
+      find.widgetWithText(TextField, 'Orsak till sen ändring'),
+      findsNothing,
+    );
+    expect(calendar.attendanceChanges, isEmpty);
+  });
   testWidgets('late correction stages and requires reason', (tester) async {
     final calendar = _Calendar(ended: true, late: true);
     await _openParticipants(tester, calendar);

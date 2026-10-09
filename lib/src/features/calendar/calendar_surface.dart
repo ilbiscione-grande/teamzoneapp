@@ -745,11 +745,24 @@ Future<void> _showCalendarFilterSheet({
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  AppStrings.of(sheetContext).feature('Vy och filter'),
-                  style: Theme.of(sheetContext).textTheme.titleMedium,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        AppStrings.of(sheetContext).feature('Vy och filter'),
+                        style: Theme.of(sheetContext).textTheme.titleMedium,
+                      ),
+                    ),
+                    // Changes apply immediately; this only closes the sheet.
+                    IconButton(
+                      key: const Key('calendarFilterClose'),
+                      tooltip: AppStrings.of(sheetContext).close,
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(sheetContext).pop(),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
                 Text(
                   AppStrings.of(sheetContext).feature('Vy'),
                   style: Theme.of(sheetContext).textTheme.labelLarge,
@@ -897,11 +910,6 @@ Future<void> _showCalendarFilterSheet({
                     setSheetState(() => localShowQuarterHourMarks = value);
                     onShowQuarterHourMarksChanged(value);
                   },
-                ),
-                const SizedBox(height: 8),
-                FilledButton(
-                  onPressed: () => Navigator.of(sheetContext).pop(),
-                  child: Text(AppStrings.of(sheetContext).feature('Klar')),
                 ),
               ],
             ),
