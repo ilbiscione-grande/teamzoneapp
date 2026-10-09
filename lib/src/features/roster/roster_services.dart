@@ -2,6 +2,9 @@ import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/roster/roster_models.dart';
+import 'package:teamzone_app/src/features/roster/team_statistics_models.dart';
+
+export 'package:teamzone_app/src/features/roster/team_statistics_models.dart';
 
 abstract interface class RosterServices {
   /// Replaces a leader's panel capabilities. [expected] is the set the
@@ -294,9 +297,23 @@ abstract interface class RosterServices {
     String? toRole,
     required String idempotencyKey,
   });
+
+  /// Laget → Statistik: the team's attendance over a period, for the people
+  /// who manage the team.
+  Future<TeamStatistics> getTeamStatistics({
+    required String teamId,
+    required DateTime from,
+    required DateTime to,
+  });
 }
 
 class UnconfiguredRosterServices implements RosterServices {
+  @override
+  Future<TeamStatistics> getTeamStatistics({
+    required String teamId,
+    required DateTime from,
+    required DateTime to,
+  }) => Future.error(StateError('Supabase is not configured.'));
   @override
   Future<IntakeOverview> getIntakeOverview({required String clubId}) =>
       Future.error(StateError('Supabase is not configured.'));
@@ -648,6 +665,26 @@ class UnconfiguredRosterServices implements RosterServices {
 }
 
 class SupabaseRosterServices implements RosterServices {
+  @override
+  Future<TeamStatistics> getTeamStatistics({
+    required String teamId,
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'get_team_statistics',
+          params: {
+            'team_id': teamId,
+            'from_at': from.toUtc().toIso8601String(),
+            'to_at': to.toUtc().toIso8601String(),
+          },
+        );
+    if (value is! Map) throw const FormatException('Team statistics invalid.');
+    return TeamStatistics.fromJson(Map<String, dynamic>.from(value));
+  }
+
   @override
   Future<IntakeOverview> getIntakeOverview({required String clubId}) async {
     final value = await _client

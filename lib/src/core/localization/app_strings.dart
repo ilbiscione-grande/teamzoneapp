@@ -193,6 +193,38 @@ class AppStrings {
   }
 
   static const Map<String, String> _featureEnglish = {
+    // Laget → Statistik, the fifth bottom-bar button and Arbetsytor.
+    'Lagstatistik': 'Team statistics',
+    '30 dagar': '30 days',
+    '90 dagar': '90 days',
+    'I år': 'This year',
+    'Inga aktiviteter under perioden': 'No activities in this period',
+    'Statistiken visas när laget har genomfört aktiviteter.':
+        'Statistics appear once the team has held activities.',
+    'Svar på kallelser': 'Callup answers',
+    'Sena ankomster': 'Late arrivals',
+    'Närvaro per månad': 'Attendance per month',
+    'Lägst närvaro': 'Lowest attendance',
+    'Spelare med minst tre räknade aktiviteter.':
+        'Players with at least three counted activities.',
+    'Närvarande, sen och delvis räknas som närvaro. Frånvaro räknas bara för den som var kallad (eller när aktiviteten saknade kallelser). Oregistrerad närvaro räknas inte. Lagets andelar gäller spelarna. Tryck på en person för hens egen statistik.':
+        'Present, late and partial count as attended. An absence only counts for someone who was called (or when the activity had no callups). Unregistered attendance is not counted. Team rates are about the players. Tap a person for their own statistics.',
+    'Ledarnas verktyg samlade på ett ställe. Fler arbetsytor kommer.':
+        "The leaders' tools in one place. More workspaces are coming.",
+    'Spelarnas utveckling och mål': "Players' development and goals",
+    'Planerade arbetsytor': 'Planned workspaces',
+    'Planering': 'Planning',
+    'Träningsplanering och övningsbank': 'Training planning and drill library',
+    'Matchförberedelser, statistik och analys':
+        'Match preparation, statistics and analysis',
+    'Säsong, perioder och fokusområden': 'Season, periods and focus areas',
+    'Min profil och statistik': 'My profile and statistics',
+    'Dina uppgifter, din närvaro och dina kallelser i laget.':
+        'Your details, attendance and callups in the team.',
+    'Femte knappen i menyn': 'Fifth menu button',
+    'Hem, Laget, Kalender och Inkorg är alltid med. Den femte följer din roll om du inte väljer själv.':
+        'Home, Team, Calendar and Inbox are always there. The fifth follows your role unless you choose.',
+    'Automatiskt (efter roll)': 'Automatic (by role)',
     'Hantera din kalenderkrock': 'Manage your calendar conflict',
     'Öppna aktivitet och svara': 'Open activity and respond',
     'Ändra tid': 'Change time',
@@ -2064,6 +2096,10 @@ class AppStrings {
     '/inbox' => 'Inbox',
     '/statistics' => isSwedish ? 'Statistik' : 'Statistics',
     '/development' => isSwedish ? 'Utveckling' : 'Development',
+    '/workspaces' => isSwedish ? 'Arbetsytor' : 'Workspaces',
+    '/settings' => isSwedish ? 'Inställningar' : 'Settings',
+    '/economy' => isSwedish ? 'Ekonomi' : 'Economy',
+    '/board' => isSwedish ? 'Styrelse' : 'Board',
     _ => '',
   };
   String get surfaceReady => isSwedish

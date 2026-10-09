@@ -8,6 +8,7 @@ import 'package:teamzone_app/src/core/identity/identity_services.dart';
 import 'package:teamzone_app/src/core/identity/auth_entry_services.dart';
 import 'package:teamzone_app/src/core/identity/session_persistence.dart';
 import 'package:teamzone_app/src/core/preferences/calendar_preferences.dart';
+import 'package:teamzone_app/src/core/preferences/navigation_preferences.dart';
 import 'package:teamzone_app/src/core/preferences/theme_persistence.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_services.dart';
 import 'package:teamzone_app/src/features/assistant_coach/assistant_identity.dart';
@@ -35,6 +36,7 @@ class AppServices {
     this.contextPersistence = const StatelessContextPersistence(),
     this.themePersistence = const StatelessThemePersistence(),
     this.calendarPreferences = const StatelessCalendarPreferences(),
+    this.navigationPreferences = const StatelessNavigationPreferences(),
     this.roster = const UnconfiguredRosterServices(),
     this.membership = const UnconfiguredMembershipServices(),
     this.legal = const UnconfiguredLegalServices(),
@@ -58,6 +60,7 @@ class AppServices {
   final ContextPersistence contextPersistence;
   final ThemePersistence themePersistence;
   final CalendarPreferences calendarPreferences;
+  final NavigationPreferences navigationPreferences;
   final RosterServices roster;
   final MembershipServices membership;
   final LegalServices legal;
@@ -89,6 +92,7 @@ class SupabaseBootstrap {
         // ansluten" state.
         themePersistence: SharedPreferencesThemePersistence(),
         calendarPreferences: SharedPreferencesCalendarPreferences(),
+        navigationPreferences: SharedPreferencesNavigationPreferences(),
         isConfigured: false,
       );
     }
@@ -118,6 +122,7 @@ class SupabaseBootstrap {
       contextPersistence: const SharedPreferencesContextPersistence(),
       themePersistence: const SharedPreferencesThemePersistence(),
       calendarPreferences: const SharedPreferencesCalendarPreferences(),
+      navigationPreferences: const SharedPreferencesNavigationPreferences(),
       roster: SupabaseRosterServices(Supabase.instance.client),
       membership: SupabaseMembershipServices(Supabase.instance.client),
       legal: SupabaseLegalServices(Supabase.instance.client),

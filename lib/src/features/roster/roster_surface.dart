@@ -331,10 +331,13 @@ class _RosterSurfaceState extends State<_RosterSurface> {
             GoRouter.of(context).go(ProductRouteContract.settings),
       );
     }
+    // Laget → Statistik is for the people who manage the team.
+    final showStatistics = _canSeeTeamStatistics(widget.contextValue);
+    final selectedTab = !showStatistics && _selectedTab == 3 ? 0 : _selectedTab;
     return DefaultTabController(
-      key: ValueKey(_selectedTab),
-      length: 3,
-      initialIndex: _selectedTab,
+      key: ValueKey('$selectedTab:$showStatistics'),
+      length: showStatistics ? 4 : 3,
+      initialIndex: selectedTab,
       child: Column(
         children: [
           Material(
@@ -347,6 +350,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                   Tab(text: strings.feature('Översikt')),
                   Tab(text: strings.feature('Trupp')),
                   Tab(text: strings.feature('Kalender')),
+                  if (showStatistics) Tab(text: strings.feature('Statistik')),
                 ],
                 onTap: _selectTab,
               ),
@@ -354,7 +358,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
           ),
           Expanded(
             child: IndexedStack(
-              index: _selectedTab,
+              index: selectedTab,
               children: [
                 _TeamOverviewSurface(
                   contextValue: widget.contextValue,
@@ -369,6 +373,11 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                   contextValue: widget.contextValue,
                   calendar: widget.calendar,
                 ),
+                if (showStatistics)
+                  _TeamStatisticsView(
+                    contextValue: widget.contextValue,
+                    roster: widget.roster,
+                  ),
               ],
             ),
           ),
@@ -380,7 +389,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
   void _selectTab(int index) {
     if (_selectedTab == index) return;
     setState(() => _selectedTab = index);
-    const names = ['overview', 'roster', 'calendar'];
+    const names = ['overview', 'roster', 'calendar', 'statistics'];
     // Keep the selected team tab as the current browser-history entry. A
     // subsequently pushed detail page can then return to this exact tab,
     // while tab changes themselves do not create a trail of near-identical
@@ -4619,6 +4628,7 @@ Future<void> _representFromProfile({
 int _teamTabIndex(String? value) => switch (value) {
   'roster' => 1,
   'calendar' => 2,
+  'statistics' => 3,
   _ => 0,
 };
 

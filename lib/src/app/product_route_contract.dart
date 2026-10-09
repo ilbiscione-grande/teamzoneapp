@@ -5,7 +5,14 @@ class ProductRouteContract {
   static const team = '/team';
   static const calendar = '/calendar';
   static const inbox = '/inbox';
+
+  /// Former destination; now Laget → Statistik. Kept as a redirect so old
+  /// links (assistant tasks, bookmarks) still land on the team statistics.
   static const statistics = '/statistics';
+  static const teamStatistics = '/team?tab=statistics';
+
+  /// Leaders' workspaces (Träning, Match, Utveckling, Planering …).
+  static const workspaces = '/workspaces';
   static const development = '/development';
   static const assistant = '/assistant';
   static const billing = '/billing';
@@ -21,11 +28,12 @@ class ProductRouteContract {
     team,
     calendar,
     inbox,
-    statistics,
+    workspaces,
     development,
   };
 
   static const auxiliaryPaths = {
+    statistics,
     billing,
     economy,
     board,

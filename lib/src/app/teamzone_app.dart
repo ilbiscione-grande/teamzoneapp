@@ -23,6 +23,7 @@ import 'package:teamzone_app/src/core/localization/app_strings.dart';
 import 'package:teamzone_app/src/core/localization/board_strings.dart';
 import 'package:teamzone_app/src/core/localization/economy_strings.dart';
 import 'package:teamzone_app/src/core/preferences/calendar_preferences.dart';
+import 'package:teamzone_app/src/core/preferences/navigation_preferences.dart';
 import 'package:teamzone_app/src/core/supabase/measured_rpc.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 import 'package:teamzone_app/src/app/product_route_contract.dart';
@@ -115,6 +116,8 @@ part '../features/publication/publication_management_surface.dart';
 part '../features/publication/publication_self_service_surface.dart';
 part '../features/publication/domain_management_surface.dart';
 part '../features/roster/roster_surface.dart';
+part '../features/roster/team_statistics_view.dart';
+part '../features/workspaces/workspaces_surface.dart';
 
 class TeamZoneApp extends StatefulWidget {
   const TeamZoneApp({
@@ -144,12 +147,14 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
   bool _showInvitationSignIn = false;
   AppColorTheme _colorTheme = AppColorTheme.green;
   ThemeMode _themeMode = ThemeMode.system;
+  FifthSlot? _fifthSlot;
 
   @override
   void initState() {
     super.initState();
     _sessionStatus = widget.services.identity.sessionStatus;
     unawaited(_loadColorTheme());
+    unawaited(_loadFifthSlot());
     _pendingInvitationToken = invitationTokenFromUri(
       Uri.tryParse(WidgetsBinding.instance.platformDispatcher.defaultRouteName),
     );
@@ -203,6 +208,16 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
         orElse: () => ThemeMode.system,
       );
     });
+  }
+
+  Future<void> _loadFifthSlot() async {
+    final slot = await widget.services.navigationPreferences.readFifthSlot();
+    if (mounted) setState(() => _fifthSlot = slot);
+  }
+
+  Future<void> _setFifthSlot(FifthSlot? slot) async {
+    setState(() => _fifthSlot = slot);
+    await widget.services.navigationPreferences.writeFifthSlot(slot);
   }
 
   Future<void> _setThemeMode(ThemeMode mode) async {
@@ -297,7 +312,11 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
       onColorThemeChanged: _setColorTheme,
       themeMode: _themeMode,
       onThemeModeChanged: _setThemeMode,
-      child: materialApp,
+      child: NavigationPreferenceScope(
+        fifthSlot: _fifthSlot,
+        onFifthSlotChanged: _setFifthSlot,
+        child: materialApp,
+      ),
     );
   }
 

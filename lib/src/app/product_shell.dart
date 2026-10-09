@@ -279,6 +279,11 @@ class _ProductShellState extends State<_ProductShell> {
               : _router.go('${ProductRouteContract.team}?tab=roster'),
         ),
       ),
+      // Statistik moved to Laget; old links keep working.
+      GoRoute(
+        path: ProductRouteContract.statistics,
+        redirect: (_, _) => ProductRouteContract.teamStatistics,
+      ),
       for (final destination in _destinations)
         GoRoute(
           path: destination.path,
@@ -323,6 +328,11 @@ class _ProductShellState extends State<_ProductShell> {
                   initialThreadId: state.uri.queryParameters['thread'],
                   initialAction: state.uri.queryParameters['action'],
                   onNavigate: _navigateFromSurface,
+                )
+              : destination.path == ProductRouteContract.workspaces
+              ? _WorkspacesSurface(
+                  contextValue: widget.contextValue,
+                  onNavigate: _router.go,
                 )
               : destination.path == '/development'
               ? _DevelopmentSurface(
@@ -683,12 +693,24 @@ class _ProductShellState extends State<_ProductShell> {
     }
   }
 
-  int _indexForBottomNav(String location) {
-    final index = _bottomNavOrder.indexWhere(
-      (path) => location.startsWith(path),
-    );
+  int _indexForBottomNav(String location, List<String> order) {
+    final index = order.indexWhere((path) => location.startsWith(path));
     return index < 0 ? 0 : index;
   }
+
+  /// What the active context may put in the bottom bar's fifth slot.
+  FifthSlotAccess get _fifthSlotAccess => FifthSlotAccess(
+    isLeader:
+        widget.contextValue.rolePackage == 'leader' ||
+        widget.contextValue.rolePackages.contains('leader'),
+    hasEconomy: _hasEconomyCapability(widget.contextValue),
+    hasBoard: _hasBoardCapability(widget.contextValue),
+  );
+
+  /// The user's own choice when allowed here, otherwise the role default.
+  FifthSlot _fifthSlot(BuildContext context) => _fifthSlotAccess.resolve(
+    NavigationPreferenceScope.maybeOf(context)?.fifthSlot,
+  );
 
   @override
   void initState() {
@@ -1031,19 +1053,25 @@ class _ProductShellState extends State<_ProductShell> {
                 ? null
                 : LayoutBuilder(
                     builder: (context, constraints) {
+                      final fifth = _fifthSlot(context);
+                      final order = _bottomNavOrder(fifth);
                       final navigationBar = NavigationBar(
-                        selectedIndex: _indexForBottomNav(location),
+                        selectedIndex: _indexForBottomNav(location, order),
                         onDestinationSelected: (index) =>
-                            _router.go(_bottomNavOrder[index]),
+                            _router.go(order[index]),
                         labelBehavior:
                             MediaQuery.textScalerOf(context).scale(1) >= 1.5
                             ? NavigationDestinationLabelBehavior
                                   .onlyShowSelected
                             : NavigationDestinationLabelBehavior.alwaysShow,
                         destinations: [
-                          for (final path in _bottomNavOrder)
+                          for (final path in order)
                             NavigationDestination(
-                              icon: Icon(_destinationFor(path).icon),
+                              icon: Icon(
+                                path == fifth.path
+                                    ? _fifthSlotIcon(fifth)
+                                    : _destinationFor(path).icon,
+                              ),
                               label: strings.destination(path),
                             ),
                         ],
@@ -1057,11 +1085,10 @@ class _ProductShellState extends State<_ProductShell> {
                       // enter the same gesture arena, so a tap (no drag
                       // beyond touch slop) resolves to its own tap
                       // recognizer as normal.
-                      final homeIndex = _bottomNavOrder.indexOf(
+                      final homeIndex = order.indexOf(
                         ProductRouteContract.home,
                       );
-                      final itemWidth =
-                          constraints.maxWidth / _bottomNavOrder.length;
+                      final itemWidth = constraints.maxWidth / order.length;
                       return Stack(
                         children: [
                           navigationBar,
@@ -1636,9 +1663,9 @@ List<_QuickAction> _quickActionsFor(
     if (contextValue.can('event.manage') ||
         contextValue.can('event.attendance.manage'))
       (
-        icon: _destinationFor(ProductRouteContract.statistics).icon,
-        label: strings.destination(ProductRouteContract.statistics),
-        route: ProductRouteContract.statistics,
+        icon: Icons.query_stats_outlined,
+        label: strings.feature('Lagstatistik'),
+        route: ProductRouteContract.teamStatistics,
       ),
     if (contextValue.can('club.billing.manage'))
       (
@@ -2139,6 +2166,16 @@ class _AppNavigationPanel extends StatelessWidget {
                   ),
                   onTap: () => _go(ProductRouteContract.development),
                 ),
+                if (contextValue.rolePackage == 'leader' ||
+                    contextValue.rolePackages.contains('leader'))
+                  _NavPanelRow(
+                    icon: _destinationFor(ProductRouteContract.workspaces).icon,
+                    label: strings.destination(ProductRouteContract.workspaces),
+                    selected: currentLocation.startsWith(
+                      ProductRouteContract.workspaces,
+                    ),
+                    onTap: () => _go(ProductRouteContract.workspaces),
+                  ),
                 if (hasAdminLinks) ...[
                   const Divider(height: 1),
                   if (contextValue.can('club.billing.manage'))

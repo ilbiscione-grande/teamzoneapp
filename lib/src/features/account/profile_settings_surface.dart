@@ -596,7 +596,92 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
     );
   }
 
+  /// Fifth-button options across all of the user's contexts. A choice that
+  /// the active context does not allow falls back to its role default.
+  List<FifthSlot> get _fifthSlotOptions {
+    final allowed = <FifthSlot>{};
+    for (final item in widget.contexts) {
+      allowed.addAll(
+        FifthSlotAccess(
+          isLeader:
+              item.rolePackage == 'leader' ||
+              item.rolePackages.contains('leader'),
+          hasEconomy: _hasEconomyCapability(item),
+          hasBoard: _hasBoardCapability(item),
+        ).options,
+      );
+    }
+    return [
+      for (final slot in FifthSlot.values)
+        if (allowed.contains(slot) || slot == FifthSlot.settings) slot,
+    ];
+  }
+
+  bool get _hasOwnTeamProfile => widget.contexts.any(
+    (item) => item.teamId != null && item.rolePackage != 'guardian',
+  );
+
   List<Widget> _generalItems(BuildContext context, AppStrings strings) => [
+    // The profile page embeds these settings; no link back to itself there.
+    if (!widget.embedded && _hasOwnTeamProfile) ...[
+      Card(
+        child: ListTile(
+          key: const ValueKey('setting-own-profile'),
+          leading: const Icon(Icons.person_outline),
+          title: Text(strings.feature('Min profil och statistik')),
+          subtitle: Text(
+            strings.feature(
+              'Dina uppgifter, din närvaro och dina kallelser i laget.',
+            ),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () =>
+              GoRouter.of(context).push(ProductRouteContract.ownTeamProfile),
+        ),
+      ),
+      const SizedBox(height: 24),
+    ],
+    Text(
+      strings.feature('Femte knappen i menyn'),
+      style: Theme.of(context).textTheme.titleMedium,
+    ),
+    const SizedBox(height: 4),
+    Text(
+      strings.feature(
+        'Hem, Laget, Kalender och Inkorg är alltid med. Den femte följer din '
+        'roll om du inte väljer själv.',
+      ),
+      style: Theme.of(context).textTheme.bodySmall,
+    ),
+    const SizedBox(height: 8),
+    Builder(
+      builder: (context) {
+        final scope = NavigationPreferenceScope.maybeOf(context);
+        final options = _fifthSlotOptions;
+        final current = options.contains(scope?.fifthSlot)
+            ? scope?.fifthSlot
+            : null;
+        return DropdownButtonFormField<FifthSlot?>(
+          key: const ValueKey('setting-fifth-slot'),
+          initialValue: current,
+          isExpanded: true,
+          items: [
+            DropdownMenuItem<FifthSlot?>(
+              value: null,
+              child: Text(strings.feature('Automatiskt (efter roll)')),
+            ),
+            for (final slot in options)
+              DropdownMenuItem<FifthSlot?>(
+                value: slot,
+                child: Text(strings.destination(slot.path)),
+              ),
+          ],
+          onChanged: scope?.onFifthSlotChanged,
+        );
+      },
+    ),
+    const SizedBox(height: 24),
+    const Divider(),
     Text(
       strings.feature('Ljust eller mörkt'),
       style: Theme.of(context).textTheme.titleMedium,
