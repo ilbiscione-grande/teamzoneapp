@@ -26,6 +26,8 @@ import 'package:teamzone_app/src/core/preferences/calendar_preferences.dart';
 import 'package:teamzone_app/src/core/supabase/measured_rpc.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 import 'package:teamzone_app/src/app/product_route_contract.dart';
+// attendance-export:hook (temporary laget.se export)
+import 'package:teamzone_app/src/features/attendance_export/attendance_export.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_models.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_services.dart';
 import 'package:teamzone_app/src/features/calendar/followup_models.dart';

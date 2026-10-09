@@ -778,6 +778,8 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
             ),
           ),
         ),
+    // attendance-export:hook (temporary laget.se export)
+    ...AttendanceExportFeature.teamSettingsEntries(context, widget.contexts),
   ];
 
   /// Contexts that may work with public pages: publishers and the team

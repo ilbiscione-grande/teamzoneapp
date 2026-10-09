@@ -1098,6 +1098,25 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
           onTap: () => _editReport(_report ?? report),
           checked: null,
         ),
+      // attendance-export:hook (temporary laget.se export)
+      if (_contextCanCoManage &&
+          AttendanceExportFeature.canOfferEventExport(
+            event: event,
+            contextValue: widget.contextValue,
+            canManageAttendance: squad.can('record_attendance'),
+          ))
+        (
+          key: 'export-laget-se',
+          icon: Icons.upload_file_outlined,
+          label: 'Exportera närvaro → laget.se',
+          onTap: () => AttendanceExportFeature.openEventExport(
+            context,
+            calendar: widget.calendar,
+            eventId: event.id,
+            teamId: widget.contextValue.teamId!,
+          ),
+          checked: null,
+        ),
       if ((widget.contextValue.teamId == null || _activeContextIsPrimary) &&
           event.can('manage_sharing'))
         (
