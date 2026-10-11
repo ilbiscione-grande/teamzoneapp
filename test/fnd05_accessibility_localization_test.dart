@@ -153,6 +153,54 @@ void main() {
     }
   });
 
+  // Every literal that reaches AppStrings.feature() needs English copy:
+  // direct calls (also split over adjacent literals and lines) and private
+  // helpers such as _showError(String) that pass their text on to feature().
+  test('all copy sent to feature() has English, across lib/', () {
+    // Long keys are split over adjacent literals; join them first.
+    final strings = File(
+      'lib/src/core/localization/app_strings.dart',
+    ).readAsStringSync().replaceAll(RegExp(r"'\s+'"), '');
+    const literal = r"'(?:[^'\\\n]|\\.)*'";
+    final pieces = RegExp(r"'((?:[^'\\\n]|\\.)*)'");
+    final helper = RegExp(
+      r'void (_\w+)\(String \w+\)\s*\{([\s\S]{0,400}?)\n  \}',
+    );
+    final missing = <String>[];
+    final files = Directory('lib')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((file) => file.path.endsWith('.dart'))
+        .where((file) => !file.path.endsWith('app_strings.dart'));
+    for (final file in files) {
+      final source = file.readAsStringSync();
+      final callers = [
+        r'\.feature',
+        for (final match in helper.allMatches(source))
+          if (RegExp(r'\.feature\(\w+\)').hasMatch(match.group(2)!))
+            match.group(1)!,
+      ];
+      for (final caller in callers) {
+        final call = RegExp('$caller\\(\\s*((?:$literal\\s*)+)\\s*[,)]');
+        for (final match in call.allMatches(source)) {
+          final text = pieces
+              .allMatches(match.group(1)!)
+              .map((piece) => piece.group(1))
+              .join();
+          if (text.contains(r'$')) continue;
+          if (!strings.contains("'$text':")) {
+            missing.add('${file.path}: $text');
+          }
+        }
+      }
+    }
+    expect(
+      missing,
+      isEmpty,
+      reason: 'Missing English copy:\n${missing.join('\n')}',
+    );
+  });
+
   test('priority surfaces keep user copy behind the locale boundary', () {
     final paths = [
       'lib/src/features/auth/auth_surfaces.dart',

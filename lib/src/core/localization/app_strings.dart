@@ -186,13 +186,96 @@ class AppStrings {
     'club' => isSwedish ? 'Hela klubben' : 'Entire club',
     _ => value.replaceAll('_', ' '),
   };
+
+  /// English copy for [swedish]. A missing entry fails tests and debug
+  /// builds (and test/fnd05 scans all of lib/ for it); a release build shows
+  /// the Swedish text rather than throwing in front of the user.
   String feature(String swedish) {
     if (isSwedish) return swedish;
-    return _featureEnglish[swedish] ??
-        (throw StateError('Missing English feature copy: $swedish'));
+    final english = _featureEnglish[swedish];
+    assert(english != null, 'Missing English feature copy: $swedish');
+    return english ?? swedish;
   }
 
   static const Map<String, String> _featureEnglish = {
+    // Copy that reached feature() without English (2026-10-11 review).
+    'Ändra uppgifterna under Kontakt.': 'Change the details under Contact.',
+    'Ändra adressen under Kontakt.': 'Change the address under Contact.',
+    'Bilden kunde inte komprimeras till rätt storlek. Välj en annan bild.':
+        'The image could not be compressed to the right size. Choose another image.',
+    'Adresser': 'Addresses',
+    'Hantera adresser och välj kontaktadress per klubb.':
+        'Manage addresses and choose a contact address per club.',
+    'Kontakt': 'Contact',
+    'Roll/titel': 'Role/title',
+    'Begär radering av mitt konto': 'Request deletion of my account',
+    'TeamZone granskar begäran innan kontot tas bort. Verksamhetshistorik bevaras i anonymiserad form så att lagets event, närvaro och statistik fortsätter fungera.':
+        'TeamZone reviews the request before the account is removed. Activity history is kept in anonymised form so the team\'s events, attendance and statistics keep working.',
+    'Jag förstår att kontot inte kan återställas efter godkänd radering.':
+        'I understand that the account cannot be restored once the deletion is approved.',
+    'Skicka begäran': 'Send request',
+    'Begäran är skickad': 'Request sent',
+    'TeamZone granskar ärendet. Kontot fungerar tills begäran har godkänts och slutförts.':
+        'TeamZone is reviewing the case. The account keeps working until the request has been approved and completed.',
+    'Begäran kunde inte skickas': 'The request could not be sent',
+    'Det kan redan finnas ett öppet ärende. Försök igen senare eller kontakta TeamZone.':
+        'There may already be an open case. Try again later or contact TeamZone.',
+    'Personligt': 'Personal',
+    'Radera konto': 'Delete account',
+    'Du kan begära global radering av din identitet. TeamZone granskar alltid begäran innan kontot tas bort.':
+        'You can request global deletion of your identity. TeamZone always reviews the request before the account is removed.',
+    'Ange minst 2 tecken.': 'Enter at least 2 characters.',
+    'Beslutsmotivering': 'Reason for decision',
+    'Verifieringen kunde inte uppdateras. Läs om kön och försök igen.':
+        'The verification could not be updated. Reload the queue and try again.',
+    'Kontot tas bort från Auth och kan inte längre användas för inloggning. Neutral historik och audit bevaras.':
+        'The account is removed from Auth and can no longer be used to sign in. Neutral history and audit are kept.',
+    'Personradering': 'Person deletion',
+    'Åtgärden kunde inte slutföras. Ärendet ligger kvar för säkert återförsök.':
+        'The action could not be completed. The case remains for a safe retry.',
+    'Klubben och laget skapas eller kopplas till en befintlig officiell klubb. Sökanden blir klubbfunktionär och får administrativ behörighet.':
+        'The club and team are created or linked to an existing official club. The applicant becomes a club functionary with administrative permissions.',
+    'Klubbverifieringarna kunde inte laddas.':
+        'The club verifications could not be loaded.',
+    'Godkänn och radera': 'Approve and delete',
+    'Godkänn och registrera': 'Approve and register',
+    'Globala personraderingar': 'Global person deletions',
+    'Endast separata support-admins kan granska. Godkännande tar bort användarens inloggningskonto.':
+        'Only separate support admins can review. Approval removes the user\'s sign-in account.',
+    'Inga globala raderingsärenden.': 'No global deletion cases.',
+    'Motståndare': 'Opponent',
+    'Matchplats': 'Venue',
+    'Delningen kunde inte sparas. Ladda om och försök igen.':
+        'The sharing could not be saved. Reload and try again.',
+    'Kallelsen kunde inte ändras. Listan kan ha ändrats. Ladda om och försök igen.':
+        'The callup could not be changed. The list may have changed. Reload and try again.',
+    'Klubbens publika sida': 'The club\'s public page',
+    'Vald publik lagsida': 'Selected public team page',
+    'Visa på klubbens publika sida': 'Show on the club\'s public page',
+    'Nyheten kan läsas utan inloggning.':
+        'The news item can be read without signing in.',
+    'Visa på lagets publika sida och i följarnas flöde':
+        'Show on the team\'s public page and in followers\' feeds',
+    'Välj minst en publik klubb- eller lagsida.':
+        'Choose at least one public club or team page.',
+    'Nyheten visas på dessa publika sidor':
+        'The news item is shown on these public pages',
+    'Titel, tid och typ publiceras. Plats och slutresultat kräver separata val.':
+        'Title, time and type are published. Place and final score need separate choices.',
+    'Återaktiveringen kunde inte sparas. Personen kan redan vara aktiv i ett annat lag.':
+        'The reactivation could not be saved. The person may already be active in another team.',
+    'Välj en eller flera spelare. Tidigare lagtillhörighet och historik bevaras.':
+        'Choose one or more players. Earlier team membership and history are kept.',
+    'Personen kunde inte sparas. Kontrollera uppgifterna och ladda om innan du försöker igen.':
+        'The person could not be saved. Check the details and reload before you try again.',
+    'Nuvarande lagtillhörighet avslutas och historiken bevaras.':
+        'The current team membership ends and the history is kept.',
+    'Spelaren flyttas till Arkiverade. Namn, matcher, närvaro och annan historik bevaras.':
+        'The player is moved to Archived. Name, matches, attendance and other history are kept.',
+    'Din roll saknar behörighet att visa de här uppgifterna.':
+        'Your role is not allowed to see these details.',
+    'Åtgärden kunde inte sparas. Ladda om och försök igen.':
+        'The action could not be saved. Reload and try again.',
     // Laget → Statistik, the fifth bottom-bar button and Arbetsytor.
     'Lagstatistik': 'Team statistics',
     '30 dagar': '30 days',
