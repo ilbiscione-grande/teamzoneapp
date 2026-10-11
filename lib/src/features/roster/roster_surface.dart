@@ -4863,13 +4863,28 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
           .getTeamProfileEdit(teamId: teamId)
           .timeout(const Duration(seconds: 15));
       final roles = await _roles;
+      TeamMatchFormat? matchFormat;
+      try {
+        matchFormat = await widget.roster.getTeamMatchFormat(teamId);
+      } catch (_) {
+        matchFormat = null;
+      }
       if (!mounted) return;
       final sportKey = _newUuid();
+      final formatKey = _newUuid();
       final saved = await showDialog<bool>(
         context: context,
         builder: (_) => _TeamProfileEditDialog(
           value: value,
           initialSport: roles?.sport,
+          matchFormat: matchFormat,
+          onMatchFormatSave: matchFormat?.canEdit == true
+              ? (format) => widget.roster.setTeamMatchFormat(
+                  teamId: teamId,
+                  format: format,
+                  idempotencyKey: formatKey,
+                )
+              : null,
           onSportSave: roles?.canSetSport == true
               ? (sport) => widget.roster.setTeamSport(
                   clubId: widget.contextValue.clubId,
@@ -5070,8 +5085,15 @@ class _TeamProfileEditDialog extends StatefulWidget {
     required this.onSave,
     this.initialSport,
     this.onSportSave,
+    this.matchFormat,
+    this.onMatchFormatSave,
   });
   final TeamProfileEditData value;
+
+  /// The team's match format (11v11 until set); editable when
+  /// [onMatchFormatSave] is set, hidden when it could not be read.
+  final TeamMatchFormat? matchFormat;
+  final Future<void> Function(MatchFormat format)? onMatchFormatSave;
 
   /// The team's sport selects its position catalog. Shown only when the
   /// user is a club administrator ([onSportSave] set); others see it read-only.
@@ -5095,6 +5117,7 @@ class _TeamProfileEditDialogState extends State<_TeamProfileEditDialog> {
   late final _ageClass = TextEditingController(text: widget.value.ageClass);
   late final _summary = TextEditingController(text: widget.value.summary);
   late String? _sport = widget.initialSport;
+  late MatchFormat? _matchFormat = widget.matchFormat?.format;
   final _draft = AppFormController();
   Uint8List? _imageBytes;
   String? _imageMimeType;
@@ -5378,6 +5401,47 @@ class _TeamProfileEditDialogState extends State<_TeamProfileEditDialog> {
               style: theme.textTheme.bodySmall,
             ),
           ],
+          if (_matchFormat case final format?) ...[
+            const SizedBox(height: 16),
+            Text(
+              strings.feature('Matchformat'),
+              style: theme.textTheme.labelLarge,
+            ),
+            const SizedBox(height: 8),
+            if (widget.onMatchFormatSave == null)
+              Text(
+                format.key,
+                key: const ValueKey('team-match-format-readonly'),
+                style: theme.textTheme.bodyLarge,
+              )
+            else
+              Wrap(
+                key: const ValueKey('team-match-format'),
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final option in MatchFormat.values)
+                    ChoiceChip(
+                      key: ValueKey('team-match-format-${option.key}'),
+                      label: Text(option.key),
+                      selected: format == option,
+                      onSelected: _saving
+                          ? null
+                          : (_) => setState(() {
+                              _matchFormat = option;
+                              _draft.markDirty();
+                            }),
+                    ),
+                ],
+              ),
+            const SizedBox(height: 4),
+            Text(
+              strings.feature(
+                'Ger nya matcher rätt längd i kalendern. Utan val gäller 11v11.',
+              ),
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
         ]),
         _section(
           context,
@@ -5525,6 +5589,14 @@ class _TeamProfileEditDialogState extends State<_TeamProfileEditDialog> {
           sport != widget.initialSport &&
           widget.onSportSave != null) {
         await widget.onSportSave!(sport);
+      }
+      // Saved also when 11v11 is merely confirmed, so the team has a value.
+      final format = _matchFormat;
+      if (format != null &&
+          widget.onMatchFormatSave != null &&
+          (format != widget.matchFormat?.format ||
+              widget.matchFormat?.isSet != true)) {
+        await widget.onMatchFormatSave!(format);
       }
       _draft.markClean();
       if (mounted) Navigator.pop(context, true);

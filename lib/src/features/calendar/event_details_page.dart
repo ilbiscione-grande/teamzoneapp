@@ -666,28 +666,12 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     );
   }
 
+  /// Only what identifies the event; the type's details (training plan,
+  /// match notes, meeting purpose and agenda) live on Förberedelser.
   List<Widget> _typedInfoTiles(BuildContext context, EventDetails event) {
     final strings = AppStrings.of(context);
     final rows = <(IconData, String, String?)>[];
     switch (event.type) {
-      case 'training':
-        rows.addAll([
-          (
-            Icons.flag_outlined,
-            strings.feature('Träningstema'),
-            event.trainingTheme,
-          ),
-          (
-            Icons.center_focus_strong_outlined,
-            strings.feature('Fokus'),
-            event.trainingFocus,
-          ),
-          (
-            Icons.assignment_outlined,
-            strings.feature('Träningsplan'),
-            event.trainingPlan,
-          ),
-        ]);
       case 'match':
         rows.addAll([
           (
@@ -701,24 +685,6 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
             event.homeAway == null
                 ? null
                 : strings.feature(event.homeAway == 'home' ? 'Hemma' : 'Borta'),
-          ),
-          (
-            Icons.notes_outlined,
-            strings.feature('Matchanteckningar'),
-            event.matchNotes,
-          ),
-        ]);
-      case 'meeting':
-        rows.addAll([
-          (
-            Icons.lightbulb_outline,
-            strings.feature('Syfte'),
-            event.meetingPurpose,
-          ),
-          (
-            Icons.format_list_bulleted,
-            strings.feature('Mötesagenda'),
-            event.meetingAgenda,
           ),
         ]);
     }
@@ -772,6 +738,13 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     } catch (_) {
       suggestions = const [];
     }
+    // Format and periods; the team default for a non-match turned match.
+    EventMatchSettings? matchSettings;
+    try {
+      matchSettings = await widget.calendar.getEventMatchSettings(event.id);
+    } catch (_) {
+      matchSettings = null;
+    }
     if (!mounted) return;
     final value = await showDialog<_EventEditorValue>(
       context: context,
@@ -779,6 +752,8 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         teamName: widget.contextValue.teamName ?? '',
         locationSuggestions: suggestions,
         initial: event,
+        matchFormat: matchSettings?.format ?? MatchFormat.fallback,
+        matchSettings: matchSettings,
       ),
     );
     if (value == null || !mounted) return;
@@ -811,14 +786,32 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         expectedRevision: event.revision,
         idempotencyKey: _newUuid(),
       );
-      if (mounted) unawaited(_refresh());
     } catch (_) {
       if (mounted) {
         _showError(
           'Eventet ändrades av någon annan. Ladda om och försök igen.',
         );
       }
+      return;
     }
+    if (value.matchSettingsChanged &&
+        value.matchFormat != null &&
+        value.periodMinutes != null) {
+      try {
+        await widget.calendar.setEventMatchSettings(
+          eventId: event.id,
+          format: value.matchFormat!,
+          periodMinutes: value.periodMinutes!,
+          scope: value.scope,
+          idempotencyKey: _newUuid(),
+        );
+      } catch (_) {
+        if (mounted) {
+          _showError('Format och perioder kunde inte sparas. Försök igen.');
+        }
+      }
+    }
+    if (mounted) unawaited(_refresh());
   }
 
   Future<void> _transition(String targetState) async {
@@ -1667,7 +1660,9 @@ class _StatusHeaderRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     final roster = [...squad.roster, ..._guestRosterFor(squad)];
-    final draft = roster.where((p) => p.inDraft).length;
+    // in_draft means "in the latest squad revision", which keeps everyone
+    // already called too; only the selected-but-not-called are a draft.
+    final draft = roster.where((p) => p.inDraft && !p.isCalled).length;
     final called = roster.where((p) => p.isCalled).length;
     final accepted = roster.where((p) => p.callupState == 'accepted').length;
     final declined = roster.where((p) => p.callupState == 'declined').length;
@@ -1697,15 +1692,17 @@ class _StatusHeaderRow extends StatelessWidget {
     final circles = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _StatusCircle(
-          count: draft,
-          label: strings.feature('Utkast'),
-          description: sv
-              ? '$draft i urvalet som inte har kallats än'
-              : '$draft selected but not called yet',
-          color: Colors.blueGrey,
-          showLabel: showLabels,
-        ),
+        // A draft no longer matters once the event is over.
+        if (!_hasEnded || draft > 0)
+          _StatusCircle(
+            count: draft,
+            label: strings.feature('Utkast'),
+            description: sv
+                ? '$draft i urvalet som inte har kallats än'
+                : '$draft selected but not called yet',
+            color: Colors.blueGrey,
+            showLabel: showLabels,
+          ),
         _StatusCircle(
           count: called,
           label: strings.feature('Kallade'),

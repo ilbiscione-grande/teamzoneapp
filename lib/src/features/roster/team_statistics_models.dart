@@ -45,8 +45,12 @@ class TeamStatisticsPerson {
     required this.late,
     required this.callups,
     required this.answered,
+    this.extra = 0,
   });
   final String personId, name, role;
+
+  /// Attended without being called; not part of the rate.
+  final int extra;
   final int attended, counted;
   final int trainingsAttended, trainingsCounted;
   final int matchesAttended, matchesCounted;
@@ -71,6 +75,7 @@ class TeamStatisticsPerson {
         late: _int(json['late']),
         callups: _int(json['callups']),
         answered: _int(json['answered']),
+        extra: _int(json['extra']),
       );
 }
 
@@ -83,12 +88,16 @@ class TeamStatistics {
     required this.late,
     required this.months,
     required this.people,
+    this.extra = 0,
     this.attendanceRate,
     this.trainingRate,
     this.matchRate,
     this.responseRate,
   });
   final int events, trainings, matches, otherEvents, late;
+
+  /// Players' attendance without a callup; reported, not in the rates.
+  final int extra;
   final double? attendanceRate, trainingRate, matchRate, responseRate;
   final List<TeamStatisticsMonth> months;
   final List<TeamStatisticsPerson> people;
@@ -125,6 +134,7 @@ class TeamStatistics {
       matchRate: _rate(json['match_rate']),
       responseRate: _rate(json['response_rate']),
       late: _int(json['late']),
+      extra: _int(json['extra']),
       months: [
         for (final row in json['months'] as List? ?? const [])
           if (row is Map)

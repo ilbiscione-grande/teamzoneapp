@@ -627,6 +627,51 @@ class TeamRoles {
   );
 }
 
+/// The team's match format, set under Laget → Redigera lagprofil; unset is
+/// 11v11. It also gives a new match its default length in the calendar.
+enum MatchFormat {
+  v3('3v3', 60, [10, 10, 10]),
+  v5('5v5', 60, [15, 15, 15]),
+  v7('7v7', 90, [20, 20, 20]),
+  v9('9v9', 105, [35, 35]),
+  v11('11v11', 120, [45, 45]);
+
+  const MatchFormat(this.key, this.defaultMatchMinutes, this.periodMinutes);
+  final String key;
+
+  /// Length of a new match event, warm-up and breaks included.
+  final int defaultMatchMinutes;
+
+  /// Default periods in match mode (same as the server's
+  /// internal.match_format_period_minutes).
+  final List<int> periodMinutes;
+
+  static const fallback = MatchFormat.v11;
+
+  static MatchFormat fromKey(String? key) =>
+      values.firstWhere((format) => format.key == key, orElse: () => fallback);
+}
+
+class TeamMatchFormat {
+  const TeamMatchFormat({
+    this.format = MatchFormat.fallback,
+    this.isSet = false,
+    this.canEdit = false,
+  });
+  final MatchFormat format;
+
+  /// False while the team still uses the 11v11 default.
+  final bool isSet;
+  final bool canEdit;
+
+  factory TeamMatchFormat.fromJson(Map<String, dynamic> json) =>
+      TeamMatchFormat(
+        format: MatchFormat.fromKey(json['effective'] as String?),
+        isSet: json['match_format'] != null,
+        canEdit: json['can_edit'] == true,
+      );
+}
+
 /// A leader or functionary elsewhere in the club who could also lead this team.
 class LeaderCandidate {
   const LeaderCandidate({

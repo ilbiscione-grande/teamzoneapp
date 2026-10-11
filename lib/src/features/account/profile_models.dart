@@ -208,6 +208,8 @@ class PersonStatistics {
     this.trainingsAttended = 0,
     this.matchesTotal = 0,
     this.matchesPlayed = 0,
+    this.trainingsExtra = 0,
+    this.matchesExtra = 0,
     this.goals = 0,
     this.assists = 0,
     this.cards = 0,
@@ -220,6 +222,9 @@ class PersonStatistics {
   });
   final bool isSelf;
   final int trainingsTotal, trainingsAttended, matchesTotal, matchesPlayed;
+
+  /// Attended without being called; not part of the attendance rate.
+  final int trainingsExtra, matchesExtra;
   final int goals, assists, cards;
   final int callupsReceived, callupsAccepted, callupsDeclined, callupsAnswered;
   final int? averageResponseMinutes;
@@ -238,6 +243,8 @@ class PersonStatistics {
       trainingsAttended: _int(sport, 'trainings_attended'),
       matchesTotal: _int(sport, 'matches_total'),
       matchesPlayed: _int(sport, 'matches_played'),
+      trainingsExtra: _int(sport, 'trainings_extra'),
+      matchesExtra: _int(sport, 'matches_extra'),
       goals: _int(sport, 'goals'),
       assists: _int(sport, 'assists'),
       cards: _int(sport, 'cards'),

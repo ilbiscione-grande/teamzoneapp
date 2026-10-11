@@ -77,15 +77,20 @@ class _PersonStatisticsViewState extends State<_PersonStatisticsView> {
                   _StatTile(
                     label: strings.feature('Träningsnärvaro'),
                     value: '${stats.trainingsAttended}/${stats.trainingsTotal}',
-                    detail: _percent(
-                      stats.trainingsAttended,
-                      stats.trainingsTotal,
+                    detail: _withExtra(
+                      strings,
+                      _percent(stats.trainingsAttended, stats.trainingsTotal),
+                      stats.trainingsExtra,
                     ),
                   ),
                   _StatTile(
                     label: strings.feature('Matcher spelade'),
                     value: '${stats.matchesPlayed}/${stats.matchesTotal}',
-                    detail: _percent(stats.matchesPlayed, stats.matchesTotal),
+                    detail: _withExtra(
+                      strings,
+                      _percent(stats.matchesPlayed, stats.matchesTotal),
+                      stats.matchesExtra,
+                    ),
                   ),
                   _StatTile(
                     key: const ValueKey('stat-goals'),
@@ -282,4 +287,14 @@ class _StatTile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// "75 % · +2 utan kallelse": attendance without a callup is shown but is
+/// not part of the rate (which counts only events the person was called to).
+String? _withExtra(AppStrings strings, String? rate, int extra) {
+  if (extra == 0) return rate;
+  final label = strings.isSwedish
+      ? '+$extra utan kallelse'
+      : '+$extra without callup';
+  return rate == null ? label : '$rate · $label';
 }

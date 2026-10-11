@@ -929,6 +929,135 @@ void main() {
     await tester.pumpAndSettle();
     expect(calendar.attendanceChanges.last.single['status'], 'unknown');
   });
+  testWidgets('callups can be corrected after the event', (tester) async {
+    final calendar = _Calendar(ended: true);
+    await _openParticipants(tester, calendar);
+    Future<void> expand(String name) async {
+      final row = find.text(name, skipOffstage: false);
+      await Scrollable.ensureVisible(tester.element(row), alignment: 0.3);
+      await tester.pumpAndSettle();
+      await tester.longPress(find.text(name));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> tapKey(String key) async {
+      final button = find.byKey(ValueKey(key), skipOffstage: false);
+      await Scrollable.ensureVisible(tester.element(button), alignment: 0.5);
+      await tester.pumpAndSettle();
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+    }
+
+    // A called player's answer: declined with a reason, after the fact.
+    await expand('Anna Accepterad');
+    expect(find.text('Kallelse (rättelse i efterhand)'), findsOneWidget);
+    await tapKey('callup-correct-declined-accepted-1');
+    expect(find.text('Varför kan du inte delta?'), findsOneWidget);
+    await tester.tap(find.text('Fortsätt'));
+    await tester.pumpAndSettle();
+    expect(calendar.corrections.last, ('accepted-1', 'declined', 'illness'));
+
+    // A forgotten player gets a callup after the fact, without a notice.
+    await expand('Ulla Uncalled');
+    await tapKey('callup-correct-add-player-uncalled-1');
+    expect(calendar.corrections.last, ('player-uncalled-1', 'accepted', null));
+
+    // Saving attendance while the row is expanded reloads its details
+    // instead of leaving them loading forever.
+    final details = find.byKey(
+      const ValueKey('participant-details-player-uncalled-1'),
+    );
+    expect(details, findsOneWidget);
+    await tester.tap(find.text('Ulla Uncalled'));
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(calendar.attendanceChanges.last.single['status'], 'present');
+    expect(
+      find.descendant(
+        of: details,
+        matching: find.byType(LinearProgressIndicator),
+      ),
+      findsNothing,
+    );
+  });
+  testWidgets('people outside the roster can be added after the event', (
+    tester,
+  ) async {
+    final calendar = _Calendar(ended: true);
+    await _openParticipants(tester, calendar);
+    expect(find.text('Gäst Spelarsson'), findsNothing);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Sök deltagare i klubben'),
+      'Gäst',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Gäst Spelarsson'));
+    await tester.pumpAndSettle();
+    expect(calendar.attendanceChanges.last.single, {
+      'person_id': 'guest-1',
+      'status': 'present',
+      'expected_revision': 0,
+    });
+  });
+  testWidgets('a match edit changes its periods; untouched ones stay', (
+    tester,
+  ) async {
+    final calendar = _MatchEditCalendar();
+    await _openParticipants(tester, calendar);
+    Future<void> edit() async {
+      await _openEventMenu(tester);
+      await tester.tap(find.text('Redigera'));
+      await tester.pumpAndSettle();
+    }
+
+    // Saving without touching the match settings leaves them alone.
+    await edit();
+    expect(find.text('7v7 · 3×20 min'), findsOneWidget);
+    await tester.tap(find.text('Spara').last);
+    await tester.pumpAndSettle();
+    expect(calendar.revised, hasLength(1));
+    expect(calendar.saved, isEmpty);
+
+    // Two periods instead of three.
+    await edit();
+    await tester.tap(find.text('Matchformat'));
+    await tester.pumpAndSettle();
+    final periods = find.byKey(const ValueKey('event-match-periods'));
+    await tester.ensureVisible(periods);
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(of: periods, matching: find.text('2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Spara').last);
+    await tester.pumpAndSettle();
+    final (eventId, format, saved, scope) = calendar.saved.single;
+    expect((eventId, format, scope), ('event-1', '7v7', 'one'));
+    expect(saved, [20, 20]);
+  });
+
+  testWidgets('a started match shows its periods but locks them', (
+    tester,
+  ) async {
+    await _openParticipants(tester, _MatchEditCalendar(locked: true));
+    await _openEventMenu(tester);
+    await tester.tap(find.text('Redigera'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Matchformat'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Matchen har startat. Perioderna ändras i matchläget.'),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.byKey(const ValueKey('event-match-period-length')),
+          )
+          .enabled,
+      isFalse,
+    );
+  });
+
   testWidgets('status circles explain themselves; tabs follow the shrink', (
     tester,
   ) async {
@@ -941,11 +1070,17 @@ void main() {
       find.byTooltip(RegExp(r'^Deltog: \d+ registrerade')),
       findsOneWidget,
     );
+    // Everyone selected was called and the event is over: no draft circle
+    // (the called used to be counted as a draft too).
+    expect(find.byTooltip(RegExp(r'^Utkast:')), findsNothing);
     final tabs = find.byType(TabBar).first;
     final collapsedTop = tester.getTopLeft(tabs).dy;
     await tester.tap(find.text('Info'));
     await tester.pumpAndSettle();
     final expandedTop = tester.getTopLeft(tabs).dy;
+    // The training plan belongs on Förberedelser, not on Info.
+    expect(find.text('Uppvärmning och spel').hitTestable(), findsNothing);
+    expect(find.text('Träningsplan').hitTestable(), findsNothing);
     // The circles shrink on the other tabs; the tab row moves up with them
     // instead of leaving a growing gap.
     expect(collapsedTop, lessThan(expandedTop));
@@ -1227,6 +1362,7 @@ class _Calendar extends UnconfiguredCalendarServices {
     title: 'Träning A',
     description: null,
     type: 'training',
+    trainingPlan: 'Uppvärmning och spel',
     state: 'scheduled',
     startsAt: DateTime.now().toUtc().add(Duration(hours: ended ? -2 : 24)),
     endsAt: DateTime.now().toUtc().add(Duration(hours: ended ? -1 : 25)),
@@ -1494,6 +1630,22 @@ class _Calendar extends UnconfiguredCalendarServices {
   }) async {
     if (action == 'remind') remindedCallupId = callupId;
   }
+
+  /// person id, state, decline reason code.
+  final corrections = <(String, String, String?)>[];
+
+  @override
+  Future<int> correctCallup({
+    required String eventId,
+    required String personId,
+    required String state,
+    String? declineReasonCode,
+    String? declineReasonText,
+    required int expectedRevision,
+  }) async {
+    corrections.add((personId, state, declineReasonCode));
+    return state == 'none' ? 0 : expectedRevision + 1;
+  }
 }
 
 class _SharedViewCalendar extends _Calendar {
@@ -1759,6 +1911,68 @@ class _PersonalOverview extends UnconfiguredOverviewServices
       },
     ],
   };
+}
+
+/// A match whose format and periods are edited from the event menu.
+class _MatchEditCalendar extends _Calendar {
+  _MatchEditCalendar({this.locked = false});
+  final bool locked;
+  final saved = <(String, String, List<int>, String)>[];
+  final revised = <Map<String, dynamic>>[];
+
+  @override
+  Future<EventDetails> getEventDetails(String eventId) async {
+    final base = await super.getEventDetails(eventId);
+    return EventDetails(
+      id: base.id,
+      title: base.title,
+      description: null,
+      type: 'match',
+      state: base.state,
+      startsAt: base.startsAt,
+      endsAt: base.endsAt,
+      allDay: false,
+      timezone: base.timezone,
+      revision: base.revision,
+      callerActions: base.callerActions,
+      opponentName: 'Bergby FF',
+      teams: base.teams,
+      audiences: base.audiences,
+    );
+  }
+
+  @override
+  Future<EventMatchSettings?> getEventMatchSettings(String eventId) async =>
+      EventMatchSettings(
+        format: MatchFormat.v7,
+        periodMinutes: const [20, 20, 20],
+        isSet: true,
+        locked: locked,
+      );
+
+  @override
+  Future<int> setEventMatchSettings({
+    required String eventId,
+    required String format,
+    required List<int> periodMinutes,
+    required String scope,
+    required String idempotencyKey,
+  }) async {
+    saved.add((eventId, format, periodMinutes, scope));
+    return 1;
+  }
+
+  @override
+  Future<int> reviseEvent({
+    required String eventId,
+    required String scope,
+    required Map<String, dynamic> patch,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {
+    revised.add(patch);
+    return 2;
+  }
 }
 
 class _ConflictCalendar extends _Calendar {

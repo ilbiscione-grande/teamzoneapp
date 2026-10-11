@@ -504,6 +504,13 @@ void main() {
         ),
       ];
     await _openPreparation(tester, _Calendar('meeting', prep));
+    // Purpose and agenda from the editor sit on Förberedelser, first.
+    expect(find.text('Planera våren'), findsOneWidget);
+    expect(find.text('Trupp och cuper'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('DETALJER')).dy,
+      lessThan(tester.getTopLeft(find.text('AGENDA')).dy),
+    );
     final headers = ['AGENDA', 'UPPGIFTER', 'ANTECKNINGAR', 'FILER'];
     for (var i = 0; i < headers.length - 1; i++) {
       expect(
@@ -1586,6 +1593,8 @@ class _Calendar extends UnconfiguredCalendarServices {
     callerActions: const {'revise', 'complete', 'manage_roster', 'match_live'},
     opponentName: 'Vetlanda',
     homeAway: 'home',
+    meetingPurpose: type == 'meeting' ? 'Planera våren' : null,
+    meetingAgenda: type == 'meeting' ? 'Trupp och cuper' : null,
     teams: const [
       {'team_id': 'team', 'name': 'F2012', 'relation': 'primary'},
       {

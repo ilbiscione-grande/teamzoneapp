@@ -158,6 +158,7 @@ class _PreparationTabState extends State<_PreparationTab> {
     final type = widget.event.type;
     final sections = <Widget?>[
       if (type == 'match' && widget.onOpenMatchMode != null) _matchModeCard(),
+      _eventDetailsSection(),
       _KpiGoalsSection(
         key: ValueKey('kpi-goals-${widget.event.id}'),
         event: widget.event,
@@ -210,6 +211,53 @@ class _PreparationTabState extends State<_PreparationTab> {
             ),
         ],
       ),
+    );
+  }
+
+  /// The type's details written in the event editor (training theme, focus
+  /// and plan; match notes; meeting purpose and agenda), read-only here and
+  /// edited with "Redigera event". Hidden when nothing is filled in.
+  Widget? _eventDetailsSection() {
+    final event = widget.event;
+    final rows = <(String, String?)>[
+      ...switch (event.type) {
+        'training' => [
+          ('Träningstema', event.trainingTheme),
+          ('Fokus', event.trainingFocus),
+          ('Träningsplan', event.trainingPlan),
+        ],
+        'match' => [('Matchanteckningar', event.matchNotes)],
+        'meeting' => [
+          ('Syfte', event.meetingPurpose),
+          ('Mötesagenda', event.meetingAgenda),
+        ],
+        _ => const <(String, String?)>[],
+      },
+    ].where((row) => row.$2 != null && row.$2!.trim().isNotEmpty).toList();
+    if (rows.isEmpty) return null;
+    final strings = AppStrings.of(context);
+    final theme = Theme.of(context);
+    return _section(
+      title: strings.feature('Detaljer'),
+      isEmpty: false,
+      children: [
+        for (final row in rows)
+          Padding(
+            key: ValueKey('preparation-detail-${row.$1}'),
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  strings.feature(row.$1),
+                  style: theme.textTheme.labelMedium,
+                ),
+                const SizedBox(height: 2),
+                Text(row.$2!.trim()),
+              ],
+            ),
+          ),
+      ],
     );
   }
 

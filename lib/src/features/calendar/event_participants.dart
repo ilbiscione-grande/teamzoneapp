@@ -64,6 +64,17 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       (_resolvedPermissions?.lateWindow != true ||
           _resolvedPermissions?.canCorrectLate == true);
   bool get _working => _busy || _reviewingReminders;
+
+  /// Before the async permissions resolve: may this role record attendance?
+  bool get _mayRecordAttendance =>
+      !_readOnly &&
+      widget.allowAttendance &&
+      widget.squad.can('record_attendance');
+
+  /// Squad managers may correct callups after the fact. Adding one only makes
+  /// sense when the event used callups (otherwise everyone is expected).
+  bool get _canCorrectCallups => _canManage && _eventEnded;
+  bool get _eventUsesCallups => _people.any((p) => p.isCalled);
   bool get _selectionFrozen =>
       _saveKey != null || widget.squad.state == 'locked';
   Set<String> get _draftMemberIds => _selectedIds;
@@ -73,8 +84,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       for (final p in _guestRosterFor(widget.squad)) p.personId: p,
     };
     for (final candidate in _candidates) {
-      if (!_eventEnded &&
-          (_selectedIds.contains(candidate.personId) || _query.isNotEmpty)) {
+      // After the event a search adds people whose attendance was missed.
+      if ((!_eventEnded && _selectedIds.contains(candidate.personId)) ||
+          _query.isNotEmpty) {
         people.putIfAbsent(
           candidate.personId,
           () => EventRosterPerson(
@@ -105,7 +117,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         widget.squad,
       ).where((p) => p.inDraft && !p.isCalled).map((p) => p.personId),
     ]);
-    if (_canManage) unawaited(_loadCandidates());
+    if (_canManage || _mayRecordAttendance) unawaited(_loadCandidates());
     _loadPermissions();
     unawaited(_loadLeaderTitles());
     _scheduleEnd();
@@ -186,7 +198,8 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       );
       if (mounted) setState(() => _candidates = candidates);
     } catch (_) {
-      if (mounted) {
+      // Attendance-only roles may lack the squad search; the team still shows.
+      if (mounted && _canManage) {
         _showError(
           'Sökningen kunde inte laddas. Lagets deltagare visas fortfarande.',
         );
@@ -504,7 +517,12 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         );
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _reloadExpandedDetails();
+        });
+      }
     }
   }
 
@@ -515,6 +533,19 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
     setState(() => _expandedId = _expandedId == p.personId ? null : p.personId);
     if (_expandedId != null) {
       _details.putIfAbsent(p.personId, () => _loadDetails(p));
+    }
+  }
+
+  /// The expanded row's details are dropped after a save (its statistics
+  /// changed); load them again, or its FutureBuilder would wait forever.
+  void _reloadExpandedDetails() {
+    final id = _expandedId;
+    if (id == null || _details.containsKey(id)) return;
+    final person = _people.where((p) => p.personId == id).firstOrNull;
+    if (person == null) {
+      _expandedId = null;
+    } else {
+      _details[id] = _loadDetails(person);
     }
   }
 
@@ -598,6 +629,55 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
   /// can already manage the squad, anyone else's on the roster too
   /// ('manager' — same capability that already gates remind/cancel,
   /// covering both spelare and ledare buckets uniformly).
+  /// accepted / declined / pending / none — also after the event, without
+  /// notifying anyone.
+  Future<void> _correctCallup(EventRosterPerson person, String state) async {
+    if (!_canCorrectCallups || _working) return;
+    String? reasonCode;
+    String? reasonText;
+    if (state == 'declined') {
+      final reason = await _declineCallupReasonDialog(context);
+      if (reason == null || !mounted) return;
+      reasonCode = reason.$1;
+      reasonText = reason.$2;
+    }
+    setState(() => _busy = true);
+    try {
+      await widget.calendar.correctCallup(
+        eventId: widget.event.id,
+        personId: person.personId,
+        state: state,
+        declineReasonCode: reasonCode,
+        declineReasonText: reasonText,
+        expectedRevision:
+            widget.squad.callups
+                .where(
+                  (callup) =>
+                      callup.personId == person.personId &&
+                      callup.state != 'cancelled',
+                )
+                .map((callup) => callup.revision)
+                .firstOrNull ??
+            0,
+      );
+      _details.remove(person.personId);
+      await widget.onReload();
+    } catch (_) {
+      if (mounted) {
+        _showError(
+          'Kallelsen kunde inte ändras. Listan kan ha ändrats. Ladda om och försök igen.',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _reloadExpandedDetails();
+        });
+      }
+    }
+  }
+
   Future<void> _respondToCallup(
     EventRosterPerson person,
     String response,
@@ -1521,6 +1601,61 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
           Text(
             '${_s.feature('Senaste påminnelse')}: ${MaterialLocalizations.of(context).formatShortDate(p.callupLastRemindedAt!.toLocal())}',
             style: const TextStyle(fontSize: 12),
+          ),
+        if (_canCorrectCallups && (p.isCalled || _eventUsesCallups))
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _s.feature('Kallelse (rättelse i efterhand)'),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    if (!p.isCalled)
+                      TextButton(
+                        key: ValueKey('callup-correct-add-${p.personId}'),
+                        onPressed: _working
+                            ? null
+                            : () => _correctCallup(p, 'accepted'),
+                        child: Text(_s.feature('Markera som kallad')),
+                      )
+                    else ...[
+                      for (final entry in {
+                        'accepted': _s.feature('Accepterat'),
+                        'declined': _s.feature('Avböjt'),
+                        'pending': _s.feature('Inte svarat'),
+                      }.entries)
+                        TextButton(
+                          key: ValueKey(
+                            'callup-correct-${entry.key}-${p.personId}',
+                          ),
+                          onPressed:
+                              _working ||
+                                  (p.callupState == entry.key &&
+                                      entry.key != 'declined')
+                              ? null
+                              : () => _correctCallup(p, entry.key),
+                          child: Text(entry.value),
+                        ),
+                      TextButton(
+                        key: ValueKey('callup-correct-none-${p.personId}'),
+                        onPressed: _working
+                            ? null
+                            : () => _correctCallup(p, 'none'),
+                        child: Text(_s.feature('Ta bort kallelse')),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
           ),
         if (_eventEnded && _canRecordAttendance)
           Wrap(

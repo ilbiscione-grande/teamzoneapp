@@ -153,9 +153,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('club administrators can change the team sport', (
-    tester,
-  ) async {
+  testWidgets('club administrators can change the team sport', (tester) async {
     final roster = _Roster(canSetSport: true);
     await tester.pumpWidget(_app(canManage: true, roster: roster));
     await tester.pumpAndSettle();
@@ -178,6 +176,33 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('save-team-profile')));
     await tester.pumpAndSettle();
     expect(roster.sport, 'handball');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the match format defaults to 11v11 and can be changed', (
+    tester,
+  ) async {
+    final roster = _Roster();
+    await tester.pumpWidget(_app(canManage: true, roster: roster));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Laget'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Redigera lagprofil'),
+      250,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('Redigera lagprofil'));
+    await tester.pumpAndSettle();
+    final eleven = find.byKey(const ValueKey('team-match-format-11v11'));
+    await tester.ensureVisible(eleven);
+    await tester.pumpAndSettle();
+    expect(tester.widget<ChoiceChip>(eleven).selected, isTrue);
+    await tester.tap(find.byKey(const ValueKey('team-match-format-7v7')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('save-team-profile')));
+    await tester.pumpAndSettle();
+    expect(roster.matchFormat, MatchFormat.v7);
     expect(tester.takeException(), isNull);
   });
 
@@ -324,12 +349,27 @@ class _Roster extends UnconfiguredRosterServices {
   final bool canSetSport;
   (String, String)? saved;
   String? sport;
+  MatchFormat? matchFormat;
+
+  @override
+  Future<TeamMatchFormat> getTeamMatchFormat(String teamId) async =>
+      const TeamMatchFormat(canEdit: true);
+
+  @override
+  Future<void> setTeamMatchFormat({
+    required String teamId,
+    required MatchFormat format,
+    required String idempotencyKey,
+  }) async {
+    matchFormat = format;
+  }
 
   @override
   Future<TeamRoles> listTeamRoles({
     required String clubId,
     required String teamId,
-  }) async => TeamRoles(canManage: true, canSetSport: canSetSport, roles: const []);
+  }) async =>
+      TeamRoles(canManage: true, canSetSport: canSetSport, roles: const []);
 
   @override
   Future<void> setTeamSport({

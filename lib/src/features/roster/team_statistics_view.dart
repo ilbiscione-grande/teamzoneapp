@@ -172,6 +172,11 @@ class _TeamStatisticsViewState extends State<_TeamStatisticsView> {
             label: strings.feature('Sena ankomster'),
             value: '${stats.late}',
           ),
+          if (stats.extra > 0)
+            _TeamStatTile(
+              label: strings.feature('Närvaro utan kallelse'),
+              value: '${stats.extra}',
+            ),
         ],
       ),
       if (stats.months.length >= 2) ...[
@@ -227,10 +232,12 @@ class _TeamStatisticsViewState extends State<_TeamStatisticsView> {
       const SizedBox(height: 16),
       Text(
         strings.feature(
-          'Närvarande, sen och delvis räknas som närvaro. Frånvaro räknas '
-          'bara för den som var kallad (eller när aktiviteten saknade '
-          'kallelser). Oregistrerad närvaro räknas inte. Lagets andelar '
-          'gäller spelarna. Tryck på en person för hens egen statistik.',
+          'Närvaron räknas på aktiviteter där personen var kallad (eller '
+          'där aktiviteten saknade kallelser). Närvarande, sen och delvis '
+          'räknas som närvaro. Närvaro utan kallelse visas separat och '
+          'påverkar inte andelen. Oregistrerad närvaro räknas inte. Lagets '
+          'andelar gäller spelarna. Tryck på en person för hens egen '
+          'statistik.',
         ),
         style: theme.textTheme.bodySmall,
       ),
@@ -369,6 +376,8 @@ class _PersonStatisticsRow extends StatelessWidget {
       if (detailed && person.matchesCounted > 0)
         '${sv ? 'matcher' : 'matches'} ${person.matchesAttended}/${person.matchesCounted}',
       if (detailed && person.late > 0) '${person.late} ${sv ? 'sen' : 'late'}',
+      if (person.extra > 0)
+        '+${person.extra} ${sv ? 'utan kallelse' : 'without callup'}',
     ];
     return ListTile(
       contentPadding: EdgeInsets.zero,

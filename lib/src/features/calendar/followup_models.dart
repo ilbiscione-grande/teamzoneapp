@@ -110,12 +110,16 @@ class AttendanceSummary {
     this.absent = 0,
     this.registered = 0,
     this.unregistered = 0,
+    this.extra = 0,
     this.lateMinutesAverage,
     this.attendanceRate,
     this.responseRate,
   });
   final int called, accepted, declined, pending;
   final int present, late, partial, absent, registered, unregistered;
+
+  /// Attended without being called; not part of the attendance rate.
+  final int extra;
   final double? lateMinutesAverage, attendanceRate, responseRate;
 
   factory AttendanceSummary.fromJson(Map<String, dynamic> json) {
@@ -131,6 +135,7 @@ class AttendanceSummary {
       absent: count('absent'),
       registered: count('registered'),
       unregistered: count('unregistered'),
+      extra: count('extra'),
       lateMinutesAverage: _number(json['late_minutes_avg']),
       attendanceRate: _number(json['attendance_rate']),
       responseRate: _number(json['response_rate']),

@@ -1141,15 +1141,13 @@ class _CalendarDayTimelineState extends State<_CalendarDayTimeline> {
                               item.column * (eventsWidth / item.columnCount) +
                               2,
                           width: eventsWidth / item.columnCount - 4,
-                          height: max(
-                            (item.endMinutes - item.startMinutes) /
-                                    60 *
-                                    _hourHeight -
-                                2,
-                            _minCardHeight,
-                          ),
+                          height: item.cardHeight(_hourHeight, _minCardHeight),
                           child: _DayTimelineEventCard(
                             event: item.event,
+                            height: item.cardHeight(
+                              _hourHeight,
+                              _minCardHeight,
+                            ),
                             onTap: () => onEvent(item.event),
                           ),
                         ),
@@ -1222,10 +1220,15 @@ class _DayGridPainter extends CustomPainter {
 }
 
 /// One event card on the day timeline: type icon + title on the first line,
-/// start–end time on the second, sized/positioned by the caller.
+/// start–end time and team · place below, sized/positioned by the caller.
 class _DayTimelineEventCard extends StatelessWidget {
-  const _DayTimelineEventCard({required this.event, required this.onTap});
+  const _DayTimelineEventCard({
+    required this.event,
+    required this.height,
+    required this.onTap,
+  });
   final CalendarEventSummary event;
+  final double height;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
@@ -1278,11 +1281,35 @@ class _DayTimelineEventCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                Text(
-                  time,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall,
+                // Team and place get their own line when the card is tall
+                // enough (about an hour); shorter cards fold them into the
+                // time line.
+                Builder(
+                  builder: (context) {
+                    final style = Theme.of(context).textTheme.labelSmall;
+                    final where = _eventTeamAndPlace(event);
+                    final roomy = height >= 58;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          roomy ? time : '$time · $where',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: style,
+                        ),
+                        if (roomy)
+                          Text(
+                            where,
+                            key: ValueKey('day-event-where-${event.id}'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: style,
+                          ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -1291,6 +1318,14 @@ class _DayTimelineEventCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// "Team · place" for calendar previews; the place is left out when unset.
+String _eventTeamAndPlace(CalendarEventSummary event) {
+  final place = event.locationName?.trim();
+  return place == null || place.isEmpty
+      ? event.teamName
+      : '${event.teamName} · $place';
 }
 
 /// One event clipped and positioned on a single day's timeline.
@@ -1305,6 +1340,9 @@ class _PositionedDayEvent {
   final CalendarEventSummary event;
   final double startMinutes, endMinutes;
   final int column, columnCount;
+
+  double cardHeight(double hourHeight, double minHeight) =>
+      max((endMinutes - startMinutes) / 60 * hourHeight - 2, minHeight);
 }
 
 /// Lays out a day's timed events into columns so overlapping events sit
@@ -1458,7 +1496,10 @@ class _CalendarGridDayCell extends StatelessWidget {
   Widget _buildDetailed(BuildContext context) {
     final shown = items.take(_maxDetailedEvents).toList();
     final overflow = items.length - shown.length;
-    return Padding(
+    // Three-line previews can outgrow a short cell; clip instead of
+    // overflowing.
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1487,9 +1528,9 @@ IconData _eventTypeIcon(String type) => switch (type) {
   _ => Icons.event,
 };
 
-/// A small two-line preview shown inside a roomy grid day cell: an icon for
+/// A small three-line preview shown inside a roomy grid day cell: an icon for
 /// the event type plus its time on the first line, and the title (or
-/// opponent, for a match) on the second.
+/// opponent, for a match) on the second, team · place on the third.
 class _CalendarGridEventChip extends StatelessWidget {
   const _CalendarGridEventChip({required this.event});
   final CalendarEventSummary event;
@@ -1550,6 +1591,15 @@ class _CalendarGridEventChip extends StatelessWidget {
                 fontWeight: FontWeight.w600,
                 decoration: cancelled ? TextDecoration.lineThrough : null,
               ),
+            ),
+            Text(
+              _eventTeamAndPlace(event),
+              key: ValueKey('week-event-where-${event.id}'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(fontSize: 9, height: 1.2),
             ),
           ],
         ),
@@ -1810,6 +1860,10 @@ class _EventEditorValue {
     this.matchNotes,
     this.meetingPurpose,
     this.meetingAgenda,
+    this.sharedTeamIds = const [],
+    this.matchFormat,
+    this.periodMinutes,
+    this.matchSettingsChanged = false,
     required this.assemblyMinutesBefore,
   });
   final String title, type, state, timezone, frequency, scope;
@@ -1822,6 +1876,15 @@ class _EventEditorValue {
   final String? trainingTheme, trainingFocus, trainingPlan;
   final String? opponentName, homeAway, matchNotes;
   final String? meetingPurpose, meetingAgenda;
+
+  /// Teams a new event is shared with right after it is created.
+  final List<String> sharedTeamIds;
+
+  /// A match's format key and periods; [matchSettingsChanged] when they
+  /// should be saved (always for a new match, on change when editing).
+  final String? matchFormat;
+  final List<int>? periodMinutes;
+  final bool matchSettingsChanged;
 }
 
 class _EventEditorDialog extends StatefulWidget {
@@ -1830,13 +1893,29 @@ class _EventEditorDialog extends StatefulWidget {
     required this.locationSuggestions,
     this.initial,
     this.initialType,
+    this.initialDate,
+    this.shareableTeams = const [],
+    this.matchFormat = MatchFormat.fallback,
+    this.matchSettings,
   });
   final String teamName;
   final List<SavedEventPlace> locationSuggestions;
+
+  /// Other teams a new event can be shared with directly (creating only).
+  final List<ShareableTeam> shareableTeams;
   final EventDetails? initial;
 
   /// Preselected type for a new event, e.g. from the quick actions sheet.
   final String? initialType;
+
+  /// The day selected in the calendar; a new event starts on it.
+  final DateTime? initialDate;
+
+  /// The team's match format; sets how long a new match lasts by default.
+  final MatchFormat matchFormat;
+
+  /// The edited match's own format and periods (editing only).
+  final EventMatchSettings? matchSettings;
   @override
   State<_EventEditorDialog> createState() => _EventEditorDialogState();
 }
@@ -1858,7 +1937,6 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
   late final TextEditingController _timezone = TextEditingController(
     text: widget.initial?.timezone ?? 'Europe/Stockholm',
   );
-  late final TextEditingController _interval = TextEditingController(text: '1');
   late String _type = widget.initial?.type ?? widget.initialType ?? 'training';
   late final TextEditingController _assembly = TextEditingController(
     text: (widget.initial?.assemblyMinutesBefore ?? _defaultAssembly(_type))
@@ -1886,16 +1964,30 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     text: widget.initial?.meetingAgenda,
   );
   late String _homeAway = widget.initial?.homeAway ?? 'home';
+  late MatchFormat _matchFormat =
+      widget.matchSettings?.format ?? widget.matchFormat;
+  late int _periodCount =
+      (widget.matchSettings?.periodMinutes ?? _matchFormat.periodMinutes)
+          .length;
+  late final TextEditingController _periodLength = TextEditingController(
+    text:
+        '${(widget.matchSettings?.periodMinutes ?? _matchFormat.periodMinutes).first}',
+  );
+  bool _matchSettingsChanged = false;
+
+  /// Match mode already started the match; its periods are changed there.
+  bool get _periodsLocked => widget.matchSettings?.locked ?? false;
   late String _state = widget.initial?.state ?? 'scheduled';
   late DateTime _startsAt =
-      widget.initial?.startsAt.toLocal() ?? _defaultStart();
+      widget.initial?.startsAt.toLocal() ?? _defaultStart(widget.initialDate);
   late DateTime _endsAt =
       widget.initial?.endsAt.toLocal() ??
-      _defaultStart().add(const Duration(hours: 2));
+      _defaultStart(widget.initialDate).add(_defaultDuration(_type));
   late DateTime _seriesEndsOn = DateUtils.dateOnly(
     _startsAt.add(const Duration(days: 28)),
   );
   late bool _allDay = widget.initial?.allDay ?? false;
+  final Set<String> _sharedTeamIds = {};
   late final Set<String> _audiences = widget.initial == null
       ? {'players', 'leaders'}
       : widget.initial!.audiences
@@ -1903,6 +1995,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
             .whereType<String>()
             .toSet();
   bool _recurring = false;
+  // daily, weekly, biweekly (weekly every second week) or monthly.
   String _frequency = 'weekly', _scope = 'one';
   String? _error;
   bool _assemblyWasEdited = false;
@@ -1913,9 +2006,20 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     _ => 15,
   };
 
-  static DateTime _defaultStart() {
-    final tomorrow = DateTime.now().add(const Duration(days: 1));
-    return DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 18);
+  /// Training and meetings last 90 minutes, activities 120 and matches as
+  /// long as the team's match format says (11v11: 120). The end follows the
+  /// start (and the type) until the end is changed by hand; a new start
+  /// time resets it to this default again.
+  Duration _defaultDuration(String type) => switch (type) {
+    'training' || 'meeting' => const Duration(minutes: 90),
+    'match' => Duration(minutes: _matchFormat.defaultMatchMinutes),
+    _ => const Duration(minutes: 120),
+  };
+
+  /// 18:00 on the day selected in the calendar, or tomorrow without one.
+  static DateTime _defaultStart(DateTime? day) {
+    final date = day ?? DateTime.now().add(const Duration(days: 1));
+    return DateTime(date.year, date.month, date.day, 18);
   }
 
   @override
@@ -1928,7 +2032,6 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
       _pitch,
       _surface,
       _timezone,
-      _interval,
       _trainingTheme,
       _trainingFocus,
       _trainingPlan,
@@ -1955,7 +2058,6 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
       _pitch,
       _surface,
       _timezone,
-      _interval,
       _trainingTheme,
       _trainingFocus,
       _trainingPlan,
@@ -1967,15 +2069,16 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
       controller.removeListener(_draft.markDirty);
       controller.dispose();
     }
+    _periodLength.dispose();
     _assembly.removeListener(_assemblyChanged);
     _assembly.dispose();
     _draft.dispose();
     super.dispose();
   }
 
-  void _save() {
-    final interval = int.tryParse(_interval.text);
-    final count = interval == null ? null : _seriesCount(interval);
+  void _save({bool asDraft = false}) {
+    if (asDraft) _state = 'draft';
+    final count = _seriesCount();
     final assembly = int.tryParse(_assembly.text);
     final generatedTitle = _generatedTitle();
     final problem = _validationError(AppStrings.of(context));
@@ -2006,10 +2109,10 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
         locationSurface: _location.text.trim().isEmpty
             ? null
             : _optional(_surface),
-        recurring: _recurring,
-        frequency: _frequency,
-        interval: interval ?? 1,
-        count: count ?? 4,
+        recurring: _recurring && _type != 'match',
+        frequency: _frequency == 'biweekly' ? 'weekly' : _frequency,
+        interval: _frequency == 'biweekly' ? 2 : 1,
+        count: count,
         scope: _scope,
         assemblyMinutesBefore: assembly,
         trainingTheme: _optional(_trainingTheme),
@@ -2020,14 +2123,147 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
         matchNotes: _optional(_matchNotes),
         meetingPurpose: _optional(_meetingPurpose),
         meetingAgenda: _optional(_meetingAgenda),
+        sharedTeamIds: [
+          for (final team in widget.shareableTeams)
+            if (_sharedTeamIds.contains(team.id)) team.id,
+        ],
+        matchFormat: _type == 'match' ? _matchFormat.key : null,
+        periodMinutes: _type == 'match' ? _periods : null,
+        matchSettingsChanged:
+            _type == 'match' &&
+            (widget.initial == null ||
+                _matchSettingsChanged ||
+                widget.initial!.type != 'match'),
       ),
     );
   }
 
-  int _seriesCount(int interval) {
+  /// Equal periods from the count and length; a started match keeps its own.
+  List<int> get _periods => _periodsLocked
+      ? widget.matchSettings!.periodMinutes
+      : List.filled(_periodCount, int.tryParse(_periodLength.text.trim()) ?? 0);
+
+  void _setMatchFormat(MatchFormat format) {
+    _matchFormat = format;
+    if (!_periodsLocked) {
+      _periodCount = format.periodMinutes.length;
+      _periodLength.text = '${format.periodMinutes.first}';
+    }
+    if (widget.initial == null && !_allDay) {
+      _endsAt = _startsAt.add(_defaultDuration('match'));
+    }
+    _matchSettingsChanged = true;
+    _draft.markDirty();
+  }
+
+  /// "9v9 · 3×25 min" for the collapsed match settings.
+  String get _matchSettingsSummary {
+    final periods = _periods;
+    final equal =
+        periods.isNotEmpty && periods.every((p) => p == periods.first);
+    final shape = equal
+        ? '${periods.length}×${periods.first} min'
+        : '${periods.join('+')} min';
+    return '${_matchFormat.key} · $shape';
+  }
+
+  /// Format, number of periods and minutes per period for a match.
+  List<Widget> _matchSettingsFields(AppStrings strings) {
+    final theme = Theme.of(context);
+    final length = int.tryParse(_periodLength.text.trim());
+    return [
+      DropdownButtonFormField<MatchFormat>(
+        key: const ValueKey('event-match-format'),
+        initialValue: _matchFormat,
+        isExpanded: true,
+        decoration: InputDecoration(labelText: strings.feature('Format')),
+        items: [
+          for (final format in MatchFormat.values)
+            DropdownMenuItem(value: format, child: Text(format.key)),
+        ],
+        onChanged: (format) {
+          if (format != null) setState(() => _setMatchFormat(format));
+        },
+      ),
+      const SizedBox(height: 12),
+      Text(strings.feature('Perioder'), style: theme.textTheme.labelLarge),
+      const SizedBox(height: 6),
+      Row(
+        children: [
+          SegmentedButton<int>(
+            key: const ValueKey('event-match-periods'),
+            showSelectedIcon: false,
+            segments: [
+              for (final count in const [1, 2, 3, 4])
+                ButtonSegment(value: count, label: Text('$count')),
+            ],
+            selected: {_periodCount},
+            onSelectionChanged: _periodsLocked
+                ? null
+                : (value) => setState(() {
+                    _periodCount = value.single;
+                    _matchSettingsChanged = true;
+                    _draft.markDirty();
+                  }),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextFormField(
+              key: const ValueKey('event-match-period-length'),
+              controller: _periodLength,
+              enabled: !_periodsLocked,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                isDense: true,
+                labelText: strings.feature('Min per period'),
+                suffixText: 'min',
+              ),
+              onChanged: (_) => setState(() {
+                _matchSettingsChanged = true;
+                _draft.markDirty();
+              }),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 4),
+      Text(
+        _periodsLocked
+            ? strings.feature(
+                'Matchen har startat. Perioderna ändras i matchläget.',
+              )
+            : length == null
+            ? ''
+            : strings
+                  .feature('Speltid {minutes} min')
+                  .replaceFirst('{minutes}', '${_periodCount * length}'),
+        key: const ValueKey('event-match-play-time'),
+        style: theme.textTheme.bodySmall,
+      ),
+    ];
+  }
+
+  /// Occurrences from the start date up to and including [_seriesEndsOn].
+  int _seriesCount() {
     final start = DateUtils.dateOnly(_startsAt);
-    final stepDays = (_frequency == 'daily' ? 1 : 7) * interval;
-    if (_seriesEndsOn.isBefore(start) || stepDays < 1) return 0;
+    if (_seriesEndsOn.isBefore(start)) return 0;
+    if (_frequency == 'monthly') {
+      // Same day each month, clamped to shorter months (as the server does).
+      var count = 0;
+      while (count <= 104) {
+        final month = DateTime(start.year, start.month + count);
+        final last = DateUtils.getDaysInMonth(month.year, month.month);
+        final day = DateTime(month.year, month.month, min(start.day, last));
+        if (day.isAfter(_seriesEndsOn)) break;
+        count++;
+      }
+      return count;
+    }
+    final stepDays = switch (_frequency) {
+      'daily' => 1,
+      'biweekly' => 14,
+      _ => 7,
+    };
     return _seriesEndsOn.difference(start).inDays ~/ stepDays + 1;
   }
 
@@ -2067,61 +2303,16 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     'activity': Icons.event_outlined,
   };
 
-  /// Type-specific details: what the event is about.
-  List<Widget> _typedFields(AppStrings strings) => switch (_type) {
-    'training' => [
-      TextFormField(
-        controller: _trainingTheme,
-        maxLength: 160,
-        decoration: InputDecoration(labelText: strings.feature('Träningstema')),
-      ),
-      TextFormField(
-        controller: _trainingFocus,
-        minLines: 2,
-        maxLines: 4,
-        decoration: InputDecoration(labelText: strings.feature('Fokus')),
-      ),
-      const SizedBox(height: 12),
-      TextFormField(
-        controller: _trainingPlan,
-        minLines: 3,
-        maxLines: 8,
-        decoration: InputDecoration(labelText: strings.feature('Träningsplan')),
-      ),
-    ],
-    'match' => [
-      TextFormField(
-        controller: _matchNotes,
-        minLines: 2,
-        maxLines: 6,
-        decoration: InputDecoration(
-          labelText: strings.feature('Matchanteckningar'),
-        ),
-      ),
-    ],
-    'meeting' => [
-      TextFormField(
-        controller: _meetingPurpose,
-        minLines: 1,
-        maxLines: 3,
-        decoration: InputDecoration(labelText: strings.feature('Syfte')),
-      ),
-      const SizedBox(height: 12),
-      TextFormField(
-        controller: _meetingAgenda,
-        minLines: 3,
-        maxLines: 8,
-        decoration: InputDecoration(labelText: strings.feature('Mötesagenda')),
-      ),
-    ],
-    _ => const [],
-  };
-
   /// First problem with the form, in plain words, or null when it is valid.
   String? _validationError(AppStrings strings) {
-    final interval = int.tryParse(_interval.text);
-    final count = interval == null ? null : _seriesCount(interval);
+    final count = _seriesCount();
     final assembly = int.tryParse(_assembly.text);
+    final periodLength = int.tryParse(_periodLength.text.trim());
+    if (_type == 'match' &&
+        !_periodsLocked &&
+        (periodLength == null || periodLength < 1 || periodLength > 120)) {
+      return strings.feature('Ange 1–120 minuter per period.');
+    }
     if (_type == 'match' && _opponent.text.trim().isEmpty) {
       return strings.feature('Ange motståndare.');
     }
@@ -2142,15 +2333,9 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     if (_timezone.text.trim().isEmpty) {
       return strings.feature('Ange en tidszon.');
     }
-    if (_recurring &&
-        (interval == null ||
-            interval < 1 ||
-            interval > 52 ||
-            count == null ||
-            count < 2 ||
-            count > 104)) {
+    if (_recurring && _type != 'match' && (count < 2 || count > 104)) {
       return strings.feature(
-        'Kontrollera serien: 2–104 tillfällen och ett intervall på 1–52.',
+        'Serien ska ha 2–104 tillfällen. Ändra slutdatum eller intervall.',
       );
     }
     return null;
@@ -2211,7 +2396,6 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     if (picked == null || !mounted) return;
     setState(() {
       if (start) {
-        final duration = _endsAt.difference(_startsAt);
         _startsAt = DateTime(
           _startsAt.year,
           _startsAt.month,
@@ -2219,7 +2403,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
           picked.hour,
           picked.minute,
         );
-        _endsAt = _startsAt.add(duration);
+        _endsAt = _startsAt.add(_defaultDuration(_type));
       } else {
         var end = DateTime(
           _startsAt.year,
@@ -2271,7 +2455,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     required Key key,
     required String label,
     required String value,
-    required IconData icon,
+    IconData? icon,
     required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);
@@ -2284,7 +2468,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
           labelText: label,
           border: const OutlineInputBorder(),
           isDense: true,
-          suffixIcon: Icon(icon, size: 20),
+          suffixIcon: icon == null ? null : Icon(icon, size: 20),
         ),
         child: Text(
           value,
@@ -2296,81 +2480,104 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     );
   }
 
+  /// Two rows: date and all-day, then start, end and assembly (or the end
+  /// date for an all-day event).
   Widget _whenFields(AppStrings strings) {
     final localizations = MaterialLocalizations.of(context);
     String time(DateTime value) =>
         TimeOfDay.fromDateTime(value).format(context);
     final nextDay = !DateUtils.isSameDay(_startsAt, _endsAt);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 440;
-        if (_allDay) {
-          final from = _pickerField(
+    final assembly = int.tryParse(_assembly.text);
+    final assemblyAt = assembly == null
+        ? null
+        : _startsAt.subtract(Duration(minutes: assembly));
+    final firstRow = Row(
+      children: [
+        Expanded(
+          child: _pickerField(
             key: const ValueKey('event-date'),
-            label: strings.feature('Från'),
+            label: strings.feature(_allDay ? 'Från' : 'Datum'),
             value: localizations.formatMediumDate(_startsAt),
             icon: Icons.calendar_today_outlined,
             onTap: _pickDate,
-          );
-          final to = _pickerField(
+          ),
+        ),
+        const SizedBox(width: 12),
+        FilterChip(
+          key: const ValueKey('event-all-day'),
+          label: Text(strings.feature('Heldag')),
+          selected: _allDay,
+          onSelected: (value) => setState(() => _setAllDay(value)),
+        ),
+      ],
+    );
+    final Widget secondRow = _allDay
+        ? _pickerField(
             key: const ValueKey('event-end-date'),
             label: strings.feature('Till'),
             value: localizations.formatMediumDate(_endsAt),
             icon: Icons.calendar_today_outlined,
             onTap: _pickEndDate,
-          );
-          return Row(
+          )
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: from),
-              const SizedBox(width: 12),
-              Expanded(child: to),
+              Expanded(
+                child: _pickerField(
+                  key: const ValueKey('event-start-time'),
+                  label: strings.feature('Start'),
+                  value: time(_startsAt),
+                  onTap: () => _pickTime(start: true),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _pickerField(
+                  key: const ValueKey('event-end-time'),
+                  label: strings.feature('Slut'),
+                  value: nextDay ? '${time(_endsAt)} (+1)' : time(_endsAt),
+                  onTap: () => _pickTime(start: false),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextFormField(
+                  key: const ValueKey('event-assembly'),
+                  controller: _assembly,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: strings.feature('Samling'),
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                    suffixText: 'min',
+                    helperText: assemblyAt == null
+                        ? null
+                        : '${strings.feature('kl.')} ${time(assemblyAt)}',
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
             ],
           );
-        }
-        final date = _pickerField(
-          key: const ValueKey('event-date'),
-          label: strings.feature('Datum'),
-          value: localizations.formatMediumDate(_startsAt),
-          icon: Icons.calendar_today_outlined,
-          onTap: _pickDate,
-        );
-        final times = Row(
-          children: [
-            Expanded(
-              child: _pickerField(
-                key: const ValueKey('event-start-time'),
-                label: strings.feature('Start'),
-                value: time(_startsAt),
-                icon: Icons.schedule,
-                onTap: () => _pickTime(start: true),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _pickerField(
-                key: const ValueKey('event-end-time'),
-                label: strings.feature('Slut'),
-                value: nextDay ? '${time(_endsAt)} (+1)' : time(_endsAt),
-                icon: Icons.schedule,
-                onTap: () => _pickTime(start: false),
-              ),
-            ),
-          ],
-        );
-        return wide
-            ? Row(
-                children: [
-                  Expanded(flex: 5, child: date),
-                  const SizedBox(width: 12),
-                  Expanded(flex: 6, child: times),
-                ],
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [date, const SizedBox(height: 12), times],
-              );
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [firstRow, const SizedBox(height: 12), secondRow],
     );
+  }
+
+  void _setAllDay(bool value) {
+    _allDay = value;
+    if (value) {
+      _startsAt = DateTime(_startsAt.year, _startsAt.month, _startsAt.day);
+      _endsAt = DateTime(_endsAt.year, _endsAt.month, _endsAt.day);
+      if (!_endsAt.isAfter(_startsAt)) {
+        _endsAt = _startsAt.add(const Duration(days: 1));
+      }
+    } else {
+      _startsAt = DateTime(_startsAt.year, _startsAt.month, _startsAt.day, 18);
+      _endsAt = _startsAt.add(_defaultDuration(_type));
+    }
+    _draft.markDirty();
   }
 
   @override
@@ -2379,10 +2586,6 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     final theme = Theme.of(context);
     final creating = widget.initial == null;
     final fullScreen = MediaQuery.sizeOf(context).width < 600;
-    final assembly = int.tryParse(_assembly.text);
-    final assemblyAt = assembly == null || _allDay
-        ? null
-        : _startsAt.subtract(Duration(minutes: assembly));
 
     final header = Padding(
       padding: const EdgeInsets.fromLTRB(4, 8, 16, 8),
@@ -2400,12 +2603,28 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
               children: [
                 Text(
                   strings.feature(creating ? 'Skapa event' : 'Redigera event'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleLarge,
                 ),
-                Text(widget.teamName, style: theme.textTheme.bodySmall),
+                Text(
+                  widget.teamName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall,
+                ),
               ],
             ),
           ),
+          // A draft is planned further and published later.
+          if (creating) ...[
+            OutlinedButton(
+              key: const ValueKey('event-save-as-draft'),
+              onPressed: () => _save(asDraft: true),
+              child: Text(strings.feature('Utkast')),
+            ),
+            const SizedBox(width: 8),
+          ],
           FilledButton(
             onPressed: _save,
             child: Text(strings.feature(creating ? 'Skapa' : 'Spara')),
@@ -2439,6 +2658,10 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
                         _assemblyWasEdited = false;
                       }
                       _type = value;
+                      // A new event's end follows the type's default length.
+                      if (widget.initial == null && !_allDay) {
+                        _endsAt = _startsAt.add(_defaultDuration(value));
+                      }
                       _error = null;
                       _draft.markDirty();
                     }),
@@ -2447,33 +2670,56 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
             ),
             if (_type == 'match') ...[
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _opponent,
-                maxLength: 157,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(
-                  labelText: strings.feature('Motståndare *'),
-                  prefixIcon: const Icon(Icons.shield_outlined),
-                ),
-              ),
-              SegmentedButton<String>(
-                segments: [
-                  ButtonSegment(
-                    value: 'home',
-                    icon: const Icon(Icons.home_outlined),
-                    label: Text(strings.feature('Hemma')),
+              // Opponent and home/away share one row (home preselected).
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _opponent,
+                      maxLength: 157,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: InputDecoration(
+                        labelText: strings.feature('Motståndare *'),
+                        prefixIcon: const Icon(Icons.shield_outlined),
+                      ),
+                    ),
                   ),
-                  ButtonSegment(
-                    value: 'away',
-                    icon: const Icon(Icons.directions_bus_outlined),
-                    label: Text(strings.feature('Borta')),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 112,
+                    child: DropdownButtonFormField<String>(
+                      key: const ValueKey('event-home-away'),
+                      initialValue: _homeAway,
+                      isExpanded: true,
+                      items: [
+                        DropdownMenuItem(
+                          value: 'home',
+                          child: Text(strings.feature('Hemma')),
+                        ),
+                        DropdownMenuItem(
+                          value: 'away',
+                          child: Text(strings.feature('Borta')),
+                        ),
+                      ],
+                      onChanged: (value) => setState(() {
+                        _homeAway = value ?? _homeAway;
+                        _draft.markDirty();
+                      }),
+                    ),
                   ),
                 ],
-                selected: {_homeAway},
-                onSelectionChanged: (value) => setState(() {
-                  _homeAway = value.single;
-                  _draft.markDirty();
-                }),
+              ),
+              // Format and periods are rarely changed: collapsed by default,
+              // with the current choice in the header.
+              ExpansionTile(
+                key: const ValueKey('event-match-settings'),
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: const EdgeInsets.only(bottom: 8),
+                leading: const Icon(Icons.groups_2_outlined),
+                title: Text(strings.feature('Matchformat')),
+                subtitle: Text(_matchSettingsSummary),
+                children: _matchSettingsFields(strings),
               ),
             ],
           ],
@@ -2481,50 +2727,8 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
         // When
         _section(context, Icons.event_outlined, strings.feature('När'), [
           _whenFields(strings),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-            title: Text(strings.feature('Heldag')),
-            value: _allDay,
-            onChanged: (value) => setState(() {
-              _allDay = value;
-              if (value) {
-                _startsAt = DateTime(
-                  _startsAt.year,
-                  _startsAt.month,
-                  _startsAt.day,
-                );
-                _endsAt = DateTime(_endsAt.year, _endsAt.month, _endsAt.day);
-                if (!_endsAt.isAfter(_startsAt)) {
-                  _endsAt = _startsAt.add(const Duration(days: 1));
-                }
-              } else {
-                _startsAt = DateTime(
-                  _startsAt.year,
-                  _startsAt.month,
-                  _startsAt.day,
-                  18,
-                );
-                _endsAt = _startsAt.add(const Duration(hours: 2));
-              }
-              _draft.markDirty();
-            }),
-          ),
-          if (!_allDay)
-            TextFormField(
-              controller: _assembly,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: strings.feature('Samling före start (minuter)'),
-                prefixIcon: const Icon(Icons.flag_outlined),
-                suffixText: 'min',
-                helperText: assemblyAt == null
-                    ? null
-                    : '${strings.feature('Samling kl.')} ${TimeOfDay.fromDateTime(assemblyAt).format(context)}',
-              ),
-              onChanged: (_) => setState(() {}),
-            ),
-          if (creating) ...[
+          // Matches are not planned as series.
+          if (creating && _type != 'match') ...[
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               dense: true,
@@ -2569,23 +2773,29 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
         // Where
         _section(context, Icons.place_outlined, strings.feature('Plats'), [
           if (widget.locationSuggestions.isNotEmpty) ...[
-            // Earlier places, picked as a whole (facility, pitch, surface).
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                for (final place in widget.locationSuggestions.take(8))
-                  ActionChip(
-                    key: ValueKey('saved-place-${place.label}'),
-                    avatar: const Icon(Icons.history, size: 16),
-                    label: Text(place.label),
-                    onPressed: () => setState(() {
-                      _location.text = place.name;
-                      _pitch.text = place.pitch ?? '';
-                      _surface.text = place.surface ?? '';
-                    }),
-                  ),
-              ],
+            // Earlier places, picked as a whole (facility, pitch, surface),
+            // in one horizontally scrolling row to save height.
+            SingleChildScrollView(
+              key: const ValueKey('saved-places'),
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final place in widget.locationSuggestions.take(12))
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ActionChip(
+                        key: ValueKey('saved-place-${place.label}'),
+                        avatar: const Icon(Icons.history, size: 16),
+                        label: Text(place.label),
+                        onPressed: () => setState(() {
+                          _location.text = place.name;
+                          _pitch.text = place.pitch ?? '';
+                          _surface.text = place.surface ?? '';
+                        }),
+                      ),
+                    ),
+                ],
+              ),
             ),
             const SizedBox(height: 12),
           ],
@@ -2647,43 +2857,52 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
             ],
           ),
         ]),
-        // Details
-        _section(context, Icons.notes_outlined, strings.feature('Detaljer'), [
-          ..._typedFields(strings),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _description,
-            minLines: 2,
-            maxLines: 4,
-            decoration: InputDecoration(
-              labelText: strings.feature('Beskrivning'),
-            ),
+        if (creating && widget.shareableTeams.isNotEmpty)
+          _section(
+            context,
+            Icons.share_outlined,
+            strings.feature('Dela med andra lag'),
+            [
+              Text(
+                strings.feature(
+                  'Lagen kan se eventet och får samma mottagare. Rättigheter ändras sedan under Dela event.',
+                ),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final team in widget.shareableTeams)
+                    FilterChip(
+                      key: ValueKey('event-share-team-${team.id}'),
+                      label: Text(team.name),
+                      selected: _sharedTeamIds.contains(team.id),
+                      onSelected: (selected) => setState(() {
+                        selected
+                            ? _sharedTeamIds.add(team.id)
+                            : _sharedTeamIds.remove(team.id);
+                        _draft.markDirty();
+                      }),
+                    ),
+                ],
+              ),
+            ],
           ),
-        ]),
-        const SizedBox(height: 8),
-        if (creating)
-          SwitchListTile(
-            key: const ValueKey('event-save-as-draft'),
-            contentPadding: EdgeInsets.zero,
-            secondary: const Icon(Icons.edit_note_outlined),
-            title: Text(strings.feature('Spara som utkast')),
-            subtitle: Text(
-              strings.feature('Planeras klart och publiceras senare.'),
-            ),
-            value: _state == 'draft',
-            onChanged: (value) => setState(() {
-              _state = value ? 'draft' : 'scheduled';
-              _draft.markDirty();
-            }),
-          ),
-        ExpansionTile(
-          tilePadding: EdgeInsets.zero,
-          title: Text(strings.feature('Fler inställningar')),
-          children: [
+        // Type details (training plan, agenda, notes...) are added on the
+        // event's Förberedelser tab afterwards; existing values are kept.
+        _section(
+          context,
+          Icons.notes_outlined,
+          strings.feature('Beskrivning'),
+          [
             TextFormField(
-              controller: _timezone,
+              controller: _description,
+              minLines: 2,
+              maxLines: 4,
               decoration: InputDecoration(
-                labelText: strings.feature('Tidszon'),
+                hintText: strings.feature('Information till deltagarna'),
               ),
             ),
           ],
@@ -2746,51 +2965,31 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
   }
 
   Widget _seriesFields(AppStrings strings) {
-    final interval = int.tryParse(_interval.text);
-    final count = interval == null ? null : _seriesCount(interval);
+    final count = _seriesCount();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                initialValue: _frequency,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: strings.feature('Intervalltyp'),
-                ),
-                items: [
-                  DropdownMenuItem(
-                    value: 'daily',
-                    child: Text(strings.feature('Dagligen')),
-                  ),
-                  DropdownMenuItem(
-                    value: 'weekly',
-                    child: Text(strings.feature('Veckovis')),
-                  ),
-                ],
-                onChanged: (value) => setState(() {
-                  _frequency = value ?? _frequency;
-                  _draft.markDirty();
-                }),
+        DropdownButtonFormField<String>(
+          key: const ValueKey('event-series-frequency'),
+          initialValue: _frequency,
+          isExpanded: true,
+          decoration: InputDecoration(labelText: strings.feature('Upprepas')),
+          items: [
+            for (final (value, label) in const [
+              ('daily', 'Dagligen'),
+              ('weekly', 'Varje vecka'),
+              ('biweekly', 'Varannan vecka'),
+              ('monthly', 'Varje månad'),
+            ])
+              DropdownMenuItem(
+                value: value,
+                child: Text(strings.feature(label)),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextFormField(
-                controller: _interval,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: strings.feature('Varje'),
-                  suffixText: strings.feature(
-                    _frequency == 'daily' ? 'dag' : 'vecka',
-                  ),
-                ),
-                onChanged: (_) => setState(() {}),
-              ),
-            ),
           ],
+          onChanged: (value) => setState(() {
+            _frequency = value ?? _frequency;
+            _draft.markDirty();
+          }),
         ),
         const SizedBox(height: 12),
         _pickerField(
@@ -2802,7 +3001,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
           icon: Icons.event_repeat_outlined,
           onTap: _pickSeriesEnd,
         ),
-        if (count != null && count > 0)
+        if (count > 0)
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(
@@ -3091,6 +3290,19 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
     } catch (_) {
       suggestions = const [];
     }
+    // Sharing is optional; without the list the editor just hides it.
+    List<ShareableTeam> shareable;
+    try {
+      shareable = await widget.calendar.listShareableTeams(teamId);
+    } catch (_) {
+      shareable = const [];
+    }
+    String? matchFormat;
+    try {
+      matchFormat = await widget.calendar.getTeamMatchFormat(teamId);
+    } catch (_) {
+      matchFormat = null;
+    }
     if (!mounted) return;
     final value = await showDialog<_EventEditorValue>(
       context: context,
@@ -3098,11 +3310,15 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
         teamName: widget.contextValue.teamName ?? '',
         locationSuggestions: suggestions,
         initialType: type,
+        initialDate: _selectedDate,
+        shareableTeams: shareable,
+        matchFormat: MatchFormat.fromKey(matchFormat),
       ),
     );
     if (value == null || !mounted) return;
+    final String eventId;
     try {
-      await widget.calendar.createEvent(
+      eventId = await widget.calendar.createEvent(
         CreateEventInput(
           clubId: widget.contextValue.clubId,
           teamId: teamId,
@@ -3146,6 +3362,52 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
         );
       }
       return;
+    }
+    if (value.matchSettingsChanged &&
+        value.matchFormat != null &&
+        value.periodMinutes != null) {
+      try {
+        await widget.calendar.setEventMatchSettings(
+          eventId: eventId,
+          format: value.matchFormat!,
+          periodMinutes: value.periodMinutes!,
+          scope: 'all',
+          idempotencyKey: _newUuid(),
+        );
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                AppStrings.of(context).feature(
+                  'Matchen skapades men format och perioder kunde inte sparas. Ändra dem under Redigera event.',
+                ),
+              ),
+            ),
+          );
+        }
+      }
+    }
+    if (value.sharedTeamIds.isNotEmpty) {
+      try {
+        await widget.calendar.shareNewEvent(
+          eventId: eventId,
+          teamIds: value.sharedTeamIds,
+          idempotencyKey: _newUuid(),
+        );
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                AppStrings.of(context).feature(
+                  'Eventet skapades men kunde inte delas. Dela det från eventet.',
+                ),
+              ),
+            ),
+          );
+        }
+      }
     }
     if (!mounted) return;
     await Future<void>.delayed(const Duration(milliseconds: 250));

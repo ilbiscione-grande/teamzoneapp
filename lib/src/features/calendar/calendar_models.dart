@@ -1,3 +1,5 @@
+import 'package:teamzone_app/src/features/roster/roster_models.dart';
+
 class CalendarEventSummary {
   const CalendarEventSummary({
     required this.id,
@@ -356,6 +358,46 @@ class SavedEventPlace {
         pitch: json['pitch'] as String?,
         surface: json['surface'] as String?,
       );
+}
+
+/// A match event's format and periods (api.get_event_match_settings): its
+/// own choice, else the team's format. [locked] once match mode started the
+/// match; its periods are then changed there.
+class EventMatchSettings {
+  const EventMatchSettings({
+    required this.format,
+    required this.periodMinutes,
+    this.isSet = false,
+    this.locked = false,
+  });
+  final MatchFormat format;
+  final List<int> periodMinutes;
+  final bool isSet, locked;
+
+  factory EventMatchSettings.fromJson(Map<String, dynamic> json) {
+    final format = MatchFormat.fromKey(json['match_format'] as String?);
+    final periods = [
+      for (final value in json['period_minutes'] as List? ?? const [])
+        if (value is num) value.toInt(),
+    ];
+    return EventMatchSettings(
+      format: format,
+      periodMinutes: periods.isEmpty ? format.periodMinutes : periods,
+      isSet: json['is_set'] == true,
+      locked: json['locked'] == true,
+    );
+  }
+}
+
+/// Another active team in the club that a new event can be shared with.
+class ShareableTeam {
+  const ShareableTeam({required this.id, required this.name});
+  final String id, name;
+
+  factory ShareableTeam.fromJson(Map<String, dynamic> json) => ShareableTeam(
+    id: json['team_id'] as String,
+    name: json['name'] as String? ?? '',
+  );
 }
 
 class SquadMemberView {

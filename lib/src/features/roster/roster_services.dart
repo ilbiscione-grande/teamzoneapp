@@ -20,6 +20,15 @@ abstract interface class RosterServices {
     required String idempotencyKey,
   });
 
+  /// The team's match format (11v11 until set) and whether the viewer may
+  /// change it.
+  Future<TeamMatchFormat> getTeamMatchFormat(String teamId);
+  Future<void> setTeamMatchFormat({
+    required String teamId,
+    required MatchFormat format,
+    required String idempotencyKey,
+  });
+
   /// Sets the team's sport, which selects its position catalog.
   Future<void> setTeamSport({
     required String clubId,
@@ -360,6 +369,17 @@ class UnconfiguredRosterServices implements RosterServices {
     required String clubId,
     required String teamId,
     required String sport,
+    required String idempotencyKey,
+  }) => Future.error(StateError('Supabase is not configured.'));
+
+  @override
+  Future<TeamMatchFormat> getTeamMatchFormat(String teamId) async =>
+      const TeamMatchFormat();
+
+  @override
+  Future<void> setTeamMatchFormat({
+    required String teamId,
+    required MatchFormat format,
     required String idempotencyKey,
   }) => Future.error(StateError('Supabase is not configured.'));
 
@@ -823,6 +843,38 @@ class SupabaseRosterServices implements RosterServices {
       }
       rethrow;
     }
+  }
+
+  @override
+  Future<TeamMatchFormat> getTeamMatchFormat(String teamId) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'get_team_match_format',
+          params: {'target_team_id': teamId},
+        );
+    if (value is! Map) {
+      throw const FormatException('Team match format response is invalid.');
+    }
+    return TeamMatchFormat.fromJson(Map<String, dynamic>.from(value));
+  }
+
+  @override
+  Future<void> setTeamMatchFormat({
+    required String teamId,
+    required MatchFormat format,
+    required String idempotencyKey,
+  }) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'set_team_match_format',
+          params: {
+            'target_team_id': teamId,
+            'new_format': format.key,
+            'idempotency_key': idempotencyKey,
+          },
+        );
   }
 
   @override

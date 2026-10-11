@@ -783,6 +783,8 @@ class _FollowupTabState extends State<_FollowupTab> {
       (summary.partial, Colors.amber.shade400, 'delvis'),
       (summary.absent, colors.error, 'frånvarande'),
       (summary.unregistered, colors.outlineVariant, 'ej registrerade'),
+      // Came without a callup: shown, but not part of the attendance rate.
+      (summary.extra, colors.tertiary, 'utan kallelse'),
     ].where((part) => part.$1 > 0).toList();
     final total = parts.fold<int>(0, (sum, part) => sum + part.$1);
     final reasons = data.declineReasons.entries

@@ -127,6 +127,13 @@ void main() {
     // box for next week's first day (8 day cells total, each a Card), and
     // reuses the same fixed-grid/scrolling-day-panel layout as month view.
     expect(find.byType(Card), findsNWidgets(8));
+    // Each preview names the team, and the place when there is one.
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('week-event-where-event')))
+          .data,
+      'F2012 · Ekbacken',
+    );
     expect(find.byKey(const Key('calendarSelectedDayPanel')), findsOneWidget);
     expect(tester.takeException(), isNull);
     await selectView('Dag');
@@ -142,6 +149,19 @@ void main() {
     final kvallstraningLeft = tester.getTopLeft(find.text('Kvällsträning')).dx;
     final extraevent1Left = tester.getTopLeft(find.text('Extraevent 1')).dx;
     expect(kvallstraningLeft, isNot(equals(extraevent1Left)));
+    // An hour or longer has room for team and place on a line of its own.
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('day-event-where-event')))
+          .data,
+      'F2012 · Ekbacken',
+    );
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('day-event-where-event-1')))
+          .data,
+      'F2012',
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -464,6 +484,7 @@ class _Calendar extends UnconfiguredCalendarServices {
         allDay: false,
         timezone: 'Europe/Stockholm',
         revision: 1,
+        locationName: 'Ekbacken',
       ),
       for (var index = 1; index <= 3; index++)
         CalendarEventSummary(

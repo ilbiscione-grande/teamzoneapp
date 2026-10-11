@@ -89,6 +89,19 @@ abstract interface class CalendarServices {
     required int expectedRevision,
     required String idempotencyKey,
   });
+
+  /// Squad managers' correction of a person's callup, also after the event:
+  /// [state] is accepted, declined, pending (no answer) or none (no callup).
+  /// Adds a callup someone never got, without notifying anyone. Returns the
+  /// callup's new revision (0 when there is none).
+  Future<int> correctCallup({
+    required String eventId,
+    required String personId,
+    required String state,
+    String? declineReasonCode,
+    String? declineReasonText,
+    required int expectedRevision,
+  });
   Future<void> recordAttendance({
     required String eventId,
     required List<Map<String, dynamic>> changes,
@@ -97,6 +110,34 @@ abstract interface class CalendarServices {
   });
   Future<AttendancePermissions> getAttendancePermissions(String eventId);
   Future<String> createEvent(CreateEventInput input, String idempotencyKey);
+
+  /// The club's other active teams, offered when creating an event.
+  Future<List<ShareableTeam>> listShareableTeams(String teamId);
+
+  /// The team's match format key ("11v11" until set), for a new match's
+  /// default length; null when it cannot be read.
+  Future<String?> getTeamMatchFormat(String teamId);
+
+  /// Format and periods of a match event (the team default until chosen).
+  Future<EventMatchSettings?> getEventMatchSettings(String eventId);
+
+  /// Saves a match's format and periods for [scope] (one, forward, all) of
+  /// its series; a match still being planned in match mode follows.
+  Future<int> setEventMatchSettings({
+    required String eventId,
+    required String format,
+    required List<int> periodMinutes,
+    required String scope,
+    required String idempotencyKey,
+  });
+
+  /// Shares a just-created event (every occurrence of a new series) with
+  /// [teamIds] ("Kan se", same recipients as the owning team).
+  Future<int> shareNewEvent({
+    required String eventId,
+    required List<String> teamIds,
+    required String idempotencyKey,
+  });
   Future<int> reviseEvent({
     required String eventId,
     required String scope,
@@ -166,6 +207,28 @@ class UnconfiguredCalendarServices implements CalendarServices {
   @override
   Future<String> createEvent(CreateEventInput input, String idempotencyKey) =>
       Future.error(_error);
+  @override
+  Future<List<ShareableTeam>> listShareableTeams(String teamId) async =>
+      const [];
+  @override
+  Future<String?> getTeamMatchFormat(String teamId) async => null;
+  @override
+  Future<EventMatchSettings?> getEventMatchSettings(String eventId) async =>
+      null;
+  @override
+  Future<int> setEventMatchSettings({
+    required String eventId,
+    required String format,
+    required List<int> periodMinutes,
+    required String scope,
+    required String idempotencyKey,
+  }) => Future.error(_error);
+  @override
+  Future<int> shareNewEvent({
+    required String eventId,
+    required List<String> teamIds,
+    required String idempotencyKey,
+  }) => Future.error(_error);
   @override
   Future<EventDetails> getEventDetails(String eventId) => Future.error(_error);
   @override
@@ -241,6 +304,15 @@ class UnconfiguredCalendarServices implements CalendarServices {
     String? declineReasonText,
     required int expectedRevision,
     required String idempotencyKey,
+  }) => Future.error(_error);
+  @override
+  Future<int> correctCallup({
+    required String eventId,
+    required String personId,
+    required String state,
+    String? declineReasonCode,
+    String? declineReasonText,
+    required int expectedRevision,
   }) => Future.error(_error);
   @override
   Future<void> recordAttendance({
@@ -633,6 +705,34 @@ class SupabaseCalendarServices implements CalendarServices {
         },
       );
   @override
+  Future<int> correctCallup({
+    required String eventId,
+    required String personId,
+    required String state,
+    String? declineReasonCode,
+    String? declineReasonText,
+    required int expectedRevision,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'correct_callup',
+          params: {
+            'event_id': eventId,
+            'person_id': personId,
+            'state': state,
+            'decline_reason_code': declineReasonCode,
+            'decline_reason_text': declineReasonText,
+            'expected_revision': expectedRevision,
+          },
+        );
+    if (value is! Map) {
+      throw const FormatException('Invalid callup correction.');
+    }
+    return (value['revision'] as num).toInt();
+  }
+
+  @override
   Future<void> recordAttendance({
     required String eventId,
     required List<Map<String, dynamic>> changes,
@@ -662,6 +762,95 @@ class SupabaseCalendarServices implements CalendarServices {
       throw const FormatException('Attendance permissions are invalid.');
     }
     return AttendancePermissions.fromJson(value);
+  }
+
+  @override
+  Future<List<ShareableTeam>> listShareableTeams(String teamId) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'list_shareable_teams',
+          params: {'target_team_id': teamId},
+        );
+    if (value is! List) {
+      throw const FormatException('Shareable teams response is invalid.');
+    }
+    return [
+      for (final row in value)
+        if (row is Map) ShareableTeam.fromJson(Map<String, dynamic>.from(row)),
+    ];
+  }
+
+  @override
+  Future<EventMatchSettings?> getEventMatchSettings(String eventId) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'get_event_match_settings',
+          params: {'target_event_id': eventId},
+        );
+    return value is Map
+        ? EventMatchSettings.fromJson(Map<String, dynamic>.from(value))
+        : null;
+  }
+
+  @override
+  Future<int> setEventMatchSettings({
+    required String eventId,
+    required String format,
+    required List<int> periodMinutes,
+    required String scope,
+    required String idempotencyKey,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'set_event_match_settings',
+          params: {
+            'target_event_id': eventId,
+            'new_format': format,
+            'new_period_minutes': periodMinutes,
+            'change_scope': scope,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+    if (value is! num) {
+      throw const FormatException('Match settings response is invalid.');
+    }
+    return value.toInt();
+  }
+
+  @override
+  Future<String?> getTeamMatchFormat(String teamId) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'get_team_match_format',
+          params: {'target_team_id': teamId},
+        );
+    return value is Map ? value['effective'] as String? : null;
+  }
+
+  @override
+  Future<int> shareNewEvent({
+    required String eventId,
+    required List<String> teamIds,
+    required String idempotencyKey,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'share_new_event',
+          params: {
+            'target_event_id': eventId,
+            'team_ids': teamIds,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+    if (value is! num) {
+      throw const FormatException('Event sharing response is invalid.');
+    }
+    return value.toInt();
   }
 
   @override

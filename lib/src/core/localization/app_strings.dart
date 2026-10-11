@@ -207,8 +207,40 @@ class AppStrings {
     'Lägst närvaro': 'Lowest attendance',
     'Spelare med minst tre räknade aktiviteter.':
         'Players with at least three counted activities.',
-    'Närvarande, sen och delvis räknas som närvaro. Frånvaro räknas bara för den som var kallad (eller när aktiviteten saknade kallelser). Oregistrerad närvaro räknas inte. Lagets andelar gäller spelarna. Tryck på en person för hens egen statistik.':
-        'Present, late and partial count as attended. An absence only counts for someone who was called (or when the activity had no callups). Unregistered attendance is not counted. Team rates are about the players. Tap a person for their own statistics.',
+    'Närvaron räknas på aktiviteter där personen var kallad (eller där aktiviteten saknade kallelser). Närvarande, sen och delvis räknas som närvaro. Närvaro utan kallelse visas separat och påverkar inte andelen. Oregistrerad närvaro räknas inte. Lagets andelar gäller spelarna. Tryck på en person för hens egen statistik.':
+        'Attendance is counted for activities the person was called to (or that had no callups). Present, late and partial count as attended. Attendance without a callup is shown separately and does not affect the rate. Unregistered attendance is not counted. Team rates are about the players. Tap a person for their own statistics.',
+    'Närvaro utan kallelse': 'Attendance without callup',
+    'Kallelse (rättelse i efterhand)': 'Callup (correction after the fact)',
+    'Markera som kallad': 'Mark as called',
+    'Inte svarat': 'Not answered',
+    'Ta bort kallelse': 'Remove callup',
+    'Matchformat': 'Match format',
+    'Samling': 'Assembly',
+    'kl.': 'at',
+    'Format': 'Format',
+    'Perioder': 'Periods',
+    'Min per period': 'Min per period',
+    'Matchen har startat. Perioderna ändras i matchläget.':
+        'The match has started. Change the periods in match mode.',
+    'Speltid {minutes} min': 'Playing time {minutes} min',
+    'Ange 1–120 minuter per period.': 'Enter 1–120 minutes per period.',
+    'Matchen skapades men format och perioder kunde inte sparas. Ändra dem under Redigera event.':
+        'The match was created but its format and periods could not be saved. Change them under Edit event.',
+    'Format och perioder kunde inte sparas. Försök igen.':
+        'Format and periods could not be saved. Try again.',
+    'Ger nya matcher rätt längd i kalendern. Utan val gäller 11v11.':
+        'Gives new matches the right length in the calendar. 11v11 unless chosen.',
+    'Upprepas': 'Repeats',
+    'Varje vecka': 'Every week',
+    'Varannan vecka': 'Every other week',
+    'Varje månad': 'Every month',
+    'Serien ska ha 2–104 tillfällen. Ändra slutdatum eller intervall.':
+        'The series must have 2–104 occurrences. Change the end date or interval.',
+    'Information till deltagarna': 'Information for participants',
+    'Lagen kan se eventet och får samma mottagare. Rättigheter ändras sedan under Dela event.':
+        'The teams can see the event and get the same recipients. Change their rights later under Share event.',
+    'Eventet skapades men kunde inte delas. Dela det från eventet.':
+        'The event was created but could not be shared. Share it from the event.',
     'Ledarnas verktyg samlade på ett ställe. Fler arbetsytor kommer.':
         "The leaders' tools in one place. More workspaces are coming.",
     'Spelarnas utveckling och mål': "Players' development and goals",
