@@ -1,12 +1,13 @@
 # TeamZone implementation slice status
 
-Updated: 2026-10-09
+Updated: 2026-10-11
 
 Latest consolidated implementation deltas:
 [2026-10-02–2026-10-04](../evidence/core_app_iteration_2026-10-02_10-04.md),
 [2026-10-05](../evidence/core_app_iteration_2026-10-05.md),
-[2026-10-07–2026-10-08](../evidence/core_app_iteration_2026-10-07_10-08.md) and
-[2026-10-08–2026-10-09](../evidence/core_app_iteration_2026-10-08_10-09.md).
+[2026-10-07–2026-10-08](../evidence/core_app_iteration_2026-10-07_10-08.md),
+[2026-10-08–2026-10-09](../evidence/core_app_iteration_2026-10-08_10-09.md) and
+[2026-10-10–2026-10-11](../evidence/core_app_iteration_2026-10-10_10-11.md).
 
 Multiple addresses and restricted personal data:
 [design, behavior and verification](address-privacy.md).
@@ -322,3 +323,19 @@ corrections are no longer staged, and the event status circles explain
 themselves. Migrations `20261013090000`–`20261016090000` are applied to the
 audit project. Evidence:
 [`core_app_iteration_2026-10-08_10-09.md`](../evidence/core_app_iteration_2026-10-08_10-09.md).
+
+On 2026-10-10 – 2026-10-11 attendance rates started counting only expected
+people (called, or everyone when no callups were used); attendance without a
+callup is reported separately as "utan kallelse". After an event, managers can
+correct callups (mark as called, change the answer or remove it) without
+notifications, and add people outside the roster. The Utkast status circle
+counts only selected people not yet called. The week and day views show team
+and place. The event editor lost its type details (they belong on
+Förberedelser), the time zone setting and the draft switch (now an Utkast
+button). It gained sharing with other teams when creating, every-other-week and
+monthly series, a preselected day, default lengths per type, compact När and
+match rows, and match format and periods. Teams have a match format (unset is
+11v11) under Redigera lagprofil; each match can override format and periods,
+and match mode starts with them. Migrations `20261017090000`–`20261021090000`
+are applied to the audit project. Evidence:
+[`core_app_iteration_2026-10-10_10-11.md`](../evidence/core_app_iteration_2026-10-10_10-11.md).

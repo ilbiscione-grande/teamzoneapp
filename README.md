@@ -30,6 +30,11 @@ The temporary, removable attendance export to laget.se with member import, a
 local sync agent and automatic activity lookup, team statistics under Laget, a
 role-aware fifth menu button and attendance fixes (2026-10-08 – 2026-10-09) are in
 [`docs/evidence/core_app_iteration_2026-10-08_10-09.md`](docs/evidence/core_app_iteration_2026-10-08_10-09.md).
+An attendance rate over expected people with callup corrections after the event,
+team and place in the week and day views, a simpler event editor with sharing
+when creating and monthly series, and match format and periods per team and
+match (2026-10-10 – 2026-10-11) are in
+[`docs/evidence/core_app_iteration_2026-10-10_10-11.md`](docs/evidence/core_app_iteration_2026-10-10_10-11.md).
 
 Current progress is tracked in
 [`docs/implementation/slice_status.md`](docs/implementation/slice_status.md).
