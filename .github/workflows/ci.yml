@@ -1,0 +1,102 @@
+# Analysis and every test suite on each push to main and each pull request.
+# Nothing here deploys or touches Supabase/Firebase: no secrets are used.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter:
+    name: Flutter analyze and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.8
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  sql:
+    name: SQL migration tests (PGlite)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # The tests import PGlite from this path (ignored in git locally).
+      - run: npm install --no-save --prefix .tmp-search-test @electric-sql/pglite@0.5.8
+      - name: Run every supabase/tests/*.local.mjs
+        run: |
+          for test in supabase/tests/*.local.mjs; do
+            echo "::group::$test"
+            node "$test"
+            echo "::endgroup::"
+          done
+          # Modules without their own runner (see the file headers).
+          node supabase/tests/pub07_personal_home.local.mjs --direct-result --written-reports --team-notifications
+
+  edge-functions:
+    name: Edge Function tests (Deno)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno test supabase/functions/tests
+
+  public-site:
+    name: Public site typecheck, tests, build and audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: public-site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: public-site/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
+
+  firebase-functions:
+    name: Firebase functions tests and audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: firebase-functions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: firebase-functions/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm audit --omit=dev --audit-level=high
