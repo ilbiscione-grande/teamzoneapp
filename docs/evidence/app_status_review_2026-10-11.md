@@ -21,6 +21,16 @@ viktigast:
 4. **Viktiga delar är inte igång:** push-notiser skickas inte, iOS är aldrig
    byggt, och flera funktioner väntar på kontroll på riktig enhet.
 
+## Åtgärdat sedan rapporten
+
+Uppdaterat 2026-10-12.
+
+| Steg | Resultat |
+|---|---|
+| 1. Säkerhetspatchar | `next` 16.3.1 → 16.3.8 och `firebase-functions` 6.6.0 → 7.4.0. `npm audit` visar 0 sårbarheter i båda. Båda driftsatta; den publika webbplatsen klarar röktestet PUB-06. Commit `b004a02`. |
+| 2. Engelska texter | Inte 2 utan **50** texter saknade engelska och kraschade den engelska versionen, bland annat matchens infoflik och den egna profilen. Alla är översatta, `feature()` visar svenska i stället för att krascha i release, och kontrolltestet täcker hela `lib/`. Commit `f62531e`. |
+| 3. Migreringsloggarna | Schemat i testmiljön motsvarar repot (se 3.1). Supabase migreringslogg är rättad: alla 319 migreringar står som körda, inga andra, och `supabase db push --dry-run` säger att databasen är uppdaterad. |
+
 ## 1. Aktuell status
 
 ### Omfattning
@@ -94,6 +104,21 @@ skickar personuppgifter via den lokala agenten och ska tas bort med tiden.
 ## 3. Vad som behöver åtgärdas i koden
 
 ### 3.1 Migreringsloggarna stämmer inte (viktigast)
+
+> **Åtgärdat 2026-10-12.** Läsfrågor jämförde databasen med repots
+> migreringar. Alla 947 funktioner, 178 tabeller, 1 786 kolumner och 123
+> RLS-policyer som repot lämnar kvar finns, och inga andra. 889 funktioner har
+> identisk källkod, 4 skiljer sig bara i ett avslutande semikolon och 45 skrivs
+> om av senare migreringar med textersättning (de flesta avbryter själva om
+> ersättningen inte träffar). Uppgiften nedan om 12 migreringar i ingen logg var
+> fel: de stod i loggen under andra versionsnummer. 40 migreringar hade körts
+> via ett verktyg som loggar med egen tidsstämpel. Rättningen finns i
+> `ops/reconcile_migration_log_2026-10-11.sql` (för in 85 repoversioner) och
+> `ops/reconcile_migration_log_2026-10-12_duplicates.sql` (tar bort de 40
+> dubbletterna). Framöver får varje migrering som körs för hand en rad i
+> loggen samtidigt.
+
+Ursprunglig bedömning:
 
 - Repot har 319 migreringar. Supabase egen logg
   (`supabase_migrations.schema_migrations`) har 274, senast från 2026-10-04.
