@@ -50,11 +50,17 @@ recorded as `suppressed / provider_not_configured`, as before.
 3. **FCM service account.** In the Firebase console for `teamzoneapp-b02a2`
    (Project settings → Service accounts) generate a private key, or create a
    dedicated service account with the role *Firebase Cloud Messaging API
-   Admin*. Check that *Firebase Cloud Messaging API (V1)* is enabled. Then:
+   Admin*. Check that *Firebase Cloud Messaging API (V1)* is enabled. Then set
+   it from a file: passing the JSON on the command line loses its quotes
+   (`npx` runs through cmd.exe), and the worker then reports
+   `fcm_service_account_invalid`.
    ```powershell
-   npx supabase secrets set "FCM_SERVICE_ACCOUNT_JSON=$(Get-Content -Raw .\service-account.json | ConvertFrom-Json | ConvertTo-Json -Compress)" --project-ref hgcshgunvooyudvrcpig
+   $json = Get-Content -Raw .\service-account.json | ConvertFrom-Json | ConvertTo-Json -Compress
+   Set-Content -Path .\fcm.env -Value ("FCM_SERVICE_ACCOUNT_JSON='" + $json + "'") -Encoding ascii
+   npx supabase secrets set --env-file ./fcm.env --project-ref hgcshgunvooyudvrcpig
+   Remove-Item .\fcm.env, .\service-account.json
    ```
-   Delete the downloaded JSON file afterwards; it must never be committed.
+   The JSON file must never be committed.
 4. **Switch on** (the fail-closed kill switch; set `false` to stop at once):
    ```powershell
    npx supabase secrets set NOTIFICATION_PUSH_ENABLED=true --project-ref hgcshgunvooyudvrcpig

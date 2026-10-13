@@ -63,9 +63,13 @@ Deno.serve(async (request) => {
     });
     return respond({ error: "worker_not_configured" }, 503);
   }
-  const account = Deno.env.get("NOTIFICATION_PUSH_ENABLED") === "true"
+  const pushEnabled = Deno.env.get("NOTIFICATION_PUSH_ENABLED") === "true";
+  const account = pushEnabled
     ? parseServiceAccount(Deno.env.get("FCM_SERVICE_ACCOUNT_JSON"))
     : null;
+  // Switched on but the service account is missing or not valid JSON (for
+  // example quotes lost when the secret was set through a shell).
+  const notConfigured = pushEnabled ? "fcm_service_account_invalid" : "provider_not_configured";
 
   const api = createClient(url, secret, { auth: { persistSession: false } })
     .schema("api");
@@ -98,7 +102,7 @@ Deno.serve(async (request) => {
     } else if (isStale(item.created_at)) {
       code = "stale";
     } else if (!account) {
-      code = "provider_not_configured";
+      code = notConfigured;
     } else {
       const { data: message } = await api.rpc("push_message_for_outbox", {
         target_outbox_id: item.id,
@@ -146,7 +150,7 @@ Deno.serve(async (request) => {
   }
   sanitizedLog("worker.completed", "info", requestId, {
     component: "notification",
-    result: account ? "push_enabled" : "push_disabled",
+    result: account ? "push_enabled" : pushEnabled ? "push_misconfigured" : "push_disabled",
   });
   return respond({ claimed: (data ?? []).length, ...counts }, 200);
 });

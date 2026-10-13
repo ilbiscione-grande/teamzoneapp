@@ -142,6 +142,8 @@ class _ProductShellState extends State<_ProductShell> {
   }
 
   StreamSubscription<String>? _pushTaps;
+  AppLifecycleListener? _pushResume;
+  bool _offeringPush = false;
 
   /// Push (FCM): keeps this device registered, opens tapped notifications,
   /// and offers notifications the first time there is something unread.
@@ -154,6 +156,15 @@ class _ProductShellState extends State<_ProductShell> {
       final initial = await push.initialRoute();
       if (initial != null) _openPushRoute(initial);
       await _maybeOfferPush();
+      // Something unread may arrive while the app is in the background.
+      _pushResume = AppLifecycleListener(
+        onResume: () => unawaited(
+          _maybeOfferPush().catchError(
+            (Object error) =>
+                AppErrors.caught('product_shell._maybeOfferPush', error),
+          ),
+        ),
+      );
     } catch (error) {
       AppErrors.caught('product_shell._startPush', error);
     }
@@ -168,9 +179,19 @@ class _ProductShellState extends State<_ProductShell> {
   }
 
   Future<void> _maybeOfferPush() async {
+    if (_offeringPush) return;
+    _offeringPush = true;
+    try {
+      await _offerPushOnce();
+    } finally {
+      _offeringPush = false;
+    }
+  }
+
+  Future<void> _offerPushOnce() async {
     final push = widget.push;
-    if (await push.permission() != PushPermission.notDetermined) return;
     if (await push.wasOffered()) return;
+    if (await push.permission() != PushPermission.notDetermined) return;
     final center = await widget.messaging.listNotifications();
     if (center.unreadCount == 0 || !mounted) return;
     await push.markOffered();
@@ -398,6 +419,7 @@ class _ProductShellState extends State<_ProductShell> {
                   contexts: widget.contexts,
                   messaging: widget.messaging,
                   membership: widget.membership,
+                  roster: widget.roster,
                   supportAdminAccess: _supportAdminAccess,
                   initialThreadId: state.uri.queryParameters['thread'],
                   initialAction: state.uri.queryParameters['action'],
@@ -906,6 +928,7 @@ class _ProductShellState extends State<_ProductShell> {
   @override
   void dispose() {
     unawaited(_pushTaps?.cancel());
+    _pushResume?.dispose();
     _router.routeInformationProvider.removeListener(_recordLocation);
     _router.routerDelegate.removeListener(_onPageChanged);
     _router.dispose();

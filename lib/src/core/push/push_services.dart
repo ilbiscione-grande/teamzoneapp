@@ -102,7 +102,12 @@ class FirebasePushServices implements PushServices {
       AuthorizationStatus.authorized ||
       AuthorizationStatus.provisional => PushPermission.granted,
       AuthorizationStatus.notDetermined => PushPermission.notDetermined,
-      AuthorizationStatus.denied => PushPermission.denied,
+      // Android only reports enabled or not: before the first question
+      // (Android 13+) notifications are off, which is not a refusal.
+      AuthorizationStatus.denied =>
+        defaultTargetPlatform == TargetPlatform.android && !await wasOffered()
+            ? PushPermission.notDetermined
+            : PushPermission.denied,
     };
   }
 

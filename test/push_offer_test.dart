@@ -61,6 +61,24 @@ void main() {
     },
   );
 
+  testWidgets('offered when the app returns with something unread', (
+    tester,
+  ) async {
+    final push = _Push();
+    final messaging = _Messaging(unread: 0);
+    await _open(tester, push, messaging);
+    expect(find.byKey(const ValueKey('push-offer')), findsNothing);
+    messaging.unread = 1;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('push-offer')), findsOneWidget);
+  });
+
   testWidgets('allowed devices stay registered and taps open the target', (
     tester,
   ) async {
@@ -143,7 +161,7 @@ class _Push implements PushServices {
 
 class _Messaging extends UnconfiguredMessagingServices {
   _Messaging({required this.unread});
-  final int unread;
+  int unread;
   bool pushEnabled = false;
 
   @override
