@@ -53,7 +53,7 @@ jobs:
           node supabase/tests/pub07_personal_home.local.mjs --direct-result --written-reports --team-notifications
 
   edge-functions:
-    name: Edge Function tests (Deno)
+    name: Edge Function typecheck and tests (Deno)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -61,6 +61,7 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - run: deno check supabase/functions/*/index.ts
       - run: deno test supabase/functions/tests
 
   public-site:

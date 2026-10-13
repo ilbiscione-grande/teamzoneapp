@@ -82,6 +82,9 @@ class _SignInScreenState extends State<_SignInScreen> {
     } on TimeoutException {
       if (!mounted) return;
       setState(() => _error = AppStrings.of(context).signInTimeout);
+    } on SignInRateLimitedException {
+      if (!mounted) return;
+      setState(() => _error = AppStrings.of(context).signInRateLimited);
     } catch (_) {
       if (!mounted) return;
       setState(() => _error = AppStrings.of(context).signInFailed);

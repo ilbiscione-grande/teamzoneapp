@@ -5,12 +5,14 @@ import {
   sanitizedLog,
   withCorrelation,
 } from "../_shared/observability.ts";
+import { allowedWebOrigins as webOrigins } from "../_shared/sign_in_limits.ts";
 
-const allowedWebOrigins = new Set([
-  "https://app.teamzoneapp.se",
-  "http://localhost",
-  "http://localhost:5000",
-]);
+// Local development origins come from TEAMZONE_EXTRA_WEB_ORIGINS, set only
+// on the test project.
+const allowedWebOrigins = webOrigins(
+  Deno.env.get("TEAMZONE_EXTRA_WEB_ORIGINS"),
+  ["https://app.teamzoneapp.se"],
+);
 
 function corsHeaders(origin: string | null): Record<string, string> {
   const headers: Record<string, string> = {

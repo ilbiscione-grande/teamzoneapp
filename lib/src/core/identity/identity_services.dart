@@ -1,5 +1,10 @@
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
 
+/// Too many failed sign-ins for this e-mail or address; try again later.
+class SignInRateLimitedException implements Exception {
+  const SignInRateLimitedException();
+}
+
 abstract interface class IdentityServices {
   SessionStatus get sessionStatus;
 

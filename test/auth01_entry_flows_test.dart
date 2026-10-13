@@ -120,6 +120,30 @@ void main() {
     expect(entry.verifiedCode, '123456');
   });
 
+  // Too many failed attempts gets its own message; other failures stay
+  // generic so they reveal nothing about the account.
+  for (final (error, message) in [
+    (
+      const SignInRateLimitedException(),
+      'För många misslyckade försök. Vänta 15 minuter och försök igen.',
+    ),
+    (
+      StateError('private detail'),
+      'Inloggningen misslyckades. Kontrollera uppgifterna.',
+    ),
+  ]) {
+    testWidgets('sign-in failure shows: $message', (tester) async {
+      await tester.pumpWidget(_app(_EntryFake(), signInError: error));
+      await tester.pumpAndSettle();
+      await tester.enterText(_field('E-post'), 'member@example.com');
+      await tester.enterText(_field('Lösenord'), 'wrong-password');
+      await tester.tap(find.widgetWithText(FilledButton, 'Logga in'));
+      await tester.pumpAndSettle();
+      expect(find.text(message), findsOneWidget);
+      expect(find.textContaining('private detail'), findsNothing);
+    });
+  }
+
   testWidgets('forgot-password response remains neutral on backend failure', (
     tester,
   ) async {
@@ -189,11 +213,14 @@ void main() {
 Finder _field(String label) =>
     find.ancestor(of: find.text(label), matching: find.byType(TextFormField));
 
-Widget _app(_EntryFake entry) => TeamZoneApp(
+Widget _app(_EntryFake entry, {Object? signInError}) => TeamZoneApp(
   environment: const AppEnvironment(name: 'test'),
   locale: const Locale('sv'),
   services: AppServices(
-    identity: _Identity(status: SessionStatus.unauthenticated),
+    identity: _Identity(
+      status: SessionStatus.unauthenticated,
+      signInError: signInError,
+    ),
     authEntry: entry,
     isConfigured: true,
   ),
@@ -249,8 +276,9 @@ class _EntryFake implements AuthEntryServices {
 }
 
 class _Identity implements IdentityServices {
-  _Identity({required this.status});
+  _Identity({required this.status, this.signInError});
   final SessionStatus status;
+  final Object? signInError;
   @override
   SessionStatus get sessionStatus => status;
   @override
@@ -261,10 +289,10 @@ class _Identity implements IdentityServices {
   Future<TeamZoneProfile> getProfile() async =>
       const TeamZoneProfile(id: 'profile', displayName: 'Test', locale: 'sv');
   @override
-  Future<void> signIn({
-    required String email,
-    required String password,
-  }) async {}
+  Future<void> signIn({required String email, required String password}) async {
+    if (signInError case final error?) throw error;
+  }
+
   @override
   Future<void> signOut() async {}
 }

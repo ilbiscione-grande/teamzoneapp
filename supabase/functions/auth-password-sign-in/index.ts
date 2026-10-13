@@ -6,14 +6,15 @@ import {
   sanitizedLog,
   withCorrelation,
 } from "../_shared/observability.ts";
+import {
+  allowedWebOrigins as webOrigins,
+  clientAddress,
+  limitKeyHash,
+} from "../_shared/sign_in_limits.ts";
 
-const allowedWebOrigins = new Set([
-  "https://app.teamzoneapp.se",
-  "https://public.teamzoneapp.se",
-  "http://localhost",
-  "http://localhost:5000",
-  "http://localhost:5001",
-]);
+// Local development origins come from TEAMZONE_EXTRA_WEB_ORIGINS, set only
+// on the test project.
+const allowedWebOrigins = webOrigins(Deno.env.get("TEAMZONE_EXTRA_WEB_ORIGINS"));
 
 function corsHeaders(origin: string | null): Record<string, string> {
   const headers: Record<string, string> = {
@@ -33,10 +34,14 @@ Deno.serve(async (request) => {
   const requestId = correlationId(request);
   const origin = request.headers.get("origin");
   const headers = corsHeaders(origin);
-  const respond = (body: unknown, status: number) => withCorrelation(
+  const respond = (
+    body: unknown,
+    status: number,
+    extra: Record<string, string> = {},
+  ) => withCorrelation(
     new Response(JSON.stringify(body), {
       status,
-      headers: { ...headers, "content-type": "application/json" },
+      headers: { ...headers, ...extra, "content-type": "application/json" },
     }),
     requestId,
   );
@@ -84,23 +89,64 @@ Deno.serve(async (request) => {
     return respond({ error: "invalid_request" }, 400);
   }
 
-  const authClient = createClient(url, publishableKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const address = clientAddress(request.headers);
   const serviceClient = createClient(url, serviceSecret, {
     auth: { persistSession: false, autoRefreshToken: false },
+  });
+  // Failed-sign-in limits (internal.sign_in_failures): Auth itself only sees
+  // this function's address. If the limit store is unavailable, sign-in
+  // still works under Auth's own limits rather than locking everyone out.
+  const emailHash = await limitKeyHash(serviceSecret, "email", email);
+  const addressHash = await limitKeyHash(serviceSecret, "ip", address);
+  const limits = serviceClient.schema("api");
+  const { data: allowed, error: limitError } = await limits.rpc(
+    "sign_in_attempt_allowed",
+    { email_hash: emailHash, ip_hash: addressHash },
+  );
+  if (limitError) {
+    sanitizedLog("auth.sign_in.limit_unavailable", "error", requestId, {
+      component: "auth_password_sign_in",
+      error_type: "limit_store",
+    });
+  } else if (allowed === false) {
+    sanitizedLog("auth.sign_in.limited", "warning", requestId, {
+      component: "auth_password_sign_in",
+      result: "limited",
+    });
+    return respond({ error: "too_many_attempts" }, 429, {
+      "retry-after": "900",
+    });
+  }
+
+  const authClient = createClient(url, publishableKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    // Lets Auth's own per-IP limits see the client where the platform
+    // honours Sb-Forwarded-For.
+    global: { headers: { "Sb-Forwarded-For": address } },
   });
   const { data, error } = await authClient.auth.signInWithPassword({
     email,
     password,
   });
+  const succeeded = !error && !!data.session;
+  const { error: recordError } = await limits.rpc("record_sign_in_result", {
+    email_hash: emailHash,
+    ip_hash: addressHash,
+    succeeded,
+  });
+  if (recordError) {
+    sanitizedLog("auth.sign_in.limit_unavailable", "error", requestId, {
+      component: "auth_password_sign_in",
+      error_type: "limit_store",
+    });
+  }
   await recordCriticalFlowOutcome(
     serviceClient,
     "auth",
-    error ? "failed" : "succeeded",
+    succeeded ? "succeeded" : "failed",
     requestId,
   );
-  if (error || !data.session) {
+  if (!succeeded || !data.session) {
     sanitizedLog("auth.sign_in.failed", "warning", requestId, {
       component: "auth_password_sign_in",
       error_type: error?.code ?? "authentication",

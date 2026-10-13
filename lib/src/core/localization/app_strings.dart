@@ -15,6 +15,9 @@ class AppStrings {
   String get signInFailed => isSwedish
       ? 'Inloggningen misslyckades. Kontrollera uppgifterna.'
       : 'Sign-in failed. Check your details.';
+  String get signInRateLimited => isSwedish
+      ? 'För många misslyckade försök. Vänta 15 minuter och försök igen.'
+      : 'Too many failed attempts. Wait 15 minutes and try again.';
   String environment(String name) =>
       isSwedish ? 'Miljö: $name' : 'Environment: $name';
   String get backendNotConnected =>

@@ -219,10 +219,16 @@ class SupabaseIdentityServices
 
   @override
   Future<void> signIn({required String email, required String password}) async {
-    final response = await _client.functions.invoke(
-      'auth-password-sign-in',
-      body: {'email': email, 'password': password},
-    );
+    final FunctionResponse response;
+    try {
+      response = await _client.functions.invoke(
+        'auth-password-sign-in',
+        body: {'email': email, 'password': password},
+      );
+    } on FunctionException catch (error) {
+      if (error.status == 429) throw const SignInRateLimitedException();
+      rethrow;
+    }
     final data = response.data;
     if (response.status != 200 || data is! Map) {
       throw const AuthException('Sign-in failed.');
