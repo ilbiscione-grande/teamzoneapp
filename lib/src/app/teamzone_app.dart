@@ -25,6 +25,7 @@ import 'package:teamzone_app/src/core/localization/economy_strings.dart';
 import 'package:teamzone_app/src/core/preferences/calendar_preferences.dart';
 import 'package:teamzone_app/src/core/preferences/navigation_preferences.dart';
 import 'package:teamzone_app/src/core/supabase/measured_rpc.dart';
+import 'package:teamzone_app/src/core/push/push_services.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 import 'package:teamzone_app/src/app/product_route_contract.dart';
 // attendance-export:hook (temporary laget.se export)
@@ -325,6 +326,11 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
     if (_signingOut) return;
     setState(() => _signingOut = true);
     try {
+      try {
+        await widget.services.push.unregister();
+      } catch (error) {
+        AppErrors.caught('teamzone_app._signOut.push', error);
+      }
       await widget.services.identity.signOut();
     } finally {
       if (mounted) setState(() => _signingOut = false);

@@ -26,6 +26,7 @@ class _ProductShell extends StatefulWidget {
     required this.assistantIdentity,
     required this.assistantPresentation,
     required this.matchSpaceV2,
+    this.push = const UnconfiguredPushServices(),
     super.key,
   });
 
@@ -53,6 +54,7 @@ class _ProductShell extends StatefulWidget {
   final AssistantIdentityServices assistantIdentity;
   final AssistantPresentationServices assistantPresentation;
   final bool matchSpaceV2;
+  final PushServices push;
 
   @override
   State<_ProductShell> createState() => _ProductShellState();
@@ -137,6 +139,74 @@ class _ProductShellState extends State<_ProductShell> {
     setState(() {
       _ownSummary = _loadOwnSummary();
     });
+  }
+
+  StreamSubscription<String>? _pushTaps;
+
+  /// Push (FCM): keeps this device registered, opens tapped notifications,
+  /// and offers notifications the first time there is something unread.
+  Future<void> _startPush() async {
+    final push = widget.push;
+    if (!push.supported) return;
+    try {
+      await push.registerIfAllowed();
+      _pushTaps = push.openedRoutes.listen(_openPushRoute);
+      final initial = await push.initialRoute();
+      if (initial != null) _openPushRoute(initial);
+      await _maybeOfferPush();
+    } catch (error) {
+      AppErrors.caught('product_shell._startPush', error);
+    }
+  }
+
+  /// Event pages are pushed like any opened event; the inbox is a tab.
+  void _openPushRoute(String route) {
+    if (!mounted || PushRoutes.safe(route) == null) return;
+    route.startsWith(ProductRouteContract.inbox)
+        ? _router.go(route)
+        : unawaited(_router.push(route));
+  }
+
+  Future<void> _maybeOfferPush() async {
+    final push = widget.push;
+    if (await push.permission() != PushPermission.notDetermined) return;
+    if (await push.wasOffered()) return;
+    final center = await widget.messaging.listNotifications();
+    if (center.unreadCount == 0 || !mounted) return;
+    await push.markOffered();
+    if (!mounted) return;
+    final strings = AppStrings.of(context);
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        key: const ValueKey('push-offer'),
+        icon: const Icon(Icons.notifications_active_outlined),
+        title: Text(
+          strings.feature('Få notiser om kallelser och meddelanden?'),
+        ),
+        content: Text(
+          strings.feature(
+            'TeamZone kan meddela dig när du får en kallelse, en påminnelse eller ett nytt meddelande. Notisen visar typ av aktivitet, lag och tid – aldrig namn eller meddelandetext. Du kan ändra det i Inställningar.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(strings.feature('Inte nu')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(strings.feature('Tillåt notiser')),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true) return;
+    // Message pushes also follow the inbox setting; turning push on here
+    // turns that on too.
+    if (await push.requestAndRegister()) {
+      await widget.messaging.setPushEnabled(true, _newUuid());
+    }
   }
 
   late final GoRouter _router = GoRouter(
@@ -719,6 +789,9 @@ class _ProductShellState extends State<_ProductShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => unawaited(_startPush()),
+    );
     // All imperative pages in this shell have standalone GoRoutes. Reflect
     // their top-most URI on web so pushed event/member pages can be copied
     // and opened directly without sacrificing return-to-origin on close.
@@ -832,6 +905,7 @@ class _ProductShellState extends State<_ProductShell> {
 
   @override
   void dispose() {
+    unawaited(_pushTaps?.cancel());
     _router.routeInformationProvider.removeListener(_recordLocation);
     _router.routerDelegate.removeListener(_onPageChanged);
     _router.dispose();

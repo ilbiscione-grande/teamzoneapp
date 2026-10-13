@@ -301,6 +301,12 @@ class AppStrings {
     'Inte svarat': 'Not answered',
     'Ta bort kallelse': 'Remove callup',
     'Matchformat': 'Match format',
+    'Få notiser om kallelser och meddelanden?':
+        'Get notifications about callups and messages?',
+    'TeamZone kan meddela dig när du får en kallelse, en påminnelse eller ett nytt meddelande. Notisen visar typ av aktivitet, lag och tid – aldrig namn eller meddelandetext. Du kan ändra det i Inställningar.':
+        'TeamZone can tell you when you get a callup, a reminder or a new message. A notification shows the type of activity, the team and the time – never names or message text. You can change this in Settings.',
+    'Tillåt notiser': 'Allow notifications',
+    'Inte nu': 'Not now',
     'Samling': 'Assembly',
     'kl.': 'at',
     'Format': 'Format',

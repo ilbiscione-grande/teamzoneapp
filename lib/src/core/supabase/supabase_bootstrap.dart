@@ -8,6 +8,7 @@ import 'package:teamzone_app/src/core/identity/identity_services.dart';
 import 'package:teamzone_app/src/core/identity/auth_entry_services.dart';
 import 'package:teamzone_app/src/core/identity/session_persistence.dart';
 import 'package:teamzone_app/src/core/preferences/calendar_preferences.dart';
+import 'package:teamzone_app/src/core/push/push_services.dart';
 import 'package:teamzone_app/src/core/preferences/navigation_preferences.dart';
 import 'package:teamzone_app/src/core/preferences/theme_persistence.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_services.dart';
@@ -43,6 +44,7 @@ class AppServices {
     this.legal = const UnconfiguredLegalServices(),
     this.profile = const UnconfiguredProfileServices(),
     this.calendar = const UnconfiguredCalendarServices(),
+    this.push = const UnconfiguredPushServices(),
     this.overview = const UnconfiguredOverviewServices(),
     this.messaging = const UnconfiguredMessagingServices(),
     this.match = const UnconfiguredMatchServices(),
@@ -67,6 +69,7 @@ class AppServices {
   final LegalServices legal;
   final ProfileServices profile;
   final CalendarServices calendar;
+  final PushServices push;
   final OverviewServices overview;
   final MessagingServices messaging;
   final MatchServices match;
@@ -129,6 +132,7 @@ class SupabaseBootstrap {
       legal: SupabaseLegalServices(Supabase.instance.client),
       profile: SupabaseProfileServices(Supabase.instance.client),
       calendar: SupabaseCalendarServices(Supabase.instance.client),
+      push: FirebasePushServices.create(Supabase.instance.client),
       overview: SupabaseOverviewServices(Supabase.instance.client),
       messaging: SupabaseMessagingServices(Supabase.instance.client),
       match: SupabaseMatchServices(Supabase.instance.client),

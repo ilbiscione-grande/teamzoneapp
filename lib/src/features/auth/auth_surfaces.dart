@@ -771,6 +771,7 @@ class _ContextBootstrapState extends State<_ContextBootstrap> {
           assistantIdentity: widget.services.assistantIdentity,
           assistantPresentation: widget.services.assistantPresentation,
           matchSpaceV2: widget.matchSpaceV2,
+          push: widget.services.push,
         );
       },
     );
@@ -1599,6 +1600,7 @@ class _ContextSelector extends StatefulWidget {
     required this.assistantIdentity,
     required this.assistantPresentation,
     required this.matchSpaceV2,
+    this.push = const UnconfiguredPushServices(),
     super.key,
   });
 
@@ -1624,6 +1626,7 @@ class _ContextSelector extends StatefulWidget {
   final AssistantIdentityServices assistantIdentity;
   final AssistantPresentationServices assistantPresentation;
   final bool matchSpaceV2;
+  final PushServices push;
 
   @override
   State<_ContextSelector> createState() => _ContextSelectorState();
@@ -1742,6 +1745,7 @@ class _ContextSelectorState extends State<_ContextSelector> {
       assistantIdentity: widget.assistantIdentity,
       assistantPresentation: widget.assistantPresentation,
       matchSpaceV2: widget.matchSpaceV2,
+      push: widget.push,
     );
   }
 }
