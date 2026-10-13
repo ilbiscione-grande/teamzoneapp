@@ -16,10 +16,15 @@ class _IntakeSurface extends StatefulWidget {
     required this.contextValue,
     required this.roster,
     this.onPeopleAdded,
+    this.submissionsOf,
   });
   final TeamZoneContext contextValue;
   final RosterServices roster;
   final VoidCallback? onPeopleAdded;
+
+  /// Set from the inbox: only the details sent to this team (null team: the
+  /// club page), without the pages themselves.
+  final ({String? teamId})? submissionsOf;
   @override
   State<_IntakeSurface> createState() => _IntakeSurfaceState();
 }
@@ -556,9 +561,14 @@ class _IntakeSurfaceState extends State<_IntakeSurface> {
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
+    final only = widget.submissionsOf;
     return Scaffold(
       appBar: AppBar(
-        title: Text(strings.feature('Kontaktuppdatering')),
+        title: Text(
+          only == null
+              ? strings.feature('Kontaktuppdatering')
+              : '${strings.feature('Inskickade kontakter')} · ${only.teamId == null ? widget.contextValue.clubName : widget.contextValue.teamName ?? ''}',
+        ),
         actions: [
           IconButton(
             tooltip: strings.feature('Uppdatera'),
@@ -587,6 +597,10 @@ class _IntakeSurfaceState extends State<_IntakeSurface> {
           if (data == null) {
             return AppLoadingIndicator(label: strings.loading);
           }
+          final submissions = [
+            for (final submission in data.submissions)
+              if (only == null || submission.teamId == only.teamId) submission,
+          ];
           return RefreshIndicator(
             onRefresh: () async {
               _reload();
@@ -596,14 +610,14 @@ class _IntakeSurfaceState extends State<_IntakeSurface> {
               key: const ValueKey('intake-surface'),
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
               children: [
-                ..._formSection(data, strings),
+                if (only == null) ..._formSection(data, strings),
                 _heading(
-                  '${strings.feature('Inskickade uppgifter')} (${data.submissions.length})',
+                  '${strings.feature('Inskickade uppgifter')} (${submissions.length})',
                 ),
-                if (data.submissions.isEmpty)
+                if (submissions.isEmpty)
                   Text(strings.feature('Inga inskickade uppgifter just nu.'))
                 else
-                  for (final submission in data.submissions)
+                  for (final submission in submissions)
                     _submissionCard(data, submission, strings),
               ],
             ),

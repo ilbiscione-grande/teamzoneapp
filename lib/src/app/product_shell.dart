@@ -419,6 +419,7 @@ class _ProductShellState extends State<_ProductShell> {
                   contexts: widget.contexts,
                   messaging: widget.messaging,
                   membership: widget.membership,
+                  roster: widget.roster,
                   supportAdminAccess: _supportAdminAccess,
                   initialThreadId: state.uri.queryParameters['thread'],
                   initialAction: state.uri.queryParameters['action'],

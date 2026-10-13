@@ -6,6 +6,7 @@ class _InboxSurface extends StatefulWidget {
     required this.contexts,
     required this.messaging,
     required this.membership,
+    required this.roster,
     this.supportAdminAccess,
     this.initialThreadId,
     this.initialAction,
@@ -15,6 +16,7 @@ class _InboxSurface extends StatefulWidget {
   final List<TeamZoneContext> contexts;
   final MessagingServices messaging;
   final MembershipServices membership;
+  final RosterServices roster;
 
   /// Shows the support queue entry for support admins (desktop/web).
   final Future<bool>? supportAdminAccess;
@@ -63,6 +65,11 @@ class _InboxSurfaceState extends State<_InboxSurface>
   // whenever it changes -- see didUpdateWidget.
   late Set<String> _selectedContextIds = {widget.contextValue.id};
 
+  /// TEAM-15: details sent through contact pages and not yet handled, shown
+  /// as a badge on the heading of the team (or club) they were sent to.
+  List<_InboxIntake> _intake = const [];
+  int _intakeGeneration = 0;
+
   // A team context can merge several of your assignments (e.g. leader and
   // club functionary); their threads all belong to that one team.
   List<String> get _contextIds => {
@@ -105,6 +112,12 @@ class _InboxSurfaceState extends State<_InboxSurface>
     final grouped = <String, List<MessageThreadSummary>>{};
     for (final thread in threads) {
       (grouped[_clubOf(thread)] ??= []).add(thread);
+    }
+    // A club with sent contact details shows even without conversations.
+    if (_list.query.isEmpty) {
+      for (final item in _intake) {
+        grouped.putIfAbsent(item.clubName, () => []);
+      }
     }
     int rank(String club) => club == widget.contextValue.clubName
         ? 0
@@ -179,6 +192,102 @@ class _InboxSurfaceState extends State<_InboxSurface>
     return result;
   }
 
+  /// A club's team groups, plus a group for each team (or the club page)
+  /// with sent contact details but no conversations.
+  List<({String title, String? subtitle, List<MessageThreadSummary> threads})>
+  _teamGroups(String club, List<MessageThreadSummary> threads) {
+    final groups = _groupThreads(threads);
+    if (_list.query.isNotEmpty) return groups;
+    return [
+      for (final item in _intake)
+        if (item.clubName == club &&
+            !groups.any((group) => group.title == (item.teamName ?? club)))
+          (
+            title: item.teamName ?? club,
+            subtitle: null,
+            threads: const <MessageThreadSummary>[],
+          ),
+      ...groups,
+    ];
+  }
+
+  _InboxIntake? _intakeFor(String club, String title) => _intake
+      .where(
+        (item) => item.clubName == club && (item.teamName ?? club) == title,
+      )
+      .firstOrNull;
+
+  bool _handlesIntake(TeamZoneContext item) =>
+      item.can('club.memberships.manage') || item.can('team.roster.manage');
+
+  /// Counts sent details for the selected teams you may add people to. The
+  /// server decides what each club's overview contains; a club that fails
+  /// to load is left out.
+  Future<void> _reloadIntake() async {
+    final generation = ++_intakeGeneration;
+    final byId = {
+      for (final item in [...widget.contexts, widget.contextValue])
+        item.id: item,
+    };
+    final selected = [
+      for (final id in _selectedContextIds)
+        if (byId[id] case final item? when _handlesIntake(item)) item,
+    ];
+    final result = <_InboxIntake>[];
+    for (final clubId in {for (final item in selected) item.clubId}) {
+      final IntakeOverview overview;
+      try {
+        overview = await widget.roster
+            .getIntakeOverview(clubId: clubId)
+            .timeout(const Duration(seconds: 15));
+      } catch (error) {
+        AppErrors.caught('inbox_surface._reloadIntake', error);
+        continue;
+      }
+      final inClub = [
+        for (final item in selected)
+          if (item.clubId == clubId) item,
+      ];
+      final counts = <String?, int>{};
+      for (final submission in overview.submissions) {
+        counts[submission.teamId] = (counts[submission.teamId] ?? 0) + 1;
+      }
+      for (final MapEntry(key: teamId, value: count) in counts.entries) {
+        final owner = teamId == null
+            ? inClub.first
+            : inClub.where((item) => item.teamId == teamId).firstOrNull;
+        if (owner == null) continue;
+        result.add(
+          _InboxIntake(
+            context: owner,
+            teamName: teamId == null ? null : owner.teamName,
+            count: count,
+          ),
+        );
+      }
+    }
+    if (mounted && generation == _intakeGeneration) {
+      setState(() => _intake = result);
+    }
+  }
+
+  /// The sent details for one team (or the club page), handled as in the
+  /// team's contact update view.
+  Future<void> _openIntake(_InboxIntake item) async {
+    await Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _IntakeSurface(
+          contextValue: item.context,
+          roster: widget.roster,
+          submissionsOf: (
+            teamId: item.teamName == null ? null : item.context.teamId,
+          ),
+        ),
+      ),
+    );
+    if (mounted) unawaited(_reloadIntake());
+  }
+
   @override
   void initState() {
     super.initState();
@@ -208,6 +317,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
     });
     unawaited(_data.load());
     unawaited(_refreshNotificationBadge());
+    unawaited(_reloadIntake());
     _openInitialAction();
   }
 
@@ -252,6 +362,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
     if (state == AppLifecycleState.resumed && mounted) {
       unawaited(_resyncFromSignal());
       setState(_reloadSupport);
+      unawaited(_reloadIntake());
     }
   }
 
@@ -284,6 +395,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
     if (value.isEmpty || setEquals(value, _selectedContextIds)) return;
     setState(() => _selectedContextIds = value);
     _data.replaceScope(scopeKey: _scopeKey, loader: _reload);
+    unawaited(_reloadIntake());
   }
 
   Future<void> _showFilterSheet() {
@@ -551,6 +663,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
 
   Future<void> _refresh() async {
     setState(_reloadSupport);
+    unawaited(_reloadIntake());
     final succeeded = await _data.refresh();
     if (succeeded) {
       _clearStaleResync();
@@ -793,6 +906,10 @@ class _InboxSurfaceState extends State<_InboxSurface>
       _selectedContextIds = pruned.isEmpty ? {widget.contextValue.id} : pruned;
     }
     _data.replaceScope(scopeKey: _scopeKey, loader: _reload);
+    if (oldWidget.contextValue.id != widget.contextValue.id ||
+        !identical(oldWidget.contexts, widget.contexts)) {
+      unawaited(_reloadIntake());
+    }
     if (!identical(oldWidget.messaging, widget.messaging)) {
       _subscribeToInbox();
       _subscribeToNotifications();
@@ -864,6 +981,9 @@ class _InboxSurfaceState extends State<_InboxSurface>
               ),
             ],
       floatingActionButton: FloatingActionButton(
+        // Own tag: pages pushed over the inbox (sent contact details) would
+        // otherwise share the default tag with the assistant's button.
+        heroTag: 'inbox-compose',
         onPressed: _compose,
         tooltip: strings.newMessage,
         child: const Icon(Icons.edit),
@@ -914,7 +1034,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
                     .where((thread) => thread.type != 'announcement')
                     .toList(growable: false);
                 final clubs = _groupByClub(conversations);
-                if (state.phase == AsyncDataPhase.empty) {
+                if (state.phase == AsyncDataPhase.empty && _intake.isEmpty) {
                   return Center(
                     child: _StateCard(
                       icon: Icons.inbox_outlined,
@@ -1020,7 +1140,9 @@ class _InboxSurfaceState extends State<_InboxSurface>
                       ),
                     ),
                     Expanded(
-                      child: threads.isEmpty
+                      child:
+                          threads.isEmpty &&
+                              (_intake.isEmpty || _list.query.isNotEmpty)
                           ? _StateCard(
                               icon: Icons.search_off,
                               title: AppStrings.of(
@@ -1142,6 +1264,15 @@ class _InboxSurfaceState extends State<_InboxSurface>
                                             club.club,
                                           ),
                                           count: club.threads.length,
+                                          intake: _intake
+                                              .where(
+                                                (item) =>
+                                                    item.clubName == club.club,
+                                              )
+                                              .fold(
+                                                0,
+                                                (sum, item) => sum + item.count,
+                                              ),
                                           unread: club.threads.fold(
                                             0,
                                             (sum, thread) =>
@@ -1159,15 +1290,33 @@ class _InboxSurfaceState extends State<_InboxSurface>
                                       club.club,
                                       clubs.length,
                                     ))
-                                      for (final group in _groupThreads(
+                                      for (final group in _teamGroups(
+                                        club.club,
                                         club.threads,
                                       )) ...[
                                         // Team headings inside a club; a club with
-                                        // only its own club-wide threads needs none.
+                                        // only its own club-wide threads needs none
+                                        // unless contact details wait there.
                                         if (group.title != club.club ||
-                                            _groupThreads(club.threads).length >
+                                            _intakeFor(
+                                                  club.club,
+                                                  group.title,
+                                                ) !=
+                                                null ||
+                                            _teamGroups(
+                                                  club.club,
+                                                  club.threads,
+                                                ).length >
                                                 1)
                                           _InboxTeamHeading(
+                                            key: ValueKey(
+                                              'inbox-team-${club.club}-${group.title}',
+                                            ),
+                                            intake: _intakeFor(
+                                              club.club,
+                                              group.title,
+                                            ),
+                                            onIntake: _openIntake,
                                             title: group.title == club.club
                                                 ? strings.feature(
                                                     'Hela klubben',
@@ -2597,9 +2746,13 @@ class _InboxClubHeader extends StatelessWidget {
     required this.unread,
     required this.expanded,
     required this.onTap,
+    this.intake = 0,
   });
   final String title;
   final int count, unread;
+
+  /// Sent contact details waiting in the club's teams.
+  final int intake;
   final bool expanded;
   final VoidCallback onTap;
 
@@ -2635,6 +2788,16 @@ class _InboxClubHeader extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
                   ),
+                  if (intake > 0) ...[
+                    Tooltip(
+                      message: strings.feature('Inskickade kontakter'),
+                      child: Badge.count(
+                        count: intake,
+                        child: const Icon(Icons.contact_mail_outlined),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
                   if (unread > 0) ...[
                     Badge(
                       label: Text('$unread'),
@@ -2665,13 +2828,21 @@ class _InboxClubHeader extends StatelessWidget {
 /// Team heading inside an open club in the inbox list.
 class _InboxTeamHeading extends StatelessWidget {
   const _InboxTeamHeading({
+    super.key,
     required this.title,
     required this.count,
     this.subtitle,
+    this.intake,
+    this.onIntake,
   });
   final String title;
   final String? subtitle;
   final int count;
+
+  /// Contact details sent to this team (or the club page); the icon opens
+  /// them.
+  final _InboxIntake? intake;
+  final ValueChanged<_InboxIntake>? onIntake;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -2695,10 +2866,39 @@ class _InboxTeamHeading extends StatelessWidget {
             style: Theme.of(context).textTheme.labelLarge,
           ),
         ),
-        Text('$count', style: Theme.of(context).textTheme.labelSmall),
+        if (intake case final item?)
+          IconButton(
+            key: const ValueKey('inbox-intake'),
+            tooltip: AppStrings.of(context).feature('Inskickade kontakter'),
+            visualDensity: VisualDensity.compact,
+            onPressed: onIntake == null ? null : () => onIntake!(item),
+            icon: Badge.count(
+              count: item.count,
+              child: const Icon(Icons.contact_mail_outlined),
+            ),
+          ),
+        if (count > 0)
+          Text('$count', style: Theme.of(context).textTheme.labelSmall),
       ],
     ),
   );
+}
+
+class _InboxIntake {
+  const _InboxIntake({
+    required this.context,
+    required this.teamName,
+    required this.count,
+  });
+
+  /// Your selected context the details are handled in.
+  final TeamZoneContext context;
+
+  /// Null for the club-wide page.
+  final String? teamName;
+  final int count;
+
+  String get clubName => context.clubName;
 }
 
 String _inboxTime(BuildContext context, DateTime value) {

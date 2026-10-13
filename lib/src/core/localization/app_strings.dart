@@ -1856,6 +1856,7 @@ class AppStrings {
     'Kopiera länk': 'Copy link',
     'Länken är kopierad.': 'The link is copied.',
     'Inskickade uppgifter': 'Submitted details',
+    'Inskickade kontakter': 'Submitted contacts',
     'Inga inskickade uppgifter just nu.': 'No submitted details right now.',
     'Via {source}': 'Via {source}',
     'Lägg till i {team}': 'Add to {team}',

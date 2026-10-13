@@ -7,8 +7,78 @@ import 'package:teamzone_app/src/core/identity/identity_services.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 import 'package:teamzone_app/src/features/messaging/messaging_models.dart';
 import 'package:teamzone_app/src/features/messaging/messaging_services.dart';
+import 'package:teamzone_app/src/features/roster/roster_models.dart';
+import 'package:teamzone_app/src/features/roster/roster_services.dart';
 
 void main() {
+  testWidgets('sent contact details show as a badge on their team heading', (
+    tester,
+  ) async {
+    final roster = _Roster();
+    await _openInbox(
+      tester,
+      _Messaging(),
+      identity: const _Identity(manager: true),
+      roster: roster,
+    );
+    final heading = find.byKey(const ValueKey('inbox-team-Alby IF-F2012'));
+    expect(heading, findsOneWidget);
+    final icon = find.descendant(
+      of: heading,
+      matching: find.byKey(const ValueKey('inbox-intake')),
+    );
+    expect(find.descendant(of: icon, matching: find.text('2')), findsOneWidget);
+    // Only the selected team's details count; the other team's wait.
+    expect(find.byKey(const ValueKey('inbox-intake')), findsOneWidget);
+    await tester.tap(icon);
+    await tester.pumpAndSettle();
+    expect(find.text('Inskickade kontakter · F2012'), findsOneWidget);
+    expect(find.text('Nina Ny'), findsOneWidget);
+    expect(find.text('Olle Ny'), findsOneWidget);
+    expect(find.text('Pia Annan'), findsNothing);
+    // The pages themselves stay in the team's contact update view.
+    expect(find.text('Aktiva sidor'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('intake-add-sub-1')));
+    await tester.pumpAndSettle();
+    expect(roster.accepted, ['sub-1']);
+    expect(find.text('Nina Ny'), findsNothing);
+    await tester.tap(find.byType(BackButton).last);
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('inbox-intake')),
+        matching: find.text('1'),
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a team without conversations still shows its sent details', (
+    tester,
+  ) async {
+    await _openInbox(
+      tester,
+      _Messaging(threads: false),
+      identity: const _Identity(manager: true),
+      roster: _Roster(),
+    );
+    expect(find.text('Inkorgen är tom'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('inbox-team-Alby IF-F2012')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('inbox-intake')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('people who cannot add to the team see no badge', (tester) async {
+    final roster = _Roster();
+    await _openInbox(tester, _Messaging(), roster: roster);
+    expect(find.byKey(const ValueKey('inbox-intake')), findsNothing);
+    expect(roster.overviewCalls, 0);
+  });
+
   testWidgets('clubs collapse to their name; the active club starts open', (
     tester,
   ) async {
@@ -129,6 +199,8 @@ Future<void> _openInbox(
   WidgetTester tester,
   _Messaging messaging, {
   bool resize = true,
+  _Identity identity = const _Identity(),
+  RosterServices roster = const UnconfiguredRosterServices(),
 }) async {
   if (resize) {
     tester.view.physicalSize = const Size(390, 844);
@@ -141,8 +213,9 @@ Future<void> _openInbox(
       environment: const AppEnvironment(name: 'msg09'),
       locale: const Locale('sv'),
       services: AppServices(
-        identity: const _Identity(),
+        identity: identity,
         messaging: messaging,
+        roster: roster,
         isConfigured: true,
       ),
     ),
@@ -152,7 +225,61 @@ Future<void> _openInbox(
   await tester.pumpAndSettle();
 }
 
+class _Roster extends UnconfiguredRosterServices {
+  final accepted = <String>[];
+  int overviewCalls = 0;
+
+  IntakeSubmission _submission(String id, String name, String teamId) =>
+      IntakeSubmission(
+        id: id,
+        fullName: name,
+        phone: '070-1234567',
+        email: '$id@mail.se',
+        birthDate: DateTime(2012, 5, 3),
+        streetAddress: 'Storgatan 1',
+        postalCode: '575 31',
+        city: 'Eksjö',
+        createdAt: DateTime(2026, 10, 13),
+        teamId: teamId,
+        teamName: teamId == 'team-a' ? 'F2012' : 'F2013',
+      );
+
+  @override
+  Future<IntakeOverview> getIntakeOverview({required String clubId}) async {
+    overviewCalls++;
+    return IntakeOverview(
+      canManageClub: false,
+      teams: const [
+        IntakeTeam(id: 'team-a', name: 'F2012'),
+        IntakeTeam(id: 'team-a2', name: 'F2013'),
+      ],
+      forms: const [],
+      submissions: [
+        for (final item in [
+          _submission('sub-1', 'Nina Ny', 'team-a'),
+          _submission('sub-2', 'Olle Ny', 'team-a'),
+          _submission('sub-3', 'Pia Annan', 'team-a2'),
+        ])
+          if (!accepted.contains(item.id)) item,
+      ],
+    );
+  }
+
+  @override
+  Future<String> acceptIntakeSubmission({
+    required String submissionId,
+    required String teamId,
+    required String role,
+    required String idempotencyKey,
+  }) async {
+    accepted.add(submissionId);
+    return 'person-$submissionId';
+  }
+}
+
 class _Messaging extends UnconfiguredMessagingServices {
+  _Messaging({this.threads = true});
+  final bool threads;
   final created = <(String, String, int)>[];
   final states = <(String, String)>[];
 
@@ -192,26 +319,28 @@ class _Messaging extends UnconfiguredMessagingServices {
   Future<List<MessageThreadSummary>> listThreads(
     List<String> contextIds,
   ) async => [
-    MessageThreadSummary(
-      id: 't1',
-      type: 'group',
-      subject: 'Träningstider',
-      revision: 1,
-      unreadCount: 1,
-      muted: false,
-      lastAt: DateTime(2026, 9, 29, 18),
-      scopeLabels: const ['F2012 · Alby IF'],
-    ),
-    MessageThreadSummary(
-      id: 't2',
-      type: 'group',
-      subject: 'Cupresa',
-      revision: 1,
-      unreadCount: 2,
-      muted: false,
-      lastAt: DateTime(2026, 9, 28, 18),
-      scopeLabels: const ['P2010 · Bergby FF'],
-    ),
+    if (threads) ...[
+      MessageThreadSummary(
+        id: 't1',
+        type: 'group',
+        subject: 'Träningstider',
+        revision: 1,
+        unreadCount: 1,
+        muted: false,
+        lastAt: DateTime(2026, 9, 29, 18),
+        scopeLabels: const ['F2012 · Alby IF'],
+      ),
+      MessageThreadSummary(
+        id: 't2',
+        type: 'group',
+        subject: 'Cupresa',
+        revision: 1,
+        unreadCount: 2,
+        muted: false,
+        lastAt: DateTime(2026, 9, 28, 18),
+        scopeLabels: const ['P2010 · Bergby FF'],
+      ),
+    ],
   ];
 
   @override
@@ -246,7 +375,10 @@ class _Messaging extends UnconfiguredMessagingServices {
 }
 
 class _Identity implements IdentityServices {
-  const _Identity();
+  const _Identity({this.manager = false});
+
+  /// Lets the active team's leader add people to the roster.
+  final bool manager;
   @override
   SessionStatus get sessionStatus => SessionStatus.authenticated;
   @override
@@ -255,7 +387,7 @@ class _Identity implements IdentityServices {
   Future<TeamZoneProfile> getProfile() async =>
       const TeamZoneProfile(id: 'profile', displayName: 'Test', locale: 'sv');
   @override
-  Future<List<TeamZoneContext>> getContexts() async => const [
+  Future<List<TeamZoneContext>> getContexts() async => [
     TeamZoneContext(
       id: 'context-a',
       clubId: 'alby',
@@ -263,44 +395,46 @@ class _Identity implements IdentityServices {
       teamId: 'team-a',
       teamName: 'F2012',
       rolePackage: 'leader',
-      capabilities: {'team.read'},
+      capabilities: {'team.read', if (manager) 'team.roster.manage'},
     ),
-    TeamZoneContext(
-      id: 'context-a2',
-      clubId: 'alby',
-      clubName: 'Alby IF',
-      teamId: 'team-a2',
-      teamName: 'F2013',
-      rolePackage: 'leader',
-      capabilities: {'team.read'},
-    ),
-    TeamZoneContext(
-      id: 'context-b',
-      clubId: 'bergby',
-      clubName: 'Bergby FF',
-      teamId: 'team-b',
-      teamName: 'P2010',
-      rolePackage: 'leader',
-      capabilities: {'team.read'},
-    ),
-    TeamZoneContext(
-      id: 'context-b2',
-      clubId: 'bergby',
-      clubName: 'Bergby FF',
-      teamId: 'team-b2',
-      teamName: 'P2011',
-      rolePackage: 'leader',
-      capabilities: {'team.read'},
-    ),
-    TeamZoneContext(
-      id: 'context-c',
-      clubId: 'cby',
-      clubName: 'Cby BK',
-      teamId: 'team-c',
-      teamName: 'F2014',
-      rolePackage: 'player',
-      capabilities: {'team.read'},
-    ),
+    ...const [
+      TeamZoneContext(
+        id: 'context-a2',
+        clubId: 'alby',
+        clubName: 'Alby IF',
+        teamId: 'team-a2',
+        teamName: 'F2013',
+        rolePackage: 'leader',
+        capabilities: {'team.read'},
+      ),
+      TeamZoneContext(
+        id: 'context-b',
+        clubId: 'bergby',
+        clubName: 'Bergby FF',
+        teamId: 'team-b',
+        teamName: 'P2010',
+        rolePackage: 'leader',
+        capabilities: {'team.read'},
+      ),
+      TeamZoneContext(
+        id: 'context-b2',
+        clubId: 'bergby',
+        clubName: 'Bergby FF',
+        teamId: 'team-b2',
+        teamName: 'P2011',
+        rolePackage: 'leader',
+        capabilities: {'team.read'},
+      ),
+      TeamZoneContext(
+        id: 'context-c',
+        clubId: 'cby',
+        clubName: 'Cby BK',
+        teamId: 'team-c',
+        teamName: 'F2014',
+        rolePackage: 'player',
+        capabilities: {'team.read'},
+      ),
+    ],
   ];
   @override
   Future<void> signIn({
