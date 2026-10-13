@@ -5,7 +5,9 @@
 // 2026-10-13); every frame is checked again here and one bad frame rejects
 // the whole record rather than being cleaned up.
 const IDENTIFIER = /^[A-Za-z0-9._-]{1,80}$/;
-const ALLOWED_ORIGINS = new Set(["https://app.teamzoneapp.se"]);
+// Firebase is shared, so the sink serves both the production app and the test
+// app (environment-tagged in each record).
+const ALLOWED_ORIGINS = new Set(["https://app.teamzoneapp.se", "https://test.teamzoneapp.se"]);
 const MAX_BODY_BYTES = 8192;
 const MAX_FRAMES = 30;
 // "#3 member (location:line[:column])", the format StackSanitizer emits.

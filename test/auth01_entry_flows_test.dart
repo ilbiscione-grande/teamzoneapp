@@ -205,7 +205,9 @@ void main() {
     expect(source, contains('resetPasswordForEmail'));
     expect(source, contains('AuthChangeEvent.passwordRecovery'));
     expect(source, contains("'teamzone://app/auth/callback'"));
-    expect(source, contains("'https://app.teamzoneapp.se/auth/callback'"));
+    // Web follows the origin it runs on (test or production); Supabase Auth's
+    // redirect allowlist decides which origins are accepted.
+    expect(source, contains(r"'${Uri.base.origin}/auth/callback'"));
     expect(source, isNot(contains('service_role')));
   });
 }

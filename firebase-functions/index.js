@@ -33,34 +33,54 @@ exports.criticalFlowAlertBridge = onRequest(
   },
 );
 
-exports.runCriticalFlowMonitor = onSchedule(
-  {
-    schedule: "every 5 minutes",
-    region: "europe-west1",
-    timeZone: "Etc/UTC",
-    retryCount: 1,
-    secrets: [supabaseAnonKey],
-    timeoutSeconds: 30,
-    memory: "256MiB",
-  },
-  async () => {
-    const key = supabaseAnonKey.value().trim();
-    const response = await fetch(
-      "https://hgcshgunvooyudvrcpig.supabase.co/functions/v1/critical-flow-monitor",
-      {
+// Each Supabase project's critical-flow monitor, every five minutes. Firebase
+// is shared by test and production, so this one deployment polls both. The
+// production monitor is exported only once firebase-functions/.env.<project>
+// sets TEAMZONE_PRODUCTION_SUPABASE_URL (and its secret is set), so deploys
+// before production exists are unchanged.
+function criticalFlowMonitor(environment, projectUrl, anonKey) {
+  return onSchedule(
+    {
+      schedule: "every 5 minutes",
+      region: "europe-west1",
+      timeZone: "Etc/UTC",
+      retryCount: 1,
+      secrets: [anonKey],
+      timeoutSeconds: 30,
+      memory: "256MiB",
+    },
+    async () => {
+      const key = anonKey.value().trim();
+      const response = await fetch(`${projectUrl}/functions/v1/critical-flow-monitor`, {
         method: "POST",
         headers: {apikey: key, authorization: `Bearer ${key}`},
-      },
-    );
-    if (!response.ok) {
-      error("TeamZone critical-flow monitor invocation failed", {
-        event: "teamzone.alert.monitor_invocation_failed",
-        status: response.status,
       });
-      throw new Error(`sanitized_http_${response.status}`);
-    }
-  },
+      if (!response.ok) {
+        error("TeamZone critical-flow monitor invocation failed", {
+          event: "teamzone.alert.monitor_invocation_failed",
+          environment,
+          status: response.status,
+        });
+        throw new Error(`sanitized_http_${response.status}`);
+      }
+    },
+  );
+}
+
+exports.runCriticalFlowMonitor = criticalFlowMonitor(
+  "audit",
+  "https://hgcshgunvooyudvrcpig.supabase.co",
+  supabaseAnonKey,
 );
+
+const productionUrl = (process.env.TEAMZONE_PRODUCTION_SUPABASE_URL || "").trim();
+if (/^https:\/\/[a-z0-9]{20}\.supabase\.co$/.test(productionUrl)) {
+  exports.runProductionCriticalFlowMonitor = criticalFlowMonitor(
+    "production",
+    productionUrl,
+    defineSecret("TEAMZONE_PRODUCTION_SUPABASE_ANON_KEY"),
+  );
+}
 
 // Flutter web error reports, sent as sanitized text/plain beacons by
 // WebErrorReporter; written to Cloud Logging (PAR-OPS-05).

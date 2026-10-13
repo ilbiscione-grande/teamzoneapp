@@ -8,7 +8,11 @@
       "flutterOrigin": "https://app.teamzoneapp.se",
       "publicOrigin": "https://public.teamzoneapp.se",
       "plannedFlutterOrigin": "https://test.teamzoneapp.se",
-      "plannedPublicOrigin": "https://test-public.teamzoneapp.se"
+      "plannedPublicOrigin": "https://test-public.teamzoneapp.se",
+      "hostingTarget": "test",
+      "hostingSite": "teamzoneapp-b02a2",
+      "appHostingBackend": "teamzoneapp-public",
+      "androidApplicationId": "com.teamzone.teamzone.test"
     },
     "production": {
       "status": "not_provisioned",
@@ -18,6 +22,10 @@
       "firebaseShared": true,
       "flutterOrigin": "https://app.teamzoneapp.se",
       "publicOrigin": "https://teamzoneapp.se",
+      "hostingTarget": "production",
+      "hostingSite": "teamzoneapp-production",
+      "appHostingBackend": "teamzoneapp-public-production",
+      "androidApplicationId": "com.teamzone.teamzone",
       "decisions": "docs/operations/production_provisioning.md (2026-10-13)"
     }
   }

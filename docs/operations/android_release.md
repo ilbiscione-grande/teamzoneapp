@@ -48,8 +48,13 @@ Raise `version` in `pubspec.yaml` (`x.y.z+build`; the build number must grow
 for every upload), then build with the production dart-defines:
 
 ```powershell
-flutter build appbundle --release --dart-define=TEAMZONE_ENV=<env> --dart-define=SUPABASE_URL=<url> --dart-define=SUPABASE_PUBLISHABLE_KEY=<key>
+flutter build appbundle --release --dart-define=TEAMZONE_ENV=production --dart-define=SUPABASE_URL=<url> --dart-define=SUPABASE_PUBLISHABLE_KEY=<key>
 ```
+
+Only a `TEAMZONE_ENV=production` build is `com.teamzone.teamzone`; every
+other build is the test app `com.teamzone.teamzone.test` ("TeamZone Test"),
+which reports to its own Firebase app. A Play bundle refuses to build for
+any other environment.
 
 Upload `build/app/outputs/bundle/release/app-release.aab` to an internal
 testing track first.

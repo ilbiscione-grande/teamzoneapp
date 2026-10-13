@@ -1,0 +1,44 @@
+# Production overrides for the public site (App Hosting merges this file over
+# apphosting.yaml for a backend whose environment name is "production"; see
+# docs/operations/production_provisioning.md). Values not listed here are
+# inherited. Firebase is shared with the test environment, so production
+# secrets have their own names and never reuse the test project's values.
+#
+# PRODUCTION_REF and the publishable key are filled in when the production
+# Supabase project exists (phase 3); deploy nothing before that.
+
+runConfig:
+  minInstances: 0
+  maxInstances: 4
+  concurrency: 40
+
+env:
+  - variable: PUBLIC_ORIGIN
+    value: https://teamzoneapp.se
+    availability:
+      - RUNTIME
+  - variable: PUBLIC_SITE_ORIGINS
+    value: https://public.teamzoneapp.se
+    availability:
+      - RUNTIME
+  - variable: SUPABASE_URL
+    value: https://PRODUCTION_REF.supabase.co
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: SUPABASE_PUBLISHABLE_KEY
+    value: sb_publishable_PRODUCTION_KEY
+    availability:
+      - RUNTIME
+  - variable: SUPABASE_SECRET_KEY
+    secret: teamzoneapp-production-supabase-secret-key
+    availability:
+      - RUNTIME
+  - variable: PUBLIC_API_IP_HMAC_SECRET
+    secret: teamzoneapp-production-public-api-ip-hmac-secret
+    availability:
+      - RUNTIME
+  - variable: CAPTCHA_SECRET_KEY
+    secret: teamzoneapp-production-turnstile-secret-key
+    availability:
+      - RUNTIME

@@ -1,4 +1,5 @@
 import java.io.FileInputStream
+import java.util.Base64
 import java.util.Properties
 
 plugins {
@@ -21,6 +22,20 @@ val keystoreProperties = Properties().apply {
 }
 val hasUploadKey = keystorePropertiesFile.exists()
 
+// Firebase is shared by test and production, so they are separate Android
+// apps: only a TEAMZONE_ENV=production build is com.teamzone.teamzone; every
+// other build (audit, local) is com.teamzone.teamzone.test, labelled
+// "TeamZone Test", and reports to its own Crashlytics and FCM app. Flutter
+// passes the --dart-define values base64-encoded in "dart-defines".
+val dartDefines: Map<String, String> =
+    (project.findProperty("dart-defines") as String?)
+        ?.split(",")
+        ?.filter { it.isNotBlank() }
+        ?.map { String(Base64.getDecoder().decode(it)) }
+        ?.associate { it.substringBefore("=") to it.substringAfter("=", "") }
+        ?: emptyMap()
+val isProductionBuild = dartDefines["TEAMZONE_ENV"] == "production"
+
 android {
     namespace = "com.teamzone.teamzone"
     compileSdk = flutter.compileSdkVersion
@@ -32,9 +47,9 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.teamzone.teamzone"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        applicationId =
+            if (isProductionBuild) "com.teamzone.teamzone" else "com.teamzone.teamzone.test"
+        manifestPlaceholders["appLabel"] = if (isProductionBuild) "TeamZone" else "TeamZone Test"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -70,11 +85,19 @@ android {
     }
 }
 
-// A bundle for Google Play must never be signed with the debug key.
+// A bundle for Google Play must never be signed with the debug key, and is
+// always the production app.
 gradle.taskGraph.whenReady {
-    if (!hasUploadKey && allTasks.any { it.name == "bundleRelease" }) {
+    if (allTasks.none { it.name == "bundleRelease" }) return@whenReady
+    if (!hasUploadKey) {
         throw GradleException(
             "android/key.properties is missing: a Play bundle needs the upload key " +
+                "(docs/operations/android_release.md).",
+        )
+    }
+    if (!isProductionBuild) {
+        throw GradleException(
+            "A Play bundle must be built with --dart-define=TEAMZONE_ENV=production " +
                 "(docs/operations/android_release.md).",
         )
     }

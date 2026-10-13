@@ -1,5 +1,17 @@
 {
   "projects": {
     "default": "teamzoneapp-b02a2"
+  },
+  "targets": {
+    "teamzoneapp-b02a2": {
+      "hosting": {
+        "test": [
+          "teamzoneapp-b02a2"
+        ],
+        "production": [
+          "teamzoneapp-production"
+        ]
+      }
+    }
   }
 }

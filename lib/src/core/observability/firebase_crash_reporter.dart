@@ -23,13 +23,20 @@ final class FirebaseCrashReporter {
         defaultTargetPlatform == TargetPlatform.android ||
         defaultTargetPlatform == TargetPlatform.iOS;
     if (kIsWeb || !mobile) return disabled;
-    final FirebaseOptions options;
-    try {
-      options = DefaultFirebaseOptions.currentPlatform;
-    } on UnsupportedError {
-      return disabled;
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      // Android reads google-services.json for the built application id, so
+      // the test app (com.teamzone.teamzone.test) and production each report
+      // to their own Firebase app.
+      await Firebase.initializeApp();
+    } else {
+      final FirebaseOptions options;
+      try {
+        options = DefaultFirebaseOptions.currentPlatform;
+      } on UnsupportedError {
+        return disabled;
+      }
+      await Firebase.initializeApp(options: options);
     }
-    await Firebase.initializeApp(options: options);
     final enabled = environment.parsedName != AppEnvironmentName.local;
     await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(enabled);
     return FirebaseCrashReporter._(enabled);

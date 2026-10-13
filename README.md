@@ -114,11 +114,16 @@ node supabase/tests/<name>.local.mjs
 Only after the matching migrations are applied:
 
 ```powershell
-npx firebase-tools deploy --only hosting --project teamzoneapp-b02a2
+npx firebase-tools deploy --only hosting:test --project teamzoneapp-b02a2
 npx firebase-tools deploy --only apphosting:teamzoneapp-public --project teamzoneapp-b02a2
 ```
 
-The Flutter web build for hosting uses `--release` with the `audit` defines below.
+The Flutter web build for hosting uses `--release` with the `audit` defines
+below, into `build/web`. Firebase is shared with production: always name the
+target (`hosting:test`, never plain `hosting`). A predeploy check
+(`ops/check_web_build.mjs`) refuses a build made for another environment.
+Production builds go to `build/web-production` and `hosting:production`; see
+[`docs/operations/production_provisioning.md`](docs/operations/production_provisioning.md).
 
 ## Security
 

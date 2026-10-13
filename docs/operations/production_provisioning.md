@@ -15,20 +15,45 @@ need explicit approval (`xops_release_runbook.md`).
 
 ## Phase 1 — code ready for two environments
 
-Done:
+**Done 2026-10-13.**
 - The web sign-in callback follows the origin the app runs on.
 - Links to the public site use the configured `PUBLIC_SITE_URL`.
 - Edge Functions allow extra origins via `TEAMZONE_EXTRA_WEB_ORIGINS`.
+- **Hosting:** `firebase.json` has two targets (`.firebaserc`): `test` on
+  the existing site `teamzoneapp-b02a2` (build `build/web`) and `production`
+  on site `teamzoneapp-production` (build `build/web-production`), each
+  with its own CSP. The production CSP says `PRODUCTION_REF` until phase 3.
+  A predeploy check (`ops/check_web_build.mjs`) refuses a build or CSP that
+  names another environment's Supabase project, and refuses production until
+  `ops/environments.json` has its project ref. Deploy with
+  `--only hosting:test` or `--only hosting:production`, never plain
+  `hosting`.
+- **Functions:** one critical-flow monitor per Supabase project.
+  `runCriticalFlowMonitor` (test) is unchanged;
+  `runProductionCriticalFlowMonitor` is deployed once
+  `firebase-functions/.env.teamzoneapp-b02a2` sets
+  `TEAMZONE_PRODUCTION_SUPABASE_URL` and the secret
+  `TEAMZONE_PRODUCTION_SUPABASE_ANON_KEY` is set (the production project's
+  legacy anon key: the monitor endpoint verifies a JWT). The web error sink
+  accepts `app.` and `test.teamzoneapp.se`.
+- **Public site:** `public-site/apphosting.production.yaml` overrides the
+  Supabase URL, publishable key and secret names (`teamzoneapp-production-*`)
+  for a backend whose environment name is `production`; `firebase.json`
+  lists the backend `teamzoneapp-public-production`. `PRODUCTION_REF` and
+  the key are filled in after phase 3.
+- **Android:** only a `TEAMZONE_ENV=production` build is
+  `com.teamzone.teamzone`; every other build is `com.teamzone.teamzone.test`
+  ("TeamZone Test"), and Firebase on Android reads `google-services.json` for
+  the built id. A Play bundle refuses to build for any other environment.
 
-Still to do before production:
-- `firebase.json`: one Hosting site per environment (`app` and `test`
-  targets), each with its own CSP `connect-src` (its Supabase URL).
-- `firebase-functions`: the critical-flow monitor calls the test project's
-  URL; give it one target per environment.
-- `public-site`: an `apphosting.production.yaml` (or a second backend) with the
-  production `SUPABASE_URL`, `PUBLIC_ORIGIN` and secrets.
-- Android: a test build with application id `com.teamzone.teamzone.test`
-  registered in Firebase, so Crashlytics keeps test and production apart.
+Product owner, before the next Android test build:
+- Register the Android app `com.teamzone.teamzone.test` ("TeamZone Test") in
+  Firebase (project settings → Your apps → Add app), then download the
+  project's `google-services.json` again (it then lists both apps) to
+  `android/app/google-services.json`. Until then an audit Android build stops
+  with "No matching client found for package name
+  'com.teamzone.teamzone.test'". The test app installs beside the old one;
+  uninstall the old `com.teamzone.teamzone` test install from the phone.
 
 ## Phase 2 — prove the migrations on an empty database
 
@@ -96,17 +121,31 @@ except the Vault secrets listed below.
 
 ## Phase 4 — addresses and hosting
 
-1. Firebase Hosting: add a site for test, deploy the test build there, connect
-   `test.teamzoneapp.se`; then connect `app.teamzoneapp.se` to the production
-   site. DNS records in Netlify DNS.
-2. App Hosting: connect `test-public.teamzoneapp.se` to the test backend and
-   `teamzoneapp.se` (and `www`) to the production backend.
-3. Update `ops/environments.json` with the production project ref.
+1. Fill in the production project ref: `ops/environments.json`
+   (`supabaseProjectRef`), `PRODUCTION_REF` in `firebase.json` and
+   `public-site/apphosting.production.yaml`, and the publishable key there.
+2. Firebase Hosting: `npx firebase-tools hosting:sites:create teamzoneapp-production`.
+   Connect `test.teamzoneapp.se` to the existing site `teamzoneapp-b02a2`
+   (test); add the test origin to the test project's Supabase Auth redirect
+   URLs and `TEAMZONE_EXTRA_WEB_ORIGINS`. Then move `app.teamzoneapp.se` to
+   `teamzoneapp-production`. DNS records in Netlify DNS.
+3. App Hosting: create backend `teamzoneapp-public-production` (same region
+   as the test backend, root `/public-site`) with environment name
+   `production`, and its three `teamzoneapp-production-*` secrets
+   (`npx firebase-tools apphosting:secrets:set <name>`). Connect
+   `teamzoneapp.se` (and `www`) and `public.teamzoneapp.se` to it, and
+   `test-public.teamzoneapp.se` to the test backend; then set `PUBLIC_ORIGIN`
+   and `PUBLIC_SITE_ORIGINS` in `apphosting.yaml` to the test addresses.
+   Add the new hostnames to the Turnstile widget.
+4. Functions: add `TEAMZONE_PRODUCTION_SUPABASE_URL` to
+   `firebase-functions/.env.teamzoneapp-b02a2`, set the secret
+   `TEAMZONE_PRODUCTION_SUPABASE_ANON_KEY`, deploy functions.
 
 ## Phase 5 — apps
 
-- Web: build with the production `SUPABASE_URL` / publishable key and
-  `TEAMZONE_ENV=production`, deploy to the production site.
+- Web: `flutter build web --release --output build/web-production` with the
+  production `SUPABASE_URL` / publishable key and `TEAMZONE_ENV=production`,
+  then `npx firebase-tools deploy --only hosting:production`.
 - Android: `docs/operations/android_release.md` (upload key, Play App
   Signing, internal testing track first).
 - iOS: `docs/operations/ios_release.md` (needs a Mac).

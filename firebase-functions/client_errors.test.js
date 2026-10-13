@@ -27,8 +27,9 @@ test("rejects free text, wrong types, oversized and broken bodies", () => {
   assert.equal(sanitizedClientError(JSON.stringify([valid])), null);
 });
 
-test("only the app's origin, plus configured extra origins", () => {
+test("only the app's origins, plus configured extra origins", () => {
   assert.equal(allowedOrigin("https://app.teamzoneapp.se", ""), true);
+  assert.equal(allowedOrigin("https://test.teamzoneapp.se", ""), true);
   assert.equal(allowedOrigin("https://evil.example", ""), false);
   assert.equal(allowedOrigin(undefined, ""), false);
   assert.equal(allowedOrigin("http://localhost:5000", "http://localhost, http://localhost:5000"), true);
