@@ -1,6 +1,15 @@
 -- MSG-02 hosted physical-test fixture. Only the two exact test accounts may
--- be verified, and only while they are active leaders in separate clubs.
-do $$
+-- audit-only: the MSG-02 verification targets fixed test-project accounts. Outside the test (audit) project, where the pilot
+-- club e423cb36-eaf3-44a5-b6d0-0406914a21ae does not exist (an empty database, production), this
+-- migration does nothing; production gets its own grants by a separate,
+-- approved change.
+do $audit$
+begin
+ if not exists (select 1 from core.clubs where id = 'e423cb36-eaf3-44a5-b6d0-0406914a21ae') then
+  raise notice 'skipped: audit-only migration';
+  return;
+ end if;
+ execute $audit_0$do $$
 declare
   requester_id uuid;
   target_id uuid;
@@ -81,7 +90,8 @@ begin
       verified_by = requester_id,
       revision = core.leader_verifications.revision + 1;
 end
-$$;
+$$$audit_0$;
+end $audit$;
 
 insert into internal.migration_provenance (
   migration_name,

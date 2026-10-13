@@ -1,6 +1,15 @@
 -- Approve the exact hosted test account's pending leader application through
--- the same server command used by an authorized in-app reviewer.
-do $$
+-- audit-only: the MSG-02 verification targets fixed test-project accounts. Outside the test (audit) project, where the pilot
+-- club e423cb36-eaf3-44a5-b6d0-0406914a21ae does not exist (an empty database, production), this
+-- migration does nothing; production gets its own grants by a separate,
+-- approved change.
+do $audit$
+begin
+ if not exists (select 1 from core.clubs where id = 'e423cb36-eaf3-44a5-b6d0-0406914a21ae') then
+  raise notice 'skipped: audit-only migration';
+  return;
+ end if;
+ execute $audit_0$do $$
 declare
   target_id uuid;
   application_id uuid;
@@ -90,7 +99,8 @@ begin
     raise exception 'msg02_application_approval_failed_%', approval_result;
   end if;
 end
-$$;
+$$$audit_0$;
+end $audit$;
 
 insert into internal.migration_provenance (
   migration_name,

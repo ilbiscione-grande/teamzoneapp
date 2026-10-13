@@ -194,7 +194,10 @@ class SupabaseIdentityServices
   }
 
   static const _mobileAuthRedirect = 'teamzone://app/auth/callback';
-  static const _webAuthRedirect = 'https://app.teamzoneapp.se/auth/callback';
+  // On the web the callback returns to the origin the app runs on, so test
+  // (test.teamzoneapp.se) and production (app.teamzoneapp.se) each keep their
+  // own sessions. Each origin must be in the project's Auth redirect URLs.
+  static String get _webAuthRedirect => '${Uri.base.origin}/auth/callback';
   String get _authRedirect => kIsWeb ? _webAuthRedirect : _mobileAuthRedirect;
 
   @override

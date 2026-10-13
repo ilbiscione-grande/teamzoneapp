@@ -1,6 +1,15 @@
 -- Explicit sandbox-only Economy pilot for Thomas club.
-
-do $$
+-- audit-only: the Economy sandbox pilot targets fixed test-project ids. Outside the test (audit) project, where the pilot
+-- club e423cb36-eaf3-44a5-b6d0-0406914a21ae does not exist (an empty database, production), this
+-- migration does nothing; production gets its own grants by a separate,
+-- approved change.
+do $audit$
+begin
+ if not exists (select 1 from core.clubs where id = 'e423cb36-eaf3-44a5-b6d0-0406914a21ae') then
+  raise notice 'skipped: audit-only migration';
+  return;
+ end if;
+ execute $audit_0$do $$
 declare target_subscription_id uuid; target_account_id uuid;
 begin
  select s.id,a.id into target_subscription_id,target_account_id
@@ -17,9 +26,8 @@ begin
   ends_at=null,updated_at=now(),revision=core.billing_subscription_items.revision+1;
 
  perform internal.recompute_club_entitlements(target_account_id);
-end$$;
-
-insert into core.capability_grants(club_id,assignment_id,capability,scope_type,scope_id,starts_at)
+end$$$audit_0$;
+ execute $audit_1$insert into core.capability_grants(club_id,assignment_id,capability,scope_type,scope_id,starts_at)
 select 'e423cb36-eaf3-44a5-b6d0-0406914a21ae',assignment_id,capability,'club',
  'e423cb36-eaf3-44a5-b6d0-0406914a21ae',now()
 from (values
@@ -33,7 +41,8 @@ from (values
 ) value(assignment_id,capability)
 on conflict(assignment_id,capability,scope_type,scope_id) do update set
  ends_at=null,starts_at=least(core.capability_grants.starts_at,excluded.starts_at),
- revision=core.capability_grants.revision+1;
+ revision=core.capability_grants.revision+1$audit_1$;
+end $audit$;
 
 insert into internal.migration_provenance(migration_name,source_kind)
 values('20260817200611_s10b_economy_sandbox_pilot','greenfield');

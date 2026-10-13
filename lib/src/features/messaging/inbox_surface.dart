@@ -1806,7 +1806,8 @@ class _InboxSurfaceState extends State<_InboxSurface>
                           if (sheetContext.mounted) Navigator.pop(sheetContext);
                           final target = Uri.tryParse(item.deepLink);
                           if (target?.scheme == 'https' &&
-                              target?.host == 'public.teamzoneapp.se') {
+                              target?.host ==
+                                  Uri.parse(_publicSiteOrigin).host) {
                             await launchUrl(
                               target!,
                               mode: LaunchMode.externalApplication,

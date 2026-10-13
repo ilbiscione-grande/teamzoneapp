@@ -1,6 +1,15 @@
 -- Explicit sandbox-only third Economy approver for the Thomas club.
-
-do $$
+-- audit-only: the third Economy approver targets fixed test-project ids. Outside the test (audit) project, where the pilot
+-- club e423cb36-eaf3-44a5-b6d0-0406914a21ae does not exist (an empty database, production), this
+-- migration does nothing; production gets its own grants by a separate,
+-- approved change.
+do $audit$
+begin
+ if not exists (select 1 from core.clubs where id = 'e423cb36-eaf3-44a5-b6d0-0406914a21ae') then
+  raise notice 'skipped: audit-only migration';
+  return;
+ end if;
+ execute $audit_0$do $$
 declare
  target_club constant uuid := 'e423cb36-eaf3-44a5-b6d0-0406914a21ae';
  target_profile constant uuid := 'd2ae2b22-6ecd-4009-a512-765f80eff511';
@@ -72,7 +81,8 @@ begin
   'assignment',target_assignment,'Explicit S10B third approver pilot',
   jsonb_build_object('profile_id',target_profile,'capabilities',jsonb_build_array('economy.read','economy.approve'))
  );
-end$$;
+end$$$audit_0$;
+end $audit$;
 
 insert into internal.migration_provenance(migration_name,source_kind)
 values('20260821224238_s10b_third_economy_approver_pilot','greenfield');

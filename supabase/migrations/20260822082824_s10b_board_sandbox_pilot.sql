@@ -1,6 +1,15 @@
 -- Explicit sandbox-only Board pilot for Thomas club.
-
-insert into core.capability_grants(
+-- audit-only: the Board sandbox pilot targets fixed test-project ids. Outside the test (audit) project, where the pilot
+-- club e423cb36-eaf3-44a5-b6d0-0406914a21ae does not exist (an empty database, production), this
+-- migration does nothing; production gets its own grants by a separate,
+-- approved change.
+do $audit$
+begin
+ if not exists (select 1 from core.clubs where id = 'e423cb36-eaf3-44a5-b6d0-0406914a21ae') then
+  raise notice 'skipped: audit-only migration';
+  return;
+ end if;
+ execute $audit_0$insert into core.capability_grants(
  club_id,assignment_id,capability,scope_type,scope_id,starts_at,created_by
 )
 select 'e423cb36-eaf3-44a5-b6d0-0406914a21ae',assignment_id,capability,'club',
@@ -21,9 +30,8 @@ from (values
 ) value(assignment_id,capability)
 on conflict(assignment_id,capability,scope_type,scope_id) do update set
  ends_at=null,starts_at=least(core.capability_grants.starts_at,excluded.starts_at),
- revision=core.capability_grants.revision+1;
-
-do $$ begin
+ revision=core.capability_grants.revision+1$audit_0$;
+ execute $audit_1$do $$ begin
  if (select count(*) from core.capability_grants grant_row
      where grant_row.club_id='e423cb36-eaf3-44a5-b6d0-0406914a21ae'
        and grant_row.ends_at is null and grant_row.capability='board.read')<>3 then
@@ -39,15 +47,15 @@ do $$ begin
        and grant_row.ends_at is null and grant_row.capability='board.manage')<>1 then
   raise exception 'board_pilot_manage_count_mismatch';
  end if;
-end$$;
-
-insert into audit.command_events(
+end$$$audit_1$;
+ execute $audit_2$insert into audit.command_events(
  club_id,actor_profile_id,command_type,aggregate_type,aggregate_id,reason,metadata
 ) values(
  'e423cb36-eaf3-44a5-b6d0-0406914a21ae','6379829a-1258-4893-aae7-d063979ef118',
  'board.sandbox_pilot.activated.v1','club','e423cb36-eaf3-44a5-b6d0-0406914a21ae',
  'Explicit S10B Board sandbox pilot approval',jsonb_build_object('readers',3,'approvers',2,'managers',1)
-);
+)$audit_2$;
+end $audit$;
 
 insert into internal.migration_provenance(migration_name,source_kind)
 values('20260822082824_s10b_board_sandbox_pilot','greenfield');

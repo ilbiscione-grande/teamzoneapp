@@ -13,6 +13,14 @@ begin
   where lower(account.email) = 'coach.emilson+tzleader@gmail.com';
 
   if target_id is null then
+    -- audit-only: the fixture account exists only in the test (audit)
+    -- project, where pilot club e423cb36-eaf3-44a5-b6d0-0406914a21ae exists;
+    -- elsewhere (an empty database, production) this repair is skipped and
+    -- the function fix below still runs.
+    if not exists (select 1 from core.clubs where id = 'e423cb36-eaf3-44a5-b6d0-0406914a21ae') then
+      raise notice 'skipped: audit-only fixture';
+      return;
+    end if;
     raise exception 'msg02_thomas_leader_fixture_account_missing';
   end if;
 

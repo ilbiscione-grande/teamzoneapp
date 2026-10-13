@@ -3,16 +3,22 @@
   "environments": {
     "audit": {
       "supabaseProjectRef": "hgcshgunvooyudvrcpig",
+      "supabaseRegion": "eu-west-1",
       "firebaseProject": "teamzoneapp-b02a2",
       "flutterOrigin": "https://app.teamzoneapp.se",
-      "publicOrigin": "https://public.teamzoneapp.se"
+      "publicOrigin": "https://public.teamzoneapp.se",
+      "plannedFlutterOrigin": "https://test.teamzoneapp.se",
+      "plannedPublicOrigin": "https://test-public.teamzoneapp.se"
     },
     "production": {
       "status": "not_provisioned",
       "supabaseProjectRef": null,
-      "firebaseProject": null,
+      "supabaseRegion": "eu-north-1",
+      "firebaseProject": "teamzoneapp-b02a2",
+      "firebaseShared": true,
       "flutterOrigin": "https://app.teamzoneapp.se",
-      "publicOrigin": "https://teamzoneapp.se"
+      "publicOrigin": "https://teamzoneapp.se",
+      "decisions": "docs/operations/production_provisioning.md (2026-10-13)"
     }
   }
 }
