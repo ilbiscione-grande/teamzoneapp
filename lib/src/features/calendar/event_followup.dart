@@ -77,7 +77,9 @@ class _KpiGoalsSectionState extends State<_KpiGoalsSection> {
           _failed = false;
         });
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_followup._reload', error);
+
       if (mounted) setState(() => _failed = true);
     }
   }
@@ -105,7 +107,9 @@ class _KpiGoalsSectionState extends State<_KpiGoalsSection> {
       await widget.services.deleteKpiTarget(widget.event.id, kpi.id);
       await _reload();
       widget.onChanged?.call();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_followup._delete', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Målet kunde inte tas bort.')),
@@ -266,7 +270,9 @@ class _KpiGoalSheetState extends State<_KpiGoalSheet> {
     try {
       final catalog = await widget.services.getKpiCatalog(widget.event.id);
       if (mounted) setState(() => _catalog = catalog);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_followup._loadCatalog', error);
+
       if (mounted) setState(() => _catalog = const []);
     }
   }
@@ -344,7 +350,9 @@ class _KpiGoalSheetState extends State<_KpiGoalSheet> {
           _error = 'Någon annan ändrade målet. Stäng och försök igen.';
         });
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_followup._save', error);
+
       if (mounted) {
         setState(() {
           _saving = false;
@@ -536,7 +544,9 @@ class _FollowupTabState extends State<_FollowupTab> {
           _failed = false;
         });
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_followup._reload', error);
+
       if (mounted && _data == null) setState(() => _failed = true);
     }
   }
@@ -551,7 +561,9 @@ class _FollowupTabState extends State<_FollowupTab> {
     if (result == null || !result.$1 || !mounted) return false;
     try {
       await widget.services.recordKpiValue(kpi.id, result.$2, kpi.revision);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_followup._recordValue', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Värdet kunde inte sparas.')),

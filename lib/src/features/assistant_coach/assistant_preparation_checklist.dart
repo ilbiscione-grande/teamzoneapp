@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../calendar/calendar_models.dart';
 import '../calendar/preparation_models.dart';
 import '../calendar/preparation_services.dart';
+import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 /// Loaded only for the expanded card, through the ordinary event permissions.
 class AssistantPreparationChecklist extends StatefulWidget {
@@ -58,7 +59,9 @@ class _AssistantPreparationChecklistState
       if (!mounted) return;
       widget.onChanged();
       if (mounted) setState(() => _data = _load());
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('assistant_preparation_checklist._complete', error);
+
       if (mounted) {
         setState(() {
           _error = 'Punkten kunde inte sparas. Uppdatera och försök igen.';

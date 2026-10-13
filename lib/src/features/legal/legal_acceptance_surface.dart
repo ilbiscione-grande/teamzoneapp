@@ -115,7 +115,9 @@ class _LegalAcceptanceScreenState extends State<_LegalAcceptanceScreen> {
           )
           .timeout(const Duration(seconds: 15));
       widget.onAccepted();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('legal_acceptance_surface._accept', error);
+
       if (mounted) {
         setState(
           () => _error = AppStrings.of(context).feature(

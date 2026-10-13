@@ -52,12 +52,19 @@ class _PublicationSelfServiceSurfaceState
     try {
       await command();
       saved = true;
-    } catch (_) {
+    } catch (caughtError) {
+      AppErrors.caught(
+        'publication_self_service_surface.Function',
+        caughtError,
+      );
+
       if (verifySave != null) {
         try {
           verified = true;
           saved = await verifySave();
-        } catch (_) {
+        } catch (error) {
+          AppErrors.caught('publication_self_service_surface.Function', error);
+
           verified = false;
         }
       }

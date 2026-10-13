@@ -43,7 +43,9 @@ class _BillingSurfaceState extends State<_BillingSurface> {
       );
       final opened = await launchUrl(uri, webOnlyWindowName: '_self');
       if (!opened) throw StateError('Checkout unavailable.');
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('billing_surface._checkout', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

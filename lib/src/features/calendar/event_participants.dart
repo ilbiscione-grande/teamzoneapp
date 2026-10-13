@@ -153,7 +153,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
             titles.putIfAbsent(role.personId, () => summary);
           }
         }
-      } catch (_) {}
+      } catch (error) {
+        AppErrors.caught('event_participants._loadLeaderTitles', error);
+      }
     }
     if (mounted && titles.isNotEmpty) setState(() => _leaderTitles = titles);
   }
@@ -197,7 +199,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         widget.event.id,
       );
       if (mounted) setState(() => _candidates = candidates);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_participants._loadCandidates', error);
+
       // Attendance-only roles may lack the squad search; the team still shows.
       if (mounted && _canManage) {
         _showError(
@@ -219,7 +223,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
           _permissionsFailed = false;
         });
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_participants._loadPermissions', error);
+
       if (mounted) setState(() => _permissionsFailed = true);
     }
   }
@@ -348,7 +354,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       _resetDispatch();
       await widget.onReload();
       if (mounted) _showError('Kallelserna är skickade.');
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_participants._sendSelected', error);
+
       if (mounted) {
         _showError(
           sent
@@ -508,7 +516,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       _attendanceKey = null;
       _attendancePayload = null;
       await widget.onReload();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_participants._saveAttendance', error);
+
       if (mounted) {
         _showError(
           saved
@@ -560,7 +570,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
           teamId: p.teamId,
           personId: p.personId,
         );
-      } catch (_) {
+      } catch (error) {
+        AppErrors.caught('event_participants.profile', error);
+
         return null;
       }
     }
@@ -572,7 +584,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
           teamId: p.teamId,
           personId: p.personId,
         );
-      } catch (_) {
+      } catch (error) {
+        AppErrors.caught('event_participants.attendance', error);
+
         return null;
       }
     }
@@ -616,7 +630,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
           ),
         );
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_participants._manageCallup', error);
+
       if (mounted) {
         _showError('Åtgärden kunde inte utföras. Ladda om och försök igen.');
       }
@@ -662,7 +678,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       );
       _details.remove(person.personId);
       await widget.onReload();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_participants._correctCallup', error);
+
       if (mounted) {
         _showError(
           'Kallelsen kunde inte ändras. Listan kan ha ändrats. Ladda om och försök igen.',
@@ -711,7 +729,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         idempotencyKey: _newUuid(),
       );
       await widget.onReload();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_participants._respondToCallup', error);
+
       // The write may have landed even though this request didn't hear
       // back — re-check before telling the user their answer was lost.
       final mismatched = await callupResponseStillMismatched(
@@ -829,7 +849,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
             ),
           );
           sent++;
-        } catch (_) {
+        } catch (error) {
+          AppErrors.caught('event_participants._reviewReminders', error);
+
           failed++;
         }
       }
@@ -847,7 +869,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
           ),
         );
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_participants._reviewReminders', error);
+
       if (mounted) {
         _showError(
           'Några påminnelser kunde inte skickas. Ladda om och försök igen.',

@@ -286,7 +286,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
       );
       _callupRequirementCommand = null;
       await _refresh();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_details_page._setCallupsRequired', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -372,7 +374,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         widget.onChanged?.call();
         await _loadMatch();
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_details_page._refresh', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -735,14 +739,18 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         clubId: widget.contextValue.clubId,
         teamId: teamId,
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_details_page._revise', error);
+
       suggestions = const [];
     }
     // Format and periods; the team default for a non-match turned match.
     EventMatchSettings? matchSettings;
     try {
       matchSettings = await widget.calendar.getEventMatchSettings(event.id);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_details_page._revise', error);
+
       matchSettings = null;
     }
     if (!mounted) return;
@@ -786,7 +794,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         expectedRevision: event.revision,
         idempotencyKey: _newUuid(),
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_details_page._revise', error);
+
       if (mounted) {
         _showError(
           'Eventet ändrades av någon annan. Ladda om och försök igen.',
@@ -805,7 +815,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
           scope: value.scope,
           idempotencyKey: _newUuid(),
         );
-      } catch (_) {
+      } catch (error) {
+        AppErrors.caught('event_details_page._revise', error);
+
         if (mounted) {
           _showError('Format och perioder kunde inte sparas. Försök igen.');
         }
@@ -824,7 +836,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         idempotencyKey: _newUuid(),
       );
       if (mounted) unawaited(_refresh());
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_details_page._transition', error);
+
       if (mounted) {
         _showError(
           'Eventet ändrades av någon annan. Ladda om och försök igen.',
@@ -868,7 +882,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         SnackBar(content: Text(strings.feature('Eventet har tagits bort.'))),
       );
       widget.onDeleted();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_details_page._deleteDraft', error);
+
       if (mounted) {
         _showError(
           'Eventet kan inte tas bort. Det kan ha ändrats eller fått kallelser.',
@@ -922,7 +938,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         SnackBar(content: Text(strings.feature('Eventet har arkiverats.'))),
       );
       widget.onDeleted();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_details_page._archive', error);
+
       if (mounted) _showError('Eventet kunde inte arkiveras.');
     }
   }
@@ -962,7 +980,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         SnackBar(content: Text(strings.feature('Eventet har återställts.'))),
       );
       widget.onDeleted();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_details_page._restoreArchive', error);
+
       if (mounted) _showError('Eventet kunde inte återställas.');
     }
   }
@@ -993,7 +1013,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
       if (snapshot?.state == 'completed') {
         try {
           report = await widget.match.getReport(event.id);
-        } catch (_) {
+        } catch (error) {
+          AppErrors.caught('event_details_page._loadMatch', error);
+
           report = null;
         }
       }
@@ -1003,7 +1025,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         _report = report;
         _matchLoaded = true;
       });
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_details_page._loadMatch', error);
+
       if (mounted) setState(() => _matchLoaded = false);
     }
   }
@@ -1294,7 +1318,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     EventSharingSettings settings;
     try {
       settings = await widget.calendar.getEventSharing(event.id);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_details_page._showSharing', error);
+
       if (mounted) _showError('Delningsinställningarna kunde inte laddas.');
       return;
     }
@@ -1544,7 +1570,12 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                           );
                           unawaited(_refresh());
                         }
-                      } catch (_) {
+                      } catch (error) {
+                        AppErrors.caught(
+                          'event_details_page._showSharing',
+                          error,
+                        );
+
                         setDialogState(() => saving = false);
                         if (mounted) {
                           _showError(

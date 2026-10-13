@@ -3,6 +3,7 @@ import 'package:teamzone_app/src/features/attendance_export/export_models.dart';
 import 'package:teamzone_app/src/features/attendance_export/export_services.dart';
 import 'package:teamzone_app/src/features/attendance_export/laget_se/laget_se_adapter.dart';
 import 'package:teamzone_app/src/features/attendance_export/laget_se/laget_se_member_import.dart';
+import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 String _roleLabel(String role) => role == 'leader' ? 'Ledare' : 'Spelare';
 String _describe(LagetSeMember member) =>
@@ -66,7 +67,9 @@ class _LagetSeMemberImportPageState extends State<LagetSeMemberImportPage> {
           expectedRevision: proposal.existing?.revision ?? 0,
         );
         saved++;
-      } catch (_) {
+      } catch (error) {
+        AppErrors.caught('laget_se_member_import_page._save', error);
+
         failed.add(proposal.member.name);
       }
     }
@@ -89,7 +92,9 @@ class _LagetSeMemberImportPageState extends State<LagetSeMemberImportPage> {
           externalTeamRef: slug,
           expectedRevision: current.revision,
         );
-      } catch (_) {
+      } catch (error) {
+        AppErrors.caught('laget_se_member_import_page._save', error);
+
         failed.add('lagets laget.se-adress');
       }
     }

@@ -63,7 +63,9 @@ class _IntakeSurfaceState extends State<_IntakeSurface> {
           );
           _reload();
           if (mounted) await _showQr(form, name);
-        } catch (_) {
+        } catch (error) {
+          AppErrors.caught('intake_surface._createForm', error);
+
           _show(
             strings.feature(
               'Sidan kunde inte skapas. Kontrollera din behörighet.',
@@ -163,7 +165,9 @@ class _IntakeSurfaceState extends State<_IntakeSurface> {
       try {
         await widget.roster.closeIntakeForm(formId: form.id);
         _reload();
-      } catch (_) {
+      } catch (error) {
+        AppErrors.caught('intake_surface._closeForm', error);
+
         _show(strings.feature('Sidan kunde inte stängas. Försök igen.'));
       }
     });
@@ -200,7 +204,9 @@ class _IntakeSurfaceState extends State<_IntakeSurface> {
       );
       widget.onPeopleAdded?.call();
       _reload();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('intake_surface._accept', error);
+
       _show(
         strings.feature(
           role == 'leader'
@@ -316,7 +322,9 @@ class _IntakeSurfaceState extends State<_IntakeSurface> {
         );
         widget.onPeopleAdded?.call();
         _reload();
-      } catch (_) {
+      } catch (error) {
+        AppErrors.caught('intake_surface._updateExisting', error);
+
         _show(strings.feature('Personen kunde inte uppdateras. Försök igen.'));
       }
     });
@@ -352,7 +360,9 @@ class _IntakeSurfaceState extends State<_IntakeSurface> {
           submissionId: submission.id,
         );
         _reload();
-      } catch (_) {
+      } catch (error) {
+        AppErrors.caught('intake_surface._dismiss', error);
+
         _show(strings.feature('Uppgifterna kunde inte tas bort. Försök igen.'));
       }
     });

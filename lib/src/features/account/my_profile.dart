@@ -145,7 +145,9 @@ class _MyProfileEditorState extends State<_MyProfileEditor>
     // An approved change is finished once the login email has changed.
     try {
       await widget.profile.completeLoginEmailChange();
-    } catch (_) {}
+    } catch (error) {
+      AppErrors.caught('my_profile._reload', error);
+    }
     final details = await widget.profile.getMyProfile().timeout(
       const Duration(seconds: 15),
     );
@@ -153,7 +155,9 @@ class _MyProfileEditorState extends State<_MyProfileEditor>
     if (details.hasAvatar) {
       try {
         url = await widget.profile.avatarUrl(details.profileId);
-      } catch (_) {}
+      } catch (error) {
+        AppErrors.caught('my_profile._reload', error);
+      }
     }
     if (mounted) {
       setState(() {
@@ -231,7 +235,9 @@ class _MyProfileEditorState extends State<_MyProfileEditor>
           maxHeight: 1024,
           imageQuality: 85,
         );
-      } catch (_) {
+      } catch (error) {
+        AppErrors.caught('my_profile._pickAvatar', error);
+
         if (mounted) {
           setState(
             () => _error = strings.feature('Kameran kunde inte öppnas.'),
@@ -253,7 +259,9 @@ class _MyProfileEditorState extends State<_MyProfileEditor>
         maxHeight: 1024,
         imageQuality: 82,
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('my_profile._pickAvatar', error);
+
       if (mounted) {
         setState(() => _error = strings.feature('Bilden kunde inte öppnas.'));
       }
@@ -437,7 +445,9 @@ class _MyProfileEditorState extends State<_MyProfileEditor>
           ],
         ),
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('my_profile._confirmEmailChange', error);
+
       if (mounted) {
         setState(
           () => _error = strings.feature(

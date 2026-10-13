@@ -86,6 +86,9 @@ class _SignInScreenState extends State<_SignInScreen> {
       if (!mounted) return;
       setState(() => _error = AppStrings.of(context).signInRateLimited);
     } catch (_) {
+      // Wrong passwords, codes and expired links are user errors, not app
+      // defects; Auth outages are tracked server-side (critical flow "auth").
+
       if (!mounted) return;
       setState(() => _error = AppStrings.of(context).signInFailed);
     }
@@ -125,6 +128,9 @@ class _SignInScreenState extends State<_SignInScreen> {
     } on AuthException catch (error) {
       _safeAuthFailure(error);
     } catch (_) {
+      // Wrong passwords, codes and expired links are user errors, not app
+      // defects; Auth outages are tracked server-side (critical flow "auth").
+
       _safeFailure();
     }
   }
@@ -164,6 +170,9 @@ class _SignInScreenState extends State<_SignInScreen> {
         );
       }
     } catch (_) {
+      // Wrong passwords, codes and expired links are user errors, not app
+      // defects; Auth outages are tracked server-side (critical flow "auth").
+
       _safeFailure();
     }
   }
@@ -189,6 +198,9 @@ class _SignInScreenState extends State<_SignInScreen> {
         ),
       );
     } catch (_) {
+      // Wrong passwords, codes and expired links are user errors, not app
+      // defects; Auth outages are tracked server-side (critical flow "auth").
+
       _safeFailure();
     }
   }
@@ -203,6 +215,9 @@ class _SignInScreenState extends State<_SignInScreen> {
         () => widget.authEntry.requestPasswordReset(email: _email.text.trim()),
       );
     } catch (_) {
+      // Wrong passwords, codes and expired links are user errors, not app
+      // defects; Auth outages are tracked server-side (critical flow "auth").
+
       // The same response prevents account enumeration.
     }
     if (mounted) {
@@ -572,7 +587,9 @@ class _ResetPasswordScreenState extends State<_ResetPasswordScreen> {
         () => widget.authEntry.updatePassword(password: _password.text),
       );
       widget.onComplete();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('auth_surfaces._save', error);
+
       if (mounted) {
         setState(
           () => _error = AppStrings.of(context).feature(
@@ -807,6 +824,9 @@ class _WaitingRoomState extends State<_WaitingRoom> {
       );
       widget.onClaimed();
     } catch (_) {
+      // Wrong passwords, codes and expired links are user errors, not app
+      // defects; Auth outages are tracked server-side (critical flow "auth").
+
       if (mounted) {
         setState(
           () => _message = AppStrings.of(
@@ -831,7 +851,9 @@ class _WaitingRoomState extends State<_WaitingRoom> {
         idempotencyKey: _newUuid(),
       );
       widget.onClaimed();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('auth_surfaces._acceptGuardianInvite', error);
+
       if (mounted) {
         setState(
           () => _message = AppStrings.of(
@@ -1009,7 +1031,9 @@ class _CreateClubSheetState extends State<_CreateClubSheet> {
           )
           .timeout(const Duration(seconds: 15));
       if (mounted) widget.onCreated(result);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('auth_surfaces._submit', error);
+
       if (mounted) {
         setState(
           () => _error = AppStrings.of(context).feature(
@@ -1114,7 +1138,12 @@ class _CreateClubSheetState extends State<_CreateClubSheet> {
                         if (dialogContext.mounted) {
                           Navigator.pop(dialogContext, true);
                         }
-                      } catch (_) {
+                      } catch (error) {
+                        AppErrors.caught(
+                          'auth_surfaces._openSupportCase',
+                          error,
+                        );
+
                         if (dialogContext.mounted) {
                           setDialogState(() {
                             submitting = false;
@@ -1278,7 +1307,9 @@ class _MembershipJoinSheetState extends State<_MembershipJoinSheet> {
         const Duration(seconds: 15),
       );
       if (mounted) setState(() => _applications = value);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('auth_surfaces._loadApplications', error);
+
       if (mounted) {
         setState(
           () => _error = AppStrings.of(
@@ -1302,7 +1333,9 @@ class _MembershipJoinSheetState extends State<_MembershipJoinSheet> {
           .search(query: query)
           .timeout(const Duration(seconds: 15));
       if (mounted) setState(() => _results = value);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('auth_surfaces._search', error);
+
       if (mounted) {
         setState(
           () => _error = AppStrings.of(
@@ -1387,7 +1420,9 @@ class _MembershipJoinSheetState extends State<_MembershipJoinSheet> {
           ),
         );
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('auth_surfaces._apply', error);
+
       if (mounted) {
         setState(
           () => _error = AppStrings.of(
@@ -1408,7 +1443,9 @@ class _MembershipJoinSheetState extends State<_MembershipJoinSheet> {
         idempotencyKey: _newUuid(),
       );
       await _loadApplications();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('auth_surfaces._withdraw', error);
+
       if (mounted) {
         setState(
           () => _error = AppStrings.of(

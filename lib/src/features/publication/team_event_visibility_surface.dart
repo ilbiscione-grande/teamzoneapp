@@ -36,7 +36,9 @@ class _TeamEventVisibilitySurfaceState
         _revision = (data['revision'] as num).toInt();
         _error = null;
       });
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('team_event_visibility_surface._load', error);
+
       if (mounted) {
         setState(
           () => _error = 'Laginställningarna kunde inte laddas. Försök igen.',
@@ -66,7 +68,9 @@ class _TeamEventVisibilitySurfaceState
           ),
         );
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('team_event_visibility_surface._save', error);
+
       if (mounted) {
         setState(
           () => _error =

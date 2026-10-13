@@ -96,7 +96,9 @@ class _MatchModePageState extends State<_MatchModePage>
         _loaded = true;
         _loadFailed = false;
       });
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('match_mode_page._refresh', error);
+
       if (mounted) {
         setState(() {
           _loaded = true;
@@ -110,7 +112,9 @@ class _MatchModePageState extends State<_MatchModePage>
     try {
       final value = await widget.live.getFollowup(widget.event.id);
       if (mounted) setState(() => _followup = value);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('match_mode_page._refreshKpis', error);
+
       // Goals are optional here; the match works without them.
     }
   }
@@ -170,7 +174,9 @@ class _MatchModePageState extends State<_MatchModePage>
     if (result == null || !result.$1 || !mounted) return;
     try {
       await widget.live.recordKpiValue(kpi.id, result.$2, kpi.revision);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('match_mode_page._enterKpiValue', error);
+
       if (mounted) {
         setState(() => _error = '${kpi.label} kunde inte sparas.');
       }

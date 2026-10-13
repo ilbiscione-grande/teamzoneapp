@@ -39,7 +39,9 @@ class _ContactChangeRequestsState extends State<_ContactChangeRequests> {
           ),
         ),
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('contact_change_requests._decide', error);
+
       if (mounted) {
         setState(() {
           _error = AppStrings.of(context).feature(

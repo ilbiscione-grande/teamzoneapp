@@ -64,6 +64,9 @@ class _InvitationFlowState extends State<_InvitationFlow> {
       setState(() => _result = result);
       if (result.status == InvitationClaimStatus.claimed) widget.onComplete();
     } catch (_) {
+      // Wrong passwords, codes and expired links are user errors, not app
+      // defects; Auth outages are tracked server-side (critical flow "auth").
+
       if (mounted) {
         setState(
           () => _error = AppStrings.of(context).feature(

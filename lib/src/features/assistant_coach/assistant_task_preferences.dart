@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 const assistantTaskTypes = <String, String>{
   'personal_calendar_conflict': 'Mina personliga kalenderkrockar',
@@ -80,7 +81,9 @@ class _AssistantTaskVisibilitySettingsState
           _welcomeMessageVisible = value.welcomeMessageVisible;
         });
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('assistant_task_preferences._load', error);
+
       if (mounted) {
         setState(
           () => _error = 'Inställningarna kunde inte hämtas. Försök igen.',
@@ -114,7 +117,9 @@ class _AssistantTaskVisibilitySettingsState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Dina visningsinställningar är sparade.')),
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('assistant_task_preferences._save', error);
+
       if (mounted) {
         setState(
           () => _error =

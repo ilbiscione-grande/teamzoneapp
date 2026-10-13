@@ -27,6 +27,7 @@ import 'package:teamzone_app/src/features/membership/membership_services.dart';
 import 'package:teamzone_app/src/features/legal/legal_services.dart';
 import 'package:teamzone_app/src/features/account/profile_services.dart';
 import 'package:teamzone_app/src/features/roster/roster_services.dart';
+import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 class AppServices {
   const AppServices({
@@ -353,7 +354,9 @@ class SupabaseIdentityServices
           else
             context,
       ];
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('supabase_bootstrap.strings', error);
+
       return contexts;
     }
   }

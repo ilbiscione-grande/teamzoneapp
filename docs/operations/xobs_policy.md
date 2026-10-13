@@ -3,7 +3,16 @@
 - Structured records contain event, severity, release, environment, correlation
   ID and allowlisted low-cardinality dimensions only.
 - Tokens, headers, request/response bodies, e-mail, free text, sports facts,
-  health data and raw stack traces are prohibited.
+  health data, error messages and raw stack traces are prohibited.
+- Crash stack traces (amended 2026-10-13, see PAR-OPS-05): a fatal, unhandled
+  error may carry its stack reduced to code locations only — function name,
+  `package:`/`dart:` URI or bare file name, line and column; at most 30
+  frames. The error is sent as its type, never its message. Absolute paths
+  are cut to the file name and any other line is dropped
+  (`StackSanitizer`); the web sink re-validates every frame and rejects the
+  whole record on a mismatch. Handled failures (`AppErrors.caught`) carry no
+  stack. `--dart-define=TEAMZONE_CRASH_STACKS=false` turns stacks off.
+  Source maps and symbol files are never published (hosting ignores `*.map`).
 - User-facing errors remain neutral and may show only a safe correlation ID.
 - Critical integrations are fail-closed and require explicit environment flags.
 - PAR-OPS-05 uses Supabase Logs, Firebase Crashlytics for Android/iOS and Google

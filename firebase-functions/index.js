@@ -1,12 +1,16 @@
 const {timingSafeEqual} = require("node:crypto");
 const {onRequest} = require("firebase-functions/v2/https");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
-const {defineSecret} = require("firebase-functions/params");
+const {defineSecret, defineString} = require("firebase-functions/params");
 const {error} = require("firebase-functions/logger");
 const {sanitizedBreach} = require("./bridge");
+const {allowedOrigin, sanitizedClientError, withinLimit} = require("./client_errors");
 
 const bridgeToken = defineSecret("TEAMZONE_OBSERVABILITY_BRIDGE_TOKEN");
 const supabaseAnonKey = defineSecret("TEAMZONE_SUPABASE_ANON_KEY");
+// Extra web origins allowed to report errors (e.g. localhost on the test
+// project); production allows only https://app.teamzoneapp.se.
+const clientErrorExtraOrigins = defineString("CLIENT_ERROR_EXTRA_ORIGINS", {default: ""});
 
 function tokenMatches(provided, expected) {
   const left = Buffer.from((provided || "").trim());
@@ -55,5 +59,23 @@ exports.runCriticalFlowMonitor = onSchedule(
       });
       throw new Error(`sanitized_http_${response.status}`);
     }
+  },
+);
+
+// Flutter web error reports, sent as sanitized text/plain beacons by
+// WebErrorReporter; written to Cloud Logging (PAR-OPS-05).
+exports.clientErrorSink = onRequest(
+  {region: "europe-west1", timeoutSeconds: 10, memory: "128MiB", maxInstances: 2},
+  (request, response) => {
+    response.set("cache-control", "no-store");
+    if (request.method !== "POST") return response.status(405).send("Method not allowed");
+    if (!allowedOrigin(request.get("origin"), clientErrorExtraOrigins.value())) {
+      return response.status(403).send("Forbidden");
+    }
+    if (!withinLimit(request.ip || "unknown")) return response.status(429).send("Too many requests");
+    const record = sanitizedClientError(request.rawBody ? request.rawBody.toString("utf8") : "");
+    if (!record) return response.status(400).send("Invalid record");
+    error("TeamZone web client error", record);
+    return response.status(204).send();
   },
 );

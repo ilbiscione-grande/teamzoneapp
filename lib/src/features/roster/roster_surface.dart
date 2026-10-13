@@ -44,7 +44,9 @@ class _RosterSurfaceState extends State<_RosterSurface> {
       return await widget.profileServices
           .teamAvatarUrls(clubId: widget.contextValue.clubId, teamId: teamId)
           .timeout(const Duration(seconds: 15));
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('roster_surface._loadAvatars', error);
+
       return const {};
     }
   }
@@ -284,7 +286,9 @@ class _RosterSurfaceState extends State<_RosterSurface> {
           SnackBar(content: Text(strings.feature('Laget har skapats.'))),
         );
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('roster_surface._createTeam', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1235,7 +1239,9 @@ class _RosterLifecycleSheetState extends State<_RosterLifecycleSheet> {
         _showArchived = false;
         _load = _reload();
       });
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('roster_surface._restore', error);
+
       if (!mounted) return;
       await showDialog<void>(
         context: context,
@@ -1570,7 +1576,9 @@ class _IntraClubMoveSheetState extends State<_IntraClubMoveSheet> {
             idempotencyKey: _newUuid(),
           );
           movedCount += 1;
-        } catch (_) {
+        } catch (error) {
+          AppErrors.caught('roster_surface._move', error);
+
           failedCount += 1;
         }
       }
@@ -1818,7 +1826,9 @@ class _PlayEligibilitySheetState extends State<_PlayEligibilitySheet> {
             teamId: widget.contextValue.teamId!,
           )
           .timeout(const Duration(seconds: 15));
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('roster_surface._create', error);
+
       if (mounted) {
         await _showCandidateMessage(
           'Spelare från andra lag kunde inte laddas. Försök igen.',
@@ -1986,7 +1996,9 @@ class _PlayEligibilitySheetState extends State<_PlayEligibilitySheet> {
         idempotencyKey: _newUuid(),
       );
       _refresh();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('roster_surface._create', error);
+
       if (mounted) {
         await _showCandidateMessage(
           'Representationen kunde inte sparas. Kontrollera lag, period och överlapp.',
@@ -2349,7 +2361,9 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
       if (!mounted) return;
       setState(() => _createdToken = token);
       _refresh();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('roster_surface._confirmCreate', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -2389,7 +2403,9 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
         idempotencyKey: _newUuid(),
       );
       _refresh();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('roster_surface._revoke', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -2440,7 +2456,9 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
           ],
         ),
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('roster_surface._showTeamCode', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -2467,7 +2485,9 @@ class _InvitationAdminSheetState extends State<_InvitationAdminSheet> {
         idempotencyKey: _newUuid(),
       );
       _refresh();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('roster_surface._endRelation', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -3268,7 +3288,9 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
           () => _error = _profileErrorMessage(AppStrings.of(context), error),
         );
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('roster_surface._save', error);
+
       if (mounted) {
         setState(() {
           _error = AppStrings.of(context).feature(
@@ -3319,7 +3341,9 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
           idempotencyKey: _newUuid(),
         );
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('roster_surface._applyNewRole', error);
+
       messenger.showSnackBar(
         SnackBar(
           content: Text(
@@ -4015,10 +4039,14 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
       if (avatar != null) {
         try {
           url = await widget.profileServices.avatarUrl(avatar);
-        } catch (_) {}
+        } catch (error) {
+          AppErrors.caught('roster_surface._loadContact', error);
+        }
       }
       return (contact, url);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('roster_surface._loadContact', error);
+
       return (const PersonContact(), null);
     }
   }
@@ -4048,7 +4076,9 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
     final TeamRoles roles;
     try {
       roles = await _roles;
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('roster_surface._personId', error);
+
       throw const _NoOwnTeamProfile();
     }
     final own = roles.roles.where((role) => role.isSelf).firstOrNull;
@@ -4169,7 +4199,9 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
                     PersonContact? contact;
                     try {
                       contact = (await _contact).$1;
-                    } catch (_) {
+                    } catch (error) {
+                      AppErrors.caught('roster_surface.build', error);
+
                       // Edited without contact details.
                     }
                     if (!context.mounted) return;
@@ -4396,7 +4428,9 @@ Future<void> _inviteFromProfile({
     people = await roster
         .listPeople(clubId: contextValue.clubId, teamId: contextValue.teamId!)
         .timeout(const Duration(seconds: 15));
-  } catch (_) {
+  } catch (error) {
+    AppErrors.caught('roster_surface._inviteFromProfile', error);
+
     people = const [];
   }
   if (!context.mounted) return;
@@ -4441,7 +4475,9 @@ Future<void> _representFromProfile({
           sourceTeamId: contextValue.teamId!,
         )
         .timeout(const Duration(seconds: 15));
-  } catch (_) {
+  } catch (error) {
+    AppErrors.caught('roster_surface._representFromProfile', error);
+
     if (context.mounted) {
       await _showProfileActionMessage(
         context,
@@ -4612,7 +4648,9 @@ Future<void> _representFromProfile({
         ),
       );
     }
-  } catch (_) {
+  } catch (error) {
+    AppErrors.caught('roster_surface._representFromProfile', error);
+
     if (context.mounted) {
       await _showProfileActionMessage(
         context,
@@ -4866,7 +4904,9 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
       TeamMatchFormat? matchFormat;
       try {
         matchFormat = await widget.roster.getTeamMatchFormat(teamId);
-      } catch (_) {
+      } catch (error) {
+        AppErrors.caught('roster_surface._editTeamProfile', error);
+
         matchFormat = null;
       }
       if (!mounted) return;
@@ -4929,7 +4969,9 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
         ),
       );
       if (saved == true && mounted) setState(_reload);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('roster_surface._editTeamProfile', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -5600,7 +5642,9 @@ class _TeamProfileEditDialogState extends State<_TeamProfileEditDialog> {
       }
       _draft.markClean();
       if (mounted) Navigator.pop(context, true);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('roster_surface._save', error);
+
       if (mounted) {
         setState(() {
           _saving = false;
@@ -6012,7 +6056,9 @@ class _ClubVerificationSheetState extends State<_ClubVerificationSheet> {
           _pending = false;
         });
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('roster_surface._request', error);
+
       if (mounted) {
         setState(() {
           _pending = false;
@@ -6296,7 +6342,9 @@ class _MembershipReviewSheetState extends State<_MembershipReviewSheet> {
           .timeout(const Duration(seconds: 15));
       if (approve) await widget.onApproved();
       if (mounted) setState(_reload);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('roster_surface._decide', error);
+
       if (mounted) {
         setState(
           () => _error = strings.feature(

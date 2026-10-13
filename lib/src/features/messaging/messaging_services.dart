@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/core/supabase/measured_rpc.dart';
 import 'package:teamzone_app/src/features/messaging/messaging_models.dart';
+import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 abstract interface class MessagingServices {
   Future<List<MessageThreadSummary>> listThreads(List<String> contextIds);
@@ -260,7 +261,9 @@ class SupabaseMessagingServices implements MessagingServices {
                 controller.add(null);
               }
             });
-      } catch (_) {
+      } catch (error) {
+        AppErrors.caught('messaging_services.start', error);
+
         if (!controller.isClosed) {
           controller.addError(StateError('Inbox sync unavailable.'));
         }
@@ -325,7 +328,9 @@ class SupabaseMessagingServices implements MessagingServices {
                 controller.add(null);
               }
             });
-      } catch (_) {
+      } catch (error) {
+        AppErrors.caught('messaging_services.start', error);
+
         if (!controller.isClosed) {
           controller.addError(StateError('Thread sync unavailable.'));
         }
@@ -420,7 +425,9 @@ class SupabaseMessagingServices implements MessagingServices {
             params: params,
           ))
           as String;
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('messaging_services.createAnnouncement', error);
+
       // The command is replay-safe. Reusing the exact idempotency key makes
       // this a safe recovery path for any rejected or interrupted gateway
       // call, including FunctionException thrown before measuredRpc can map
@@ -741,7 +748,9 @@ class SupabaseMessagingServices implements MessagingServices {
               },
             )
             .subscribe();
-      } catch (_) {
+      } catch (error) {
+        AppErrors.caught('messaging_services.start', error);
+
         if (!controller.isClosed) {
           controller.addError(StateError('Notification sync unavailable.'));
         }

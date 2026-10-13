@@ -235,7 +235,9 @@ class _AssistantCoachHoldingSurfaceState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Områdesinställningarna har sparats.')),
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('assistant_coach_entry._editAreaPreferences', error);
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -264,7 +266,9 @@ class _AssistantCoachHoldingSurfaceState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Assistentens namn har sparats.')),
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('assistant_coach_entry._editName', error);
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Namnet kunde inte sparas. Försök igen.')),
@@ -289,7 +293,9 @@ class _AssistantCoachHoldingSurfaceState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Assistentens profilbild har sparats.')),
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('assistant_coach_entry._setAvatar', error);
+
       if (!mounted) return;
       setState(() {
         _preference = widget.assistantIdentity.getPreference();

@@ -5,8 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:teamzone_app/src/app/teamzone_app.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
+import 'package:teamzone_app/src/core/observability/app_errors.dart';
 import 'package:teamzone_app/src/core/observability/app_observability.dart';
 import 'package:teamzone_app/src/core/observability/firebase_crash_reporter.dart';
+import 'package:teamzone_app/src/core/observability/web_error_reporter.dart';
 import 'package:teamzone_app/src/core/routing/app_url_strategy.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 
@@ -36,33 +38,50 @@ Future<void> main() async {
   } catch (error) {
     observability.failure(operation: 'firebase.initialize', error: error);
   }
-  FlutterError.onError = (details) {
-    observability.failure(
-      operation: 'flutter.framework',
-      error: details.exception,
-    );
+  final webReporter = WebErrorReporter.forEnvironment(
+    environment,
+    release: observability.release,
+  );
+  // Crashes (fatal) carry their stack reduced to code locations; handled
+  // failures carry none (PAR-OPS-05, 2026-10-13).
+  void report(
+    String operation,
+    Object error, {
+    required bool fatal,
+    StackTrace? stack,
+  }) {
+    observability.failure(operation: operation, error: error);
     unawaited(
       crashReporter.recordSanitized(
-        operation: 'flutter.framework',
-        error: details.exception,
-        fatal: true,
+        operation: operation,
+        error: error,
+        fatal: fatal,
+        stack: stack,
       ),
     );
-  };
+    webReporter.record(
+      operation: operation,
+      error: error,
+      fatal: fatal,
+      stack: stack,
+    );
+  }
+
+  // Handled failures (fallbacks, neutral messages) are reported non-fatal.
+  AppErrors.install(
+    (operation, error) => report(operation, error, fatal: false),
+  );
+  FlutterError.onError = (details) => report(
+    'flutter.framework',
+    details.exception,
+    fatal: true,
+    stack: details.stack,
+  );
   await runZonedGuarded(
     () async {
       final services = await SupabaseBootstrap.initialize(environment);
       runApp(TeamZoneApp(environment: environment, services: services));
     },
-    (error, _) {
-      observability.failure(operation: 'flutter.async', error: error);
-      unawaited(
-        crashReporter.recordSanitized(
-          operation: 'flutter.async',
-          error: error,
-          fatal: true,
-        ),
-      );
-    },
+    (error, stack) => report('flutter.async', error, fatal: true, stack: stack),
   );
 }

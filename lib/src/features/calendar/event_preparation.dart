@@ -100,7 +100,9 @@ class _PreparationTabState extends State<_PreparationTab> {
         _data = data;
         _loadFailed = false;
       });
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_preparation._reload', error);
+
       if (mounted && _data == null) setState(() => _loadFailed = true);
     }
   }
@@ -127,7 +129,9 @@ class _PreparationTabState extends State<_PreparationTab> {
       if (mounted) {
         _snack('Någon annan ändrade samtidigt. Visar senaste versionen.');
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_preparation.Function', error);
+
       if (mounted) _snack(failure);
     }
     return false;
@@ -390,7 +394,9 @@ class _PreparationTabState extends State<_PreparationTab> {
       await _services.setItemDone(item.id, target);
       await _reload();
       if (mounted) widget.onChanged?.call();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_preparation._toggleDone', error);
+
       if (mounted) _snack('Kunde inte spara markeringen. Försök igen.');
     } finally {
       if (mounted) setState(() => _optimisticDone.remove(item.id));
@@ -676,7 +682,9 @@ class _PreparationTabState extends State<_PreparationTab> {
       if (!mounted) return;
       _snack('Anteckningen ändrades av någon annan. Granska och spara igen.');
       await _editNote(title, draft: text);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_preparation._editNote', error);
+
       if (!mounted) return;
       _snack('Anteckningen kunde inte sparas. Försök igen.');
       await _editNote(title, draft: text);
@@ -1271,7 +1279,9 @@ class _PreparationTabState extends State<_PreparationTab> {
         type: FileType.custom,
         allowedExtensions: _mimeByExtension.keys.toList(),
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_preparation._pickFile', error);
+
       if (mounted) _snack('Filväljaren kunde inte öppnas.');
       return;
     }
@@ -1319,7 +1329,9 @@ class _PreparationTabState extends State<_PreparationTab> {
       );
       await _reload();
       if (mounted) setState(() => _uploads.remove(upload));
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_preparation._upload', error);
+
       if (mounted) setState(() => upload.failed = true);
     }
   }
@@ -1384,7 +1396,9 @@ class _PreparationTabState extends State<_PreparationTab> {
     try {
       final url = await _services.signedFileUrl(file.id);
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('event_preparation._openFile', error);
+
       if (mounted) _snack('Filen kunde inte öppnas.');
     }
   }

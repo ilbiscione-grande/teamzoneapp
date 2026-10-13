@@ -117,7 +117,9 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
         idempotencyKey: _newUuid(),
       );
       if (mounted) _reload();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('support_admin_surface._decideVerification', error);
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -224,7 +226,9 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
         ),
       );
       if (mounted) _reload();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('support_admin_surface._decideErasure', error);
+
       if (!mounted) return;
       await showDialog<void>(
         context: context,
@@ -323,7 +327,9 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
         idempotencyKey: _newUuid(),
       );
       if (mounted) _reload();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('support_admin_surface._update', error);
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -813,7 +819,9 @@ class _ProtectedNameSupportConversationSheetState
       _message.clear();
       _stagedFiles.clear();
       _reload();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('support_admin_surface._send', error);
+
       if (mounted) {
         setState(
           () => _error = AppStrings.of(
@@ -905,7 +913,9 @@ class _ProtectedNameSupportConversationSheetState
             .timeout(const Duration(seconds: 45));
         if (mounted) setState(() => _stagedFiles.add(staged));
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('support_admin_surface._pickFiles', error);
+
       if (mounted) {
         setState(
           () => _error = AppStrings.of(
@@ -928,7 +938,9 @@ class _ProtectedNameSupportConversationSheetState
         mode: LaunchMode.externalApplication,
       );
       if (!opened) throw StateError('Could not open support attachment.');
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('support_admin_surface._openAttachment', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppStrings.of(context).safeError)),
@@ -1418,7 +1430,9 @@ class _GlobalPersonErasureAdminSheetState
         ),
       );
       if (mounted) setState(() => _load = _reload());
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('support_admin_surface._decide', error);
+
       if (!mounted) return;
       await showDialog<void>(
         context: context,

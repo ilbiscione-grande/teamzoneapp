@@ -72,7 +72,9 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
     }
     try {
       return await widget.overview.loadLeaderHome(widget.contextValue.id);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('overview_surface._reloadLeaderHome', error);
+
       return null;
     }
   }
@@ -84,7 +86,9 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
     }
     try {
       return await widget.overview.loadPlayerHome(widget.contextValue.id);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('overview_surface._reloadPlayerHome', error);
+
       return null;
     }
   }
@@ -99,7 +103,9 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
         widget.contextValue.id,
         childPersonId: _guardianChildId,
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('overview_surface._reloadGuardianHome', error);
+
       return null;
     }
   }
@@ -625,7 +631,9 @@ class _PlayerHomeContentState extends State<_PlayerHomeContent> {
         idempotencyKey: _newUuid(),
       );
       widget.onChanged();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('overview_surface._respond', error);
+
       // The write may have landed even though this request didn't hear
       // back — re-check before telling the user their answer was lost.
       final mismatched = await callupResponseStillMismatched(
@@ -917,7 +925,9 @@ class _LeaderHomeContentState extends State<_LeaderHomeContent> {
         idempotencyKey: _newUuid(),
       );
       widget.onChanged();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('overview_surface._respond', error);
+
       // The write may have landed even though this request didn't hear
       // back — re-check before telling the user their answer was lost.
       final eventId = widget.value.nextEvent?.id;

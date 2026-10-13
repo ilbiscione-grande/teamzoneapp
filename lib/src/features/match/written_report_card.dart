@@ -41,7 +41,9 @@ class _WrittenReportDialogState extends State<_WrittenReportDialog> {
         _publish,
       );
       if (mounted) Navigator.of(context).pop(true);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('written_report_card._save', error);
+
       if (mounted) {
         setState(() {
           _busy = false;

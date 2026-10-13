@@ -89,7 +89,9 @@ class _DomainManagementSurfaceState extends State<_DomainManagementSurface> {
         );
         _refresh();
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('domain_management_surface._request', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppStrings.of(context).safeError)),
@@ -108,7 +110,9 @@ class _DomainManagementSurfaceState extends State<_DomainManagementSurface> {
         domainId: id,
       );
       if (mounted) _refresh();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('domain_management_surface._canonical', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppStrings.of(context).safeError)),

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/core/supabase/measured_rpc.dart';
 import 'package:teamzone_app/src/features/publication/editorial_models.dart';
+import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 abstract interface class EditorialServices {
   Future<Map<String, dynamic>> getTeamEventVisibility(String teamId);
@@ -522,7 +523,9 @@ class SupabaseEditorialServices implements EditorialServices {
   Future<void> startImageProcessing() async {
     try {
       await _client.functions.invoke('public-media-worker', body: {});
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('editorial_services.startImageProcessing', error);
+
       // Processed by a later call; the image stays private until then.
     }
   }

@@ -8,6 +8,7 @@ import 'package:teamzone_app/src/features/attendance_export/export_services.dart
 import 'package:teamzone_app/src/features/attendance_export/laget_se/laget_se_adapter.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_services.dart';
 import 'package:teamzone_app/src/shared/widgets/app_states.dart';
+import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 /// Exportera närvaro → laget.se for one ended event and one team.
 class AttendanceExportPage extends StatefulWidget {
@@ -72,7 +73,9 @@ class _AttendanceExportPageState extends State<AttendanceExportPage> {
         _activityInput.text = context.activityLink?.externalActivityId ?? '';
       });
       _schedulePoll();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('attendance_export_page._load', error);
+
       if (mounted) {
         setState(() => _loadError = 'Exportunderlaget kunde inte laddas.');
       }
@@ -95,7 +98,9 @@ class _AttendanceExportPageState extends State<AttendanceExportPage> {
       );
       if (!mounted) return;
       setState(() => _context = context);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('attendance_export_page._refreshContext', error);
+
       // Keep the last known state; the next poll retries.
     }
     if (mounted) _schedulePoll();

@@ -32,7 +32,9 @@ class _AddressPrivacySettingsState extends State<_AddressPrivacySettings> {
       _subjects = subjects;
       _target = subjects.isEmpty ? null : subjects.first['id'] as String;
       await _load();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('address_privacy_settings._init', error);
+
       if (mounted) {
         setState(() {
           _error = 'Uppgifterna kunde inte hämtas.';
@@ -77,7 +79,9 @@ class _AddressPrivacySettingsState extends State<_AddressPrivacySettings> {
       });
       await _load();
       if (mounted) widget.onChanged?.call();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('address_privacy_settings._command', error);
+
       if (mounted) {
         setState(() {
           _error =
@@ -257,7 +261,9 @@ class _AddressPrivacySettingsState extends State<_AddressPrivacySettings> {
                     });
                     try {
                       await _load();
-                    } catch (_) {
+                    } catch (error) {
+                      AppErrors.caught('address_privacy_settings.build', error);
+
                       if (mounted) {
                         setState(() {
                           _busy = false;

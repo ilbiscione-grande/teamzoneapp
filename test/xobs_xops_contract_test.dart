@@ -216,19 +216,30 @@ void main() {
     },
   );
 
-  test('Crashlytics boundary is Android-only and sanitizes error details', () {
-    final source = File(
-      'lib/src/core/observability/firebase_crash_reporter.dart',
-    ).readAsStringSync();
-    expect(source, contains('defaultTargetPlatform != TargetPlatform.android'));
-    expect(source, contains('StackTrace.empty'));
-    expect(source, contains("reason: 'sanitized_failure'"));
-    expect(source, isNot(contains('firebase_analytics')));
-    expect(
-      File('pubspec.yaml').readAsStringSync(),
-      isNot(contains('firebase_analytics')),
-    );
-  });
+  // PAR-OPS-05: Crashlytics covers Android and iOS (iOS stays off until its
+  // Firebase options exist); Flutter web reports through WebErrorReporter.
+  test(
+    'Crashlytics boundary covers Android and iOS and sanitizes error details',
+    () {
+      final source = File(
+        'lib/src/core/observability/firebase_crash_reporter.dart',
+      ).readAsStringSync();
+      expect(
+        source,
+        contains('defaultTargetPlatform == TargetPlatform.android'),
+      );
+      expect(source, contains('defaultTargetPlatform == TargetPlatform.iOS'));
+      expect(source, contains('if (kIsWeb || !mobile) return disabled;'));
+      expect(source, contains('on UnsupportedError'));
+      expect(source, contains('StackTrace.empty'));
+      expect(source, contains("reason: 'sanitized_failure'"));
+      expect(source, isNot(contains('firebase_analytics')));
+      expect(
+        File('pubspec.yaml').readAsStringSync(),
+        isNot(contains('firebase_analytics')),
+      );
+    },
+  );
 
   test('Crashlytics audit probe is debug-only and opt-in', () {
     final source = File('lib/main.dart').readAsStringSync();

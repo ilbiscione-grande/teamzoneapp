@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/overview/overview_models.dart';
 import '../assistant_coach/assistant_task_preferences.dart';
+import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 abstract interface class OverviewServices {
   Future<MainSurfacesProjection> load({required List<String> contextIds});
@@ -143,7 +144,9 @@ class SupabaseOverviewServices
         throw const FormatException('Invalid overview response.');
       }
       return _cached = MainSurfacesProjection.fromJson(value);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('overview_services.load', error);
+
       final cached = _cached;
       if (cached != null) return cached.asStale();
       rethrow;
@@ -154,7 +157,9 @@ class SupabaseOverviewServices
   Future<LeaderHomeProjection> loadLeaderHome(String contextId) async {
     try {
       return await loadFreshLeaderHome(contextId);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('overview_services.loadLeaderHome', error);
+
       final cached = _leaderCache[contextId];
       if (cached != null) return cached.asStale();
       rethrow;
@@ -182,7 +187,9 @@ class SupabaseOverviewServices
         throw const FormatException('Invalid player home response.');
       }
       return _playerCache[contextId] = PlayerHomeProjection.fromJson(value);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('overview_services.loadPlayerHome', error);
+
       final cached = _playerCache[contextId];
       if (cached != null) return cached.asStale();
       rethrow;
@@ -206,7 +213,9 @@ class SupabaseOverviewServices
         throw const FormatException('Invalid guardian home response.');
       }
       return _guardianCache[cacheKey] = GuardianHomeProjection.fromJson(value);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('overview_services.loadGuardianHome', error);
+
       final cached = _guardianCache[cacheKey];
       if (cached != null) return cached.asStale();
       rethrow;

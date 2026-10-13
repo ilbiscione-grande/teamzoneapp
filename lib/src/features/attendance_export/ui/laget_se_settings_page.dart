@@ -8,6 +8,7 @@ import 'package:teamzone_app/src/features/attendance_export/laget_se/laget_se_ad
 import 'package:teamzone_app/src/features/attendance_export/laget_se/laget_se_member_import.dart';
 import 'package:teamzone_app/src/features/attendance_export/ui/laget_se_member_import_page.dart';
 import 'package:teamzone_app/src/shared/widgets/app_states.dart';
+import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 /// Laginställningar → Integrationer → laget.se: enable the export and
 /// manage member links. No laget.se credentials are asked for or stored.
@@ -58,7 +59,9 @@ class _LagetSeSettingsPageState extends State<LagetSeSettingsPage> {
           provider: lagetSeProvider,
         ),
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('laget_se_settings_page._load', error);
+
       if (mounted) {
         setState(() => _error = 'Inställningarna kunde inte laddas.');
       }
@@ -115,7 +118,9 @@ class _LagetSeSettingsPageState extends State<LagetSeSettingsPage> {
     } on FormatException catch (error) {
       if (mounted) setState(() => _error = error.message);
       return;
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('laget_se_settings_page._importMembers', error);
+
       if (mounted) setState(() => _error = 'Filen kunde inte läsas.');
       return;
     }

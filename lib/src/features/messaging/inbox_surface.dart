@@ -544,7 +544,9 @@ class _InboxSurfaceState extends State<_InboxSurface>
     try {
       final center = await widget.messaging.listNotifications();
       if (mounted) setState(() => _notificationUnread = center.unreadCount);
-    } catch (_) {}
+    } catch (error) {
+      AppErrors.caught('inbox_surface._refreshNotificationBadge', error);
+    }
   }
 
   Future<void> _refresh() async {
@@ -578,7 +580,9 @@ class _InboxSurfaceState extends State<_InboxSurface>
           .listProtectedNameSupportCases()
           .timeout(const Duration(seconds: 15));
       return cases.fold<int>(0, (sum, item) => sum + item.unreadCount);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('inbox_surface._loadSupportQueue', error);
+
       return 0;
     }
   }
@@ -729,7 +733,9 @@ class _InboxSurfaceState extends State<_InboxSurface>
         ...widget.contextValue.aliasIds,
       ], _newUuid());
       if (mounted) await _data.refresh();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('inbox_surface._markAllRead', error);
+
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -757,7 +763,9 @@ class _InboxSurfaceState extends State<_InboxSurface>
           SnackBar(content: Text(strings.feature('Inställningen sparades'))),
         );
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('inbox_surface._showMessagingSettings', error);
+
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -1337,7 +1345,9 @@ class _InboxSurfaceState extends State<_InboxSurface>
       recipients = await widget.messaging.resolveRecipients(
         widget.contextValue.id,
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('inbox_surface._compose', error);
+
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -1576,7 +1586,9 @@ class _InboxSurfaceState extends State<_InboxSurface>
           lastAt: DateTime.now(),
         ),
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('inbox_surface._showRequests', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppStrings.of(context).safeError)),
@@ -1607,7 +1619,9 @@ class _InboxSurfaceState extends State<_InboxSurface>
                       generation == sheetRefreshGeneration) {
                     setSheetState(() => center = updated);
                   }
-                } catch (_) {
+                } catch (error) {
+                  AppErrors.caught('inbox_surface._showNotifications', error);
+
                   // Keep the last known list; the next invalidation can retry.
                 }
               }());
@@ -1630,7 +1644,9 @@ class _InboxSurfaceState extends State<_InboxSurface>
                   'read',
                   _newUuid(),
                 );
-              } catch (_) {
+              } catch (error) {
+                AppErrors.caught('inbox_surface.markRead', error);
+
                 showError();
                 return;
               }
@@ -1658,7 +1674,9 @@ class _InboxSurfaceState extends State<_InboxSurface>
                   _newUuid(),
                 );
                 return true;
-              } catch (_) {
+              } catch (error) {
+                AppErrors.caught('inbox_surface.dismiss', error);
+
                 showError();
                 return false;
               }
@@ -1806,7 +1824,9 @@ class _InboxSurfaceState extends State<_InboxSurface>
         ),
       );
       await _refreshNotificationBadge();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('inbox_surface.removeLocally', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppStrings.of(context).safeError)),
@@ -1979,7 +1999,9 @@ class _InboxSurfaceState extends State<_InboxSurface>
           ),
         );
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('inbox_surface._crossClub', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppStrings.of(context).safeError)),
@@ -2867,12 +2889,16 @@ class _ThreadDialogState extends State<_ThreadDialog>
             page.messages.last.revision,
             _newUuid(),
           );
-        } catch (_) {
+        } catch (error) {
+          AppErrors.caught('inbox_surface._replaceMessages', error);
+
           // Reading the message still succeeds if the receipt cannot be
           // persisted. A later open or mark-all action can retry it.
         }
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('inbox_surface._replaceMessages', error);
+
       if (mounted && _historyRequestGate.isCurrent(requestGeneration)) {
         _historyRequestGate.failLatest();
         _scheduleReconnectRetry();
@@ -2907,7 +2933,9 @@ class _ThreadDialogState extends State<_ThreadDialog>
         _hasLoadedOlderMessages = true;
         _loadingOlder = false;
       });
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('inbox_surface._loadOlder', error);
+
       if (mounted && _historyRequestGate.isCurrent(requestGeneration)) {
         _historyRequestGate.finishOlder();
         setState(() => _loadingOlder = false);
@@ -2947,7 +2975,9 @@ class _ThreadDialogState extends State<_ThreadDialog>
     try {
       await widget.messaging.setVisibility(widget.thread.id, true, _newUuid());
       if (mounted) Navigator.pop(context);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('inbox_surface._hideThread', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppStrings.of(context).safeError)),
@@ -2968,7 +2998,9 @@ class _ThreadDialogState extends State<_ThreadDialog>
     try {
       await widget.messaging.leaveThread(widget.thread.id, _newUuid());
       if (mounted) Navigator.pop(context);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('inbox_surface._leaveThread', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppStrings.of(context).safeError)),
@@ -2993,7 +3025,9 @@ class _ThreadDialogState extends State<_ThreadDialog>
         _newUuid(),
       );
       if (mounted) Navigator.pop(context);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('inbox_surface._closeThread', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppStrings.of(context).safeError)),
@@ -3042,7 +3076,9 @@ class _ThreadDialogState extends State<_ThreadDialog>
           await widget.messaging.listMessagePage(widget.thread.id);
         } on PostgrestException catch (readError) {
           accessLost = readError.code == '42501';
-        } catch (_) {
+        } catch (error) {
+          AppErrors.caught('inbox_surface._deliver', error);
+
           // A failed access probe cannot distinguish a network failure.
         }
       }
@@ -3092,7 +3128,9 @@ class _ThreadDialogState extends State<_ThreadDialog>
           _stagedName = file.name;
         });
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('inbox_surface._pickFile', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppStrings.of(context).safeError)),
@@ -3125,7 +3163,9 @@ class _ThreadDialogState extends State<_ThreadDialog>
           SnackBar(content: Text(strings.feature('Deltagare tillagda'))),
         );
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('inbox_surface._addParticipants', error);
+
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -3141,7 +3181,9 @@ class _ThreadDialogState extends State<_ThreadDialog>
     try {
       await widget.messaging.setMute(widget.thread.id, targetMuted, _newUuid());
       if (mounted) setState(() => _muted = targetMuted);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('inbox_surface._toggleMute', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppStrings.of(context).safeError)),
@@ -3159,7 +3201,9 @@ class _ThreadDialogState extends State<_ThreadDialog>
     try {
       await widget.messaging.setPin(widget.thread.id, targetPinned, _newUuid());
       if (mounted) setState(() => _pinned = targetPinned);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('inbox_surface._togglePin', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppStrings.of(context).safeError)),
@@ -3222,7 +3266,9 @@ class _ThreadDialogState extends State<_ThreadDialog>
         });
         await _replaceMessages();
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('inbox_surface._messageAction', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppStrings.of(context).safeError)),
@@ -3735,7 +3781,9 @@ class _InlineMessageFileState extends State<_InlineMessageFile> {
     try {
       final url = await widget.messaging.signedFileUrl(widget.file.id);
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('inbox_surface._open', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppStrings.of(context).safeError)),

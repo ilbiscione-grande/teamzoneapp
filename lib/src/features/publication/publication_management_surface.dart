@@ -32,7 +32,9 @@ class _PublicationManagementSurfaceState
     try {
       await action();
       if (mounted) _refresh();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('publication_management_surface._run', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppStrings.of(context).safeError)),

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 enum AsyncDataPhase { loading, ready, empty, failed }
 
@@ -101,7 +102,9 @@ class AsyncDataController<T> extends ChangeNotifier {
         ),
       );
       return true;
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('async_data_controller.load', error);
+
       if (!_accepts(generation)) return false;
       if (previous != null) {
         _emit(

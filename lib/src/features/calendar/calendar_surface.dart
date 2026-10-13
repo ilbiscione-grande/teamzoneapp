@@ -3287,20 +3287,26 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
         clubId: widget.contextValue.clubId,
         teamId: teamId,
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('calendar_surface._createEvent', error);
+
       suggestions = const [];
     }
     // Sharing is optional; without the list the editor just hides it.
     List<ShareableTeam> shareable;
     try {
       shareable = await widget.calendar.listShareableTeams(teamId);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('calendar_surface._createEvent', error);
+
       shareable = const [];
     }
     String? matchFormat;
     try {
       matchFormat = await widget.calendar.getTeamMatchFormat(teamId);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('calendar_surface._createEvent', error);
+
       matchFormat = null;
     }
     if (!mounted) return;
@@ -3349,7 +3355,9 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
         ),
         _newUuid(),
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('calendar_surface._createEvent', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -3374,7 +3382,9 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
           scope: 'all',
           idempotencyKey: _newUuid(),
         );
-      } catch (_) {
+      } catch (error) {
+        AppErrors.caught('calendar_surface._createEvent', error);
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -3395,7 +3405,9 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
           teamIds: value.sharedTeamIds,
           idempotencyKey: _newUuid(),
         );
-      } catch (_) {
+      } catch (error) {
+        AppErrors.caught('calendar_surface._createEvent', error);
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

@@ -52,7 +52,9 @@ class _RegisterResultDialogState extends State<_RegisterResultDialog> {
         reason: _reason.trim().isEmpty ? null : _reason.trim(),
       );
       if (mounted) Navigator.of(context).pop(true);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('match_result_card._save', error);
+
       if (mounted) {
         setState(() {
           _busy = false;

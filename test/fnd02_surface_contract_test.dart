@@ -44,6 +44,12 @@ void main() {
     ).readAsStringSync();
     expect(source, isNot(contains('Object? error')));
     expect(source, isNot(contains('String error')));
-    expect(source, contains('catch (_)'));
+    // The caught error only goes to sanitized reporting (type only), never
+    // into state: `error` appears in the catch clause and that call alone.
+    expect(
+      source,
+      contains("AppErrors.caught('async_data_controller.load', error)"),
+    );
+    expect(RegExp(r'\berror\b').allMatches(source), hasLength(2));
   });
 }

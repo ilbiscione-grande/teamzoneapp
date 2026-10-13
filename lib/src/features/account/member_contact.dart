@@ -122,7 +122,9 @@ class _LoginEmailChangeQueueState extends State<_LoginEmailChangeQueue> {
         approve: approve,
         note: text,
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('member_contact._decide', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

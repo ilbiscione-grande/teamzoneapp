@@ -8,6 +8,7 @@ import 'assistant_preparation_checklist.dart';
 import 'assistant_task_preferences.dart';
 import '../overview/overview_models.dart';
 import '../overview/overview_services.dart';
+import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 /// Page context is presentation only. Every read and action is authorized by
 /// the existing domain endpoints, independently of the assistant signal gate.
@@ -243,7 +244,9 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
       preferences = await (overview as AssistantTaskPreferencesServices)
           .loadAssistantTaskPreferences()
           .timeout(const Duration(seconds: 15));
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('assistant_tasks.loadAssistantTasks', error);
+
       return const AssistantTaskSnapshot(
         [],
         [],
@@ -337,7 +340,9 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
         );
         tasks.putIfAbsent(item.key, () => item);
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('assistant_tasks.loadAssistantTasks', error);
+
       // Do not retain a partially read team's tasks on permission/read errors.
       tasks.removeWhere((_, task) => task.context.id == context.id);
       failed.add(context);
@@ -409,7 +414,9 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
       for (final item in personal) {
         tasks[item.key] = item;
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('assistant_tasks.loadAssistantTasks', error);
+
       personalFailed = true;
     }
   }
@@ -572,7 +579,9 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                 ),
         ),
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('assistant_tasks._setDisposition', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -597,7 +606,9 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
     setState(() => _opening = true);
     try {
       await widget.onOpen(task);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('assistant_tasks._open', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -631,7 +642,9 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
       );
       if (!saved.welcomeMessageVisible) return;
       throw StateError('welcome preference was not saved');
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('assistant_tasks._dismissWelcome', error);
+
       if (!mounted) return;
       setState(() => _welcomeDismissed = false);
       ScaffoldMessenger.of(context).showSnackBar(

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_models.dart';
 import 'package:teamzone_app/src/features/calendar/preparation_services.dart';
+import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 export 'package:teamzone_app/src/features/calendar/preparation_services.dart';
 
@@ -549,7 +550,9 @@ class SupabaseCalendarServices implements CalendarServices {
           .whereType<Map<String, dynamic>>()
           .map(SavedEventPlace.fromJson)
           .toList(growable: false);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('calendar_services.listSavedPlaces', error);
+
       // Before the place migration only facility names exist.
       return [
         for (final name in await listSavedLocations(
@@ -1065,7 +1068,9 @@ class SupabaseCalendarServices implements CalendarServices {
               });
           channels.add(channel);
         }
-      } catch (_) {
+      } catch (error) {
+        AppErrors.caught('calendar_services.start', error);
+
         if (!controller.isClosed) {
           controller.add(
             const CalendarSyncEvent.status(CalendarSyncStatus.disconnected),
@@ -1109,7 +1114,9 @@ Future<bool> callupResponseStillMismatched(
         .where((callup) => callup.id == callupId)
         .firstOrNull;
     return callup?.state != intendedResponse;
-  } catch (_) {
+  } catch (error) {
+    AppErrors.caught('calendar_services.callupResponseStillMismatched', error);
+
     return true;
   }
 }

@@ -120,10 +120,14 @@ class _ProductShellState extends State<_ProductShell> {
       if (details.hasAvatar) {
         try {
           avatar = await widget.profileServices.avatarUrl(details.profileId);
-        } catch (_) {}
+        } catch (error) {
+          AppErrors.caught('product_shell._loadOwnSummary', error);
+        }
       }
       return (name: details.displayName, avatar: avatar);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('product_shell._loadOwnSummary', error);
+
       return (name: null, avatar: null);
     }
   }
@@ -740,7 +744,9 @@ class _ProductShellState extends State<_ProductShell> {
           .listTeamCreationRequests(clubId: widget.contextValue.clubId)
           .timeout(const Duration(seconds: 15));
       return requests.where((item) => item.state == 'pending').length;
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('product_shell._loadPendingTeamRequests', error);
+
       return 0;
     }
   }
@@ -1406,7 +1412,9 @@ Future<void> _createTeamFromContextPicker({
         ),
       );
     }
-  } catch (_) {
+  } catch (error) {
+    AppErrors.caught('product_shell._createTeamFromContextPicker', error);
+
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1458,7 +1466,9 @@ Future<void> _showTeamCreationRequests({
     requests = await membership
         .listTeamCreationRequests(clubId: activeContext.clubId)
         .timeout(const Duration(seconds: 15));
-  } catch (_) {
+  } catch (error) {
+    AppErrors.caught('product_shell._showTeamCreationRequests', error);
+
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

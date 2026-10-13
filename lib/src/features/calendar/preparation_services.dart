@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/calendar/followup_models.dart';
 import 'package:teamzone_app/src/features/calendar/preparation_models.dart';
+import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 abstract interface class EventPreparationServices {
   Future<EventPreparation> getPreparation(String eventId);
@@ -348,7 +349,9 @@ class SupabaseEventPreparationServices implements EventPreparationServices {
       await _client.storage.from(value['bucket_id'] as String).remove([
         value['object_key'] as String,
       ]);
-    } catch (_) {}
+    } catch (error) {
+      AppErrors.caught('preparation_services.deleteFile', error);
+    }
   }
 
   @override
@@ -395,7 +398,9 @@ class SupabaseEventPreparationServices implements EventPreparationServices {
                   controller.add(null);
                 }
               });
-        } catch (_) {
+        } catch (error) {
+          AppErrors.caught('preparation_services.watchEventLive', error);
+
           // Realtime is an optimization; explicit refresh still works.
         }
       },

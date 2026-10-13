@@ -71,12 +71,16 @@ class _MemberCardDialogState extends State<_MemberCardDialog>
     if (photoProfile != null) {
       try {
         photo = await widget.profile.avatarUrl(photoProfile);
-      } catch (_) {}
+      } catch (error) {
+        AppErrors.caught('member_card._reload', error);
+      }
     }
     if (card.hasBadge) {
       try {
         badge = await widget.profile.clubBadgeUrl(card.clubId);
-      } catch (_) {}
+      } catch (error) {
+        AppErrors.caught('member_card._reload', error);
+      }
     }
     return _MemberCardData(card, photo, badge);
   }
@@ -630,7 +634,9 @@ class _ClubBadgeDialogState extends State<_ClubBadgeDialog> {
           _current = widget.profile.clubBadgeUrl(widget.clubId);
         });
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('member_card._pick', error);
+
       if (mounted) {
         setState(
           () => _error = strings.feature('Klubbmärket kunde inte sparas.'),
@@ -650,7 +656,9 @@ class _ClubBadgeDialogState extends State<_ClubBadgeDialog> {
           _current = Future.value(null);
         });
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('member_card._remove', error);
+
       if (mounted) {
         setState(
           () => _error = AppStrings.of(

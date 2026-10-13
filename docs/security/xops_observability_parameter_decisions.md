@@ -31,6 +31,11 @@ Scope: TeamzoneApp v1, Sweden-first greenfield release
 - No additional external telemetry provider is used in v1.
 - Telemetry is technical and sanitized at source. E-mail, free text, sports or
   health data, minors' data, tokens, headers and payload bodies are forbidden.
+- Amendment approved by the product owner on 2026-10-13 (option C): crashes
+  (fatal, unhandled errors) may carry a stack trace reduced to code locations
+  — function, code file and line, no messages, values or paths — sanitized on
+  the device and re-validated by the web sink. Handled failures report only
+  the operation and error type. Details: `docs/operations/xobs_policy.md`.
 - Error/crash retention is 30 days. Performance retention is 14 days.
 - A P0 alert is immediate. A critical flow alert triggers at 5 percent failures
   over five minutes for Auth, checkout, messaging or critical commands.

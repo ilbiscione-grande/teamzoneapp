@@ -85,7 +85,9 @@ class _ClubColorsDialogState extends State<_ClubColorsDialog> {
     final strings = AppStrings.of(context);
     if (!reset && (_invalid(_primary) || _invalid(_accent))) {
       setState(
-        () => _error = strings.feature('Ange färgerna som #rrggbb, t.ex. #00843d.'),
+        () => _error = strings.feature(
+          'Ange färgerna som #rrggbb, t.ex. #00843d.',
+        ),
       );
       return;
     }
@@ -100,7 +102,9 @@ class _ClubColorsDialogState extends State<_ClubColorsDialog> {
         accent: reset ? null : _value(_accent),
       );
       if (mounted) Navigator.pop(context, true);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('club_colors._save', error);
+
       if (mounted) {
         setState(() {
           _busy = false;

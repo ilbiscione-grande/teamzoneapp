@@ -75,6 +75,7 @@ import 'package:teamzone_app/src/shared/widgets/app_states.dart';
 import 'package:teamzone_app/src/shared/widgets/dialog_controllers.dart';
 import 'package:teamzone_app/src/shared/widgets/browser_offline_notice.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 part 'product_shell.dart';
 part 'product_routes.dart';

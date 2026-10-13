@@ -83,7 +83,9 @@ class _AssistantEventTimeDialogState extends State<_AssistantEventTimeDialog> {
         idempotencyKey: _command!,
       );
       if (mounted) Navigator.of(context).pop(true);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('assistant_event_time_dialog._save', error);
+
       if (mounted) {
         setState(() {
           _busy = false;

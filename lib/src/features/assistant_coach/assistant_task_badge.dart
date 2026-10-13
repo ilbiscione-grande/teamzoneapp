@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'assistant_tasks.dart';
+import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 /// Counts actionable cards, not participants or checklist rows inside a card.
 class AssistantTaskBadge extends StatefulWidget {
@@ -76,7 +77,9 @@ class _AssistantTaskBadgeState extends State<AssistantTaskBadge>
           _refresh,
         );
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('assistant_task_badge._refresh', error);
+
       // An unknown count is not a confirmed zero. The assistant shows read errors.
       if (mounted && generation == _generation) setState(() => _count = null);
     }

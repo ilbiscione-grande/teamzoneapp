@@ -99,7 +99,9 @@ class _EditorialSurfaceState extends State<_EditorialSurface> {
           _showEditorialPublicationPrerequisite(context);
           return;
         }
-      } catch (_) {
+      } catch (error) {
+        AppErrors.caught('editorial_surface._transition', error);
+
         if (!mounted) return;
         _showEditorialPublicationFailure(context);
         return;
@@ -137,7 +139,9 @@ class _EditorialSurfaceState extends State<_EditorialSurface> {
         idempotencyKey: _newUuid(),
       );
       await _data.refresh();
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('editorial_surface._transition', error);
+
       if (mounted) {
         _showEditorialPublicationFailure(context);
       }
@@ -384,7 +388,9 @@ class _EditorialEditorState extends State<_EditorialEditor> {
         maxHeight: 2560,
         imageQuality: 90,
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('editorial_surface._pickImage', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(strings.feature('Bilden kunde inte öppnas.'))),
@@ -525,7 +531,9 @@ class _EditorialEditorState extends State<_EditorialEditor> {
       if (mounted) {
         Navigator.pop(context, true);
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('editorial_surface._save', error);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -592,7 +600,9 @@ class _EditorialEditorState extends State<_EditorialEditor> {
         idempotencyKey: _newUuid(),
       );
       if (mounted) Navigator.pop(context, true);
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('editorial_surface._publish', error);
+
       if (mounted) _showEditorialPublicationFailure(context);
     } finally {
       if (mounted) setState(() => _saving = false);

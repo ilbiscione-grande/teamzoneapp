@@ -301,7 +301,9 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
           _stale = false;
         });
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('team_person_details._reload', error);
+
       if (mounted) {
         setState(
           () => _error = strings.feature(

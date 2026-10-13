@@ -49,7 +49,9 @@ Future<void> _showUseCodeDialog(
     try {
       await roster.claimTeamCode(token: token, idempotencyKey: _newUuid());
       claimedAsTeamCode = true;
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('profile_settings_surface._showUseCodeDialog', error);
+
       await roster.acceptGuardianInvite(
         token: token,
         idempotencyKey: _newUuid(),
@@ -70,7 +72,9 @@ Future<void> _showUseCodeDialog(
         ),
       );
     }
-  } catch (_) {
+  } catch (error) {
+    AppErrors.caught('profile_settings_surface._showUseCodeDialog', error);
+
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -146,7 +150,9 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
     if (messaging == null) return null;
     try {
       return (await messaging.getPreferences()).pushEnabled;
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('profile_settings_surface._loadPush', error);
+
       return null;
     }
   }
@@ -159,7 +165,9 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
     });
     try {
       await messaging.setPushEnabled(value, _newUuid());
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('profile_settings_surface._setPushEnabled', error);
+
       if (!mounted) return;
       setState(() {
         _pushEnabled = _loadPush();
@@ -236,7 +244,12 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
           context,
         ).showSnackBar(SnackBar(content: Text(strings.feature('Sparat.'))));
       }
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught(
+        'profile_settings_surface._saveMarketingPreference',
+        error,
+      );
+
       if (mounted) {
         setState(() {
           _pending = false;
@@ -365,7 +378,9 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
           ],
         ),
       );
-    } catch (_) {
+    } catch (error) {
+      AppErrors.caught('profile_settings_surface._requestGlobalErasure', error);
+
       if (!mounted) return;
       await showDialog<void>(
         context: context,
