@@ -331,12 +331,14 @@ class _ProductShellState extends State<_ProductShell> {
           return _EventDetailsPage(
             eventId: state.pathParameters['eventId']!,
             key: ValueKey(
-              '${state.pathParameters['eventId']}:${state.uri.queryParameters['context']}:${state.uri.queryParameters['tab']}',
+              '${state.pathParameters['eventId']}:${state.uri.queryParameters['context']}:${state.uri.queryParameters['tab']}:${state.uri.queryParameters['decline']}',
             ),
             initialParticipants:
                 state.uri.queryParameters['tab'] == 'participants',
             initialPreparation:
                 state.uri.queryParameters['tab'] == 'preparation',
+            // "Kan inte…" on a callup notification.
+            initialDeclineCallupId: state.uri.queryParameters['decline'],
             onChanged: () => setState(() => _assistantTaskRevision++),
             contextValue: _contextForLocation(state.uri.toString()),
             calendar: widget.calendar,

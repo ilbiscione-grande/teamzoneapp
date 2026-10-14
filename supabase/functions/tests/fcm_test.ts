@@ -26,6 +26,31 @@ Deno.test("the message carries title, body and a safe in-app route only", () => 
   );
 });
 
+Deno.test("an answerable callup is a data message on Android only", () => {
+  const callup = {
+    title: "Ny kallelse",
+    body: "Träning · P2012 · lör 17 okt 18:00",
+    route: "/calendar/event/30000000-0000-4000-8000-000000000001",
+    response: { callup_id: "60000000-0000-4000-8000-000000000001", token: "a".repeat(64) },
+    language: "sv",
+  };
+  const android = fcmMessage("device-token", callup, "android").message as Record<string, unknown>;
+  assertEquals(android.notification, undefined, "the app draws it with its buttons");
+  assertEquals(android.data, {
+    kind: "callup",
+    title: "Ny kallelse",
+    body: "Träning · P2012 · lör 17 okt 18:00",
+    route: "/calendar/event/30000000-0000-4000-8000-000000000001",
+    callup_id: "60000000-0000-4000-8000-000000000001",
+    response_token: "a".repeat(64),
+    language: "sv",
+  });
+  const ios = fcmMessage("device-token", callup, "ios").message as Record<string, unknown>;
+  assertEquals((ios.data as Record<string, string>).response_token, undefined, "no token without iOS actions");
+  const malformed = fcmMessage("device-token", { ...callup, response: { callup_id: "x", token: "y" } });
+  assertEquals((malformed.message as Record<string, unknown>).notification !== undefined, true);
+});
+
 Deno.test("routes outside the app's own paths fall back to the inbox", () => {
   assertEquals(safeRoute("/inbox?thread=40000000-0000-4000-8000-000000000001"),
     "/inbox?thread=40000000-0000-4000-8000-000000000001");

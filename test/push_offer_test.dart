@@ -100,6 +100,48 @@ void main() {
     expect(PushRoutes.safe('https://evil.example'), isNull);
     expect(PushRoutes.safe('/calendar/event/../../settings'), isNull);
     expect(PushRoutes.safe(42), isNull);
+    // "Kan inte…" opens the participants with the decline for that callup.
+    const callupId = '60000000-0000-4000-8000-000000000001';
+    final decline = PushRoutes.decline(event, callupId);
+    expect(decline, '$event?tab=participants&decline=$callupId');
+    expect(PushRoutes.safe(decline), decline);
+    expect(PushRoutes.safe('$event?tab=participants&decline=x'), isNull);
+    expect(PushRoutes.safe('$event?decline=$callupId'), isNull);
+  });
+
+  test('an answerable callup push needs every field well-formed', () {
+    final data = <String, dynamic>{
+      'kind': 'callup',
+      'title': 'Ny kallelse',
+      'body': 'Träning · P2012 · lör 17 okt 18:00',
+      'route': '/calendar/event/30000000-0000-4000-8000-000000000001',
+      'callup_id': '60000000-0000-4000-8000-000000000001',
+      'response_token': 'a' * 64,
+      'language': 'sv',
+    };
+    final push = CallupPush.parse(data)!;
+    expect(push.texts.accept, 'Kommer');
+    expect(push.texts.decline, 'Kan inte…');
+    expect(
+      push.notificationId,
+      CallupPush.parse({...data, 'title': 'Påminnelse'})!.notificationId,
+      reason: 'a reminder replaces the earlier notification',
+    );
+    expect(
+      CallupPush.parse({...data, 'language': 'en'})!.texts.accept,
+      'Coming',
+    );
+    for (final broken in [
+      {...data, 'kind': 'message'},
+      {...data, 'response_token': 'A' * 64},
+      {...data, 'response_token': 'a' * 63},
+      {...data, 'callup_id': 'x'},
+      {...data, 'route': 'https://evil.example'},
+      {...data, 'route': '/inbox'},
+      {...data, 'title': null},
+    ]) {
+      expect(CallupPush.parse(broken), isNull, reason: '$broken');
+    }
   });
 }
 

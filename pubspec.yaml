@@ -24,6 +24,8 @@ dependencies:
   qr_flutter: 4.1.0
   shared_preferences: 2.5.5
   supabase_flutter: 2.16.0
+  teamzone_notifications:
+    path: packages/teamzone_notifications
   url_launcher: ^6.3.2
   web: 1.1.1
 

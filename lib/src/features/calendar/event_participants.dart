@@ -10,6 +10,7 @@ class _ParticipantsTab extends StatefulWidget {
     required this.onReload,
     required this.allowManage,
     required this.allowAttendance,
+    this.initialDeclineCallupId,
   });
   final EventDetails event;
   final SquadDetails squad;
@@ -18,6 +19,9 @@ class _ParticipantsTab extends StatefulWidget {
   final String clubId;
   final Future<void> Function() onReload;
   final bool allowManage, allowAttendance;
+
+  /// "Kan inte…" on a callup notification: asks for the reason at once.
+  final String? initialDeclineCallupId;
   @override
   State<_ParticipantsTab> createState() => _ParticipantsTabState();
 }
@@ -124,6 +128,17 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
     if (widget.squad.state == 'locked') {
       _preparedSquad = widget.squad;
       _locked = true;
+    }
+    final declineCallupId = widget.initialDeclineCallupId;
+    if (declineCallupId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final person = _people
+            .where((p) => p.callupId == declineCallupId && _canRespond(p))
+            .firstOrNull;
+        if (mounted && person != null) {
+          unawaited(_respondToCallup(person, 'declined'));
+        }
+      });
     }
   }
 

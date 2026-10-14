@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -9,6 +11,7 @@ import 'package:teamzone_app/src/core/observability/app_errors.dart';
 import 'package:teamzone_app/src/core/observability/app_observability.dart';
 import 'package:teamzone_app/src/core/observability/firebase_crash_reporter.dart';
 import 'package:teamzone_app/src/core/observability/web_error_reporter.dart';
+import 'package:teamzone_app/src/core/push/push_services.dart';
 import 'package:teamzone_app/src/core/routing/app_url_strategy.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 
@@ -37,6 +40,13 @@ Future<void> main() async {
     }
   } catch (error) {
     observability.failure(operation: 'firebase.initialize', error: error);
+  }
+  // Answerable callups arrive as data messages; the app draws them, also
+  // when it is closed (push_services.dart).
+  if (!kIsWeb &&
+      defaultTargetPlatform == TargetPlatform.android &&
+      Firebase.apps.isNotEmpty) {
+    FirebaseMessaging.onBackgroundMessage(pushBackgroundHandler);
   }
   final webReporter = WebErrorReporter.forEnvironment(
     environment,

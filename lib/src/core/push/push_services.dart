@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:teamzone_app/src/core/config/app_environment.dart';
 import 'package:teamzone_app/src/core/observability/app_errors.dart';
+import 'package:teamzone_notifications/teamzone_notifications.dart';
 
 enum PushPermission { granted, denied, notDetermined }
 
@@ -38,14 +41,154 @@ abstract interface class PushServices {
   Future<void> markOffered();
 }
 
-/// Only the app's own event and thread routes are followed.
+/// Only the app's own event and thread routes are followed. "Kan inte…" on
+/// a callup notification opens the event's participants with the decline
+/// for that callup.
 abstract final class PushRoutes {
   static final _safe = RegExp(
-    r'^/(calendar/event/[0-9a-fA-F-]{36}|inbox(\?thread=[0-9a-fA-F-]{36})?)$',
+    r'^/(calendar/event/[0-9a-fA-F-]{36}(\?tab=participants&decline=[0-9a-fA-F-]{36})?|inbox(\?thread=[0-9a-fA-F-]{36})?)$',
   );
 
   static String? safe(Object? route) =>
       route is String && _safe.hasMatch(route) ? route : null;
+
+  static String decline(String eventRoute, String callupId) =>
+      '$eventRoute?tab=participants&decline=$callupId';
+}
+
+/// An answerable callup push (a data message, see notification-worker):
+/// the app draws it with "Kommer" and "Kan inte…". Null for anything else.
+class CallupPush {
+  const CallupPush._({
+    required this.title,
+    required this.body,
+    required this.route,
+    required this.callupId,
+    required this.token,
+    required this.english,
+  });
+
+  static final _callupId = RegExp(r'^[0-9a-fA-F-]{36}$');
+  static final _token = RegExp(r'^[0-9a-f]{64}$');
+
+  static CallupPush? parse(Map<String, dynamic> data) {
+    final route = PushRoutes.safe(data['route']);
+    final callupId = data['callup_id'], token = data['response_token'];
+    final title = data['title'], body = data['body'];
+    if (data['kind'] != 'callup' ||
+        route == null ||
+        !route.startsWith('/calendar/event/') ||
+        callupId is! String ||
+        !_callupId.hasMatch(callupId) ||
+        token is! String ||
+        !_token.hasMatch(token) ||
+        title is! String ||
+        body is! String) {
+      return null;
+    }
+    return CallupPush._(
+      title: title,
+      body: body,
+      route: route,
+      callupId: callupId,
+      token: token,
+      english: data['language'] == 'en',
+    );
+  }
+
+  final String title, body, route, callupId, token;
+  final bool english;
+
+  /// Stable per callup, so a reminder replaces the earlier notification.
+  int get notificationId => _stableId(callupId);
+
+  CallupNotificationTexts get texts => english
+      ? const CallupNotificationTexts(
+          accept: 'Coming',
+          decline: "Can't…",
+          sent: 'Answer sent: coming',
+          gone: 'This callup can no longer be answered here',
+          failed: "The answer wasn't sent – open the callup",
+          locked: 'Unlock the phone to answer',
+        )
+      : const CallupNotificationTexts(
+          accept: 'Kommer',
+          decline: 'Kan inte…',
+          sent: 'Svar skickat: kommer',
+          gone: 'Kallelsen kan inte besvaras här längre',
+          failed: 'Svaret skickades inte – öppna kallelsen',
+          locked: 'Lås upp telefonen för att svara',
+        );
+}
+
+int _stableId(String value) {
+  // FNV-1a: String.hashCode is not guaranteed to be stable across isolates.
+  var hash = 0x811c9dc5;
+  for (final unit in value.codeUnits) {
+    hash = ((hash ^ unit) * 0x01000193) & 0x7fffffff;
+  }
+  return hash;
+}
+
+String _randomUuid() {
+  final random = Random.secure();
+  final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  final hex = bytes
+      .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+      .join();
+  return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-'
+      '${hex.substring(16, 20)}-${hex.substring(20)}';
+}
+
+/// Shows a push on Android: an answerable callup with its buttons; while the
+/// app is open (FCM shows nothing then) also a plain notification. In the
+/// background FCM shows plain notifications itself.
+Future<void> showPush(RemoteMessage message, {required bool foreground}) async {
+  if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+  const environment = AppEnvironment.fromDefines();
+  final callup = CallupPush.parse(message.data);
+  if (callup != null && environment.supabaseUrl.isNotEmpty) {
+    await TeamzoneNotifications.showCallup(
+      id: callup.notificationId,
+      title: callup.title,
+      body: callup.body,
+      route: callup.route,
+      declineRoute: PushRoutes.decline(callup.route, callup.callupId),
+      token: callup.token,
+      idempotencyKey: _randomUuid(),
+      endpoint: '${environment.supabaseUrl}/functions/v1/push-callup-response',
+      apiKey: environment.supabasePublishableKey,
+      texts: callup.texts,
+    );
+    return;
+  }
+  final notification = message.notification;
+  final title = notification?.title ?? message.data['title'];
+  final body = notification?.body ?? message.data['body'];
+  if ((foreground || notification == null) &&
+      title is String &&
+      body is String) {
+    await TeamzoneNotifications.showPlain(
+      id: _stableId(message.messageId ?? title),
+      title: title,
+      body: body,
+      route: PushRoutes.safe(message.data['route']) ?? '/inbox',
+    );
+  }
+}
+
+/// FCM's background handler (registered in main): runs in its own isolate
+/// when a data message arrives while the app is closed or in the background.
+@pragma('vm:entry-point')
+Future<void> pushBackgroundHandler(RemoteMessage message) async {
+  try {
+    if (Firebase.apps.isEmpty) await Firebase.initializeApp();
+    await showPush(message, foreground: false);
+  } catch (error) {
+    AppErrors.caught('push_services.background', error);
+  }
 }
 
 class UnconfiguredPushServices implements PushServices {
@@ -83,6 +226,7 @@ class FirebasePushServices implements PushServices {
   final SupabaseClient _client;
   String? _registeredToken;
   StreamSubscription<String>? _tokenRefresh;
+  StreamSubscription<RemoteMessage>? _foreground;
   bool _initialConsumed = false;
 
   static const _offeredKey = 'push.offered.v1';
@@ -127,6 +271,7 @@ class FirebasePushServices implements PushServices {
   }
 
   Future<void> _register() async {
+    await _listenInForeground();
     final token = await _messaging.getToken();
     if (token == null) return;
     await _send(token);
@@ -149,10 +294,34 @@ class FirebasePushServices implements PushServices {
     _registeredToken = token;
   }
 
+  /// The channel the notifications use, and pushes while the app is open.
+  Future<void> _listenInForeground() async {
+    if (_foreground != null ||
+        defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
+    final english = PlatformDispatcher.instance.locale.languageCode == 'en';
+    await TeamzoneNotifications.createChannel(
+      name: english ? 'Callups and messages' : 'Kallelser och meddelanden',
+      description: english
+          ? 'Callups, reminders and new messages'
+          : 'Kallelser, påminnelser och nya meddelanden',
+    );
+    _foreground = FirebaseMessaging.onMessage.listen(
+      (message) => unawaited(
+        showPush(message, foreground: true).catchError(
+          (Object error) => AppErrors.caught('push_services.foreground', error),
+        ),
+      ),
+    );
+  }
+
   @override
   Future<void> unregister() async {
     await _tokenRefresh?.cancel();
     _tokenRefresh = null;
+    await _foreground?.cancel();
+    _foreground = null;
     final token = _registeredToken ?? await _messaging.getToken();
     if (token != null) {
       await _client
@@ -163,16 +332,32 @@ class FirebasePushServices implements PushServices {
     await _messaging.deleteToken();
   }
 
+  /// Taps on FCM's own notifications and on the app's (callups, and pushes
+  /// shown while the app was open).
   @override
-  Stream<String> get openedRoutes => FirebaseMessaging.onMessageOpenedApp
-      .map((message) => PushRoutes.safe(message.data['route']))
-      .where((route) => route != null)
-      .cast<String>();
+  Stream<String> get openedRoutes => Stream<Object?>.multi((controller) {
+    final fcm = FirebaseMessaging.onMessageOpenedApp
+        .map((message) => message.data['route'])
+        .listen(controller.add);
+    final own = defaultTargetPlatform == TargetPlatform.android
+        ? TeamzoneNotifications.openedRoutes.listen(controller.add)
+        : null;
+    controller.onCancel = () async {
+      await fcm.cancel();
+      await own?.cancel();
+    };
+  }).map(PushRoutes.safe).where((route) => route != null).cast<String>();
 
   @override
   Future<String?> initialRoute() async {
     if (_initialConsumed) return null;
     _initialConsumed = true;
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final own = PushRoutes.safe(
+        await TeamzoneNotifications.takeLaunchRoute(),
+      );
+      if (own != null) return own;
+    }
     final message = await _messaging.getInitialMessage();
     return PushRoutes.safe(message?.data['route']);
   }

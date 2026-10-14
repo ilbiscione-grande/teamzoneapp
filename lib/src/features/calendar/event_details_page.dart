@@ -21,6 +21,7 @@ class _EventDetailsPage extends StatefulWidget {
     required this.onNavigate,
     this.initialParticipants = false,
     this.initialPreparation = false,
+    this.initialDeclineCallupId,
     this.onChanged,
     super.key,
   });
@@ -28,6 +29,9 @@ class _EventDetailsPage extends StatefulWidget {
   final String eventId;
   final bool initialParticipants;
   final bool initialPreparation;
+
+  /// Opens the decline (with its reason) for this callup on arrival.
+  final String? initialDeclineCallupId;
   final VoidCallback? onChanged;
   final TeamZoneContext contextValue;
   final CalendarServices calendar;
@@ -180,6 +184,7 @@ class _EventDetailsPageState extends State<_EventDetailsPage> {
             key: const ValueKey('event-details-body'),
             initialParticipants: widget.initialParticipants,
             initialPreparation: widget.initialPreparation,
+            initialDeclineCallupId: widget.initialDeclineCallupId,
             onChanged: widget.onChanged,
             initialEvent: event,
             initialSquad: squad,
@@ -214,6 +219,7 @@ class _EventDetailsBody extends StatefulWidget {
     required this.menu,
     this.initialParticipants = false,
     this.initialPreparation = false,
+    this.initialDeclineCallupId,
     this.onChanged,
     super.key,
   });
@@ -221,6 +227,7 @@ class _EventDetailsBody extends StatefulWidget {
   final EventDetails initialEvent;
   final bool initialParticipants;
   final bool initialPreparation;
+  final String? initialDeclineCallupId;
   final VoidCallback? onChanged;
   final SquadDetails initialSquad;
   final String eventId;
@@ -474,6 +481,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                   clubId: widget.contextValue.clubId,
                   allowManage: _contextCanManageRoster,
                   allowAttendance: _contextCanManageRoster,
+                  initialDeclineCallupId: widget.initialDeclineCallupId,
                 ),
                 _PreparationTab(
                   key: const ValueKey('event-preparation'),

@@ -404,6 +404,11 @@ verify_jwt = false
 [functions.notification-worker]
 verify_jwt = false
 
+# "Kommer" from a notification: the single-use response token is the
+# credential (the action runs without a user session).
+[functions.push-callup-response]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

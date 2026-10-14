@@ -8,7 +8,15 @@ export type ServiceAccount = {
   privateKey: string;
 };
 
-export type PushContent = { title: string; body: string; route: string };
+/// response: the single-use token for answering a callup from the
+/// notification (internal.push_message_for_outbox), when it can be answered.
+export type PushContent = {
+  title: string;
+  body: string;
+  route: string;
+  response?: { callup_id: string; token: string } | null;
+  language?: string;
+};
 
 export type SendResult =
   | { kind: "sent"; name: string }
@@ -53,7 +61,34 @@ export function safeRoute(route: unknown): string {
     : "/inbox";
 }
 
-export function fcmMessage(token: string, content: PushContent) {
+const CALLUP_ID = /^[0-9a-fA-F-]{36}$/;
+const RESPONSE_TOKEN = /^[0-9a-f]{64}$/;
+
+/// An answerable callup on Android is a data message: the app draws it with
+/// the "Kommer" / "Kan inte…" buttons. Everything else (and iOS, until its
+/// actions exist) is a plain notification.
+export function fcmMessage(token: string, content: PushContent, platform = "android") {
+  const response = content.response;
+  if (
+    platform === "android" && response &&
+    CALLUP_ID.test(response.callup_id) && RESPONSE_TOKEN.test(response.token)
+  ) {
+    return {
+      message: {
+        token,
+        data: {
+          kind: "callup",
+          title: content.title,
+          body: content.body,
+          route: safeRoute(content.route),
+          callup_id: response.callup_id,
+          response_token: response.token,
+          language: content.language === "en" ? "en" : "sv",
+        },
+        android: { priority: "HIGH" },
+      },
+    };
+  }
   return {
     message: {
       token,
@@ -147,6 +182,7 @@ export async function sendFcm(
   accessToken: string,
   token: string,
   content: PushContent,
+  platform = "android",
 ): Promise<SendResult> {
   const response = await fetch(
     `https://fcm.googleapis.com/v1/projects/${account.projectId}/messages:send`,
@@ -156,7 +192,7 @@ export async function sendFcm(
         authorization: `Bearer ${accessToken}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify(fcmMessage(token, content)),
+      body: JSON.stringify(fcmMessage(token, content, platform)),
     },
   );
   const json = await response.json().catch(() => ({}));

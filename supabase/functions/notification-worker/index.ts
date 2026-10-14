@@ -117,7 +117,7 @@ Deno.serve(async (request) => {
           accessToken ??= await fcmAccessToken(account);
           let retryable = false;
           for (const target of push.targets) {
-            const result = await sendFcm(account, accessToken, target.token, push);
+            const result = await sendFcm(account, accessToken, target.token, push, target.platform);
             if (result.kind === "sent") {
               reference ??= result.name;
             } else if (result.kind === "unregistered") {
