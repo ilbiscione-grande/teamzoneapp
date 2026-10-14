@@ -8,6 +8,10 @@ import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 abstract interface class MessagingServices {
   Future<List<MessageThreadSummary>> listThreads(List<String> contextIds);
+
+  /// Profile pictures for the inbox rows, by thread id. Threads without an
+  /// entry show their icon.
+  Future<Map<String, ThreadAvatars>> listThreadAvatars(List<String> threadIds);
   Stream<void> watchInboxInvalidations();
   Future<List<ThreadMessage>> listMessages(String threadId);
   Future<MessagePage> listMessagePage(String threadId, {int? beforeRevision});
@@ -110,6 +114,10 @@ class UnconfiguredMessagingServices implements MessagingServices {
   @override
   Future<List<MessageThreadSummary>> listThreads(List<String> contextIds) =>
       _fail();
+  @override
+  Future<Map<String, ThreadAvatars>> listThreadAvatars(
+    List<String> threadIds,
+  ) async => const {};
   @override
   Stream<void> watchInboxInvalidations() => const Stream<void>.empty();
   @override
@@ -231,6 +239,53 @@ class SupabaseMessagingServices implements MessagingServices {
       value,
       'threads',
     ).map(MessageThreadSummary.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<Map<String, ThreadAvatars>> listThreadAvatars(
+    List<String> threadIds,
+  ) async {
+    if (threadIds.isEmpty) return const {};
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'list_thread_avatars',
+          params: {'target_thread_ids': threadIds.toSet().toList()},
+        );
+    final rows = value is List
+        ? value.whereType<Map<String, dynamic>>().toList()
+        : const <Map<String, dynamic>>[];
+    final keys = <String>{
+      for (final row in rows)
+        for (final person in (row['people'] as List? ?? const []))
+          if (person is Map && person['object_key'] is String)
+            person['object_key'] as String,
+    };
+    // A picture that cannot be signed is left out; the row shows initials.
+    final urlByKey = <String, String>{};
+    if (keys.isNotEmpty) {
+      final signed = await _client.storage
+          .from('profile-avatars')
+          .createSignedUrlsResult(keys.toList(), 3600);
+      for (final item in signed.whereType<SignedUrlSuccess>()) {
+        urlByKey[item.path] = item.signedUrl;
+      }
+    }
+    return {
+      for (final row in rows)
+        if (row['thread_id'] is String)
+          row['thread_id'] as String: ThreadAvatars(
+            participantCount: (row['participant_count'] as num?)?.toInt() ?? 0,
+            people: [
+              for (final person in (row['people'] as List? ?? const []))
+                if (person is Map && person['name'] is String)
+                  ThreadAvatarPerson(
+                    name: person['name'] as String,
+                    imageUrl: urlByKey[person['object_key']],
+                  ),
+            ],
+          ),
+    };
   }
 
   @override

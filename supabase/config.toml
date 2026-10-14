@@ -409,6 +409,11 @@ verify_jwt = false
 [functions.push-callup-response]
 verify_jwt = false
 
+# A reply from a message notification; the single-use reply token is the
+# credential, as for push-callup-response.
+[functions.push-message-reply]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

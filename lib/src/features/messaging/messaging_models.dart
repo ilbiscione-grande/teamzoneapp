@@ -234,6 +234,21 @@ MessagePage mergeNewestMessagePage(
   );
 }
 
+/// Who a thread is with, for the inbox: up to three of the most recently
+/// active other participants and how many others take part.
+class ThreadAvatars {
+  const ThreadAvatars({required this.participantCount, required this.people});
+  final int participantCount;
+  final List<ThreadAvatarPerson> people;
+}
+
+/// [imageUrl] is a signed profile picture, or null for initials.
+class ThreadAvatarPerson {
+  const ThreadAvatarPerson({required this.name, this.imageUrl});
+  final String name;
+  final String? imageUrl;
+}
+
 class AllowedRecipient {
   const AllowedRecipient({
     required this.profileId,

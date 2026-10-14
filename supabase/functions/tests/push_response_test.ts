@@ -1,5 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1.0.14";
 import {
+  parsePushReplyRequest,
   parsePushResponseRequest,
   pushResponseStatus,
 } from "../_shared/push_response.ts";
@@ -20,10 +21,22 @@ Deno.test("only a well-formed token and idempotency key pass", () => {
   assertEquals(parsePushResponseRequest(null), null);
 });
 
+Deno.test("a reply needs 1–4000 characters besides the token", () => {
+  assertEquals(parsePushReplyRequest({ token, idempotency_key: key, body: " Jag kommer! " }), {
+    token,
+    idempotencyKey: key,
+    body: " Jag kommer! ",
+  });
+  assertEquals(parsePushReplyRequest({ token, idempotency_key: key, body: "   " }), null);
+  assertEquals(parsePushReplyRequest({ token, idempotency_key: key, body: "x".repeat(4001) }), null);
+  assertEquals(parsePushReplyRequest({ token, idempotency_key: key, body: 42 }), null);
+  assertEquals(parsePushReplyRequest({ token: "nope", idempotency_key: key, body: "hej" }), null);
+});
+
 Deno.test("refusals map to what the app does next", () => {
   assertEquals(pushResponseStatus("invalid_input"), 400);
   assertEquals(pushResponseStatus("stale_revision"), 409);
-  for (const gone of ["invalid_or_expired_token", "invalid_state", "not_found", "invalid_acting_as"]) {
+  for (const gone of ["invalid_or_expired_token", "invalid_state", "not_found", "invalid_acting_as", "announcement_closed"]) {
     assertEquals(pushResponseStatus(gone), 410, gone);
   }
   assertEquals(pushResponseStatus("something else"), 500);

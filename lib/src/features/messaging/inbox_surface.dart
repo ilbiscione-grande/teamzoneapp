@@ -45,6 +45,11 @@ class _InboxSurfaceState extends State<_InboxSurface>
   String _filter = 'all';
   List<MessageThreadSummary>? _syncedThreads;
   bool _initialThreadOpened = false;
+  // Profile pictures per thread id; rows without one show their icon.
+  Map<String, ThreadAvatars> _avatars = const {};
+  final Set<String> _avatarsRequested = {};
+  // The deep-linked thread the selection was widened for (once per thread).
+  String? _widenedForThreadId;
   // The thread id currently showing in _ThreadDialog (or being opened for
   // it), separate from _initialThreadOpened: this dedupes against the
   // dialog we already have open, independent of whether widget's route
@@ -625,8 +630,28 @@ class _InboxSurfaceState extends State<_InboxSurface>
     if (!identical(threads, _syncedThreads)) {
       _syncedThreads = threads;
       _list.replaceItems(threads ?? const []);
+      unawaited(_loadAvatars(threads ?? const []));
     }
     _tryOpenInitialThread();
+  }
+
+  /// Profile pictures for threads not asked for yet. Optional: on failure
+  /// the rows keep their icons.
+  Future<void> _loadAvatars(List<MessageThreadSummary> threads) async {
+    final ids = [
+      for (final thread in threads)
+        if (_avatarsRequested.add(thread.id)) thread.id,
+    ];
+    if (ids.isEmpty) return;
+    try {
+      final loaded = await widget.messaging.listThreadAvatars(ids);
+      if (mounted && loaded.isNotEmpty) {
+        setState(() => _avatars = {..._avatars, ...loaded});
+      }
+    } catch (error) {
+      _avatarsRequested.removeAll(ids);
+      AppErrors.caught('inbox_surface._loadAvatars', error);
+    }
   }
 
   // Split out from _syncList so a target change alone (e.g. tapping a
@@ -648,6 +673,20 @@ class _InboxSurfaceState extends State<_InboxSurface>
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) unawaited(_openThread(matches.first));
         });
+      } else if (_widenedForThreadId != target) {
+        // A notification can come from a team that isn't selected here:
+        // widen to every connection once, and the thread opens when they
+        // have loaded.
+        final everyContext = {
+          widget.contextValue.id,
+          for (final item in widget.contexts) item.id,
+        };
+        if (!setEquals(everyContext, _selectedContextIds)) {
+          _widenedForThreadId = target;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _setSelectedContextIds(everyContext);
+          });
+        }
       }
     }
   }
@@ -1403,13 +1442,19 @@ class _InboxSurfaceState extends State<_InboxSurface>
   ) => Card(
     margin: const EdgeInsets.only(bottom: 6),
     child: ListTile(
-      leading: Icon(
-        thread.muted
-            ? Icons.notifications_off_outlined
-            : thread.type == 'group'
-            ? Icons.groups_outlined
-            : Icons.forum_outlined,
-      ),
+      leading: switch (_avatars[thread.id]) {
+        final avatars? when avatars.people.isNotEmpty => _ThreadAvatarStack(
+          key: ValueKey('inbox-avatars-${thread.id}'),
+          avatars: avatars,
+        ),
+        _ => Icon(
+          thread.muted
+              ? Icons.notifications_off_outlined
+              : thread.type == 'group'
+              ? Icons.groups_outlined
+              : Icons.forum_outlined,
+        ),
+      },
       title: Text(thread.subject ?? strings.directMessage),
       subtitle: Text(
         '${(thread.senderName ?? '').trim().isEmpty ? '' : '${thread.senderName}: '}${thread.preview ?? strings.noMessages}\n${_inboxTime(context, thread.lastAt)}',
@@ -1419,6 +1464,9 @@ class _InboxSurfaceState extends State<_InboxSurface>
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // With pictures the muted icon moves here from the leading slot.
+          if (thread.muted && _avatars[thread.id]?.people.isNotEmpty == true)
+            const Icon(Icons.notifications_off_outlined, size: 18),
           if (thread.pinned) const Icon(Icons.push_pin, size: 18),
           if (thread.unreadCount > 0)
             Badge(label: Text('${thread.unreadCount}')),
@@ -4043,4 +4091,93 @@ class _InlineMessageFileState extends State<_InlineMessageFile> {
       ),
     );
   }
+}
+
+/// Profile pictures of a thread, overlapping: one for a direct conversation;
+/// in a group up to three, or two and "+N" when more take part. Initials
+/// where there is no picture (or it cannot be loaded).
+class _ThreadAvatarStack extends StatelessWidget {
+  const _ThreadAvatarStack({required this.avatars, super.key});
+
+  final ThreadAvatars avatars;
+
+  static const double _size = 28, _step = 12;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final crowded = avatars.participantCount > 3;
+    final shown = avatars.people.take(crowded ? 2 : 3).toList();
+    final more = avatars.participantCount - shown.length;
+    final circles = <Widget>[
+      for (final person in shown)
+        CircleAvatar(
+          radius: _size / 2,
+          backgroundColor: colors.secondaryContainer,
+          foregroundImage: person.imageUrl == null
+              ? null
+              : NetworkImage(person.imageUrl!),
+          child: Text(
+            _avatarInitials(person.name),
+            style: TextStyle(fontSize: 11, color: colors.onSecondaryContainer),
+          ),
+        ),
+      if (crowded)
+        CircleAvatar(
+          radius: _size / 2,
+          backgroundColor: colors.primary,
+          child: Text(
+            '+$more',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: colors.onPrimary,
+            ),
+          ),
+        ),
+    ];
+    if (circles.length == 1) {
+      return CircleAvatar(
+        radius: 20,
+        backgroundColor: colors.secondaryContainer,
+        foregroundImage: shown.first.imageUrl == null
+            ? null
+            : NetworkImage(shown.first.imageUrl!),
+        child: Text(
+          _avatarInitials(shown.first.name),
+          style: TextStyle(color: colors.onSecondaryContainer),
+        ),
+      );
+    }
+    return SizedBox(
+      width: _size + _step * (circles.length - 1),
+      height: 40,
+      child: Stack(
+        alignment: Alignment.centerLeft,
+        children: [
+          for (var index = 0; index < circles.length; index++)
+            Positioned(
+              left: _step * index,
+              // A ring in the card colour separates the overlapping circles.
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: colors.surface, width: 1.5),
+                ),
+                child: circles[index],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+String _avatarInitials(String name) {
+  final parts = name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty);
+  final initials = parts.take(2).map((part) => part.characters.first).join();
+  return initials.isEmpty ? '?' : initials.toUpperCase();
 }

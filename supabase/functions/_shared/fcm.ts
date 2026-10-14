@@ -15,6 +15,8 @@ export type PushContent = {
   body: string;
   route: string;
   response?: { callup_id: string; token: string } | null;
+  /// The single-use token for replying to a message from its notification.
+  reply?: { thread_id: string; token: string } | null;
   language?: string;
 };
 
@@ -64,11 +66,33 @@ export function safeRoute(route: unknown): string {
 const CALLUP_ID = /^[0-9a-fA-F-]{36}$/;
 const RESPONSE_TOKEN = /^[0-9a-f]{64}$/;
 
-/// An answerable callup on Android is a data message: the app draws it with
-/// the "Kommer" / "Kan inte…" buttons. Everything else (and iOS, until its
-/// actions exist) is a plain notification.
+/// An answerable callup or a message one can reply to is a data message on
+/// Android: the app draws it with its buttons ("Kommer" / "Kan inte…",
+/// "Svara"). Everything else (and iOS, until its actions exist) is a plain
+/// notification.
 export function fcmMessage(token: string, content: PushContent, platform = "android") {
   const response = content.response;
+  const reply = content.reply;
+  if (
+    platform === "android" && reply &&
+    CALLUP_ID.test(reply.thread_id) && RESPONSE_TOKEN.test(reply.token)
+  ) {
+    return {
+      message: {
+        token,
+        data: {
+          kind: "message",
+          title: content.title,
+          body: content.body,
+          route: safeRoute(content.route),
+          thread_id: reply.thread_id,
+          reply_token: reply.token,
+          language: content.language === "en" ? "en" : "sv",
+        },
+        android: { priority: "HIGH" },
+      },
+    };
+  }
   if (
     platform === "android" && response &&
     CALLUP_ID.test(response.callup_id) && RESPONSE_TOKEN.test(response.token)

@@ -109,6 +109,37 @@ void main() {
     expect(PushRoutes.safe('$event?decline=$callupId'), isNull);
   });
 
+  test('a message push with a reply token needs every field well-formed', () {
+    const threadId = '40000000-0000-4000-8000-000000000001';
+    final data = <String, dynamic>{
+      'kind': 'message',
+      'title': 'Nytt meddelande',
+      'body': 'P2012',
+      'route': '/inbox?thread=$threadId',
+      'thread_id': threadId,
+      'reply_token': 'b' * 64,
+      'language': 'sv',
+    };
+    final push = MessagePush.parse(data)!;
+    expect(push.texts.reply, 'Svara');
+    expect(push.route, '/inbox?thread=$threadId');
+    expect(
+      MessagePush.parse({...data, 'language': 'en'})!.texts.reply,
+      'Reply',
+    );
+    for (final broken in [
+      {...data, 'kind': 'callup'},
+      {...data, 'reply_token': 'b' * 63},
+      {...data, 'thread_id': 'x'},
+      // The route must be this thread's.
+      {...data, 'route': '/inbox?thread=40000000-0000-4000-8000-000000000002'},
+      {...data, 'route': '/calendar/event/$threadId'},
+      {...data, 'body': null},
+    ]) {
+      expect(MessagePush.parse(broken), isNull, reason: '$broken');
+    }
+  });
+
   test('an answerable callup push needs every field well-formed', () {
     final data = <String, dynamic>{
       'kind': 'callup',

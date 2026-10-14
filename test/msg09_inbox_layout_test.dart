@@ -4,6 +4,7 @@ import 'package:teamzone_app/src/app/teamzone_app.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
 import 'package:teamzone_app/src/core/identity/identity_services.dart';
+import 'package:teamzone_app/src/core/push/push_services.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 import 'package:teamzone_app/src/features/messaging/messaging_models.dart';
 import 'package:teamzone_app/src/features/messaging/messaging_services.dart';
@@ -77,6 +78,43 @@ void main() {
     await _openInbox(tester, _Messaging(), roster: roster);
     expect(find.byKey(const ValueKey('inbox-intake')), findsNothing);
     expect(roster.overviewCalls, 0);
+  });
+
+  testWidgets('a notification from another team widens the inbox to it', (
+    tester,
+  ) async {
+    // Only Alby F2012 is selected; the thread belongs to Bergby P2010.
+    final messaging = _Messaging(onlyInScope: true);
+    await _openInbox(
+      tester,
+      messaging,
+      push: const _Push('/inbox?thread=42000000-0000-4000-8000-000000000002'),
+      tapInbox: false,
+    );
+    expect(messaging.scopes.first, ['context-a']);
+    expect(messaging.scopes.last, contains('context-b'));
+    expect(messaging.openedThreads, ['42000000-0000-4000-8000-000000000002']);
+  });
+
+  testWidgets('threads show who they are with, and how many', (tester) async {
+    await _openInbox(tester, _Messaging(avatars: true));
+    // Träningstider has seven others: two pictures (initials here) and +5.
+    final group = find.byKey(const ValueKey('inbox-avatars-t1'));
+    expect(group, findsOneWidget);
+    expect(
+      find.descendant(of: group, matching: find.text('AA')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: group, matching: find.text('BB')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: group, matching: find.text('+5')),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: group, matching: find.text('CC')), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('clubs collapse to their name; the active club starts open', (
@@ -201,6 +239,8 @@ Future<void> _openInbox(
   bool resize = true,
   _Identity identity = const _Identity(),
   RosterServices roster = const UnconfiguredRosterServices(),
+  PushServices push = const UnconfiguredPushServices(),
+  bool tapInbox = true,
 }) async {
   if (resize) {
     tester.view.physicalSize = const Size(390, 844);
@@ -216,13 +256,25 @@ Future<void> _openInbox(
         identity: identity,
         messaging: messaging,
         roster: roster,
+        push: push,
         isConfigured: true,
       ),
     ),
   );
   await tester.pumpAndSettle();
+  if (!tapInbox) return;
   await tester.tap(find.text('Inbox').last);
   await tester.pumpAndSettle();
+}
+
+/// Push that started the app from a tapped notification.
+class _Push extends UnconfiguredPushServices {
+  const _Push(this.route);
+  final String route;
+  @override
+  bool get supported => true;
+  @override
+  Future<String?> initialRoute() async => route;
 }
 
 class _Roster extends UnconfiguredRosterServices {
@@ -278,8 +330,18 @@ class _Roster extends UnconfiguredRosterServices {
 }
 
 class _Messaging extends UnconfiguredMessagingServices {
-  _Messaging({this.threads = true});
+  _Messaging({
+    this.threads = true,
+    this.onlyInScope = false,
+    this.avatars = false,
+  });
   final bool threads;
+  final bool avatars;
+
+  /// Like the server: a thread is listed only for its own team's context.
+  final bool onlyInScope;
+  final scopes = <List<String>>[];
+  final openedThreads = <String>[];
   final created = <(String, String, int)>[];
   final states = <(String, String)>[];
 
@@ -318,7 +380,45 @@ class _Messaging extends UnconfiguredMessagingServices {
   @override
   Future<List<MessageThreadSummary>> listThreads(
     List<String> contextIds,
-  ) async => [
+  ) async {
+    scopes.add(contextIds);
+    final all = await _threads();
+    if (!onlyInScope) return all;
+    return [
+      for (final thread in all)
+        if (contextIds.contains(thread.id == 't1' ? 'context-a' : 'context-b'))
+          thread,
+    ];
+  }
+
+  @override
+  Future<Map<String, ThreadAvatars>> listThreadAvatars(
+    List<String> threadIds,
+  ) async => {
+    if (avatars && threadIds.contains('t1'))
+      't1': const ThreadAvatars(
+        participantCount: 7,
+        people: [
+          ThreadAvatarPerson(name: 'Ada Andersson'),
+          ThreadAvatarPerson(name: 'Bo Berg'),
+          ThreadAvatarPerson(name: 'Cia Carlsson'),
+        ],
+      ),
+  };
+
+  @override
+  Future<MessagePage> listMessagePage(
+    String threadId, {
+    int? beforeRevision,
+  }) async {
+    openedThreads.add(threadId);
+    return const MessagePage(messages: [], hasMore: false);
+  }
+
+  @override
+  Future<List<MessageFile>> listFiles(String threadId) async => const [];
+
+  Future<List<MessageThreadSummary>> _threads() async => [
     if (threads) ...[
       MessageThreadSummary(
         id: 't1',
@@ -331,7 +431,7 @@ class _Messaging extends UnconfiguredMessagingServices {
         scopeLabels: const ['F2012 · Alby IF'],
       ),
       MessageThreadSummary(
-        id: 't2',
+        id: '42000000-0000-4000-8000-000000000002',
         type: 'group',
         subject: 'Cupresa',
         revision: 1,

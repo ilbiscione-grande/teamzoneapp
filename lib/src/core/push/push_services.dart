@@ -121,6 +121,70 @@ class CallupPush {
         );
 }
 
+/// A message push one can reply to (a data message, see notification-worker):
+/// the app draws it with "Svara". Null for anything else.
+class MessagePush {
+  const MessagePush._({
+    required this.title,
+    required this.body,
+    required this.route,
+    required this.threadId,
+    required this.token,
+    required this.english,
+  });
+
+  static final _threadId = RegExp(r'^[0-9a-fA-F-]{36}$');
+  static final _token = RegExp(r'^[0-9a-f]{64}$');
+
+  static MessagePush? parse(Map<String, dynamic> data) {
+    final route = PushRoutes.safe(data['route']);
+    final threadId = data['thread_id'], token = data['reply_token'];
+    final title = data['title'], body = data['body'];
+    if (data['kind'] != 'message' ||
+        threadId is! String ||
+        !_threadId.hasMatch(threadId) ||
+        route != '/inbox?thread=$threadId' ||
+        token is! String ||
+        !_token.hasMatch(token) ||
+        title is! String ||
+        body is! String) {
+      return null;
+    }
+    return MessagePush._(
+      title: title,
+      body: body,
+      route: route!,
+      threadId: threadId,
+      token: token,
+      english: data['language'] == 'en',
+    );
+  }
+
+  final String title, body, route, threadId, token;
+  final bool english;
+
+  /// Stable per thread, so a newer message replaces the earlier one.
+  int get notificationId => _stableId(threadId);
+
+  MessageNotificationTexts get texts => english
+      ? const MessageNotificationTexts(
+          reply: 'Reply',
+          hint: 'Write a reply',
+          sent: 'Reply sent',
+          gone: "You can't reply here any more – open the conversation",
+          failed: "The reply wasn't sent – open the conversation",
+          locked: 'Unlock the phone to reply',
+        )
+      : const MessageNotificationTexts(
+          reply: 'Svara',
+          hint: 'Skriv ett svar',
+          sent: 'Svar skickat',
+          gone: 'Det går inte att svara här längre – öppna samtalet',
+          failed: 'Svaret skickades inte – öppna samtalet',
+          locked: 'Lås upp telefonen för att svara',
+        );
+}
+
 int _stableId(String value) {
   // FNV-1a: String.hashCode is not guaranteed to be stable across isolates.
   var hash = 0x811c9dc5;
@@ -142,9 +206,10 @@ String _randomUuid() {
       '${hex.substring(16, 20)}-${hex.substring(20)}';
 }
 
-/// Shows a push on Android: an answerable callup with its buttons; while the
-/// app is open (FCM shows nothing then) also a plain notification. In the
-/// background FCM shows plain notifications itself.
+/// Shows a push on Android: an answerable callup or a message one can reply
+/// to with its buttons; while the app is open (FCM shows nothing then) also a
+/// plain notification. In the background FCM shows plain notifications
+/// itself.
 Future<void> showPush(RemoteMessage message, {required bool foreground}) async {
   if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
   const environment = AppEnvironment.fromDefines();
@@ -161,6 +226,21 @@ Future<void> showPush(RemoteMessage message, {required bool foreground}) async {
       endpoint: '${environment.supabaseUrl}/functions/v1/push-callup-response',
       apiKey: environment.supabasePublishableKey,
       texts: callup.texts,
+    );
+    return;
+  }
+  final reply = MessagePush.parse(message.data);
+  if (reply != null && environment.supabaseUrl.isNotEmpty) {
+    await TeamzoneNotifications.showMessage(
+      id: reply.notificationId,
+      title: reply.title,
+      body: reply.body,
+      route: reply.route,
+      token: reply.token,
+      idempotencyKey: _randomUuid(),
+      endpoint: '${environment.supabaseUrl}/functions/v1/push-message-reply',
+      apiKey: environment.supabasePublishableKey,
+      texts: reply.texts,
     );
     return;
   }

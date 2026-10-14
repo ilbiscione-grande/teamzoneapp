@@ -14,9 +14,25 @@ class CallupNotificationTexts {
   final String accept, decline, sent, gone, failed, locked;
 }
 
-/// TeamZone's Android notifications (the plugin in android/): plain ones and
+/// Texts for a message notification with "Svara", in the recipient's
+/// language.
+class MessageNotificationTexts {
+  const MessageNotificationTexts({
+    required this.reply,
+    required this.hint,
+    required this.sent,
+    required this.gone,
+    required this.failed,
+    required this.locked,
+  });
+
+  final String reply, hint, sent, gone, failed, locked;
+}
+
+/// TeamZone's Android notifications (the plugin in android/): plain ones,
 /// callups with "Kommer" (answered in the notification after unlock) and
-/// "Kan inte…" (opens the event). Works from the FCM background handler.
+/// "Kan inte…" (opens the event), and messages with "Svara" (a text field,
+/// sent after unlock). Works from the FCM background handler.
 abstract final class TeamzoneNotifications {
   static const _methods = MethodChannel('teamzone/notifications');
   static const _opened = EventChannel('teamzone/notifications/opened');
@@ -66,6 +82,34 @@ abstract final class TeamzoneNotifications {
     'apiKey': apiKey,
     'acceptLabel': texts.accept,
     'declineLabel': texts.decline,
+    'sentTitle': texts.sent,
+    'goneTitle': texts.gone,
+    'failedTitle': texts.failed,
+    'lockedTitle': texts.locked,
+  });
+
+  /// [endpoint] is push-message-reply; [token] the single-use reply token.
+  static Future<void> showMessage({
+    required int id,
+    required String title,
+    required String body,
+    required String route,
+    required String token,
+    required String idempotencyKey,
+    required String endpoint,
+    required String apiKey,
+    required MessageNotificationTexts texts,
+  }) => _methods.invokeMethod<void>('showMessage', {
+    'id': id,
+    'title': title,
+    'body': body,
+    'route': route,
+    'token': token,
+    'idempotencyKey': idempotencyKey,
+    'endpoint': endpoint,
+    'apiKey': apiKey,
+    'replyLabel': texts.reply,
+    'replyHint': texts.hint,
     'sentTitle': texts.sent,
     'goneTitle': texts.gone,
     'failedTitle': texts.failed,

@@ -1,8 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
-        <!-- "Kommer" from a callup notification; only this app can send it. -->
+        <!-- "Kommer" and "Svara" from a notification; only this app can send them. -->
         <receiver
-            android:name="se.teamzone.notifications.CallupResponseReceiver"
+            android:name="se.teamzone.notifications.PushActionReceiver"
             android:exported="false" />
     </application>
 </manifest>

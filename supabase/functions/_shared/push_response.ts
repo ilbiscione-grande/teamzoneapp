@@ -1,5 +1,5 @@
-// Helpers for push-callup-response: the request shape and how database
-// refusals map to answers the app understands.
+// Helpers for push-callup-response and push-message-reply: the request
+// shapes and how database refusals map to answers the app understands.
 
 export type PushResponseRequest = { token: string; idempotencyKey: string };
 
@@ -15,6 +15,18 @@ export function parsePushResponseRequest(body: unknown): PushResponseRequest | n
   return { token, idempotencyKey: key };
 }
 
+export type PushReplyRequest = PushResponseRequest & { body: string };
+
+/// A reply also needs 1–4000 characters of text (trimmed by the database).
+export function parsePushReplyRequest(body: unknown): PushReplyRequest | null {
+  const parsed = parsePushResponseRequest(body);
+  const text = (body as Record<string, unknown> | null)?.body;
+  if (!parsed || typeof text !== "string") return null;
+  const trimmed = text.trim();
+  if (trimmed.length < 1 || trimmed.length > 4000) return null;
+  return { ...parsed, body: text };
+}
+
 /// 410: the notification can no longer answer (expired, cancelled, already
 /// answered differently); the app then opens the event. 409: the callup
 /// changed meanwhile and a retry may work. Anything else is 500.
@@ -28,6 +40,7 @@ export function pushResponseStatus(message: string | undefined): 400 | 409 | 410
     case "invalid_state":
     case "not_found":
     case "invalid_acting_as":
+    case "announcement_closed":
       return 410;
     default:
       return 500;

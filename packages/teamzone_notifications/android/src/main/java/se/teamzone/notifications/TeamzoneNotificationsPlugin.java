@@ -55,19 +55,13 @@ public final class TeamzoneNotificationsPlugin
         result.success(null);
         break;
       case "showCallup":
-        Bundle values = new Bundle();
-        values.putInt(CallupNotifications.KEY_ID, call.<Integer>argument("id"));
-        for (String key : new String[] {
-            CallupNotifications.KEY_TITLE, CallupNotifications.KEY_BODY,
-            CallupNotifications.KEY_ROUTE, CallupNotifications.KEY_TOKEN,
-            CallupNotifications.KEY_IDEMPOTENCY, CallupNotifications.KEY_ENDPOINT,
-            CallupNotifications.KEY_API_KEY, CallupNotifications.KEY_SENT,
-            CallupNotifications.KEY_GONE, CallupNotifications.KEY_FAILED,
-            CallupNotifications.KEY_LOCKED}) {
-          values.putString(key, call.argument(key));
-        }
-        CallupNotifications.showCallup(context, values, call.argument("acceptLabel"),
+        CallupNotifications.showCallup(context, actionValues(call), call.argument("acceptLabel"),
             call.argument("declineLabel"), call.argument("declineRoute"));
+        result.success(null);
+        break;
+      case "showMessage":
+        CallupNotifications.showMessage(context, actionValues(call), call.argument("replyLabel"),
+            call.argument("replyHint"));
         result.success(null);
         break;
       case "takeLaunchRoute":
@@ -127,6 +121,22 @@ public final class TeamzoneNotificationsPlugin
   @Override
   public void onCancel(Object arguments) {
     openedSink = null;
+  }
+
+  /** What the action receiver needs, from the Dart call. */
+  private static Bundle actionValues(MethodCall call) {
+    Bundle values = new Bundle();
+    values.putInt(CallupNotifications.KEY_ID, call.<Integer>argument("id"));
+    for (String key : new String[] {
+        CallupNotifications.KEY_TITLE, CallupNotifications.KEY_BODY,
+        CallupNotifications.KEY_ROUTE, CallupNotifications.KEY_TOKEN,
+        CallupNotifications.KEY_IDEMPOTENCY, CallupNotifications.KEY_ENDPOINT,
+        CallupNotifications.KEY_API_KEY, CallupNotifications.KEY_SENT,
+        CallupNotifications.KEY_GONE, CallupNotifications.KEY_FAILED,
+        CallupNotifications.KEY_LOCKED}) {
+      values.putString(key, call.argument(key));
+    }
+    return values;
   }
 
   private static String routeOf(Intent intent) {

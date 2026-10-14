@@ -30,6 +30,56 @@ and the app asks for permission the first time there is something unread.
 Message pushes also follow the inbox setting (`notification_preferences`);
 accepting the permission dialog turns it on.
 
+## Answering a callup from the notification (Android)
+
+Decided 2026-10-13: callups first, "Kan inte…" opens the app (a decline
+needs a reason), and Android asks for unlock before an answer is sent.
+
+1. For a new callup, a late callup or a reminder that still waits for an
+   answer, `push_message_for_outbox` (migration `20261024090000`) issues a
+   single-use response token. Only its SHA-256 hash is stored
+   (`internal.push_response_tokens`). It expires with the callup (at most 14
+   days) and can only answer "accepted" for that callup and person. A
+   guardian's token answers for the called child.
+2. On Android the worker sends such a push as a data message. The app draws
+   it itself (`packages/teamzone_notifications`, also when it is closed,
+   through the FCM background handler) on the channel "Kallelser och
+   meddelanden" (`teamzone_push`), with two buttons:
+   - **Kommer:** Android 12+ asks for unlock first; older versions answer only
+     on an unlocked phone. The token goes to the Edge Function
+     `push-callup-response` (no JWT; the token is the credential). It answers
+     through `internal.respond_callup_from_push` as the recipient, with the
+     app's own rules (`respond_callup_for_actor`). The notification is then
+     replaced by "Svar skickat: kommer" (which removes itself after five
+     seconds), "Kallelsen kan inte besvaras här längre" (cancelled, expired
+     or already answered; 410) or "Svaret skickades inte" (a tap opens the
+     callup).
+   - **Kan inte…:** opens the event's participants with the reason dialog
+     (`?tab=participants&decline=<callup>`).
+3. A second tap, or a retry after a lost reply, answers nothing new. Neither
+   the token nor the payload is logged.
+4. iOS still gets the plain notification without buttons, and no token.
+
+## Replying to a message from the notification (Android)
+
+Like answering a callup (migration `20261025090000`): the push for a
+message in an active thread one can write in (not announcements) carries a
+single-use reply token, hash only, valid for one reply in that thread for
+seven days. The app draws it with **Svara** and a text field; Android 12+
+asks for unlock before it is sent. `push-message-reply` (no JWT) passes the
+token and text to `internal.reply_from_push`, which sends it as the
+recipient through `internal.send_message_for_actor` (access, 1–4000
+characters, closed announcements). The notification then says "Svar
+skickat" (removed after five seconds) without the text; lock screens never
+show message text. A newer message in the same thread replaces the earlier
+notification. Neither the token nor the text is logged.
+
+A tapped message notification opens its thread. When that thread belongs
+to a team that is not selected in the inbox, the inbox widens to every
+connection once so the thread can open.
+
+While the app is open, pushes are shown by the app (FCM shows nothing then).
+
 ## Activation (product owner)
 
 Nothing is sent until steps 2–4 are done; until then every notification is
@@ -71,9 +121,35 @@ recorded as `suppressed / provider_not_configured`, as before.
    ```
 6. Build and install the Android app; sign in, wait for something unread and
    accept the dialog.
+7. **Answering from the notification:** run
+   `supabase/migrations/20261024090000_push_callup_response.sql` and record it,
+   then deploy the response function and the worker again:
+   ```sql
+   insert into supabase_migrations.schema_migrations(version,name) values ('20261024090000','push_callup_response') on conflict (version) do nothing;
+   ```
+   ```powershell
+   npx supabase functions deploy push-callup-response --project-ref hgcshgunvooyudvrcpig
+   npx supabase functions deploy notification-worker --project-ref hgcshgunvooyudvrcpig
+   ```
+   Verified on the test project 2026-10-14 (Android 16): unlock was asked
+   for, the callup became `accepted` and the notification said so.
+8. **Replying from the notification:** run
+   `supabase/migrations/20261025090000_push_message_reply.sql` (check that it
+   ran: `internal.push_reply_tokens` exists; logging it is not enough) and
+   record it, then deploy:
+   ```sql
+   insert into supabase_migrations.schema_migrations(version,name) values ('20261025090000','push_message_reply') on conflict (version) do nothing;
+   ```
+   ```powershell
+   npx supabase functions deploy push-message-reply --project-ref hgcshgunvooyudvrcpig
+   npx supabase functions deploy notification-worker --project-ref hgcshgunvooyudvrcpig
+   ```
+   Verified on the test project 2026-10-14: the reply was sent as the
+   recipient into the direct thread and the token was consumed.
 
 ## iOS
 
 Needs the iOS app in Firebase, the Push Notifications capability and an APNs
-key uploaded to Firebase (see `ios_release.md`). The worker and server need no
-changes.
+key uploaded to Firebase (see `ios_release.md`). Plain notifications need no
+server changes; answering from the notification on iOS needs notification
+categories with actions and the response token in the APNs payload.

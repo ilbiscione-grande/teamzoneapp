@@ -51,6 +51,29 @@ Deno.test("an answerable callup is a data message on Android only", () => {
   assertEquals((malformed.message as Record<string, unknown>).notification !== undefined, true);
 });
 
+Deno.test("a message one can reply to is a data message on Android only", () => {
+  const message = {
+    title: "Nytt meddelande",
+    body: "P2012",
+    route: "/inbox?thread=40000000-0000-4000-8000-000000000001",
+    reply: { thread_id: "40000000-0000-4000-8000-000000000001", token: "b".repeat(64) },
+    language: "en",
+  };
+  const android = fcmMessage("device-token", message, "android").message as Record<string, unknown>;
+  assertEquals(android.notification, undefined);
+  assertEquals(android.data, {
+    kind: "message",
+    title: "Nytt meddelande",
+    body: "P2012",
+    route: "/inbox?thread=40000000-0000-4000-8000-000000000001",
+    thread_id: "40000000-0000-4000-8000-000000000001",
+    reply_token: "b".repeat(64),
+    language: "en",
+  });
+  const ios = fcmMessage("device-token", message, "ios").message as Record<string, unknown>;
+  assertEquals((ios.data as Record<string, string>).reply_token, undefined);
+});
+
 Deno.test("routes outside the app's own paths fall back to the inbox", () => {
   assertEquals(safeRoute("/inbox?thread=40000000-0000-4000-8000-000000000001"),
     "/inbox?thread=40000000-0000-4000-8000-000000000001");
