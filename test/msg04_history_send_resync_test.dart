@@ -185,7 +185,11 @@ void main() {
       surface.indexOf('final bubbleMaxWidth = min('),
     );
     expect(announcement, isNot(contains('widget.thread.subject')));
-    expect(surface, contains('title: Text(widget.thread.subject'));
+    // The app bar title (with a picture first in a one-to-one conversation).
+    expect(
+      surface,
+      contains(': Text(widget.thread.subject ?? strings.directMessage)'),
+    );
   });
 
   test('history returns sender identity after checking thread access', () {

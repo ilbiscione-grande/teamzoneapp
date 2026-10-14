@@ -117,6 +117,53 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('the picture or initials of a sender stand before the name', (
+    tester,
+  ) async {
+    final messaging = _Messaging(onlyInScope: true, conversation: true);
+    await _openInbox(
+      tester,
+      messaging,
+      push: const _Push('/inbox?thread=42000000-0000-4000-8000-000000000002'),
+      tapInbox: false,
+    );
+    final avatar = find.byKey(const ValueKey('sender-avatar-m1'));
+    expect(avatar, findsOneWidget);
+    // In a group the title has no picture.
+    expect(find.byKey(const ValueKey('thread-title-avatar')), findsNothing);
+    expect(
+      find.descendant(of: avatar, matching: find.text('BB')),
+      findsOneWidget,
+    );
+    // Your own messages show no name and no picture.
+    expect(find.byKey(const ValueKey('sender-avatar-m2')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a one-to-one conversation has the picture in its title', (
+    tester,
+  ) async {
+    final messaging = _Messaging(
+      onlyInScope: true,
+      conversation: true,
+      direct: true,
+    );
+    await _openInbox(
+      tester,
+      messaging,
+      push: const _Push('/inbox?thread=42000000-0000-4000-8000-000000000002'),
+      tapInbox: false,
+    );
+    final title = find.byKey(const ValueKey('thread-title-avatar'));
+    expect(title, findsOneWidget);
+    expect(
+      find.descendant(of: title, matching: find.text('BB')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('sender-avatar-m1')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('clubs collapse to their name; the active club starts open', (
     tester,
   ) async {
@@ -334,9 +381,17 @@ class _Messaging extends UnconfiguredMessagingServices {
     this.threads = true,
     this.onlyInScope = false,
     this.avatars = false,
+    this.conversation = false,
+    this.direct = false,
   });
   final bool threads;
   final bool avatars;
+
+  /// One message from Bo Berg, then one of your own.
+  final bool conversation;
+
+  /// The second thread is a one-to-one conversation with Bo Berg.
+  final bool direct;
 
   /// Like the server: a thread is listed only for its own team's context.
   final bool onlyInScope;
@@ -412,7 +467,33 @@ class _Messaging extends UnconfiguredMessagingServices {
     int? beforeRevision,
   }) async {
     openedThreads.add(threadId);
-    return const MessagePage(messages: [], hasMore: false);
+    return MessagePage(
+      messages: [
+        if (conversation) ...[
+          ThreadMessage(
+            id: 'm1',
+            revision: 1,
+            state: 'sent',
+            createdAt: DateTime(2026, 10, 14, 9),
+            senderName: 'Bo Berg',
+            senderProfileId: 'bo',
+            mine: false,
+            body: 'Hej!',
+          ),
+          ThreadMessage(
+            id: 'm2',
+            revision: 2,
+            state: 'sent',
+            createdAt: DateTime(2026, 10, 14, 10),
+            senderName: 'Test',
+            senderProfileId: 'profile',
+            mine: true,
+            body: 'Hej själv',
+          ),
+        ],
+      ],
+      hasMore: false,
+    );
   }
 
   @override
@@ -432,8 +513,8 @@ class _Messaging extends UnconfiguredMessagingServices {
       ),
       MessageThreadSummary(
         id: '42000000-0000-4000-8000-000000000002',
-        type: 'group',
-        subject: 'Cupresa',
+        type: direct ? 'direct' : 'group',
+        subject: direct ? 'Bo Berg' : 'Cupresa',
         revision: 1,
         unreadCount: 2,
         muted: false,

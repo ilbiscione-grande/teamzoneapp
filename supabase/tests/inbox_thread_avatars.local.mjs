@@ -1,7 +1,9 @@
-// Inbox profile pictures: the real migration in isolated Postgres, with
+// Inbox and conversation profile pictures: the real migrations in isolated
+// Postgres (inbox rows, and senders in a thread), with
 // thread access and club sharing stubbed (their rules are tested with the
 // messaging and profile migrations).
 // node supabase/tests/inbox_thread_avatars.local.mjs
+// (also covers 20261027090000_thread_sender_avatars)
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { PGlite } from '../../.tmp-search-test/node_modules/@electric-sql/pglite/dist/index.js';
@@ -49,7 +51,9 @@ try {
   await join(group, '99999999-9999-4999-8999-999999999999', 30, 'left');
   // Eva wrote last, then Cia; the others never wrote.
   await db.query("insert into core.messages values($1,$2,now()-interval '5 minutes'),($1,$3,now()-interval '1 minute')", [group, cia, eva]);
-  await db.exec(read('supabase/migrations/20261026090000_inbox_thread_avatars.sql').replace(/notify pgrst[^;]*;/, ''));
+  for (const name of ['20261026090000_inbox_thread_avatars', '20261027090000_thread_sender_avatars']) {
+    await db.exec(read(`supabase/migrations/${name}.sql`).replace(/notify pgrst[^;]*;/, ''));
+  }
   await db.exec('begin');
 
   await db.query("select set_config('request.jwt.claim.sub',$1,false)", [me]);
@@ -79,14 +83,27 @@ try {
   await db.exec('reset role');
   assert.deepEqual(again.map(p => [p.name, p.object_key]), [['Dan Ås', null], ['Far Fot', null], ['Eva Lind', `${eva}/pic.jpg`]]);
 
+  // Senders in a conversation: everyone with a picture one may see, also
+  // people who have left; no key for Far (no shared club) or Dan (removed).
+  await db.query("update core.thread_participants set state='left' where profile_id=$1 and thread_id=$2", [cia, group]);
+  await db.exec('set role authenticated');
+  const senders = await one('select api.list_thread_sender_avatars($1)', [group]);
+  await db.exec('reset role');
+  assert.deepEqual(senders.map(row => row.profile_id).sort(), [me, bo, cia, eva].sort());
+  assert.equal(senders.find(row => row.profile_id === cia).object_key, `${cia}/pic.jpg`);
+  await db.exec('set role authenticated');
+  await reject(() => db.query('select api.list_thread_sender_avatars($1)', [hidden]), /not_found/);
+  await db.exec('reset role');
+
   // Signed-in users only; at most 200 threads per call.
   await reject(() => db.query('select api.list_thread_avatars($1)', [Array(201).fill(direct)]), /invalid_input/);
   await db.query("select set_config('request.jwt.claim.sub','',false)");
   await reject(() => db.query('select api.list_thread_avatars($1)', [[direct]]), /unauthenticated/);
   assert.equal(await one("select has_function_privilege('anon','api.list_thread_avatars(uuid[])','execute')"), false);
   assert.equal(await one("select has_function_privilege('authenticated','api.list_thread_avatars(uuid[])','execute')"), true);
+  assert.equal(await one("select has_function_privilege('anon','api.list_thread_sender_avatars(uuid)','execute')"), false);
   await db.exec('rollback');
-  console.log('inbox thread avatars: ok');
+  console.log('inbox and sender avatars: ok');
 } finally {
   await db.close();
 }

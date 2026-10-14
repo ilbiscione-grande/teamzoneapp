@@ -2273,6 +2273,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
         thread: thread,
         messaging: widget.messaging,
         contextId: widget.contextValue.id,
+        counterpart: _avatars[thread.id]?.people.firstOrNull,
       ),
     );
     _dismissedThreadId = thread.id;
@@ -2985,10 +2986,15 @@ class _ThreadDialog extends StatefulWidget {
     required this.thread,
     required this.messaging,
     required this.contextId,
+    this.counterpart,
   });
   final MessageThreadSummary thread;
   final MessagingServices messaging;
   final String contextId;
+
+  /// The other person in a direct conversation (from the inbox row), whose
+  /// picture stands in the title.
+  final ThreadAvatarPerson? counterpart;
   @override
   State<_ThreadDialog> createState() => _ThreadDialogState();
 }
@@ -3014,6 +3020,21 @@ class _ThreadDialogState extends State<_ThreadDialog>
   );
   final List<_PendingMessage> _pending = [];
   List<ThreadMessage>? _messages;
+  // Senders' profile pictures by profile id; the others show initials.
+  Map<String, String> _senderAvatars = const {};
+
+  /// One-to-one: the picture is in the title, not at every message.
+  bool get _isDirect =>
+      widget.thread.type == 'direct' ||
+      widget.thread.type == 'cross_club_direct';
+
+  /// The counterpart's picture: from the inbox row, else from their messages.
+  String? get _counterpartImage =>
+      widget.counterpart?.imageUrl ??
+      _senderAvatars[_messages
+          ?.where((message) => !message.mine)
+          .firstOrNull
+          ?.senderProfileId];
   StreamSubscription<void>? _threadSync;
   StreamSubscription<void>? _browserOnlineSync;
   Timer? _threadResyncDebounce;
@@ -3044,6 +3065,21 @@ class _ThreadDialogState extends State<_ThreadDialog>
     );
     _subscribeToThread();
     unawaited(_replaceMessages());
+    unawaited(_loadSenderAvatars());
+  }
+
+  /// Optional: without them the names stand alone with initials.
+  Future<void> _loadSenderAvatars() async {
+    try {
+      final loaded = await widget.messaging.listThreadSenderAvatars(
+        widget.thread.id,
+      );
+      if (mounted && loaded.isNotEmpty) {
+        setState(() => _senderAvatars = loaded);
+      }
+    } catch (error) {
+      AppErrors.caught('inbox_surface._loadSenderAvatars', error);
+    }
   }
 
   @override
@@ -3691,14 +3727,34 @@ class _ThreadDialogState extends State<_ThreadDialog>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               if (!group.first.mine) ...[
-                                Text(
-                                  group.first.senderName,
-                                  style: Theme.of(context).textTheme.labelSmall
-                                      ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                      ),
+                                if (!_isDirect) ...[
+                                  _SenderAvatar(
+                                    key: ValueKey(
+                                      'sender-avatar-${group.first.id}',
+                                    ),
+                                    name: group.first.senderName,
+                                    imageUrl:
+                                        _senderAvatars[group
+                                            .first
+                                            .senderProfileId],
+                                  ),
+                                  const SizedBox(width: 6),
+                                ],
+                                // A long name gives way to the time.
+                                Flexible(
+                                  child: Text(
+                                    group.first.senderName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                        ),
+                                  ),
                                 ),
                                 const SizedBox(width: 6),
                               ],
@@ -3842,7 +3898,28 @@ class _ThreadDialogState extends State<_ThreadDialog>
     return Dialog.fullscreen(
       child: Scaffold(
         appBar: AppBar(
-          title: Text(widget.thread.subject ?? strings.directMessage),
+          title: _isDirect
+              ? Row(
+                  children: [
+                    _SenderAvatar(
+                      key: const ValueKey('thread-title-avatar'),
+                      name:
+                          widget.counterpart?.name ??
+                          widget.thread.subject ??
+                          '',
+                      imageUrl: _counterpartImage,
+                      radius: 18,
+                    ),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        widget.thread.subject ?? strings.directMessage,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                )
+              : Text(widget.thread.subject ?? strings.directMessage),
           leading: IconButton(
             onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
             tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
@@ -4180,4 +4257,36 @@ String _avatarInitials(String name) {
       .where((part) => part.isNotEmpty);
   final initials = parts.take(2).map((part) => part.characters.first).join();
   return initials.isEmpty ? '?' : initials.toUpperCase();
+}
+
+/// A profile picture before a sender's name (or in a direct conversation's
+/// title); initials without one.
+class _SenderAvatar extends StatelessWidget {
+  const _SenderAvatar({
+    required this.name,
+    this.imageUrl,
+    this.radius = 11,
+    super.key,
+  });
+
+  final String name;
+  final String? imageUrl;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: colors.secondaryContainer,
+      foregroundImage: imageUrl == null ? null : NetworkImage(imageUrl!),
+      child: Text(
+        _avatarInitials(name),
+        style: TextStyle(
+          fontSize: radius * 0.8,
+          color: colors.onSecondaryContainer,
+        ),
+      ),
+    );
+  }
 }

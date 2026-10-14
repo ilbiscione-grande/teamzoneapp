@@ -12,6 +12,10 @@ abstract interface class MessagingServices {
   /// Profile pictures for the inbox rows, by thread id. Threads without an
   /// entry show their icon.
   Future<Map<String, ThreadAvatars>> listThreadAvatars(List<String> threadIds);
+
+  /// Signed profile pictures of a thread's senders, by profile id. Senders
+  /// without an entry show initials.
+  Future<Map<String, String>> listThreadSenderAvatars(String threadId);
   Stream<void> watchInboxInvalidations();
   Future<List<ThreadMessage>> listMessages(String threadId);
   Future<MessagePage> listMessagePage(String threadId, {int? beforeRevision});
@@ -118,6 +122,9 @@ class UnconfiguredMessagingServices implements MessagingServices {
   Future<Map<String, ThreadAvatars>> listThreadAvatars(
     List<String> threadIds,
   ) async => const {};
+  @override
+  Future<Map<String, String>> listThreadSenderAvatars(String threadId) async =>
+      const {};
   @override
   Stream<void> watchInboxInvalidations() => const Stream<void>.empty();
   @override
@@ -261,16 +268,7 @@ class SupabaseMessagingServices implements MessagingServices {
           if (person is Map && person['object_key'] is String)
             person['object_key'] as String,
     };
-    // A picture that cannot be signed is left out; the row shows initials.
-    final urlByKey = <String, String>{};
-    if (keys.isNotEmpty) {
-      final signed = await _client.storage
-          .from('profile-avatars')
-          .createSignedUrlsResult(keys.toList(), 3600);
-      for (final item in signed.whereType<SignedUrlSuccess>()) {
-        urlByKey[item.path] = item.signedUrl;
-      }
-    }
+    final urlByKey = await _signAvatars(keys);
     return {
       for (final row in rows)
         if (row['thread_id'] is String)
@@ -285,6 +283,40 @@ class SupabaseMessagingServices implements MessagingServices {
                   ),
             ],
           ),
+    };
+  }
+
+  @override
+  Future<Map<String, String>> listThreadSenderAvatars(String threadId) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'list_thread_sender_avatars',
+          params: {'target_thread_id': threadId},
+        );
+    final keyByProfile = <String, String>{
+      if (value is List)
+        for (final row in value.whereType<Map<String, dynamic>>())
+          if (row['profile_id'] is String && row['object_key'] is String)
+            row['profile_id'] as String: row['object_key'] as String,
+    };
+    final urlByKey = await _signAvatars(keyByProfile.values.toSet());
+    return {
+      for (final entry in keyByProfile.entries)
+        entry.key: ?urlByKey[entry.value],
+    };
+  }
+
+  /// Signed URLs by storage key. A picture that cannot be signed is left
+  /// out, and shows initials.
+  Future<Map<String, String>> _signAvatars(Set<String> keys) async {
+    if (keys.isEmpty) return const {};
+    final signed = await _client.storage
+        .from('profile-avatars')
+        .createSignedUrlsResult(keys.toList(), 3600);
+    return {
+      for (final item in signed.whereType<SignedUrlSuccess>())
+        item.path: item.signedUrl,
     };
   }
 
