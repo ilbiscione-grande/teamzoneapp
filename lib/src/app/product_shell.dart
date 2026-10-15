@@ -296,6 +296,9 @@ class _ProductShellState extends State<_ProductShell> {
         builder: (_, _) => _SupportAdminSurface(
           membership: widget.membership,
           profile: widget.profileServices,
+          assistant: widget.overview is AssistantTaskSupportServices
+              ? widget.overview as AssistantTaskSupportServices
+              : null,
         ),
       ),
       GoRoute(
@@ -1141,6 +1144,7 @@ class _ProductShellState extends State<_ProductShell> {
                             overview: widget.overview,
                             loadEvent: widget.calendar.getEventDetails,
                             preparation: widget.calendar.preparation,
+                            calendar: widget.calendar,
                             onOpen: _openAssistantTask,
                           ),
                           onOpen: _openAssistant,

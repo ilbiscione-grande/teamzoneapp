@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../app/product_route_contract.dart';
 import '../../core/identity/identity_models.dart';
 import '../calendar/calendar_models.dart';
-import '../calendar/preparation_services.dart';
+import '../calendar/calendar_services.dart';
+import '../calendar/callup_reminders.dart';
+import 'assistant_task_feedback.dart';
 import 'assistant_preparation_checklist.dart';
 import 'assistant_task_preferences.dart';
 import '../overview/overview_models.dart';
@@ -455,6 +458,7 @@ class AssistantTaskSections extends StatefulWidget {
     required this.loadEvent,
     required this.onOpen,
     this.preparation,
+    this.calendar,
   });
   final List<TeamZoneContext> contexts;
   final TeamZoneContext activeContext;
@@ -463,6 +467,10 @@ class AssistantTaskSections extends StatefulWidget {
   final Future<EventDetails> Function(String) loadEvent;
   final Future<void> Function(AssistantTask) onOpen;
   final EventPreparationServices? preparation;
+
+  /// For "Påminn…" on unanswered callups: the review and the send happen
+  /// over the card through the ordinary calendar commands.
+  final CalendarServices? calendar;
 
   @override
   State<AssistantTaskSections> createState() => _AssistantTaskSectionsState();
@@ -478,6 +486,8 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
   final _categoryScroll = ScrollController();
   String? _expandedKey;
   Timer? _wakeTimer;
+  // One idempotency key per callup revision, reused if a send is retried.
+  final Map<String, String> _reminderKeys = {};
   @override
   void initState() {
     super.initState();
@@ -589,6 +599,178 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
             content: Text(
               'Valet kunde inte sparas. Uppdatera och försök igen.',
             ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _opening = false;
+          _data = _load();
+        });
+      }
+    }
+  }
+
+  /// "Inte till hjälp": a fixed reason, then the card is archived. A third
+  /// "Visas för ofta" for the type within 30 days offers to hide the type.
+  Future<void> _giveFeedback(AssistantTask item) async {
+    final service = widget.overview;
+    if (service is! AssistantTaskFeedbackServices || _opening || item.stale) {
+      return;
+    }
+    final reason = await showAssistantFeedbackReasons(context);
+    if (reason == null || !mounted) return;
+    setState(() => _opening = true);
+    var offerHide = false;
+    try {
+      offerHide = await (service as AssistantTaskFeedbackServices)
+          .giveAssistantTaskFeedback(
+            contextId: item.context.id,
+            kind: item.task.kind,
+            route: item.task.route,
+            reason: reason,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Tack! Kortet är arkiverat i din lista.'),
+          action: SnackBarAction(
+            label: 'Ångra',
+            onPressed: () => _setDisposition(item, 'active'),
+          ),
+        ),
+      );
+    } catch (error) {
+      AppErrors.caught('assistant_tasks._giveFeedback', error);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Svaret kunde inte sparas. Försök igen.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _opening = false;
+          _data = _load();
+        });
+      }
+    }
+    if (offerHide && mounted) await _offerHide(item.task.kind);
+  }
+
+  Future<void> _offerHide(String kind) async {
+    final service = widget.overview;
+    if (service is! AssistantTaskPreferencesServices) return;
+    final label = assistantTaskTypes[kind] ?? 'den här typen';
+    final hide = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Dölja den här typen?'),
+        content: Text(
+          'Du har sagt att "$label" visas för ofta. Vill du dölja typen i '
+          'Min assistent? Du kan visa den igen i inställningarna.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Behåll'),
+          ),
+          FilledButton(
+            key: const ValueKey('assistant-hide-kind'),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Dölj typen'),
+          ),
+        ],
+      ),
+    );
+    if (hide != true || !mounted) return;
+    final preferences = service as AssistantTaskPreferencesServices;
+    try {
+      final current = await preferences.loadAssistantTaskPreferences();
+      await preferences.saveAssistantTaskPreferences(
+        {...current.hiddenKinds, kind},
+        current.revision,
+        currentTeamOnly: current.currentTeamOnly,
+        welcomeMessageVisible: current.welcomeMessageVisible,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Typen är dold. Du kan visa den igen i inställningarna.',
+          ),
+        ),
+      );
+      setState(() => _data = _load());
+    } catch (error) {
+      AppErrors.caught('assistant_tasks._offerHide', error);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Inställningen kunde inte sparas. Försök igen.'),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Unanswered callups have "Påminn…": the same recipient review as on the
+  /// participants tab opens over the card, and nothing is sent until Skicka.
+  bool _remindsHere(AssistantTask item) =>
+      item.task.kind == 'pending_callups' &&
+      widget.calendar != null &&
+      item.context.can('event.squad.manage');
+
+  Future<void> _remind(AssistantTask item) async {
+    final calendar = widget.calendar;
+    if (calendar == null || _opening || item.stale) return;
+    setState(() => _opening = true);
+    try {
+      final squad = await calendar
+          .getEventSquad(item.eventId)
+          .timeout(const Duration(seconds: 15));
+      if (!mounted) return;
+      final eligible = squad.can('remind_callup')
+          ? remindableCallups(squad, DateTime.now())
+          : const <ReminderCandidate>[];
+      if (eligible.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Det finns ingen kallelse att påminna just nu. En ny påminnelse '
+              'kan skickas sex timmar efter den förra.',
+            ),
+          ),
+        );
+        return;
+      }
+      final selected = await showCallupReminderReview(context, eligible);
+      if (selected == null || !mounted) return;
+      final result = await sendCallupReminders(
+        calendar: calendar,
+        chosen: [
+          for (final candidate in eligible)
+            if (selected.contains(candidate.callupId)) candidate,
+        ],
+        keys: _reminderKeys,
+        newKey: _newKey,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(reminderResultText(result))));
+      }
+    } catch (error) {
+      AppErrors.caught('assistant_tasks._remind', error);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Kallelserna kunde inte hämtas. Försök igen.'),
           ),
         );
       }
@@ -1201,6 +1383,30 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                       'Avsiktlig överlappning avfärdar bara detta aktivitetspar i din egen lista. Du kan återställa det under Arkiverat.',
                     ),
                   ],
+                  if (_remindsHere(item) ||
+                      (item.task.assistantStatus == 'active' &&
+                          widget.overview is AssistantTaskFeedbackServices))
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        if (_remindsHere(item))
+                          TextButton(
+                            onPressed: item.stale || _opening
+                                ? null
+                                : () => _open(item),
+                            child: const Text('Öppna aktiviteten'),
+                          ),
+                        if (item.task.assistantStatus == 'active' &&
+                            widget.overview is AssistantTaskFeedbackServices)
+                          TextButton(
+                            key: ValueKey('assistant-not-helpful-${item.key}'),
+                            onPressed: canOrganize
+                                ? () => _giveFeedback(item)
+                                : null,
+                            child: const Text('Inte till hjälp'),
+                          ),
+                      ],
+                    ),
                   const SizedBox(height: 8),
                   Text(
                     'Källa: lagets kalender, kallelser, förberedelselistor och uppföljning. '
@@ -1232,6 +1438,8 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                                   widget.preparation != null &&
                                   !expanded) {
                                 setState(() => _expandedKey = item.key);
+                              } else if (_remindsHere(item)) {
+                                _remind(item);
                               } else {
                                 _open(item);
                               }
@@ -1243,6 +1451,8 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                               ? 'Hantera'
                               : item.overlappingEvent != null
                               ? 'Ändra tid'
+                              : _remindsHere(item)
+                              ? 'Påminn…'
                               : 'Åtgärda',
                           style: const TextStyle(fontSize: 12),
                         ),
@@ -1336,4 +1546,16 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
         '${material.formatTimeOfDay(TimeOfDay.fromDateTime(value.toLocal()))}';
     return '${stamp(start)}–${stamp(end)}';
   }
+}
+
+String _newKey() {
+  final random = Random.secure();
+  final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  final hex = bytes
+      .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+      .join();
+  return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-'
+      '${hex.substring(16, 20)}-${hex.substring(20)}';
 }

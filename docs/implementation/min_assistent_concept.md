@@ -127,7 +127,36 @@ Första tokens är `assistant.area.blue`, `.green`, `.purple`, `.teal`, `.orange
 - Systemmeddelanden kan inte förväxlas med assistentposter.
 - Rehab-/hälsogränser och generativ AI förblir fail-closed tills separata grindar godkänts.
 
-## 9. Öppna beslut
+## 9. Beslut 2026-10-15: feedback, avstängning och åtgärder från kortet
+
+Besluten gäller assistentens uppgifter (obesvarade kallelser, saknad närvaro,
+matchresultat och matchrapport, krockar, förberedelser), som redan visas med
+**Åtgärda**, **Skjut upp** och **Arkivera** och kan döljas per typ i
+inställningarna. Signalkön (AC-01) är fortfarande avstängd och följer samma
+beslut när den aktiveras.
+
+1. **Feedback med fasta skäl.** I kortets detaljvy finns **Inte till hjälp**
+   med skälen *Stämmer inte*, *Redan hanterat*, *Inte mitt ansvar* och *Visas
+   för ofta*. Ingen fritext, eftersom den lätt får med namn och uppgifter om
+   minderåriga. Valet arkiverar kortet för personen och sparas privat per
+   uppgiftstyp. *Visas för ofta* tre gånger för samma typ inom 30 dagar gör att
+   assistenten erbjuder att dölja typen; den döljs aldrig automatiskt.
+   *Stämmer inte* räknas ihop per uppgiftstyp utan persondata och används för
+   att upptäcka felaktiga regler. Ingen tumme upp.
+2. **Central avstängning per uppgiftstyp, bara för TeamZone-support.** Gäller
+   direkt för alla i serverns uppgiftslista, kräver skäl och auditloggas. Slås
+   typen på igen kommer korten tillbaka och användarnas uppskjutna och
+   arkiverade val finns kvar. Klubbar styr inte detta; den personliga
+   inställningen finns kvar. Brytaren för generativ AI är separat och stängd.
+3. **Åtgärder direkt från kortet bara där flödet redan har granskning.**
+   **Åtgärda** öppnar som standard rätt sida med det vanliga flödets egen
+   bekräftelse. Första direkta åtgärd är **Påminn obesvarade**: samma
+   mottagargranskning som i dag öppnas över kortet och skickar först när man
+   trycker **Skicka**, genom samma serverfunktion, idempotens och audit. Aldrig
+   en mutation med ett tryck utan granskning, och aldrig samma åtgärd över
+   flera aktiviteter på en gång.
+
+## 10. Öppna beslut
 
 - Sportigt internationellt standardnamn.
 - Slutlig visuell finjustering av de nu införda färgtokens och ikoner efter fysisk tillgänglighetsprovning.

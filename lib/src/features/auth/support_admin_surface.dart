@@ -1,10 +1,17 @@
 part of '../../app/teamzone_app.dart';
 
 class _SupportAdminSurface extends StatefulWidget {
-  const _SupportAdminSurface({required this.membership, required this.profile});
+  const _SupportAdminSurface({
+    required this.membership,
+    required this.profile,
+    this.assistant,
+  });
 
   final MembershipServices membership;
   final ProfileServices profile;
+
+  /// Min assistent's task types (switch off for everyone, feedback counts).
+  final AssistantTaskSupportServices? assistant;
 
   @override
   State<_SupportAdminSurface> createState() => _SupportAdminSurfaceState();
@@ -366,6 +373,20 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
       appBar: AppBar(
         title: Text(strings.feature('Supportärenden')),
         actions: [
+          if (widget.assistant != null)
+            IconButton(
+              key: const ValueKey('support-assistant-kinds'),
+              tooltip: strings.feature('Min assistents uppgiftstyper'),
+              icon: const Icon(Icons.tune),
+              onPressed: () => showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                useSafeArea: true,
+                showDragHandle: true,
+                builder: (_) =>
+                    AssistantTaskKindSwitches(services: widget.assistant!),
+              ),
+            ),
           IconButton(
             key: const ValueKey('support-email-changes'),
             tooltip: strings.feature('Byte av inloggningsadress'),

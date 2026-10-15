@@ -357,8 +357,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('assistant-coach-mobile-fab')));
     await tester.pumpAndSettle();
+    // The card's primary action reminds over the card; the event itself is
+    // opened from the card's details.
     await tester.ensureVisible(find.byTooltip('Granska och påminn'));
-    await tester.tap(find.byTooltip('Granska och påminn'));
+    await tester.tap(find.byIcon(Icons.expand_more).last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Öppna aktiviteten'));
+    await tester.tap(find.text('Öppna aktiviteten'));
     await tester.pumpAndSettle();
     expect(find.text('Sök deltagare i klubben'), findsOneWidget);
     expect(find.text('Testklubben · F2012'), findsWidgets);

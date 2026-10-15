@@ -398,6 +398,7 @@ class _AssistantCoachHoldingSurfaceState
                                 overview: widget.overview,
                                 loadEvent: widget.calendar.getEventDetails,
                                 preparation: widget.calendar.preparation,
+                                calendar: widget.calendar,
                                 onOpen: widget.onOpenTask,
                               ),
                             if (widget.settingsOnly)

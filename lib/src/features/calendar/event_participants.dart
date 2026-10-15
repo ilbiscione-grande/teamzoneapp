@@ -785,110 +785,40 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
     final eligible = {
       for (final person in candidates)
         if (person.callupId != null && person.canRemindAt(DateTime.now()))
-          person.callupId!: person,
-    }.values.toList();
-    if (eligible.isEmpty) return;
-    final selected = eligible.map((p) => p.callupId!).toSet();
-    setState(() => _reviewingReminders = true);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, update) => AlertDialog(
-          title: const Text('Granska påminnelser'),
-          content: SizedBox(
-            width: 420,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Endast obesvarade, giltiga kallelser visas. '
-                    'Minst sex timmar måste ha gått sedan senaste påminnelsen.',
-                  ),
-                  for (final person in eligible)
-                    CheckboxListTile(
-                      value: selected.contains(person.callupId),
-                      title: Text(person.name),
-                      subtitle: Text(
-                        person.callupLastRemindedAt == null
-                            ? 'Ingen tidigare påminnelse'
-                            : 'Senast: ${MaterialLocalizations.of(context).formatShortDate(person.callupLastRemindedAt!.toLocal())} '
-                                  '${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(person.callupLastRemindedAt!.toLocal()))}',
-                      ),
-                      onChanged: (value) => update(() {
-                        if (value == true) {
-                          selected.add(person.callupId!);
-                        } else {
-                          selected.remove(person.callupId);
-                        }
-                      }),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Avbryt'),
-            ),
-            FilledButton(
-              onPressed: selected.isEmpty
-                  ? null
-                  : () => Navigator.pop(dialogContext, true),
-              child: Text('Skicka ${selected.length} påminnelser'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (!mounted) return;
-    setState(() => _reviewingReminders = false);
-    if (confirmed != true) {
-      return;
-    }
-    setState(() => _busy = true);
-    var sent = 0;
-    var failed = 0;
-    try {
-      for (final person in eligible.where(
-        (p) => selected.contains(p.callupId),
-      )) {
-        try {
-          await widget.calendar.manageCallup(
+          person.callupId!: ReminderCandidate(
             callupId: person.callupId!,
-            action: 'remind',
-            expectedRevision:
+            name: person.name,
+            revision:
                 widget.squad.callups
                     .where((callup) => callup.id == person.callupId)
                     .map((callup) => callup.revision)
                     .firstOrNull ??
                 0,
-            idempotencyKey: _reminderKeys.putIfAbsent(
-              '${person.callupId}:${widget.squad.callups.where((c) => c.id == person.callupId).firstOrNull?.revision}',
-              _newUuid,
-            ),
-          );
-          sent++;
-        } catch (error) {
-          AppErrors.caught('event_participants._reviewReminders', error);
-
-          failed++;
-        }
-      }
+            lastRemindedAt: person.callupLastRemindedAt,
+          ),
+    }.values.toList();
+    if (eligible.isEmpty) return;
+    setState(() => _reviewingReminders = true);
+    final selected = await showCallupReminderReview(context, eligible);
+    if (!mounted) return;
+    setState(() => _reviewingReminders = false);
+    if (selected == null) return;
+    setState(() => _busy = true);
+    try {
+      final result = await sendCallupReminders(
+        calendar: widget.calendar,
+        chosen: [
+          for (final candidate in eligible)
+            if (selected.contains(candidate.callupId)) candidate,
+        ],
+        keys: _reminderKeys,
+        newKey: _newUuid,
+      );
       await widget.onReload();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              failed > 0
-                  ? '$sent påminnelser skickade. $failed kunde inte skickas. Granska de uppdaterade kallelserna innan du försöker igen.'
-                  : sent == 1
-                  ? 'Påminnelsen är skickad.'
-                  : '$sent påminnelser är skickade.',
-            ),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(reminderResultText(result))));
       }
     } catch (error) {
       AppErrors.caught('event_participants._reviewReminders', error);

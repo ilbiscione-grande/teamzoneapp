@@ -344,7 +344,7 @@ Status 2026-10-15: AC-01–AC-08 `[~]` – lokalt implementerade; generativ AI a
 - [~] Definiera signalmodell: ID/version, typ, prioritet, positiv/neutral/action,
   förklaring, datakällor, tidsfönster, beräknad tid, stale/missing och confidence.
 - [~] Definiera roll- och capabilityfilter per signal och föreslagen action.
-- [ ] Definiera användarfeedback: hjälpsam/inte hjälpsam, dismiss/snooze och
+- [x] Definiera användarfeedback: hjälpsam/inte hjälpsam, dismiss/snooze och
   varför, utan rå känslig payload.
 - [ ] Definiera första signalpaketet tillsammans innan trösklar implementeras.
 - [x] Min assistent v1 ska under området Lagplanering prioritera följande första signalpaket:
@@ -357,9 +357,11 @@ Status 2026-10-15: AC-01–AC-08 `[~]` – lokalt implementerade; generativ AI a
   datakällor, missing/stale-beteende och målroll för var och en av de fem signalerna.
 - [~] Implementera signal-fixtures för positivt, negativt, stale, missing,
   cross-context och nekad capability.
-- [ ] Implementera action preview och uttrycklig bekräftelse genom vanliga
+- [ ] (Beslutat 2026-10-15, se `min_assistent_concept.md` avsnitt 9; implementation återstår.)
+  Implementera action preview och uttrycklig bekräftelse genom vanliga
   domänkommandon; ingen autonom mutation.
-- [ ] Skapa kill switch per signal och separat för framtida generativ formulering.
+- [ ] (Beslutat 2026-10-15: central avstängning per uppgiftstyp för TeamZone-support; implementation återstår.)
+  Skapa kill switch per signal och separat för framtida generativ formulering.
 - [~] Håll generativ AI blockerad tills leverantör, region, dataminimering,
   retention, minderårigdata, utvärdering och incidentflöde har godkänts separat.
 - [x] Full datadriven Min assistent-implementation ska inte starta innan identitet,
@@ -734,6 +736,7 @@ säkerhetsgränser får förberedas tidigare.
 
 | Datum | Ändring | Beslutad av |
 |---|---|---|
+| 2026-10-15 | Min assistent: feedback med fyra fasta skäl utan fritext, central avstängning per uppgiftstyp för TeamZone-support, och direkta åtgärder från kortet bara där flödet har granskning (först Påminn obesvarade). Se `min_assistent_concept.md` avsnitt 9. | Produktägaren |
 | 2026-10-15 | Rutorna och nulägesbilden synkades mot arbetskorten (planen hade inte uppdaterats sedan 2026-09-04). Steg 0–2 klara; Laget fas 1, Kalender och releasegrinden REL-01–03 klara; övriga steg delvis enligt respektive kort. MSG-10 (push och svar från notisen) tillagt. | Statussynk |
 | 2026-08-28 | Paraplynamnet fastställdes till Min assistent. Ett sportigt internationellt standardnamn väljs senare och användaren får välja eget privat namn. En gemensam kärna/kö får specialistområden märkta med text, ikon och färg enligt separat målmodell. | Produktägaren |
 | 2026-08-23 | Första utkast skapat från gammal dokumentation och rebuildens nuläge. | Ej fastställd |

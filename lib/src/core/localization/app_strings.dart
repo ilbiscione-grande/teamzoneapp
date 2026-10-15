@@ -2099,6 +2099,7 @@ class AppStrings {
     'Beslutet kunde inte sparas. Ladda om.':
         'The decision could not be saved. Reload.',
     'Byte av inloggningsadress': 'Login address changes',
+    'Min assistents uppgiftstyper': 'Min assistent task types',
     'Kön kunde inte laddas.': 'The queue could not be loaded.',
     'Inga väntande begäranden.': 'No pending requests.',
     'Kontrollera adressen och postnumret.':

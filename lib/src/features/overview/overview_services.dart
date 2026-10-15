@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/overview/overview_models.dart';
+import '../assistant_coach/assistant_task_feedback.dart';
 import '../assistant_coach/assistant_task_preferences.dart';
 import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
@@ -56,7 +57,9 @@ class SupabaseOverviewServices
         FreshLeaderOverviewServices,
         PersonalCalendarConflictServices,
         AssistantTaskPreferencesServices,
-        AssistantTaskStateServices {
+        AssistantTaskStateServices,
+        AssistantTaskFeedbackServices,
+        AssistantTaskSupportServices {
   SupabaseOverviewServices(this._client);
   final SupabaseClient _client;
   MainSurfacesProjection? _cached;
@@ -95,6 +98,57 @@ class SupabaseOverviewServices
           as Map,
     ),
   );
+
+  @override
+  Future<bool> giveAssistantTaskFeedback({
+    required String contextId,
+    required String kind,
+    required String route,
+    required String reason,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'give_assistant_task_feedback',
+          params: {
+            'context_id': contextId,
+            'task_kind': kind,
+            'task_route': route,
+            'feedback_reason': reason,
+          },
+        );
+    return value is Map && value['offer_hide'] == true;
+  }
+
+  @override
+  Future<List<AssistantTaskKindStatus>> listAssistantTaskKinds() async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>('list_assistant_task_kinds_for_support');
+    return [
+      if (value is List)
+        for (final row in value.whereType<Map<String, dynamic>>())
+          AssistantTaskKindStatus.fromJson(row),
+    ];
+  }
+
+  @override
+  Future<void> setAssistantTaskKindSwitch({
+    required String kind,
+    required bool disabled,
+    required String reason,
+  }) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'set_assistant_task_kind_switch',
+          params: {
+            'task_kind': kind,
+            'disable': disabled,
+            'change_reason': reason,
+          },
+        );
+  }
 
   @override
   Future<Map<String, dynamic>> loadPersonalCalendarConflicts() async {
