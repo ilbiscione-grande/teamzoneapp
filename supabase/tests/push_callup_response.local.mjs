@@ -77,7 +77,8 @@ try {
   grant usage on schema vault to service_role;`);
   const strip = sql => sql.replace(/notify pgrst[^;]*;/, '').replace(/create extension if not exists pg_(cron|net);/g, '');
   await db.exec(strip(read('supabase/migrations/20261023090000_push_delivery.sql')));
-  for (const name of ['20261024090000_push_callup_response', '20261025090000_push_message_reply', '20261028090000_push_token_fixes']) {
+  for (const name of ['20261024090000_push_callup_response', '20261025090000_push_message_reply', '20261028090000_push_token_fixes',
+    '20261029090000_push_token_two_days']) {
     await db.exec(strip(read(`supabase/migrations/${name}.sql`)));
   }
   await db.exec('begin');
@@ -99,6 +100,8 @@ try {
   assert.equal(sent.response.callup_id, open);
   assert.match(sent.response.token, /^[0-9a-f]{64}$/);
   assert.equal(sent.language, 'sv');
+  assert.equal(await one("select bool_and(expires_at <= now() + interval '2 days') from internal.push_response_tokens"), true,
+    'valid for at most two days');
   assert.equal(await one('select count(*)::int from internal.push_response_tokens'), 1);
   assert.equal(await one("select count(*)::int from internal.push_response_tokens where encode(token_hash,'hex')=$1", [sent.response.token]), 0,
     'the raw token is not stored');

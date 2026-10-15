@@ -38,8 +38,9 @@ needs a reason), and Android asks for unlock before an answer is sent.
 1. For a new callup, a late callup or a reminder that still waits for an
    answer, `push_message_for_outbox` (migration `20261024090000`) issues a
    single-use response token. Only its SHA-256 hash is stored
-   (`internal.push_response_tokens`). It expires with the callup (at most 14
-   days) and can only answer "accepted" for that callup and person. A
+   (`internal.push_response_tokens`). It is valid for two days (or until the
+   callup expires, if sooner) and can only answer "accepted" for that callup
+   and person. A
    guardian's token answers for the called child.
 2. On Android the worker sends such a push as a data message. The app draws
    it itself (`packages/teamzone_notifications`, also when it is closed,
@@ -56,16 +57,19 @@ needs a reason), and Android asks for unlock before an answer is sent.
      callup).
    - **Kan inte…:** opens the event's participants with the reason dialog
      (`?tab=participants&decline=<callup>`).
-3. A second tap, or a retry after a lost reply, answers nothing new. Neither
+3. Tokens are issued only to recipients with a device. Two days is enough:
+   a notification nobody has answered by then has most likely been swiped
+   away (decided 2026-10-15, migration `20261029090000`).
+4. A second tap, or a retry after a lost reply, answers nothing new. Neither
    the token nor the payload is logged.
-4. iOS still gets the plain notification without buttons, and no token.
+5. iOS still gets the plain notification without buttons, and no token.
 
 ## Replying to a message from the notification (Android)
 
 Like answering a callup (migration `20261025090000`): the push for a
 message in an active thread one can write in (not announcements) carries a
 single-use reply token, hash only, valid for one reply in that thread for
-seven days. The app draws it with **Svara** and a text field; Android 12+
+two days. The app draws it with **Svara** and a text field; Android 12+
 asks for unlock before it is sent. `push-message-reply` (no JWT) passes the
 token and text to `internal.reply_from_push`, which sends it as the
 recipient through `internal.send_message_for_actor` (access, 1–4000

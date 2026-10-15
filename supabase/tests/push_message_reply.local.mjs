@@ -67,7 +67,7 @@ try {
   grant usage on schema vault to service_role;`);
   const strip = sql => sql.replace(/notify pgrst[^;]*;/, '').replace(/create extension if not exists pg_(cron|net);/g, '');
   for (const name of ['20261023090000_push_delivery', '20261024090000_push_callup_response', '20261025090000_push_message_reply',
-    '20261028090000_push_token_fixes']) {
+    '20261028090000_push_token_fixes', '20261029090000_push_token_two_days']) {
     await db.exec(strip(read(`supabase/migrations/${name}.sql`)));
   }
   await db.exec('begin');
@@ -85,6 +85,8 @@ try {
   assert.deepEqual([message.title, message.body], ['Nytt meddelande', 'P2012']);
   assert.equal(message.reply.thread_id, thread);
   assert.match(message.reply.token, /^[0-9a-f]{64}$/);
+  assert.equal(await one("select bool_and(expires_at <= now() + interval '2 days') from internal.push_reply_tokens"), true,
+    'valid for two days');
   assert.equal(message.response, null);
   assert.equal(await one("select count(*)::int from internal.push_reply_tokens where encode(token_hash,'hex')=$1", [message.reply.token]), 0,
     'the raw token is not stored');

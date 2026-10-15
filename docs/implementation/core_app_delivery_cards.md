@@ -1,6 +1,6 @@
 # TeamZone grundapp – implementerbara arbetskort
 
-**Status:** AKTIVT ARBETSDOKUMENT (senast uppdaterat 2026-10-01)  
+**Status:** AKTIVT ARBETSDOKUMENT (senast uppdaterat 2026-10-15)  
 **Upprättat:** 2026-08-23  
 **Källa:** fastställd paritetsmatris och fastställd arbetsplan  
 **Livegräns:** inga Supabase-liveändringar utan separat uttryckligt godkännande
@@ -50,7 +50,7 @@ Ett kort får inte markeras `[x]` enbart för att en teknisk grund redan finns. 
 | 7 | Min assistent-grund | AC-01–AC-08 | HOME-04 och stabila domänsignaler |
 | 8 | Senare funktioner | LATER-01–LATER-04 | Separat prioriteringsbeslut |
 | 9 | Samlad releasegrind | REL-01–REL-03 | Våg 0–6 klara |
-| 10 | Utbyggnad efter grundappen | TEAM-09–TEAM-16, CAL-12–CAL-14, MSG-09, PROF-01–PROF-04, AUTH-08, PUB-10–PUB-13, SET-01 | Produktägarens prioriteringar efter 2026-09-26 |
+| 10 | Utbyggnad efter grundappen | TEAM-09–TEAM-16, CAL-12–CAL-14, MSG-09, MSG-10, PROF-01–PROF-04, AUTH-08, PUB-10–PUB-13, SET-01 | Produktägarens prioriteringar efter 2026-09-26 |
 
 Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående verifiering kan ske parallellt när det inte skapar konkurrerande kontrakt.
 
@@ -486,6 +486,8 @@ Riktade CAL-01/CAL-03/CAL-06/CAL-11-tester är gröna.
 **Guardian verifierad 2026-09-20:** `Testspelare S04` kunde avböjas via guardian acting-as; raden märktes `Svara som vårdnadshavare` och visade sparad orsak. En separat direkt kallelse märktes `Din kallelse`, så relationstypen är synlig i gränssnittet.
 
 **Återstår:** push-actiontoken. Extern pushleverantör ingår inte i denna grind.
+
+**Uppdatering 2026-10-15:** svar på kallelse direkt i notisen är levererat i MSG-10 (Android, FCM) och fysiskt verifierat. Avvikelse från punkten ovan, beslutad av produktägaren 2026-10-15: notisens svarstoken gäller i två dygn (eller tills kallelsen löper ut, om det sker tidigare), inte 15 minuter, eftersom den skickas med notisen och användaren kan svara senare. En notis som inte besvarats inom två dygn har sannolikt svepts bort. Den är fortfarande bunden till en kallelse och mottagare, får bara svara "Kommer", sparas bara som hash och kan användas en gång.
 
 ### CAL-08 – Närvaro
 
@@ -1237,6 +1239,21 @@ Beskrivning: [`event-preparations-v1.md`](event-preparations-v1.md).
 - [x] Supportadministratörer når supportkön från ett kort i Inbox med antal nya
   användarmeddelanden, i stället för från sidomenyn (webb och desktop, 2026-10-05).
 
+### MSG-10 – Pushleverans, svar från notisen och profilbilder i inkorgen
+
+**Status:** `[~]` – testprojektet och fysisk Android-grind för svar verifierade; iOS och fysisk grind för profilbilder återstår
+
+- [x] Pushleverans via FCM: krypterade enhetstoken, låsskärmstext med bara typ, lag och tid (aldrig namn, titlar eller meddelandetext), minutworker med avstängningsbrytare och token som följer enheten mellan konton (migration `20261023090000`, `docs/operations/push_notifications.md`).
+- [x] Kallelse och påminnelse har **Kommer** och **Kan inte…** i notisen på Android. Kommer kräver upplåsning (Android 12+) och svarar via `push-callup-response` med appens egna svarsregler, även för vårdnadshavare. Kan inte… öppnar deltagarfliken med frågan om anledning (`20261024090000`). Fysiskt verifierat 2026-10-14.
+- [x] Meddelanden har **Svara** med textfält i notisen på Android, utom i utskick och stängda trådar. Svaret skickas som mottagaren via `push-message-reply` och notisen visar aldrig texten (`20261025090000`). Fysiskt verifierat 2026-10-14.
+- [x] Svarstoken sparas bara som hash, gäller en kallelse eller tråd och en mottagare, kan användas en gång, gäller i två dygn och utfärdas bara när mottagaren har en enhet (`20261028090000`, `20261029090000`).
+- [x] Bekräftelsen i notisen försvinner efter fem sekunder; fel ligger kvar och öppnar appen vid tryck.
+- [x] En notis från ett lag som inte är valt i inkorgen öppnar sin tråd; inkorgens urval återställs om tråden inte finns.
+- [x] Inkorgen visar vem en tråd är med: en bild i direkttrådar, upp till tre i grupper eller två och "+N". Grupptrådar har bild vid varje avsändare, direkttrådar har motpartens bild i rubriken (`20261026090000`, `20261027090000`). Godkänt på webb av produktägaren 2026-10-14.
+- [x] Kodgranskning 2026-10-15 med tio rättade fynd, bland annat svar på Android 11 och äldre.
+- [ ] Fysisk Android-grind för bekräftelsen som försvinner, profilbilderna och notiser från andra lag.
+- [ ] iOS: APNs-nyckel, iOS-appen i Firebase och notiskategorier med åtgärder.
+
 ### PROF-01 – Egen profil, kontaktuppgifter och profilbild
 
 **Status:** `[~]` – hosted och automatiskt verifierad; kameran fysiskt overifierad
@@ -1361,7 +1378,7 @@ Grundappens ursprungliga ordning:
 22. [x] **CAL-04** hosted och fysiskt verifierad inklusive delete, cancel, archive, arkivlista, skrivskydd och återställning med bevarad historik.
 23. [x] **CAL-05** responsiv EventDetails och leader/player/guardian/delad `Kan se` fysiskt verifierade.
 24. [x] **CAL-06** hosted och fysiskt verifierad för alla urvalsmetoder, tomt manuellt utkast, automatisk låsning/utskick, sena kallelser och korrekt återkallning.
-25. [~] **CAL-07** player, guardian acting-as, reminder och privat avböjandeorsak är hosted/fysiskt verifierade; push-actiontoken återstår.
+25. [x] **CAL-07** player, guardian acting-as, reminder och privat avböjandeorsak är hosted/fysiskt verifierade; svar från notisen levererat i MSG-10 med två dygns tokenlivslängd i stället för 15 minuter, beslutat av produktägaren 2026-10-15 (se CAL-07).
 26. [x] **CAL-08** hosted och fysiskt verifierad för batch, minuter, korrigering och smal mobil layout.
 27. [x] **CAL-09** responsiva EventDetails-gränser och frånvaro av falskt aktiva uppskjutna funktioner är verifierade.
 28. [x] **CAL-10** hosted och fysisk leader/player/guardian-grind verifierade; privat standardläge återställt.
@@ -1372,8 +1389,8 @@ Grundappens ursprungliga ordning:
 33. [~] **PUB-04** lokalt genomförd inklusive publicerings-UX och fail-closed mediaworkergräns; provideraktivering/upload-UX, Storage-runtime, fysisk fixture och separat livegodkännande återstår.
 34. [~] **PUB-05** lokalt genomförd inklusive domänsjälvbetjäning; entitlement, providerworker och separat DNS/TLS-/driftgodkännande återstår.
 35. [~] **PUB-06** lokalt genomförd; hosted synthetic/cache-SLA, workerschemaläggning och separat driftgodkännande återstår.
-36. [~] **MSG-01** lokalt genomförd och Flutter-verifierad; fysisk tvårolls-/reconnectgrind återstår.
-37. [~] **MSG-02** lokalt genomförd och Flutter-verifierad; fysisk flerrollsgrind återstår.
+36. [x] **MSG-01** hosted och fysiskt verifierad inklusive tvåkontoflöde, join/leave samt capability revoke/restore.
+37. [x] **MSG-02** hosted och fysiskt webbverifierad för relationsstyrd direkt-/gruppkontakt och hela cross-club-flödet.
 38. [x] **MSG-03** hostad och fysiskt verifierad för ledare → spelare/vårdnadshavare, skrivskydd, uppmärksamhet, enskild läsning och Markera alla → arkiv.
 39. [~] **MSG-04** lokalt genomförd och Flutter-verifierad; fysisk pagination-/retry-/reconnectgrind återstår.
 40. [~] **MSG-05** lokalt genomförd och Flutter-verifierad; provider-/Deno-grind och fysisk tvåenhetspreferencegrind återstår.
@@ -1398,6 +1415,7 @@ Grundappens ursprungliga ordning:
 
 | Datum | Ändring | Status |
 |---|---|---|
+| 2026-10-13–15 | **Push och svar från notisen (MSG-10).** FCM-leverans med typ + aktivitet på låsskärmen. Android: Kommer/Kan inte… på kallelser och Svara på meddelanden, med upplåsning och engångstoken som bara sparas som hash; bekräftelsen försvinner efter fem sekunder. Inkorgen visar profilbilder per tråd och avsändare, och en notis från ett annat lag öppnar sin tråd. Kodgranskning med tio rättade fynd. Migrationer `20261023090000`–`20261029090000`; svarstoken gäller i två dygn. Arbetsplanen synkades mot korten. | MSG-10 `[~]`: Android-svar fysiskt verifierade; profilbilder godkända på webb; iOS och fysisk grind för profilbilder kvar |
 | 2026-10-07–08 | **Publik administration, nyckeltal och Hem som följer dagen.** Webbadmin på `/<klubb>/admin` och toppbild i nyheter. Mål/nyckeltal i Förberedelser, fliken Uppföljning och live-räknare i Matchläge (matchanalys reserveras för matchmodulen). Eventdetaljer har resultat under titeln och åtgärder i en ⋮-meny. Hem har ett kort som följer dagen (pågår nu, senare idag, imorgon, nästa) med Resten av idag och Kommande för alla roller, och kallelser besvaras direkt med tydliga lägen och anledning vid avböjt. Event visas för sin målgrupp. Nya kallelser syns i assistenten först efter sex timmar (utom inom 18 timmar före start), frånvaro räknas bara för kallade, spelare/vårdnadshavare kan svara styrelse och kansli, assistenten öppnas i helskärm på mobil och appen är låst i porträtt. Demoklubben IF med inloggningar, aktiviteter, meddelanden och resultat. Migrationerna `20261007090000`–`20261012120000` är körda i testprojektet; se `core_app_iteration_2026-10-07_10-08.md`. | PUB-*, CAL-05, CAL-11, HOME-*, MSG-*, AC-02 `[~]` |
 | 2026-10-05 | **Teamzone 2027-listan och smalare sidomeny.** Supportkön ligger i Inbox och publika sidor och nyhetsredaktion i en egen inställningsflik. Arkiveringskrasch, blinkande Hem (45-sekunderspoll), klubbverifieringens stängning och borttagning av felbokade event utan skickade kallelser är åtgärdade. Kalendern har centrerad datumrad, svep, grannmånadernas event, datumintervall som följer valt datum, dagvy från 15:00 och appbar som bara färgas vid helsidescroll. Ljust/mörkt/system-läge, sidanpassad genvägsmeny och påminnelse som släcker kallelsevarningen i sex timmar. Migrationerna `20261005090000` och `20261005140000` är körda i testprojektet; se `core_app_iteration_2026-10-05.md`. | CAL-04, CAL-14, MSG-09, SET-01, FND-03, AC-02 `[~]` |
 | 2026-10-04 | **Supportdialogen flyttad till Inbox.** Egna ärenden har oläst-räknare och privat tvåvägsdialog. Både användare och support kan bifoga bilder och dokument via privat Storage och kortlivade signerade länkar. | MSG-09, AUTH-06 `[~]` |
