@@ -618,7 +618,7 @@ kan exponeras genom klient, API, cache eller sökmotor.
 
 ### Steg 8 – Inbox och notification center
 
-Status 2026-10-15: MSG-01–MSG-03 `[x]`; MSG-04–MSG-09 `[~]`; MSG-10 (pushleverans, svar från notisen, profilbilder i inkorgen) `[~]` – svar från notisen fysiskt verifierade på Android; iOS och fysisk grind för profilbilderna återstår.
+Status 2026-10-15: MSG-01–MSG-03 `[x]`; MSG-04–MSG-09 `[~]`; MSG-10 (pushleverans, svar från notisen, profilbilder i inkorgen) `[~]` – Android helt fysiskt verifierad 2026-10-15; iOS återstår.
 
 #### 8A. Trådmodell och inboxlista
 
