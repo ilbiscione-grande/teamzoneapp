@@ -357,10 +357,10 @@ Status 2026-10-15: AC-01–AC-08 `[~]` – lokalt implementerade; generativ AI a
   datakällor, missing/stale-beteende och målroll för var och en av de fem signalerna.
 - [~] Implementera signal-fixtures för positivt, negativt, stale, missing,
   cross-context och nekad capability.
-- [ ] (Beslutat 2026-10-15, se `min_assistent_concept.md` avsnitt 9; implementation återstår.)
+- [~] (Beslutat 2026-10-15, se `min_assistent_concept.md` avsnitt 9; Påminn… med granskning levererad, AC-08.)
   Implementera action preview och uttrycklig bekräftelse genom vanliga
   domänkommandon; ingen autonom mutation.
-- [ ] (Beslutat 2026-10-15: central avstängning per uppgiftstyp för TeamZone-support; implementation återstår.)
+- [x] (Central avstängning per uppgiftstyp för TeamZone-support levererad 2026-10-15, AC-08; generativ AI har separat stängd grind.)
   Skapa kill switch per signal och separat för framtida generativ formulering.
 - [~] Håll generativ AI blockerad tills leverantör, region, dataminimering,
   retention, minderårigdata, utvärdering och incidentflöde har godkänts separat.

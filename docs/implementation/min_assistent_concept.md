@@ -109,7 +109,7 @@ Första tokens är `assistant.area.blue`, `.green`, `.purple`, `.teal`, `.orange
 - [x] Anpassa innehåll efter leader, player, guardian och klubbfunktionär utan cross-context-läckage.
 - [x] Bevara mobil-FAB och integrerad tablet/desktop-panel med samma data och rättigheter.
 - [x] Visa aktiv klubb/lag/person och acting-as där det behövs före handling.
-- [~] Lägg till transparent feedback, dismiss/restore och varför-posten-visas per område; kortkontrakt, förklaring och AC-03-livscykel finns, fysisk skarp postverifiering återstår.
+- [~] Lägg till transparent feedback, dismiss/restore och varför-posten-visas per område; kortkontrakt, förklaring och AC-03-livscykel finns, Inte till hjälp med fasta skäl levererat 2026-10-15, fysisk skarp postverifiering återstår.
 
 ### Fas E – aktivering
 
