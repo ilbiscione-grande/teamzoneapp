@@ -40,6 +40,7 @@ try {
   create table core.thread_scopes(thread_id uuid,club_id uuid,team_id uuid);
   insert into core.thread_scopes values('${thread}','${club}','${team}');
   create table core.message_threads(id uuid primary key,thread_type text,state text);
+  create table core.messages(thread_id uuid,sender_profile_id uuid,created_at timestamptz);
   insert into core.message_threads values('${thread}','team','active'),('${announcement}','announcement','active'),
    ('${closed}','team','closed');
   create table core.notification_endpoints(id uuid primary key default gen_random_uuid(),profile_id uuid not null,
@@ -65,10 +66,15 @@ try {
   grant usage on schema api, internal, core, extensions to authenticated, service_role;
   grant usage on schema vault to service_role;`);
   const strip = sql => sql.replace(/notify pgrst[^;]*;/, '').replace(/create extension if not exists pg_(cron|net);/g, '');
-  for (const name of ['20261023090000_push_delivery', '20261024090000_push_callup_response', '20261025090000_push_message_reply']) {
+  for (const name of ['20261023090000_push_delivery', '20261024090000_push_callup_response', '20261025090000_push_message_reply',
+    '20261028090000_push_token_fixes']) {
     await db.exec(strip(read(`supabase/migrations/${name}.sql`)));
   }
   await db.exec('begin');
+  // Anna has a phone; reply tokens are only for someone with a device.
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [anna]);
+  await asRole('authenticated', () => db.query('select api.register_push_endpoint($1,$2)', ['android', 'fcm-token-anna-device-0123456789:APA91b_x']));
+  await db.query("select set_config('request.jwt.claim.sub','',false)");
 
   const push = async target => service('select api.push_message_for_outbox($1)', [await one(
     `insert into internal.notification_outbox(event_type,recipient_profile_id,payload_ref) values('message.message.sent.v1',$1,$2) returning id`,
@@ -82,6 +88,16 @@ try {
   assert.equal(message.response, null);
   assert.equal(await one("select count(*)::int from internal.push_reply_tokens where encode(token_hash,'hex')=$1", [message.reply.token]), 0,
     'the raw token is not stored');
+
+  // 1b. No token for a recipient without a device.
+  const noDevice = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  await db.query("insert into core.profiles values($1,'sv','Europe/Stockholm')", [noDevice]);
+  const tokensBefore = await one('select count(*)::int from internal.push_reply_tokens');
+  const silent = await service('select api.push_message_for_outbox($1)', [await one(
+    `insert into internal.notification_outbox(event_type,recipient_profile_id,payload_ref) values('message.message.sent.v1',$1,$2) returning id`,
+    [noDevice, { thread_id: thread, message_id: '80000000-0000-4000-8000-000000000009' }])]);
+  assert.equal(silent.reply, null);
+  assert.equal(await one('select count(*)::int from internal.push_reply_tokens'), tokensBefore);
 
   // 2. No reply button for announcements or closed threads.
   assert.equal((await push(announcement)).reply, null);

@@ -187,9 +187,11 @@ class MessagePush {
 
 int _stableId(String value) {
   // FNV-1a: String.hashCode is not guaranteed to be stable across isolates.
+  // 29 bits, so the plugin's request codes (id * 4 + n) never overflow and
+  // two notifications never share an action intent.
   var hash = 0x811c9dc5;
   for (final unit in value.codeUnits) {
-    hash = ((hash ^ unit) * 0x01000193) & 0x7fffffff;
+    hash = ((hash ^ unit) * 0x01000193) & 0x1fffffff;
   }
   return hash;
 }
@@ -206,12 +208,45 @@ String _randomUuid() {
       '${hex.substring(16, 20)}-${hex.substring(20)}';
 }
 
+/// The channel the app's notifications use (idempotent; also needed in the
+/// background isolate, which may run before the app ever opened).
+Future<void> _ensureChannel() {
+  final english = PlatformDispatcher.instance.locale.languageCode == 'en';
+  return TeamzoneNotifications.createChannel(
+    name: english ? 'Callups and messages' : 'Kallelser och meddelanden',
+    description: english
+        ? 'Callups, reminders and new messages'
+        : 'Kallelser, påminnelser och nya meddelanden',
+  );
+}
+
 /// Shows a push on Android: an answerable callup or a message one can reply
 /// to with its buttons; while the app is open (FCM shows nothing then) also a
 /// plain notification. In the background FCM shows plain notifications
-/// itself.
+/// itself. If the buttons cannot be drawn, the push still appears plain.
 Future<void> showPush(RemoteMessage message, {required bool foreground}) async {
   if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+  try {
+    await _showPush(message, foreground: foreground);
+  } catch (error) {
+    AppErrors.caught('push_services.showPush', error);
+    final title = message.data['title'] ?? message.notification?.title;
+    final body = message.data['body'] ?? message.notification?.body;
+    if (title is String && body is String) {
+      await TeamzoneNotifications.showPlain(
+        id: _stableId(message.messageId ?? title),
+        title: title,
+        body: body,
+        route: PushRoutes.safe(message.data['route']) ?? '/inbox',
+      );
+    }
+  }
+}
+
+Future<void> _showPush(
+  RemoteMessage message, {
+  required bool foreground,
+}) async {
   const environment = AppEnvironment.fromDefines();
   final callup = CallupPush.parse(message.data);
   if (callup != null && environment.supabaseUrl.isNotEmpty) {
@@ -265,6 +300,7 @@ Future<void> showPush(RemoteMessage message, {required bool foreground}) async {
 Future<void> pushBackgroundHandler(RemoteMessage message) async {
   try {
     if (Firebase.apps.isEmpty) await Firebase.initializeApp();
+    await _ensureChannel();
     await showPush(message, foreground: false);
   } catch (error) {
     AppErrors.caught('push_services.background', error);
@@ -380,13 +416,7 @@ class FirebasePushServices implements PushServices {
         defaultTargetPlatform != TargetPlatform.android) {
       return;
     }
-    final english = PlatformDispatcher.instance.locale.languageCode == 'en';
-    await TeamzoneNotifications.createChannel(
-      name: english ? 'Callups and messages' : 'Kallelser och meddelanden',
-      description: english
-          ? 'Callups, reminders and new messages'
-          : 'Kallelser, påminnelser och nya meddelanden',
-    );
+    await _ensureChannel();
     _foreground = FirebaseMessaging.onMessage.listen(
       (message) => unawaited(
         showPush(message, foreground: true).catchError(

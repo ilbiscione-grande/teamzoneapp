@@ -47,9 +47,14 @@ class _InboxSurfaceState extends State<_InboxSurface>
   bool _initialThreadOpened = false;
   // Profile pictures per thread id; rows without one show their icon.
   Map<String, ThreadAvatars> _avatars = const {};
-  final Set<String> _avatarsRequested = {};
-  // The deep-linked thread the selection was widened for (once per thread).
+  // When each thread's pictures were fetched; signed URLs last an hour, so
+  // they are fetched again after [_avatarMaxAge].
+  final Map<String, DateTime> _avatarsRequested = {};
+  static const _avatarMaxAge = Duration(minutes: 45);
+  // The deep-linked thread the selection was widened for (once per thread),
+  // and the selection to return to if it still isn't found.
   String? _widenedForThreadId;
+  Set<String>? _selectionBeforeWiden;
   // The thread id currently showing in _ThreadDialog (or being opened for
   // it), separate from _initialThreadOpened: this dedupes against the
   // dialog we already have open, independent of whether widget's route
@@ -638,18 +643,24 @@ class _InboxSurfaceState extends State<_InboxSurface>
   /// Profile pictures for threads not asked for yet. Optional: on failure
   /// the rows keep their icons.
   Future<void> _loadAvatars(List<MessageThreadSummary> threads) async {
+    final now = DateTime.now();
     final ids = [
       for (final thread in threads)
-        if (_avatarsRequested.add(thread.id)) thread.id,
+        if (_avatarsRequested[thread.id] case final at
+            when at == null || now.difference(at) > _avatarMaxAge)
+          thread.id,
     ];
     if (ids.isEmpty) return;
+    for (final id in ids) {
+      _avatarsRequested[id] = now;
+    }
     try {
       final loaded = await widget.messaging.listThreadAvatars(ids);
       if (mounted && loaded.isNotEmpty) {
         setState(() => _avatars = {..._avatars, ...loaded});
       }
     } catch (error) {
-      _avatarsRequested.removeAll(ids);
+      ids.forEach(_avatarsRequested.remove);
       AppErrors.caught('inbox_surface._loadAvatars', error);
     }
   }
@@ -670,10 +681,21 @@ class _InboxSurfaceState extends State<_InboxSurface>
       final matches = threads.where((thread) => thread.id == target);
       if (matches.isNotEmpty) {
         _initialThreadOpened = true;
+        _selectionBeforeWiden = null;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) unawaited(_openThread(matches.first));
         });
-      } else if (_widenedForThreadId != target) {
+      } else if (_widenedForThreadId == target) {
+        // Not among every connection either (removed or no access): put the
+        // user's own selection back.
+        final previous = _selectionBeforeWiden;
+        _selectionBeforeWiden = null;
+        if (previous != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _setSelectedContextIds(previous);
+          });
+        }
+      } else {
         // A notification can come from a team that isn't selected here:
         // widen to every connection once, and the thread opens when they
         // have loaded.
@@ -683,6 +705,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
         };
         if (!setEquals(everyContext, _selectedContextIds)) {
           _widenedForThreadId = target;
+          _selectionBeforeWiden = Set.of(_selectedContextIds);
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) _setSelectedContextIds(everyContext);
           });
@@ -4194,6 +4217,7 @@ class _ThreadAvatarStack extends StatelessWidget {
           foregroundImage: person.imageUrl == null
               ? null
               : NetworkImage(person.imageUrl!),
+          onForegroundImageError: person.imageUrl == null ? null : (_, _) {},
           child: Text(
             _avatarInitials(person.name),
             style: TextStyle(fontSize: 11, color: colors.onSecondaryContainer),
@@ -4220,6 +4244,7 @@ class _ThreadAvatarStack extends StatelessWidget {
         foregroundImage: shown.first.imageUrl == null
             ? null
             : NetworkImage(shown.first.imageUrl!),
+        onForegroundImageError: shown.first.imageUrl == null ? null : (_, _) {},
         child: Text(
           _avatarInitials(shown.first.name),
           style: TextStyle(color: colors.onSecondaryContainer),
@@ -4280,6 +4305,7 @@ class _SenderAvatar extends StatelessWidget {
       radius: radius,
       backgroundColor: colors.secondaryContainer,
       foregroundImage: imageUrl == null ? null : NetworkImage(imageUrl!),
+      onForegroundImageError: imageUrl == null ? null : (_, _) {},
       child: Text(
         _avatarInitials(name),
         style: TextStyle(

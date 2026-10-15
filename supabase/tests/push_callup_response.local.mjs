@@ -1,6 +1,6 @@
-// Answering a callup from its notification: the real push migrations in
-// isolated Postgres, with the app's callup answer stubbed (its rules are
-// tested with the callup migrations).
+// Answering a callup from its notification: the real push migrations
+// (through 20261028090000) in isolated Postgres, with the app's callup answer
+// stubbed (its rules are tested with the callup migrations).
 // node supabase/tests/push_callup_response.local.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -46,7 +46,13 @@ try {
    state text default 'pending',created_at timestamptz default now());
   create function internal.notification_deep_link(outbox internal.notification_outbox) returns text language sql stable as $$
    select '/calendar/event/'||(outbox.payload_ref->>'event_id')$$;
-  create table core.callups(id uuid primary key,event_id uuid,club_person_id uuid,state text,expires_at timestamptz,revision bigint not null default 1);
+  create table core.callups(id uuid primary key,event_id uuid,club_person_id uuid,state text,expires_at timestamptz,revision bigint not null default 1,
+   club_id uuid not null default '10000000-0000-4000-8000-000000000001');
+  create table core.person_account_links(club_id uuid,club_person_id uuid,profile_id uuid,state text);
+  insert into core.person_account_links values('10000000-0000-4000-8000-000000000001','${annaPerson}','${anna}','active'),
+   ('10000000-0000-4000-8000-000000000001','${parentPerson}','${parent}','active');
+  create table core.message_threads(id uuid primary key,thread_type text,state text);
+  create table core.messages(thread_id uuid,sender_profile_id uuid,created_at timestamptz);
   insert into core.callups values('${open}','${event}','${annaPerson}','pending',now()+interval '3 days',4),
    ('${answered}','${event}','${annaPerson}','accepted',now()+interval '3 days',2),
    ('${expired}','${event}','${annaPerson}','pending',now()-interval '1 hour',1);
@@ -71,8 +77,17 @@ try {
   grant usage on schema vault to service_role;`);
   const strip = sql => sql.replace(/notify pgrst[^;]*;/, '').replace(/create extension if not exists pg_(cron|net);/g, '');
   await db.exec(strip(read('supabase/migrations/20261023090000_push_delivery.sql')));
-  await db.exec(strip(read('supabase/migrations/20261024090000_push_callup_response.sql')));
+  for (const name of ['20261024090000_push_callup_response', '20261025090000_push_message_reply', '20261028090000_push_token_fixes']) {
+    await db.exec(strip(read(`supabase/migrations/${name}.sql`)));
+  }
   await db.exec('begin');
+
+  // Anna and her parent each have a phone; tokens are only for someone with a device.
+  for (const [who, device] of [[anna, 'fcm-token-anna-device-0123456789:APA91b_x'], [parent, 'fcm-token-parent-device-0123456789:APA91b_y']]) {
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)", [who]);
+    await asRole('authenticated', () => db.query('select api.register_push_endpoint($1,$2)', ['android', device]));
+  }
+  await db.query("select set_config('request.jwt.claim.sub','',false)");
 
   const outbox = (type, callup, profile = anna, person = annaPerson) => one(
     `insert into internal.notification_outbox(event_type,recipient_profile_id,recipient_person_id,payload_ref)
@@ -98,6 +113,17 @@ try {
   // 3. A guardian's notification answers for the called child.
   const guardian = await push(await outbox('callup.callup.sent.v1', open, parent, parentPerson));
   assert.equal(await one('select acting_as_person_id from internal.push_response_tokens where recipient_profile_id=$1', [parent]), annaPerson);
+
+  // 3b. Anna's own callup with no recipient_person_id still answers as herself
+  // (decided by her account link), and no token without a device.
+  const ownWithoutPerson = await push(await outbox('callup.callup.sent.v1', open, anna, null));
+  assert.equal(await one("select acting_as_person_id from internal.push_response_tokens where token_hash=extensions.digest($1,'sha256')",
+    [ownWithoutPerson.response.token]), null);
+  const noDevice = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  await db.query("insert into core.profiles values($1,'sv','Europe/Stockholm')", [noDevice]);
+  const before = await one('select count(*)::int from internal.push_response_tokens');
+  assert.equal((await push(await outbox('callup.callup.sent.v1', open, noDevice, null))).response, null);
+  assert.equal(await one('select count(*)::int from internal.push_response_tokens'), before);
 
   // 4. "Kommer" answers as the recipient, with the current revision, once.
   await db.query("select set_config('request.jwt.claim.sub','',false)");

@@ -120,14 +120,20 @@ final class CallupNotifications {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) action.setAuthenticationRequired(true);
   }
 
-  /** The broadcast to [PushActionReceiver]; mutable when it carries typed text. */
+  /**
+   * The broadcast to [PushActionReceiver]. Typed text needs a mutable intent
+   * (the system adds the RemoteInput result): FLAG_MUTABLE on Android 12+, no
+   * immutability flag before that.
+   */
   private static PendingIntent actionIntent(Context context, int requestCode, Bundle values,
       boolean takesText) {
     Intent intent = new Intent(context, PushActionReceiver.class).putExtras(values);
     int flags = PendingIntent.FLAG_UPDATE_CURRENT;
-    flags |= takesText && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-        ? PendingIntent.FLAG_MUTABLE
-        : PendingIntent.FLAG_IMMUTABLE;
+    if (!takesText) {
+      flags |= PendingIntent.FLAG_IMMUTABLE;
+    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      flags |= PendingIntent.FLAG_MUTABLE;
+    }
     return PendingIntent.getBroadcast(context, requestCode, intent, flags);
   }
 

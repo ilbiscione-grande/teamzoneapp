@@ -164,6 +164,23 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'a notification for a thread found nowhere restores the selection',
+    (tester) async {
+      final messaging = _Messaging(onlyInScope: true);
+      await _openInbox(
+        tester,
+        messaging,
+        push: const _Push('/inbox?thread=49999999-0000-4000-8000-000000000009'),
+        tapInbox: false,
+      );
+      expect(messaging.scopes.first, ['context-a']);
+      expect(messaging.scopes, contains(contains('context-b')));
+      expect(messaging.scopes.last, ['context-a']);
+      expect(messaging.openedThreads, isEmpty);
+    },
+  );
+
   testWidgets('clubs collapse to their name; the active club starts open', (
     tester,
   ) async {

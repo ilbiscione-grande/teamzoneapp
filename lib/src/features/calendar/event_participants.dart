@@ -26,6 +26,9 @@ class _ParticipantsTab extends StatefulWidget {
   State<_ParticipantsTab> createState() => _ParticipantsTabState();
 }
 
+/// Callups whose decline was already opened from a notification.
+final Set<String> _openedDeclineCallupIds = {};
+
 class _ParticipantsTabState extends State<_ParticipantsTab> {
   final _searchController = TextEditingController();
   final _reasonController = TextEditingController();
@@ -130,7 +133,10 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       _locked = true;
     }
     final declineCallupId = widget.initialDeclineCallupId;
-    if (declineCallupId != null) {
+    // Once per callup: the parameter stays in the route, and going back to
+    // (or rebuilding) the page must not ask again.
+    if (declineCallupId != null &&
+        _openedDeclineCallupIds.add(declineCallupId)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final person = _people
             .where((p) => p.callupId == declineCallupId && _canRespond(p))
