@@ -30,23 +30,28 @@ async function hmacSha256(key: Uint8Array, message: string): Promise<ArrayBuffer
 }
 
 export const replyDomain = "reply.teamzoneapp.se";
-const replyPattern = /^svar\+([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.([0-9a-f]{32})@reply\.teamzoneapp\.se$/;
+// The part before @ may be at most 64 characters (RFC 5321): "svar+", the
+// thread id without dashes (32) and an 80-bit signature (20) make 58.
+const replyPattern = /^svar\+([0-9a-f]{32})\.([0-9a-f]{20})@reply\.teamzoneapp\.se$/;
 
 async function threadSignature(secret: string, threadId: string): Promise<string> {
-  return hex(await hmacSha256(encoder.encode(secret), `contact-reply:${threadId}`)).slice(0, 32);
+  return hex(await hmacSha256(encoder.encode(secret), `contact-reply:${threadId}`)).slice(0, 20);
 }
 
 /** The Reply-To address for one thread (the submission's public id). */
 export async function replyAddress(secret: string, threadId: string): Promise<string> {
-  return `svar+${threadId}.${await threadSignature(secret, threadId)}@${replyDomain}`;
+  const id = threadId.toLowerCase();
+  return `svar+${id.replace(/-/g, "")}.${await threadSignature(secret, id)}@${replyDomain}`;
 }
 
 /** The thread a reply address belongs to, or null when it is not ours or forged. */
 export async function threadFromReplyAddress(secret: string, address: string): Promise<string | null> {
   const match = replyPattern.exec(address.trim().toLowerCase());
   if (!match) return null;
-  const expected = await threadSignature(secret, match[1]);
-  return constantTimeEqual(expected, match[2]) ? match[1] : null;
+  const compact = match[1];
+  const id = `${compact.slice(0, 8)}-${compact.slice(8, 12)}-${compact.slice(12, 16)}-${compact.slice(16, 20)}-${compact.slice(20)}`;
+  const expected = await threadSignature(secret, id);
+  return constantTimeEqual(expected, match[2]) ? id : null;
 }
 
 /** The bare address from "Name <a@b.se>" or "a@b.se". */
@@ -111,9 +116,15 @@ export function authenticated(authentication: unknown): boolean {
   return result("dmarc") === "pass";
 }
 
+// A mail app's own footer ("Skickat från min iPhone", "Hämta Outlook för
+// Android", "Sent from Mail for Windows"), only as the reply's last line.
+const appSignature =
+  /^\s*(skickat från|sänt från|skickad från|sent from|hämta|get)\s+(min[a-z]*\s+|my\s+)?(iphone|ipad|android|outlook|mail|e-post|gmail|yahoo|samsung|galaxy|huawei|xiaomi|oneplus|pixel|mobil|smartphone)\b(\s+[\wåäö-]+){0,4}[\s.!]*$/i;
+
 /**
  * The new text of a reply: plain text only, without the quoted earlier
- * mail ("Den ... skrev:", "On ... wrote:", "> ..." and forwarded headers).
+ * mail ("Den ... skrev:", "On ... wrote:", "> ..." and forwarded headers),
+ * a "-- " signature or a mail app's "Skickat från ..." footer.
  */
 export function replyText(text: unknown, html: unknown): string {
   let body = typeof text === "string" && text.trim()
@@ -129,10 +140,16 @@ export function replyText(text: unknown, html: unknown): string {
     // "On … wrote:", and Swedish "Den … skrev Namn <adress>:".
     (/^\s*(den|on|am|le)\s/i.test(line) && /\b(skrev|wrote|schrieb|a écrit)\b/i.test(line) && /:\s*$/.test(line)) ||
     /^\s*-{2,}\s*(original message|ursprungligt meddelande|vidarebefordrat meddelande|forwarded message)/i.test(line) ||
-    /^\s*(från|from)\s*:\s.+/i.test(line) && /@/.test(line)
+    /^\s*(från|from)\s*:\s.+/i.test(line) && /@/.test(line) ||
+    // The standard signature separator (RFC 3676): everything after it.
+    line === "-- "
   );
-  const kept = (cut >= 0 ? lines.slice(0, cut) : lines).join("\n");
-  return kept.replace(/\n{3,}/g, "\n\n").trim().slice(0, 5000);
+  const kept = cut >= 0 ? lines.slice(0, cut) : lines;
+  // The footer goes, but never the whole reply.
+  while (kept.length > 1 && (kept[kept.length - 1].trim() === "" || appSignature.test(kept[kept.length - 1]))) {
+    kept.pop();
+  }
+  return kept.join("\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, 5000);
 }
 
 /** The answer e-mail's text: the answer, a footer and the quoted original. */

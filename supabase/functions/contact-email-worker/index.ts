@@ -99,7 +99,14 @@ Deno.serve(async (request) => {
           const payload = await response.json().catch(() => ({}));
           providerId = typeof payload?.id === "string" ? payload.id : "sent";
         } else {
-          errorCode = `provider_http_${response.status}`;
+          // Resend's reason ("validation_error: … not verified"), with any
+          // address removed, so a failure can be diagnosed from the row.
+          const problem = await response.json().catch(() => ({})) as { name?: unknown; message?: unknown };
+          const reason = [problem.name, problem.message]
+            .filter((part): part is string => typeof part === "string")
+            .join(": ")
+            .replace(/[^\s<>"]+@[^\s<>"]+/g, "<adress>");
+          errorCode = `provider_http_${response.status}${reason ? ` ${reason}` : ""}`.slice(0, 80);
         }
       } catch {
         errorCode = "provider_network_error";

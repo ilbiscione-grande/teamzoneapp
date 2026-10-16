@@ -1340,7 +1340,7 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 
 ### PUB-14 – Meddelanden från klubbsajten når klubben och lagen
 
-**Status:** `[~]` – byggd och driftsatt 2026-10-17 (migration `20261101090000`, `contact-email-worker`, `contact-inbound`); hela flödet med svar via e-post är inte provat skarpt än
+**Status:** `[x]` – klar och provad skarpt 2026-10-17 (migration `20261101090000`, `contact-email-worker`, `contact-inbound`)
 
 **Bakgrund 2026-10-16:** kontaktformuläret på klubbsidan (PUB-04) sparar meddelanden i `internal.public_contact_submissions` med status *pending*, men ingenting levererar dem: ingen e-post, ingen vy i appen. De raderas efter 30 dagar. Avsändaren får ändå beskedet att meddelandet är skickat. Lagsidorna saknar formulär.
 
@@ -1354,7 +1354,7 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 - [x] Meddelanden som redan väntar levereras när leveransen är på plats.
 - [x] Skydd för två-vägs e-post (beslut 2026-10-16): Resends Svix-signatur krävs, svarsadressen är bunden till tråden med HMAC, DMARC måste passera, avsändaren måste vara trådens avsändare, automatiska mejl ignoreras, högst 20 svar och 20 inkommande per tråd och dygn, bara ren text och inga bilagor.
 - [x] Rensningen efter 30 dagar körs nu dagligen (den var aldrig schemalagd) och räknas från senaste aktivitet i tråden.
-- [ ] Skarp provning: meddelande via lagsidan, svar från appen och svar tillbaka via e-post.
+- [x] Skarp provning 2026-10-17: meddelande via lagsidan gav notis, svaret från appen kom fram som e-post och svaret via Gmail landade i tråden med ny notis. Svarsadressen kortades till 58 tecken före @ (Resend nekar fler än 64), och mejlprogrammens sidfötter ("Skickat från min iPhone") och `-- `-signaturer tas bort ur svaren.
 
 ### SET-01 – Klubbinställningar
 

@@ -15,11 +15,13 @@ const thread = "6f0e8a1c-2b3d-4e5f-8a9b-0c1d2e3f4a5b";
 
 Deno.test("a reply address belongs to one thread and cannot be forged", async () => {
   const address = await replyAddress(secret, thread);
-  assert(/^svar\+6f0e8a1c-2b3d-4e5f-8a9b-0c1d2e3f4a5b\.[0-9a-f]{32}@reply\.teamzoneapp\.se$/.test(address));
+  assert(/^svar\+6f0e8a1c2b3d4e5f8a9b0c1d2e3f4a5b\.[0-9a-f]{20}@reply\.teamzoneapp\.se$/.test(address));
+  // RFC 5321: at most 64 characters before @ (Resend refuses longer).
+  assert(address.split("@")[0].length <= 64);
   assertEquals(await threadFromReplyAddress(secret, address), thread);
   assertEquals(await threadFromReplyAddress(secret, address.toUpperCase()), thread);
   // Another thread id with this signature, a wrong secret or domain: refused.
-  const other = address.replace(thread, "6f0e8a1c-2b3d-4e5f-8a9b-0c1d2e3f4a5c");
+  const other = address.replace("0c1d2e3f4a5b", "0c1d2e3f4a5c");
   assertEquals(await threadFromReplyAddress(secret, other), null);
   assertEquals(await threadFromReplyAddress("another-secret-0123456789abcdef", address), null);
   assertEquals(await threadFromReplyAddress(secret, address.replace("reply.teamzoneapp.se", "evil.example")), null);
@@ -84,6 +86,17 @@ Deno.test("only the new text of a reply is kept", () => {
   assertEquals(replyText("", "<p>Hej <b>där</b></p><div>&amp; tack</div>"), "Hej där\n& tack");
   assertEquals(replyText("x".repeat(6000), null).length, 5000);
   assertEquals(replyText(null, null), "");
+});
+
+Deno.test("mail apps' footers and a signature are not part of the reply", () => {
+  assertEquals(replyText("Det låter perfekt för oss!\n\nSkickat från Outlook för Android", null), "Det låter perfekt för oss!");
+  assertEquals(replyText("Ja!\n\nSkickat från min iPhone\n\nDen 16 okt. 2026 skrev X <a@b.se>:\n> hej", null), "Ja!");
+  assertEquals(replyText("Ok\nSent from my Samsung Galaxy smartphone.", null), "Ok");
+  assertEquals(replyText("Ok\n\nHämta Outlook för iOS", null), "Ok");
+  assertEquals(replyText("Hej\n-- \nAnna Svensson\n070-123 45 67", null), "Hej");
+  // Only a footer on its own line goes, never the text itself.
+  assertEquals(replyText("Kort svar\nSkickat från min mobil, så kort svar: ja", null), "Kort svar\nSkickat från min mobil, så kort svar: ja");
+  assertEquals(replyText("Skickat från min iPhone", null), "Skickat från min iPhone");
 });
 
 Deno.test("the answer quotes the original message", () => {
