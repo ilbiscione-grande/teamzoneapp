@@ -414,6 +414,14 @@ verify_jwt = false
 [functions.push-message-reply]
 verify_jwt = false
 
+# PUB-14: answers to club-site messages (worker token) and the senders'
+# e-mail replies (Resend inbound, Svix signature).
+[functions.contact-email-worker]
+verify_jwt = false
+
+[functions.contact-inbound]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

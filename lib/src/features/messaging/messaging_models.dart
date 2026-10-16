@@ -339,6 +339,108 @@ class ContactRequest {
   );
 }
 
+/// PUB-14: a message thread that started on the club site, as its
+/// recipients (club administrators or the team's leaders) see it.
+class ContactThreadSummary {
+  const ContactThreadSummary({
+    required this.id,
+    required this.clubName,
+    required this.senderName,
+    required this.senderEmail,
+    required this.subject,
+    required this.preview,
+    required this.lastActivityAt,
+    required this.expiresAt,
+    required this.handled,
+    required this.unread,
+    this.teamName,
+    this.latestFromSender = true,
+  });
+  factory ContactThreadSummary.fromJson(Map<String, dynamic> json) =>
+      ContactThreadSummary(
+        id: json['id'] as String,
+        clubName: json['club_name'] as String? ?? '',
+        teamName: json['team_name'] as String?,
+        senderName: json['sender_name'] as String? ?? '',
+        senderEmail: json['sender_email'] as String? ?? '',
+        subject: json['subject'] as String? ?? '',
+        preview: json['preview'] as String? ?? '',
+        lastActivityAt: DateTime.parse(json['last_activity_at'] as String),
+        expiresAt: DateTime.parse(json['expires_at'] as String),
+        handled: json['handled'] == true,
+        unread: json['unread'] == true,
+        latestFromSender: json['latest_direction'] != 'out',
+      );
+  final String id, clubName, senderName, senderEmail, subject, preview;
+  final String? teamName;
+  final DateTime lastActivityAt, expiresAt;
+  final bool handled, unread, latestFromSender;
+
+  /// "P2012 · Alby IF" or the club alone.
+  String get recipientLabel =>
+      teamName == null ? clubName : '$teamName · $clubName';
+}
+
+class ContactMessage {
+  const ContactMessage({
+    required this.id,
+    required this.fromSender,
+    required this.body,
+    required this.createdAt,
+    this.authorName,
+    this.emailState,
+  });
+  factory ContactMessage.fromJson(Map<String, dynamic> json) => ContactMessage(
+    id: json['id'] as String,
+    fromSender: json['direction'] != 'out',
+    body: json['body'] as String? ?? '',
+    createdAt: DateTime.parse(json['created_at'] as String),
+    authorName: json['author_name'] as String?,
+    emailState: json['email_state'] as String?,
+  );
+  final String id, body;
+  final bool fromSender;
+  final DateTime createdAt;
+  final String? authorName;
+
+  /// For answers: pending, processing, sent or failed.
+  final String? emailState;
+}
+
+class ContactThread {
+  const ContactThread({
+    required this.id,
+    required this.clubName,
+    required this.senderName,
+    required this.senderEmail,
+    required this.subject,
+    required this.expiresAt,
+    required this.handled,
+    required this.messages,
+    this.teamName,
+  });
+  factory ContactThread.fromJson(Map<String, dynamic> json) => ContactThread(
+    id: json['id'] as String,
+    clubName: json['club_name'] as String? ?? '',
+    teamName: json['team_name'] as String?,
+    senderName: json['sender_name'] as String? ?? '',
+    senderEmail: json['sender_email'] as String? ?? '',
+    subject: json['subject'] as String? ?? '',
+    expiresAt: DateTime.parse(json['expires_at'] as String),
+    handled: json['handled'] == true,
+    messages: [
+      for (final item in (json['messages'] as List? ?? const []))
+        if (item is Map)
+          ContactMessage.fromJson(Map<String, dynamic>.from(item)),
+    ],
+  );
+  final String id, clubName, senderName, senderEmail, subject;
+  final String? teamName;
+  final DateTime expiresAt;
+  final bool handled;
+  final List<ContactMessage> messages;
+}
+
 class NotificationItem {
   const NotificationItem({
     required this.id,

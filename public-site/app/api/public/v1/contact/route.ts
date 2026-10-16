@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type ContactBody = {
+  teamId?: unknown;
   clubId?: unknown;
   senderName?: unknown;
   senderEmail?: unknown;
@@ -28,14 +29,17 @@ export async function POST(request: Request) {
     if (typeof body.clubId !== "string" || !uuid.test(body.clubId)
       || typeof body.senderName !== "string" || typeof body.senderEmail !== "string"
       || typeof body.subject !== "string" || typeof body.message !== "string"
-      || typeof body.captchaToken !== "string") {
+      || typeof body.captchaToken !== "string"
+      || (body.teamId !== undefined && (typeof body.teamId !== "string" || !uuid.test(body.teamId)))) {
       return json({ error: "Begäran kunde inte behandlas." }, 400);
     }
     const rawIp = resolveClientIp(request.headers.get("x-forwarded-for"), config.trustedProxyHops);
     const captcha = await verifyCaptcha(config, body.captchaToken, rawIp);
     if (!captcha.verified) return json({ error: "Verifieringen misslyckades." }, 400);
-    const data = await publicRpc(createServerSupabase(config), "public_submit_contact", {
+    // PUB-14: a team's form names the team; the club stays the boundary.
+    const data = await publicRpc(createServerSupabase(config), "public_submit_contact_v2", {
       club_id: body.clubId,
+      team_id: body.teamId ?? null,
       sender_name: body.senderName,
       sender_email: body.senderEmail,
       subject: body.subject,

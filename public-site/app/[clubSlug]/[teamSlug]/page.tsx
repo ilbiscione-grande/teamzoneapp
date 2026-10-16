@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { InactiveState } from "../../../components/inactive-state";
 import { FollowButton } from "../../../components/follow-button";
 import { AdminEntry } from "../../../components/admin/admin-entry";
+import { ContactForm } from "../../../components/contact-form";
 import { ClubFooter, ClubHeader, Crest, Empty, EventCard, NewsGrid, ResultCard, SectionHead, clubSiteClass, ClubTheme, initials, type CalendarEvent, type NewsItem, type ResultItem } from "../../../components/club-site";
 import { canonicalUrl, getClubPage, getPublications, getTeamEvents, getTeamResults, getTeamPage } from "../../../lib/page-data";
 
@@ -110,6 +111,13 @@ export default async function TeamPage({ params }: Props) {
             {previous.length ? <div className="cs-events past">{previous.map(event => <EventCard key={event.id} event={event} />)}</div> : <Empty text="Inga tidigare händelser är publicerade." />}
           </div>
         </section>
+
+        {team.contact_enabled && <section id="kontakt" className="cs-contact">
+          <div className="cs-wrap cs-contact-grid">
+            <div><p className="cs-kicker">Kontakt</p><h2 className="cs-title">Kontakta {team.name}</h2><p>Vill du börja i laget eller har frågor om träningar och matcher? Skicka ett meddelande så återkommer lagets ledare.</p><p className="cs-fineprint">Dina uppgifter används endast för att hantera kontakten och raderas enligt TeamZones retentionregler.</p></div>
+            <div className="cs-form-card"><ContactForm clubId={club.id} teamId={team.id} /></div>
+          </div>
+        </section>}
 
         <ClubFooter clubName={club.name} clubHref={clubHref} crest={club.profile_media_path} locality={club.locality} teams={teams} />
       </main>

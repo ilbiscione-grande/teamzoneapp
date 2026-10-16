@@ -96,6 +96,18 @@ abstract interface class MessagingServices {
   );
   Future<NotificationCenter> listNotifications();
 
+  /// PUB-14: messages from the club site the account may handle.
+  Future<List<ContactThreadSummary>> listContactThreads();
+  Future<ContactThread> getContactThread(String threadId);
+
+  /// The answer is e-mailed to the sender from a TeamZone address.
+  Future<void> replyContactThread({
+    required String threadId,
+    required String body,
+    required String idempotencyKey,
+  });
+  Future<void> setContactThreadHandled(String threadId, bool handled);
+
   /// Signals that the notification center may have changed. Team updates for
   /// followers have no realtime broadcast, so they are also polled; surfaces
   /// that never show team updates (Home) pass `includeTeamUpdatePoll: false`
@@ -219,6 +231,19 @@ class UnconfiguredMessagingServices implements MessagingServices {
   Future<String?> decideRequest(String a, String b, String c) => _fail();
   @override
   Future<NotificationCenter> listNotifications() => _fail();
+  @override
+  Future<List<ContactThreadSummary>> listContactThreads() async => const [];
+  @override
+  Future<ContactThread> getContactThread(String threadId) => _fail();
+  @override
+  Future<void> replyContactThread({
+    required String threadId,
+    required String body,
+    required String idempotencyKey,
+  }) => _fail();
+  @override
+  Future<void> setContactThreadHandled(String threadId, bool handled) =>
+      _fail();
   @override
   Stream<void> watchNotificationInvalidations({
     bool includeTeamUpdatePoll = true,
@@ -794,6 +819,58 @@ class SupabaseMessagingServices implements MessagingServices {
     );
     if (result is! Map) return null;
     return result['thread_id'] as String?;
+  }
+
+  @override
+  Future<List<ContactThreadSummary>> listContactThreads() async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>('list_contact_threads');
+    return [
+      if (value is List)
+        for (final row in value.whereType<Map<String, dynamic>>())
+          ContactThreadSummary.fromJson(row),
+    ];
+  }
+
+  @override
+  Future<ContactThread> getContactThread(String threadId) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'get_contact_thread',
+          params: {'target_submission_id': threadId},
+        );
+    if (value is! Map) throw const FormatException('Invalid contact thread');
+    return ContactThread.fromJson(Map<String, dynamic>.from(value));
+  }
+
+  @override
+  Future<void> replyContactThread({
+    required String threadId,
+    required String body,
+    required String idempotencyKey,
+  }) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'reply_contact_thread',
+          params: {
+            'target_submission_id': threadId,
+            'reply_body': body,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+  }
+
+  @override
+  Future<void> setContactThreadHandled(String threadId, bool handled) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'set_contact_thread_handled',
+          params: {'target_submission_id': threadId, 'handled': handled},
+        );
   }
 
   @override

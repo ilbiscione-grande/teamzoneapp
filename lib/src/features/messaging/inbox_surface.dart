@@ -70,6 +70,8 @@ class _InboxSurfaceState extends State<_InboxSurface>
   int _notificationUnread = 0;
   late Future<List<ProtectedNameSupportCase>> _supportCases;
   late Future<int?> _supportQueue;
+  // PUB-14: messages from the club site this account handles (empty: hidden).
+  late Future<List<ContactThreadSummary>> _contactThreads;
   // Defaults to just the active team/club; the filter dialog lets the user
   // widen this to other connections. Reset to the (new) active context
   // whenever it changes -- see didUpdateWidget.
@@ -742,7 +744,75 @@ class _InboxSurfaceState extends State<_InboxSurface>
   void _reloadSupport() {
     _supportCases = _loadSupportCases();
     _supportQueue = _loadSupportQueue();
+    _contactThreads = _loadContactThreads();
   }
+
+  Future<List<ContactThreadSummary>> _loadContactThreads() async {
+    try {
+      return await widget.messaging.listContactThreads().timeout(
+        const Duration(seconds: 15),
+      );
+    } catch (error) {
+      AppErrors.caught('inbox_surface._loadContactThreads', error);
+      return const [];
+    }
+  }
+
+  /// Messages from the club's or a team's public page, for whoever handles
+  /// them. Hidden when there are none.
+  Widget _contactThreadsEntry(BuildContext context) =>
+      FutureBuilder<List<ContactThreadSummary>>(
+        future: _contactThreads,
+        builder: (context, snapshot) {
+          final threads = snapshot.data ?? const <ContactThreadSummary>[];
+          if (threads.isEmpty) return const SizedBox.shrink();
+          final open = threads.where((thread) => !thread.handled).length;
+          final unread = threads.where((thread) => thread.unread).length;
+          final strings = AppStrings.of(context);
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            child: Card(
+              key: const Key('inbox-contact-threads'),
+              color: unread > 0
+                  ? Theme.of(context).colorScheme.secondaryContainer
+                  : null,
+              child: ListTile(
+                leading: const Icon(Icons.public),
+                title: Text(strings.feature('Meddelanden från klubbsajten')),
+                subtitle: Text(
+                  open > 0
+                      ? strings
+                            .feature('{count} att hantera')
+                            .replaceFirst('{count}', '$open')
+                      : strings.feature('Allt är hanterat'),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (unread > 0) Badge.count(count: unread),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.chevron_right),
+                  ],
+                ),
+                onTap: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          ContactThreadsPage(services: widget.messaging),
+                    ),
+                  );
+                  if (mounted) {
+                    final next = _loadContactThreads();
+                    setState(() {
+                      _contactThreads = next;
+                    });
+                  }
+                },
+              ),
+            ),
+          );
+        },
+      );
 
   /// Unread user messages in the support queue, or null when the account is
   /// not a support admin. Access is still enforced by the server; this only
@@ -1053,6 +1123,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
       body: Column(
         children: [
           _supportQueueEntry(context),
+          _contactThreadsEntry(context),
           _supportInboxEntry(context),
           Expanded(
             child: ListenableBuilder(

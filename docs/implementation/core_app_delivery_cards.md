@@ -50,7 +50,7 @@ Ett kort får inte markeras `[x]` enbart för att en teknisk grund redan finns. 
 | 7 | Min assistent-grund | AC-01–AC-08 | HOME-04 och stabila domänsignaler |
 | 8 | Senare funktioner | LATER-01–LATER-04 | Separat prioriteringsbeslut |
 | 9 | Samlad releasegrind | REL-01–REL-03 | Våg 0–6 klara |
-| 10 | Utbyggnad efter grundappen | TEAM-09–TEAM-16, CAL-12–CAL-14, MSG-09, MSG-10, PROF-01–PROF-04, AUTH-08, PUB-10–PUB-13, SET-01 | Produktägarens prioriteringar efter 2026-09-26 |
+| 10 | Utbyggnad efter grundappen | TEAM-09–TEAM-16, CAL-12–CAL-14, MSG-09, MSG-10, PROF-01–PROF-04, AUTH-08, PUB-10–PUB-14, SET-01 | Produktägarens prioriteringar efter 2026-09-26 |
 
 Endast en våg ska normalt vara produktmässigt `pågår`. Tekniskt fristående verifiering kan ske parallellt när det inte skapar konkurrerande kontrakt.
 
@@ -1337,6 +1337,24 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 
 - [x] Startsida med inloggnings- och registreringskort, personlig startsida, sök, 404, "inte publicerad" och juridiska sidor.
 - [x] Godkända adresser styrs av `PUBLIC_SITE_ORIGINS`. Det rättade också kontaktformuläret på `public.teamzoneapp.se`.
+
+### PUB-14 – Meddelanden från klubbsajten når klubben och lagen
+
+**Status:** `[~]` – byggd och driftsatt 2026-10-17 (migration `20261101090000`, `contact-email-worker`, `contact-inbound`); hela flödet med svar via e-post är inte provat skarpt än
+
+**Bakgrund 2026-10-16:** kontaktformuläret på klubbsidan (PUB-04) sparar meddelanden i `internal.public_contact_submissions` med status *pending*, men ingenting levererar dem: ingen e-post, ingen vy i appen. De raderas efter 30 dagar. Avsändaren får ändå beskedet att meddelandet är skickat. Lagsidorna saknar formulär.
+
+**Beslut (produktägaren 2026-10-16):**
+
+- [x] Meddelanden till klubben går till klubbens administratörer; meddelanden till ett lag går till lagets ledare som får hantera truppen (samma behörighet som inskicken från kontaktsidorna, TEAM-15).
+- [x] De visas i inkorgen under klubbens eller lagets rubrik med räknare för olästa, och mottagarna får en notis med bara typ och lag på låsskärmen ("Nytt meddelande via klubbsajten · P2012"), aldrig texten.
+- [x] Mottagaren svarar i appen; TeamZone skickar svaret som e-post från en TeamZone-adress med klubbens namn som avsändarnamn. Ledarens privata e-postadress visas aldrig. Svaret sparas på meddelandet.
+- [x] Meddelandet kan markeras som hanterat. Innehållet raderas efter 30 dagar som tidigare, och mottagaren ser hur länge det finns kvar.
+- [x] Publicerade lagsidor får samma formulär, påslaget som standard; lagets ledare kan stänga av det i lagets publiceringsinställningar. Samma skydd som klubbens: Turnstile, gräns per besökare, maxlängder och neutralt svar oavsett om mottagaren finns.
+- [x] Meddelanden som redan väntar levereras när leveransen är på plats.
+- [x] Skydd för två-vägs e-post (beslut 2026-10-16): Resends Svix-signatur krävs, svarsadressen är bunden till tråden med HMAC, DMARC måste passera, avsändaren måste vara trådens avsändare, automatiska mejl ignoreras, högst 20 svar och 20 inkommande per tråd och dygn, bara ren text och inga bilagor.
+- [x] Rensningen efter 30 dagar körs nu dagligen (den var aldrig schemalagd) och räknas från senaste aktivitet i tråden.
+- [ ] Skarp provning: meddelande via lagsidan, svar från appen och svar tillbaka via e-post.
 
 ### SET-01 – Klubbinställningar
 

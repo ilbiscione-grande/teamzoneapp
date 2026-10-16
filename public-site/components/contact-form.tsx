@@ -16,7 +16,8 @@ declare global {
 
 const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? "";
 
-export function ContactForm({ clubId }: { clubId: string }) {
+/** The club's contact form, or a team's when [teamId] is given (PUB-14). */
+export function ContactForm({ clubId, teamId }: { clubId: string; teamId?: string }) {
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [captchaToken, setCaptchaToken] = useState("");
   const [scriptReady, setScriptReady] = useState(false);
@@ -51,6 +52,7 @@ export function ContactForm({ clubId }: { clubId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clubId,
+          ...(teamId ? { teamId } : {}),
           senderName: formData.get("senderName"),
           senderEmail: formData.get("senderEmail"),
           subject: formData.get("subject"),

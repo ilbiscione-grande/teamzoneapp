@@ -706,7 +706,10 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
           ),
         ),
       );
-      setState(() => _data = _load());
+      final next = _load();
+      setState(() {
+        _data = next;
+      });
     } catch (error) {
       AppErrors.caught('assistant_tasks._offerHide', error);
       if (mounted) {

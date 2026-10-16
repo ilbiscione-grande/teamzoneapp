@@ -445,6 +445,17 @@ class _PublicationSelfServiceSurfaceState
     message.dispose();
   }
 
+  /// PUB-14: the contact form on a published team page.
+  Future<void> _setContact(Map<String, dynamic> team, bool enabled) => _run(
+    () => widget.editorial.setTeamContactEnabled(
+      teamId: '${team['id']}',
+      enabled: enabled,
+    ),
+    successMessage: enabled
+        ? 'Kontaktformuläret visas på lagsidan.'
+        : 'Kontaktformuläret är avstängt på lagsidan.',
+  );
+
   Future<void> _decide(Map<String, dynamic> request, bool approve) => _run(
     () => widget.editorial.decideTeamPublication(
       requestId: '${request['id']}',
@@ -589,6 +600,20 @@ class _PublicationSelfServiceSurfaceState
                       )
                     : null,
               ),
+            for (final team in teams)
+              if (team['mode'] == 'published' &&
+                  club['mode'] == 'published' &&
+                  team['can_set_contact'] == true)
+                SwitchListTile(
+                  key: ValueKey('team-contact-${team['id']}'),
+                  contentPadding: const EdgeInsets.only(left: 32, right: 16),
+                  title: Text('Kontaktformulär på ${team['name']}s sida'),
+                  subtitle: const Text(
+                    'Meddelanden går till lagets ledare i inkorgen.',
+                  ),
+                  value: team['contact_enabled'] != false,
+                  onChanged: _busy ? null : (value) => _setContact(team, value),
+                ),
             if (canManage && requests.isNotEmpty) ...[
               const Divider(),
               const Padding(

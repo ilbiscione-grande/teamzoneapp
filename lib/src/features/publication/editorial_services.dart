@@ -33,6 +33,12 @@ abstract interface class EditorialServices {
     required String teamId,
     required String message,
   });
+
+  /// PUB-14: the contact form on a published team page.
+  Future<void> setTeamContactEnabled({
+    required String teamId,
+    required bool enabled,
+  });
   Future<void> decideTeamPublication({
     required String requestId,
     required bool approve,
@@ -138,6 +144,12 @@ class UnconfiguredEditorialServices implements EditorialServices {
     required String teamId,
     required String message,
   }) => _fail();
+  @override
+  Future<void> setTeamContactEnabled({
+    required String teamId,
+    required bool enabled,
+  }) => _fail();
+
   @override
   Future<void> decideTeamPublication({
     required String requestId,
@@ -306,6 +318,18 @@ class SupabaseEditorialServices implements EditorialServices {
       _client,
       operation: 'request_team_publication',
       params: {'club_id': clubId, 'team_id': teamId, 'message': message},
+    );
+  }
+
+  @override
+  Future<void> setTeamContactEnabled({
+    required String teamId,
+    required bool enabled,
+  }) async {
+    await measuredRpc(
+      _client,
+      operation: 'set_team_contact_enabled',
+      params: {'target_team_id': teamId, 'enabled': enabled},
     );
   }
 
