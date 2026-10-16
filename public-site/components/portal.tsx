@@ -12,7 +12,7 @@ export function PortalHeader({ active }: { active?: "home" | "search" | "legal" 
       <div className="cs-mainbar"><div className="cs-wrap">
         <Link href="/" className="cs-brand pz-brand"><span className="pz-mark" aria-hidden="true">TZ</span><span>TeamZone</span></Link>
         <nav className="cs-nav" aria-label="Huvudmeny">
-          <Link href="/" aria-current={active === "home" ? "page" : undefined}>Min startsida</Link>
+          <Link href="/" aria-current={active === "home" ? "page" : undefined}>Start</Link>
           <Link href="/klubbar" aria-current={active === "search" ? "page" : undefined}>Hitta klubb</Link>
           <a href="https://app.teamzoneapp.se">Öppna appen</a>
         </nav>

@@ -126,9 +126,30 @@
 .cs .legal-sections h2 { font-family: var(--cs-display), sans-serif; font-size: 1.7rem; text-transform: uppercase; letter-spacing: 0; }
 .cs .legal-nav a { color: var(--cs-brand); }
 
+/* Welcome page (teamzoneapp.se for visitors who are not signed in) */
+.pz-choices { display: grid; gap: 14px; }
+.pz-choice { display: grid; gap: 6px; padding: 22px 24px; border-radius: 8px; background: white; color: var(--cs-text); text-decoration: none; border-left: 5px solid var(--cs-ink); box-shadow: 0 24px 60px rgba(0,0,0,.3); transition: transform .15s ease; }
+.pz-choice.primary { border-left-color: var(--cs-accent); }
+.pz-choice:hover, .pz-choice:focus-visible { transform: translateY(-2px); }
+.pz-choice .cs-kicker { margin: 0; color: var(--cs-brand); font-size: .8rem; }
+.pz-choice strong { color: var(--cs-text); font-family: var(--cs-display), sans-serif; font-size: 1.9rem; line-height: 1; font-weight: 800; text-transform: uppercase; }
+.pz-choice strong::after { content: "\00a0→"; }
+.pz-choice span:last-child { color: var(--cs-muted); font-size: .92rem; line-height: 1.5; }
+.pz-features.six { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pz-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin: 0; padding: 0; list-style: none; counter-reset: step; }
+.pz-steps li { counter-increment: step; padding: 26px 24px; border-radius: 6px; background: white; border: 1px solid var(--cs-line); }
+.pz-steps li::before { content: counter(step); display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--cs-accent); color: var(--cs-accent-ink); font-family: var(--cs-display), sans-serif; font-size: 1.4rem; font-weight: 800; }
+.pz-steps h3 { margin: 14px 0 8px; font-size: 1.5rem; line-height: 1.05; font-weight: 800; text-transform: uppercase; }
+.pz-steps p { margin: 0; color: var(--cs-muted); line-height: 1.65; }
+.pz-steps-action { margin-top: 24px; }
+.pz-follow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 440px); gap: clamp(28px, 5vw, 64px); align-items: start; }
+.pz-follow h2 { margin: 6px 0 0; font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: .95; font-weight: 800; text-transform: uppercase; }
+.pz-follow .pz-login { box-shadow: 0 20px 50px rgba(15,23,42,.15); border: 1px solid var(--cs-line); }
+.cs-button.ghost.dark { color: var(--cs-text); border-color: var(--cs-text); }
+
 @media (max-width: 860px) {
   .pz-hero-grid.with-aside { grid-template-columns: 1fr; }
-  .pz-features { grid-template-columns: 1fr; }
+  .pz-features, .pz-features.six, .pz-steps, .pz-follow { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
   .pz-search { flex-direction: column; }

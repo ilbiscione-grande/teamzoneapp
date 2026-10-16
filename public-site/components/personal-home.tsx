@@ -8,6 +8,7 @@ import { usePersonalAccount } from "./personal-account";
 import { PersonalDashboard } from "./personal-dashboard";
 import { TeamNotifications } from "./team-notifications";
 import { PortalHero } from "./portal";
+import { WelcomeLanding } from "./welcome-landing";
 import { useTurnstile } from "./turnstile";
 
 export function PersonalHomePage() {
@@ -66,6 +67,12 @@ export function PersonalHomePage() {
     </form> : <SignUpForm onDone={(address) => { setEmail(address); setMode("login"); setNotice(`Vi har skickat ett mejl till ${address}. Klicka på länken i mejlet för att bekräfta kontot och logga sedan in här.`); }} />}
   </div> : undefined;
 
+
+  // Visitors who are not signed in (also while the session loads) see the
+  // welcome page; signed-in followers see their personal start page.
+  if (!session) {
+    return <WelcomeLanding login={login} loading={!ready} error={error} />;
+  }
 
   return <>
     <PortalHero kicker={session ? `Inloggad · ${session.user.email ?? ""}` : "Din hemmaplan"} title={session ? "Min startsida" : "Nära lagen du följer"} aside={login}>
