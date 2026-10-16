@@ -1032,6 +1032,11 @@ class AppStrings {
     'Slå på notiser': 'Turn on notifications',
     'Försök igen med samma kommando': 'Retry the same command',
     'Försök igen': 'Try again',
+    'Eventet kunde inte skapas.': 'The event could not be created.',
+    'Aktiviteten har redan ägt rum. Kallelser kan inte skickas.':
+        'The activity has already taken place. Callups cannot be sent.',
+    'Deltagarlistan har ändrats. Granska urvalet och skicka igen.':
+        'The participant list has changed. Review the selection and send again.',
     'Guardianinbjudan': 'Guardian invitation',
     'Hantera': 'Manage',
     'Inga kallelser skickade.': 'No call-ups sent.',

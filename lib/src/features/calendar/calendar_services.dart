@@ -399,6 +399,7 @@ class SupabaseCalendarServices implements CalendarServices {
       maximumWindow: _maximumQueryWindow,
     )) {
       String? cursor;
+      var complete = false;
       for (var page = 0; page < 20; page++) {
         final value = await _client
             .schema('api')
@@ -422,11 +423,19 @@ class SupabaseCalendarServices implements CalendarServices {
         for (final item in items) {
           eventsById[item.id] = item;
         }
-        if (items.length < 200) break;
+        if (items.length < 200) {
+          complete = true;
+          break;
+        }
         cursor = items.last.eventCursor;
         if (cursor == null || cursor.isEmpty) {
           throw const FormatException('Calendar cursor is missing.');
         }
+      }
+      // More than 20 pages in one window: fail rather than show a calendar
+      // with events silently missing.
+      if (!complete) {
+        throw const FormatException('Calendar window has too many events.');
       }
     }
     final events = eventsById.values.toList(growable: false);

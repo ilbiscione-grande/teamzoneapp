@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:teamzone_app/src/app/teamzone_app.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
@@ -755,6 +756,43 @@ void main() {
     expect(find.textContaining(' valda'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('callups can be answered until the event starts', (tester) async {
+    final calendar = _Calendar(withGuestAndExtraPlayer: true);
+    await _openParticipants(tester, calendar);
+    await tester.tap(find.text('Ulla Uncalled'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kalla 1'));
+    await tester.pumpAndSettle();
+    // The fake event starts in one day.
+    final start = DateTime.now().toUtc().add(const Duration(days: 1));
+    expect(calendar.sentExpiry, isNotNull);
+    expect(calendar.sentExpiry!.difference(start).inMinutes.abs(), lessThan(5));
+  });
+
+  testWidgets('a squad changed by someone else unfreezes the selection', (
+    tester,
+  ) async {
+    final calendar = _Calendar(withGuestAndExtraPlayer: true)
+      ..failNextSaveAsStale = true;
+    await _openParticipants(tester, calendar);
+    await tester.tap(find.text('Ulla Uncalled'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kalla 1'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Deltagarlistan har ändrats'), findsOneWidget);
+    expect(calendar.dispatches, isEmpty);
+    // The selection can be changed again and the next send goes through.
+    await tester.tap(find.text('Vera Väntande'));
+    await tester.pumpAndSettle();
+    expect(find.text('2 valda'), findsOneWidget);
+    // Let the message clear the send button first.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kalla 2'));
+    await tester.pumpAndSettle();
+    expect(calendar.dispatches, ['save', 'lock', 'send']);
+  });
+
   testWidgets('search and selection remain on participant tab', (tester) async {
     final calendar = _Calendar();
     await _openParticipants(tester, calendar);
@@ -1350,6 +1388,9 @@ class _Calendar extends UnconfiguredCalendarServices {
   final bool withGuestAndExtraPlayer;
   final bool ended, late;
   final dispatches = <String>[];
+  DateTime? sentExpiry;
+  // The next squad save fails like a concurrent edit on the server.
+  bool failNextSaveAsStale = false;
   final attendanceChanges = <List<Map<String, dynamic>>>[];
   final attendanceStatuses = <String, String>{};
   final attendanceRevisions = <String, int>{};
@@ -1562,6 +1603,10 @@ class _Calendar extends UnconfiguredCalendarServices {
     int? expectedRevision,
     required String idempotencyKey,
   }) async {
+    if (failNextSaveAsStale) {
+      failNextSaveAsStale = false;
+      throw const PostgrestException(message: 'stale_revision', code: '40001');
+    }
     savedMemberIds = memberIds;
     squadState = 'draft';
     dispatches.add('save');
@@ -1584,6 +1629,7 @@ class _Calendar extends UnconfiguredCalendarServices {
     required String idempotencyKey,
   }) async {
     dispatches.add('send');
+    sentExpiry = expiry;
     squadState = 'sent';
   }
 

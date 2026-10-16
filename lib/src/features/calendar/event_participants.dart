@@ -196,6 +196,15 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
   @override
   void didUpdateWidget(covariant _ParticipantsTab oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // The squad changed since a send was prepared (another leader, or a
+    // reload after a failure): start the next send from the current squad.
+    if (!_busy &&
+        _saveKey != null &&
+        (oldWidget.squad.revision != widget.squad.revision ||
+            oldWidget.squad.state != widget.squad.state ||
+            oldWidget.squad.squadRevisionId != widget.squad.squadRevisionId)) {
+      _resetDispatch();
+    }
     _selectedIds.removeAll(
       _people.where((p) => p.isCalled).map((p) => p.personId),
     );
@@ -331,13 +340,25 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         !widget.squad.can('send_callups')) {
       return;
     }
+    // Callups can be answered until the event starts (decided 2026-10-16);
+    // sent once it has started, until it ends.
+    final now = DateTime.now();
+    final answerBy = widget.event.startsAt.isAfter(now)
+        ? widget.event.startsAt
+        : widget.event.endsAt.isAfter(now)
+        ? widget.event.endsAt
+        : null;
+    if (answerBy == null) {
+      _showError('Aktiviteten har redan ägt rum. Kallelser kan inte skickas.');
+      return;
+    }
     setState(() => _busy = true);
     var sent = false;
     try {
       _saveKey ??= _newUuid();
       _lockKey ??= _newUuid();
       _sendKey ??= _newUuid();
-      _expiry ??= DateTime.now().toUtc().add(const Duration(days: 7));
+      _expiry ??= answerBy.toUtc();
       if (_preparedSquad == null) {
         await widget.calendar.saveSquadDraft(
           eventId: widget.event.id,
@@ -378,10 +399,24 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
     } catch (error) {
       AppErrors.caught('event_participants._sendSelected', error);
 
+      // Someone else changed the squad, or a person can no longer be
+      // called: retrying the same request cannot work, so unfreeze the
+      // selection and show the current list.
+      final changed =
+          !sent &&
+          error is PostgrestException &&
+          (error.message.contains('stale_revision') ||
+              error.message.contains('member_not_eligible'));
+      if (changed) {
+        _resetDispatch();
+        await widget.onReload();
+      }
       if (mounted) {
         _showError(
           sent
               ? 'Kallelserna är skickade, men listan kunde inte uppdateras. Öppna eventet igen.'
+              : changed
+              ? 'Deltagarlistan har ändrats. Granska urvalet och skicka igen.'
               : 'Kallelserna kunde inte bekräftas. Försök igen med samma urval.',
         );
       }
@@ -404,12 +439,10 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
     if (!_canRecordAttendance || _working) return;
     int? minutes;
     if (status == 'late' || status == 'partial') {
-      final controller = TextEditingController(
-        text:
-            (_stagedMinutes[person.personId] ?? person.attendanceMinutes)
-                ?.toString() ??
-            '',
-      );
+      var typed =
+          (_stagedMinutes[person.personId] ?? person.attendanceMinutes)
+              ?.toString() ??
+          '';
       minutes = await showDialog<int>(
         context: context,
         builder: (context) => AlertDialog(
@@ -420,8 +453,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                   : 'Antal minuter närvarande',
             ),
           ),
-          content: TextField(
-            controller: controller,
+          content: TextFormField(
+            initialValue: typed,
+            onChanged: (value) => typed = value,
             keyboardType: TextInputType.number,
             autofocus: true,
             decoration: InputDecoration(
@@ -435,7 +469,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
             ),
             FilledButton(
               onPressed: () {
-                final value = int.tryParse(controller.text);
+                final value = int.tryParse(typed);
                 if (value != null && value >= 1 && value <= 1440) {
                   Navigator.pop(context, value);
                 }
@@ -445,8 +479,6 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
           ],
         ),
       );
-      // The dialog may still animate out; its controller is disposed after that frame.
-      Future<void>.delayed(const Duration(seconds: 1), controller.dispose);
       if (minutes == null || !mounted) return;
     }
     // Back to what is already saved: nothing left to change for this person
@@ -482,7 +514,8 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         .where((p) => _expected(p) && _attendance(p) == 'unknown')
         .toList();
     if (remaining.isEmpty) return;
-    if (remaining.length + _stagedStatus.length > 100) {
+    if ({..._stagedStatus.keys, ...remaining.map((p) => p.personId)}.length >
+        100) {
       _showError('Registrera högst 100 personer åt gången.');
       return;
     }
@@ -642,11 +675,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              AppStrings.of(context).feature(
-                action == 'remind'
-                    ? 'Påminnelsen är skickad.'
-                    : 'Kallelsen är återkallad.',
-              ),
+              AppStrings.of(context).feature('Kallelsen är återkallad.'),
             ),
           ),
         );
@@ -841,7 +870,8 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         )
         .toList();
     if (eligible.isEmpty) return;
-    if (eligible.length + _stagedStatus.length > 100) {
+    if ({..._stagedStatus.keys, ...eligible.map((p) => p.personId)}.length >
+        100) {
       _showError('Registrera högst 100 personer åt gången.');
       return;
     }

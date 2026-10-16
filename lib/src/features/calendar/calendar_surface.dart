@@ -3281,34 +3281,35 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
   Future<void> _createEvent({String? type}) async {
     final teamId = widget.contextValue.teamId;
     if (teamId == null) return;
-    List<SavedEventPlace> suggestions;
-    try {
-      suggestions = await widget.calendar.listSavedPlaces(
+    // Optional lookups, fetched together; without one the editor just
+    // leaves that part out.
+    Future<T> optional<T>(Future<T> request, T fallback) async {
+      try {
+        return await request;
+      } catch (error) {
+        AppErrors.caught('calendar_surface._createEvent', error);
+        return fallback;
+      }
+    }
+
+    final places = optional<List<SavedEventPlace>>(
+      widget.calendar.listSavedPlaces(
         clubId: widget.contextValue.clubId,
         teamId: teamId,
-      );
-    } catch (error) {
-      AppErrors.caught('calendar_surface._createEvent', error);
-
-      suggestions = const [];
-    }
-    // Sharing is optional; without the list the editor just hides it.
-    List<ShareableTeam> shareable;
-    try {
-      shareable = await widget.calendar.listShareableTeams(teamId);
-    } catch (error) {
-      AppErrors.caught('calendar_surface._createEvent', error);
-
-      shareable = const [];
-    }
-    String? matchFormat;
-    try {
-      matchFormat = await widget.calendar.getTeamMatchFormat(teamId);
-    } catch (error) {
-      AppErrors.caught('calendar_surface._createEvent', error);
-
-      matchFormat = null;
-    }
+      ),
+      const [],
+    );
+    final teams = optional<List<ShareableTeam>>(
+      widget.calendar.listShareableTeams(teamId),
+      const [],
+    );
+    final format = optional<String?>(
+      widget.calendar.getTeamMatchFormat(teamId),
+      null,
+    );
+    final suggestions = await places;
+    final shareable = await teams;
+    final matchFormat = await format;
     if (!mounted) return;
     final value = await showDialog<_EventEditorValue>(
       context: context,
@@ -3322,6 +3323,17 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
       ),
     );
     if (value == null || !mounted) return;
+    await _submitNewEvent(teamId, value, _newUuid());
+  }
+
+  /// Creates the event from the editor's values. A failed attempt keeps the
+  /// values and the idempotency key, so "Försök igen" neither loses what was
+  /// filled in nor creates a second event if the first reply was lost.
+  Future<void> _submitNewEvent(
+    String teamId,
+    _EventEditorValue value,
+    String idempotencyKey,
+  ) async {
     final String eventId;
     try {
       eventId = await widget.calendar.createEvent(
@@ -3353,18 +3365,21 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
           meetingPurpose: value.meetingPurpose,
           meetingAgenda: value.meetingAgenda,
         ),
-        _newUuid(),
+        idempotencyKey,
       );
     } catch (error) {
       AppErrors.caught('calendar_surface._createEvent', error);
 
       if (mounted) {
+        final strings = AppStrings.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              AppStrings.of(
-                context,
-              ).feature('Eventet kunde inte skapas. Försök igen.'),
+            duration: const Duration(seconds: 10),
+            content: Text(strings.feature('Eventet kunde inte skapas.')),
+            action: SnackBarAction(
+              label: strings.feature('Försök igen'),
+              onPressed: () =>
+                  unawaited(_submitNewEvent(teamId, value, idempotencyKey)),
             ),
           ),
         );
