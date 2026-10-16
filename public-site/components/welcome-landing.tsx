@@ -4,6 +4,9 @@ import { PortalHero } from "./portal";
 
 const appUrl = "https://app.teamzoneapp.se";
 
+/** How the visitor arrived: from the follower account's confirmation link. */
+export type Arrival = "confirmed" | "link_error" | null;
+
 const features = [
   { title: "Kallelser och svar", text: "Kalla till träning och match, se vem som kommer och påminn den som inte svarat. Spelare och föräldrar svarar med ett tryck, även direkt i notisen på Android." },
   { title: "Närvaro", text: "Registrera närvaro efter aktiviteten, med sen ankomst och delvis närvaro. Närvaron följer spelaren över säsongen." },
@@ -24,8 +27,19 @@ const steps = [
  * the two ways on: the app for people in a team, and the public pages (with
  * a follower account) for everyone who wants to follow a club or team.
  */
-export function WelcomeLanding({ login, loading, error }: { login?: ReactNode; loading: boolean; error?: string }) {
+export function WelcomeLanding({ login, loading, error, arrival = null }: { login?: ReactNode; loading: boolean; error?: string; arrival?: Arrival }) {
   return <>
+    {arrival && <div className={`pz-arrival${arrival === "link_error" ? " error" : ""}`} role={arrival === "link_error" ? "alert" : "status"}>
+      <div className="cs-wrap">
+        <p>
+          <strong>{arrival === "confirmed" ? "Din e-postadress är bekräftad." : "Länken fungerade inte."}</strong>{" "}
+          {arrival === "confirmed"
+            ? "Ditt följarkonto är klart. Logga in för att börja följa lag och klubbar."
+            : "Bekräftelselänken har gått ut eller redan använts. Logga in om du redan har bekräftat kontot, annars skapar du kontot igen."}
+        </p>
+        <a className="cs-button small" href="#folj">Logga in</a>
+      </div>
+    </div>}
     <PortalHero kicker="TeamZone · för föreningslivet" title="Laget på ett ställe" aside={<div className="pz-choices">
       <a className="pz-choice primary" href={appUrl}>
         <span className="cs-kicker">Är du med i ett lag?</span>

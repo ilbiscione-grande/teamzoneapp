@@ -127,6 +127,12 @@
 .cs .legal-nav a { color: var(--cs-brand); }
 
 /* Welcome page (teamzoneapp.se for visitors who are not signed in) */
+.pz-arrival { background: #e7f6ec; color: #145a32; border-bottom: 1px solid #b7e1c4; }
+.pz-arrival.error { background: #fdecec; color: #8d1f1f; border-bottom-color: #f2c2c2; }
+.pz-arrival .cs-wrap { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; padding-top: 14px; padding-bottom: 14px; }
+.pz-arrival p { margin: 0; line-height: 1.5; }
+.pz-arrival strong::before { content: "\2713\00a0"; }
+.pz-arrival.error strong::before { content: "!\00a0"; }
 .pz-choices { display: grid; gap: 14px; }
 .pz-choice { display: grid; gap: 6px; padding: 22px 24px; border-radius: 8px; background: white; color: var(--cs-text); text-decoration: none; border-left: 5px solid var(--cs-ink); box-shadow: 0 24px 60px rgba(0,0,0,.3); transition: transform .15s ease; }
 .pz-choice.primary { border-left-color: var(--cs-accent); }

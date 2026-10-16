@@ -8,7 +8,7 @@ import { usePersonalAccount } from "./personal-account";
 import { PersonalDashboard } from "./personal-dashboard";
 import { TeamNotifications } from "./team-notifications";
 import { PortalHero } from "./portal";
-import { WelcomeLanding } from "./welcome-landing";
+import { WelcomeLanding, type Arrival } from "./welcome-landing";
 import { useTurnstile } from "./turnstile";
 
 export function PersonalHomePage() {
@@ -19,10 +19,24 @@ export function PersonalHomePage() {
   const [authError, setAuthError] = useState("");
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [notice, setNotice] = useState("");
+  const [arrival, setArrival] = useState<Arrival>(null);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("konto") === "bekraftat") setNotice("Din e-postadress är bekräftad. Logga in för att börja följa lag och klubbar.");
-    else if (params.get("konto") === "skapa") setMode("signup");
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    // The confirmation link comes back with ?konto=bekraftat, or with an
+    // error (expired or already used) in the query or the fragment.
+    if (params.get("error_code") || params.get("error_description") || hash.get("error_code") || hash.get("error_description")) {
+      setArrival("link_error");
+    } else if (params.get("konto") === "bekraftat") {
+      setArrival("confirmed");
+      setNotice("Din e-postadress är bekräftad. Logga in för att börja följa lag och klubbar.");
+    } else if (params.get("konto") === "skapa") {
+      setMode("signup");
+    }
+    // Shown once: a reload or a shared link must not show it again.
+    if (params.has("konto") || params.has("error_code") || params.has("error_description") || hash.has("error_code") || hash.has("error_description")) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
   }, []);
 
   async function signIn(event: React.FormEvent) {
@@ -71,7 +85,7 @@ export function PersonalHomePage() {
   // Visitors who are not signed in (also while the session loads) see the
   // welcome page; signed-in followers see their personal start page.
   if (!session) {
-    return <WelcomeLanding login={login} loading={!ready} error={error} />;
+    return <WelcomeLanding login={login} loading={!ready} error={error} arrival={arrival} />;
   }
 
   return <>
