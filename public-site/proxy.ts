@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { serverConfig } from "./lib/config";
-import { safeDomainDecision, requestHostname, validRoutingInput } from "./lib/domain-routing";
+import { canonicalOriginRedirect, safeDomainDecision, requestHostname, validRoutingInput } from "./lib/domain-routing";
 import { publicRpc } from "./lib/public-rpc";
 import { createServerSupabase } from "./lib/supabase-admin";
 import { isLocalPublicView } from "./lib/local-public-view";
@@ -27,6 +27,17 @@ export async function proxy(request: NextRequest) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
     return response;
   }
+  // public.teamzoneapp.se and other secondary TeamZone origins send pages to
+  // the canonical address (decided 2026-10-16).
+  const canonical = canonicalOriginRedirect({
+    hostname: requestHostname(request.headers, request.nextUrl.hostname),
+    method: request.method,
+    path,
+    search: request.nextUrl.search,
+    publicOrigin: process.env.PUBLIC_ORIGIN,
+    siteOrigins: process.env.PUBLIC_SITE_ORIGINS,
+  });
+  if (canonical) return NextResponse.redirect(canonical, 308);
   if (bypassPrefixes.some((prefix) => path.startsWith(prefix))) {
     const response = NextResponse.next();
     if (path.startsWith("/api/")) response.headers.set("Cache-Control", "no-store");

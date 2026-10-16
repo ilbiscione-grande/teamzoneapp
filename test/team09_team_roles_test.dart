@@ -143,7 +143,7 @@ void main() {
     expect(find.byKey(const ValueKey('intake-qr')), findsOneWidget);
     expect(
       find.text(
-        'https://public.teamzoneapp.se/anmalan/0123456789abcdef0123456789abcdef',
+        'https://teamzoneapp.se/anmalan/0123456789abcdef0123456789abcdef',
       ),
       findsOneWidget,
     );

@@ -25,6 +25,42 @@ export function requestHostname(headers: { get(name: string): string | null }, f
   return normalizedHostname(frameworkHostname);
 }
 
+/**
+ * A page request on a secondary TeamZone origin (PUBLIC_SITE_ORIGINS, e.g.
+ * public.teamzoneapp.se) is sent permanently to the canonical PUBLIC_ORIGIN
+ * (teamzoneapp.se), keeping path and query. API calls, Next assets and public
+ * media are left alone, so a page already open there keeps working. Returns
+ * the target URL, or null when the request stays.
+ */
+export function canonicalOriginRedirect(input: {
+  hostname: string;
+  method: string;
+  path: string;
+  search: string;
+  publicOrigin?: string;
+  siteOrigins?: string;
+}): string | null {
+  if (!input.publicOrigin || !input.siteOrigins) return null;
+  if (input.method !== "GET" && input.method !== "HEAD") return null;
+  if (["/api/", "/_next/", "/media/public/"].some((prefix) => input.path.startsWith(prefix))) return null;
+  let canonical: URL;
+  try {
+    canonical = new URL(input.publicOrigin);
+  } catch {
+    return null;
+  }
+  const secondary = input.siteOrigins.split(",").map((value) => value.trim()).filter(Boolean).flatMap((value) => {
+    try {
+      return [new URL(value).hostname];
+    } catch {
+      return [];
+    }
+  });
+  const hostname = normalizedHostname(input.hostname);
+  if (hostname === canonical.hostname || !secondary.includes(hostname)) return null;
+  return `${canonical.origin}${input.path}${input.search}`;
+}
+
 export function validRoutingInput(hostname: string, path: string): boolean {
   return hostnamePattern.test(hostname) && path.startsWith("/") && !/[?#]/.test(path) && path.length <= 2048;
 }

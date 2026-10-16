@@ -7,6 +7,8 @@
 /// test project, never on production).
 export const productionWebOrigins = [
   "https://app.teamzoneapp.se",
+  // The public site; public.teamzoneapp.se redirects there (2026-10-16).
+  "https://teamzoneapp.se",
   "https://public.teamzoneapp.se",
 ];
 

@@ -5,7 +5,7 @@ part of '../../app/teamzone_app.dart';
 /// added to a team with one tap.
 const _publicSiteOrigin = String.fromEnvironment(
   'PUBLIC_SITE_URL',
-  defaultValue: 'https://public.teamzoneapp.se',
+  defaultValue: 'https://teamzoneapp.se',
 );
 
 String _intakeFormUrl(IntakeFormLink form) =>

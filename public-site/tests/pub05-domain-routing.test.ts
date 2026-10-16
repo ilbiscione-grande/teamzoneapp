@@ -52,3 +52,21 @@ test("requestHostname prefers the trusted edge's forwarded host over the framewo
   assert.equal(requestHostname(headers({}), "localhost"), "localhost");
   assert.match(proxy, /requestHostname\(request\.headers/, "proxy.ts must resolve hostname via requestHostname(request.headers, ...)");
 });
+
+test("secondary TeamZone origins send pages to teamzoneapp.se", async () => {
+  const { canonicalOriginRedirect } = await import("../lib/domain-routing.ts");
+  const base = { publicOrigin: "https://teamzoneapp.se", siteOrigins: "https://public.teamzoneapp.se", method: "GET", search: "" };
+  assert.equal(canonicalOriginRedirect({ ...base, hostname: "public.teamzoneapp.se", path: "/" }), "https://teamzoneapp.se/");
+  assert.equal(canonicalOriginRedirect({ ...base, hostname: "PUBLIC.teamzoneapp.se:443", path: "/anmalan/abc", search: "?x=1" }),
+    "https://teamzoneapp.se/anmalan/abc?x=1");
+  // The canonical address itself, club domains and unknown hosts stay.
+  assert.equal(canonicalOriginRedirect({ ...base, hostname: "teamzoneapp.se", path: "/" }), null);
+  assert.equal(canonicalOriginRedirect({ ...base, hostname: "www.minklubb.se", path: "/" }), null);
+  // API calls, assets, media and form posts are never redirected.
+  for (const path of ["/api/public/v1/intake", "/_next/static/x.js", "/media/public/abc"]) {
+    assert.equal(canonicalOriginRedirect({ ...base, hostname: "public.teamzoneapp.se", path }), null, path);
+  }
+  assert.equal(canonicalOriginRedirect({ ...base, hostname: "public.teamzoneapp.se", path: "/", method: "POST" }), null);
+  // Without configuration nothing is redirected.
+  assert.equal(canonicalOriginRedirect({ ...base, siteOrigins: undefined, hostname: "public.teamzoneapp.se", path: "/" }), null);
+});
