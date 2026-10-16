@@ -12,8 +12,10 @@ env:
     value: https://public.teamzoneapp.se
     availability:
       - RUNTIME
+  # App Hosting sends client, Google front end, Google proxy (measured
+  # 2026-10-16): the client is two hops from the end.
   - variable: TRUSTED_PROXY_HOPS
-    value: "1"
+    value: "2"
     availability:
       - RUNTIME
   - variable: CAPTCHA_VERIFY_URL
