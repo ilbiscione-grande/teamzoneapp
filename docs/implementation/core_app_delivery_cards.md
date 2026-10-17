@@ -1358,7 +1358,7 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 
 ### POOL-01 – Matchpoolen: träningsmatcher mellan klubbar
 
-**Status:** `[~]` – byggd 2026-10-17 (migration `20261102090000`, `teamzoneapp.se/matchpool`, platssökning `/api/public/v1/places`, ingång i appens inkorg); väntar på migration, driftsättning och skarp provning
+**Status:** `[x]` – klar och provad skarpt 2026-10-17 (migrationer `20261102090000` och `20261103090000`, `teamzoneapp.se/matchpool`, platssökning `/api/public/v1/places`, konversationer i appens inkorg)
 
 **Bakgrund 2026-10-16:** lag som söker träningsmatcher har ingen samlad plats att hitta varandra. Matchpoolen samlar annonser från lag i hela TeamZone, på webben (`teamzoneapp.se/matchpool`), eftersom sökandet sker över klubbgränser och passar en större skärm.
 
@@ -1373,7 +1373,7 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 - [x] Skydd: gränser för annonser, intressen och meddelanden per dag, rapportering (döljs automatiskt efter rapporter från tre klubbar), inga spelaruppgifter, annonser försvinner när datumet passerat och raderas 30 dagar senare.
 - [x] Konversationerna finns också i appen (beslut 2026-10-17): inkorgens kort "Matchpoolen" visar dem, notiser öppnar rätt konversation (`/inbox?pool=`), och man kan skriva, boka, tacka nej och återkalla där. Att hitta och lägga in annonser sker på webben.
 - [x] Från appen till webben är man inloggad med samma konto: en engångskod (256 bitar, två minuter, används en gång) i adressens fragment byts på servern mot en inloggning för samma användare (migration `20261103090000`).
-- [ ] Skarp provning: två lag i olika klubbar lägger in, visar intresse, skriver, bokar och ser matchen i kalendern.
+- [x] Skarp provning 2026-10-17: två lag i olika klubbar lade in, visade intresse, skrev, bokade och såg matchen i kalendern; notiser och inloggningen från appen till webben fungerade.
 
 **Senare:** bevakningar ("meddela mig när ett P2013-lag inom 50 km söker match"), karta, supportvy för rapporter.
 
