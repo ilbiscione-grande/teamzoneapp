@@ -256,7 +256,7 @@ class _MatchPoolPageState extends State<MatchPoolPage> {
                           const SizedBox(height: 4),
                           Text(
                             '${item.fromListingSide ? 'Er annons' : 'Deras annons'}: '
-                            '${item.listing.homeSlot ? 'har hemmatid' : 'söker bortamatch'} · '
+                            '${item.listing.homeSlot ? 'söker hemmamatch' : 'söker bortamatch'} · '
                             '${item.listing.ageClass} · ${_formatLabel(item.listing.matchFormat)} · '
                             '${_when(context, item.listing)}',
                             style: Theme.of(context).textTheme.bodySmall,
@@ -536,7 +536,7 @@ class _MatchPoolConversationPageState extends State<MatchPoolConversationPage> {
               ),
             const SizedBox(height: 8),
             Text(
-              '${listing.teamName} ${listing.homeSlot ? 'har hemmatid' : 'söker bortamatch'} · '
+              '${listing.teamName} ${listing.homeSlot ? 'söker hemmamatch' : 'söker bortamatch'} · '
               '${listing.ageClass} · ${_formatLabel(listing.matchFormat)}',
               style: Theme.of(context).textTheme.titleSmall,
             ),
@@ -956,7 +956,7 @@ class _MatchPoolListingPageState extends State<MatchPoolListingPage> {
                         Chip(
                           label: Text(
                             listing.homeSlot
-                                ? 'Har hemmatid'
+                                ? 'Söker hemmamatch'
                                 : 'Söker bortamatch',
                           ),
                           visualDensity: VisualDensity.compact,

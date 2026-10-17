@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
-  defaultFilters, filterListings, listingPayload, placeFromNominatim, poolError, stockholmInstant, watchLabel, whenLabel,
+  ageChoices, ageGroupsFromTeam, defaultFilters, filterListings, listingPayload, placeFromNominatim, poolError, stockholmInstant, watchLabel, whenLabel,
   type Listing, type ListingDraft,
 } from "../lib/match-pool.ts";
 
@@ -10,7 +10,7 @@ const now = new Date("2026-10-17T08:00:00Z");
 const place = { place_label: "Alby, Botkyrka", latitude: 59.24, longitude: 17.85 };
 const draft: ListingDraft = {
   kind: "home_slot", date: "2026-11-14", startTime: "10:00", endTime: "11:30", dateFrom: "", dateTo: "", maxDistance: "50",
-  place, venueName: "Alby IP", surface: "artificial", format: "7v7", ageClass: "P12", gender: "boys", level: "", note: "",
+  place, venueName: "Alby IP", surface: "artificial", format: "7v7", ageGroups: ["2012"], gender: "boys", level: "", note: "",
 };
 
 test("Stockholm local time becomes the right instant in winter and summer", () => {
@@ -25,6 +25,8 @@ test("a home slot needs a time in the future, a sane length and a venue", () => 
   assert.equal(payload?.ends_at, "2026-11-14T10:30:00.000Z");
   assert.equal(payload?.venue_name, "Alby IP");
   assert.equal(payload?.level, null);
+  assert.deepEqual(payload?.age_groups, ["2012"]);
+  assert.match(listingPayload({ ...draft, ageGroups: [] }, now).problem ?? "", /åldersklass/);
   assert.match(listingPayload({ ...draft, date: "2026-10-01" }, now).problem ?? "", /passerat/);
   assert.match(listingPayload({ ...draft, endTime: "10:15" }, now).problem ?? "", /30 minuter/);
   assert.match(listingPayload({ ...draft, venueName: " " }, now).problem ?? "", /plan/);
@@ -106,4 +108,18 @@ test("watches are described in words, and cancellation needs the other team", ()
   assert.match(page, /cancel_requested_side !== side/);
   assert.match(page, /Lägg ut annonsen igen/);
   assert.match(page, /get\("annons"\)/);
+});
+
+test("age groups: birth years for youth and Senior, preselected from the team", () => {
+  const choices = ageChoices(now).map(choice => choice.value);
+  assert.equal(choices[0], "2007");
+  assert.equal(choices.at(-2), "2021");
+  assert.equal(choices.at(-1), "senior");
+  assert.deepEqual(ageGroupsFromTeam("P2012", now), ["2012"]);
+  assert.deepEqual(ageGroupsFromTeam("F13", now), ["2013"]);
+  assert.deepEqual(ageGroupsFromTeam("Pojkar 2012/2013", now), ["2012", "2013"]);
+  assert.deepEqual(ageGroupsFromTeam("Herrar", now), ["senior"]);
+  assert.deepEqual(ageGroupsFromTeam(null, now), []);
+  assert.equal(watchLabel({ kind: "home_slot", max_distance_km: 10, match_format: "11v11", gender: null, age_class: "2012–2013", verified_only: false }),
+    "Söker hemmamatch · inom 10 km · 2012–2013 · 11 mot 11");
 });

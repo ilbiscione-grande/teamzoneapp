@@ -116,3 +116,11 @@
 .mp-watch-list li > div { display: grid; gap: 2px; }
 .mp-watch-form { max-width: 720px; padding: 18px 20px; border-radius: 6px; background: white; border: 1px solid var(--cs-line); border-top: 4px solid var(--cs-ink); }
 .mp-watch-form h3 { margin: 0; font-family: var(--cs-display), sans-serif; font-size: 1.3rem; text-transform: uppercase; }
+
+/* POOL-03: age groups as buttons; the watch being edited. */
+.mp-chips { display: flex; flex-wrap: wrap; gap: 6px; font-weight: 400; }
+.mp-chips button { min-width: 64px; min-height: 40px; padding: 6px 12px; border: 1px solid #cbd3df; border-radius: 20px; background: white; color: var(--cs-text); font: inherit; font-weight: 600; cursor: pointer; }
+.mp-chips button[aria-pressed="true"] { border-color: var(--cs-brand); background: var(--cs-brand); color: white; }
+.mp-chips button:focus-visible { outline: 3px solid rgba(31,138,76,.35); outline-offset: 2px; }
+.mp-watch-actions { display: inline-flex; gap: 14px; }
+.mp-watch-list li.editing { border-color: var(--cs-brand); background: #f3fbf6; }

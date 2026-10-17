@@ -1390,6 +1390,14 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 - [x] Vilket lag som begärde avbokningen och när sparas i en logg utan meddelandetext, i två år.
 - [ ] Skarp provning: bevakning ger notis, avbokning begärs, godkänns och ställer in matchen i kalendrarna, annonsen läggs ut igen.
 
+**Justeringar (produktägaren 2026-10-17, migration `20261105090000`):**
+
+- [x] Åldersklass väljs bland klickbara alternativ (födelseår och Senior, flera per annons eller bevakning) i stället för fritext. Annonsen visar en läsbar etikett ("2012–2013"), och en bevakning matchar en annons som delar minst ett födelseår.
+- [x] Spelform är förvald till 11 mot 11.
+- [x] Texterna heter "Söker hemmamatch" och "Söker bortamatch", i stället för "Har hemmatid".
+- [x] En sparad bevakning kan ändras.
+- [x] Rättat: valdes lagets utgångsort medan fliken Bevakningar var öppen, skickade formuläret inget lag, och sparandet misslyckades med "Något gick fel". Okända fel visar nu sin felkod.
+
 ### SET-01 – Klubbinställningar
 
 **Status:** `[~]` – hosted och automatiskt verifierad

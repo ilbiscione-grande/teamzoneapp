@@ -21,7 +21,7 @@ export type Interest = {
 };
 export type PoolPage = { teams: PoolTeam[]; origin: { team_id: string; place_label: string } | null; listings: Listing[]; mine: Listing[]; sent: Interest[]; watches?: Watch[] };
 export type Watch = { id: string; team_id: string; team_name: string; kind: "all" | "home_slot" | "away_wanted"; max_distance_km: number;
-  match_format: string | null; gender: Gender | null; age_class: string | null; verified_only: boolean; mine: boolean; created_at: string };
+  match_format: string | null; gender: Gender | null; age_class: string | null; age_groups?: string[]; verified_only: boolean; mine: boolean; created_at: string };
 export type Conversation = {
   my_side: "listing" | "interest"; my_event_id: string | null; listing: Listing; interest: Interest;
   messages: { id: string; side: "listing" | "interest" | "system"; body: string; created_at: string; author_name: string | null }[];
@@ -92,7 +92,7 @@ export function filterListings(listings: Listing[], filters: Filters): Listing[]
 
 export type ListingDraft = {
   kind: "home_slot" | "away_wanted"; date: string; startTime: string; endTime: string; dateFrom: string; dateTo: string;
-  maxDistance: string; place: Place | null; venueName: string; surface: Surface | ""; format: string; ageClass: string;
+  maxDistance: string; place: Place | null; venueName: string; surface: Surface | ""; format: string; ageGroups: string[];
   gender: Gender | ""; level: Level | ""; note: string;
 };
 
@@ -100,12 +100,13 @@ export type ListingDraft = {
 export function listingPayload(draft: ListingDraft, now = new Date()): { payload?: Record<string, unknown>; problem?: string } {
   if (!draft.place) return { problem: "Välj en ort för annonsen." };
   if (!draft.format) return { problem: "Välj spelform." };
-  if (!draft.ageClass.trim()) return { problem: "Ange åldersklass, till exempel P12." };
+  if (draft.ageGroups.length === 0) return { problem: "Välj åldersklass, ett eller flera födelseår." };
+  if (draft.ageGroups.length > 4) return { problem: "Välj högst fyra åldersklasser." };
   if (!draft.gender) return { problem: "Välj pojkar, flickor eller mixat." };
   if (draft.note.length > 500) return { problem: "Kommentaren får vara högst 500 tecken." };
   const common = {
     kind: draft.kind, place_label: draft.place.place_label, latitude: draft.place.latitude, longitude: draft.place.longitude,
-    match_format: draft.format, age_class: draft.ageClass.trim(), gender: draft.gender, level: draft.level || null,
+    match_format: draft.format, age_groups: draft.ageGroups, gender: draft.gender, level: draft.level || null,
     note: draft.note.trim() || null,
   };
   if (draft.kind === "home_slot") {
@@ -140,11 +141,17 @@ export const poolErrors: Record<string, string> = {
   not_booked: "Matchen är inte bokad.",
   cannot_republish: "Annonsen kan inte läggas ut igen, datumet har passerat.",
   no_base: "Välj lagets utgångsort först, så kan avståndet räknas.",
+  not_found: "Det gick inte: laget eller annonsen finns inte, eller så får du inte hantera laget.",
 };
 
 export function poolError(error: unknown): string {
   const message = typeof error === "object" && error && "message" in error ? String((error as { message: unknown }).message) : "";
-  return Object.entries(poolErrors).find(([code]) => message.includes(code))?.[1] ?? "Något gick fel. Försök igen.";
+  const known = Object.entries(poolErrors).find(([code]) => message.includes(code))?.[1];
+  if (known) return known;
+  // An unknown failure shows its short code (never the text), so it can be traced.
+  const code = typeof error === "object" && error && "code" in error ? String((error as { code: unknown }).code) : "";
+  if (typeof console !== "undefined") console.error("match_pool_error", error);
+  return /^[A-Z0-9]{3,10}$/.test(code) ? `Något gick fel (kod ${code}). Försök igen.` : "Något gick fel. Försök igen.";
 }
 
 /** Nominatim's answer reduced to a short place label and a rounded position. */
@@ -163,10 +170,31 @@ export function placeFromNominatim(item: { lat?: string; lon?: string; name?: st
   return { place_label: label, latitude: Math.round(latitude * 100) / 100, longitude: Math.round(longitude * 100) / 100 };
 }
 
+export const kindLabels = { home_slot: "Söker hemmamatch", away_wanted: "Söker bortamatch" } as const;
+
+/** The age groups to pick from: birth years for youth football, and Senior. */
+export function ageChoices(now = new Date()): { value: string; label: string }[] {
+  const year = Number(todayInStockholm(now).slice(0, 4));
+  const years = [];
+  for (let born = year - 19; born <= year - 5; born++) years.push({ value: String(born), label: String(born) });
+  return [...years, { value: "senior", label: "Senior" }];
+}
+
+/** Preselects from the team's own age class ("P2012", "F12" or "Senior"). */
+export function ageGroupsFromTeam(ageClass: string | null | undefined, now = new Date()): string[] {
+  if (!ageClass) return [];
+  const choices = new Set(ageChoices(now).map(choice => choice.value));
+  if (/senior|herr|dam/i.test(ageClass)) return ["senior"];
+  const full = ageClass.match(/(?:19|20)\d{2}/g);
+  const short = full ? null : ageClass.match(/^[PFpf]?\s*(\d{2})$/);
+  const found = full ?? (short ? [`20${short[1]}`] : []);
+  return [...new Set(found)].filter(value => choices.has(value)).sort();
+}
+
 /** What a watch looks for, in words. */
 export function watchLabel(watch: Pick<Watch, "kind" | "max_distance_km" | "match_format" | "gender" | "age_class" | "verified_only">): string {
   return [
-    watch.kind === "home_slot" ? "Hemmatider" : watch.kind === "away_wanted" ? "Söker bortamatch" : "Alla annonser",
+    watch.kind === "home_slot" ? "Söker hemmamatch" : watch.kind === "away_wanted" ? "Söker bortamatch" : "Alla annonser",
     `inom ${watch.max_distance_km} km`,
     watch.age_class, watch.match_format ? formatLabel(watch.match_format) : null,
     watch.gender ? genderLabels[watch.gender] : null,

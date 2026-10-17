@@ -6,7 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { usePersonalAccount } from "./personal-account";
 import { PortalHero } from "./portal";
 import {
-  defaultFilters, filterListings, formatLabel, formats, genderLabels, interestStateLabels, levelLabels, listingPayload,
+  ageChoices, ageGroupsFromTeam, defaultFilters, filterListings, formatLabel, formats, genderLabels, kindLabels, interestStateLabels, levelLabels, listingPayload,
   newKey, poolError, slotLabel, stockholmInstant, surfaceLabels, todayInStockholm, watchLabel, whenLabel,
   type Conversation, type Filters, type Gender, type Interest, type Level, type Listing, type ListingDraft, type Place,
   type PoolPage, type PoolTeam, type Surface, type Watch,
@@ -70,7 +70,7 @@ export function MatchPool() {
   }, [page, client]);
 
   const hero = <PortalHero kicker="Matchpoolen" title="Hitta träningsmatcher" mark="TZ">
-    <p className="pz-lead">Lägg in en hemmatid eller sök en bortamatch, och se vilka lag i närheten som söker motstånd. Ser du en klubb utan verifiering? Då har TeamZone inte granskat den.</p>
+    <p className="pz-lead">Sök en hemmamatch eller en bortamatch, och se vilka lag i närheten som söker motstånd. Ser du en klubb utan verifiering? Då har TeamZone inte granskat den.</p>
   </PortalHero>;
 
   if (!ready) return <>{hero}<div className="cs-wrap pz-status"><p>Laddar…</p></div></>;
@@ -132,7 +132,7 @@ export function MatchPool() {
         {tab === "find" && <>
           <div className="mp-filters">
             <select aria-label="Typ av annons" value={filters.kind} onChange={e => setFilters({ ...filters, kind: e.target.value as Filters["kind"] })}>
-              <option value="all">Alla annonser</option><option value="home_slot">Har hemmatid</option><option value="away_wanted">Söker bortamatch</option>
+              <option value="all">Alla annonser</option><option value="home_slot">{kindLabels.home_slot}</option><option value="away_wanted">{kindLabels.away_wanted}</option>
             </select>
             <select aria-label="Spelform" value={filters.format} onChange={e => setFilters({ ...filters, format: e.target.value })}>
               <option value="">Alla spelformer</option>{formats.map(f => <option key={f} value={f}>{formatLabel(f)}</option>)}
@@ -210,7 +210,7 @@ function ListingCard({ listing, action, own, onReport, children }: { listing: Li
   return <article className={`mp-card ${listing.verified ? "is-verified" : "is-unverified"}`}>
     <header>
       <VerifiedBadge verified={listing.verified} />
-      <span className={`mp-kind ${listing.kind}`}>{listing.kind === "home_slot" ? "Har hemmatid" : "Söker bortamatch"}</span>
+      <span className={`mp-kind ${listing.kind}`}>{kindLabels[listing.kind]}</span>
     </header>
     <h3>{listing.team_name} <span>· {listing.club_name}</span></h3>
     {!listing.verified && !own && <p className="mp-warning">Klubben är inte verifierad av TeamZone. Stäm gärna av med klubben innan ni bokar.</p>}
@@ -307,7 +307,7 @@ function ListingForm({ client, accessToken, teams, initialTeam, onClose, onSaved
   const team = teams.find(t => t.team_id === teamId);
   const [draft, setDraft] = useState<ListingDraft>(() => ({
     kind: "home_slot", date: "", startTime: "10:00", endTime: "11:30", dateFrom: todayInStockholm(), dateTo: "", maxDistance: "50",
-    place: team?.base ?? null, venueName: "", surface: "", format: "", ageClass: team?.age_class ?? "", gender: "", level: "", note: "",
+    place: team?.base ?? null, venueName: "", surface: "", format: "11v11", ageGroups: ageGroupsFromTeam(team?.age_class), gender: "", level: "", note: "",
   }));
   const [problem, setProblem] = useState("");
   const [busy, setBusy] = useState(false);
@@ -327,10 +327,10 @@ function ListingForm({ client, accessToken, teams, initialTeam, onClose, onSaved
       <TeamSelect teams={teams} value={teamId} onChange={value => {
         setTeamId(value);
         const next = teams.find(t => t.team_id === value);
-        set({ place: next?.base ?? draft.place, ageClass: next?.age_class ?? draft.ageClass });
+        set({ place: next?.base ?? draft.place, ageGroups: ageGroupsFromTeam(next?.age_class).length ? ageGroupsFromTeam(next?.age_class) : draft.ageGroups });
       }} />
       <div className="mp-segment" role="radiogroup" aria-label="Typ av annons">
-        <button type="button" role="radio" aria-checked={draft.kind === "home_slot"} onClick={() => set({ kind: "home_slot" })}><strong>Vi har en hemmatid</strong><span>Ni har bokat plan och söker motstånd</span></button>
+        <button type="button" role="radio" aria-checked={draft.kind === "home_slot"} onClick={() => set({ kind: "home_slot" })}><strong>Vi söker hemmamatch</strong><span>Ni har bokat plan och söker motstånd</span></button>
         <button type="button" role="radio" aria-checked={draft.kind === "away_wanted"} onClick={() => set({ kind: "away_wanted" })}><strong>Vi söker bortamatch</strong><span>Ni reser till ett lag som har en plan</span></button>
       </div>
       {draft.kind === "home_slot" ? <>
@@ -366,7 +366,7 @@ function ListingForm({ client, accessToken, teams, initialTeam, onClose, onSaved
         <label className="field">Spelform<select value={draft.format} onChange={e => set({ format: e.target.value })} required>
           <option value="">Välj</option>{formats.map(f => <option key={f} value={f}>{formatLabel(f)}</option>)}
         </select></label>
-        <label className="field">Åldersklass<input maxLength={40} value={draft.ageClass} onChange={e => set({ ageClass: e.target.value })} placeholder="t.ex. P12 eller F2013" required /></label>
+        <div className="field">Åldersklass (födelseår)<AgeChoices value={draft.ageGroups} onChange={ageGroups => set({ ageGroups })} /></div>
       </div>
       <div className="pz-form-row">
         <label className="field">Pojkar eller flickor<select value={draft.gender} onChange={e => set({ gender: e.target.value as Gender | "" })} required>
@@ -481,7 +481,7 @@ function ConversationView({ client, interestId, onClose }: { client: SupabaseCli
       <div className="mp-convo-summary">
         <VerifiedBadge verified={otherVerified} />
         <span className={`mp-chip ${interest.state}`}>{interestStateLabels[interest.state]}</span>
-        <p><strong>{listing.kind === "home_slot" ? `${listing.team_name} har hemmatid` : `${listing.team_name} söker bortamatch`}</strong> · {listing.age_class} · {formatLabel(listing.match_format)}</p>
+        <p><strong>{`${listing.team_name} ${kindLabels[listing.kind].toLowerCase()}`}</strong> · {listing.age_class} · {formatLabel(listing.match_format)}</p>
         <p>{when}{venue ? ` · ${venue}` : ""} · {listing.place_label}</p>
         {interest.state === "accepted" && <p className="mp-success">Matchen är bokad. {data.my_event_id ? "Den ligger som utkast i er kalender i appen – publicera den när ni är redo." : "Den är inte inlagd i er kalender, lägg in den i appen om ni vill."}</p>}
       </div>
@@ -549,59 +549,94 @@ function RepublishButton({ client, listingId, onDone, onError }: { client: Supab
 
 function Watches({ client, teams, watches, onChanged }: { client: SupabaseClient; teams: PoolTeam[]; watches: Watch[]; onChanged: () => void }) {
   const withBase = teams.filter(team => team.base);
-  const [teamId, setTeamId] = useState(withBase[0]?.team_id ?? "");
-  const [kind, setKind] = useState<Watch["kind"]>("all");
-  const [distance, setDistance] = useState(50);
-  const [format, setFormat] = useState("");
-  const [gender, setGender] = useState("");
-  const [ageClass, setAgeClass] = useState(withBase[0]?.age_class ?? "");
-  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [chosenTeam, setChosenTeam] = useState("");
+  // A team chosen before its starting point existed, or none yet: the first
+  // team that has one (a starting point can be set while this tab is open).
+  const teamId = withBase.some(team => team.team_id === chosenTeam) ? chosenTeam : withBase[0]?.team_id ?? "";
+  const team = withBase.find(t => t.team_id === teamId);
+  const blank = () => ({ kind: "all" as Watch["kind"], distance: 50, format: "11v11", gender: "", ageGroups: ageGroupsFromTeam(team?.age_class), verifiedOnly: false });
+  const [form, setForm] = useState(blank);
+  const [editing, setEditing] = useState<Watch | null>(null);
   const [problem, setProblem] = useState("");
   const [busy, setBusy] = useState(false);
+  const set = (patch: Partial<ReturnType<typeof blank>>) => setForm(previous => ({ ...previous, ...patch }));
+  function edit(watch: Watch) {
+    setEditing(watch);
+    setChosenTeam(watch.team_id);
+    setForm({ kind: watch.kind, distance: watch.max_distance_km, format: watch.match_format ?? "", gender: watch.gender ?? "",
+      ageGroups: watch.age_groups ?? [], verifiedOnly: watch.verified_only });
+    setProblem("");
+  }
+  function reset() { setEditing(null); setForm(blank()); setProblem(""); }
   async function save(event: React.FormEvent) {
     event.preventDefault();
+    if (!teamId) return;
     setBusy(true); setProblem("");
-    const { error } = await client.schema("api").rpc("create_match_pool_watch", { target_team_id: teamId, watch: {
-      kind, max_distance_km: distance, match_format: format || null, gender: gender || null, age_class: ageClass.trim() || null, verified_only: verifiedOnly } });
+    const watch = { kind: form.kind, max_distance_km: form.distance, match_format: form.format || null, gender: form.gender || null,
+      age_groups: form.ageGroups, verified_only: form.verifiedOnly };
+    const { error } = editing
+      ? await client.schema("api").rpc("update_match_pool_watch", { target_watch_id: editing.id, watch })
+      : await client.schema("api").rpc("create_match_pool_watch", { target_team_id: teamId, watch });
     setBusy(false);
-    if (error) setProblem(poolError(error)); else onChanged();
+    if (error) setProblem(poolError(error)); else { reset(); onChanged(); }
   }
   return <div className="mp-watches">
     <p className="mp-hint">När ett lag lägger in en annons som passar får du en notis i appen. Högst tio per bevakning och dygn.</p>
-    {watches.length === 0 ? <div className="cs-empty">Inga bevakningar än.</div> : <ul className="mp-watch-list">{watches.map(watch => <li key={watch.id}>
+    {watches.length === 0 ? <div className="cs-empty">Inga bevakningar än.</div> : <ul className="mp-watch-list">{watches.map(watch => <li key={watch.id} className={editing?.id === watch.id ? "editing" : undefined}>
       <div><strong>{watch.team_name}</strong><span>{watchLabel(watch)}</span>{!watch.mine && <span className="mp-hint">Sparad av en annan ledare – notiserna går till hen.</span>}</div>
-      <button className="pz-link" onClick={async () => {
-        const { error } = await client.schema("api").rpc("delete_match_pool_watch", { target_watch_id: watch.id });
-        if (error) setProblem(poolError(error)); else onChanged();
-      }}>Ta bort</button>
+      <span className="mp-watch-actions">
+        <button className="pz-link" onClick={() => edit(watch)}>Ändra</button>
+        <button className="pz-link" onClick={async () => {
+          const { error } = await client.schema("api").rpc("delete_match_pool_watch", { target_watch_id: watch.id });
+          if (error) setProblem(poolError(error)); else { if (editing?.id === watch.id) reset(); onChanged(); }
+        }}>Ta bort</button>
+      </span>
     </li>)}</ul>}
     {withBase.length === 0
       ? <p className="mp-hint">Välj en utgångsort för laget högst upp på sidan, så kan du bevaka annonser i närheten.</p>
       : <form className="mp-form mp-watch-form" onSubmit={save}>
-        <h3>Ny bevakning</h3>
+        <h3>{editing ? `Ändra bevakning för ${editing.team_name}` : "Ny bevakning"}</h3>
         <div className="pz-form-row">
-          <TeamSelect teams={withBase} value={teamId} onChange={value => { setTeamId(value); setAgeClass(withBase.find(t => t.team_id === value)?.age_class ?? ageClass); }} />
-          <label className="field">Avstånd<select value={distance} onChange={e => setDistance(Number(e.target.value))}>
+          {editing
+            ? <p className="field">Lag<strong>{editing.team_name}</strong></p>
+            : <TeamSelect teams={withBase} value={teamId} onChange={value => {
+                setChosenTeam(value);
+                const groups = ageGroupsFromTeam(withBase.find(t => t.team_id === value)?.age_class);
+                if (groups.length) set({ ageGroups: groups });
+              }} />}
+          <label className="field">Avstånd<select value={form.distance} onChange={e => set({ distance: Number(e.target.value) })}>
             {[10, 25, 50, 75, 100, 150, 200].map(km => <option key={km} value={km}>Inom {km} km</option>)}
           </select></label>
         </div>
+        <label className="field">Annonser<select value={form.kind} onChange={e => set({ kind: e.target.value as Watch["kind"] })}>
+          <option value="all">Alla</option><option value="home_slot">Lag som söker hemmamatch</option><option value="away_wanted">Lag som söker bortamatch</option>
+        </select></label>
+        <div className="field">Åldersklass (födelseår) – inget val betyder alla<AgeChoices value={form.ageGroups} onChange={ageGroups => set({ ageGroups })} /></div>
         <div className="pz-form-row">
-          <label className="field">Annonser<select value={kind} onChange={e => setKind(e.target.value as Watch["kind"])}>
-            <option value="all">Alla</option><option value="home_slot">Lag som har hemmatid</option><option value="away_wanted">Lag som söker bortamatch</option>
-          </select></label>
-          <label className="field">Åldersklass innehåller<input maxLength={40} value={ageClass} onChange={e => setAgeClass(e.target.value)} placeholder="t.ex. P12 (valfritt)" /></label>
-        </div>
-        <div className="pz-form-row">
-          <label className="field">Spelform<select value={format} onChange={e => setFormat(e.target.value)}>
+          <label className="field">Spelform<select value={form.format} onChange={e => set({ format: e.target.value })}>
             <option value="">Alla</option>{formats.map(f => <option key={f} value={f}>{formatLabel(f)}</option>)}
           </select></label>
-          <label className="field">Kön<select value={gender} onChange={e => setGender(e.target.value)}>
+          <label className="field">Kön<select value={form.gender} onChange={e => set({ gender: e.target.value })}>
             <option value="">Alla</option>{Object.entries(genderLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select></label>
         </div>
-        <label className="pz-check"><input type="checkbox" checked={verifiedOnly} onChange={e => setVerifiedOnly(e.target.checked)} /><span>Bara annonser från officiellt verifierade klubbar</span></label>
+        <label className="pz-check"><input type="checkbox" checked={form.verifiedOnly} onChange={e => set({ verifiedOnly: e.target.checked })} /><span>Bara annonser från officiellt verifierade klubbar</span></label>
         {problem && <p role="alert" className="pz-error">{problem}</p>}
-        <div className="mp-form-actions start"><button className="cs-button" disabled={busy}>{busy ? "Sparar…" : "Spara bevakning"}</button></div>
+        <div className="mp-form-actions start">
+          <button className="cs-button" disabled={busy}>{busy ? "Sparar…" : editing ? "Spara ändringarna" : "Spara bevakning"}</button>
+          {editing && <button type="button" className="cs-button ghost dark" onClick={reset}>Avbryt</button>}
+        </div>
       </form>}
+  </div>;
+}
+
+/** Several birth years (and Senior) as buttons that can be pressed. */
+function AgeChoices({ value, onChange }: { value: string[]; onChange: (value: string[]) => void }) {
+  return <div className="mp-chips" role="group" aria-label="Åldersklasser">
+    {ageChoices().map(choice => {
+      const on = value.includes(choice.value);
+      return <button key={choice.value} type="button" aria-pressed={on} onClick={() =>
+        onChange(on ? value.filter(v => v !== choice.value) : [...value, choice.value].sort())}>{choice.label}</button>;
+    })}
   </div>;
 }

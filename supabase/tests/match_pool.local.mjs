@@ -90,6 +90,7 @@ try {
   await db.exec(read('supabase/migrations/20261102090000_match_pool.sql').replace(/notify pgrst[^;]*;/, ''));
   await db.exec(read('supabase/migrations/20261103090000_match_pool_app.sql').replace(/notify pgrst[^;]*;/, ''));
   await db.exec(read('supabase/migrations/20261104090000_match_pool_watches_cancellation.sql').replace(/notify pgrst[^;]*;/, ''));
+  await db.exec(read('supabase/migrations/20261105090000_match_pool_age_groups.sql').replace(/notify pgrst[^;]*;/, ''));
   await db.exec('set check_function_bodies = on');
   await db.exec('begin');
 
@@ -320,6 +321,31 @@ try {
   await user(coachA2, 'select api.report_match_pool_listing($1,$2)', [nearby, 'Konstig annons']);
   assert.equal(await one(`select count(*)::int from internal.match_pool_reports where listing_id='${nearby}'`), 1);
   await reject(() => user(coachC, 'select api.report_match_pool_listing($1,$2)', [nearby, 'Egen klubb']), /not_found/);
+
+  // Age groups: fixed choices, a readable label, shared groups match a watch.
+  assert.equal(await one(`select internal.match_pool_age_label(array['2013','2012','2015','senior'])`), '2012–2013, 2015, Senior');
+  assert.equal(await one(`select internal.match_pool_age_label('{}')`), null);
+  assert.equal(await one(`select internal.match_pool_age_groups('["2012","P12"]'::jsonb)`), null);
+  const ageWatch = await user(coachA, 'select api.create_match_pool_watch($1,$2)', [albyP12, { max_distance_km: 100, age_groups: ['2013'] }]);
+  assert.equal(await one(`select age_class from internal.match_pool_watches where id='${ageWatch}'`), '2013');
+  await reject(() => user(coachA, 'select api.create_match_pool_watch($1,$2)', [albyP12, { max_distance_km: 100, age_groups: ['P12'] }]), /invalid_input/);
+  const grouped = await user(coachB, 'select api.create_match_pool_listing($1,$2,$3)', [broP12, { kind: 'away_wanted',
+    date_from: localDate(5), date_to: localDate(20), max_distance_km: 50, place_label: 'Bro', latitude: 59.51, longitude: 17.64,
+    match_format: '11v11', age_groups: ['2013', '2012'], gender: 'boys' }, key(70)]);
+  assert.equal(await one(`select age_class from internal.match_pool_listings where id='${grouped}'`), '2012–2013');
+  assert.equal(await one(`select count(*)::int from internal.notification_outbox
+    where event_type='matchpool.watch.matched.v1' and payload_ref->>'watch_id'='${ageWatch}'`), 1, 'shares 2013');
+  await reject(() => user(coachB, 'select api.create_match_pool_listing($1,$2,$3)', [broP12, { kind: 'away_wanted',
+    date_from: localDate(5), date_to: localDate(20), max_distance_km: 50, place_label: 'Bro', latitude: 59.51, longitude: 17.64,
+    match_format: '11v11', age_groups: [], gender: 'boys' }, key(71)]), /invalid_input/);
+  // Editing a watch: any leader of the team; the age groups change what it matches.
+  await user(coachA2, 'select api.update_match_pool_watch($1,$2)', [ageWatch, { kind: 'home_slot', max_distance_km: 75, age_groups: ['2014'], verified_only: true }]);
+  const edited = (await user(coachA, 'select api.list_match_pool_watches()')).find(w => w.id === ageWatch);
+  assert.deepEqual([edited.kind, edited.max_distance_km, edited.age_groups, edited.age_class, edited.verified_only], ['home_slot', 75, ['2014'], '2014', true]);
+  await reject(() => user(coachB, 'select api.update_match_pool_watch($1,$2)', [ageWatch, { max_distance_km: 50 }]), /not_found/);
+  await reject(() => user(coachA, 'select api.update_match_pool_watch($1,$2)', [ageWatch, { max_distance_km: 1 }]), /invalid_input/);
+  await user(coachB, 'select api.withdraw_match_pool_listing($1)', [grouped]);
+  await user(coachA, 'select api.delete_match_pool_watch($1)', [ageWatch]);
 
   // Withdraw closes waiting interests; retention expires and later deletes.
   const later = await user(coachB, 'select api.create_match_pool_listing($1,$2,$3)', [broP12, { ...homeSlot,
