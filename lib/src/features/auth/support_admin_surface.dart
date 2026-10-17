@@ -25,6 +25,8 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
   Future<List<ProtectedNameSupportCase>>? _cases;
   Future<List<GlobalPersonErasureCase>>? _erasures;
   Future<List<ClubVerificationRequest>>? _verifications;
+  // POOL-04: reported match pool listings support has not handled yet.
+  Future<int>? _openReports;
   String? _status;
 
   @override
@@ -35,6 +37,7 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
 
   void _reload() {
     setState(() {
+      _openReports = _loadOpenReports();
       _cases = widget.membership
           .listProtectedNameSupportCases(status: _status)
           .timeout(const Duration(seconds: 15));
@@ -52,6 +55,20 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
           )
           .timeout(const Duration(seconds: 15));
     });
+  }
+
+  Future<int> _loadOpenReports() async {
+    final messaging = widget.messaging;
+    if (messaging == null) return 0;
+    try {
+      final reports = await messaging.listMatchPoolReports().timeout(
+        const Duration(seconds: 15),
+      );
+      return reports.length;
+    } catch (error) {
+      AppErrors.caught('support_admin_surface._loadOpenReports', error);
+      return 0;
+    }
   }
 
   bool _showErasure(GlobalPersonErasureCase item) => switch (_status) {
@@ -395,15 +412,32 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
             IconButton(
               key: const ValueKey('support-match-pool-reports'),
               tooltip: strings.feature('Rapporterade annonser i matchpoolen'),
-              icon: const Icon(Icons.flag_outlined),
-              onPressed: () => showModalBottomSheet<void>(
-                context: context,
-                isScrollControlled: true,
-                useSafeArea: true,
-                showDragHandle: true,
-                builder: (_) =>
-                    MatchPoolReportsQueue(services: widget.messaging!),
+              icon: FutureBuilder<int>(
+                future: _openReports,
+                builder: (context, snapshot) {
+                  final open = snapshot.data ?? 0;
+                  return Badge.count(
+                    count: open,
+                    isLabelVisible: open > 0,
+                    child: Icon(open > 0 ? Icons.flag : Icons.flag_outlined),
+                  );
+                },
               ),
+              onPressed: () async {
+                await showModalBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  useSafeArea: true,
+                  showDragHandle: true,
+                  builder: (_) =>
+                      MatchPoolReportsQueue(services: widget.messaging!),
+                );
+                if (!mounted) return;
+                final next = _loadOpenReports();
+                setState(() {
+                  _openReports = next;
+                });
+              },
             ),
           IconButton(
             key: const ValueKey('support-email-changes'),
