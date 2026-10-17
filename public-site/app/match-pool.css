@@ -141,3 +141,7 @@
 .mp-dot-key.unverified { background: #d9a21b; }
 .mp-dot-key.origin { background: var(--cs-ink); }
 @media (max-width: 560px) { .mp-view { margin-left: 0; } .mp-map { height: 55vh; } }
+
+/* POOL-05: the signed-in account, always visible. */
+.mp-account { margin: 12px 0 0; color: var(--cs-muted); font-size: .88rem; }
+.mp-account strong { color: var(--cs-text); overflow-wrap: anywhere; }

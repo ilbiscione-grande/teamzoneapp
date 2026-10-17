@@ -95,6 +95,7 @@ try {
   await db.exec(read('supabase/migrations/20261104090000_match_pool_watches_cancellation.sql').replace(/notify pgrst[^;]*;/, ''));
   await db.exec(read('supabase/migrations/20261105090000_match_pool_age_groups.sql').replace(/notify pgrst[^;]*;/, ''));
   await db.exec(read('supabase/migrations/20261106090000_match_pool_map_reports.sql').replace(/notify pgrst[^;]*;/, ''));
+  await db.exec(read('supabase/migrations/20261107090000_match_pool_review_fixes.sql').replace(/notify pgrst[^;]*;/, ''));
   await db.exec('set check_function_bodies = on');
   await db.exec('begin');
 
@@ -374,6 +375,22 @@ try {
   await user(coachB, 'select api.withdraw_match_pool_listing($1)', [grouped]);
   await user(coachA, 'select api.delete_match_pool_watch($1)', [ageWatch]);
 
+  // Review fixes: no interest from the listing's own club, and no
+  // cancelling once the match has started.
+  assert.equal((await user(coachB, 'select api.get_match_pool()')).listings.some(l => l.id === away), false, 'own club');
+  await db.exec(`update internal.match_pool_listings set state='open' where id='${away}'`);
+  await reject(() => user(coachB, 'select api.express_match_pool_interest($1,$2,$3,$4)', [away, broP12,
+    { message: 'Samma klubb', starts_at: days(8).toISOString(), ends_at: days(8.05).toISOString(), venue_name: 'Bro IP' }, key(90)]), /not_found/);
+  await db.exec(`update internal.match_pool_listings set state='matched' where id='${away}'`);
+  await db.exec(`update internal.match_pool_interests set starts_at=now()-interval '1 hour', ends_at=now()+interval '1 hour' where id='${host}'`);
+  await reject(() => user(coachA, 'select api.request_match_pool_cancellation($1)', [host]), /match_started/);
+  await db.exec(`update internal.match_pool_interests set starts_at=now()+interval '8 days', ends_at=now()+interval '8 days 1 hour' where id='${host}'`);
+
+  // Erasing an account clears the pool's references instead of blocking.
+  await db.exec(`delete from core.profiles where id='${coachC}'`);
+  assert.equal(await one(`select created_by from internal.match_pool_listings where id='${away}'`), null);
+  assert.equal(await one(`select internal.match_pool_add_to_calendar(null, '${bro}', '${broF13}', '${albyP12}', true, now(), now(), 'x', null, '${key(91)}')`), null);
+
   // Withdraw closes waiting interests; retention expires and later deletes.
   const later = await user(coachB, 'select api.create_match_pool_listing($1,$2,$3)', [broP12, { ...homeSlot,
     place_label: 'Bro', latitude: 59.51, longitude: 17.64, venue_name: 'Bro IP' }, key(50)]);
@@ -385,6 +402,10 @@ try {
   assert.equal(await one(`select state from internal.match_pool_listings where id='${nearby}'`), 'expired');
   await db.exec(`update internal.match_pool_listings set updated_at=now()-interval '40 days';
     update internal.match_pool_interests set updated_at=now()-interval '40 days'`);
+  await one('select internal.apply_match_pool_retention()');
+  // A booked match still ahead keeps its conversation, however quiet.
+  assert.deepEqual((await db.query('select id from internal.match_pool_listings')).rows.map(r => r.id), [away]);
+  await db.exec(`update internal.match_pool_interests set starts_at=now()-interval '40 days', ends_at=now()-interval '39 days' where id='${host}'`);
   await one('select internal.apply_match_pool_retention()');
   assert.equal(await one('select count(*)::int from internal.match_pool_listings'), 0);
   assert.equal(await one('select count(*)::int from internal.match_pool_messages'), 0);

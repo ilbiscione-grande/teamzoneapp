@@ -123,6 +123,10 @@ export function MatchPool() {
           </label>
           <button className="cs-button" onClick={() => setCreating(true)}>Lägg in annons</button>
         </div>
+        <p className="mp-account">Inloggad som <strong>{session.user.email}</strong> · <button className="pz-link" onClick={async () => {
+          if (!client) return;
+          await client.auth.signOut({ scope: "local" }).catch(() => undefined);
+        }}>Logga ut</button></p>
         {error && <p role="alert" className="pz-error">{error}</p>}
 
         <div className="mp-tabs" role="tablist" aria-label="Matchpoolen">

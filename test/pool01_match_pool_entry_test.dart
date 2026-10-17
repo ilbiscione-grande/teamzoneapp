@@ -91,6 +91,7 @@ class _Messaging extends UnconfiguredMessagingServices {
 }
 
 void main() {
+  errorTextTests();
   supportTests();
   _registerCancellationTests();
   test('the match pool summary reads leader and unread', () {
@@ -318,5 +319,15 @@ void supportTests() {
     await tester.pumpAndSettle();
     expect(services.decided, [('l1', true, 'Kontaktuppgifter i annonsen')]);
     expect(find.text('Inga rapporterade annonser.'), findsOneWidget);
+  });
+}
+
+void errorTextTests() {
+  test('database reasons become Swedish messages', () {
+    expect(
+      matchPoolErrorText(Exception('P0001 match_started')),
+      contains('redan börjat'),
+    );
+    expect(matchPoolErrorText(Exception('boom')), contains('Försök igen'));
   });
 }

@@ -133,3 +133,9 @@ test("the map groups listings by their rounded place and allows only OpenStreetM
   const map = readFileSync(new URL("../components/match-pool-map.tsx", import.meta.url), "utf8");
   assert.match(map, /html: count > 1 \? String\(count\) : ""/, "nothing from a listing goes into marker markup");
 });
+
+test("the page always shows which account is signed in", () => {
+  const page = readFileSync(new URL("../components/match-pool.tsx", import.meta.url), "utf8");
+  assert.match(page, /Inloggad som <strong>\{session\.user\.email\}<\/strong>/);
+  assert.match(poolError({ message: "match_started" }), /redan börjat/);
+});

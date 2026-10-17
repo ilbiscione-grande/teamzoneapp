@@ -139,6 +139,7 @@ export const poolErrors: Record<string, string> = {
   cancellation_pending: "Det finns redan en begäran om avbokning.",
   no_cancellation: "Det finns ingen begäran om avbokning längre.",
   not_booked: "Matchen är inte bokad.",
+  match_started: "Matchen har redan börjat och kan inte avbokas.",
   cannot_republish: "Annonsen kan inte läggas ut igen, datumet har passerat.",
   no_base: "Välj lagets utgångsort först, så kan avståndet räknas.",
   not_found: "Det gick inte: laget eller annonsen finns inte, eller så får du inte hantera laget.",

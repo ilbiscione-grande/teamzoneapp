@@ -59,6 +59,26 @@ const _levelLabels = {
 
 String _formatLabel(String format) => format.replaceFirst('v', ' mot ');
 
+/// The database's reason in Swedish, or a general message.
+String matchPoolErrorText(Object error) {
+  final text = error.toString();
+  const known = {
+    'match_started': 'Matchen har redan börjat och kan inte avbokas.',
+    'cancellation_pending': 'Det finns redan en begäran om avbokning.',
+    'no_cancellation': 'Det finns ingen begäran om avbokning längre.',
+    'conversation_closed': 'Konversationen är avslutad.',
+    'listing_closed': 'Annonsen är inte längre öppen.',
+    'cannot_republish':
+        'Annonsen kan inte läggas ut igen, datumet har passerat.',
+    'not_booked': 'Matchen är inte bokad.',
+    'rate_limited': 'Många ändringar på kort tid. Försök igen senare.',
+  };
+  for (final entry in known.entries) {
+    if (text.contains(entry.key)) return entry.value;
+  }
+  return 'Det gick inte att spara. Försök igen.';
+}
+
 class _VerifiedBadge extends StatelessWidget {
   const _VerifiedBadge({required this.verified});
   final bool verified;
@@ -347,11 +367,10 @@ class _MatchPoolConversationPageState extends State<MatchPoolConversationPage> {
     } catch (error) {
       AppErrors.caught('match_pool.$where', error);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Det gick inte att spara. Försök igen.'),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(matchPoolErrorText(error))));
+        _reload();
       }
     } finally {
       if (mounted) setState(() => _busy = false);

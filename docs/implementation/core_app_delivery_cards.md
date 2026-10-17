@@ -1406,6 +1406,16 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 - [x] Supportvy i appen (Supportärenden → flaggikonen): rapporterade annonser med alla rapporter (klubb, anledning, datum). Support döljer annonsen eller avfärdar rapporterna, alltid med motivering. Lag som väntar på svar får besked när en annons döljs, och en annons som dolts automatiskt blir synlig igen när rapporterna avfärdas. Varje beslut loggas i revisionsloggen, och behandlade rapporter räknas inte igen.
 - [ ] Skarp provning: kartan visar annonserna, och support döljer och återställer en rapporterad annons.
 
+**Genomgång 2026-10-17 (migration `20261107090000`):**
+
+- [x] Radering av ett konto stoppades av matchpoolens kopplingar till profilen; de nollställs nu i stället.
+- [x] Rensningen raderade en bokad matchs konversation 30 dagar efter senaste meddelandet även om matchen låg framåt; nu sparas den till 30 dagar efter matchen.
+- [x] Bevakningsnotiser gick även till den som inte längre leder laget, och annonser från avslutade lag syntes; båda är stoppade.
+- [x] En match kunde avbokas efter att den börjat; det går inte längre.
+- [x] En ledare med två lag i samma klubb (klubbadministratör) kunde visa intresse för klubbens egen annons och sedan agera för båda sidor; lag i den egna klubben syns inte i poolen och kan inte visa intresse för varandra.
+- [x] Webbsidan visar alltid vilket konto som är inloggat, med "Logga ut", så den som skickats dit med någon annans engångskod från appen ser det direkt.
+- [x] Appen visar databasens anledning på svenska ("Matchen har redan börjat …") i stället för bara "Det gick inte att spara".
+
 ### SET-01 – Klubbinställningar
 
 **Status:** `[~]` – hosted och automatiskt verifierad
