@@ -9,6 +9,7 @@ import 'package:teamzone_app/src/features/roster/roster_models.dart';
 import 'package:teamzone_app/src/features/roster/roster_services.dart';
 
 void main() {
+  multiPositionTests();
   testWidgets('player picks general and detailed positions plus own label', (
     tester,
   ) async {
@@ -1579,3 +1580,60 @@ const _teamManager = [
   'publication.manage',
   'team.roster.manage',
 ];
+
+void multiPositionTests() {
+  testWidgets('several positions can be shown at once', (tester) async {
+    RosterPersonSummary person(String id, String name) => RosterPersonSummary(
+      id: id,
+      displayName: name,
+      teamId: 'team',
+      teamName: 'F2012',
+      assignmentState: 'active',
+      safeguardingRequired: false,
+    );
+    final roster = _Roster(
+      roles: [
+        const TeamRole(
+          personId: 'mia',
+          name: 'Mia Målvakt',
+          role: 'player',
+          positions: ['goalkeeper'],
+          mainPosition: 'goalkeeper',
+        ),
+        const TeamRole(
+          personId: 'fia',
+          name: 'Fia Forward',
+          role: 'player',
+          positions: ['forward'],
+          mainPosition: 'forward',
+        ),
+        const TeamRole(
+          personId: 'mira',
+          name: 'Mira Mitt',
+          role: 'player',
+          positions: ['midfielder'],
+          mainPosition: 'midfielder',
+        ),
+      ],
+      people: [
+        person('mia', 'Mia Målvakt'),
+        person('fia', 'Fia Forward'),
+        person('mira', 'Mira Mitt'),
+      ],
+    );
+    await _openRoster(tester, roster);
+    await tester.tap(find.byKey(const ValueKey('roster-filter')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('roster-position-goalkeeper')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('roster-position-forward')));
+    await tester.pumpAndSettle();
+    Navigator.of(
+      tester.element(find.byKey(const ValueKey('roster-position-forward'))),
+    ).pop();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('roster-player-mia')), findsOneWidget);
+    expect(find.byKey(const ValueKey('roster-player-fia')), findsOneWidget);
+    expect(find.byKey(const ValueKey('roster-player-mira')), findsNothing);
+  });
+}

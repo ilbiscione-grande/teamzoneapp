@@ -36,13 +36,14 @@ class _RosterSurfaceState extends State<_RosterSurface> {
   // one position, and the sort order.
   String _status = 'active';
   String _show = 'all';
-  String? _position;
+  // Several positions can be shown at once; empty means all.
+  Set<String> _positions = const {};
   String _sortBy = 'name';
   final _rosterSearch = TextEditingController();
   bool get _rosterFiltered =>
       _status != 'active' ||
       _show != 'all' ||
-      _position != null ||
+      _positions.isNotEmpty ||
       _sortBy != 'name';
   List<RosterPersonSummary>? _syncedPeople;
   late int _selectedTab = _teamTabIndex(widget.initialTab);
@@ -518,7 +519,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                   };
                   // A position or another order looks at the whole match,
                   // not one page of it.
-                  final whole = _position != null || _sortBy != 'name';
+                  final whole = _positions.isNotEmpty || _sortBy != 'name';
                   final people =
                       (whole ? _list.matchingItems : allPeople)
                           .where(
@@ -526,10 +527,12 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                                 _show != 'leaders' &&
                                 (person.assignmentState == 'active' ||
                                     !leaderIds.contains(person.id)) &&
-                                (_position == null ||
-                                    _hasPosition(
-                                      playerRoles[person.id],
-                                      _position!,
+                                (_positions.isEmpty ||
+                                    _positions.any(
+                                      (position) => _hasPosition(
+                                        playerRoles[person.id],
+                                        position,
+                                      ),
                                     )),
                           )
                           .toList()
@@ -1047,7 +1050,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     if (data == null ||
         _list.filterKey == 'other' ||
         _show == 'players' ||
-        _position != null) {
+        _positions.isNotEmpty) {
       return const [];
     }
     final query = _list.query.trim().toLowerCase();
@@ -1139,7 +1142,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     setState(() {
       _status = 'active';
       _show = 'all';
-      _position = null;
+      _positions = const {};
       _sortBy = 'name';
     });
     _setRosterStatusFilter('active');
@@ -1222,7 +1225,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                         update(() {
                           _status = 'active';
                           _show = 'all';
-                          _position = null;
+                          _positions = const {};
                           _sortBy = 'name';
                         });
                         _setRosterStatusFilter('active');
@@ -1265,15 +1268,20 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                 section('Position', [
                   choice(
                     strings.feature('Alla positioner'),
-                    _position == null,
-                    () => update(() => _position = null),
+                    _positions.isEmpty,
+                    () => update(() => _positions = const {}),
                   ),
+                  // Each position turns on or off; several can be chosen.
                   for (final position in positions)
-                    choice(
-                      _anyPositionLabel(strings, position),
-                      _position == position,
+                    FilterChip(
                       key: ValueKey('roster-position-$position'),
-                      () => update(() => _position = position),
+                      label: Text(_anyPositionLabel(strings, position)),
+                      selected: _positions.contains(position),
+                      onSelected: (on) => update(
+                        () => _positions = on
+                            ? {..._positions, position}
+                            : ({..._positions}..remove(position)),
+                      ),
                     ),
                 ]),
               section('Sortera', [
