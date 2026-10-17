@@ -698,3 +698,29 @@ void inboxTabTests() {
     expect(find.byKey(const ValueKey('inbox-search-clear')), findsNothing);
   });
 }
+
+/// Records which threads were marked read.
+class _ReadMessaging extends _Messaging {
+  final read = <(String, int)>[];
+  @override
+  Future<void> markRead(
+    String threadId,
+    int revision,
+    String idempotencyKey,
+  ) async => read.add((threadId, revision));
+}
+
+void clubReadTests() {
+  testWidgets('a club header marks only that club\'s threads as read', (
+    tester,
+  ) async {
+    final messaging = _ReadMessaging();
+    await _openInbox(tester, messaging);
+    expect(find.byTooltip('Markera alla som lästa'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('inbox-club-read-Bergby FF')));
+    await tester.pumpAndSettle();
+    expect(messaging.read, [('42000000-0000-4000-8000-000000000002', 1)]);
+    // The tap did not open or close the club.
+    expect(find.text('Cupresa'), findsNothing);
+  });
+}

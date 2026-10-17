@@ -133,13 +133,13 @@ void main() {
     expect(surface, isNot(contains('participant_profile_ids')));
   });
 
-  test('mark all routes messages and announcements atomically', () {
+  test('marking read is per club, not for everything at once', () {
     expect(migration, contains('mark_all_threads_read_for_actor'));
-    expect(migration, contains('message.all.read.v1'));
     expect(migration, contains('insert into core.message_reads'));
     expect(migration, contains('insert into core.announcement_reads'));
-    expect(services, contains("operation: 'mark_all_threads_read'"));
-    expect(surface, contains("feature('Markera alla som lästa')"));
+    expect(services, isNot(contains("operation: 'mark_all_threads_read'")));
+    expect(surface, isNot(contains("feature('Markera alla som lästa')")));
+    expect(surface, contains("'Markera klubbens trådar som lästa'"));
   });
 
   test('recipient UI cannot render an announcement composer', () {

@@ -43,7 +43,6 @@ abstract interface class MessagingServices {
     required List<String> audienceRoles,
     required String idempotencyKey,
   });
-  Future<void> markAllRead(List<String> contextIds, String idempotencyKey);
   Future<void> send({
     required String threadId,
     required String body,
@@ -214,9 +213,6 @@ class UnconfiguredMessagingServices implements MessagingServices {
     required List<String> audienceRoles,
     required String idempotencyKey,
   }) => _fail();
-  @override
-  Future<void> markAllRead(List<String> contextIds, String idempotencyKey) =>
-      _fail();
   @override
   Future<void> send({
     required String threadId,
@@ -639,21 +635,6 @@ class SupabaseMessagingServices implements MessagingServices {
           .schema('api')
           .rpc<String>('create_role_group_announcement', params: params);
     }
-  }
-
-  @override
-  Future<void> markAllRead(
-    List<String> contextIds,
-    String idempotencyKey,
-  ) async {
-    await measuredRpc(
-      _client,
-      operation: 'mark_all_threads_read',
-      params: {
-        'context_ids': contextIds.toSet().toList(),
-        'idempotency_key': idempotencyKey,
-      },
-    );
   }
 
   @override

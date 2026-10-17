@@ -989,16 +989,18 @@ class _InboxSurfaceState extends State<_InboxSurface>
     _staleResyncAttempt = 0;
   }
 
-  Future<void> _markAllRead() async {
+  /// Marks the unread threads under one club as read, nothing else.
+  Future<void> _markClubRead(List<MessageThreadSummary> threads) async {
     final strings = AppStrings.of(context);
     try {
-      await widget.messaging.markAllRead([
-        widget.contextValue.id,
-        ...widget.contextValue.aliasIds,
-      ], _newUuid());
+      await Future.wait([
+        for (final thread in threads.where((thread) => thread.unreadCount > 0))
+          widget.messaging.markRead(thread.id, thread.revision, _newUuid()),
+      ]);
       if (mounted) await _data.refresh();
     } catch (error) {
-      AppErrors.caught('inbox_surface._markAllRead', error);
+      AppErrors.caught('inbox_surface._markClubRead', error);
+      if (mounted) await _data.refresh();
 
       if (mounted) {
         ScaffoldMessenger.of(
@@ -1255,44 +1257,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
                                 ],
                               ),
                             ),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(4, 4, 12, 0),
-                              child: Row(
-                                children: [
-                                  const Spacer(),
-                                  if (compact)
-                                    IconButton(
-                                      tooltip: strings.feature(
-                                        'Markera alla som lästa',
-                                      ),
-                                      onPressed:
-                                          state.data?.any(
-                                                (item) => item.unreadCount > 0,
-                                              ) ==
-                                              true
-                                          ? _markAllRead
-                                          : null,
-                                      icon: const Icon(Icons.done_all),
-                                    )
-                                  else
-                                    TextButton.icon(
-                                      onPressed:
-                                          state.data?.any(
-                                                (item) => item.unreadCount > 0,
-                                              ) ==
-                                              true
-                                          ? _markAllRead
-                                          : null,
-                                      icon: const Icon(Icons.done_all),
-                                      label: Text(
-                                        strings.feature(
-                                          'Markera alla som lästa',
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
+                            const SizedBox(height: 4),
                             Expanded(
                               child:
                                   threads.isEmpty &&
@@ -1458,6 +1423,10 @@ class _InboxSurfaceState extends State<_InboxSurface>
                                                         thread.unreadCount,
                                                   ),
                                                   expanded: expanded,
+                                                  onMarkRead: () =>
+                                                      _markClubRead(
+                                                        club.threads,
+                                                      ),
                                                   onTap: () => setState(
                                                     () =>
                                                         _clubExpanded[club
@@ -3067,10 +3036,14 @@ class _InboxClubHeader extends StatelessWidget {
     required this.unread,
     required this.expanded,
     required this.onTap,
+    this.onMarkRead,
     this.intake = 0,
   });
   final String title;
   final int count, unread;
+
+  /// Marks this club's threads read; shown while some are unread.
+  final VoidCallback? onMarkRead;
 
   /// Sent contact details waiting in the club's teams.
   final int intake;
@@ -3119,6 +3092,16 @@ class _InboxClubHeader extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                   ],
+                  if (unread > 0 && onMarkRead != null)
+                    IconButton(
+                      key: ValueKey('inbox-club-read-$title'),
+                      tooltip: strings.feature(
+                        'Markera klubbens trådar som lästa',
+                      ),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: onMarkRead,
+                      icon: const Icon(Icons.done_all),
+                    ),
                   if (unread > 0) ...[
                     Badge(
                       label: Text('$unread'),
