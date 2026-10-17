@@ -94,4 +94,46 @@ void main() {
     expect(find.text('2'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('hides the button only when nothing is confirmed current', (
+    tester,
+  ) async {
+    final gate = Completer<AssistantTaskSnapshot>();
+    Future<AssistantTaskSnapshot> Function() answer = () => gate.future;
+    var token = 0;
+    Future<void> show() => tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AssistantTaskBadge(
+            load: () => answer(),
+            refreshToken: token,
+            hideWhenEmpty: true,
+            child: const Icon(Icons.assistant, key: Key('fab')),
+          ),
+        ),
+      ),
+    );
+    await show();
+    expect(find.byKey(const Key('fab')), findsOneWidget, reason: 'loading');
+    gate.complete(AssistantTaskSnapshot([task('snoozed')], []));
+    await tester.pump();
+    expect(find.byKey(const Key('fab')), findsNothing, reason: 'zero');
+    // A refresh that is still loading keeps it hidden: no flash.
+    final next = Completer<AssistantTaskSnapshot>();
+    answer = () => next.future;
+    token++;
+    await show();
+    expect(find.byKey(const Key('fab')), findsNothing);
+    next.complete(AssistantTaskSnapshot([task('active')], []));
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key('fab')), findsOneWidget, reason: 'one current');
+    // A read error is not a zero: the button shows.
+    answer = () => Future.error(StateError('offline'));
+    token++;
+    await show();
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key('fab')), findsOneWidget);
+  });
 }

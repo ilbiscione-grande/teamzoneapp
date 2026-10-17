@@ -106,12 +106,9 @@ void main() {
       expect(find.byTooltip('Granska och påminn'), findsNothing);
       await tester.tap(find.byType(BackButton).last);
       await tester.pumpAndSettle();
-      expect(
-        tester
-            .widget<Badge>(find.byKey(const Key('assistant-task-count')))
-            .isLabelVisible,
-        isFalse,
-      );
+      // Nothing current any more: the assistant's button is hidden.
+      expect(find.byKey(const Key('assistant-task-count')), findsNothing);
+      expect(find.byKey(const Key('assistant-coach-mobile-fab')), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );

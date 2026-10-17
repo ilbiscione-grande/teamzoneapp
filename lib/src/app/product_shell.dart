@@ -1104,27 +1104,29 @@ class _ProductShellState extends State<_ProductShell> {
                               // couldn't detect them reliably. Pages that do have
                               // their own FAB instead move THEIRS up out of the way
                               // via assistantFabClearanceLocation.
-                              Positioned(
-                                right: 16,
-                                bottom: 16,
-                                child: AssistantTaskBadge(
-                                  refreshToken: (
-                                    _assistantTaskRevision,
-                                    _currentPageLocation,
-                                    widget.contexts,
-                                    widget.contextValue.id,
-                                  ),
-                                  load: () => loadAssistantTasks(
-                                    contexts: widget.contexts,
-                                    activeContext: _contextForLocation(
+                              Positioned.fill(
+                                child: DraggableAssistantFab(
+                                  child: AssistantTaskBadge(
+                                    hideWhenEmpty: true,
+                                    refreshToken: (
+                                      _assistantTaskRevision,
                                       _currentPageLocation,
+                                      widget.contexts,
+                                      widget.contextValue.id,
                                     ),
-                                    overview: widget.overview,
-                                    loadEvent: widget.calendar.getEventDetails,
-                                  ),
-                                  child: _AssistantCoachMobileFab(
-                                    onPressed: _openAssistant,
-                                    preference: _assistantPreference,
+                                    load: () => loadAssistantTasks(
+                                      contexts: widget.contexts,
+                                      activeContext: _contextForLocation(
+                                        _currentPageLocation,
+                                      ),
+                                      overview: widget.overview,
+                                      loadEvent:
+                                          widget.calendar.getEventDetails,
+                                    ),
+                                    child: _AssistantCoachMobileFab(
+                                      onPressed: _openAssistant,
+                                      preference: _assistantPreference,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -2390,6 +2392,98 @@ class _AppNavigationPanel extends StatelessWidget {
 /// At the desktop breakpoint there is no assistant FAB to clear, so the
 /// caller should pass this only when
 /// `!AppBreakpoints.usesAssistantSidePanel(width)`.
+/// Min assistent's button on the right edge, draggable up and down when it
+/// is in the way. The place is kept on this device as a share of the
+/// height, so it survives other screen sizes. Only the button takes
+/// touches; the rest of the area passes them to the page.
+class DraggableAssistantFab extends StatefulWidget {
+  const DraggableAssistantFab({super.key, required this.child});
+  final Widget child;
+
+  @override
+  State<DraggableAssistantFab> createState() => DraggableAssistantFabState();
+}
+
+class DraggableAssistantFabState extends State<DraggableAssistantFab> {
+  static const _key = 'assistant_fab_position';
+  static const _margin = 16.0;
+  static const _buttonHeight = 64.0;
+
+  /// 0 = the standard bottom place, 1 = as high as it goes.
+  double _share = 0;
+  double? _dragBottom;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_restore());
+  }
+
+  Future<void> _restore() async {
+    try {
+      final saved = (await SharedPreferences.getInstance()).getDouble(_key);
+      if (saved != null && mounted) {
+        setState(() => _share = saved.clamp(0.0, 1.0));
+      }
+    } catch (error) {
+      AppErrors.caught('product_shell.DraggableAssistantFab.restore', error);
+    }
+  }
+
+  Future<void> _save() async {
+    try {
+      await (await SharedPreferences.getInstance()).setDouble(_key, _share);
+    } catch (error) {
+      AppErrors.caught('product_shell.DraggableAssistantFab.save', error);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      final range = (box.maxHeight - _buttonHeight - 2 * _margin).clamp(
+        0.0,
+        double.infinity,
+      );
+      final bottom = _dragBottom ?? _margin + _share * range;
+      return Stack(
+        children: [
+          Positioned(
+            right: _margin,
+            bottom: bottom,
+            child: Semantics(
+              hint: AppStrings.of(
+                context,
+              ).feature('Dra uppåt eller nedåt för att flytta assistenten'),
+              child: GestureDetector(
+                key: const ValueKey('assistant-fab-drag'),
+                onVerticalDragStart: (_) =>
+                    setState(() => _dragBottom = bottom),
+                onVerticalDragUpdate: (details) => setState(
+                  () => _dragBottom = (_dragBottom! - details.delta.dy).clamp(
+                    _margin,
+                    _margin + range,
+                  ),
+                ),
+                onVerticalDragEnd: (_) {
+                  setState(() {
+                    _share = range == 0
+                        ? 0
+                        : ((_dragBottom! - _margin) / range).clamp(0.0, 1.0);
+                    _dragBottom = null;
+                  });
+                  unawaited(_save());
+                },
+                child: widget.child,
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
+
 class _AboveAssistantFabLocation extends FloatingActionButtonLocation {
   const _AboveAssistantFabLocation();
 

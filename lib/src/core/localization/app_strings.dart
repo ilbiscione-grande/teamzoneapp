@@ -2110,6 +2110,8 @@ class AppStrings {
     'Allt är hanterat': 'All handled',
     'Matchpoolen': 'Match pool',
     'Filtrera truppen': 'Filter the squad',
+    'Dra uppåt eller nedåt för att flytta assistenten':
+        'Drag up or down to move the assistant',
     'Sortera': 'Sort',
     'Namn A–Ö': 'Name A–Z',
     'Alla positioner': 'All positions',

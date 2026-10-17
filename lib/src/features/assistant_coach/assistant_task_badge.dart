@@ -10,10 +10,16 @@ class AssistantTaskBadge extends StatefulWidget {
     required this.load,
     required this.refreshToken,
     required this.child,
+    this.hideWhenEmpty = false,
   });
   final Future<AssistantTaskSnapshot> Function() load;
   final Object refreshToken;
   final Widget child;
+
+  /// Hides the child (the assistant's button) while there is confirmed to be
+  /// nothing current. An unknown count (loading, a read error) still shows
+  /// it, so errors stay reachable.
+  final bool hideWhenEmpty;
 
   @override
   State<AssistantTaskBadge> createState() => _AssistantTaskBadgeState();
@@ -22,6 +28,9 @@ class AssistantTaskBadge extends StatefulWidget {
 class _AssistantTaskBadgeState extends State<AssistantTaskBadge>
     with WidgetsBindingObserver {
   int? _count;
+  // The last complete answer was zero. Kept while a refresh loads, so the
+  // button does not flash on every page change.
+  bool _confirmedEmpty = false;
   int _generation = 0;
   Timer? _wakeTimer;
 
@@ -56,13 +65,14 @@ class _AssistantTaskBadgeState extends State<AssistantTaskBadge>
           !snapshot.personalFailed &&
           snapshot.failedContexts.isEmpty &&
           snapshot.tasks.every((task) => !task.stale);
-      setState(
-        () => _count = complete
+      setState(() {
+        _count = complete
             ? snapshot.tasks
                   .where((task) => task.task.assistantStatus == 'active')
                   .length
-            : null,
-      );
+            : null;
+        _confirmedEmpty = _count == 0;
+      });
       final wakeTimes =
           snapshot.tasks
               .map((task) => task.task.snoozedUntil)
@@ -81,7 +91,12 @@ class _AssistantTaskBadgeState extends State<AssistantTaskBadge>
       AppErrors.caught('assistant_task_badge._refresh', error);
 
       // An unknown count is not a confirmed zero. The assistant shows read errors.
-      if (mounted && generation == _generation) setState(() => _count = null);
+      if (mounted && generation == _generation) {
+        setState(() {
+          _count = null;
+          _confirmedEmpty = false;
+        });
+      }
     }
   }
 
@@ -93,13 +108,17 @@ class _AssistantTaskBadgeState extends State<AssistantTaskBadge>
   }
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    label: _count == null ? null : '$_count aktuella uppgifter i assistenten',
-    child: Badge.count(
-      key: const Key('assistant-task-count'),
-      count: _count ?? 0,
-      isLabelVisible: (_count ?? 0) > 0,
-      child: widget.child,
-    ),
-  );
+  Widget build(BuildContext context) => widget.hideWhenEmpty && _confirmedEmpty
+      ? const SizedBox.shrink()
+      : Semantics(
+          label: _count == null
+              ? null
+              : '$_count aktuella uppgifter i assistenten',
+          child: Badge.count(
+            key: const Key('assistant-task-count'),
+            count: _count ?? 0,
+            isLabelVisible: (_count ?? 0) > 0,
+            child: widget.child,
+          ),
+        );
 }
