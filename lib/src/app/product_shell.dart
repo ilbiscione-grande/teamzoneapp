@@ -1246,9 +1246,8 @@ Future<void> _showContextPicker({
   required VoidCallback onTeamRequestsChanged,
 }) {
   final strings = AppStrings.of(context);
-  final otherContexts = contexts
-      .where((item) => item.id != activeContext.id)
-      .toList(growable: false);
+  final groups = groupContextsForPicker(contexts, activeContext);
+  final colors = Theme.of(context).colorScheme;
   return showModalBottomSheet<void>(
     context: context,
     useSafeArea: true,
@@ -1262,48 +1261,77 @@ Future<void> _showContextPicker({
               style: Theme.of(sheetContext).textTheme.titleMedium,
             ),
           ),
-          ListTile(
-            leading: const Icon(Icons.check_circle),
-            title: Text(
-              activeContext.teamName ?? activeContext.clubName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Text(
-              '${strings.feature('Aktivt lag')} · ${activeContext.clubName} · ${_contextRolesLabel(strings, activeContext)}',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            selected: true,
-          ),
-          if (otherContexts.isNotEmpty)
+          // Each club as a title, as in the inbox, with its teams below:
+          // the active team first, then the active club, then A–Ö.
+          for (final group in groups) ...[
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              child: Text(
-                strings.feature('Byt till'),
-                style: Theme.of(sheetContext).textTheme.labelLarge,
+              key: ValueKey('context-club-${group.clubName}'),
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+              child: Material(
+                color: colors.secondaryContainer,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.shield_outlined),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          group.clubName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(sheetContext).textTheme.titleSmall,
+                        ),
+                      ),
+                      Text(
+                        '${group.contexts.length}',
+                        style: Theme.of(sheetContext).textTheme.labelMedium,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-          for (final item in otherContexts)
-            ListTile(
-              leading: const Icon(Icons.swap_horiz),
-              title: Text(
-                item.teamName ?? item.clubName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: Text(
-                item.teamName == null
-                    ? _contextRolesLabel(strings, item)
-                    : '${item.clubName} · ${_contextRolesLabel(strings, item)}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              onTap: () {
-                onContextChanged(item);
-                Navigator.of(sheetContext).pop();
-              },
-            ),
+            for (final item in group.contexts)
+              item.id == activeContext.id
+                  ? ListTile(
+                      key: ValueKey('context-${item.id}'),
+                      leading: const Icon(Icons.check_circle),
+                      title: Text(
+                        item.teamName ?? strings.feature('Hela klubben'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        '${strings.feature('Aktivt lag')} · ${_contextRolesLabel(strings, item)}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      selected: true,
+                    )
+                  : ListTile(
+                      key: ValueKey('context-${item.id}'),
+                      leading: const Icon(Icons.swap_horiz),
+                      title: Text(
+                        item.teamName ?? strings.feature('Hela klubben'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        _contextRolesLabel(strings, item),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () {
+                        onContextChanged(item);
+                        Navigator.of(sheetContext).pop();
+                      },
+                    ),
+          ],
           const Divider(height: 1),
           if (activeContext.rolePackage == 'leader' ||
               activeContext.can('club.memberships.manage'))
@@ -2393,6 +2421,50 @@ bool _assistantUsesFab(BuildContext context) {
 /// "Klubbfunktionär · Ledare".
 /// "Huvudtränare" rather than "Ledare · Klubbfunktionär": your main title
 /// (or first title) replaces the leader roles; playing is still shown.
+/// The team picker's order: the active club first with the active team at
+/// the top, then its club-wide context and its other teams A–Ö; then the
+/// other clubs A–Ö, each with its club-wide context first and teams A–Ö.
+List<({String clubName, List<TeamZoneContext> contexts})>
+groupContextsForPicker(List<TeamZoneContext> contexts, TeamZoneContext active) {
+  // Swedish order: å, ä and ö after z, in that order.
+  String key(String value) => value
+      .toLowerCase()
+      .replaceAll('å', '{a')
+      .replaceAll('ä', '{b')
+      .replaceAll('ö', '{c');
+  final byClub = <String, List<TeamZoneContext>>{};
+  final names = <String, String>{};
+  for (final item in contexts) {
+    byClub.putIfAbsent(item.clubId, () => []).add(item);
+    names[item.clubId] = item.clubName;
+  }
+  byClub.putIfAbsent(active.clubId, () => [active]);
+  names.putIfAbsent(active.clubId, () => active.clubName);
+  int rank(TeamZoneContext item) => item.id == active.id
+      ? 0
+      : item.teamName == null
+      ? 1
+      : 2;
+  final clubIds = byClub.keys.toList()
+    ..sort((a, b) {
+      if (a == active.clubId) return -1;
+      if (b == active.clubId) return 1;
+      return key(names[a]!).compareTo(key(names[b]!));
+    });
+  return [
+    for (final clubId in clubIds)
+      (
+        clubName: names[clubId]!,
+        contexts: byClub[clubId]!.toList()
+          ..sort((a, b) {
+            final byRank = rank(a).compareTo(rank(b));
+            if (byRank != 0) return byRank;
+            return key(a.teamName ?? '').compareTo(key(b.teamName ?? ''));
+          }),
+      ),
+  ];
+}
+
 String _contextRolesLabel(AppStrings strings, TeamZoneContext context) {
   final titles = [
     ...context.titles.map((key) => _titleLabel(strings, key)),
