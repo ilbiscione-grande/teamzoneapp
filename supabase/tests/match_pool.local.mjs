@@ -79,6 +79,7 @@ try {
    end$$;
   grant usage on schema api, internal, core, extensions to authenticated, service_role;`);
   await db.exec(read('supabase/migrations/20261102090000_match_pool.sql').replace(/notify pgrst[^;]*;/, ''));
+  await db.exec(read('supabase/migrations/20261103090000_match_pool_app.sql').replace(/notify pgrst[^;]*;/, ''));
   await db.exec('set check_function_bodies = on');
   await db.exec('begin');
 
@@ -179,6 +180,35 @@ try {
     'venue shown once booked');
   assert.equal((await user(coachB, 'select api.get_match_pool($1)', [broP12])).listings.length, 0, 'matched listings leave the list');
   await reject(() => user(coachC, 'select api.send_match_pool_message($1,$2,$3)', [other, 'Hallå?', key(21)]), /conversation_closed/);
+
+  // The app's list: each side sees the conversation with the other team.
+  const albyList = await user(coachA, 'select api.list_match_pool_conversations()');
+  assert.deepEqual(albyList.map(c => [c.id, c.my_side, c.other_club_name]).sort(), [[interest, 'listing', 'Bro BK'], [other, 'listing', 'Bro BK']].sort());
+  const broList = await user(coachB, 'select api.list_match_pool_conversations()');
+  assert.equal(broList.length, 1);
+  assert.equal(broList[0].other_verified, true);
+  assert.equal(broList[0].listing.venue_name, 'Alby IP konstgräs', 'booked: venue shown');
+  assert.equal((await user(follower, 'select api.list_match_pool_conversations()')).length, 0);
+  // Notifications open the conversation.
+  assert.equal(await one(`select internal.notification_deep_link(o) from internal.notification_outbox o
+    where o.event_type='matchpool.interest.accepted.v1' limit 1`), '/inbox?pool=' + interest);
+
+  // Sign-in from the app: once, only by the server, only for that user.
+  const code = await user(coachB, 'select api.create_web_handoff()');
+  assert.match(code, /^[0-9a-f]{64}$/);
+  assert.equal(await one("select count(*)::int from internal.web_handoffs where code_hash = extensions.digest($1, 'sha256')", [code]), 1);
+  await reject(() => user(coachB, 'select api.consume_web_handoff($1)', [code]), /permission denied/);
+  const consume = c => asRole('service_role', () => one('select api.consume_web_handoff($1)', [c]));
+  assert.equal(await consume(code), coachB);
+  assert.equal(await consume(code), null, 'single use');
+  assert.equal(await consume('f'.repeat(64)), null);
+  const old = await user(coachB, 'select api.create_web_handoff()');
+  await db.exec(`update internal.web_handoffs set expires_at = now() - interval '1 second' where consumed_at is null`);
+  assert.equal(await consume(old), null, 'expired');
+  await db.exec('savepoint limit_check');
+  for (let n = 0; n < 10; n++) await user(coachC, 'select api.create_web_handoff()');
+  await reject(() => user(coachC, 'select api.create_web_handoff()'), /permission denied|rate_limited/);
+  await db.exec('rollback to limit_check');
 
   // Away wanted from Bro F2013: the host gives a time in the range and a venue.
   const away = await user(coachC, 'select api.create_match_pool_listing($1,$2,$3)', [broF13, {

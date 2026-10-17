@@ -22,6 +22,10 @@ export function PersonalAccount({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let disposed = false;
     let unsubscribe = () => {};
+    // POOL-01: coming from the app with a one-time sign-in code in the
+    // fragment. It is removed from the address at once and used once.
+    const handoff = /(?:^#|&)handoff=([0-9a-f]{64})(?:&|$)/.exec(window.location.hash)?.[1];
+    if (handoff) window.history.replaceState(null, "", window.location.pathname + window.location.search);
     fetch("/api/public/v1/account-config", { cache: "no-store" }).then(async response => {
       if (!response.ok) throw new Error("config_unavailable");
       const config = await response.json();
@@ -31,6 +35,14 @@ export function PersonalAccount({ children }: { children: React.ReactNode }) {
         auth: { storageKey: "teamzone-public-account", detectSessionInUrl: false },
         global: { fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }) },
       });
+      if (handoff) {
+        try {
+          const exchanged = await fetch("/api/public/v1/account/handoff", { method: "POST", cache: "no-store", headers: { "content-type": "application/json" }, body: JSON.stringify({ code: handoff }) });
+          const body = await exchanged.json().catch(() => ({}));
+          if (exchanged.ok && typeof body.refresh_token === "string") await authClient.auth.refreshSession({ refresh_token: body.refresh_token });
+        } catch { /* An unusable code leaves the visitor to sign in as usual. */ }
+        if (disposed) return;
+      }
       setEnabled(true);
       setClient(authClient);
       const { data } = authClient.auth.onAuthStateChange((_event, next) => {

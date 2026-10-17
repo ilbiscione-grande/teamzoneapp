@@ -111,6 +111,22 @@ abstract interface class MessagingServices {
   /// POOL-01: whether the account is a leader in the match pool (on the web)
   /// and how many of its conversations have something new.
   Future<MatchPoolSummary> getMatchPoolSummary();
+  Future<List<MatchPoolConversationSummary>> listMatchPoolConversations();
+  Future<MatchPoolConversation> getMatchPoolConversation(String interestId);
+  Future<void> sendMatchPoolMessage({
+    required String interestId,
+    required String body,
+    required String idempotencyKey,
+  });
+
+  /// Books the match; it is added to the team's calendar as a draft unless
+  /// [addToCalendar] is false.
+  Future<void> acceptMatchPoolInterest(String interestId, bool addToCalendar);
+  Future<void> declineMatchPoolInterest(String interestId);
+  Future<void> withdrawMatchPoolInterest(String interestId);
+
+  /// A one-time code that signs the same account in on teamzoneapp.se.
+  Future<String> createWebHandoff();
 
   /// Signals that the notification center may have changed. Team updates for
   /// followers have no realtime broadcast, so they are also polled; surfaces
@@ -240,6 +256,27 @@ class UnconfiguredMessagingServices implements MessagingServices {
   @override
   Future<MatchPoolSummary> getMatchPoolSummary() async =>
       const MatchPoolSummary(leader: false, unread: 0);
+  @override
+  Future<List<MatchPoolConversationSummary>>
+  listMatchPoolConversations() async => const [];
+  @override
+  Future<MatchPoolConversation> getMatchPoolConversation(String interestId) =>
+      _fail();
+  @override
+  Future<void> sendMatchPoolMessage({
+    required String interestId,
+    required String body,
+    required String idempotencyKey,
+  }) => _fail();
+  @override
+  Future<void> acceptMatchPoolInterest(String interestId, bool addToCalendar) =>
+      _fail();
+  @override
+  Future<void> declineMatchPoolInterest(String interestId) => _fail();
+  @override
+  Future<void> withdrawMatchPoolInterest(String interestId) => _fail();
+  @override
+  Future<String> createWebHandoff() => _fail();
   @override
   Future<ContactThread> getContactThread(String threadId) => _fail();
   @override
@@ -836,6 +873,96 @@ class SupabaseMessagingServices implements MessagingServices {
     return value is Map<String, dynamic>
         ? MatchPoolSummary.fromJson(value)
         : const MatchPoolSummary(leader: false, unread: 0);
+  }
+
+  @override
+  Future<List<MatchPoolConversationSummary>>
+  listMatchPoolConversations() async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>('list_match_pool_conversations');
+    return [
+      if (value is List)
+        for (final row in value.whereType<Map<String, dynamic>>())
+          MatchPoolConversationSummary.fromJson(row),
+    ];
+  }
+
+  @override
+  Future<MatchPoolConversation> getMatchPoolConversation(
+    String interestId,
+  ) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'get_match_pool_conversation',
+          params: {'target_interest_id': interestId},
+        );
+    if (value is! Map<String, dynamic>) throw StateError('invalid_response');
+    return MatchPoolConversation.fromJson(value);
+  }
+
+  @override
+  Future<void> sendMatchPoolMessage({
+    required String interestId,
+    required String body,
+    required String idempotencyKey,
+  }) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'send_match_pool_message',
+          params: {
+            'target_interest_id': interestId,
+            'message_body': body,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+  }
+
+  @override
+  Future<void> acceptMatchPoolInterest(
+    String interestId,
+    bool addToCalendar,
+  ) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'accept_match_pool_interest',
+          params: {
+            'target_interest_id': interestId,
+            'add_to_calendar': addToCalendar,
+          },
+        );
+  }
+
+  @override
+  Future<void> declineMatchPoolInterest(String interestId) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'decline_match_pool_interest',
+          params: {'target_interest_id': interestId},
+        );
+  }
+
+  @override
+  Future<void> withdrawMatchPoolInterest(String interestId) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'withdraw_match_pool_interest',
+          params: {'target_interest_id': interestId},
+        );
+  }
+
+  @override
+  Future<String> createWebHandoff() async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>('create_web_handoff');
+    if (value is! String) throw StateError('invalid_response');
+    return value;
   }
 
   @override

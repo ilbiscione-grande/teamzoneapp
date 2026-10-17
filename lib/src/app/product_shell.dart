@@ -427,6 +427,7 @@ class _ProductShellState extends State<_ProductShell> {
                   roster: widget.roster,
                   supportAdminAccess: _supportAdminAccess,
                   initialThreadId: state.uri.queryParameters['thread'],
+                  initialPoolInterestId: state.uri.queryParameters['pool'],
                   initialAction: state.uri.queryParameters['action'],
                   onNavigate: _navigateFromSurface,
                 )

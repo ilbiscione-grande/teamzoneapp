@@ -9,6 +9,7 @@ class _InboxSurface extends StatefulWidget {
     required this.roster,
     this.supportAdminAccess,
     this.initialThreadId,
+    this.initialPoolInterestId,
     this.initialAction,
     required this.onNavigate,
   });
@@ -21,6 +22,9 @@ class _InboxSurface extends StatefulWidget {
   /// Shows the support queue entry for support admins (desktop/web).
   final Future<bool>? supportAdminAccess;
   final String? initialThreadId;
+
+  /// POOL-01: a match pool notification opens that conversation.
+  final String? initialPoolInterestId;
   // Set by the swipe-up quick actions sheet's "Skicka meddelande" shortcut
   // (ProductRouteContract.inboxCompose) to open the compose dialog
   // immediately on arrival — see _openInitialAction.
@@ -320,6 +324,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
       ].whereType<String>().join(' '),
     );
     _reloadSupport();
+    _openInitialPoolConversation();
     _data.addListener(_syncList);
     _subscribeToInbox();
     _subscribeToNotifications();
@@ -750,6 +755,32 @@ class _InboxSurfaceState extends State<_InboxSurface>
     _matchPool = _loadMatchPool();
   }
 
+  String? _openedPoolInterestId;
+
+  /// Opens the conversation a match pool notification points at, once.
+  void _openInitialPoolConversation() {
+    final target = widget.initialPoolInterestId;
+    if (target == null || target == _openedPoolInterestId) return;
+    _openedPoolInterestId = target;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => MatchPoolConversationPage(
+            services: widget.messaging,
+            interestId: target,
+          ),
+        ),
+      );
+      if (!mounted) return;
+      final next = _loadMatchPool();
+      setState(() {
+        _matchPool = next;
+      });
+      widget.onNavigate('/inbox');
+    });
+  }
+
   Future<MatchPoolSummary> _loadMatchPool() async {
     try {
       return await widget.messaging.getMatchPoolSummary().timeout(
@@ -786,20 +817,21 @@ class _InboxSurfaceState extends State<_InboxSurface>
                       ? strings
                             .feature('{count} konversationer med nytt')
                             .replaceFirst('{count}', '${summary.unread}')
-                      : strings.feature('Hitta träningsmatcher på webben'),
+                      : strings.feature('Konversationer om träningsmatcher'),
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (summary.unread > 0) Badge.count(count: summary.unread),
                     const SizedBox(width: 8),
-                    const Icon(Icons.open_in_new),
+                    const Icon(Icons.chevron_right),
                   ],
                 ),
                 onTap: () async {
-                  await launchUrl(
-                    Uri.parse('https://teamzoneapp.se/matchpool'),
-                    mode: LaunchMode.externalApplication,
+                  await Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => MatchPoolPage(services: widget.messaging),
+                    ),
                   );
                   if (mounted) {
                     final next = _loadMatchPool();
@@ -1120,6 +1152,9 @@ class _InboxSurfaceState extends State<_InboxSurface>
         _dismissedThreadId = null;
       }
       _tryOpenInitialThread();
+    }
+    if (oldWidget.initialPoolInterestId != widget.initialPoolInterestId) {
+      _openInitialPoolConversation();
     }
     if (oldWidget.initialAction != widget.initialAction) {
       _openedInitialAction = false;

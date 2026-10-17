@@ -2110,7 +2110,7 @@ class AppStrings {
     'Allt är hanterat': 'All handled',
     'Matchpoolen': 'Match pool',
     '{count} konversationer med nytt': '{count} conversations with news',
-    'Hitta träningsmatcher på webben': 'Find friendlies on the web',
+    'Konversationer om träningsmatcher': 'Conversations about friendlies',
     'Kön kunde inte laddas.': 'The queue could not be loaded.',
     'Inga väntande begäranden.': 'No pending requests.',
     'Kontrollera adressen och postnumret.':

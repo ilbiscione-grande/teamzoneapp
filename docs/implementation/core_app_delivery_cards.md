@@ -1371,6 +1371,8 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 - [x] Intresse skickas med ett meddelande och blir en tråd mellan lagens ledare, med notis i appen. Inga privata kontaktuppgifter visas.
 - [x] När annonsören accepterar ett intresse blir annonsen "Matchad", övriga intresserade får besked, och matchen **läggs in i båda lagens kalendrar** (som utkast som ledaren publicerar) om inte respektive ledare aktivt har valt bort det.
 - [x] Skydd: gränser för annonser, intressen och meddelanden per dag, rapportering (döljs automatiskt efter rapporter från tre klubbar), inga spelaruppgifter, annonser försvinner när datumet passerat och raderas 30 dagar senare.
+- [x] Konversationerna finns också i appen (beslut 2026-10-17): inkorgens kort "Matchpoolen" visar dem, notiser öppnar rätt konversation (`/inbox?pool=`), och man kan skriva, boka, tacka nej och återkalla där. Att hitta och lägga in annonser sker på webben.
+- [x] Från appen till webben är man inloggad med samma konto: en engångskod (256 bitar, två minuter, används en gång) i adressens fragment byts på servern mot en inloggning för samma användare (migration `20261103090000`).
 - [ ] Skarp provning: två lag i olika klubbar lägger in, visar intresse, skriver, bokar och ser matchen i kalendern.
 
 **Senare:** bevakningar ("meddela mig när ett P2013-lag inom 50 km söker match"), karta, supportvy för rapporter.

@@ -339,9 +339,8 @@ class ContactRequest {
   );
 }
 
-/// PUB-14: a message thread that started on the club site, as its
-/// recipients (club administrators or the team's leaders) see it.
-/// POOL-01: the match pool lives on the web; the app shows an entry to it.
+/// POOL-01: the match pool. Listings are found and posted on the web; the
+/// conversations between the teams' leaders are also in the app.
 class MatchPoolSummary {
   const MatchPoolSummary({required this.leader, required this.unread});
   factory MatchPoolSummary.fromJson(Map<String, dynamic> json) =>
@@ -353,6 +352,165 @@ class MatchPoolSummary {
   final int unread;
 }
 
+DateTime? _poolTime(Object? value) =>
+    value is String ? DateTime.tryParse(value) : null;
+
+class MatchPoolListing {
+  const MatchPoolListing({
+    required this.id,
+    required this.homeSlot,
+    required this.teamName,
+    required this.clubName,
+    required this.verified,
+    required this.placeLabel,
+    required this.matchFormat,
+    required this.ageClass,
+    this.startsAt,
+    this.endsAt,
+    this.dateFrom,
+    this.dateTo,
+    this.venueName,
+    this.venueSurface,
+    this.current = true,
+  });
+  factory MatchPoolListing.fromJson(Map<String, dynamic> json) =>
+      MatchPoolListing(
+        id: json['id'] as String,
+        homeSlot: json['kind'] == 'home_slot',
+        teamName: json['team_name'] as String? ?? '',
+        clubName: json['club_name'] as String? ?? '',
+        verified: json['verified'] == true,
+        placeLabel: json['place_label'] as String? ?? '',
+        matchFormat: json['match_format'] as String? ?? '',
+        ageClass: json['age_class'] as String? ?? '',
+        startsAt: _poolTime(json['starts_at']),
+        endsAt: _poolTime(json['ends_at']),
+        dateFrom: _poolTime(json['date_from']),
+        dateTo: _poolTime(json['date_to']),
+        venueName: json['venue_name'] as String?,
+        venueSurface: json['venue_surface'] as String?,
+        current: json['current'] != false,
+      );
+  final String id, teamName, clubName, placeLabel, matchFormat, ageClass;
+  final bool homeSlot, verified, current;
+  final DateTime? startsAt, endsAt, dateFrom, dateTo;
+  final String? venueName, venueSurface;
+}
+
+class MatchPoolConversationSummary {
+  const MatchPoolConversationSummary({
+    required this.id,
+    required this.fromListingSide,
+    required this.state,
+    required this.otherTeamName,
+    required this.otherClubName,
+    required this.otherVerified,
+    required this.unread,
+    required this.listing,
+    this.lastMessage,
+    this.lastActivityAt,
+  });
+  factory MatchPoolConversationSummary.fromJson(Map<String, dynamic> json) =>
+      MatchPoolConversationSummary(
+        id: json['id'] as String,
+        fromListingSide: json['my_side'] == 'listing',
+        state: json['state'] as String? ?? 'pending',
+        otherTeamName: json['other_team_name'] as String? ?? '',
+        otherClubName: json['other_club_name'] as String? ?? '',
+        otherVerified: json['other_verified'] == true,
+        unread: json['unread'] == true,
+        listing: MatchPoolListing.fromJson(
+          (json['listing'] as Map).cast<String, dynamic>(),
+        ),
+        lastMessage: json['last_message'] as String?,
+        lastActivityAt: _poolTime(json['last_activity_at']),
+      );
+  final String id, state, otherTeamName, otherClubName;
+  final bool fromListingSide, otherVerified, unread;
+  final MatchPoolListing listing;
+  final String? lastMessage;
+  final DateTime? lastActivityAt;
+}
+
+class MatchPoolMessage {
+  const MatchPoolMessage({
+    required this.id,
+    required this.side,
+    required this.body,
+    required this.createdAt,
+    this.authorName,
+  });
+  factory MatchPoolMessage.fromJson(Map<String, dynamic> json) =>
+      MatchPoolMessage(
+        id: json['id'] as String,
+        side: json['side'] as String? ?? 'system',
+        body: json['body'] as String? ?? '',
+        createdAt: DateTime.parse(json['created_at'] as String),
+        authorName: json['author_name'] as String?,
+      );
+
+  /// listing, interest or system.
+  final String side, id, body;
+  final DateTime createdAt;
+  final String? authorName;
+}
+
+class MatchPoolConversation {
+  const MatchPoolConversation({
+    required this.mySide,
+    required this.listing,
+    required this.interestTeamName,
+    required this.interestClubName,
+    required this.interestVerified,
+    required this.state,
+    required this.messages,
+    this.myEventId,
+    this.proposedStartsAt,
+    this.proposedEndsAt,
+    this.proposedVenue,
+  });
+  factory MatchPoolConversation.fromJson(Map<String, dynamic> json) {
+    final interest = (json['interest'] as Map).cast<String, dynamic>();
+    return MatchPoolConversation(
+      mySide: json['my_side'] as String? ?? 'interest',
+      myEventId: json['my_event_id'] as String?,
+      listing: MatchPoolListing.fromJson(
+        (json['listing'] as Map).cast<String, dynamic>(),
+      ),
+      interestTeamName: interest['team_name'] as String? ?? '',
+      interestClubName: interest['club_name'] as String? ?? '',
+      interestVerified: interest['verified'] == true,
+      state: interest['state'] as String? ?? 'pending',
+      proposedStartsAt: _poolTime(interest['starts_at']),
+      proposedEndsAt: _poolTime(interest['ends_at']),
+      proposedVenue: interest['venue_name'] as String?,
+      messages: [
+        for (final row
+            in (json['messages'] as List? ?? const []).whereType<Map>().map(
+              (row) => row.cast<String, dynamic>(),
+            ))
+          MatchPoolMessage.fromJson(row),
+      ],
+    );
+  }
+  final String mySide, interestTeamName, interestClubName, state;
+  final String? myEventId, proposedVenue;
+  final MatchPoolListing listing;
+  final bool interestVerified;
+  final DateTime? proposedStartsAt, proposedEndsAt;
+  final List<MatchPoolMessage> messages;
+
+  bool get fromListingSide => mySide == 'listing';
+  String get otherTeamName =>
+      fromListingSide ? interestTeamName : listing.teamName;
+  String get otherClubName =>
+      fromListingSide ? interestClubName : listing.clubName;
+  bool get otherVerified =>
+      fromListingSide ? interestVerified : listing.verified;
+}
+
+/// PUB-14: a message thread that started on the club site, as its
+/// recipients (club administrators or the team's leaders) see it.
 class ContactThreadSummary {
   const ContactThreadSummary({
     required this.id,

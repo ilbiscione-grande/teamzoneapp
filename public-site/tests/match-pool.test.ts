@@ -82,3 +82,16 @@ test("the page shows verification on every card and only searches places when si
   assert.match(route, /countrycodes: "se"/);
   assert.match(route, /lastCall \+ 1100/);
 });
+
+test("sign-in from the app: the code is used once by the server and leaves the address at once", () => {
+  const route = readFileSync(new URL("../app/api/public/v1/account/handoff/route.ts", import.meta.url), "utf8");
+  assert.match(route, /assertSameOrigin/);
+  assert.match(route, /rpc\("consume_web_handoff"/);
+  assert.match(route, /verified\.user\?\.id !== owner/);
+  assert.match(route, /json\(\{ refresh_token: verified\.session\.refresh_token \}\)/);
+  assert.doesNotMatch(route, /access_token/);
+  const account = readFileSync(new URL("../components/personal-account.tsx", import.meta.url), "utf8");
+  const strip = account.indexOf("window.history.replaceState(null");
+  const exchange = account.indexOf("/api/public/v1/account/handoff");
+  assert.ok(strip > 0 && strip < exchange, "the code is removed from the address before it is used");
+});
