@@ -957,20 +957,56 @@ void main() {
     expect(ada.positions, ['forward', 'striker']);
   });
 
-  testWidgets('empty filter keeps the filter chips', (tester) async {
+  testWidgets('a filter that matches nobody can be reset', (tester) async {
     final roster = _Roster(
       roles: [
         const TeamRole(personId: 'lars', name: 'Lars Ledare', role: 'leader'),
       ],
     );
     await _openRoster(tester, roster);
-    await tester.tap(find.widgetWithText(FilterChip, 'Tidigare'));
+    await tester.tap(find.byKey(const ValueKey('roster-filter')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('roster-status-other')));
+    await tester.pumpAndSettle();
+    Navigator.of(
+      tester.element(find.byKey(const ValueKey('roster-status-other'))),
+    ).pop();
     await tester.pumpAndSettle();
     expect(find.text('Inga matchande personer'), findsOneWidget);
-    await tester.tap(find.widgetWithText(FilterChip, 'Alla'));
+    // The filter button stays, with its dot, and the empty state resets.
+    expect(find.byKey(const ValueKey('roster-filter')), findsOneWidget);
+    await tester.tap(find.text('Rensa filter'));
     await tester.pumpAndSettle();
     expect(find.text('Lars Ledare'), findsOneWidget);
   });
+
+  testWidgets(
+    'the filter shows only leaders, by position, and the search clears',
+    (tester) async {
+      final roster = _Roster(
+        roles: [
+          const TeamRole(personId: 'lars', name: 'Lars Ledare', role: 'leader'),
+        ],
+      );
+      await _openRoster(tester, roster);
+      expect(find.byKey(const ValueKey('roster-search-clear')), findsNothing);
+      await tester.enterText(find.byType(SearchBar), 'zzz');
+      await tester.pumpAndSettle();
+      expect(find.text('Lars Ledare'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('roster-search-clear')));
+      await tester.pumpAndSettle();
+      expect(find.text('Lars Ledare'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('roster-filter')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('roster-show-players')));
+      await tester.pumpAndSettle();
+      Navigator.of(
+        tester.element(find.byKey(const ValueKey('roster-show-players'))),
+      ).pop();
+      await tester.pumpAndSettle();
+      expect(find.text('Lars Ledare'), findsNothing);
+    },
+  );
 
   testWidgets('a functionary who also leads is listed once', (tester) async {
     final roster = _Roster(

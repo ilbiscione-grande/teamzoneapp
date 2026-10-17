@@ -31,6 +31,19 @@ class _RosterSurface extends StatefulWidget {
 class _RosterSurfaceState extends State<_RosterSurface> {
   late final AsyncDataController<List<RosterPersonSummary>> _data;
   late final AppListController<RosterPersonSummary> _list;
+
+  // The squad's filter button: active people by default; who is shown,
+  // one position, and the sort order.
+  String _status = 'active';
+  String _show = 'all';
+  String? _position;
+  String _sortBy = 'name';
+  final _rosterSearch = TextEditingController();
+  bool get _rosterFiltered =>
+      _status != 'active' ||
+      _show != 'all' ||
+      _position != null ||
+      _sortBy != 'name';
   List<RosterPersonSummary>? _syncedPeople;
   late int _selectedTab = _teamTabIndex(widget.initialTab);
   late Future<TeamRoles> _teamRoles = _loadTeamRoles();
@@ -101,6 +114,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
         person.teamName,
       ].whereType<String>().join(' '),
     )..setSort((a, b) => a.displayName.compareTo(b.displayName));
+    _setRosterStatusFilter('active');
     _data.addListener(_syncList);
     unawaited(_data.load());
     _openInitialAction();
@@ -320,6 +334,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
 
   @override
   void dispose() {
+    _rosterSearch.dispose();
     _data.removeListener(_syncList);
     _data.dispose();
     _list.dispose();
@@ -450,34 +465,39 @@ class _RosterSurfaceState extends State<_RosterSurface> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
               child: SearchBar(
+                controller: _rosterSearch,
                 leading: const Icon(Icons.search),
                 hintText: strings.feature('Sök i truppen'),
-                onChanged: _list.setQuery,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Wrap(
-                spacing: 8,
-                children: [
-                  _RosterFilterChip(
-                    label: strings.feature('Alla'),
-                    selected: _list.filterKey == null,
-                    onSelected: () => _setRosterStatusFilter(null),
-                  ),
-                  _RosterFilterChip(
-                    label: strings.feature('Aktiva'),
-                    selected: _list.filterKey == 'active',
-                    onSelected: () => _setRosterStatusFilter('active'),
-                  ),
-                  _RosterFilterChip(
-                    label: strings.feature('Tidigare'),
-                    selected: _list.filterKey == 'other',
-                    onSelected: () => _setRosterStatusFilter('other'),
+                onChanged: (value) {
+                  _list.setQuery(value);
+                  setState(() {});
+                },
+                trailing: [
+                  if (_rosterSearch.text.isNotEmpty)
+                    IconButton(
+                      key: const ValueKey('roster-search-clear'),
+                      tooltip: strings.feature('Rensa sökningen'),
+                      onPressed: () {
+                        _rosterSearch.clear();
+                        _list.setQuery('');
+                        setState(() {});
+                      },
+                      icon: const Icon(Icons.close),
+                    ),
+                  IconButton(
+                    key: const ValueKey('roster-filter'),
+                    tooltip: strings.feature('Filtrera truppen'),
+                    onPressed: _showRosterFilterSheet,
+                    icon: Badge(
+                      isLabelVisible: _rosterFiltered,
+                      smallSize: 8,
+                      child: const Icon(Icons.filter_list),
+                    ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 4),
             Expanded(
               child: FutureBuilder<TeamRoles>(
                 future: _teamRoles,
@@ -491,13 +511,36 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                         in rolesSnapshot.data?.roles ?? const <TeamRole>[])
                       if (role.role != 'player') role.personId,
                   };
-                  final people = allPeople
-                      .where(
-                        (person) =>
-                            person.assignmentState == 'active' ||
-                            !leaderIds.contains(person.id),
-                      )
-                      .toList();
+                  final playerRoles = {
+                    for (final role
+                        in rolesSnapshot.data?.roles ?? const <TeamRole>[])
+                      if (role.role == 'player') role.personId: role,
+                  };
+                  // A position or another order looks at the whole match,
+                  // not one page of it.
+                  final whole = _position != null || _sortBy != 'name';
+                  final people =
+                      (whole ? _list.matchingItems : allPeople)
+                          .where(
+                            (person) =>
+                                _show != 'leaders' &&
+                                (person.assignmentState == 'active' ||
+                                    !leaderIds.contains(person.id)) &&
+                                (_position == null ||
+                                    _hasPosition(
+                                      playerRoles[person.id],
+                                      _position!,
+                                    )),
+                          )
+                          .toList()
+                        ..sort(
+                          (a, b) => _compareRosterPeople(
+                            a,
+                            b,
+                            playerRoles[a.id],
+                            playerRoles[b.id],
+                          ),
+                        );
                   if (people.isEmpty && leaders.isEmpty) {
                     return _StateCard(
                       icon: Icons.search_off,
@@ -506,7 +549,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                         'Ändra sökningen eller rensa filtret.',
                       ),
                       action: TextButton(
-                        onPressed: _list.clearQueryAndFilter,
+                        onPressed: _resetRosterSearchAndFilter,
                         child: Text(
                           strings.feature(
                             _list.query.isNotEmpty
@@ -576,7 +619,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                           ),
                           const Divider(),
                         ],
-                        if (_list.hasMore)
+                        if (_list.hasMore && !whole)
                           TextButton.icon(
                             onPressed: _list.loadMore,
                             icon: const Icon(Icons.expand_more),
@@ -638,7 +681,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                   // or a filter is active, so a filter that matches nobody
                   // can always be changed back.
                   builder: (context, rolesSnapshot) =>
-                      _list.filterKey != null ||
+                      _rosterFiltered ||
                           _list.query.isNotEmpty ||
                           (rolesSnapshot.data?.roles.any(
                                 (role) => role.role != 'player',
@@ -1000,7 +1043,13 @@ class _RosterSurfaceState extends State<_RosterSurface> {
   /// filtered by the same search as the players. They are always active, so
   /// the "Tidigare" filter hides them.
   List<(TeamRole, List<String>)> _leaderEntries(TeamRoles? data) {
-    if (data == null || _list.filterKey == 'other') return const [];
+    // Leaders are always active and have no playing position.
+    if (data == null ||
+        _list.filterKey == 'other' ||
+        _show == 'players' ||
+        _position != null) {
+      return const [];
+    }
     final query = _list.query.trim().toLowerCase();
     final byPerson = <String, (TeamRole, List<String>)>{};
     for (final role in data.roles.where((role) => role.role != 'player')) {
@@ -1038,6 +1087,212 @@ class _RosterSurfaceState extends State<_RosterSurface> {
         _refreshTeamRoles();
         await _data.refresh();
       },
+    );
+  }
+
+  bool _hasPosition(TeamRole? role, String position) =>
+      role != null &&
+      (role.mainPosition == position ||
+          role.positions.contains(position) ||
+          role.customPositions.contains(position));
+
+  /// A–Ö by name, or by main position in catalog order (own positions after,
+  /// none last), or by age class; the name breaks ties.
+  int _compareRosterPeople(
+    RosterPersonSummary a,
+    RosterPersonSummary b,
+    TeamRole? aRole,
+    TeamRole? bRole,
+  ) {
+    final byName = a.displayName.toLowerCase().compareTo(
+      b.displayName.toLowerCase(),
+    );
+    if (_sortBy == 'position') {
+      const order = _playingPositionLabels;
+      int rank(TeamRole? role) {
+        final main =
+            role?.mainPosition ??
+            role?.positions.firstOrNull ??
+            role?.customPositions.firstOrNull;
+        if (main == null) return 1 << 20;
+        final index = order.keys.toList().indexOf(main);
+        return index < 0 ? 1 << 19 : index;
+      }
+
+      final byPosition = rank(aRole).compareTo(rank(bRole));
+      return byPosition != 0 ? byPosition : byName;
+    }
+    if (_sortBy == 'age_class') {
+      final aAge = a.ageClass, bAge = b.ageClass;
+      if (aAge != bAge) {
+        if (aAge == null) return 1;
+        if (bAge == null) return -1;
+        return aAge.compareTo(bAge);
+      }
+    }
+    return byName;
+  }
+
+  void _resetRosterSearchAndFilter() {
+    _rosterSearch.clear();
+    _list.setQuery('');
+    setState(() {
+      _status = 'active';
+      _show = 'all';
+      _position = null;
+      _sortBy = 'name';
+    });
+    _setRosterStatusFilter('active');
+  }
+
+  /// Status, who is shown, one position and the order, in one sheet. The
+  /// positions are those the team's players have.
+  Future<void> _showRosterFilterSheet() async {
+    final strings = AppStrings.of(context);
+    final roles = await _teamRoles.catchError(
+      (_) => const TeamRoles(roles: [], canManage: false),
+    );
+    if (!mounted) return;
+    final used = <String>{
+      for (final role in roles.roles.where(
+        (role) => role.role == 'player',
+      )) ...[...role.positions, ...role.customPositions, ?role.mainPosition],
+    };
+    final catalogOrder = _playingPositionLabels.keys.toList();
+    final positions = used.toList()
+      ..sort((a, b) {
+        final ia = catalogOrder.indexOf(a), ib = catalogOrder.indexOf(b);
+        if (ia >= 0 && ib >= 0) return ia.compareTo(ib);
+        if (ia >= 0) return -1;
+        if (ib >= 0) return 1;
+        return a.toLowerCase().compareTo(b.toLowerCase());
+      });
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheet) {
+          void update(VoidCallback change) {
+            setState(change);
+            setSheet(() {});
+          }
+
+          Widget section(String title, List<Widget> chips) => Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  strings.feature(title),
+                  style: Theme.of(sheetContext).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                Wrap(spacing: 8, runSpacing: 8, children: chips),
+              ],
+            ),
+          );
+          ChoiceChip choice(
+            String label,
+            bool selected,
+            VoidCallback onSelected, {
+            Key? key,
+          }) => ChoiceChip(
+            key: key,
+            label: Text(label),
+            selected: selected,
+            onSelected: (_) => onSelected(),
+          );
+          return ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      strings.feature('Filtrera truppen'),
+                      style: Theme.of(sheetContext).textTheme.titleLarge,
+                    ),
+                  ),
+                  if (_rosterFiltered)
+                    TextButton(
+                      onPressed: () {
+                        update(() {
+                          _status = 'active';
+                          _show = 'all';
+                          _position = null;
+                          _sortBy = 'name';
+                        });
+                        _setRosterStatusFilter('active');
+                      },
+                      child: Text(strings.feature('Återställ filter')),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              section('Status', [
+                for (final (value, label) in const [
+                  ('active', 'Aktiva'),
+                  ('other', 'Arkiverade'),
+                  ('all', 'Alla'),
+                ])
+                  choice(
+                    strings.feature(label),
+                    _status == value,
+                    key: ValueKey('roster-status-$value'),
+                    () {
+                      update(() => _status = value);
+                      _setRosterStatusFilter(value == 'all' ? null : value);
+                    },
+                  ),
+              ]),
+              section('Personer', [
+                for (final (value, label) in const [
+                  ('all', 'Spelare och ledare'),
+                  ('players', 'Bara spelare'),
+                  ('leaders', 'Bara ledare'),
+                ])
+                  choice(
+                    strings.feature(label),
+                    _show == value,
+                    key: ValueKey('roster-show-$value'),
+                    () => update(() => _show = value),
+                  ),
+              ]),
+              if (positions.isNotEmpty)
+                section('Position', [
+                  choice(
+                    strings.feature('Alla positioner'),
+                    _position == null,
+                    () => update(() => _position = null),
+                  ),
+                  for (final position in positions)
+                    choice(
+                      _anyPositionLabel(strings, position),
+                      _position == position,
+                      key: ValueKey('roster-position-$position'),
+                      () => update(() => _position = position),
+                    ),
+                ]),
+              section('Sortera', [
+                for (final (value, label) in const [
+                  ('name', 'Namn A–Ö'),
+                  ('position', 'Position'),
+                  ('age_class', 'Åldersklass'),
+                ])
+                  choice(
+                    strings.feature(label),
+                    _sortBy == value,
+                    key: ValueKey('roster-sort-$value'),
+                    () => update(() => _sortBy = value),
+                  ),
+              ]),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -1089,23 +1344,6 @@ class _NoTeamMembershipSurface extends StatelessWidget {
       icon: const Icon(Icons.settings_outlined),
       label: Text(AppStrings.of(context).feature('Inställningar')),
     ),
-  );
-}
-
-class _RosterFilterChip extends StatelessWidget {
-  const _RosterFilterChip({
-    required this.label,
-    required this.selected,
-    required this.onSelected,
-  });
-  final String label;
-  final bool selected;
-  final VoidCallback onSelected;
-  @override
-  Widget build(BuildContext context) => FilterChip(
-    label: Text(label),
-    selected: selected,
-    onSelected: (_) => onSelected(),
   );
 }
 

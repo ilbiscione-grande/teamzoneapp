@@ -38,7 +38,14 @@ void main() {
     rosterScroll.position.jumpTo(rosterScroll.position.maxScrollExtent);
     await tester.pumpAndSettle();
     expect(find.text('Visa fler'), findsOneWidget);
-    await tester.tap(find.text('Tidigare'));
+    // Active people are shown by default; archived ones via the filter.
+    await tester.tap(find.byKey(const ValueKey('roster-filter')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('roster-status-other')));
+    await tester.pumpAndSettle();
+    Navigator.of(
+      tester.element(find.byKey(const ValueKey('roster-status-other'))),
+    ).pop();
     await tester.pumpAndSettle();
     expect(find.text('Tidigare 00'), findsOneWidget);
     expect(find.text('Person 00'), findsNothing);

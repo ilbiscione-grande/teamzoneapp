@@ -1114,7 +1114,7 @@ class AppStrings {
     'Din roll kan sakna åtkomst eller informationen kunde inte laddas.':
         'Your role may lack access, or the information could not be loaded.',
     'Rubrik': 'Subject',
-    'Markera alla som lästa': 'Mark all as read',
+    'Markera klubbens trådar som lästa': "Mark the club's threads as read",
     'Visa äldre meddelanden': 'Show older messages',
     'Försök skicka igen': 'Try sending again',
     'Meddelandet skickades inte eftersom du inte längre har tillgång till konversationen. Kopiera texten innan du stänger.':
@@ -2109,6 +2109,14 @@ class AppStrings {
     '{count} att hantera': '{count} to handle',
     'Allt är hanterat': 'All handled',
     'Matchpoolen': 'Match pool',
+    'Filtrera truppen': 'Filter the squad',
+    'Sortera': 'Sort',
+    'Namn A–Ö': 'Name A–Z',
+    'Alla positioner': 'All positions',
+    'Spelare och ledare': 'Players and leaders',
+    'Bara spelare': 'Only players',
+    'Bara ledare': 'Only leaders',
+    'Återställ filter': 'Reset filter',
     'Inkorg': 'Inbox',
     'Matchpool': 'Match pool',
     'Klubbsajt': 'Club site',
