@@ -1379,7 +1379,7 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 
 ### POOL-02 – Matchpoolen: bevakningar och avbokning
 
-**Status:** `[~]` – byggd 2026-10-17 (migration `20261104090000`); väntar på migration, driftsättning och skarp provning
+**Status:** `[x]` – klar och provad skarpt 2026-10-17 (migrationer `20261104090000` och `20261105090000`)
 
 **Beslut (produktägaren 2026-10-17):**
 
@@ -1388,7 +1388,7 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 - [x] När avbokningen godkänns ställs matcherna som matchpoolen lade in in i båda lagens kalendrar (spelarna får besked som vid en vanlig inställd match).
 - [x] Annonsens lag får då välja att lägga ut samma annons igen, en gång, så länge datumet inte har passerat.
 - [x] Vilket lag som begärde avbokningen och när sparas i en logg utan meddelandetext, i två år.
-- [ ] Skarp provning: bevakning ger notis, avbokning begärs, godkänns och ställer in matchen i kalendrarna, annonsen läggs ut igen.
+- [x] Skarp provning 2026-10-17: bevakningen gav notis, avbokningen begärdes, godkändes och ställde in matchen i kalendrarna, och annonsen lades ut igen.
 
 **Justeringar (produktägaren 2026-10-17, migration `20261105090000`):**
 
