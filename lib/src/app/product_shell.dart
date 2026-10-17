@@ -296,6 +296,7 @@ class _ProductShellState extends State<_ProductShell> {
         builder: (_, _) => _SupportAdminSurface(
           membership: widget.membership,
           profile: widget.profileServices,
+          messaging: widget.messaging,
           assistant: widget.overview is AssistantTaskSupportServices
               ? widget.overview as AssistantTaskSupportServices
               : null,

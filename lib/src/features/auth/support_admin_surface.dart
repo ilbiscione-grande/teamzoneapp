@@ -5,6 +5,7 @@ class _SupportAdminSurface extends StatefulWidget {
     required this.membership,
     required this.profile,
     this.assistant,
+    this.messaging,
   });
 
   final MembershipServices membership;
@@ -12,6 +13,9 @@ class _SupportAdminSurface extends StatefulWidget {
 
   /// Min assistent's task types (switch off for everyone, feedback counts).
   final AssistantTaskSupportServices? assistant;
+
+  /// POOL-04: reported match pool listings.
+  final MessagingServices? messaging;
 
   @override
   State<_SupportAdminSurface> createState() => _SupportAdminSurfaceState();
@@ -385,6 +389,20 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
                 showDragHandle: true,
                 builder: (_) =>
                     AssistantTaskKindSwitches(services: widget.assistant!),
+              ),
+            ),
+          if (widget.messaging != null)
+            IconButton(
+              key: const ValueKey('support-match-pool-reports'),
+              tooltip: strings.feature('Rapporterade annonser i matchpoolen'),
+              icon: const Icon(Icons.flag_outlined),
+              onPressed: () => showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                useSafeArea: true,
+                showDragHandle: true,
+                builder: (_) =>
+                    MatchPoolReportsQueue(services: widget.messaging!),
               ),
             ),
           IconButton(

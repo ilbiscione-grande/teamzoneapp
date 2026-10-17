@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
-  ageChoices, ageGroupsFromTeam, defaultFilters, filterListings, listingPayload, placeFromNominatim, poolError, stockholmInstant, watchLabel, whenLabel,
+  ageChoices, ageGroupsFromTeam, defaultFilters, groupByPlace, filterListings, listingPayload, placeFromNominatim, poolError, stockholmInstant, watchLabel, whenLabel,
   type Listing, type ListingDraft,
 } from "../lib/match-pool.ts";
 
@@ -122,4 +122,14 @@ test("age groups: birth years for youth and Senior, preselected from the team", 
   assert.deepEqual(ageGroupsFromTeam(null, now), []);
   assert.equal(watchLabel({ kind: "home_slot", max_distance_km: 10, match_format: "11v11", gender: null, age_class: "2012–2013", verified_only: false }),
     "Söker hemmamatch · inom 10 km · 2012–2013 · 11 mot 11");
+});
+
+test("the map groups listings by their rounded place and allows only OpenStreetMap's tiles", async () => {
+  const at = (id: string, latitude: number, longitude: number, verified: boolean) => ({ id, latitude, longitude, verified, place_label: "X" }) as Listing;
+  const groups = groupByPlace([at("a", 59.24, 17.85, true), at("b", 59.24, 17.85, false), at("c", 59.51, 17.64, true), { id: "d" } as Listing]);
+  assert.deepEqual(groups.map(g => [g.key, g.listings.map(l => l.id)]), [["59.24,17.85", ["a", "b"]], ["59.51,17.64", ["c"]]]);
+  const config = readFileSync(new URL("../next.config.ts", import.meta.url), "utf8");
+  assert.match(config, /img-src 'self' data: https:\/\/tile\.openstreetmap\.org;/);
+  const map = readFileSync(new URL("../components/match-pool-map.tsx", import.meta.url), "utf8");
+  assert.match(map, /html: count > 1 \? String\(count\) : ""/, "nothing from a listing goes into marker markup");
 });

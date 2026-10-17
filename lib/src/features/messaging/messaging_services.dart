@@ -138,6 +138,16 @@ abstract interface class MessagingServices {
   );
   Future<MatchPoolListing> getMatchPoolListing(String listingId);
 
+  /// POOL-04: support administrators only.
+  Future<List<MatchPoolReportedListing>> listMatchPoolReports({
+    bool onlyOpen = true,
+  });
+  Future<void> decideMatchPoolReports(
+    String listingId, {
+    required bool hide,
+    required String note,
+  });
+
   /// Signals that the notification center may have changed. Team updates for
   /// followers have no realtime broadcast, so they are also polled; surfaces
   /// that never show team updates (Home) pass `includeTeamUpdatePoll: false`
@@ -304,6 +314,16 @@ class UnconfiguredMessagingServices implements MessagingServices {
   ) => _fail();
   @override
   Future<MatchPoolListing> getMatchPoolListing(String listingId) => _fail();
+  @override
+  Future<List<MatchPoolReportedListing>> listMatchPoolReports({
+    bool onlyOpen = true,
+  }) => _fail();
+  @override
+  Future<void> decideMatchPoolReports(
+    String listingId, {
+    required bool hide,
+    required String note,
+  }) => _fail();
   @override
   Future<ContactThread> getContactThread(String threadId) => _fail();
   @override
@@ -1045,6 +1065,37 @@ class SupabaseMessagingServices implements MessagingServices {
         );
     if (value is! Map<String, dynamic>) throw StateError('invalid_response');
     return MatchPoolListing.fromJson(value);
+  }
+
+  @override
+  Future<List<MatchPoolReportedListing>> listMatchPoolReports({
+    bool onlyOpen = true,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'list_match_pool_reports',
+          params: {'only_open': onlyOpen},
+        );
+    return [
+      if (value is List)
+        for (final row in value.whereType<Map<String, dynamic>>())
+          MatchPoolReportedListing.fromJson(row),
+    ];
+  }
+
+  @override
+  Future<void> decideMatchPoolReports(
+    String listingId, {
+    required bool hide,
+    required String note,
+  }) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'decide_match_pool_reports',
+          params: {'target_listing_id': listingId, 'hide': hide, 'note': note},
+        );
   }
 
   @override

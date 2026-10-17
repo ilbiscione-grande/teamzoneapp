@@ -2,6 +2,7 @@ import "./globals.css";
 import "./club-site.css";
 import "./portal.css";
 import "./admin.css";
+import "leaflet/dist/leaflet.css";
 import "./match-pool.css";
 import { PersonalAccount } from "../components/personal-account";
 

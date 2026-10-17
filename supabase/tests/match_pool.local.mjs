@@ -10,7 +10,7 @@ const db = new PGlite({ extensions: { pgcrypto } });
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 // Alby (verified): coach A for P2012. Bro (unverified): coach B for P2012,
 // coach C for F2013. Follower: no capability anywhere.
-const coachA = id(1), coachB = id(2), coachC = id(3), follower = id(4), coachA2 = id(5);
+const coachA = id(1), coachB = id(2), coachC = id(3), follower = id(4), coachA2 = id(5), support = id(6);
 const alby = id(10), bro = id(11);
 const albyP12 = id(20), broP12 = id(21), broF13 = id(22);
 const personA = id(31), personB = id(32), personC = id(33), personA2 = id(35);
@@ -24,7 +24,7 @@ const days = n => new Date(Date.now() + n * 86400000);
 const localDate = n => days(n).toLocaleDateString('sv-SE', { timeZone: 'Europe/Stockholm' });
 try {
   await db.exec(`create role anon;create role authenticated;create role service_role;
-  create schema internal;create schema api;create schema core;create schema auth;create schema extensions;create schema cron;
+  create schema internal;create schema api;create schema core;create schema auth;create schema extensions;create schema cron;create schema audit;
   create extension pgcrypto schema extensions;
   set check_function_bodies = off;
   create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
@@ -34,7 +34,10 @@ try {
   create function cron.unschedule(j bigint) returns boolean language sql as $$delete from cron.job where jobid=j returning true$$;
   create table core.profiles(id uuid primary key,display_name text not null default '',locale text,timezone text);
   insert into core.profiles values('${coachA}','Anna',null,null),('${coachB}','Bo',null,null),('${coachC}','Cia',null,null),
-   ('${follower}','Följare',null,null),('${coachA2}','Anders',null,null);
+   ('${follower}','Följare',null,null),('${coachA2}','Anders',null,null),('${support}','Support',null,null);
+  create table audit.command_events(club_id uuid,actor_profile_id uuid,command_type text,aggregate_type text,aggregate_id uuid,
+   aggregate_revision bigint,reason text,metadata jsonb);
+  create function internal.actor_is_support_admin() returns boolean language sql stable as $$select auth.uid()='${support}'::uuid$$;
   create table core.clubs(id uuid primary key,name text,status text default 'active',verification_status text default 'unofficial');
   insert into core.clubs values('${alby}','Alby IF','active','official'),('${bro}','Bro BK','active','unofficial');
   create table core.teams(id uuid primary key,club_id uuid,name text,status text default 'active',unique(id,club_id));
@@ -91,6 +94,7 @@ try {
   await db.exec(read('supabase/migrations/20261103090000_match_pool_app.sql').replace(/notify pgrst[^;]*;/, ''));
   await db.exec(read('supabase/migrations/20261104090000_match_pool_watches_cancellation.sql').replace(/notify pgrst[^;]*;/, ''));
   await db.exec(read('supabase/migrations/20261105090000_match_pool_age_groups.sql').replace(/notify pgrst[^;]*;/, ''));
+  await db.exec(read('supabase/migrations/20261106090000_match_pool_map_reports.sql').replace(/notify pgrst[^;]*;/, ''));
   await db.exec('set check_function_bodies = on');
   await db.exec('begin');
 
@@ -321,6 +325,29 @@ try {
   await user(coachA2, 'select api.report_match_pool_listing($1,$2)', [nearby, 'Konstig annons']);
   assert.equal(await one(`select count(*)::int from internal.match_pool_reports where listing_id='${nearby}'`), 1);
   await reject(() => user(coachC, 'select api.report_match_pool_listing($1,$2)', [nearby, 'Egen klubb']), /not_found/);
+
+  // The map: a listing's rounded position.
+  const onMap = (await user(coachA, 'select api.get_match_pool()')).listings.find(l => l.id === nearby);
+  assert.deepEqual([onMap.latitude, onMap.longitude], [59.51, 17.64]);
+
+  // Support: only support sees reports; hiding closes waiting teams, dismissing reopens.
+  await reject(() => user(coachA, 'select api.list_match_pool_reports()'), /not_found/);
+  let reports = await user(support, 'select api.list_match_pool_reports()');
+  assert.equal(reports.length, 1);
+  assert.equal(reports[0].id, nearby);
+  assert.equal(reports[0].open_reports, 1);
+  assert.deepEqual(reports[0].reports.map(r => [r.club_name, r.reason]), [['Alby IF', 'Konstig annons']]);
+  const asking = await user(coachA, 'select api.express_match_pool_interest($1,$2,$3,$4)', [nearby, albyP12,
+    { message: 'Vi kan!', starts_at: days(8).toISOString(), ends_at: days(8.05).toISOString(), venue_name: 'Alby IP' }, key(80)]);
+  await reject(() => user(support, 'select api.decide_match_pool_reports($1,$2,$3)', [nearby, true, 'kort']), /invalid_input/);
+  assert.equal(await user(support, 'select api.decide_match_pool_reports($1,$2,$3)', [nearby, true, 'Annonsen bryter mot villkoren']), 'hidden');
+  assert.equal(await one(`select state from internal.match_pool_interests where id='${asking}'`), 'closed');
+  assert.equal((await user(coachA, 'select api.get_match_pool()')).listings.some(l => l.id === nearby), false, 'hidden from the list');
+  assert.equal((await user(support, 'select api.list_match_pool_reports()')).length, 0, 'nothing open');
+  assert.equal((await user(support, 'select api.list_match_pool_reports(false)'))[0].reports[0].resolution, 'hidden');
+  assert.equal(await one(`select command_type from audit.command_events where aggregate_id='${nearby}'`), 'support.match_pool_reports.decide.v1');
+  assert.equal(await user(support, 'select api.decide_match_pool_reports($1,$2,$3)', [nearby, false, 'Rapporten var fel, öppnad igen']), 'open');
+  assert.equal(await one(`select hidden_by_support from internal.match_pool_listings where id='${nearby}'`), false);
 
   // Age groups: fixed choices, a readable label, shared groups match a watch.
   assert.equal(await one(`select internal.match_pool_age_label(array['2013','2012','2015','senior'])`), '2012–2013, 2015, Senior');

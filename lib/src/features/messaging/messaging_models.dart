@@ -379,6 +379,7 @@ class MatchPoolListing {
     this.own = false,
     this.myInterestId,
     this.canRepublish = false,
+    this.state = 'open',
   });
   factory MatchPoolListing.fromJson(Map<String, dynamic> json) =>
       MatchPoolListing(
@@ -404,12 +405,64 @@ class MatchPoolListing {
         own: json['own'] == true,
         myInterestId: (json['my_interest'] as Map?)?['id'] as String?,
         canRepublish: json['can_republish'] == true,
+        state: json['state'] as String? ?? 'open',
       );
   final String id, teamName, clubName, placeLabel, matchFormat, ageClass;
   final bool homeSlot, verified, current, own, canRepublish;
   final DateTime? startsAt, endsAt, dateFrom, dateTo;
   final String? venueName, venueSurface, gender, level, note, myInterestId;
   final int? maxDistanceKm;
+
+  /// open, matched, withdrawn, expired, hidden or cancelled.
+  final String state;
+}
+
+/// POOL-04: a reported listing, as support sees it.
+class MatchPoolReportedListing {
+  const MatchPoolReportedListing({
+    required this.listing,
+    required this.hiddenBySupport,
+    required this.openReports,
+    required this.reports,
+  });
+  factory MatchPoolReportedListing.fromJson(Map<String, dynamic> json) =>
+      MatchPoolReportedListing(
+        listing: MatchPoolListing.fromJson(json),
+        hiddenBySupport: json['hidden_by_support'] == true,
+        openReports: (json['open_reports'] as num?)?.toInt() ?? 0,
+        reports: [
+          for (final row
+              in (json['reports'] as List? ?? const []).whereType<Map>().map(
+                (row) => row.cast<String, dynamic>(),
+              ))
+            MatchPoolReport.fromJson(row),
+        ],
+      );
+  final MatchPoolListing listing;
+  final bool hiddenBySupport;
+  final int openReports;
+  final List<MatchPoolReport> reports;
+}
+
+class MatchPoolReport {
+  const MatchPoolReport({
+    required this.clubName,
+    required this.reason,
+    required this.createdAt,
+    this.resolution,
+  });
+  factory MatchPoolReport.fromJson(Map<String, dynamic> json) =>
+      MatchPoolReport(
+        clubName: json['club_name'] as String? ?? '',
+        reason: json['reason'] as String? ?? '',
+        createdAt: DateTime.parse(json['created_at'] as String),
+        resolution: json['resolution'] as String?,
+      );
+  final String clubName, reason;
+  final DateTime createdAt;
+
+  /// hidden or dismissed once support has decided.
+  final String? resolution;
 }
 
 class MatchPoolConversationSummary {

@@ -2111,6 +2111,7 @@ class AppStrings {
     'Matchpoolen': 'Match pool',
     '{count} konversationer med nytt': '{count} conversations with news',
     'Konversationer om träningsmatcher': 'Conversations about friendlies',
+    'Rapporterade annonser i matchpoolen': 'Reported match pool listings',
     'Kön kunde inte laddas.': 'The queue could not be loaded.',
     'Inga väntande begäranden.': 'No pending requests.',
     'Kontrollera adressen och postnumret.':

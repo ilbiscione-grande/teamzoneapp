@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { usePersonalAccount } from "./personal-account";
+import { ListingsMap } from "./match-pool-map";
 import { PortalHero } from "./portal";
 import {
-  ageChoices, ageGroupsFromTeam, defaultFilters, filterListings, formatLabel, formats, genderLabels, kindLabels, interestStateLabels, levelLabels, listingPayload,
+  ageChoices, ageGroupsFromTeam, defaultFilters, groupByPlace, filterListings, formatLabel, formats, genderLabels, kindLabels, interestStateLabels, levelLabels, listingPayload,
   newKey, poolError, slotLabel, stockholmInstant, surfaceLabels, todayInStockholm, watchLabel, whenLabel,
   type Conversation, type Filters, type Gender, type Interest, type Level, type Listing, type ListingDraft, type Place,
   type PoolPage, type PoolTeam, type Surface, type Watch,
@@ -32,6 +33,8 @@ export function MatchPool() {
   const [interestFor, setInterestFor] = useState<Listing | null>(null);
   const [creating, setCreating] = useState(false);
   const [editingBase, setEditingBase] = useState(false);
+  const [view, setView] = useState<"list" | "map">("list");
+  const [mapPlace, setMapPlace] = useState<string | null>(null);
   const loaded = useRef(0);
 
   const load = useCallback(async () => {
@@ -142,11 +145,22 @@ export function MatchPool() {
             </select>
             <input aria-label="Sök åldersklass, lag eller ort" placeholder="Sök t.ex. P12 eller Botkyrka" value={filters.text} onChange={e => setFilters({ ...filters, text: e.target.value })} />
             <label className="pz-check"><input type="checkbox" checked={filters.verifiedOnly} onChange={e => setFilters({ ...filters, verifiedOnly: e.target.checked })} /><span>Bara verifierade klubbar</span></label>
+            <div className="mp-view" role="group" aria-label="Visa som">
+              <button aria-pressed={view === "list"} onClick={() => setView("list")}>Lista</button>
+              <button aria-pressed={view === "map"} onClick={() => setView("map")}>Karta</button>
+            </div>
           </div>
           {!originTeam?.base && <p className="mp-hint">Välj en utgångsort ovan för att se avstånd och bara annonser i närheten.</p>}
-          {shown.length === 0
+          {view === "map" && <>
+            <ListingsMap listings={shown} origin={originTeam?.base ?? null} radiusKm={originTeam?.base ? maxKm : null} selected={mapPlace} onSelect={setMapPlace} />
+            <p className="mp-hint mp-map-legend"><span className="mp-dot-key verified" /> Verifierade klubbar <span className="mp-dot-key unverified" /> Ej verifierade <span className="mp-dot-key origin" /> Er utgångsort · Positionen är orten, inte planen.</p>
+          </>}
+          {(() => {
+            const visible = view === "map" ? (groupByPlace(shown).find(place => place.key === mapPlace)?.listings ?? []) : shown;
+            if (view === "map" && visible.length === 0) return <div className="cs-empty">{shown.length === 0 ? "Inga annonser att visa." : "Tryck på en markering för att se annonserna där."}</div>;
+            return visible.length === 0
             ? <div className="cs-empty">{page.listings.length === 0 ? "Inga annonser i närheten just nu. Lägg in en egen, så hittar andra lag er." : "Inga annonser matchar filtret."}</div>
-            : <div className="mp-list">{shown.map(listing => <ListingCard key={listing.id} listing={listing}
+            : <div className="mp-list">{visible.map(listing => <ListingCard key={listing.id} listing={listing}
                 action={listing.my_interest
                   ? <button className="cs-button small ghost dark" onClick={() => setConversation(listing.my_interest!.id)}>{interestStateLabels[listing.my_interest.state]} · öppna</button>
                   : <button className="cs-button small" onClick={() => setInterestFor(listing)}>Visa intresse</button>}
@@ -154,7 +168,8 @@ export function MatchPool() {
                   if (!client) return;
                   const { error: reportError } = await client.schema("api").rpc("report_match_pool_listing", { target_listing_id: listing.id, reason });
                   if (reportError) setError(poolError(reportError));
-                }} />)}</div>}
+                }} />)}</div>;
+          })()}
         </>}
 
         {tab === "mine" && (page.mine.length === 0

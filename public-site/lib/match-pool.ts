@@ -6,7 +6,7 @@ export type Place = { place_label: string; latitude: number; longitude: number }
 export type Listing = {
   id: string; kind: "home_slot" | "away_wanted"; state: string; team_id: string; team_name: string; club_name: string; verified: boolean;
   starts_at: string | null; ends_at: string | null; date_from: string | null; date_to: string | null; max_distance_km: number | null;
-  place_label: string; distance_km: number | null; venue_name: string | null; venue_surface: Surface | null; match_format: string;
+  place_label: string; latitude?: number; longitude?: number; distance_km: number | null; venue_name: string | null; venue_surface: Surface | null; match_format: string;
   age_class: string; gender: Gender; level: Level | null; note: string | null; created_at: string;
   my_interest?: { id: string; state: InterestState } | null; current?: boolean; interests?: Interest[];
   can_republish?: boolean; republished?: boolean; own?: boolean;
@@ -200,6 +200,21 @@ export function watchLabel(watch: Pick<Watch, "kind" | "max_distance_km" | "matc
     watch.gender ? genderLabels[watch.gender] : null,
     watch.verified_only ? "bara verifierade klubbar" : null,
   ].filter(Boolean).join(" · ");
+}
+
+/** POOL-04: listings at the same rounded place share one map marker. */
+export type MapGroup = { key: string; latitude: number; longitude: number; listings: Listing[] };
+
+export function groupByPlace(listings: Listing[]): MapGroup[] {
+  const groups = new Map<string, MapGroup>();
+  for (const listing of listings) {
+    if (typeof listing.latitude !== "number" || typeof listing.longitude !== "number") continue;
+    const key = `${listing.latitude.toFixed(2)},${listing.longitude.toFixed(2)}`;
+    const group = groups.get(key) ?? { key, latitude: listing.latitude, longitude: listing.longitude, listings: [] };
+    group.listings.push(listing);
+    groups.set(key, group);
+  }
+  return [...groups.values()];
 }
 
 export function newKey(): string {

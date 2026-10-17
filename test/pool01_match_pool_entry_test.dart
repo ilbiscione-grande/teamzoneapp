@@ -91,6 +91,7 @@ class _Messaging extends UnconfiguredMessagingServices {
 }
 
 void main() {
+  supportTests();
   _registerCancellationTests();
   test('the match pool summary reads leader and unread', () {
     final summary = MatchPoolSummary.fromJson({'leader': true, 'unread': 3});
@@ -257,5 +258,65 @@ void _registerCancellationTests() {
   test('watch notifications may open their listing', () {
     const route = '/inbox?poolad=6f0e8a1c-2b3d-4e5f-8a9b-0c1d2e3f4a5b';
     expect(PushRoutes.safe(route), route);
+  });
+}
+
+class _SupportMessaging extends UnconfiguredMessagingServices {
+  final decided = <(String, bool, String)>[];
+
+  @override
+  Future<List<MatchPoolReportedListing>> listMatchPoolReports({
+    bool onlyOpen = true,
+  }) async => decided.isNotEmpty && onlyOpen
+      ? const []
+      : [
+          MatchPoolReportedListing.fromJson({
+            ..._listing(verified: false),
+            'state': 'hidden',
+            'hidden_by_support': false,
+            'open_reports': 3,
+            'note': 'Ring 070-123',
+            'reports': [
+              {
+                'club_name': 'Bro BK',
+                'reason': 'Telefonnummer i annonsen',
+                'created_at': '2026-10-17T10:00:00Z',
+              },
+            ],
+          }),
+        ];
+
+  @override
+  Future<void> decideMatchPoolReports(
+    String listingId, {
+    required bool hide,
+    required String note,
+  }) async => decided.add((listingId, hide, note));
+}
+
+void supportTests() {
+  testWidgets('support sees the reports and hides the listing with a reason', (
+    tester,
+  ) async {
+    final services = _SupportMessaging();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MatchPoolReportsQueue(services: services)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Dold automatiskt'), findsOneWidget);
+    expect(find.text('3 obehandlade'), findsOneWidget);
+    expect(find.textContaining('Telefonnummer i annonsen'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('match-pool-hide-l1')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('match-pool-report-note')),
+      'Kontaktuppgifter i annonsen',
+    );
+    await tester.tap(find.text('Dölj'));
+    await tester.pumpAndSettle();
+    expect(services.decided, [('l1', true, 'Kontaktuppgifter i annonsen')]);
+    expect(find.text('Inga rapporterade annonser.'), findsOneWidget);
   });
 }

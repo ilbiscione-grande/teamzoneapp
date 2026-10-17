@@ -1375,7 +1375,7 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 - [x] Från appen till webben är man inloggad med samma konto: en engångskod (256 bitar, två minuter, används en gång) i adressens fragment byts på servern mot en inloggning för samma användare (migration `20261103090000`).
 - [x] Skarp provning 2026-10-17: två lag i olika klubbar lade in, visade intresse, skrev, bokade och såg matchen i kalendern; notiser och inloggningen från appen till webben fungerade.
 
-**Senare:** karta, supportvy för rapporter. Bevakningar och avbokning: POOL-02.
+**Senare:** bevakningar och avbokning (POOL-02), karta och supportvy för rapporter (POOL-04).
 
 ### POOL-02 – Matchpoolen: bevakningar och avbokning
 
@@ -1397,6 +1397,14 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 - [x] Texterna heter "Söker hemmamatch" och "Söker bortamatch", i stället för "Har hemmatid".
 - [x] En sparad bevakning kan ändras.
 - [x] Rättat: valdes lagets utgångsort medan fliken Bevakningar var öppen, skickade formuläret inget lag, och sparandet misslyckades med "Något gick fel". Okända fel visar nu sin felkod.
+
+### POOL-04 – Matchpoolen: karta och supportvy för rapporter
+
+**Status:** `[~]` – byggd 2026-10-17 (migration `20261106090000`); väntar på migration, driftsättning och skarp provning
+
+- [x] Karta på webben (Leaflet med OpenStreetMaps kartbilder): fliken Hitta match kan visas som lista eller karta. Annonser på samma ort delar en markering med antal, grön när alla klubbar där är verifierade och gul annars. Lagets utgångsort och avståndsgränsen visas som en cirkel. En vald markering visar annonserna som kort under kartan. Positionen är orten, avrundad till ungefär en kilometer, aldrig planen.
+- [x] Supportvy i appen (Supportärenden → flaggikonen): rapporterade annonser med alla rapporter (klubb, anledning, datum). Support döljer annonsen eller avfärdar rapporterna, alltid med motivering. Lag som väntar på svar får besked när en annons döljs, och en annons som dolts automatiskt blir synlig igen när rapporterna avfärdas. Varje beslut loggas i revisionsloggen, och behandlade rapporter räknas inte igen.
+- [ ] Skarp provning: kartan visar annonserna, och support döljer och återställer en rapporterad annons.
 
 ### SET-01 – Klubbinställningar
 

@@ -623,14 +623,14 @@ class _MatchPoolConversationPageState extends State<MatchPoolConversationPage> {
   }
 
   Future<String?> _askReason() async {
-    final controller = TextEditingController();
+    var text = '';
     final reason = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Begär avbokning'),
         content: TextField(
           key: const ValueKey('match-pool-cancel-reason'),
-          controller: controller,
+          onChanged: (value) => text = value,
           maxLength: 500,
           maxLines: 3,
           decoration: const InputDecoration(
@@ -644,13 +644,12 @@ class _MatchPoolConversationPageState extends State<MatchPoolConversationPage> {
             child: const Text('Avbryt'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text),
+            onPressed: () => Navigator.pop(dialogContext, text),
             child: const Text('Begär avbokning'),
           ),
         ],
       ),
     );
-    controller.dispose();
     return reason;
   }
 
@@ -1025,4 +1024,249 @@ class _MatchPoolListingPageState extends State<MatchPoolListingPage> {
       },
     ),
   );
+}
+
+/// POOL-04: reported match pool listings, for support administrators.
+/// Support hides a listing or dismisses its reports; a listing hidden
+/// automatically after three reports opens again when they are dismissed.
+class MatchPoolReportsQueue extends StatefulWidget {
+  const MatchPoolReportsQueue({super.key, required this.services});
+  final MessagingServices services;
+
+  @override
+  State<MatchPoolReportsQueue> createState() => _MatchPoolReportsQueueState();
+}
+
+class _MatchPoolReportsQueueState extends State<MatchPoolReportsQueue> {
+  bool _onlyOpen = true;
+  bool _busy = false;
+  late Future<List<MatchPoolReportedListing>> _items = widget.services
+      .listMatchPoolReports();
+
+  void _reload() {
+    final next = widget.services.listMatchPoolReports(onlyOpen: _onlyOpen);
+    setState(() {
+      _items = next;
+    });
+  }
+
+  Future<void> _decide(MatchPoolReportedListing item, bool hide) async {
+    var text = '';
+    final formKey = GlobalKey<FormState>();
+    final note = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(hide ? 'Dölj annonsen' : 'Rapporterna är ogrundade'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            key: const ValueKey('match-pool-report-note'),
+            onChanged: (value) => text = value,
+            autofocus: true,
+            minLines: 2,
+            maxLines: 5,
+            maxLength: 1000,
+            decoration: InputDecoration(
+              labelText: 'Motivering',
+              helperText: hide
+                  ? 'Lag som väntar på svar får beskedet att annonsen är borttagen.'
+                  : 'En annons som dolts automatiskt blir synlig igen.',
+            ),
+            validator: (value) =>
+                (value?.trim().length ?? 0) < 5 ? 'Ange minst 5 tecken.' : null,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Avbryt'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                Navigator.pop(dialogContext, text.trim());
+              }
+            },
+            child: Text(hide ? 'Dölj' : 'Avfärda rapporterna'),
+          ),
+        ],
+      ),
+    );
+    if (note == null || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await widget.services.decideMatchPoolReports(
+        item.listing.id,
+        hide: hide,
+        note: note,
+      );
+      if (mounted) _reload();
+    } catch (error) {
+      AppErrors.caught('match_pool.decideReports', error);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Beslutet kunde inte sparas.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final material = MaterialLocalizations.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Rapporterade annonser i matchpoolen',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          SwitchListTile(
+            key: const ValueKey('match-pool-reports-open'),
+            contentPadding: EdgeInsets.zero,
+            value: _onlyOpen,
+            onChanged: (value) {
+              _onlyOpen = value;
+              _reload();
+            },
+            title: const Text('Bara obehandlade rapporter'),
+          ),
+          Flexible(
+            child: FutureBuilder<List<MatchPoolReportedListing>>(
+              future: _items,
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const Center(
+                    child: Text('Rapporterna kunde inte hämtas.'),
+                  );
+                }
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final items = snapshot.requireData;
+                if (items.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'Inga rapporterade annonser.',
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                }
+                return ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final item in items)
+                      Card(
+                        key: ValueKey('match-pool-report-${item.listing.id}'),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 4,
+                                children: [
+                                  _VerifiedBadge(
+                                    verified: item.listing.verified,
+                                  ),
+                                  Chip(
+                                    label: Text(switch (item.listing.state) {
+                                      'hidden' when item.hiddenBySupport =>
+                                        'Dold av support',
+                                      'hidden' => 'Dold automatiskt',
+                                      'open' => 'Synlig',
+                                      'matched' => 'Bokad',
+                                      _ => 'Avslutad',
+                                    }),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                  if (item.openReports > 0)
+                                    Chip(
+                                      label: Text(
+                                        '${item.openReports} obehandlade',
+                                      ),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                '${item.listing.teamName} · ${item.listing.clubName}',
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                              Text(
+                                [
+                                  item.listing.homeSlot
+                                      ? 'Söker hemmamatch'
+                                      : 'Söker bortamatch',
+                                  _when(context, item.listing),
+                                  ?item.listing.venueName,
+                                  item.listing.placeLabel,
+                                  item.listing.ageClass,
+                                ].where((part) => part.isNotEmpty).join(' · '),
+                              ),
+                              if (item.listing.note != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: Text(
+                                    'Kommentar: ${item.listing.note}',
+                                  ),
+                                ),
+                              const Divider(),
+                              for (final report in item.reports)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 6),
+                                  child: Text(
+                                    '${report.clubName} · ${material.formatShortDate(report.createdAt.toLocal())}'
+                                    '${report.resolution == null
+                                        ? ''
+                                        : report.resolution == 'hidden'
+                                        ? ' · dold'
+                                        : ' · avfärdad'}'
+                                    ': ${report.reason}',
+                                  ),
+                                ),
+                              Wrap(
+                                alignment: WrapAlignment.end,
+                                spacing: 8,
+                                children: [
+                                  OutlinedButton(
+                                    key: ValueKey(
+                                      'match-pool-dismiss-${item.listing.id}',
+                                    ),
+                                    onPressed: _busy
+                                        ? null
+                                        : () => _decide(item, false),
+                                    child: const Text('Ogrundade'),
+                                  ),
+                                  FilledButton(
+                                    key: ValueKey(
+                                      'match-pool-hide-${item.listing.id}',
+                                    ),
+                                    onPressed: _busy
+                                        ? null
+                                        : () => _decide(item, true),
+                                    child: const Text('Dölj annonsen'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

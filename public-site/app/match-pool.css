@@ -124,3 +124,20 @@
 .mp-chips button:focus-visible { outline: 3px solid rgba(31,138,76,.35); outline-offset: 2px; }
 .mp-watch-actions { display: inline-flex; gap: 14px; }
 .mp-watch-list li.editing { border-color: var(--cs-brand); background: #f3fbf6; }
+
+/* POOL-04: the map. */
+.mp-view { display: inline-flex; margin-left: auto; border: 1px solid #cbd3df; border-radius: 4px; overflow: hidden; }
+.mp-view button { min-height: 42px; padding: 0 16px; border: 0; background: white; color: var(--cs-text); font: inherit; font-weight: 700; cursor: pointer; }
+.mp-view button[aria-pressed="true"] { background: var(--cs-ink); color: white; }
+.mp-map { height: min(60vh, 520px); margin-bottom: 10px; border-radius: 6px; border: 1px solid var(--cs-line); z-index: 0; }
+.mp-pin { display: grid !important; place-items: center; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,.35); color: white; font-weight: 800; font-size: 13px; cursor: pointer; }
+.mp-pin.verified { background: var(--cs-brand); }
+.mp-pin.unverified { background: #d9a21b; }
+.mp-pin.selected { outline: 3px solid var(--cs-ink); outline-offset: 1px; }
+.mp-pin.origin { background: var(--cs-ink); border-width: 2px; cursor: default; }
+.mp-map-legend { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-bottom: 16px; }
+.mp-dot-key { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 1px #cbd3df; }
+.mp-dot-key.verified { background: var(--cs-brand); }
+.mp-dot-key.unverified { background: #d9a21b; }
+.mp-dot-key.origin { background: var(--cs-ink); }
+@media (max-width: 560px) { .mp-view { margin-left: 0; } .mp-map { height: 55vh; } }
