@@ -91,6 +91,7 @@ class _Messaging extends UnconfiguredMessagingServices {
 }
 
 void main() {
+  _registerCancellationTests();
   test('the match pool summary reads leader and unread', () {
     final summary = MatchPoolSummary.fromJson({'leader': true, 'unread': 3});
     expect(summary.leader, isTrue);
@@ -153,5 +154,108 @@ void main() {
     expect(services.acceptedWithCalendar, isFalse);
     expect(find.byKey(const ValueKey('match-pool-decide')), findsNothing);
     expect(find.textContaining('Matchen är bokad'), findsWidgets);
+  });
+}
+
+class _CancelMessaging extends UnconfiguredMessagingServices {
+  String state = 'accepted';
+  String? requestedSide = 'interest';
+  bool? answered;
+  String? republished;
+
+  @override
+  Future<MatchPoolConversation> getMatchPoolConversation(
+    String interestId,
+  ) async => MatchPoolConversation.fromJson({
+    'my_side': 'listing',
+    'listing': {
+      ..._listing(),
+      'can_republish': state == 'cancelled' && republished == null,
+    },
+    'interest': {
+      'team_name': 'P2012',
+      'club_name': 'Bro BK',
+      'verified': false,
+      'state': state,
+      'cancel_requested_side': requestedSide,
+      'cancel_requested_team_name': requestedSide == null ? null : 'P2012',
+      'cancel_reason': requestedSide == null ? null : 'Halva laget är sjukt',
+    },
+    'messages': const [],
+  });
+
+  @override
+  Future<void> respondMatchPoolCancellation(
+    String interestId,
+    bool accept,
+  ) async {
+    answered = accept;
+    requestedSide = null;
+    if (accept) state = 'cancelled';
+  }
+
+  @override
+  Future<void> republishMatchPoolListing(
+    String listingId,
+    String idempotencyKey,
+  ) async => republished = listingId;
+
+  @override
+  Future<MatchPoolListing> getMatchPoolListing(String listingId) async =>
+      MatchPoolListing.fromJson({
+        ..._listing(verified: false),
+        'gender': 'boys',
+        'note': 'Gärna tuffare motstånd',
+      });
+}
+
+void _registerCancellationTests() {
+  testWidgets('the other team approves a cancellation, then the listing '
+      'goes out again', (tester) async {
+    final services = _CancelMessaging();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MatchPoolConversationPage(services: services, interestId: 'i1'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('P2012 vill avboka matchen'), findsOneWidget);
+    expect(find.textContaining('Halva laget är sjukt'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('match-pool-approve-cancel')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Godkänn'));
+    await tester.pumpAndSettle();
+    expect(services.answered, isTrue);
+    expect(find.text('Avbokad'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('match-pool-republish')));
+    await tester.pumpAndSettle();
+    expect(services.republished, 'l1');
+    expect(find.byKey(const ValueKey('match-pool-republish')), findsNothing);
+  });
+
+  testWidgets('a watch notification shows the listing and its verification', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MatchPoolListingPage(
+          services: _CancelMessaging(),
+          listingId: 'l1',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('P2012 · Alby IF'), findsOneWidget);
+    expect(find.text('! Ej verifierad klubb'), findsOneWidget);
+    expect(find.textContaining('Pojkar · 7 mot 7'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('match-pool-interest-web')),
+      findsOneWidget,
+    );
+  });
+
+  test('watch notifications may open their listing', () {
+    const route = '/inbox?poolad=6f0e8a1c-2b3d-4e5f-8a9b-0c1d2e3f4a5b';
+    expect(PushRoutes.safe(route), route);
   });
 }

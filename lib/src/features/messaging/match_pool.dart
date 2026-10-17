@@ -18,8 +18,12 @@ const _publicSiteOrigin = String.fromEnvironment(
 
 /// Opens the match pool on the web, signed in as the same account when a
 /// one-time code can be had (otherwise the page asks to sign in).
-Future<void> openMatchPoolOnWeb(MessagingServices services) async {
+Future<void> openMatchPoolOnWeb(
+  MessagingServices services, {
+  String? listingId,
+}) async {
   var url = '$_publicSiteOrigin/matchpool';
+  if (listingId != null) url = '$url?annons=$listingId';
   try {
     final code = await services.createWebHandoff().timeout(
       const Duration(seconds: 10),
@@ -37,6 +41,20 @@ const _stateLabels = {
   'declined': 'Nej tack',
   'withdrawn': 'Återkallad',
   'closed': 'Avslutad',
+  'cancelled': 'Avbokad',
+};
+
+const _genderLabels = {
+  'boys': 'Pojkar',
+  'girls': 'Flickor',
+  'mixed': 'Mixat',
+  'men': 'Herrar',
+  'women': 'Damer',
+};
+const _levelLabels = {
+  'beginner': 'Nybörjare',
+  'intermediate': 'Medel',
+  'advanced': 'Stark',
 };
 
 String _formatLabel(String format) => format.replaceFirst('v', ' mot ');
@@ -296,6 +314,7 @@ class _MatchPoolConversationPageState extends State<MatchPoolConversationPage> {
   String? _replyKey;
   bool _busy = false;
   bool _addToCalendar = true;
+  String? _republishKey;
 
   @override
   void dispose() {
@@ -418,6 +437,7 @@ class _MatchPoolConversationPageState extends State<MatchPoolConversationPage> {
                               data.state == 'pending' &&
                               data.listing.current)
                             _decide(data),
+                          ..._cancellation(data),
                           if (!data.fromListingSide && data.state == 'pending')
                             Align(
                               alignment: Alignment.centerLeft,
@@ -602,6 +622,203 @@ class _MatchPoolConversationPageState extends State<MatchPoolConversationPage> {
     );
   }
 
+  Future<String?> _askReason() async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Begär avbokning'),
+        content: TextField(
+          key: const ValueKey('match-pool-cancel-reason'),
+          controller: controller,
+          maxLength: 500,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            labelText: 'Varför? (valfritt)',
+            helperText: 'Det andra laget behöver godkänna avbokningen.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Avbryt'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text),
+            child: const Text('Begär avbokning'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return reason;
+  }
+
+  /// POOL-02: cancellation needs both teams; the listing's team may then
+  /// put the same listing out again.
+  List<Widget> _cancellation(MatchPoolConversation data) {
+    final requested = data.cancelRequestedSide;
+    if (data.state == 'accepted' && requested == null) {
+      return [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            key: const ValueKey('match-pool-request-cancel'),
+            onPressed: _busy
+                ? null
+                : () async {
+                    final reason = await _askReason();
+                    if (reason == null) return;
+                    await _run(
+                      'request_cancel',
+                      () => widget.services.requestMatchPoolCancellation(
+                        widget.interestId,
+                        reason.trim().isEmpty ? null : reason.trim(),
+                      ),
+                      done: 'Begäran om avbokning är skickad.',
+                    );
+                  },
+            child: const Text('Begär avbokning'),
+          ),
+        ),
+      ];
+    }
+    if (data.state == 'accepted' && requested == data.mySide) {
+      return [
+        Card(
+          color: const Color(0xFFFFFAF0),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ni har begärt avbokning'
+                  '${data.cancelReason != null ? ': ${data.cancelReason}' : ''}. '
+                  'Väntar på att ${data.otherTeamName} godkänner.',
+                ),
+                TextButton(
+                  key: const ValueKey('match-pool-withdraw-cancel'),
+                  onPressed: _busy
+                      ? null
+                      : () => _run(
+                          'withdraw_cancel',
+                          () => widget.services.withdrawMatchPoolCancellation(
+                            widget.interestId,
+                          ),
+                        ),
+                  child: const Text('Ta tillbaka begäran'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ];
+    }
+    if (data.state == 'accepted' && requested != null) {
+      return [
+        Card(
+          key: const ValueKey('match-pool-cancel-request'),
+          color: const Color(0xFFFFFAF0),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '${data.cancelRequestedTeamName ?? data.otherTeamName} vill avboka matchen'
+                  '${data.cancelReason != null ? ': ${data.cancelReason}' : '.'} '
+                  'Godkänner ni ställs matchen in i båda lagens kalendrar.',
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  children: [
+                    OutlinedButton(
+                      key: const ValueKey('match-pool-keep'),
+                      onPressed: _busy
+                          ? null
+                          : () => _run(
+                              'decline_cancel',
+                              () =>
+                                  widget.services.respondMatchPoolCancellation(
+                                    widget.interestId,
+                                    false,
+                                  ),
+                            ),
+                      child: const Text('Matchen gäller'),
+                    ),
+                    FilledButton(
+                      key: const ValueKey('match-pool-approve-cancel'),
+                      onPressed: _busy
+                          ? null
+                          : () async {
+                              if (await _confirm(
+                                'Godkänn avbokningen? Matchen ställs in i båda kalendrarna.',
+                                'Godkänn',
+                              )) {
+                                await _run(
+                                  'accept_cancel',
+                                  () => widget.services
+                                      .respondMatchPoolCancellation(
+                                        widget.interestId,
+                                        true,
+                                      ),
+                                  done: 'Matchen är avbokad.',
+                                );
+                              }
+                            },
+                      child: const Text('Godkänn avbokning'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ];
+    }
+    if (data.state == 'cancelled' &&
+        data.fromListingSide &&
+        data.listing.canRepublish) {
+      return [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Vill ni hitta ett annat lag till samma tid? Lägg ut annonsen igen som den var.',
+                ),
+                const SizedBox(height: 8),
+                FilledButton(
+                  key: const ValueKey('match-pool-republish'),
+                  onPressed: _busy
+                      ? null
+                      : () {
+                          _republishKey ??= _newKey();
+                          _run(
+                            'republish',
+                            () => widget.services.republishMatchPoolListing(
+                              data.listing.id,
+                              _republishKey!,
+                            ),
+                            done: 'Annonsen är utlagd igen.',
+                          );
+                        },
+                  child: const Text('Lägg ut annonsen igen'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ];
+    }
+    return const [];
+  }
+
   Widget _decide(MatchPoolConversation data) => Card(
     key: const ValueKey('match-pool-decide'),
     child: Padding(
@@ -680,4 +897,132 @@ String _newKey() {
       .join();
   return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-'
       '${hex.substring(16, 20)}-${hex.substring(20)}';
+}
+
+/// POOL-02: a listing a watch found, opened from its notification. Showing
+/// interest happens on the web, signed in with the same account.
+class MatchPoolListingPage extends StatefulWidget {
+  const MatchPoolListingPage({
+    super.key,
+    required this.services,
+    required this.listingId,
+  });
+  final MessagingServices services;
+  final String listingId;
+
+  @override
+  State<MatchPoolListingPage> createState() => _MatchPoolListingPageState();
+}
+
+class _MatchPoolListingPageState extends State<MatchPoolListingPage> {
+  late final Future<MatchPoolListing> _listing = widget.services
+      .getMatchPoolListing(widget.listingId);
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Ny annons i matchpoolen')),
+    body: FutureBuilder<MatchPoolListing>(
+      future: _listing,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Center(child: Text('Annonsen finns inte längre.'));
+        }
+        final listing = snapshot.data;
+        if (listing == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final details = [
+          listing.ageClass,
+          if (listing.gender != null)
+            _genderLabels[listing.gender] ?? listing.gender!,
+          _formatLabel(listing.matchFormat),
+          if (listing.level != null)
+            _levelLabels[listing.level] ?? listing.level!,
+        ].join(' · ');
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        _VerifiedBadge(verified: listing.verified),
+                        Chip(
+                          label: Text(
+                            listing.homeSlot
+                                ? 'Har hemmatid'
+                                : 'Söker bortamatch',
+                          ),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${listing.teamName} · ${listing.clubName}',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    if (!listing.verified)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 6),
+                        child: Text(
+                          'Klubben är inte verifierad av TeamZone. Stäm gärna av med klubben innan ni bokar.',
+                        ),
+                      ),
+                    const SizedBox(height: 8),
+                    Text(_when(context, listing)),
+                    Text(listing.placeLabel),
+                    if (listing.maxDistanceKm != null)
+                      Text('Reser upp till ${listing.maxDistanceKm} km'),
+                    Text(details),
+                    if (listing.note != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(listing.note!),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (!listing.current)
+              const Text('Annonsen är inte längre öppen.')
+            else if (listing.myInterestId != null)
+              FilledButton(
+                onPressed: () => Navigator.of(context).pushReplacement(
+                  MaterialPageRoute<void>(
+                    builder: (_) => MatchPoolConversationPage(
+                      services: widget.services,
+                      interestId: listing.myInterestId!,
+                    ),
+                  ),
+                ),
+                child: const Text('Öppna konversationen'),
+              )
+            else if (!listing.own)
+              FilledButton.icon(
+                key: const ValueKey('match-pool-interest-web'),
+                onPressed: () =>
+                    openMatchPoolOnWeb(widget.services, listingId: listing.id),
+                icon: const Icon(Icons.open_in_new),
+                label: const Text('Visa intresse'),
+              ),
+            if (listing.current && listing.myInterestId == null && !listing.own)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text(
+                  'Öppnas på teamzoneapp.se, inloggad med samma konto. Där väljer ni lag och skriver ett meddelande.',
+                ),
+              ),
+          ],
+        );
+      },
+    ),
+  );
 }

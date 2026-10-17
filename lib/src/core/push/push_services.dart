@@ -46,7 +46,7 @@ abstract interface class PushServices {
 /// for that callup.
 abstract final class PushRoutes {
   static final _safe = RegExp(
-    r'^/(calendar/event/[0-9a-fA-F-]{36}(\?tab=participants&decline=[0-9a-fA-F-]{36})?|inbox(\?(thread|pool)=[0-9a-fA-F-]{36})?)$',
+    r'^/(calendar/event/[0-9a-fA-F-]{36}(\?tab=participants&decline=[0-9a-fA-F-]{36})?|inbox(\?(thread|pool|poolad)=[0-9a-fA-F-]{36})?)$',
   );
 
   static String? safe(Object? route) =>

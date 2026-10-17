@@ -10,6 +10,7 @@ class _InboxSurface extends StatefulWidget {
     this.supportAdminAccess,
     this.initialThreadId,
     this.initialPoolInterestId,
+    this.initialPoolListingId,
     this.initialAction,
     required this.onNavigate,
   });
@@ -25,6 +26,9 @@ class _InboxSurface extends StatefulWidget {
 
   /// POOL-01: a match pool notification opens that conversation.
   final String? initialPoolInterestId;
+
+  /// POOL-02: a watch notification opens the listing it found.
+  final String? initialPoolListingId;
   // Set by the swipe-up quick actions sheet's "Skicka meddelande" shortcut
   // (ProductRouteContract.inboxCompose) to open the compose dialog
   // immediately on arrival — see _openInitialAction.
@@ -759,17 +763,24 @@ class _InboxSurfaceState extends State<_InboxSurface>
 
   /// Opens the conversation a match pool notification points at, once.
   void _openInitialPoolConversation() {
-    final target = widget.initialPoolInterestId;
+    final interest = widget.initialPoolInterestId;
+    final listing = widget.initialPoolListingId;
+    final target = interest ?? listing;
     if (target == null || target == _openedPoolInterestId) return;
     _openedPoolInterestId = target;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => MatchPoolConversationPage(
-            services: widget.messaging,
-            interestId: target,
-          ),
+          builder: (_) => interest != null
+              ? MatchPoolConversationPage(
+                  services: widget.messaging,
+                  interestId: interest,
+                )
+              : MatchPoolListingPage(
+                  services: widget.messaging,
+                  listingId: listing!,
+                ),
         ),
       );
       if (!mounted) return;
@@ -1153,7 +1164,8 @@ class _InboxSurfaceState extends State<_InboxSurface>
       }
       _tryOpenInitialThread();
     }
-    if (oldWidget.initialPoolInterestId != widget.initialPoolInterestId) {
+    if (oldWidget.initialPoolInterestId != widget.initialPoolInterestId ||
+        oldWidget.initialPoolListingId != widget.initialPoolListingId) {
       _openInitialPoolConversation();
     }
     if (oldWidget.initialAction != widget.initialAction) {

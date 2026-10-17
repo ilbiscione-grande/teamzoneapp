@@ -9,14 +9,19 @@ export type Listing = {
   place_label: string; distance_km: number | null; venue_name: string | null; venue_surface: Surface | null; match_format: string;
   age_class: string; gender: Gender; level: Level | null; note: string | null; created_at: string;
   my_interest?: { id: string; state: InterestState } | null; current?: boolean; interests?: Interest[];
+  can_republish?: boolean; republished?: boolean; own?: boolean;
 };
-export type InterestState = "pending" | "accepted" | "declined" | "withdrawn" | "closed";
+export type InterestState = "pending" | "accepted" | "declined" | "withdrawn" | "closed" | "cancelled";
 export type Interest = {
   id: string; listing_id: string; state: InterestState; team_id: string; team_name: string; club_name: string; verified: boolean;
   starts_at: string | null; ends_at: string | null; venue_name: string | null; venue_surface: Surface | null; add_to_calendar: boolean;
   unread: boolean; last_message: string | null; last_activity_at: string | null; created_at: string; listing?: Listing;
+  cancel_requested_side?: "listing" | "interest" | null; cancel_requested_team_name?: string | null; cancel_reason?: string | null;
+  cancel_requested_at?: string | null; cancelled_at?: string | null;
 };
-export type PoolPage = { teams: PoolTeam[]; origin: { team_id: string; place_label: string } | null; listings: Listing[]; mine: Listing[]; sent: Interest[] };
+export type PoolPage = { teams: PoolTeam[]; origin: { team_id: string; place_label: string } | null; listings: Listing[]; mine: Listing[]; sent: Interest[]; watches?: Watch[] };
+export type Watch = { id: string; team_id: string; team_name: string; kind: "all" | "home_slot" | "away_wanted"; max_distance_km: number;
+  match_format: string | null; gender: Gender | null; age_class: string | null; verified_only: boolean; mine: boolean; created_at: string };
 export type Conversation = {
   my_side: "listing" | "interest"; my_event_id: string | null; listing: Listing; interest: Interest;
   messages: { id: string; side: "listing" | "interest" | "system"; body: string; created_at: string; author_name: string | null }[];
@@ -31,7 +36,7 @@ export const surfaceLabels: Record<Surface, string> = { grass: "Gräs", artifici
 export const genderLabels: Record<Gender, string> = { boys: "Pojkar", girls: "Flickor", mixed: "Mixat", men: "Herrar", women: "Damer" };
 export const levelLabels: Record<Level, string> = { beginner: "Nybörjare", intermediate: "Medel", advanced: "Stark" };
 export const interestStateLabels: Record<InterestState, string> = {
-  pending: "Väntar på svar", accepted: "Bokad", declined: "Nej tack", withdrawn: "Återkallad", closed: "Avslutad",
+  pending: "Väntar på svar", accepted: "Bokad", declined: "Nej tack", withdrawn: "Återkallad", closed: "Avslutad", cancelled: "Avbokad",
 };
 
 const zone = "Europe/Stockholm";
@@ -130,6 +135,11 @@ export const poolErrors: Record<string, string> = {
   already_interested: "Ni har redan visat intresse för den här annonsen.",
   conversation_closed: "Konversationen är avslutad.",
   invalid_input: "Kontrollera uppgifterna och försök igen.",
+  cancellation_pending: "Det finns redan en begäran om avbokning.",
+  no_cancellation: "Det finns ingen begäran om avbokning längre.",
+  not_booked: "Matchen är inte bokad.",
+  cannot_republish: "Annonsen kan inte läggas ut igen, datumet har passerat.",
+  no_base: "Välj lagets utgångsort först, så kan avståndet räknas.",
 };
 
 export function poolError(error: unknown): string {
@@ -151,6 +161,17 @@ export function placeFromNominatim(item: { lat?: string; lon?: string; name?: st
   const label = (parts.length ? parts.join(", ") : (item.display_name ?? "").split(",").slice(0, 2).join(",")).trim().slice(0, 120);
   if (!label) return null;
   return { place_label: label, latitude: Math.round(latitude * 100) / 100, longitude: Math.round(longitude * 100) / 100 };
+}
+
+/** What a watch looks for, in words. */
+export function watchLabel(watch: Pick<Watch, "kind" | "max_distance_km" | "match_format" | "gender" | "age_class" | "verified_only">): string {
+  return [
+    watch.kind === "home_slot" ? "Hemmatider" : watch.kind === "away_wanted" ? "Söker bortamatch" : "Alla annonser",
+    `inom ${watch.max_distance_km} km`,
+    watch.age_class, watch.match_format ? formatLabel(watch.match_format) : null,
+    watch.gender ? genderLabels[watch.gender] : null,
+    watch.verified_only ? "bara verifierade klubbar" : null,
+  ].filter(Boolean).join(" · ");
 }
 
 export function newKey(): string {

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
-  defaultFilters, filterListings, listingPayload, placeFromNominatim, poolError, stockholmInstant, whenLabel,
+  defaultFilters, filterListings, listingPayload, placeFromNominatim, poolError, stockholmInstant, watchLabel, whenLabel,
   type Listing, type ListingDraft,
 } from "../lib/match-pool.ts";
 
@@ -94,4 +94,16 @@ test("sign-in from the app: the code is used once by the server and leaves the a
   const strip = account.indexOf("window.history.replaceState(null");
   const exchange = account.indexOf("/api/public/v1/account/handoff");
   assert.ok(strip > 0 && strip < exchange, "the code is removed from the address before it is used");
+});
+
+test("watches are described in words, and cancellation needs the other team", () => {
+  assert.equal(watchLabel({ kind: "away_wanted", max_distance_km: 50, match_format: "7v7", gender: "boys", age_class: "P12", verified_only: true }),
+    "Söker bortamatch · inom 50 km · P12 · 7 mot 7 · Pojkar · bara verifierade klubbar");
+  assert.equal(watchLabel({ kind: "all", max_distance_km: 25, match_format: null, gender: null, age_class: null, verified_only: false }), "Alla annonser · inom 25 km");
+  const page = readFileSync(new URL("../components/match-pool.tsx", import.meta.url), "utf8");
+  assert.match(page, /Begär avbokning/);
+  assert.match(page, /Godkänn avbokning/);
+  assert.match(page, /cancel_requested_side !== side/);
+  assert.match(page, /Lägg ut annonsen igen/);
+  assert.match(page, /get\("annons"\)/);
 });

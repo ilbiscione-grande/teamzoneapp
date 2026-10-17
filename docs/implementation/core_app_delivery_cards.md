@@ -1375,7 +1375,20 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 - [x] Från appen till webben är man inloggad med samma konto: en engångskod (256 bitar, två minuter, används en gång) i adressens fragment byts på servern mot en inloggning för samma användare (migration `20261103090000`).
 - [x] Skarp provning 2026-10-17: två lag i olika klubbar lade in, visade intresse, skrev, bokade och såg matchen i kalendern; notiser och inloggningen från appen till webben fungerade.
 
-**Senare:** bevakningar ("meddela mig när ett P2013-lag inom 50 km söker match"), karta, supportvy för rapporter.
+**Senare:** karta, supportvy för rapporter. Bevakningar och avbokning: POOL-02.
+
+### POOL-02 – Matchpoolen: bevakningar och avbokning
+
+**Status:** `[~]` – byggd 2026-10-17 (migration `20261104090000`); väntar på migration, driftsättning och skarp provning
+
+**Beslut (produktägaren 2026-10-17):**
+
+- [x] Bevakningar: en ledare sparar vad laget söker (typ av annons, avstånd från lagets utgångsort, spelform, kön, åldersklass, bara verifierade klubbar). En ny annons som passar ger en notis till den som sparade bevakningen, högst tio per bevakning och dygn. Notisen öppnar annonsen i appen; intresse visas på webben, inloggad med samma konto. Bevakningar hanteras på webben, högst fem per lag.
+- [x] Avbokning av en bokad match kräver att båda lagen är överens: endera laget begär avbokning (med valfri förklaring), det andra laget godkänner eller säger att matchen gäller, och den som begärde kan ta tillbaka begäran. I appen och på webben.
+- [x] När avbokningen godkänns ställs matcherna som matchpoolen lade in in i båda lagens kalendrar (spelarna får besked som vid en vanlig inställd match).
+- [x] Annonsens lag får då välja att lägga ut samma annons igen, en gång, så länge datumet inte har passerat.
+- [x] Vilket lag som begärde avbokningen och när sparas i en logg utan meddelandetext, i två år.
+- [ ] Skarp provning: bevakning ger notis, avbokning begärs, godkänns och ställer in matchen i kalendrarna, annonsen läggs ut igen.
 
 ### SET-01 – Klubbinställningar
 

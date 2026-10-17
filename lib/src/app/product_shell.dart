@@ -428,6 +428,7 @@ class _ProductShellState extends State<_ProductShell> {
                   supportAdminAccess: _supportAdminAccess,
                   initialThreadId: state.uri.queryParameters['thread'],
                   initialPoolInterestId: state.uri.queryParameters['pool'],
+                  initialPoolListingId: state.uri.queryParameters['poolad'],
                   initialAction: state.uri.queryParameters['action'],
                   onNavigate: _navigateFromSurface,
                 )

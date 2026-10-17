@@ -7,16 +7,16 @@ import { usePersonalAccount } from "./personal-account";
 import { PortalHero } from "./portal";
 import {
   defaultFilters, filterListings, formatLabel, formats, genderLabels, interestStateLabels, levelLabels, listingPayload,
-  newKey, poolError, slotLabel, stockholmInstant, surfaceLabels, todayInStockholm, whenLabel,
+  newKey, poolError, slotLabel, stockholmInstant, surfaceLabels, todayInStockholm, watchLabel, whenLabel,
   type Conversation, type Filters, type Gender, type Interest, type Level, type Listing, type ListingDraft, type Place,
-  type PoolPage, type PoolTeam, type Surface,
+  type PoolPage, type PoolTeam, type Surface, type Watch,
 } from "../lib/match-pool";
 
 // POOL-01: matchpoolen for leaders. Listings from other teams with the
 // club's verification shown on every card, own listings with the interests
 // they got, sent interests, and a conversation per interest.
 
-type Tab = "find" | "mine" | "sent";
+type Tab = "find" | "mine" | "sent" | "watches";
 const distances = [10, 25, 50, 100, 200, 500];
 
 export function MatchPool() {
@@ -51,6 +51,23 @@ export function MatchPool() {
   }, [client, session, origin, maxKm]);
 
   useEffect(() => { void load(); }, [load]);
+  const linked = useRef(false);
+  useEffect(() => {
+    if (!page || !client || linked.current) return;
+    const wanted = new URLSearchParams(window.location.search).get("annons");
+    if (!wanted || !/^[0-9a-f-]{36}$/i.test(wanted)) return;
+    linked.current = true;
+    window.history.replaceState(null, "", window.location.pathname);
+    void (async () => {
+      const found = page.listings.find(listing => listing.id === wanted)
+        ?? await Promise.resolve(client.schema("api").rpc("get_match_pool_listing", { target_listing_id: wanted })).then(({ data }) => data as Listing | null).catch(() => null);
+      if (!found) { setError("Annonsen finns inte längre."); return; }
+      if (found.my_interest) setConversation(found.my_interest.id);
+      else if (found.own) setTab("mine");
+      else if (found.current === false) setError("Annonsen är inte längre öppen.");
+      else setInterestFor(found);
+    })();
+  }, [page, client]);
 
   const hero = <PortalHero kicker="Matchpoolen" title="Hitta träningsmatcher" mark="TZ">
     <p className="pz-lead">Lägg in en hemmatid eller sök en bortamatch, och se vilka lag i närheten som söker motstånd. Ser du en klubb utan verifiering? Då har TeamZone inte granskat den.</p>
@@ -109,6 +126,7 @@ export function MatchPool() {
           <button role="tab" aria-selected={tab === "find"} onClick={() => setTab("find")}>Hitta match <span>{page.listings.length}</span></button>
           <button role="tab" aria-selected={tab === "mine"} onClick={() => setTab("mine")}>Våra annonser <span>{page.mine.length}</span>{mineUnread > 0 && <em aria-label={`${mineUnread} olästa`}>{mineUnread}</em>}</button>
           <button role="tab" aria-selected={tab === "sent"} onClick={() => setTab("sent")}>Våra intressen <span>{page.sent.length}</span>{sentUnread > 0 && <em aria-label={`${sentUnread} olästa`}>{sentUnread}</em>}</button>
+          <button role="tab" aria-selected={tab === "watches"} onClick={() => setTab("watches")}>Bevakningar <span>{page.watches?.length ?? 0}</span></button>
         </div>
 
         {tab === "find" && <>
@@ -148,7 +166,9 @@ export function MatchPool() {
                     const { error: withdrawError } = await client.schema("api").rpc("withdraw_match_pool_listing", { target_listing_id: listing.id });
                     if (withdrawError) setError(poolError(withdrawError)); else void load();
                   }}>Ta bort annonsen</button>
-                : <span className="mp-state">{listing.state === "matched" ? "Matchad" : listing.state === "hidden" ? "Dold efter rapporter" : "Avslutad"}</span>}>
+                : listing.can_republish
+                ? <span className="mp-republish"><span className="mp-state">Avbokad</span> <RepublishButton client={client!} listingId={listing.id} onDone={() => void load()} onError={setError} /></span>
+                : <span className="mp-state">{listing.state === "matched" ? "Matchad" : listing.state === "hidden" ? "Dold efter rapporter" : listing.state === "cancelled" ? "Avbokad" : "Avslutad"}</span>}>
               <div className="mp-interests">
                 <h4>Intresserade lag ({listing.interests?.length ?? 0})</h4>
                 {(listing.interests ?? []).length === 0 && <p className="mp-hint">Inga än. Lag som visar intresse syns här, och du får en notis i appen.</p>}
@@ -162,6 +182,8 @@ export function MatchPool() {
               action={<button className="cs-button small ghost dark" onClick={() => setConversation(interest.id)}>Öppna konversationen</button>}>
               <div className="mp-interests"><InterestRow interest={interest} self onOpen={() => setConversation(interest.id)} /></div>
             </ListingCard>)}</div>)}
+
+        {tab === "watches" && client && <Watches client={client} teams={page.teams} watches={page.watches ?? []} onChanged={() => void load()} />}
 
         <p className="mp-hint mp-attribution">Platssökning med data från <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap-bidragsgivare</a>. Avstånd räknas fågelvägen mellan orterna.</p>
       </div>
@@ -480,6 +502,28 @@ function ConversationView({ client, interestId, onClose }: { client: SupabaseCli
           <button className="cs-button" disabled={busy} onClick={() => { if (window.confirm(`Boka matchen med ${interest.team_name}? Övriga intresserade får besked.`)) void act("accept_match_pool_interest", { target_interest_id: interest.id, add_to_calendar: calendar }); }}>Acceptera och boka</button>
         </div>
       </div>}
+      {interest.state === "accepted" && !interest.cancel_requested_side && <div className="mp-form-actions start">
+        <button className="pz-link" disabled={busy} onClick={() => {
+          const reason = window.prompt("Begär avbokning. Det andra laget behöver godkänna den. Varför? (valfritt)");
+          if (reason === null) return;
+          void act("request_match_pool_cancellation", { target_interest_id: interest.id, reason: reason.trim().slice(0, 500) || null });
+        }}>Begär avbokning</button>
+      </div>}
+      {interest.state === "accepted" && interest.cancel_requested_side === side && <div className="mp-cancel">
+        <p>Ni har begärt avbokning{interest.cancel_reason ? `: ${interest.cancel_reason}` : ""}. Väntar på att {side === "listing" ? interest.team_name : listing.team_name} godkänner.</p>
+        <button className="pz-link" disabled={busy} onClick={() => void act("withdraw_match_pool_cancellation", { target_interest_id: interest.id })}>Ta tillbaka begäran</button>
+      </div>}
+      {interest.state === "accepted" && interest.cancel_requested_side && interest.cancel_requested_side !== side && <div className="mp-cancel">
+        <p><strong>{interest.cancel_requested_team_name} vill avboka matchen</strong>{interest.cancel_reason ? `: ${interest.cancel_reason}` : "."} Godkänner ni ställs matchen in i båda lagens kalendrar.</p>
+        <div className="mp-form-actions">
+          <button className="cs-button ghost dark" disabled={busy} onClick={() => void act("respond_match_pool_cancellation", { target_interest_id: interest.id, accept: false })}>Matchen gäller</button>
+          <button className="cs-button" disabled={busy} onClick={() => { if (window.confirm("Godkänn avbokningen? Matchen ställs in i båda kalendrarna.")) void act("respond_match_pool_cancellation", { target_interest_id: interest.id, accept: true }); }}>Godkänn avbokning</button>
+        </div>
+      </div>}
+      {interest.state === "cancelled" && side === "listing" && listing.can_republish && <div className="mp-cancel">
+        <p>Vill ni hitta ett annat lag till samma tid? Lägg ut annonsen igen som den var.</p>
+        <RepublishButton client={client} listingId={listing.id} onDone={() => void load()} onError={setProblem} />
+      </div>}
       {side === "interest" && interest.state === "pending" && <div className="mp-form-actions start">
         <button className="pz-link" disabled={busy} onClick={() => { if (window.confirm("Återkalla ert intresse?")) void act("withdraw_match_pool_interest", { target_interest_id: interest.id }); }}>Återkalla intresset</button>
       </div>}
@@ -490,4 +534,74 @@ function ConversationView({ client, interestId, onClose }: { client: SupabaseCli
       </form>}
     </div>
   </Dialog>;
+}
+
+function RepublishButton({ client, listingId, onDone, onError }: { client: SupabaseClient; listingId: string; onDone: () => void; onError: (message: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [key] = useState(newKey);
+  return <button className="cs-button small" disabled={busy} onClick={async () => {
+    setBusy(true);
+    const { error } = await client.schema("api").rpc("republish_match_pool_listing", { target_listing_id: listingId, idempotency_key: key });
+    setBusy(false);
+    if (error) onError(poolError(error)); else onDone();
+  }}>{busy ? "Lägger ut…" : "Lägg ut annonsen igen"}</button>;
+}
+
+function Watches({ client, teams, watches, onChanged }: { client: SupabaseClient; teams: PoolTeam[]; watches: Watch[]; onChanged: () => void }) {
+  const withBase = teams.filter(team => team.base);
+  const [teamId, setTeamId] = useState(withBase[0]?.team_id ?? "");
+  const [kind, setKind] = useState<Watch["kind"]>("all");
+  const [distance, setDistance] = useState(50);
+  const [format, setFormat] = useState("");
+  const [gender, setGender] = useState("");
+  const [ageClass, setAgeClass] = useState(withBase[0]?.age_class ?? "");
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [problem, setProblem] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function save(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true); setProblem("");
+    const { error } = await client.schema("api").rpc("create_match_pool_watch", { target_team_id: teamId, watch: {
+      kind, max_distance_km: distance, match_format: format || null, gender: gender || null, age_class: ageClass.trim() || null, verified_only: verifiedOnly } });
+    setBusy(false);
+    if (error) setProblem(poolError(error)); else onChanged();
+  }
+  return <div className="mp-watches">
+    <p className="mp-hint">När ett lag lägger in en annons som passar får du en notis i appen. Högst tio per bevakning och dygn.</p>
+    {watches.length === 0 ? <div className="cs-empty">Inga bevakningar än.</div> : <ul className="mp-watch-list">{watches.map(watch => <li key={watch.id}>
+      <div><strong>{watch.team_name}</strong><span>{watchLabel(watch)}</span>{!watch.mine && <span className="mp-hint">Sparad av en annan ledare – notiserna går till hen.</span>}</div>
+      <button className="pz-link" onClick={async () => {
+        const { error } = await client.schema("api").rpc("delete_match_pool_watch", { target_watch_id: watch.id });
+        if (error) setProblem(poolError(error)); else onChanged();
+      }}>Ta bort</button>
+    </li>)}</ul>}
+    {withBase.length === 0
+      ? <p className="mp-hint">Välj en utgångsort för laget högst upp på sidan, så kan du bevaka annonser i närheten.</p>
+      : <form className="mp-form mp-watch-form" onSubmit={save}>
+        <h3>Ny bevakning</h3>
+        <div className="pz-form-row">
+          <TeamSelect teams={withBase} value={teamId} onChange={value => { setTeamId(value); setAgeClass(withBase.find(t => t.team_id === value)?.age_class ?? ageClass); }} />
+          <label className="field">Avstånd<select value={distance} onChange={e => setDistance(Number(e.target.value))}>
+            {[10, 25, 50, 75, 100, 150, 200].map(km => <option key={km} value={km}>Inom {km} km</option>)}
+          </select></label>
+        </div>
+        <div className="pz-form-row">
+          <label className="field">Annonser<select value={kind} onChange={e => setKind(e.target.value as Watch["kind"])}>
+            <option value="all">Alla</option><option value="home_slot">Lag som har hemmatid</option><option value="away_wanted">Lag som söker bortamatch</option>
+          </select></label>
+          <label className="field">Åldersklass innehåller<input maxLength={40} value={ageClass} onChange={e => setAgeClass(e.target.value)} placeholder="t.ex. P12 (valfritt)" /></label>
+        </div>
+        <div className="pz-form-row">
+          <label className="field">Spelform<select value={format} onChange={e => setFormat(e.target.value)}>
+            <option value="">Alla</option>{formats.map(f => <option key={f} value={f}>{formatLabel(f)}</option>)}
+          </select></label>
+          <label className="field">Kön<select value={gender} onChange={e => setGender(e.target.value)}>
+            <option value="">Alla</option>{Object.entries(genderLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select></label>
+        </div>
+        <label className="pz-check"><input type="checkbox" checked={verifiedOnly} onChange={e => setVerifiedOnly(e.target.checked)} /><span>Bara annonser från officiellt verifierade klubbar</span></label>
+        {problem && <p role="alert" className="pz-error">{problem}</p>}
+        <div className="mp-form-actions start"><button className="cs-button" disabled={busy}>{busy ? "Sparar…" : "Spara bevakning"}</button></div>
+      </form>}
+  </div>;
 }

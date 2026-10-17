@@ -128,6 +128,16 @@ abstract interface class MessagingServices {
   /// A one-time code that signs the same account in on teamzoneapp.se.
   Future<String> createWebHandoff();
 
+  /// POOL-02: a booked match is cancelled only when both teams agree.
+  Future<void> requestMatchPoolCancellation(String interestId, String? reason);
+  Future<void> withdrawMatchPoolCancellation(String interestId);
+  Future<void> respondMatchPoolCancellation(String interestId, bool accept);
+  Future<void> republishMatchPoolListing(
+    String listingId,
+    String idempotencyKey,
+  );
+  Future<MatchPoolListing> getMatchPoolListing(String listingId);
+
   /// Signals that the notification center may have changed. Team updates for
   /// followers have no realtime broadcast, so they are also polled; surfaces
   /// that never show team updates (Home) pass `includeTeamUpdatePoll: false`
@@ -277,6 +287,23 @@ class UnconfiguredMessagingServices implements MessagingServices {
   Future<void> withdrawMatchPoolInterest(String interestId) => _fail();
   @override
   Future<String> createWebHandoff() => _fail();
+  @override
+  Future<void> requestMatchPoolCancellation(
+    String interestId,
+    String? reason,
+  ) => _fail();
+  @override
+  Future<void> withdrawMatchPoolCancellation(String interestId) => _fail();
+  @override
+  Future<void> respondMatchPoolCancellation(String interestId, bool accept) =>
+      _fail();
+  @override
+  Future<void> republishMatchPoolListing(
+    String listingId,
+    String idempotencyKey,
+  ) => _fail();
+  @override
+  Future<MatchPoolListing> getMatchPoolListing(String listingId) => _fail();
   @override
   Future<ContactThread> getContactThread(String threadId) => _fail();
   @override
@@ -954,6 +981,70 @@ class SupabaseMessagingServices implements MessagingServices {
           'withdraw_match_pool_interest',
           params: {'target_interest_id': interestId},
         );
+  }
+
+  @override
+  Future<void> requestMatchPoolCancellation(
+    String interestId,
+    String? reason,
+  ) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'request_match_pool_cancellation',
+          params: {'target_interest_id': interestId, 'reason': reason},
+        );
+  }
+
+  @override
+  Future<void> withdrawMatchPoolCancellation(String interestId) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'withdraw_match_pool_cancellation',
+          params: {'target_interest_id': interestId},
+        );
+  }
+
+  @override
+  Future<void> respondMatchPoolCancellation(
+    String interestId,
+    bool accept,
+  ) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'respond_match_pool_cancellation',
+          params: {'target_interest_id': interestId, 'accept': accept},
+        );
+  }
+
+  @override
+  Future<void> republishMatchPoolListing(
+    String listingId,
+    String idempotencyKey,
+  ) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'republish_match_pool_listing',
+          params: {
+            'target_listing_id': listingId,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+  }
+
+  @override
+  Future<MatchPoolListing> getMatchPoolListing(String listingId) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'get_match_pool_listing',
+          params: {'target_listing_id': listingId},
+        );
+    if (value is! Map<String, dynamic>) throw StateError('invalid_response');
+    return MatchPoolListing.fromJson(value);
   }
 
   @override

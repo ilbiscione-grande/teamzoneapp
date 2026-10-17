@@ -372,6 +372,13 @@ class MatchPoolListing {
     this.venueName,
     this.venueSurface,
     this.current = true,
+    this.gender,
+    this.level,
+    this.note,
+    this.maxDistanceKm,
+    this.own = false,
+    this.myInterestId,
+    this.canRepublish = false,
   });
   factory MatchPoolListing.fromJson(Map<String, dynamic> json) =>
       MatchPoolListing(
@@ -390,11 +397,19 @@ class MatchPoolListing {
         venueName: json['venue_name'] as String?,
         venueSurface: json['venue_surface'] as String?,
         current: json['current'] != false,
+        gender: json['gender'] as String?,
+        level: json['level'] as String?,
+        note: json['note'] as String?,
+        maxDistanceKm: (json['max_distance_km'] as num?)?.toInt(),
+        own: json['own'] == true,
+        myInterestId: (json['my_interest'] as Map?)?['id'] as String?,
+        canRepublish: json['can_republish'] == true,
       );
   final String id, teamName, clubName, placeLabel, matchFormat, ageClass;
-  final bool homeSlot, verified, current;
+  final bool homeSlot, verified, current, own, canRepublish;
   final DateTime? startsAt, endsAt, dateFrom, dateTo;
-  final String? venueName, venueSurface;
+  final String? venueName, venueSurface, gender, level, note, myInterestId;
+  final int? maxDistanceKm;
 }
 
 class MatchPoolConversationSummary {
@@ -468,6 +483,9 @@ class MatchPoolConversation {
     this.proposedStartsAt,
     this.proposedEndsAt,
     this.proposedVenue,
+    this.cancelRequestedSide,
+    this.cancelRequestedTeamName,
+    this.cancelReason,
   });
   factory MatchPoolConversation.fromJson(Map<String, dynamic> json) {
     final interest = (json['interest'] as Map).cast<String, dynamic>();
@@ -484,6 +502,10 @@ class MatchPoolConversation {
       proposedStartsAt: _poolTime(interest['starts_at']),
       proposedEndsAt: _poolTime(interest['ends_at']),
       proposedVenue: interest['venue_name'] as String?,
+      cancelRequestedSide: interest['cancel_requested_side'] as String?,
+      cancelRequestedTeamName:
+          interest['cancel_requested_team_name'] as String?,
+      cancelReason: interest['cancel_reason'] as String?,
       messages: [
         for (final row
             in (json['messages'] as List? ?? const []).whereType<Map>().map(
@@ -495,6 +517,10 @@ class MatchPoolConversation {
   }
   final String mySide, interestTeamName, interestClubName, state;
   final String? myEventId, proposedVenue;
+
+  /// POOL-02: a pending cancellation request ('listing' or 'interest') and
+  /// the team that asked.
+  final String? cancelRequestedSide, cancelRequestedTeamName, cancelReason;
   final MatchPoolListing listing;
   final bool interestVerified;
   final DateTime? proposedStartsAt, proposedEndsAt;

@@ -65,7 +65,16 @@ try {
    state text default 'pending',created_at timestamptz default now(),unique(domain_event_id,recipient_person_id));
   -- The event command, as the acting leader: records who created what.
   create table core.events(id uuid primary key default gen_random_uuid(),club_id uuid,owning_team_id uuid,state text,
-   title text,starts_at timestamptz,created_by uuid,location text,fields jsonb,audience text[]);
+   title text,starts_at timestamptz,created_by uuid,location text,fields jsonb,audience text[],revision bigint default 1);
+  create function internal.actor_can_manage_event(e uuid) returns boolean language sql stable security definer set search_path='' as $$
+   select exists(select 1 from core.events ev where ev.id=e and internal.actor_has_capability(ev.club_id,ev.owning_team_id,'event.manage'))$$;
+  create function internal.transition_event_for_actor(e uuid,target_state text,expected_revision bigint,reason text,idempotency_key uuid)
+   returns bigint language plpgsql security definer set search_path='' as $$
+   begin
+    if not internal.actor_can_manage_event(e) then raise insufficient_privilege using message='not_found'; end if;
+    update core.events set state=target_state, revision=revision+1 where id=e and revision=expected_revision;
+    return expected_revision+1;
+   end$$;
   create function internal.create_event_v2_for_actor(target_club_id uuid, target_team_id uuid, new_title text, new_description text,
    new_event_type text, new_state text, new_starts_at timestamptz, new_ends_at timestamptz, new_all_day boolean, new_timezone text,
    audience_types text[], location_name text, recurrence_frequency text, recurrence_interval integer, recurrence_count integer,
@@ -80,6 +89,7 @@ try {
   grant usage on schema api, internal, core, extensions to authenticated, service_role;`);
   await db.exec(read('supabase/migrations/20261102090000_match_pool.sql').replace(/notify pgrst[^;]*;/, ''));
   await db.exec(read('supabase/migrations/20261103090000_match_pool_app.sql').replace(/notify pgrst[^;]*;/, ''));
+  await db.exec(read('supabase/migrations/20261104090000_match_pool_watches_cancellation.sql').replace(/notify pgrst[^;]*;/, ''));
   await db.exec('set check_function_bodies = on');
   await db.exec('begin');
 
@@ -209,6 +219,73 @@ try {
   for (let n = 0; n < 10; n++) await user(coachC, 'select api.create_web_handoff()');
   await reject(() => user(coachC, 'select api.create_web_handoff()'), /permission denied|rate_limited/);
   await db.exec('rollback to limit_check');
+
+  // Watches: Bro F2013 watches 7 mot 7 within 100 km; Bro P2012 only girls.
+  await reject(() => user(coachA, 'select api.create_match_pool_watch($1,$2)', [broF13, { max_distance_km: 100 }]), /not_found/);
+  const watchC = await user(coachC, 'select api.create_match_pool_watch($1,$2)', [broF13, { kind: 'all', max_distance_km: 100, match_format: '7v7', age_class: 'p1' }]);
+  await user(coachB, 'select api.create_match_pool_watch($1,$2)', [broP12, { max_distance_km: 100, gender: 'girls' }]);
+  await reject(() => user(coachC, 'select api.create_match_pool_watch($1,$2)', [broF13, { max_distance_km: 2 }]), /invalid_input/);
+  assert.equal((await user(coachC, 'select api.list_match_pool_watches()')).length, 1, 'only the teams the leader leads');
+  assert.equal((await user(coachC, 'select api.get_match_pool()')).watches.length, 1);
+
+  // Cancellation needs both teams. Bro asks, cannot answer itself; Alby declines.
+  await reject(() => user(coachC, 'select api.request_match_pool_cancellation($1,$2)', [interest, 'x']), /not_found/);
+  await user(coachB, 'select api.request_match_pool_cancellation($1,$2)', [interest, 'Halva laget är sjukt']);
+  await reject(() => user(coachB, 'select api.request_match_pool_cancellation($1,$2)', [interest, 'igen']), /cancellation_pending/);
+  await reject(() => user(coachB, 'select api.respond_match_pool_cancellation($1,$2)', [interest, true]), /not_found/);
+  let seenByAlby = await user(coachA, 'select api.get_match_pool_conversation($1)', [interest]);
+  assert.equal(seenByAlby.interest.cancel_requested_side, 'interest');
+  assert.equal(seenByAlby.interest.cancel_requested_team_name, 'P2012');
+  assert.equal(seenByAlby.interest.cancel_reason, 'Halva laget är sjukt');
+  assert.equal(await one(`select count(*)::int from internal.notification_outbox where event_type='matchpool.cancellation.requested.v1'`), 2,
+    'both Alby coaches');
+  assert.equal((await user(coachA, 'select api.respond_match_pool_cancellation($1,$2)', [interest, false])).cancelled, false);
+  assert.equal(await one(`select state from internal.match_pool_interests where id='${interest}'`), 'accepted');
+  assert.equal(await one(`select cancel_requested_side from internal.match_pool_interests where id='${interest}'`), null);
+
+  // Alby asks and takes it back; Bro cannot take back Alby's request.
+  await user(coachA, 'select api.request_match_pool_cancellation($1)', [interest]);
+  await user(coachB, 'select api.withdraw_match_pool_cancellation($1)', [interest]);
+  assert.equal(await one(`select cancel_requested_side from internal.match_pool_interests where id='${interest}'`), 'listing');
+  await user(coachA, 'select api.withdraw_match_pool_cancellation($1)', [interest]);
+  assert.equal(await one(`select cancel_requested_side from internal.match_pool_interests where id='${interest}'`), null);
+
+  // Alby asks, Bro agrees: cancelled, both calendars cancelled, the asking team logged.
+  await user(coachA, 'select api.request_match_pool_cancellation($1,$2)', [interest, 'Planen är avstängd']);
+  const cancelled = await user(coachB, 'select api.respond_match_pool_cancellation($1,$2)', [interest, true]);
+  assert.deepEqual([cancelled.cancelled, cancelled.listing_event_cancelled, cancelled.interest_event_cancelled], [true, true, true]);
+  assert.deepEqual((await db.query(`select state from core.events where id in ('${booked.listing_event_id}','${booked.interest_event_id}')`)).rows.map(r => r.state), ['cancelled', 'cancelled']);
+  assert.equal(await one('select auth.uid()'), coachB, 'the claim is restored');
+  assert.equal(await one(`select state from internal.match_pool_interests where id='${interest}'`), 'cancelled');
+  assert.equal(await one(`select state from internal.match_pool_listings where id='${listing}'`), 'cancelled');
+  assert.equal(await one(`select requested_by_team_id from internal.match_pool_cancellations`), albyP12);
+  assert.equal(await one(`select count(*)::int from internal.notification_outbox where event_type='matchpool.cancellation.accepted.v1'`), 2);
+  await reject(() => user(coachB, 'select api.send_match_pool_message($1,$2,$3)', [interest, 'Hej?', key(60)]), /conversation_closed/);
+
+  // Only Alby may put the listing out again; once; watches hear about it.
+  assert.equal((await user(coachB, 'select api.get_match_pool_conversation($1)', [interest])).listing.can_republish, false);
+  seenByAlby = await user(coachA, 'select api.get_match_pool_conversation($1)', [interest]);
+  assert.equal(seenByAlby.listing.can_republish, true);
+  assert.equal((await user(coachA, 'select api.get_match_pool()')).mine.find(l => l.id === listing).can_republish, true);
+  await reject(() => user(coachB, 'select api.republish_match_pool_listing($1,$2)', [listing, key(61)]), /not_found/);
+  const again = await user(coachA, 'select api.republish_match_pool_listing($1,$2)', [listing, key(62)]);
+  assert.equal(await user(coachA, 'select api.republish_match_pool_listing($1,$2)', [listing, key(63)]), again, 'once');
+  assert.equal(await one(`select state from internal.match_pool_listings where id='${again}'`), 'open');
+  assert.equal(await one(`select venue_name from internal.match_pool_listings where id='${again}'`), 'Alby IP konstgräs');
+  const watchNotes = (await db.query(`select recipient_profile_id, payload_ref from internal.notification_outbox
+    where event_type='matchpool.watch.matched.v1'`)).rows;
+  assert.deepEqual(watchNotes.map(n => n.recipient_profile_id), [coachC], 'gender filter keeps Bro P2012 out');
+  assert.equal(watchNotes[0].payload_ref.watch_id, watchC);
+  assert.equal(await one(`select internal.notification_deep_link(o) from internal.notification_outbox o
+    where o.event_type='matchpool.watch.matched.v1'`), '/inbox?poolad=' + again);
+  const ad = await user(coachC, 'select api.get_match_pool_listing($1)', [again]);
+  assert.equal(ad.verified, true);
+  assert.equal(ad.venue_name, null);
+  assert.equal(ad.current, true);
+  await reject(() => user(follower, 'select api.get_match_pool_listing($1)', [again]), /not_leader/);
+  await user(coachA, 'select api.withdraw_match_pool_listing($1)', [again]);
+  await user(coachC, 'select api.delete_match_pool_watch($1)', [watchC]);
+  await reject(() => user(coachA, 'select api.delete_match_pool_watch($1)', [watchC]), /not_found/);
 
   // Away wanted from Bro F2013: the host gives a time in the range and a venue.
   const away = await user(coachC, 'select api.create_match_pool_listing($1,$2,$3)', [broF13, {
