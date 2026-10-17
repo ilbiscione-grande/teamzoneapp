@@ -642,3 +642,59 @@ class _Identity implements IdentityServices {
   @override
   Future<void> signOut() async {}
 }
+
+/// A leader: the Matchpool and Klubbsajt tabs appear.
+class _LeaderMessaging extends _Messaging {
+  @override
+  Future<MatchPoolSummary> getMatchPoolSummary() async =>
+      const MatchPoolSummary(leader: true, unread: 2);
+}
+
+void inboxTabTests() {
+  testWidgets('a leader gets the Inkorg, Matchpool and Klubbsajt tabs', (
+    tester,
+  ) async {
+    await _openInbox(tester, _LeaderMessaging());
+    expect(find.byKey(const ValueKey('inbox-tabs')), findsOneWidget);
+    expect(find.text('Inkorg'), findsOneWidget);
+    expect(find.text('Klubbsajt'), findsOneWidget);
+    expect(find.text('2'), findsOneWidget, reason: 'unread match pool badge');
+    expect(find.byTooltip('Fler inkorgsåtgärder'), findsOneWidget);
+    await tester.tap(find.text('Matchpool'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hitta matcher och lägg in annonser'), findsOneWidget);
+    await tester.tap(find.text('Klubbsajt'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Inga meddelanden att hantera'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('without the pool there are no tabs, the menu stays on top', (
+    tester,
+  ) async {
+    await _openInbox(tester, _Messaging());
+    expect(find.byKey(const ValueKey('inbox-tabs')), findsNothing);
+    expect(find.byTooltip('Fler inkorgsåtgärder'), findsOneWidget);
+  });
+
+  testWidgets('the search box clears with its cross; the filter sits in it', (
+    tester,
+  ) async {
+    await _openInbox(tester, _Messaging());
+    expect(find.byKey(const ValueKey('inbox-search-clear')), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(SearchBar),
+        matching: find.byTooltip('Filtrera inkorgen'),
+      ),
+      findsOneWidget,
+    );
+    await tester.enterText(find.byType(SearchBar), 'zzz');
+    await tester.pumpAndSettle();
+    expect(find.text('Inga matchande konversationer'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('inbox-search-clear')));
+    await tester.pumpAndSettle();
+    expect(find.text('Inga matchande konversationer'), findsNothing);
+    expect(find.byKey(const ValueKey('inbox-search-clear')), findsNothing);
+  });
+}

@@ -11,8 +11,15 @@ import 'package:teamzone_app/src/features/messaging/messaging_services.dart';
 /// with the club's name; the sender's e-mail replies come back into the
 /// thread.
 class ContactThreadsPage extends StatefulWidget {
-  const ContactThreadsPage({super.key, required this.services});
+  const ContactThreadsPage({
+    super.key,
+    required this.services,
+    this.embedded = false,
+  });
   final MessagingServices services;
+
+  /// Inside the inbox's Klubbsajt tab: the list without its own app bar.
+  final bool embedded;
 
   @override
   State<ContactThreadsPage> createState() => _ContactThreadsPageState();
@@ -42,7 +49,16 @@ class _ContactThreadsPageState extends State<ContactThreadsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final material = MaterialLocalizations.of(context);
+    final body = _body(context);
+    if (widget.embedded) {
+      return RefreshIndicator(
+        onRefresh: () async {
+          _reload();
+          await _threads.catchError((_) => const <ContactThreadSummary>[]);
+        },
+        child: body,
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Meddelanden från klubbsajten'),
@@ -54,98 +70,103 @@ class _ContactThreadsPageState extends State<ContactThreadsPage> {
           ),
         ],
       ),
-      body: FutureBuilder<List<ContactThreadSummary>>(
-        future: _threads,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Meddelandena kunde inte hämtas.'),
-                  TextButton(
-                    onPressed: _reload,
-                    child: const Text('Försök igen'),
-                  ),
-                ],
-              ),
-            );
-          }
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final all = snapshot.requireData;
-          final open = all.where((t) => !t.handled).toList();
-          final handled = all.where((t) => t.handled).toList();
-          final shown = _showHandled ? handled : open;
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-            children: [
-              SegmentedButton<bool>(
-                segments: [
-                  ButtonSegment(
-                    value: false,
-                    label: Text('Att hantera (${open.length})'),
-                  ),
-                  ButtonSegment(
-                    value: true,
-                    label: Text('Hanterade (${handled.length})'),
-                  ),
-                ],
-                selected: {_showHandled},
-                onSelectionChanged: (value) =>
-                    setState(() => _showHandled = value.first),
-              ),
-              const SizedBox(height: 12),
-              if (shown.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(
-                    _showHandled
-                        ? 'Inga hanterade meddelanden.'
-                        : 'Inga meddelanden att hantera. När någon skriver via klubbens eller lagets sida dyker det upp här.',
-                    textAlign: TextAlign.center,
-                  ),
+      body: body,
+    );
+  }
+
+  Widget _body(BuildContext context) {
+    final material = MaterialLocalizations.of(context);
+    return FutureBuilder<List<ContactThreadSummary>>(
+      future: _threads,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Meddelandena kunde inte hämtas.'),
+                TextButton(
+                  onPressed: _reload,
+                  child: const Text('Försök igen'),
                 ),
-              for (final thread in shown)
-                Card(
-                  key: ValueKey('contact-thread-${thread.id}'),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: Icon(
-                      thread.unread
-                          ? Icons.mark_email_unread_outlined
-                          : Icons.mail_outline,
-                      color: thread.unread
-                          ? Theme.of(context).colorScheme.primary
-                          : null,
-                    ),
-                    title: Text(
-                      '${thread.senderName} · ${thread.subject}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: thread.unread
-                          ? const TextStyle(fontWeight: FontWeight.w700)
-                          : null,
-                    ),
-                    subtitle: Text(
-                      '${thread.recipientLabel}\n'
-                      '${thread.latestFromSender ? '' : 'Du: '}${thread.preview}',
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    isThreeLine: true,
-                    trailing: Text(
-                      material.formatShortDate(thread.lastActivityAt.toLocal()),
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                    onTap: () => _open(thread),
-                  ),
-                ),
-            ],
+              ],
+            ),
           );
-        },
-      ),
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final all = snapshot.requireData;
+        final open = all.where((t) => !t.handled).toList();
+        final handled = all.where((t) => t.handled).toList();
+        final shown = _showHandled ? handled : open;
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+          children: [
+            SegmentedButton<bool>(
+              segments: [
+                ButtonSegment(
+                  value: false,
+                  label: Text('Att hantera (${open.length})'),
+                ),
+                ButtonSegment(
+                  value: true,
+                  label: Text('Hanterade (${handled.length})'),
+                ),
+              ],
+              selected: {_showHandled},
+              onSelectionChanged: (value) =>
+                  setState(() => _showHandled = value.first),
+            ),
+            const SizedBox(height: 12),
+            if (shown.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  _showHandled
+                      ? 'Inga hanterade meddelanden.'
+                      : 'Inga meddelanden att hantera. När någon skriver via klubbens eller lagets sida dyker det upp här.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            for (final thread in shown)
+              Card(
+                key: ValueKey('contact-thread-${thread.id}'),
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: Icon(
+                    thread.unread
+                        ? Icons.mark_email_unread_outlined
+                        : Icons.mail_outline,
+                    color: thread.unread
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
+                  ),
+                  title: Text(
+                    '${thread.senderName} · ${thread.subject}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: thread.unread
+                        ? const TextStyle(fontWeight: FontWeight.w700)
+                        : null,
+                  ),
+                  subtitle: Text(
+                    '${thread.recipientLabel}\n'
+                    '${thread.latestFromSender ? '' : 'Du: '}${thread.preview}',
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  isThreeLine: true,
+                  trailing: Text(
+                    material.formatShortDate(thread.lastActivityAt.toLocal()),
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                  onTap: () => _open(thread),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

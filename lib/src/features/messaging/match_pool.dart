@@ -131,8 +131,15 @@ String _when(
 }
 
 class MatchPoolPage extends StatefulWidget {
-  const MatchPoolPage({super.key, required this.services});
+  const MatchPoolPage({
+    super.key,
+    required this.services,
+    this.embedded = false,
+  });
   final MessagingServices services;
+
+  /// Inside the inbox's Matchpool tab: the list without its own app bar.
+  final bool embedded;
 
   @override
   State<MatchPoolPage> createState() => _MatchPoolPageState();
@@ -163,7 +170,18 @@ class _MatchPoolPageState extends State<MatchPoolPage> {
 
   @override
   Widget build(BuildContext context) {
-    final material = MaterialLocalizations.of(context);
+    final body = _body(context);
+    if (widget.embedded) {
+      return RefreshIndicator(
+        onRefresh: () async {
+          _reload();
+          await _items.catchError(
+            (_) => const <MatchPoolConversationSummary>[],
+          );
+        },
+        child: body,
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Matchpoolen'),
@@ -175,140 +193,145 @@ class _MatchPoolPageState extends State<MatchPoolPage> {
           ),
         ],
       ),
-      body: FutureBuilder<List<MatchPoolConversationSummary>>(
-        future: _items,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Konversationerna kunde inte hämtas.'),
-                  TextButton(
-                    onPressed: _reload,
-                    child: const Text('Försök igen'),
-                  ),
-                ],
+      body: body,
+    );
+  }
+
+  Widget _body(BuildContext context) {
+    final material = MaterialLocalizations.of(context);
+    return FutureBuilder<List<MatchPoolConversationSummary>>(
+      future: _items,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Konversationerna kunde inte hämtas.'),
+                TextButton(
+                  onPressed: _reload,
+                  child: const Text('Försök igen'),
+                ),
+              ],
+            ),
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final items = snapshot.requireData;
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+          children: [
+            Card(
+              key: const ValueKey('match-pool-web'),
+              child: ListTile(
+                leading: const Icon(Icons.travel_explore),
+                title: const Text('Hitta matcher och lägg in annonser'),
+                subtitle: const Text(
+                  'Öppnas på teamzoneapp.se, inloggad med samma konto.',
+                ),
+                trailing: const Icon(Icons.open_in_new),
+                onTap: () => openMatchPoolOnWeb(widget.services),
               ),
-            );
-          }
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final items = snapshot.requireData;
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-            children: [
+            ),
+            const SizedBox(height: 8),
+            if (items.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'Inga konversationer än. När ett lag visar intresse för er annons, eller ni för deras, dyker konversationen upp här.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            for (final item in items)
               Card(
-                key: const ValueKey('match-pool-web'),
-                child: ListTile(
-                  leading: const Icon(Icons.travel_explore),
-                  title: const Text('Hitta matcher och lägg in annonser'),
-                  subtitle: const Text(
-                    'Öppnas på teamzoneapp.se, inloggad med samma konto.',
-                  ),
-                  trailing: const Icon(Icons.open_in_new),
-                  onTap: () => openMatchPoolOnWeb(widget.services),
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (items.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text(
-                    'Inga konversationer än. När ett lag visar intresse för er annons, eller ni för deras, dyker konversationen upp här.',
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              for (final item in items)
-                Card(
-                  key: ValueKey('match-pool-${item.id}'),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () => _open(item),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  '${item.otherTeamName} · ${item.otherClubName}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontWeight: item.unread
-                                        ? FontWeight.w800
-                                        : FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              if (item.unread)
-                                Container(
-                                  width: 10,
-                                  height: 10,
-                                  margin: const EdgeInsets.only(left: 8),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.error,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 4,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              _VerifiedBadge(verified: item.otherVerified),
-                              Chip(
-                                label: Text(
-                                  _stateLabels[item.state] ?? item.state,
-                                ),
-                                visualDensity: VisualDensity.compact,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${item.fromListingSide ? 'Er annons' : 'Deras annons'}: '
-                            '${item.listing.homeSlot ? 'söker hemmamatch' : 'söker bortamatch'} · '
-                            '${item.listing.ageClass} · ${_formatLabel(item.listing.matchFormat)} · '
-                            '${_when(context, item.listing)}',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          if (item.lastMessage != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4),
+                key: ValueKey('match-pool-${item.id}'),
+                margin: const EdgeInsets.only(bottom: 8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => _open(item),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
                               child: Text(
-                                item.lastMessage!,
-                                maxLines: 2,
+                                '${item.otherTeamName} · ${item.otherClubName}',
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          if (item.lastActivityAt != null)
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: Text(
-                                material.formatShortDate(
-                                  item.lastActivityAt!.toLocal(),
+                                style: TextStyle(
+                                  fontWeight: item.unread
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
                                 ),
-                                style: Theme.of(context).textTheme.labelSmall,
                               ),
                             ),
-                        ],
-                      ),
+                            if (item.unread)
+                              Container(
+                                width: 10,
+                                height: 10,
+                                margin: const EdgeInsets.only(left: 8),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.error,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            _VerifiedBadge(verified: item.otherVerified),
+                            Chip(
+                              label: Text(
+                                _stateLabels[item.state] ?? item.state,
+                              ),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${item.fromListingSide ? 'Er annons' : 'Deras annons'}: '
+                          '${item.listing.homeSlot ? 'söker hemmamatch' : 'söker bortamatch'} · '
+                          '${item.listing.ageClass} · ${_formatLabel(item.listing.matchFormat)} · '
+                          '${_when(context, item.listing)}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        if (item.lastMessage != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              item.lastMessage!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        if (item.lastActivityAt != null)
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              material.formatShortDate(
+                                item.lastActivityAt!.toLocal(),
+                              ),
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),
-            ],
-          );
-        },
-      ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
