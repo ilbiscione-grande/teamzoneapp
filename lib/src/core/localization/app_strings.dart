@@ -2108,6 +2108,9 @@ class AppStrings {
     'Meddelanden från klubbsajten': 'Messages from the club site',
     '{count} att hantera': '{count} to handle',
     'Allt är hanterat': 'All handled',
+    'Matchpoolen': 'Match pool',
+    '{count} konversationer med nytt': '{count} conversations with news',
+    'Hitta träningsmatcher på webben': 'Find friendlies on the web',
     'Kön kunde inte laddas.': 'The queue could not be loaded.',
     'Inga väntande begäranden.': 'No pending requests.',
     'Kontrollera adressen och postnumret.':

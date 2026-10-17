@@ -6,7 +6,7 @@ import { clubSiteFonts } from "./club-site";
 // status pages) in the same look as the club and team pages.
 export const portalClass = `cs ${clubSiteFonts}`;
 
-export function PortalHeader({ active }: { active?: "home" | "search" | "legal" }) {
+export function PortalHeader({ active }: { active?: "home" | "search" | "legal" | "matchpool" }) {
   return (
     <header className="cs-header">
       <div className="cs-mainbar"><div className="cs-wrap">
@@ -14,6 +14,7 @@ export function PortalHeader({ active }: { active?: "home" | "search" | "legal" 
         <nav className="cs-nav" aria-label="Huvudmeny">
           <Link href="/" aria-current={active === "home" ? "page" : undefined}>Start</Link>
           <Link href="/klubbar" aria-current={active === "search" ? "page" : undefined}>Hitta klubb</Link>
+          <Link href="/matchpool" aria-current={active === "matchpool" ? "page" : undefined}>Matchpool</Link>
           <a href="https://app.teamzoneapp.se">Öppna appen</a>
         </nav>
       </div></div>

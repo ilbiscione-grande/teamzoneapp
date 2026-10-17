@@ -1356,6 +1356,25 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 - [x] Rensningen efter 30 dagar körs nu dagligen (den var aldrig schemalagd) och räknas från senaste aktivitet i tråden.
 - [x] Skarp provning 2026-10-17: meddelande via lagsidan gav notis, svaret från appen kom fram som e-post och svaret via Gmail landade i tråden med ny notis. Svarsadressen kortades till 58 tecken före @ (Resend nekar fler än 64), och mejlprogrammens sidfötter ("Skickat från min iPhone") och `-- `-signaturer tas bort ur svaren.
 
+### POOL-01 – Matchpoolen: träningsmatcher mellan klubbar
+
+**Status:** `[~]` – byggd 2026-10-17 (migration `20261102090000`, `teamzoneapp.se/matchpool`, platssökning `/api/public/v1/places`, ingång i appens inkorg); väntar på migration, driftsättning och skarp provning
+
+**Bakgrund 2026-10-16:** lag som söker träningsmatcher har ingen samlad plats att hitta varandra. Matchpoolen samlar annonser från lag i hela TeamZone, på webben (`teamzoneapp.se/matchpool`), eftersom sökandet sker över klubbgränser och passar en större skärm.
+
+**Beslut (produktägaren 2026-10-16):**
+
+- [x] Bara ledare ser och använder matchpoolen: den som får hantera händelser i ett lag (`event.manage`). Följarkonton ser den inte.
+- [x] Varje annons visar tydligt om klubben är **officiellt verifierad** (supportens beslut, `verification_status = 'official'`) eller **ej verifierad**, med ett filter för bara verifierade. Både verifierade och ej verifierade klubbar får lägga in och svara på annonser.
+- [x] Två sorters annonser: **har hemmatid** (datum, tid, plan, underlag) och **söker bortamatch** (datumintervall och hur långt laget kan resa i km). Spelform, åldersklass, kön, ungefärlig nivå och en kort kommentar.
+- [x] Avstånd i km från lagets utgångsort, som väljs via platssökning (OpenStreetMap). Positioner sparas avrundade till ungefär en kilometer; anläggningens namn visas för motparten först när matchen är bokad.
+- [x] Intresse skickas med ett meddelande och blir en tråd mellan lagens ledare, med notis i appen. Inga privata kontaktuppgifter visas.
+- [x] När annonsören accepterar ett intresse blir annonsen "Matchad", övriga intresserade får besked, och matchen **läggs in i båda lagens kalendrar** (som utkast som ledaren publicerar) om inte respektive ledare aktivt har valt bort det.
+- [x] Skydd: gränser för annonser, intressen och meddelanden per dag, rapportering (döljs automatiskt efter rapporter från tre klubbar), inga spelaruppgifter, annonser försvinner när datumet passerat och raderas 30 dagar senare.
+- [ ] Skarp provning: två lag i olika klubbar lägger in, visar intresse, skriver, bokar och ser matchen i kalendern.
+
+**Senare:** bevakningar ("meddela mig när ett P2013-lag inom 50 km söker match"), karta, supportvy för rapporter.
+
 ### SET-01 – Klubbinställningar
 
 **Status:** `[~]` – hosted och automatiskt verifierad

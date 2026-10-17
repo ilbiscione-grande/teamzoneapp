@@ -72,6 +72,8 @@ class _InboxSurfaceState extends State<_InboxSurface>
   late Future<int?> _supportQueue;
   // PUB-14: messages from the club site this account handles (empty: hidden).
   late Future<List<ContactThreadSummary>> _contactThreads;
+  // POOL-01: the match pool entry, for leaders only.
+  late Future<MatchPoolSummary> _matchPool;
   // Defaults to just the active team/club; the filter dialog lets the user
   // widen this to other connections. Reset to the (new) active context
   // whenever it changes -- see didUpdateWidget.
@@ -745,7 +747,72 @@ class _InboxSurfaceState extends State<_InboxSurface>
     _supportCases = _loadSupportCases();
     _supportQueue = _loadSupportQueue();
     _contactThreads = _loadContactThreads();
+    _matchPool = _loadMatchPool();
   }
+
+  Future<MatchPoolSummary> _loadMatchPool() async {
+    try {
+      return await widget.messaging.getMatchPoolSummary().timeout(
+        const Duration(seconds: 15),
+      );
+    } catch (error) {
+      AppErrors.caught('inbox_surface._loadMatchPool', error);
+      return const MatchPoolSummary(leader: false, unread: 0);
+    }
+  }
+
+  /// The match pool for friendlies between clubs, on teamzoneapp.se.
+  Widget _matchPoolEntry(BuildContext context) =>
+      FutureBuilder<MatchPoolSummary>(
+        future: _matchPool,
+        builder: (context, snapshot) {
+          final summary = snapshot.data;
+          if (summary == null || !summary.leader) {
+            return const SizedBox.shrink();
+          }
+          final strings = AppStrings.of(context);
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            child: Card(
+              key: const Key('inbox-match-pool'),
+              color: summary.unread > 0
+                  ? Theme.of(context).colorScheme.secondaryContainer
+                  : null,
+              child: ListTile(
+                leading: const Icon(Icons.sports_soccer),
+                title: Text(strings.feature('Matchpoolen')),
+                subtitle: Text(
+                  summary.unread > 0
+                      ? strings
+                            .feature('{count} konversationer med nytt')
+                            .replaceFirst('{count}', '${summary.unread}')
+                      : strings.feature('Hitta träningsmatcher på webben'),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (summary.unread > 0) Badge.count(count: summary.unread),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.open_in_new),
+                  ],
+                ),
+                onTap: () async {
+                  await launchUrl(
+                    Uri.parse('https://teamzoneapp.se/matchpool'),
+                    mode: LaunchMode.externalApplication,
+                  );
+                  if (mounted) {
+                    final next = _loadMatchPool();
+                    setState(() {
+                      _matchPool = next;
+                    });
+                  }
+                },
+              ),
+            ),
+          );
+        },
+      );
 
   Future<List<ContactThreadSummary>> _loadContactThreads() async {
     try {
@@ -1124,6 +1191,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
         children: [
           _supportQueueEntry(context),
           _contactThreadsEntry(context),
+          _matchPoolEntry(context),
           _supportInboxEntry(context),
           Expanded(
             child: ListenableBuilder(

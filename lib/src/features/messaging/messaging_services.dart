@@ -108,6 +108,10 @@ abstract interface class MessagingServices {
   });
   Future<void> setContactThreadHandled(String threadId, bool handled);
 
+  /// POOL-01: whether the account is a leader in the match pool (on the web)
+  /// and how many of its conversations have something new.
+  Future<MatchPoolSummary> getMatchPoolSummary();
+
   /// Signals that the notification center may have changed. Team updates for
   /// followers have no realtime broadcast, so they are also polled; surfaces
   /// that never show team updates (Home) pass `includeTeamUpdatePoll: false`
@@ -233,6 +237,9 @@ class UnconfiguredMessagingServices implements MessagingServices {
   Future<NotificationCenter> listNotifications() => _fail();
   @override
   Future<List<ContactThreadSummary>> listContactThreads() async => const [];
+  @override
+  Future<MatchPoolSummary> getMatchPoolSummary() async =>
+      const MatchPoolSummary(leader: false, unread: 0);
   @override
   Future<ContactThread> getContactThread(String threadId) => _fail();
   @override
@@ -819,6 +826,16 @@ class SupabaseMessagingServices implements MessagingServices {
     );
     if (result is! Map) return null;
     return result['thread_id'] as String?;
+  }
+
+  @override
+  Future<MatchPoolSummary> getMatchPoolSummary() async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>('get_match_pool_summary');
+    return value is Map<String, dynamic>
+        ? MatchPoolSummary.fromJson(value)
+        : const MatchPoolSummary(leader: false, unread: 0);
   }
 
   @override

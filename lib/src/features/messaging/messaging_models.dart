@@ -341,6 +341,18 @@ class ContactRequest {
 
 /// PUB-14: a message thread that started on the club site, as its
 /// recipients (club administrators or the team's leaders) see it.
+/// POOL-01: the match pool lives on the web; the app shows an entry to it.
+class MatchPoolSummary {
+  const MatchPoolSummary({required this.leader, required this.unread});
+  factory MatchPoolSummary.fromJson(Map<String, dynamic> json) =>
+      MatchPoolSummary(
+        leader: json['leader'] == true,
+        unread: (json['unread'] as num?)?.toInt() ?? 0,
+      );
+  final bool leader;
+  final int unread;
+}
+
 class ContactThreadSummary {
   const ContactThreadSummary({
     required this.id,
