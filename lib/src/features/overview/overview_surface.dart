@@ -163,6 +163,15 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
     super.dispose();
   }
 
+  /// The calendar's referee service, or null where there is none.
+  RefereeServices? _refereeServices() {
+    try {
+      return widget.calendar.referees;
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
@@ -213,6 +222,9 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
                 ),
               const SizedBox(height: 12),
               if (widget.destination.path == '/home') ...[
+                // REF-02: Domartillsättning and Mina domaruppdrag, whatever
+                // the role in the active context.
+                RefereeHomeCards(services: _refereeServices()),
                 if (widget.contextValue.rolePackage == 'leader')
                   FutureBuilder<LeaderHomeProjection?>(
                     future: _leaderHome,
@@ -282,7 +294,11 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
                 else if (widget.contextValue.rolePackage == 'referee' ||
                     widget.contextValue.rolePackage == 'referee_assigner')
                   // REF-01: requests, offers and assignments for referees.
-                  RefereeHome(services: widget.calendar.referees)
+                  RefereeHome(
+                    services:
+                        _refereeServices() ??
+                        const UnconfiguredRefereeServices(),
+                  )
                 else if (widget.contextValue.rolePackage == 'guardian')
                   FutureBuilder<GuardianHomeProjection?>(
                     // A new child starts empty instead of showing the

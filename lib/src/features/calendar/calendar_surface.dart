@@ -3224,17 +3224,73 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
     }
   }
 
-  Future<List<CalendarEventSummary>> _reload() {
+  Future<List<CalendarEventSummary>> _reload() async {
     if (_showArchived) {
       return widget.calendar.listArchivedEvents(
         contextIds: _filteredContextIds,
       );
     }
-    return widget.calendar.listCalendar(
+    final from = _windowFrom(_windowAnchor), to = _windowTo(_windowAnchor);
+    final events = await widget.calendar.listCalendar(
       contextIds: _filteredContextIds,
-      from: _windowFrom(_windowAnchor),
-      to: _windowTo(_windowAnchor),
+      from: from,
+      to: to,
     );
+    // The first load runs from initState: the locale is read only after it.
+    if (!mounted) return events;
+    final strings = AppStrings.of(context);
+    final assignments = await _refereeAssignments(events, from, to, strings);
+    if (assignments.isEmpty) return events;
+    return [...events, ...assignments]
+      ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+  }
+
+  /// REF-01/02: a referee's, assigner's or club referee's assignments in
+  /// their own calendar,
+  /// confirmed and waiting. Usually another club's match, so it is shown
+  /// from the assignment, not the club's calendar. A match already in the
+  /// calendar is not listed twice.
+  Future<List<CalendarEventSummary>> _refereeAssignments(
+    List<CalendarEventSummary> events,
+    DateTime from,
+    DateTime to,
+    AppStrings strings,
+  ) async {
+    // Federation referees by their role; club referees (and guardians who
+    // answer for one) by their assignments: the list is empty otherwise.
+    try {
+      final assignments = await widget.calendar.referees.myAssignments();
+      final known = events.map((event) => event.id).toSet();
+      return [
+        for (final item in assignments)
+          if (!known.contains(item.match.eventId) &&
+              !item.match.endsAt.isBefore(from) &&
+              item.match.startsAt.isBefore(to))
+            CalendarEventSummary(
+              id: item.match.eventId,
+              clubId: '',
+              owningTeamId: '',
+              teamName: strings.feature('Domaruppdrag'),
+              title: item.referee.state == 'confirmed'
+                  ? '${strings.feature('Domare')}: ${item.match.matchup}'
+                  : '${strings.feature('Domare (väntar på svar)')}: ${item.match.matchup}',
+              type: 'match',
+              state: 'scheduled',
+              startsAt: item.match.startsAt,
+              endsAt: item.match.endsAt,
+              allDay: false,
+              timezone: 'Europe/Stockholm',
+              revision: 0,
+              locationName: item.match.location,
+              isShared: true,
+              refereeSlot: item.referee.slot,
+              refereeState: item.referee.state,
+            ),
+      ];
+    } catch (error) {
+      AppErrors.caught('calendar_surface._refereeAssignments', error);
+      return const [];
+    }
   }
 
   // From the month before the anchor, so a month grid's leading days from
@@ -3442,7 +3498,59 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
   }
 
   void _showDetails(CalendarEventSummary summary) {
+    if (summary.isRefereeAssignment) {
+      unawaited(_showRefereeAssignment(summary));
+      return;
+    }
     widget.onNavigate(ProductRouteContract.calendarEvent(summary.id));
+  }
+
+  /// A referee assignment: the match, the place and its state; answering
+  /// and leaving happen on the home page with the assignments.
+  Future<void> _showRefereeAssignment(CalendarEventSummary summary) async {
+    final strings = AppStrings.of(context);
+    final material = MaterialLocalizations.of(context);
+    final start = summary.startsAt.toLocal();
+    final toHome = await showModalBottomSheet<bool>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          key: const ValueKey('calendar-referee-assignment'),
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.sports),
+              title: Text(summary.title),
+              subtitle: Text(
+                [
+                  '${material.formatMediumDate(start)} ${material.formatTimeOfDay(TimeOfDay.fromDateTime(start))}',
+                  ?summary.locationName,
+                  strings.feature(refereeSlotLabel(summary.refereeSlot!)),
+                  strings.feature(switch (summary.refereeState) {
+                    'confirmed' => 'Bekräftad',
+                    'awaiting_referee' => 'Väntar på ditt svar',
+                    _ => 'Väntar på svar från laget',
+                  }),
+                ].join(' · '),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: FilledButton.icon(
+                key: const ValueKey('calendar-referee-open-home'),
+                onPressed: () => Navigator.pop(sheetContext, true),
+                icon: const Icon(Icons.home_outlined),
+                label: Text(strings.feature('Visa domaruppdragen')),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (toHome == true && mounted) widget.onNavigate(ProductRouteContract.home);
   }
 
   @override

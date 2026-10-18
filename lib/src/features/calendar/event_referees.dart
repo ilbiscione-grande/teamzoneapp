@@ -86,9 +86,62 @@ class _EventRefereesSectionState extends State<EventRefereesSection> {
     );
   }
 
+  Future<void> _assignClub(String slot) async {
+    final services = widget.services;
+    if (services == null) return;
+    final candidates = await services
+        .candidates(widget.eventId)
+        .catchError((_) => const <ClubRefereeInfo>[]);
+    if (!mounted) return;
+    final picked = await showModalBottomSheet<ClubRefereeInfo>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          Text(
+            refereeSlotLabel(slot),
+            style: Theme.of(sheetContext).textTheme.titleMedium,
+          ),
+          if (candidates.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text('Inga föreningsdomare att välja.'),
+            ),
+          for (final candidate in candidates)
+            ListTile(
+              key: ValueKey('event-club-candidate-${candidate.personId}'),
+              leading: Icon(
+                candidate.clash || candidate.ageOk == false
+                    ? Icons.warning_amber_outlined
+                    : Icons.sports,
+              ),
+              title: Text(candidate.name),
+              subtitle: Text(
+                [
+                  '${candidate.seasonCount} uppdrag i år',
+                  if (candidate.clash) 'krockar med annat',
+                  if (candidate.ageOk == false) 'för ung för laget',
+                ].join(' · '),
+              ),
+              onTap: () => Navigator.pop(sheetContext, candidate),
+            ),
+        ],
+      ),
+    );
+    if (picked == null) return;
+    await _run(
+      () => services.propose(widget.eventId, slot, personId: picked.personId),
+    );
+  }
+
   String _stateLabel(EventReferee referee) => switch (referee.state) {
     'awaiting_referee' => 'Väntar på svar från domaren',
     'awaiting_team' => 'Vill döma matchen',
+    'awaiting_coordinator' => 'Anmäld – väntar på domaransvarig',
     _ => referee.external ? 'Inskriven av laget' : 'Bekräftad',
   };
 
@@ -101,7 +154,8 @@ class _EventRefereesSectionState extends State<EventRefereesSection> {
       builder: (context, snapshot) {
         final view = snapshot.data;
         if (view == null) return const SizedBox.shrink();
-        if (view.slots == 0 && view.referees.isEmpty && !view.canManage) {
+        final organiser = view.canManage || view.canManageClubReferees;
+        if (view.slots == 0 && view.referees.isEmpty && !organiser) {
           return const SizedBox.shrink();
         }
         final theme = Theme.of(context);
@@ -122,7 +176,36 @@ class _EventRefereesSectionState extends State<EventRefereesSection> {
                     ),
                   ],
                 ),
-                if (view.canManage) ...[
+                // REF-02: förbundsdomare, föreningsdomare or none.
+                if (organiser)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: DropdownButtonFormField<String>(
+                      key: const ValueKey('event-referee-kind'),
+                      initialValue: view.refereeKind,
+                      decoration: const InputDecoration(
+                        labelText: 'Typ av domare',
+                      ),
+                      items: [
+                        for (final kind in const ['federation', 'club', 'none'])
+                          DropdownMenuItem(
+                            value: kind,
+                            child: Text(refereeKindLabel(kind)),
+                          ),
+                      ],
+                      onChanged: _busy
+                          ? null
+                          : (kind) {
+                              if (kind == null) return;
+                              _run(
+                                () => services.setKind(widget.eventId, kind),
+                              );
+                            },
+                    ),
+                  )
+                else if (view.refereeKind != null)
+                  Text(refereeKindLabel(view.refereeKind)),
+                if (view.canManage && view.refereeKind != 'none') ...[
                   const SizedBox(height: 8),
                   SegmentedButton<int>(
                     key: const ValueKey('event-referee-count'),
@@ -181,7 +264,16 @@ class _EventRefereesSectionState extends State<EventRefereesSection> {
                       _stateLabel(referee),
                     ].join(' · '),
             ),
-            trailing: view.canManage
+            trailing:
+                view.refereeKind == 'club' &&
+                    referee == null &&
+                    view.canManageClubReferees
+                ? TextButton(
+                    key: ValueKey('event-referee-assign-club-$slot'),
+                    onPressed: _busy ? null : () => _assignClub(slot),
+                    child: const Text('Tillsätt'),
+                  )
+                : view.canManage && view.refereeKind != 'club'
                 ? referee == null
                       ? TextButton(
                           key: ValueKey('event-referee-add-$slot'),
@@ -198,6 +290,34 @@ class _EventRefereesSectionState extends State<EventRefereesSection> {
                         )
                 : null,
           ),
+          if (view.canManageClubReferees &&
+              referee?.state == 'awaiting_coordinator')
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              children: [
+                OutlinedButton(
+                  onPressed: _busy
+                      ? null
+                      : () => _run(() => services.respond(referee!.id, false)),
+                  child: const Text('Neka'),
+                ),
+                FilledButton(
+                  key: ValueKey('event-referee-approve-$slot'),
+                  onPressed: _busy
+                      ? null
+                      : () => _run(() => services.respond(referee!.id, true)),
+                  child: const Text('Godkänn'),
+                ),
+              ],
+            ),
+          if (view.refereeKind == 'club' &&
+              referee == null &&
+              !view.canManageClubReferees)
+            Text(
+              'Klubbens domaransvarige tillsätter föreningsdomare.',
+              style: theme.textTheme.bodySmall,
+            ),
           if (view.canManage && referee?.state == 'awaiting_team')
             Wrap(
               alignment: WrapAlignment.end,

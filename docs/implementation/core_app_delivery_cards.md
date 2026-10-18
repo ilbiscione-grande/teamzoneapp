@@ -1429,9 +1429,29 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 - [x] Domare och tillsättare har en egen startsida: förfrågningar att svara på, anmälningar som väntar på laget, bekräftade uppdrag och sök matcher. Ett uppdrag kan lämnas eller en anmälan tas tillbaka; den andra parten får en notis.
 - [x] Notiser: förfrågan till domaren och tillsättaren, anmälan till lagets ledare, bekräftat, nekat och ändrat. Lagets notiser öppnar matchen, domarens startsidan.
 
-**Senare:** domarens uppdrag i domarens kalender, ansökan om domarroll via kod eller medlemsansökan, ersättning och rapportering.
+- [x] Domarens uppdrag syns i domarens egen kalender (bekräftade och väntande, även andra klubbars matcher). Ett tryck visar matchen, platsen och läget, med vägen till domaruppdragen på startsidan.
+
+**Senare:** ansökan om domarroll via kod eller medlemsansökan, ersättning och rapportering.
 
 - [ ] Skarp provning: ledaren föreslår en domare som accepterar, en domare anmäler sig och ledaren godkänner, en inskriven domare, en tillsättare svarar för en domare.
+
+### REF-02 – Föreningsdomare och domaransvarig
+
+**Status:** `[~]` – fas 1 (tillsättning) byggd 2026-10-18 (migration `20261109090000`); väntar på migration, driftsättning och skarp provning. Fas 2 (ersättning) återstår.
+
+**Bakgrund 2026-10-18:** REF-01 gäller förbundsdomare, som tillsätts och betalas via domarklubben och förbundet. Klubbar behöver också föreningsdomare: ungdomar och andra i klubben som dömer yngre lags matcher, tillsätts av klubbens domaransvarige och får betalt av klubben.
+
+**Beslut (produktägaren 2026-10-18):**
+
+- [x] Föreningsdomare är en egen roll på klubbnivå ovanpå personens vanliga roll (spelare, ledare, förälder). Ingen ny kontext: uppdragen visas på personens vanliga startsida och i kalendern. Rollen har start och slut och kan bära utbildning (klar, giltig till). Föreningsdomare ser bara den egna klubbens matcher.
+- [x] Domaransvarig är en behörighet (Domartillsättning) på personens befintliga roll, som klubbens administratör delar ut; administratörer har den alltid. Domarersättning blir en egen behörighet i fas 2.
+- [x] Varje match får en typ av domare: förbundsdomare, föreningsdomare eller ingen. Standardregler per lag (typ, antal, bara hemmamatcher) sätter typen på nya och kommande matcher.
+- [x] Domaransvarig tillsätter från en översikt med förslag: krock med domarens egna aktiviteter, åldersregeln (domaren minst 3 år äldre än lagets spelare) och antal uppdrag under säsongen.
+- [x] Föreningsdomare kan anmäla sig själva till lediga uppdrag, men anmälan måste godkännas av domaransvarig.
+- [x] Från 15 år svarar domaren själv; under 15 svarar vårdnadshavaren.
+- [ ] Fas 2: rapport skapas när matchen är avslutad (det räcker), domaransvarig kan skicka en kontrollfråga till lagets ledare, godkännande, utbetalningslistor som exporteras; förberett för direktbetalning senare.
+- [x] Domaransvarig arbetar i "Domartillsättning" (kort på startsidan): matcher två veckor i taget med typ av domare, tillsättning med förslag och godkännande av anmälningar; föreningsdomare med utbildning; domaransvariga (utses av administratören); regler per lag. Föreningsdomare har "Mina domaruppdrag" med lediga uppdrag i klubben, och uppdragen syns i kalendern.
+- [ ] Skarp provning fas 1: regel per lag, tillsättning av en föreningsdomare under 15 (vårdnadshavaren svarar), anmälan från en föreningsdomare som godkänns.
 
 ### SET-01 – Klubbinställningar
 

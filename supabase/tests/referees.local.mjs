@@ -35,10 +35,13 @@ try {
   insert into core.clubs values('${eksjo}','IF Eksjö Fotboll','active'),('${fdk}','Njudungs FDK','active'),('${alby}','Alby IF','active');
   create table core.teams(id uuid primary key,club_id uuid,name text,status text default 'active');
   insert into core.teams values('${teamJ}','${eksjo}','J','active'),('${fdkTeam}','${fdk}','Domare','active'),('${albyTeam}','${alby}','P12','active');
-  create table core.club_people(id uuid primary key,club_id uuid,display_name text,status text default 'active');
-  insert into core.club_people values('${pLena}','${eksjo}','Lena Ledare','active'),('${pAnna}','${fdk}','Anna Domare','active'),
+  create table core.club_people(id uuid primary key,club_id uuid,display_name text,status text default 'active',birth_date date,birth_year smallint,unique(id,club_id));
+  insert into core.club_people(id,club_id,display_name,status) values('${pLena}','${eksjo}','Lena Ledare','active'),('${pAnna}','${fdk}','Anna Domare','active'),
    ('${pBo}','${fdk}','Bo Domare','active'),('${pUlla}','${fdk}','Ulla Tillsättare','active'),('${pCia}','${fdk}','Cia Domare','active'),
    ('${pOther}','${alby}','Olle Ledare','active');
+  create table core.guardian_relations(club_id uuid,guardian_person_id uuid,child_person_id uuid,state text,starts_at timestamptz,ends_at timestamptz);
+  create table core.team_assignments(club_id uuid,team_id uuid,club_person_id uuid,state text);
+  create function internal.actor_manages_club(c uuid) returns boolean language sql stable as $$select false$$;
   create table core.person_account_links(profile_id uuid,club_id uuid,club_person_id uuid,state text);
   insert into core.person_account_links values('${lena}','${eksjo}','${pLena}','active'),('${anna}','${fdk}','${pAnna}','active'),
    ('${ulla}','${fdk}','${pUlla}','active'),('${cia}','${fdk}','${pCia}','active'),('${otherLeader}','${alby}','${pOther}','active');
@@ -78,6 +81,8 @@ try {
     and ((g.scope_type='team' and g.scope_id=target_team_id) or (g.scope_type='club' and g.scope_id=target_club_id))$$;
   grant usage on schema api, internal, core, extensions to authenticated, service_role;`);
   await db.exec(read('supabase/migrations/20261108090000_referees.sql').replace(/notify pgrst[^;]*;/, ''));
+  // REF-02 rewrites several of these functions: the federation flows still hold.
+  await db.exec(read('supabase/migrations/20261109090000_club_referees.sql').replace(/notify pgrst[^;]*;/, ''));
   await db.exec(`set check_function_bodies = on;
   with a as (insert into core.assignments(club_id,team_id,club_person_id,role_package) values('${eksjo}','${teamJ}','${pLena}','leader') returning id)
    insert into core.capability_grants select a.id,'${eksjo}','event.manage','team','${teamJ}' from a;

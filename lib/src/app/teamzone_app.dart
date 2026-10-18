@@ -37,6 +37,7 @@ import 'package:teamzone_app/src/features/messaging/contact_threads.dart';
 import 'package:teamzone_app/src/features/messaging/match_pool.dart';
 import 'package:teamzone_app/src/features/calendar/event_referees.dart';
 import 'package:teamzone_app/src/features/calendar/referee_home.dart';
+import 'package:teamzone_app/src/features/calendar/club_referees.dart';
 import 'package:teamzone_app/src/features/calendar/followup_models.dart';
 import 'package:teamzone_app/src/features/calendar/preparation_models.dart';
 import 'package:teamzone_app/src/features/assistant_coach/assistant_identity.dart';

@@ -8,8 +8,16 @@ import 'package:teamzone_app/src/features/calendar/referee_services.dart';
 /// answer, offers waiting for the team, confirmed assignments, and a search
 /// among scheduled matches to offer to referee.
 class RefereeHome extends StatefulWidget {
-  const RefereeHome({super.key, required this.services});
+  const RefereeHome({
+    super.key,
+    required this.services,
+    this.showMatchSearch = true,
+  });
   final RefereeServices services;
+
+  /// The search among all clubs' matches is for federation referees; club
+  /// referees find their own club's open places on their own page.
+  final bool showMatchSearch;
 
   @override
   State<RefereeHome> createState() => _RefereeHomeState();
@@ -69,7 +77,11 @@ class _RefereeHomeState extends State<RefereeHome> {
         final toAnswer = items?.where((item) => item.awaitingMe).toList() ?? [];
         final waiting =
             items
-                ?.where((item) => item.referee.state == 'awaiting_team')
+                ?.where(
+                  (item) =>
+                      item.referee.state == 'awaiting_team' ||
+                      item.referee.state == 'awaiting_coordinator',
+                )
                 .toList() ??
             [];
         final confirmed =
@@ -85,18 +97,19 @@ class _RefereeHomeState extends State<RefereeHome> {
           key: const ValueKey('referee-home'),
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
-              child: ListTile(
-                key: const ValueKey('referee-search-matches'),
-                leading: const Icon(Icons.search),
-                title: const Text('Sök matcher att döma'),
-                subtitle: const Text(
-                  'Alla schemalagda matcher. Anmäl dig, så bekräftar laget.',
+            if (widget.showMatchSearch)
+              Card(
+                child: ListTile(
+                  key: const ValueKey('referee-search-matches'),
+                  leading: const Icon(Icons.search),
+                  title: const Text('Sök matcher att döma'),
+                  subtitle: const Text(
+                    'Alla schemalagda matcher. Anmäl dig, så bekräftar laget.',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: _openSearch,
                 ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: _openSearch,
               ),
-            ),
             if (snapshot.hasError)
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -122,7 +135,7 @@ class _RefereeHomeState extends State<RefereeHome> {
                 toAnswer,
                 empty: 'Inga förfrågningar från lag just nu.',
               ),
-              _section(theme, 'Väntar på svar från laget', waiting),
+              _section(theme, 'Väntar på svar', waiting),
               _section(
                 theme,
                 'Bekräftade uppdrag',

@@ -22,8 +22,15 @@ class CalendarEventSummary {
     this.isShared = false,
     this.archivedAt,
     this.archiveReason,
+    this.refereeSlot,
+    this.refereeState,
   });
   final String id, clubId, owningTeamId, teamName, title, type, state, timezone;
+
+  /// REF-01: set on a referee's assignment shown in their own calendar: the
+  /// place (main, assistant_1, assistant_2) and the state of the assignment.
+  final String? refereeSlot, refereeState;
+  bool get isRefereeAssignment => refereeSlot != null;
   final DateTime startsAt, endsAt;
   final bool allDay;
   final String? locationName;
