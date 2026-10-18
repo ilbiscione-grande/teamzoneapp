@@ -1416,6 +1416,23 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 - [x] Webbsidan visar alltid vilket konto som är inloggat, med "Logga ut", så den som skickats dit med någon annans engångskod från appen ser det direkt.
 - [x] Appen visar databasens anledning på svenska ("Matchen har redan börjat …") i stället för bara "Det gick inte att spara".
 
+### REF-01 – Domare och domartillsättare
+
+**Status:** `[~]` – byggd 2026-10-18 (migration `20261108090000`); väntar på migration, driftsättning och skarp provning
+
+**Beslut (produktägaren 2026-10-17):**
+
+- [x] Domare och Domartillsättare är nya roller, som spelare och ledare. De hör till en klubb och ett lag, till exempel Njudungs FDK, och delas ut under Roll i laget.
+- [x] En match kan ha 1, 2 eller 3 domare: Huvuddomare, Assisterande domare 1 och Assisterande domare 2. Lagets ledare väljer antalet på matchens Info-flik.
+- [x] Båda parter bekräftar när den andra parten kan: ledaren föreslår en domare (domaren eller domarklubbens tillsättare svarar), domaren eller tillsättaren anmäler sig till en match (lagets ledare svarar). En domare som ingen kan svara för bekräftas direkt, och ledaren kan skriva in en domare som inte finns i TeamZone.
+- [x] Domare och tillsättare kan söka bland alla schemalagda matcher (datum, tid, lag, klubb, motståndare och plats, inga spelaruppgifter), högst två månader i taget.
+- [x] Domare och tillsättare har en egen startsida: förfrågningar att svara på, anmälningar som väntar på laget, bekräftade uppdrag och sök matcher. Ett uppdrag kan lämnas eller en anmälan tas tillbaka; den andra parten får en notis.
+- [x] Notiser: förfrågan till domaren och tillsättaren, anmälan till lagets ledare, bekräftat, nekat och ändrat. Lagets notiser öppnar matchen, domarens startsidan.
+
+**Senare:** domarens uppdrag i domarens kalender, ansökan om domarroll via kod eller medlemsansökan, ersättning och rapportering.
+
+- [ ] Skarp provning: ledaren föreslår en domare som accepterar, en domare anmäler sig och ledaren godkänner, en inskriven domare, en tillsättare svarar för en domare.
+
 ### SET-01 – Klubbinställningar
 
 **Status:** `[~]` – hosted och automatiskt verifierad

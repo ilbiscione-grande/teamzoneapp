@@ -279,6 +279,10 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
                       );
                     },
                   )
+                else if (widget.contextValue.rolePackage == 'referee' ||
+                    widget.contextValue.rolePackage == 'referee_assigner')
+                  // REF-01: requests, offers and assignments for referees.
+                  RefereeHome(services: widget.calendar.referees)
                 else if (widget.contextValue.rolePackage == 'guardian')
                   FutureBuilder<GuardianHomeProjection?>(
                     // A new child starts empty instead of showing the

@@ -7,6 +7,8 @@ part of '../../app/teamzone_app.dart';
 String _roleLabel(AppStrings strings, String role) => switch (role) {
   'leader' => strings.feature('Ledare'),
   'club_functionary' => strings.feature('Klubbfunktionär'),
+  'referee' => strings.feature('Domare'),
+  'referee_assigner' => strings.feature('Domartillsättare'),
   _ => strings.feature('Spelare'),
 };
 
@@ -643,6 +645,8 @@ class _PersonRoleTileState extends State<_PersonRoleTile> {
     final roles = value.rolesOf(widget.person.id);
     final isPlayer = roles.contains('player');
     final isLeader = roles.contains('leader');
+    final isReferee = roles.contains('referee');
+    final isAssigner = roles.contains('referee_assigner');
     final self = widget.person.isSelf;
     final canChangeOwnLeader =
         self && widget.contextValue.can('club.memberships.manage');
@@ -679,6 +683,39 @@ class _PersonRoleTileState extends State<_PersonRoleTile> {
           'leader',
           null,
           '$name ${strings.feature('är inte längre ledare i laget.')}',
+        ),
+      // REF-01: referees and referee assigners, e.g. in a referee club.
+      if (!isReferee)
+        (
+          strings.feature('Lägg till domarroll'),
+          Icons.sports,
+          null,
+          'referee',
+          '$name ${strings.feature('är nu domare.')}',
+        )
+      else
+        (
+          strings.feature('Ta bort domarrollen'),
+          Icons.sports,
+          'referee',
+          null,
+          '$name ${strings.feature('är inte längre domare.')}',
+        ),
+      if (!isAssigner)
+        (
+          strings.feature('Lägg till rollen domartillsättare'),
+          Icons.assignment_ind_outlined,
+          null,
+          'referee_assigner',
+          '$name ${strings.feature('är nu domartillsättare.')}',
+        )
+      else
+        (
+          strings.feature('Ta bort rollen domartillsättare'),
+          Icons.assignment_ind_outlined,
+          'referee_assigner',
+          null,
+          '$name ${strings.feature('är inte längre domartillsättare.')}',
         ),
     ];
     final picked = await showModalBottomSheet<int>(

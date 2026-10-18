@@ -600,6 +600,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
             ),
           ),
         ..._typedInfoTiles(context, event),
+        // REF-01: who referees the match.
+        if (event.type == 'match')
+          EventRefereesSection(eventId: event.id, services: _refereeServices()),
         if (!event.callupsRequired)
           ListTile(
             key: const Key('event-callups-not-required'),
@@ -676,6 +679,16 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         ),
       ],
     );
+  }
+
+  /// The calendar's referee service, or null where there is none (a
+  /// calendar without referees shows no referee section).
+  RefereeServices? _refereeServices() {
+    try {
+      return widget.calendar.referees;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Only what identifies the event; the type's details (training plan,

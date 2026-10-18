@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_models.dart';
 import 'package:teamzone_app/src/features/calendar/preparation_services.dart';
+import 'package:teamzone_app/src/features/calendar/referee_services.dart';
 import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 export 'package:teamzone_app/src/features/calendar/preparation_services.dart';
+export 'package:teamzone_app/src/features/calendar/referee_services.dart';
 
 enum CalendarSyncStatus { connected, reconnecting, disconnected }
 
@@ -22,6 +24,9 @@ class CalendarSyncEvent {
 abstract interface class CalendarServices {
   /// The event's Förberedelser workspace (items, note, files).
   EventPreparationServices get preparation;
+
+  /// REF-01: referees on matches.
+  RefereeServices get referees;
   Future<List<CalendarEventSummary>> listCalendar({
     required List<String> contextIds,
     required DateTime from,
@@ -206,6 +211,8 @@ class UnconfiguredCalendarServices implements CalendarServices {
   EventPreparationServices get preparation =>
       const UnconfiguredEventPreparationServices();
   @override
+  RefereeServices get referees => const UnconfiguredRefereeServices();
+  @override
   Future<String> createEvent(CreateEventInput input, String idempotencyKey) =>
       Future.error(_error);
   @override
@@ -379,10 +386,13 @@ class UnconfiguredCalendarServices implements CalendarServices {
 
 class SupabaseCalendarServices implements CalendarServices {
   SupabaseCalendarServices(this._client)
-    : preparation = SupabaseEventPreparationServices(_client);
+    : preparation = SupabaseEventPreparationServices(_client),
+      referees = SupabaseRefereeServices(_client);
   final SupabaseClient _client;
   @override
   final EventPreparationServices preparation;
+  @override
+  final RefereeServices referees;
 
   static const _maximumQueryWindow = Duration(days: 399);
 

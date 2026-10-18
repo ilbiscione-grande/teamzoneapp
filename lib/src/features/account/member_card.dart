@@ -25,6 +25,8 @@ Future<void> _openMemberCard(
 String _cardRoleLabel(AppStrings strings, String role) => switch (role) {
   'leader' => strings.feature('Ledare'),
   'club_functionary' => strings.feature('Klubbfunktionär'),
+  'referee' => strings.feature('Domare'),
+  'referee_assigner' => strings.feature('Domartillsättare'),
   'guardian' => strings.feature('Vårdnadshavare'),
   _ => strings.feature('Spelare'),
 };

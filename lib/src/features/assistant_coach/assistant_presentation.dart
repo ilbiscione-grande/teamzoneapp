@@ -47,6 +47,8 @@ class AssistantPresentationContext {
     'player' => 'Spelare',
     'guardian' => 'Vårdnadshavare',
     'club_functionary' => 'Klubbfunktionär',
+    'referee' => 'Domare',
+    'referee_assigner' => 'Domartillsättare',
     _ => 'Användare',
   };
 }
