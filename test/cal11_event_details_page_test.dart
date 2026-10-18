@@ -19,6 +19,18 @@ import 'package:teamzone_app/src/features/assistant_coach/assistant_task_prefere
 import 'package:teamzone_app/src/features/assistant_coach/assistant_identity.dart';
 
 void main() {
+  test('an ended fixture starts today even just after midnight', () {
+    for (final now in [
+      DateTime(2026, 10, 18, 0, 7),
+      DateTime(2026, 10, 18, 15),
+    ]) {
+      final window = _endedToday(now);
+      final start = window.start.toLocal(), end = window.end.toLocal();
+      expect(DateUtils.isSameDay(start, now), isTrue);
+      expect(end.isAfter(start), isTrue);
+      expect(end.isBefore(now), isTrue);
+    }
+  });
   testWidgets('assistant avatar is account-saved and shown in the header', (
     tester,
   ) async {
@@ -1407,8 +1419,12 @@ class _Calendar extends UnconfiguredCalendarServices {
     type: 'training',
     trainingPlan: 'Uppvärmning och spel',
     state: 'scheduled',
-    startsAt: DateTime.now().toUtc().add(Duration(hours: ended ? -2 : 24)),
-    endsAt: DateTime.now().toUtc().add(Duration(hours: ended ? -1 : 25)),
+    startsAt: ended
+        ? _endedToday().start
+        : DateTime.now().toUtc().add(const Duration(hours: 24)),
+    endsAt: ended
+        ? _endedToday().end
+        : DateTime.now().toUtc().add(const Duration(hours: 25)),
     allDay: false,
     timezone: 'Europe/Stockholm',
     revision: 1,
@@ -2201,4 +2217,16 @@ class _CallupRequirementCalendar extends _Calendar {
 Future<void> _openEventMenu(WidgetTester tester) async {
   await tester.tap(find.byKey(const Key('event-actions-menu')));
   await tester.pumpAndSettle();
+}
+
+/// An event that has ended but started today. "Two hours ago" is yesterday
+/// just after midnight, and the agenda (today onwards) would leave it out.
+({DateTime start, DateTime end}) _endedToday([DateTime? at]) {
+  final now = at ?? DateTime.now();
+  final midnight = DateTime(now.year, now.month, now.day);
+  var start = now.subtract(const Duration(hours: 2));
+  if (start.isBefore(midnight)) start = midnight;
+  var end = now.subtract(const Duration(hours: 1));
+  if (!end.isAfter(start)) end = start.add(now.difference(start) ~/ 2);
+  return (start: start.toUtc(), end: end.toUtc());
 }
