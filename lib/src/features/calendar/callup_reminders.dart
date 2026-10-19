@@ -106,29 +106,63 @@ Future<Set<String>?> showCallupReminderReview(
 /// Sends the chosen reminders one by one through the ordinary remind command.
 /// [keys] keeps one idempotency key per callup revision, so a retry after a
 /// lost reply never sends twice.
+///
+/// A list read a while ago (an open page, another device) carries old
+/// revisions, and the server refuses every one of them. With [eventId] the
+/// event's callups are read again and those still due are sent once more
+/// with their current revision.
 Future<({int sent, int failed})> sendCallupReminders({
   required CalendarServices calendar,
   required List<ReminderCandidate> chosen,
   required Map<String, String> keys,
   required String Function() newKey,
+  String? eventId,
 }) async {
   var sent = 0, failed = 0;
-  for (final candidate in chosen) {
+  final stale = <String>{};
+  Future<bool> send(String callupId, int revision) async {
     try {
       await calendar.manageCallup(
-        callupId: candidate.callupId,
+        callupId: callupId,
         action: 'remind',
-        expectedRevision: candidate.revision,
-        idempotencyKey: keys.putIfAbsent(
-          '${candidate.callupId}:${candidate.revision}',
-          newKey,
-        ),
+        expectedRevision: revision,
+        idempotencyKey: keys.putIfAbsent('$callupId:$revision', newKey),
       );
-      sent++;
+      return true;
     } catch (error) {
-      AppErrors.caught('callup_reminders.send', error);
-      failed++;
+      if (error.toString().contains('stale_revision')) {
+        stale.add(callupId);
+      } else {
+        AppErrors.caught('callup_reminders.send', error);
+      }
+      return false;
     }
+  }
+
+  for (final candidate in chosen) {
+    if (await send(candidate.callupId, candidate.revision)) sent++;
+  }
+  if (stale.isNotEmpty && eventId != null) {
+    final retry = Set<String>.of(stale);
+    stale.clear();
+    try {
+      final squad = await calendar.getEventSquad(eventId);
+      for (final current in remindableCallups(squad, DateTime.now())) {
+        if (!retry.remove(current.callupId)) continue;
+        if (await send(current.callupId, current.revision)) sent++;
+      }
+    } catch (error) {
+      AppErrors.caught('callup_reminders.refresh', error);
+    }
+    // Answered, expired or reminded elsewhere meanwhile: not sent.
+    stale.addAll(retry);
+  }
+  failed = chosen.length - sent;
+  if (stale.isNotEmpty) {
+    AppErrors.caught(
+      'callup_reminders.send',
+      StateError('stale_revision x${stale.length}'),
+    );
   }
   return (sent: sent, failed: failed);
 }

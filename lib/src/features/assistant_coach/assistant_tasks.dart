@@ -762,6 +762,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
         ],
         keys: _reminderKeys,
         newKey: _newKey,
+        eventId: item.eventId,
       );
       if (mounted) {
         ScaffoldMessenger.of(

@@ -842,6 +842,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         ],
         keys: _reminderKeys,
         newKey: _newUuid,
+        eventId: widget.event.id,
       );
       await widget.onReload();
       if (mounted) {
