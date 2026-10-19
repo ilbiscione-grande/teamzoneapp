@@ -38,14 +38,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilterChip, 'F2011'));
     await tester.pumpAndSettle();
-    // Both teams picked means every team.
     expect(calendar.requestedContextIds, ['context-a', 'context-b']);
-    expect(
-      tester
-          .widget<FilterChip>(find.widgetWithText(FilterChip, 'Alla lag'))
-          .selected,
-      isTrue,
-    );
+    // Picking a team off again leaves the other, also when only one was
+    // left to pick.
+    await tester.tap(find.widgetWithText(FilterChip, 'F2011'));
+    await tester.pumpAndSettle();
+    expect(calendar.requestedContextIds, ['context-a']);
+    await tester.tap(find.widgetWithText(FilterChip, 'Alla lag'));
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilterChip, 'F2011'));
     await tester.pumpAndSettle();
     expect(calendar.requestedContextIds, ['context-b']);

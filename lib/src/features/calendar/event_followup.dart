@@ -604,6 +604,21 @@ class _FollowupTabState extends State<_FollowupTab> {
       );
     }
     final summary = data.summary;
+    // Before the activity there is nothing to follow up for players.
+    if (!data.isLeader && !data.ended) {
+      return Center(
+        key: const ValueKey('event-followup-later'),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Text(
+            AppStrings.of(
+              context,
+            ).feature('Uppföljningen visas när aktiviteten är genomförd.'),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
     return RefreshIndicator(
       onRefresh: _reload,
       child: ListView(

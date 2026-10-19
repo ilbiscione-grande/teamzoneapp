@@ -446,14 +446,12 @@ void main() {
     await tester.tap(find.text('Översikt'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.text('Thomas Emilson · Huvudtränare · Ungdomsansvarig'),
+      find.text('Huvudtränare · Ungdomsansvarig'),
       250,
       scrollable: find.byType(Scrollable).last,
     );
-    expect(
-      find.text('Thomas Emilson · Huvudtränare · Ungdomsansvarig'),
-      findsOneWidget,
-    );
+    expect(find.text('Huvudtränare · Ungdomsansvarig'), findsOneWidget);
+    expect(find.text('Thomas Emilson'), findsWidgets);
   });
 
   testWidgets('new team shows creator and adds self as leader', (tester) async {

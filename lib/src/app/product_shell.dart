@@ -110,6 +110,9 @@ class _ProductShellState extends State<_ProductShell> {
   late Future<AssistantIdentityPreference> _assistantPreference;
   // Your own profile picture for the menu; none on failure.
   late Future<_OwnSummary> _ownSummary = _loadOwnSummary();
+  // Your name for Home's greeting: the one in the active team, else the
+  // account's; never the login address.
+  final ValueNotifier<String?> _ownName = ValueNotifier<String?>(null);
   // REF-02: Domartillsättning/Domarersättning in the menu for the active club.
   late Future<RefereeSummary> _refereeSummary = _loadRefereeSummary();
   // The club's public page when published, for "Mer" and "Gå till".
@@ -243,6 +246,11 @@ class _ProductShellState extends State<_ProductShell> {
       // The name the own profile in the active team shows, else the
       // account's name, else the login address rather than nothing.
       final teamName = await _ownNameInTeam();
+      _ownName.value = teamName != null && teamName.trim().isNotEmpty
+          ? teamName
+          : details.displayName.trim().isNotEmpty
+          ? details.displayName
+          : null;
       final name = teamName != null && teamName.trim().isNotEmpty
           ? teamName
           : details.displayName.trim().isNotEmpty
@@ -588,6 +596,7 @@ class _ProductShellState extends State<_ProductShell> {
               : _OverviewSurface(
                   destination: destination,
                   profile: widget.profile,
+                  ownName: _ownName,
                   contextValue: widget.contextValue,
                   overview: widget.overview,
                   calendar: widget.calendar,
@@ -1073,6 +1082,7 @@ class _ProductShellState extends State<_ProductShell> {
     _router.routeInformationProvider.removeListener(_recordLocation);
     _router.routerDelegate.removeListener(_onPageChanged);
     _router.dispose();
+    _ownName.dispose();
     super.dispose();
   }
 
@@ -1901,7 +1911,7 @@ const _refereeBoardRoute = 'teamzone:referee-board';
 const _ownProfileRoute = 'teamzone:own-profile';
 
 /// What the fifth button "Mer" holds, by role and capability. Leaders find
-/// Utveckling and Statistik under Arbetsytor as well.
+/// Utveckling and Statistik under Arbetsytor.
 List<_QuickAction> _moreActionsFor(
   BuildContext context,
   TeamZoneContext contextValue, {
@@ -1913,17 +1923,13 @@ List<_QuickAction> _moreActionsFor(
       contextValue.rolePackage == 'leader' ||
       contextValue.rolePackages.contains('leader');
   return [
+    // Utveckling is reached through Arbetsytor until the workspaces open
+    // for more roles.
     if (leader)
       (
         icon: _destinationFor(ProductRouteContract.workspaces).icon,
         label: strings.destination(ProductRouteContract.workspaces),
         route: ProductRouteContract.workspaces,
-      )
-    else
-      (
-        icon: _destinationFor(ProductRouteContract.development).icon,
-        label: strings.destination(ProductRouteContract.development),
-        route: ProductRouteContract.development,
       ),
     if (contextValue.can('event.manage') ||
         contextValue.can('event.attendance.manage'))
@@ -2617,21 +2623,6 @@ class _AppNavigationPanel extends StatelessWidget {
                     label: strings.destination(path),
                     selected: currentLocation.startsWith(path),
                     onTap: () => _go(path),
-                  ),
-                // Leaders find Utveckling under Arbetsytor.
-                if (contextValue.rolePackage != 'leader' &&
-                    !contextValue.rolePackages.contains('leader'))
-                  _NavPanelRow(
-                    icon: _destinationFor(
-                      ProductRouteContract.development,
-                    ).icon,
-                    label: strings.destination(
-                      ProductRouteContract.development,
-                    ),
-                    selected: currentLocation.startsWith(
-                      ProductRouteContract.development,
-                    ),
-                    onTap: () => _go(ProductRouteContract.development),
                   ),
                 if (contextValue.rolePackage == 'leader' ||
                     contextValue.rolePackages.contains('leader'))

@@ -18,4 +18,12 @@ void main() {
     );
     expect(calendarAddDays(DateTime(2026, 11, 2), -7), DateTime(2026, 10, 26));
   });
+
+  test('the week number is the same all week, also after summer time', () {
+    for (var day = 19; day <= 25; day++) {
+      expect(calendarIsoWeek(DateTime(2026, 10, day)), 43, reason: '$day');
+    }
+    expect(calendarIsoWeek(DateTime(2026, 10, 26)), 44);
+    expect(calendarIsoWeek(DateTime(2027, 1, 1)), 53);
+  });
 }

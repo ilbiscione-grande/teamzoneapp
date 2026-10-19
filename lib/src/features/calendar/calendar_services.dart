@@ -61,6 +61,13 @@ abstract interface class CalendarServices {
     required int expectedRevision,
     required String idempotencyKey,
   });
+
+  /// The event back to its team's default for who sees the callups.
+  Future<void> clearEventCallupVisibility(String eventId);
+
+  /// Whether the team's members see who is called up by default.
+  Future<({bool show, bool canChange})> getTeamCallupVisibility(String teamId);
+  Future<void> setTeamCallupVisibility(String teamId, bool show);
   Future<List<SquadCandidate>> listSquadCandidates(String eventId);
   Future<void> saveSquadDraft({
     required String eventId,
@@ -272,6 +279,16 @@ class UnconfiguredCalendarServices implements CalendarServices {
     required int expectedRevision,
     required String idempotencyKey,
   }) => Future.error(_error);
+  @override
+  Future<void> clearEventCallupVisibility(String eventId) =>
+      Future.error(_error);
+  @override
+  Future<({bool show, bool canChange})> getTeamCallupVisibility(
+    String teamId,
+  ) async => (show: false, canChange: false);
+  @override
+  Future<void> setTeamCallupVisibility(String teamId, bool show) =>
+      Future.error(_error);
   @override
   Future<List<SquadCandidate>> listSquadCandidates(String eventId) =>
       Future.error(_error);
@@ -616,6 +633,43 @@ class SupabaseCalendarServices implements CalendarServices {
       throw const FormatException('Invalid callup visibility revision.');
     }
     return value.toInt();
+  }
+
+  @override
+  Future<void> clearEventCallupVisibility(String eventId) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'clear_event_callup_visibility',
+          params: {'target_event_id': eventId},
+        );
+  }
+
+  @override
+  Future<({bool show, bool canChange})> getTeamCallupVisibility(
+    String teamId,
+  ) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'get_team_callup_visibility',
+          params: {'target_team_id': teamId},
+        );
+    final map = value is Map ? value : const {};
+    return (
+      show: map['show_to_members'] == true,
+      canChange: map['can_change'] == true,
+    );
+  }
+
+  @override
+  Future<void> setTeamCallupVisibility(String teamId, bool show) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'set_team_callup_visibility',
+          params: {'target_team_id': teamId, 'show_to_members': show},
+        );
   }
 
   @override

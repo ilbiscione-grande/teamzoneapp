@@ -650,6 +650,8 @@ class SquadDetails {
     required this.dispatchKind,
     this.showCallupsToMembers = false,
     this.callupVisibilityRevision = 0,
+    this.callupVisibilitySource = 'default',
+    this.teamShowsCallups = false,
     this.squadRevisionId,
     this.revision,
   });
@@ -665,6 +667,12 @@ class SquadDetails {
   final Map<String, dynamic> selectionContext;
   final bool showCallupsToMembers;
   final int callupVisibilityRevision;
+
+  /// event (its own choice), team (the team's default) or default (private).
+  final String callupVisibilitySource;
+
+  /// The team's default, shown beside the event's own choice.
+  final bool teamShowsCallups;
   bool can(String action) => callerActions.contains(action);
   factory SquadDetails.fromJson(Map<String, dynamic> json) {
     final state = json['squad_state'] as String? ?? 'empty';
@@ -748,6 +756,9 @@ class SquadDetails {
       showCallupsToMembers: json['show_callups_to_members'] as bool? ?? false,
       callupVisibilityRevision:
           (json['callup_visibility_revision'] as num?)?.toInt() ?? 0,
+      callupVisibilitySource:
+          json['callup_visibility_source'] as String? ?? 'default',
+      teamShowsCallups: json['team_shows_callups'] == true,
     );
   }
 }
@@ -798,3 +809,11 @@ DateTime calendarAddDays(DateTime date, int days) => DateTime(
   date.millisecond,
   date.microsecond,
 );
+
+/// ISO-8601 week number, counted in UTC calendar days: local midnights
+/// across the end of summer time are 23 hours short of whole days.
+int calendarIsoWeek(DateTime date) {
+  final thursday = calendarAddDays(date, 3 - ((date.weekday + 6) % 7));
+  final day = DateTime.utc(thursday.year, thursday.month, thursday.day);
+  return (day.difference(DateTime.utc(thursday.year)).inDays / 7).floor() + 1;
+}

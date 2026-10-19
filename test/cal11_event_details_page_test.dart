@@ -835,6 +835,17 @@ void main() {
       findsNothing,
     );
   });
+  testWidgets('the menu offers what players see', (tester) async {
+    final calendar = _Calendar();
+    await _openParticipants(tester, calendar);
+    await tester.tap(find.byTooltip('Fler åtgärder'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('participants-visibility')));
+    await tester.pumpAndSettle();
+    expect(find.text('Ser spelarna vilka som är kallade?'), findsOneWidget);
+    expect(find.textContaining('Lagets standard'), findsOneWidget);
+  });
+
   testWidgets('Påminn sits next to the search and opens the review', (
     tester,
   ) async {
@@ -1596,6 +1607,7 @@ class _Calendar extends UnconfiguredCalendarServices {
       'send_callups',
       'cancel_callup',
       'remind_callup',
+      'set_callup_visibility',
       'record_attendance',
     },
     selectionSource: 'manual',

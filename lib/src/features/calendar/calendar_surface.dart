@@ -55,6 +55,7 @@ class _CalendarWorkspace extends StatelessWidget {
     required this.monthEventScope,
     required this.onMonthEventScopeChanged,
     this.teamFilter,
+    this.defaultTeamFilter,
     this.eventTypeFilter,
     this.lastUpdated,
   });
@@ -65,6 +66,9 @@ class _CalendarWorkspace extends StatelessWidget {
   final CalendarViewMode mode;
   final DateTime selectedDate;
   final Set<String>? teamFilter;
+
+  /// The active team, which the calendar starts with: not a filter.
+  final Set<String>? defaultTeamFilter;
   final String? eventTypeFilter;
   final bool stale, reconnecting, showWeekNumbers, showQuarterHourMarks;
   final bool showArchived;
@@ -164,7 +168,7 @@ class _CalendarWorkspace extends StatelessWidget {
                     ),
                     icon: Badge(
                       isLabelVisible:
-                          teamFilter != null ||
+                          !setEquals(teamFilter, defaultTeamFilter) ||
                           eventTypeFilter != null ||
                           showArchived,
                       smallSize: 8,
@@ -688,11 +692,7 @@ class _CalendarSwipe extends StatelessWidget {
 
 /// ISO-8601 week number (weeks start on Monday, week 1 contains the year's
 /// first Thursday).
-int _isoWeekNumber(DateTime date) {
-  final thursday = calendarAddDays(date, 3 - ((date.weekday + 6) % 7));
-  final firstDayOfYear = DateTime(thursday.year);
-  return (thursday.difference(firstDayOfYear).inDays / 7).floor() + 1;
-}
+int _isoWeekNumber(DateTime date) => calendarIsoWeek(date);
 
 /// Shortens a localized "month year" string (e.g. "augusti 2026") to its
 /// first three letters (e.g. "aug 2026") to save horizontal space on phones.
@@ -823,11 +823,7 @@ Future<void> _showCalendarFilterSheet({
                           selected
                               ? next.add(entry.key)
                               : next.remove(entry.key);
-                          final value =
-                              next.isEmpty ||
-                                  next.containsAll(teams.keys.toSet())
-                              ? null
-                              : next;
+                          final value = next.isEmpty ? null : next;
                           setSheetState(() => localTeam = value);
                           onTeamChanged(value);
                         },
@@ -3603,6 +3599,7 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
               mode: _viewMode,
               selectedDate: _selectedDate,
               teamFilter: _teamFilter,
+              defaultTeamFilter: _initialTeamFilter,
               eventTypeFilter: _eventTypeFilter,
               showArchived: _showArchived,
               stale: state.isStale && !_staleBannerDismissed,

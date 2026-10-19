@@ -1677,6 +1677,20 @@ class AppStrings {
     'Medicinskt ansvarig': 'Medical staff',
     'Kassör': 'Treasurer',
     'Mer': 'More',
+    'Vad spelarna ser…': 'What players see…',
+    'visas': 'shown',
+    'dolt': 'hidden',
+    'Ser spelarna vilka som är kallade?': 'Do players see who is called up?',
+    'Lagets standard': "The team's default",
+    'Ja, för den här aktiviteten': 'Yes, for this activity',
+    'Nej, för den här aktiviteten': 'No, for this activity',
+    'Valet kunde inte sparas. Försök igen.':
+        'The choice could not be saved. Try again.',
+    'Uppföljningen visas när aktiviteten är genomförd.':
+        'The follow-up shows once the activity has taken place.',
+    'Spelarna ser vilka som är kallade': 'Players see who is called up',
+    'Gäller lagets aktiviteter. Varje aktivitet kan ändras under Deltagare.':
+        "Applies to the team's activities. Each activity can be changed under Participants.",
     'Vår publika sida': 'Our public page',
     'Inget konto i TeamZone': 'No TeamZone account',
     'Ring': 'Call',

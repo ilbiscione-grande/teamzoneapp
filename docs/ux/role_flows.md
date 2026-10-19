@@ -181,7 +181,36 @@ Ekonomi- och styrelsebehörigheter kan inte delas ut i appen idag (lucka 3 i avs
 - [ ] SP-06 Uppdatera sina kontaktuppgifter.
 - [ ] SP-07 Få en kallelse som push, tryck och svara.
 
-**Fynd:**
+**Fynd:** (Claudes genomgång 2026-10-19 med `+spelare`, Hugo Lindgren i A-lag Herr, webbappen, bara tittat)
+
+- **F-S1 Veckonumret blev fel efter omställningen till vintertid** *(rättat, ej driftsatt)*: med 20 oktober valt stod vecka 42, fast det är vecka 43.
+- **F-S2 Hem för tränaren saknade namn i hälsningen**, eftersom kontoprofilen inte har något namn *(rättat, ej driftsatt)*. Hälsningen använder nu namnet i laget, som sidomenyn.
+- **F-S3 Utveckling i Mer leder till en låst sida**: "Utvecklingsplaner är inte tillgängliga. Den här rollen saknar behörighet i aktuell lagkontext." Spelaren ska inte erbjudas en sida som den inte får se. Antingen tas den bort för spelare, eller så visar den spelarens egen utveckling.
+- **F-S4 Ingen väg att säga "kan inte komma"** till en träning utan kallelse. Hem och aktivitetssidan har inga svarsknappar då.
+- **F-S5 Aktivitetssidan visar ledartext för spelaren**: "Kallelse behövs inte. Assistenten påminner inte om saknade kallelser. Ändras i menyn ⋮".
+- **F-S6 Uppföljning före aktiviteten** visar spelaren "Närvaro –" och tomma staplar utan förklaring.
+- **F-S7 Ledarna på Laget → Översikt är bara text.** Spelaren kan inte trycka på en ledare för att se kontakt eller skriva till hen.
+- **F-S8 Trupplistan visar ingen position när huvudposition saknas**, fast profilen visar "Mittfältare". Spelaren själv är inte markerad med "(du)" i listan.
+- **F-S9 Spelaren ser "Visa medlemskort" på lagkamraters sidor.** Behöver bestämmas: ska lagkamrater se varandras medlemskort?
+- **F-S10 Filterikonen i kalendern har en röd prick** som om ett filter vore aktivt, utan att spelaren valt något *(verifiera vad pricken betyder)*.
+- **F-S11 Min profil markerar "Laget" i bottenmenyn** i stället för "Mer". En rad i inkorgen (lagchatten) saknar datum.
+- Det som fungerar bra: Hem visar tydligt nästa träning och Kommande, Mer är kort och relevant, och kalendern visar oktober rätt.
+
+**Produktägarens beslut 2026-10-19** (byggt samma dag, väntar på migration och driftsättning):
+
+- **F-S3 och G02** *Byggt:* Utveckling visas inte i sidomenyn eller i Mer, för någon roll. Ledare når den via Arbetsytor. Den kan komma tillbaka när arbetsytorna öppnas för fler roller.
+- **F-S4** *Öppen fråga:* ett läge per lag eller aktivitet, där man i stället för kallelser låter dem som inte kan komma anmäla frånvaro. Se förslaget nedan.
+- **F-S5** *Byggt:* texten om assistentens påminnelser visas bara för dem som kallar.
+- **F-S6** *Byggt:* före aktiviteten visar Uppföljning spelaren "Uppföljningen visas när aktiviteten är genomförd."
+- **F-S7** *Byggt:* ledarna på Laget → Översikt går att trycka på och öppnar ledarens sida.
+- **F-S8** *Byggt:* trupplistan visar huvudposition, eller annars den första positionen, och "(du)" efter ens eget namn.
+- **F-S9** *Byggt:* medlemskortet syns bara på den egna sidan och för dem som hanterar laget.
+- **F-S10** *Rättat:* det aktiva laget räknas inte som filter, så ingen röd prick visas. *Rättat:* efter "Alla lag" gick det inte att välja tillbaka ett enda lag när man bara har ett lag.
+- **F-S11** Min profil markerar Laget, och det är rätt. *Rättat:* inkorgsraden visar alltid datum, även när förhandsvisningen är lång.
+- **F-S12** *Byggt:* spelare ser inga cirklar för att välja trupp, inga påminnelseklockor och inga pilar på andras rader på Deltagare.
+- **F-S13 Integritetsfel** *(rättat, kräver migration)*: sedan CAL-11 såg alla i laget allas kallelser och närvaro. Kallelser är nu privata som standard igen. Ett lag kan visa dem för spelarna ("Spelarna ser vilka som är kallade" på Laget → Översikt), och varje aktivitet kan välja annat under Deltagare → ⋮ → "Vad spelarna ser…". Närvaro syns bara för dem som hanterar laget och för personen själv.
+- **Matchläget i Förberedelser** *(öppen fråga)*: ska spelare kunna öppna det?
+
 
 ---
 

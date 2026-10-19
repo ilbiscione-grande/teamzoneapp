@@ -599,9 +599,18 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                               personId: person.id,
                               name: person.displayName,
                             ),
-                            title: Text(person.displayName),
+                            title: Text(
+                              rolesSnapshot.data?.roles.any(
+                                        (role) =>
+                                            role.personId == person.id &&
+                                            role.isSelf,
+                                      ) ==
+                                      true
+                                  ? '${person.displayName} (${strings.feature('du')})'
+                                  : person.displayName,
+                            ),
                             subtitle: switch ([
-                              _mainPositionLabel(
+                              _listPositionLabel(
                                 strings,
                                 rolesSnapshot.data?.roles
                                     .where((role) => role.personId == person.id)
@@ -4174,7 +4183,9 @@ class _RosterPersonDetailsView extends StatelessWidget {
               );
             },
           ),
-          if (onOpenMemberCard != null) ...[
+          // Your own card, and for those who manage the team; teammates
+          // do not see each other's.
+          if (onOpenMemberCard != null && (person.isSelf || canManage)) ...[
             const SizedBox(height: 12),
             Center(
               child: FilledButton.tonalIcon(
@@ -5206,36 +5217,52 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
                   return Text(strings.feature('Inga ledare visas ännu.'));
                 }
                 final roles = rolesSnapshot.data;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final leader in value.leaders)
-                      Builder(
-                        builder: (context) {
-                          final row = roles?.roles
-                              .where(
-                                (role) =>
-                                    role.personId == leader.personId &&
-                                    _isLeaderRole(role.role),
-                              )
-                              .firstOrNull;
-                          final titles = row == null
-                              ? ''
-                              : _titlesSummary(strings, row);
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 2),
-                            child: Text(
-                              titles.isEmpty
-                                  ? leader.displayName
-                                  : '${leader.displayName} · $titles',
-                            ),
-                          );
-                        },
-                      ),
-                  ],
+                return Material(
+                  type: MaterialType.transparency,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final leader in value.leaders)
+                        Builder(
+                          builder: (context) {
+                            final row = roles?.roles
+                                .where(
+                                  (role) =>
+                                      role.personId == leader.personId &&
+                                      _isLeaderRole(role.role),
+                                )
+                                .firstOrNull;
+                            final titles = row == null
+                                ? ''
+                                : _titlesSummary(strings, row);
+                            return ListTile(
+                              key: ValueKey(
+                                'team-overview-leader-${leader.personId}',
+                              ),
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                              visualDensity: VisualDensity.compact,
+                              title: Text(leader.displayName),
+                              subtitle: titles.isEmpty ? null : Text(titles),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => GoRouter.of(context).push(
+                                ProductRouteContract.teamMember(
+                                  leader.personId,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
                 );
               },
             ),
+            if (widget.contextValue.teamId case final teamId?)
+              _TeamCallupVisibilityTile(
+                calendar: widget.calendar,
+                teamId: teamId,
+              ),
             if (showAdmin) ...[
               const SizedBox(height: 24),
               Align(
@@ -6833,4 +6860,86 @@ class _RosterAvatar extends StatelessWidget {
       );
     },
   );
+}
+
+/// Whether the team's players see who is called up, by default; each event
+/// can choose otherwise under Deltagare. Shown to those who may change it.
+class _TeamCallupVisibilityTile extends StatefulWidget {
+  const _TeamCallupVisibilityTile({
+    required this.calendar,
+    required this.teamId,
+  });
+  final CalendarServices calendar;
+  final String teamId;
+
+  @override
+  State<_TeamCallupVisibilityTile> createState() =>
+      _TeamCallupVisibilityTileState();
+}
+
+class _TeamCallupVisibilityTileState extends State<_TeamCallupVisibilityTile> {
+  ({bool show, bool canChange})? _value;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final value = await widget.calendar
+          .getTeamCallupVisibility(widget.teamId)
+          .timeout(const Duration(seconds: 15));
+      if (mounted) setState(() => _value = value);
+    } catch (error) {
+      AppErrors.caught('roster_surface._TeamCallupVisibilityTile', error);
+    }
+  }
+
+  Future<void> _set(bool show) async {
+    setState(() => _saving = true);
+    try {
+      await widget.calendar.setTeamCallupVisibility(widget.teamId, show);
+      if (mounted) setState(() => _value = (show: show, canChange: true));
+    } catch (error) {
+      AppErrors.caught('roster_surface._TeamCallupVisibilityTile', error);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppStrings.of(
+                context,
+              ).feature('Valet kunde inte sparas. Försök igen.'),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final value = _value;
+    if (value == null || !value.canChange) return const SizedBox.shrink();
+    final strings = AppStrings.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: SwitchListTile(
+        key: const ValueKey('team-callup-visibility'),
+        contentPadding: EdgeInsets.zero,
+        value: value.show,
+        onChanged: _saving ? null : _set,
+        title: Text(strings.feature('Spelarna ser vilka som är kallade')),
+        subtitle: Text(
+          strings.feature(
+            'Gäller lagets aktiviteter. Varje aktivitet kan ändras under Deltagare.',
+          ),
+        ),
+      ),
+    );
+  }
 }

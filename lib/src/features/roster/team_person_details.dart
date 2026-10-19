@@ -100,9 +100,14 @@ String _anyPositionLabel(AppStrings strings, String position) =>
     : position;
 
 /// The main position as shown in the squad list, or null without one.
-String? _mainPositionLabel(AppStrings strings, TeamRole? role) {
-  final main = role?.mainPosition;
-  return main == null ? null : _anyPositionLabel(strings, main);
+/// For the squad list: the main position, else the first one chosen.
+String? _listPositionLabel(AppStrings strings, TeamRole? role) {
+  if (role == null) return null;
+  final key =
+      role.mainPosition ??
+      role.positions.firstOrNull ??
+      role.customPositions.firstOrNull;
+  return key == null ? null : _anyPositionLabel(strings, key);
 }
 
 /// Positions in catalog order and then own labels; a general position is

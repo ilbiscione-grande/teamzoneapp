@@ -1710,10 +1710,17 @@ class _InboxSurfaceState extends State<_InboxSurface>
         ),
       },
       title: Text(thread.subject ?? strings.directMessage),
-      subtitle: Text(
-        '${(thread.senderName ?? '').trim().isEmpty ? '' : '${thread.senderName}: '}${thread.preview ?? strings.noMessages}\n${_inboxTime(context, thread.lastAt)}',
-        maxLines: 3,
-        overflow: TextOverflow.ellipsis,
+      // A long preview is cut at two lines; the date always shows.
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${(thread.senderName ?? '').trim().isEmpty ? '' : '${thread.senderName}: '}${thread.preview ?? strings.noMessages}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(_inboxTime(context, thread.lastAt)),
+        ],
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,

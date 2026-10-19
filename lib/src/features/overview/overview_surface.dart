@@ -9,10 +9,14 @@ class _OverviewSurface extends StatefulWidget {
     required this.calendar,
     required this.messaging,
     required this.onNavigate,
+    this.ownName,
   });
 
   final _Destination destination;
   final TeamZoneProfile profile;
+
+  /// Your name in the active team, when known, for the greeting.
+  final ValueListenable<String?>? ownName;
   final TeamZoneContext contextValue;
   final OverviewServices overview;
   final CalendarServices calendar;
@@ -202,7 +206,13 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
             padding: const EdgeInsets.all(16),
             children: [
               if (widget.destination.path == '/home')
-                _HomeGreetingHeader(displayName: widget.profile.displayName)
+                ValueListenableBuilder<String?>(
+                  valueListenable:
+                      widget.ownName ?? ValueNotifier<String?>(null),
+                  builder: (context, name, _) => _HomeGreetingHeader(
+                    displayName: name ?? widget.profile.displayName,
+                  ),
+                )
               else
                 Text(
                   strings.destination(widget.destination.path),

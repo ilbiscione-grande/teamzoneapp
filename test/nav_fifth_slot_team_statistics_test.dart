@@ -216,12 +216,13 @@ void main() {
       expect(labels(tester), ['Laget', 'Kalender', 'Hem', 'Inkorg', 'Mer']);
     });
 
-    testWidgets('a player gets Utveckling, the profile and the settings', (
+    testWidgets('a player gets the profile and the settings, not Utveckling', (
       tester,
     ) async {
       await pumpPhone(tester, context0(role: 'player'));
       final more = await moreLabels(tester);
-      expect(more, containsAll(['Utveckling', 'Min profil', 'Inställningar']));
+      expect(more, containsAll(['Min profil', 'Inställningar']));
+      expect(more, isNot(contains('Utveckling')));
       expect(more, isNot(contains('Arbetsytor')));
       expect(more, isNot(contains('Lagstatistik')));
     });

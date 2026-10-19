@@ -863,6 +863,69 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
     }
   }
 
+  /// Whether the team's members see who is called up: the team's default,
+  /// or this event's own choice.
+  Future<void> _chooseVisibility() async {
+    final squad = widget.squad;
+    final current = squad.callupVisibilitySource == 'event'
+        ? (squad.showCallupsToMembers ? 'show' : 'hide')
+        : 'team';
+    final teamText = squad.teamShowsCallups
+        ? _s.feature('visas')
+        : _s.feature('dolt');
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: Text(_s.feature('Ser spelarna vilka som är kallade?')),
+        children: [
+          for (final (value, label) in [
+            ('team', '${_s.feature('Lagets standard')} ($teamText)'),
+            ('show', _s.feature('Ja, för den här aktiviteten')),
+            ('hide', _s.feature('Nej, för den här aktiviteten')),
+          ])
+            SimpleDialogOption(
+              key: ValueKey('participants-visibility-$value'),
+              onPressed: () => Navigator.pop(dialogContext, value),
+              child: Row(
+                children: [
+                  Icon(
+                    value == current
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(label)),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+    if (choice == null || choice == current || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      if (choice == 'team') {
+        await widget.calendar.clearEventCallupVisibility(widget.event.id);
+      } else {
+        await widget.calendar.setEventCallupVisibility(
+          eventId: widget.event.id,
+          showToMembers: choice == 'show',
+          expectedRevision: squad.callupVisibilityRevision,
+          idempotencyKey: _newUuid(),
+        );
+      }
+      await widget.onReload();
+    } catch (error) {
+      AppErrors.caught('event_participants._chooseVisibility', error);
+      if (mounted) {
+        _showError(_s.feature('Valet kunde inte sparas. Försök igen.'));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _markAcceptedPresent() async {
     if (!_canRecordAttendance || _working) return;
     final eligible = _people
@@ -1072,6 +1135,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                       );
                     }
                     if (value == 'remind') _remindAllUnanswered();
+                    if (value == 'visibility') _chooseVisibility();
                     if (value == 'present') _markAcceptedPresent();
                     if (value == 'all') {
                       _saveBulkDraft(
@@ -1100,6 +1164,12 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                       PopupMenuItem(
                         value: 'generate',
                         child: Text(_s.feature('Generator')),
+                      ),
+                    if (widget.squad.can('set_callup_visibility'))
+                      PopupMenuItem(
+                        key: const ValueKey('participants-visibility'),
+                        value: 'visibility',
+                        child: Text(_s.feature('Vad spelarna ser…')),
                       ),
                     if (!_eventEnded && widget.squad.can('remind_callup'))
                       PopupMenuItem(
@@ -1333,6 +1403,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
     final status = _attendance(p);
     final expected = _expected(p);
     final canRespond = !_working && _canRespond(p);
+    final canOpen = _canManage || _canRecordAttendance || _canRespond(p);
     final attendanceLabel = switch (status) {
       'present' => _s.feature('Närvarande'),
       'absent' when expected => _s.feature('Frånvarande'),
@@ -1360,7 +1431,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       }
     } else if (p.callupState == 'pending' && canRespond) {
       primary = () => _respondToCallup(p, 'accepted');
-    } else {
+    } else if (canOpen) {
       primary = () => _expand(p);
     }
     return Material(
@@ -1375,7 +1446,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
             child: InkWell(
               key: ValueKey('participant-row-${p.personId}'),
               onTap: primary,
-              onLongPress: () => _expand(p),
+              onLongPress: canOpen ? () => _expand(p) : null,
               child: SizedBox(
                 height:
                     38 +
@@ -1440,6 +1511,8 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                                 attendanceLabel,
                                 primary,
                               )
+                            else if (!p.isCalled && !_canManage)
+                              const SizedBox.shrink()
                             else if (!p.isCalled)
                               _smallAction(
                                 selected
@@ -1454,21 +1527,22 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                                 primary,
                               )
                             else if (p.callupState == 'pending') ...[
-                              _smallAction(
-                                Icons.notifications,
-                                p.callupLastRemindedAt == null
-                                    ? Colors.blueGrey
-                                    : colors.primary,
-                                p.callupLastRemindedAt == null
-                                    ? _s.feature('Påminn')
-                                    : '${_s.feature('Påminn · senast')} ${MaterialLocalizations.of(context).formatShortDate(p.callupLastRemindedAt!.toLocal())}',
-                                _canManage &&
-                                        widget.squad.can('remind_callup') &&
-                                        !_working &&
-                                        p.canRemindAt(DateTime.now())
-                                    ? () => _manageCallup(p, 'remind')
-                                    : null,
-                              ),
+                              if (_canManage)
+                                _smallAction(
+                                  Icons.notifications,
+                                  p.callupLastRemindedAt == null
+                                      ? Colors.blueGrey
+                                      : colors.primary,
+                                  p.callupLastRemindedAt == null
+                                      ? _s.feature('Påminn')
+                                      : '${_s.feature('Påminn · senast')} ${MaterialLocalizations.of(context).formatShortDate(p.callupLastRemindedAt!.toLocal())}',
+                                  _canManage &&
+                                          widget.squad.can('remind_callup') &&
+                                          !_working &&
+                                          p.canRemindAt(DateTime.now())
+                                      ? () => _manageCallup(p, 'remind')
+                                      : null,
+                                ),
                               if (_canRespond(p)) ...[
                                 _smallAction(
                                   Icons.check,
@@ -1516,24 +1590,25 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                                   size: 24,
                                 ),
                               ),
-                            SizedBox(
-                              width: 22,
-                              height: 36,
-                              child: IconButton(
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                tooltip: expanded
-                                    ? '${_s.feature('Dölj information om')} ${p.name}'
-                                    : '${_s.feature('Visa information om')} ${p.name}',
-                                onPressed: () => _expand(p),
-                                icon: Icon(
-                                  expanded
-                                      ? Icons.expand_less
-                                      : Icons.chevron_right,
-                                  size: 18,
+                            if (canOpen)
+                              SizedBox(
+                                width: 22,
+                                height: 36,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  tooltip: expanded
+                                      ? '${_s.feature('Dölj information om')} ${p.name}'
+                                      : '${_s.feature('Visa information om')} ${p.name}',
+                                  onPressed: () => _expand(p),
+                                  icon: Icon(
+                                    expanded
+                                        ? Icons.expand_less
+                                        : Icons.chevron_right,
+                                    size: 18,
+                                  ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),

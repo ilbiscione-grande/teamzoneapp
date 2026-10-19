@@ -603,7 +603,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         // REF-01: who referees the match.
         if (event.type == 'match')
           EventRefereesSection(eventId: event.id, services: _refereeServices()),
-        if (!event.callupsRequired)
+        // About the assistant's reminders: for those who call up.
+        if (!event.callupsRequired &&
+            (_contextCanCoManage || _contextCanManageRoster))
           ListTile(
             key: const Key('event-callups-not-required'),
             contentPadding: EdgeInsets.zero,

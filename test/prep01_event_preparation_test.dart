@@ -280,7 +280,11 @@ void main() {
       await tester.tap(find.text('Uppföljning'));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('followup-todos')), findsNothing);
-      expect(find.byKey(const ValueKey('followup-metrics')), findsOneWidget);
+      // Before the activity, players are told the follow-up comes later.
+      expect(
+        find.byKey(const ValueKey('event-followup-later')),
+        findsOneWidget,
+      );
       expect(find.byKey(const ValueKey('followup-goals')), findsNothing);
     });
   });
