@@ -124,7 +124,7 @@ void main() {
     await tester.pumpAndSettle();
     final row = find.byKey(const ValueKey('roster-player-ada'));
     expect(
-      find.descendant(of: row, matching: find.text('Centralanfallare · F2012')),
+      find.descendant(of: row, matching: find.text('Centralanfallare')),
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('roster-avatar-ada')), findsOneWidget);

@@ -600,19 +600,21 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                               name: person.displayName,
                             ),
                             title: Text(person.displayName),
-                            subtitle: Text(
-                              [
-                                _mainPositionLabel(
-                                  strings,
-                                  rolesSnapshot.data?.roles
-                                      .where(
-                                        (role) => role.personId == person.id,
-                                      )
-                                      .firstOrNull,
-                                ),
+                            subtitle: switch ([
+                              _mainPositionLabel(
+                                strings,
+                                rolesSnapshot.data?.roles
+                                    .where((role) => role.personId == person.id)
+                                    .firstOrNull,
+                              ),
+                              // The team only when it is another one.
+                              if (person.teamName !=
+                                  widget.contextValue.teamName)
                                 person.teamName,
-                              ].whereType<String>().join(' · '),
-                            ),
+                            ].whereType<String>().join(' · ')) {
+                              '' => null,
+                              final text => Text(text),
+                            },
                             trailing: canOpenPersonDetails
                                 ? const Icon(Icons.chevron_right)
                                 : null,
@@ -4075,8 +4077,12 @@ class _RosterPersonDetailsView extends StatelessWidget {
     required this.onRolesChanged,
     this.contact,
     this.onOpenMemberCard,
+    this.guardians,
   });
   final Future<RosterPersonDetails> future;
+
+  /// UX: the player's guardians and who a message reaches.
+  final Future<PersonGuardians>? guardians;
 
   /// Contact details and picture URL for the person.
   final Future<(PersonContact, String?)>? contact;
@@ -4228,10 +4234,96 @@ class _RosterPersonDetailsView extends StatelessWidget {
             title: Text(strings.feature('Status')),
             subtitle: Text(strings.domainValue(person.assignmentState)),
           ),
+          if (!person.isSelf && guardians != null)
+            FutureBuilder<PersonGuardians>(
+              future: guardians,
+              builder: (context, snapshot) =>
+                  _PersonGuardiansSection(value: snapshot.data),
+            ),
         ],
       );
     },
   );
+}
+
+/// The player's guardians with what contact may be shown, and a message to
+/// the player and the guardians at once.
+class _PersonGuardiansSection extends StatelessWidget {
+  const _PersonGuardiansSection({required this.value});
+  final PersonGuardians? value;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = this.value;
+    if (value == null) return const SizedBox.shrink();
+    final strings = AppStrings.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (value.messageProfileIds.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: OutlinedButton.icon(
+              key: const ValueKey('person-message'),
+              onPressed: () => GoRouter.of(context).go(
+                ProductRouteContract.inboxCompose(to: value.messageProfileIds),
+              ),
+              icon: const Icon(Icons.edit_outlined),
+              label: Text(
+                strings.feature(
+                  value.guardians.isEmpty
+                      ? 'Skicka meddelande'
+                      : 'Skicka meddelande till spelare och vårdnadshavare',
+                ),
+              ),
+            ),
+          ),
+        if (value.guardians.isNotEmpty) ...[
+          const Divider(height: 24),
+          Text(
+            strings.feature('Vårdnadshavare'),
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          for (final guardian in value.guardians)
+            ListTile(
+              key: ValueKey('person-guardian-${guardian.personId}'),
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.family_restroom_outlined),
+              title: Text(guardian.name),
+              subtitle: Text(
+                [
+                  if (guardian.canSeeContact && guardian.phone != null)
+                    guardian.phone!,
+                  if (guardian.canSeeContact && guardian.contactEmail != null)
+                    guardian.contactEmail!,
+                  if (!guardian.hasAccount)
+                    strings.feature('Inget konto i TeamZone'),
+                ].join(' · '),
+              ),
+              trailing: Wrap(
+                children: [
+                  if (guardian.canSeeContact && guardian.phone != null)
+                    IconButton(
+                      tooltip: strings.feature('Ring'),
+                      onPressed: () =>
+                          launchUrl(Uri(scheme: 'tel', path: guardian.phone)),
+                      icon: const Icon(Icons.phone_outlined),
+                    ),
+                  if (guardian.canSeeContact && guardian.contactEmail != null)
+                    IconButton(
+                      tooltip: strings.feature('Skicka e-post'),
+                      onPressed: () => launchUrl(
+                        Uri(scheme: 'mailto', path: guardian.contactEmail),
+                      ),
+                      icon: const Icon(Icons.mail_outline),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ],
+    );
+  }
 }
 
 class _RosterPersonDetailsPage extends StatefulWidget {
@@ -4266,8 +4358,26 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
   late Future<TeamRoles> _roles = _loadRoles();
   late Future<RosterPersonDetails> _load = _reload();
   late Future<(PersonContact, String?)> _contact = _loadContact();
+  late final Future<PersonGuardians> _guardians = _loadGuardians();
   // Bumped on every reload so the profile tiles pick up the new roles.
   int _generation = 0;
+
+  /// Guardians; optional, so failures just hide them.
+  Future<PersonGuardians> _loadGuardians() async {
+    try {
+      final person = await _load;
+      return await widget.profileServices
+          .getPersonGuardians(
+            clubId: widget.contextValue.clubId,
+            teamId: person.teamId,
+            personId: person.id,
+          )
+          .timeout(const Duration(seconds: 15));
+    } catch (error) {
+      AppErrors.caught('roster_surface._loadGuardians', error);
+      return const PersonGuardians();
+    }
+  }
 
   /// Contact details and picture; optional, so failures just hide them.
   Future<(PersonContact, String?)> _loadContact() async {
@@ -4476,6 +4586,7 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
                   future: _load,
                   roles: _roles,
                   contact: _contact,
+                  guardians: _guardians,
                   contextValue: contextValue,
                   roster: widget.roster,
                   canManage: canManage,

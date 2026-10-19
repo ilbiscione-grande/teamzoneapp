@@ -106,7 +106,31 @@ Ekonomi- och styrelsebehörigheter kan inte delas ut i appen idag (lucka 3 i avs
 - [ ] G-05 Ett tryck på en notis öppnar rätt sida, även från kallstart.
 - [ ] G-06 Assistentknappen syns bara när det finns något, och läget sparas efter flytt.
 
-**Fynd:**
+**Fynd:** (Claudes genomgång 2026-10-19 med `+tranare` i webbappen, mobilläge)
+
+- **F-G1 Kalenderfel vid omställning från sommartid** *(rättat, ej driftsatt)*: i oktober stod 25 två gånger, och alla datum efter 25 oktober hamnade en dag fel i månadsvyn. Det påverkade också vilka aktiviteter som visades på vilken dag. Orsaken var att appen räknade fram dagarna med 24-timmarssteg.
+- **F-G2 Namnet i sidomenyn visar "Logga ut".** Profilen saknar visningsnamn, och då visas texten för utloggning i stället. Namnet borde hämtas från personen i klubben ("Hugo Olofsson") eller från e-postadressen.
+- **F-G3 "Inbox" på engelska** i bottenmenyn och sidomenyn. Resten av appen är svensk ("Inkorg").
+- **F-G4 Snabbåtgärderna är svåra att hitta.** Man sveper uppåt på Hem-knappen, men ingenting visar att gesten finns. Det gick inte att öppna dem med mus i webbappen *(prova på telefon)*.
+- **F-G5 Första trycket i bottenmenyn efter att sidomenyn stängts** visar bara en verktygstips-ruta och byter inte sida.
+- **F-G6 Två flytande knappar på varandra** på Trupp (lägg till person och assistenten). De konkurrerar med varandra och skymmer listan.
+
+**Produktägarens genomgång och beslut 2026-10-19** (byggt samma dag, väntar på migration och driftsättning):
+
+- **F-G7 Appen stängdes vid bakåt** på Hem, Kalender, Laget och Inkorg på Android 16. Orsaken var predictive back (targetSdk 36): den inre routerns "inget att gå tillbaka till" nådde appen. *Rättat:* skalet säger alltid att det hanterar bakåt, så bakåt går till Hem, och på Hem frågar appen "Stäng TeamZone?".
+- **G01** *Byggt:* den femte knappen heter **Mer** och öppnar en meny med det rollen och behörigheterna ger:
+  - Arbetsytor (ledare), eller Utveckling;
+  - Lagstatistik, Ekonomi, Styrelse, Domartillsättning eller Domarersättning;
+  - Abonnemang, Nyhetsredaktion och Publika sidor;
+  - Vår publika sida, Min profil och Inställningar.
+
+  Inställningen för femte knappen är borttagen.
+- **G02** *Byggt:* för ledare ligger Utveckling under Arbetsytor och inte i sidomenyn. Lagstatistik finns också under Arbetsytor.
+- **G04** *Byggt:* "Gå till" i snabbåtgärderna slutar med samma länkar som Mer: arbetsytor, länk till den publika sidan (när klubben har publicerat den), Min profil och Inställningar. Svepet fungerar med finger, också på webben.
+- **Assistenten** *Byggt:* viktiga uppgifter (dagens kallelser och förberedelser, krockar) har röd ram och etiketten "Viktigt". Assistentknappens siffra är röd när det finns viktiga uppgifter och neutral annars.
+- **F-G2** *Rättat:* sidomenyn visar namnet, eller inloggningsadressen om namn saknas. Den visar aldrig "Logga ut".
+- **F-G3** *Rättat:* "Inkorg" på svenska.
+
 
 ---
 
@@ -246,7 +270,30 @@ Arbetsytor är femte knappen och har planeringsytor *(verifiera innehåll)*. Utv
 - [ ] LE-09 Svara på en kontrollfråga om föreningsdomare.
 - [ ] LE-10 Ledare i två lag: byta lag och göra samma sak i det andra laget.
 
-**Fynd:**
+**Fynd:** (Claudes genomgång 2026-10-19 med `+tranare`, bara tittat, inget ändrat)
+
+- **F-L1 Hem visar inte det som behöver göras.** Dagens träning har 16 obesvarade kallelser, närvaro saknas för tre aktiviteter och slutresultat saknas för en match. Allt det finns bara i Min assistent (5). Hem ser lugnt ut, med "Din kallelse: Accepterat" och Kommande. Förslag: ett kort på Hem med assistentens viktigaste punkter, eller åtminstone "16 har inte svarat" på dagens aktivitet.
+- **F-L2 Påminn alla är gömd.** "Påminn alla obesvarade" ligger i trepunktsmenyn på Deltagare, bland urvalsverktyg med svåra namn ("Behörighetsgrupp", "Generator"). Den borde ligga som knapp vid "14 kallade · 0 svarat".
+- **F-L3 Siffror utan förklaring på aktivitetssidan.** Fem färgade cirklar (0, 17, 1, 16, 0) har ingen text. Titeln ("Träning") kommer också först en stund efter att sidan öppnats.
+- **F-L4 Deltagarraderna har tre små ikoner** (klocka, bock och kryss) utan text. Det är lätt att trycka fel, och det är oklart om bocken betyder svar eller närvaro.
+- **F-L5 Trupplistan visar "P2012" på varje rad**, vilket inte säger något i lagets egen trupp. Position, roll eller status (till exempel skadad) vore mer användbart.
+- **F-L6 Spelarsidan saknar vårdnadshavare och kontaktvägar.** För en 14-åring står e-post och telefon som "Ingen angiven", och det finns ingen knapp för att skicka meddelande. Ledaren behöver se vårdnadshavarna och kunna kontakta dem.
+- **F-L7 Laget → Översikt visar inte ansökningar eller inbjudningar** som väntar, trots att det står i målbilden för ledare. Senaste match visas utan resultat, och ingenting visar att resultatet saknas.
+- **F-L8 Inkorgen har inga flikar** (Matchpool och Klubbsajt) för ledaren *(verifiera varför: villkoret för Matchpool är ledare)*. Datumen står som "2026-10-07 · 20:09", medan resten av appen skriver "22 okt. 2026".
+- **F-L9 Arbetsytor (femte knappen) innehåller bara Utveckling**, som redan finns i sidomenyn. Resten är tre ytor märkta "Kommer". Kalender eller Meddelanden vore troligen en mer användbar femte knapp tills vidare.
+- **F-L10 Kalenderlistan** visar inte hur många som svarat på en kallelse, och inte om något saknas, till exempel närvaro.
+- **F-L11 Varje flik på aktivitetssidan visar en laddningssymbol** en stund. Det känns segt.
+
+**Produktägarens beslut 2026-10-19:**
+
+- **F-L1** Hem visar redan bra vad som är aktuellt. Det viktiga markeras på assistentknappen i stället (se G-avsnittet).
+- **F-L2** *Byggt:* knappen "Påminn" ligger på samma rad som sökfältet och trepunktsmenyn på Deltagare.
+- **F-L3** Ingen ändring. Cirklarna har en förklaring när man trycker på dem, och det räcker.
+- **F-L6** *Byggt:* spelarsidan visar vårdnadshavare med telefon och e-post (så långt kontaktskyddet tillåter). Den har en knapp "Skicka meddelande till spelare och vårdnadshavare" som öppnar inkorgen med dem förvalda.
+- **F-L5** *Byggt:* truppraden visar bara huvudpositionen. Lagnamnet visas bara när personen tillhör ett annat lag.
+- **F-L8** Matchpool och Klubbsajt syns hos produktägaren, så det var inget fel. *Rättat:* datumen i inkorgen skrivs som i resten av appen ("7 okt. 2026 · 20:09").
+- **F-L9** Löst genom Mer (G01). Fler arbetsytor kommer senare.
+
 
 ---
 

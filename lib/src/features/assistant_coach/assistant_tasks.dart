@@ -1123,17 +1123,49 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
     }
   }
 
+  /// Important tasks (today's callups and preparations, clashes) stand out
+  /// from the general ones by an error-coloured frame and a label.
+  BorderSide _taskBorder(BuildContext context, bool important) {
+    final colors = Theme.of(context).colorScheme;
+    return important
+        ? BorderSide(color: colors.error, width: 1.5)
+        : BorderSide(color: colors.outlineVariant);
+  }
+
+  Widget _importantLabel(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Row(
+      key: const ValueKey('assistant-important-label'),
+      children: [
+        Icon(
+          Icons.priority_high,
+          size: 16,
+          color: Theme.of(context).colorScheme.error,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          'Viktigt',
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: Theme.of(context).colorScheme.error,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  );
+
   Widget _groupCard(BuildContext context, List<AssistantTask> items) {
     final item = items.first;
     final date = item.startsAt?.toLocal();
     final material = MaterialLocalizations.of(context);
+    final important = items.any((task) => task.isImportant);
     return Card(
       key: ValueKey('assistant-task-group-${item.context.id}:${item.eventId}'),
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        side: _taskBorder(context, important),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -1220,9 +1252,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
           ? const RoundedRectangleBorder()
           : RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
+              side: _taskBorder(context, item.isImportant),
             ),
       key: ValueKey('assistant-task-${item.key}'),
       clipBehavior: Clip.antiAlias,
@@ -1237,26 +1267,32 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
             ),
             title: Padding(
               padding: EdgeInsets.only(bottom: grouped ? 0 : 8),
-              child: Semantics(
-                header: true,
-                child: Text(
-                  grouped
-                      ? title
-                      : [
-                              item.context.clubName,
-                              if (item.context.teamName != null)
-                                item.context.teamName!,
-                            ].join(' · ') +
-                            (item.isPersonalConflict
-                                ? '\n↔ ${item.eventContextLabel(item.overlappingEvent!.id)}'
-                                : ''),
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: grouped ? FontWeight.w600 : FontWeight.bold,
-                    color: grouped
-                        ? Theme.of(context).colorScheme.onSurface
-                        : Theme.of(context).colorScheme.primary,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (item.isImportant) _importantLabel(context),
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      grouped
+                          ? title
+                          : [
+                                  item.context.clubName,
+                                  if (item.context.teamName != null)
+                                    item.context.teamName!,
+                                ].join(' · ') +
+                                (item.isPersonalConflict
+                                    ? '\n↔ ${item.eventContextLabel(item.overlappingEvent!.id)}'
+                                    : ''),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: grouped ? FontWeight.w600 : FontWeight.bold,
+                        color: grouped
+                            ? Theme.of(context).colorScheme.onSurface
+                            : Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
             subtitle: grouped

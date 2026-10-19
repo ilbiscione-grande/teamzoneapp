@@ -552,7 +552,7 @@ class _CalendarDateNavigation extends StatelessWidget {
       selectedDate.month,
       selectedDate.day,
     );
-    final weekStart = start.subtract(Duration(days: start.weekday - 1));
+    final weekStart = calendarAddDays(start, 1 - start.weekday);
     final periodTitle = switch (mode) {
       CalendarViewMode.month =>
         compact
@@ -560,8 +560,8 @@ class _CalendarDateNavigation extends StatelessWidget {
             : localizations.formatMonthYear(selectedDate),
       CalendarViewMode.week =>
         compact
-            ? '${localizations.formatShortMonthDay(weekStart)} – ${localizations.formatShortMonthDay(weekStart.add(const Duration(days: 6)))}'
-            : '${localizations.formatMediumDate(weekStart)} – ${localizations.formatMediumDate(weekStart.add(const Duration(days: 6)))}',
+            ? '${localizations.formatShortMonthDay(weekStart)} – ${localizations.formatShortMonthDay(calendarAddDays(weekStart, 6))}'
+            : '${localizations.formatMediumDate(weekStart)} – ${localizations.formatMediumDate(calendarAddDays(weekStart, 6))}',
       CalendarViewMode.agenda || CalendarViewMode.day =>
         compact
             ? localizations.formatMediumDate(selectedDate)
@@ -650,9 +650,9 @@ class _CalendarDateNavigation extends StatelessWidget {
 DateTime _calendarStep(CalendarViewMode mode, DateTime date, int direction) =>
     switch (mode) {
       CalendarViewMode.month => DateTime(date.year, date.month + direction, 1),
-      CalendarViewMode.week => date.add(Duration(days: 7 * direction)),
+      CalendarViewMode.week => calendarAddDays(date, 7 * direction),
       CalendarViewMode.agenda ||
-      CalendarViewMode.day => date.add(Duration(days: direction)),
+      CalendarViewMode.day => calendarAddDays(date, direction),
     };
 
 /// Swiping sideways over the calendar steps to the next or previous period,
@@ -689,7 +689,7 @@ class _CalendarSwipe extends StatelessWidget {
 /// ISO-8601 week number (weeks start on Monday, week 1 contains the year's
 /// first Thursday).
 int _isoWeekNumber(DateTime date) {
-  final thursday = date.add(Duration(days: 3 - ((date.weekday + 6) % 7)));
+  final thursday = calendarAddDays(date, 3 - ((date.weekday + 6) % 7));
   final firstDayOfYear = DateTime(thursday.year);
   return (thursday.difference(firstDayOfYear).inDays / 7).floor() + 1;
 }
@@ -1353,7 +1353,7 @@ List<_PositionedDayEvent> _layoutDayEvents(
   List<CalendarEventSummary> events,
   DateTime dayStart,
 ) {
-  final dayEnd = dayStart.add(const Duration(days: 1));
+  final dayEnd = calendarAddDays(dayStart, 1);
   final spans = <(CalendarEventSummary, double, double)>[];
   for (final event in events) {
     if (event.allDay) continue;
@@ -1635,7 +1635,7 @@ class _CalendarMonthGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final first = projection.rangeStart;
-    final gridStart = first.subtract(Duration(days: first.weekday - 1));
+    final gridStart = calendarAddDays(first, 1 - first.weekday);
     final selected = projection.selectedDate;
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1655,7 +1655,7 @@ class _CalendarMonthGrid extends StatelessWidget {
           ),
           itemCount: 42,
           itemBuilder: (context, index) {
-            final day = gridStart.add(Duration(days: index));
+            final day = calendarAddDays(gridStart, index);
             return _CalendarGridDayCell(
               day: day,
               items: projection.eventsOn(day),
@@ -1697,7 +1697,7 @@ class _CalendarWeekGrid extends StatelessWidget {
           ),
           itemCount: 8,
           itemBuilder: (context, index) {
-            final day = weekStart.add(Duration(days: index));
+            final day = calendarAddDays(weekStart, index);
             // The peek day sits outside this week's range, so its events
             // are looked up with a one-off day-scoped projection instead
             // of projection.eventsOn, which is bounded to the selected

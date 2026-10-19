@@ -327,7 +327,7 @@ Future<void> _openInbox(
   );
   await tester.pumpAndSettle();
   if (!tapInbox) return;
-  await tester.tap(find.text('Inbox').last);
+  await tester.tap(find.text('Inkorg').last);
   await tester.pumpAndSettle();
 }
 

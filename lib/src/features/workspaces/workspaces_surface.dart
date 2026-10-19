@@ -57,6 +57,20 @@ class _WorkspacesSurface extends StatelessWidget {
             onTap: () => onNavigate(ProductRouteContract.development),
           ),
         ),
+        if (contextValue.can('event.manage') ||
+            contextValue.can('event.attendance.manage'))
+          Card(
+            child: ListTile(
+              key: const Key('workspace-statistics'),
+              leading: const Icon(Icons.query_stats_outlined),
+              title: Text(strings.feature('Lagstatistik')),
+              subtitle: Text(
+                strings.feature('Närvaro, svar och aktiviteter över tid'),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => onNavigate(ProductRouteContract.teamStatistics),
+            ),
+          ),
         const SizedBox(height: 24),
         Text(
           strings.feature('Planerade arbetsytor'),

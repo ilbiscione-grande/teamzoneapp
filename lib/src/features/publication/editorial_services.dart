@@ -105,12 +105,22 @@ abstract interface class EditorialServices {
   /// Asks the worker to process pending images now; a missed call is picked
   /// up by the next one.
   Future<void> startImageProcessing();
+
+  /// The club's public page for its members, or null when not published.
+  Future<String?> publicClubPage(String clubId);
 }
+
+const _publicSiteOrigin = String.fromEnvironment(
+  'PUBLIC_SITE_URL',
+  defaultValue: 'https://teamzoneapp.se',
+);
 
 class UnconfiguredEditorialServices implements EditorialServices {
   const UnconfiguredEditorialServices();
   Future<T> _fail<T>() =>
       Future.error(StateError('Editorial backend is not configured.'));
+  @override
+  Future<String?> publicClubPage(String clubId) async => null;
   @override
   Future<Map<String, dynamic>> getTeamEventVisibility(String teamId) => _fail();
   @override
@@ -226,6 +236,19 @@ class UnconfiguredEditorialServices implements EditorialServices {
 class SupabaseEditorialServices implements EditorialServices {
   SupabaseEditorialServices(this._client);
   final SupabaseClient _client;
+  @override
+  Future<String?> publicClubPage(String clubId) async {
+    final slug = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'get_club_public_page',
+          params: {'target_club_id': clubId},
+        );
+    return slug is String && slug.isNotEmpty
+        ? '$_publicSiteOrigin/${Uri.encodeComponent(slug)}'
+        : null;
+  }
+
   @override
   Future<Map<String, dynamic>> getTeamEventVisibility(String teamId) async =>
       Map<String, dynamic>.from(

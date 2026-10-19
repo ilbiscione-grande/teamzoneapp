@@ -49,6 +49,14 @@ abstract interface class ProfileServices {
     required String teamId,
     required String personId,
   });
+
+  /// A player's guardians, for those who see the team's roster, and the
+  /// accounts a message to the player and guardians reaches.
+  Future<PersonGuardians> getPersonGuardians({
+    required String clubId,
+    required String teamId,
+    required String personId,
+  });
   Future<void> setPersonContact({
     required String clubId,
     required String teamId,
@@ -121,6 +129,13 @@ abstract interface class ProfileServices {
 }
 
 class UnconfiguredProfileServices implements ProfileServices {
+  @override
+  Future<PersonGuardians> getPersonGuardians({
+    required String clubId,
+    required String teamId,
+    required String personId,
+  }) async => const PersonGuardians();
+
   @override
   Future<List<Map<String, dynamic>>> listPrivacySubjects() async => [];
   @override
@@ -445,6 +460,22 @@ class SupabaseProfileServices implements ProfileServices {
     return _client.storage
         .from('profile-avatars')
         .createSignedUrl(value['object_key'] as String, 3600);
+  }
+
+  @override
+  Future<PersonGuardians> getPersonGuardians({
+    required String clubId,
+    required String teamId,
+    required String personId,
+  }) async {
+    final value = await _rpc('get_person_guardians', {
+      'target_club_id': clubId,
+      'target_team_id': teamId,
+      'target_person_id': personId,
+    });
+    return value is Map
+        ? PersonGuardians.fromJson(value.cast<String, dynamic>())
+        : const PersonGuardians();
   }
 
   @override

@@ -28,6 +28,9 @@ class AssistantTaskBadge extends StatefulWidget {
 class _AssistantTaskBadgeState extends State<AssistantTaskBadge>
     with WidgetsBindingObserver {
   int? _count;
+  // Important ones (today's callups and preparations, clashes) colour the
+  // badge red; general ones alone keep it neutral.
+  int _important = 0;
   // The last complete answer was zero. Kept while a refresh loads, so the
   // button does not flash on every page change.
   bool _confirmedEmpty = false;
@@ -66,11 +69,13 @@ class _AssistantTaskBadgeState extends State<AssistantTaskBadge>
           snapshot.failedContexts.isEmpty &&
           snapshot.tasks.every((task) => !task.stale);
       setState(() {
-        _count = complete
-            ? snapshot.tasks
-                  .where((task) => task.task.assistantStatus == 'active')
-                  .length
-            : null;
+        final active = snapshot.tasks.where(
+          (task) => task.task.assistantStatus == 'active',
+        );
+        _count = complete ? active.length : null;
+        _important = complete
+            ? active.where((task) => task.isImportant).length
+            : 0;
         _confirmedEmpty = _count == 0;
       });
       final wakeTimes =
@@ -113,11 +118,19 @@ class _AssistantTaskBadgeState extends State<AssistantTaskBadge>
       : Semantics(
           label: _count == null
               ? null
+              : _important > 0
+              ? '$_count aktuella uppgifter i assistenten, $_important viktiga'
               : '$_count aktuella uppgifter i assistenten',
           child: Badge.count(
             key: const Key('assistant-task-count'),
             count: _count ?? 0,
             isLabelVisible: (_count ?? 0) > 0,
+            backgroundColor: _important > 0
+                ? Theme.of(context).colorScheme.error
+                : Theme.of(context).colorScheme.secondary,
+            textColor: _important > 0
+                ? Theme.of(context).colorScheme.onError
+                : Theme.of(context).colorScheme.onSecondary,
             child: widget.child,
           ),
         );

@@ -187,7 +187,7 @@ void main() {
       expect(find.text('Nyhetsredaktion'), findsNothing);
       expect(find.text('Publika sidor'), findsNothing);
 
-      await tester.tap(find.text('Inbox').first);
+      await tester.tap(find.text('Inkorg').first);
       await tester.pumpAndSettle();
       final queue = find.byKey(const Key('inbox-support-queue'));
       if (!admin) {

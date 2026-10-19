@@ -44,7 +44,12 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.textContaining('REL-02-laget'), findsWidgets);
 
-        for (final destination in const ['Hem', 'Laget', 'Kalender', 'Inbox']) {
+        for (final destination in const [
+          'Hem',
+          'Laget',
+          'Kalender',
+          'Inkorg',
+        ]) {
           final target = find.text(destination).last;
           expect(target, findsOneWidget, reason: '$role ${viewport.key}');
           await tester.tap(target);

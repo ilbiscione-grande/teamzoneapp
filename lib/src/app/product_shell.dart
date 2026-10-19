@@ -112,16 +112,89 @@ class _ProductShellState extends State<_ProductShell> {
   late Future<_OwnSummary> _ownSummary = _loadOwnSummary();
   // REF-02: Domartillsättning/Domarersättning in the menu for the active club.
   late Future<RefereeSummary> _refereeSummary = _loadRefereeSummary();
+  // The club's public page when published, for "Mer" and "Gå till".
+  String? _publicUrl;
+  RefereeSummary _refereeSummaryValue = const RefereeSummary();
+
+  Future<void> _loadPublicPage() async {
+    final clubId = widget.contextValue.clubId;
+    try {
+      final url = await widget.editorial
+          .publicClubPage(clubId)
+          .timeout(const Duration(seconds: 15));
+      if (mounted && widget.contextValue.clubId == clubId) {
+        setState(() => _publicUrl = url);
+      }
+    } catch (error) {
+      AppErrors.caught('product_shell._loadPublicPage', error);
+    }
+  }
+
+  /// The referee board's club for the active context, if any.
+  ({String id, String name, bool canManage, bool canPay, int pendingReports})?
+  get _refereeClub => _refereeSummaryValue.coordinatorClubs
+      .where((club) => club.id == widget.contextValue.clubId)
+      .firstOrNull;
+
+  String? get _refereeLabel {
+    final club = _refereeClub;
+    if (club == null) return null;
+    return AppStrings.of(
+      context,
+    ).feature(club.canManage ? 'Domartillsättning' : 'Domarersättning');
+  }
+
+  /// Opens a destination from "Mer" or the quick actions: the router, the
+  /// public page in the browser, the referee board or the own profile.
+  void _openAction(String route) {
+    if (route.startsWith('http')) {
+      unawaited(
+        launchUrl(Uri.parse(route), mode: LaunchMode.externalApplication),
+      );
+    } else if (route == _refereeBoardRoute) {
+      final club = _refereeClub;
+      if (club != null) unawaited(_openRefereeBoard(club));
+    } else if (route == _ownProfileRoute) {
+      _openOwnProfile();
+    } else {
+      _router.go(route);
+    }
+  }
+
+  void _openOwnProfile() {
+    _scaffoldKey.currentState?.closeDrawer();
+    final location = _router.routeInformationProvider.value.uri.toString();
+    final hasTeamProfile =
+        widget.contextValue.teamId != null &&
+        widget.contextValue.rolePackage != 'guardian';
+    if (!hasTeamProfile) {
+      _router.go(ProductRouteContract.settings);
+    } else if (!location.startsWith(ProductRouteContract.ownTeamProfile)) {
+      _router.push(ProductRouteContract.ownTeamProfile);
+    }
+  }
+
+  List<_QuickAction> _moreActions(BuildContext context) => _moreActionsFor(
+    context,
+    widget.contextValue,
+    publicUrl: _publicUrl,
+    refereeLabel: _refereeLabel,
+  );
 
   Future<RefereeSummary> _loadRefereeSummary() async {
+    // Not in the middle of the build that first asks for it.
+    await Future<void>.value();
+    RefereeSummary summary;
     try {
-      return await widget.calendar.referees.summary().timeout(
+      summary = await widget.calendar.referees.summary().timeout(
         const Duration(seconds: 15),
       );
     } catch (error) {
       AppErrors.caught('product_shell._loadRefereeSummary', error);
-      return const RefereeSummary();
+      summary = const RefereeSummary();
     }
+    if (mounted) setState(() => _refereeSummaryValue = summary);
+    return summary;
   }
 
   /// Opens the referee board for the active club; the matches start with
@@ -167,7 +240,11 @@ class _ProductShellState extends State<_ProductShell> {
           AppErrors.caught('product_shell._loadOwnSummary', error);
         }
       }
-      return (name: details.displayName, avatar: avatar);
+      // Without a display name, the login address rather than nothing.
+      final name = details.displayName.trim().isNotEmpty
+          ? details.displayName
+          : details.loginEmail ?? details.contactEmail;
+      return (name: name, avatar: avatar);
     } catch (error) {
       AppErrors.caught('product_shell._loadOwnSummary', error);
 
@@ -472,6 +549,11 @@ class _ProductShellState extends State<_ProductShell> {
                   initialPoolInterestId: state.uri.queryParameters['pool'],
                   initialPoolListingId: state.uri.queryParameters['poolad'],
                   initialAction: state.uri.queryParameters['action'],
+                  initialRecipients: [
+                    for (final id
+                        in (state.uri.queryParameters['to'] ?? '').split(','))
+                      if (id.isNotEmpty) id,
+                  ],
                   onNavigate: _navigateFromSurface,
                 )
               : destination.path == ProductRouteContract.workspaces
@@ -843,26 +925,13 @@ class _ProductShellState extends State<_ProductShell> {
     return index < 0 ? 0 : index;
   }
 
-  /// What the active context may put in the bottom bar's fifth slot.
-  FifthSlotAccess get _fifthSlotAccess => FifthSlotAccess(
-    isLeader:
-        widget.contextValue.rolePackage == 'leader' ||
-        widget.contextValue.rolePackages.contains('leader'),
-    hasEconomy: _hasEconomyCapability(widget.contextValue),
-    hasBoard: _hasBoardCapability(widget.contextValue),
-  );
-
-  /// The user's own choice when allowed here, otherwise the role default.
-  FifthSlot _fifthSlot(BuildContext context) => _fifthSlotAccess.resolve(
-    NavigationPreferenceScope.maybeOf(context)?.fifthSlot,
-  );
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => unawaited(_startPush()),
     );
+    unawaited(_loadPublicPage());
     // All imperative pages in this shell have standalone GoRoutes. Reflect
     // their top-most URI on web so pushed event/member pages can be copied
     // and opened directly without sacrificing return-to-origin on close.
@@ -906,6 +975,8 @@ class _ProductShellState extends State<_ProductShell> {
         oldWidget.contextValue.id != widget.contextValue.id) {
       _pendingTeamRequests = _loadPendingTeamRequests();
       _refereeSummary = _loadRefereeSummary();
+      _publicUrl = null;
+      unawaited(_loadPublicPage());
     }
   }
 
@@ -1125,14 +1196,32 @@ class _ProductShellState extends State<_ProductShell> {
                           key: _pageAreaKey,
                           children: [
                             Positioned.fill(
-                              child: Router(
-                                routerDelegate: _router.routerDelegate,
-                                routeInformationParser:
-                                    _router.routeInformationParser,
-                                routeInformationProvider:
-                                    _router.routeInformationProvider,
-                                backButtonDispatcher: _backButtonDispatcher,
-                              ),
+                              // The shell handles back itself (see
+                              // _handleSystemBack). Without this, the nested
+                              // router's "nothing to pop" on Home, Kalender,
+                              // Laget and Inkorg reaches the app, and Android's
+                              // predictive back (targetSdk 36) closes the app.
+                              child:
+                                  NotificationListener<NavigationNotification>(
+                                    onNotification: (notification) {
+                                      if (notification.canHandlePop) {
+                                        return false;
+                                      }
+                                      const NavigationNotification(
+                                        canHandlePop: true,
+                                      ).dispatch(context);
+                                      return true;
+                                    },
+                                    child: Router(
+                                      routerDelegate: _router.routerDelegate,
+                                      routeInformationParser:
+                                          _router.routeInformationParser,
+                                      routeInformationProvider:
+                                          _router.routeInformationProvider,
+                                      backButtonDispatcher:
+                                          _backButtonDispatcher,
+                                    ),
+                                  ),
                             ),
                             if (!showAssistantPanel &&
                                 location != ProductRouteContract.assistant)
@@ -1211,12 +1300,27 @@ class _ProductShellState extends State<_ProductShell> {
                 ? null
                 : LayoutBuilder(
                     builder: (context, constraints) {
-                      final fifth = _fifthSlot(context);
-                      final order = _bottomNavOrder(fifth);
+                      const order = _bottomNavOrder;
+                      final more = _moreActions(context);
+                      final inMore = more.any(
+                        (action) =>
+                            action.route.startsWith('/') &&
+                            Uri.parse(location).path ==
+                                Uri.parse(action.route).path &&
+                            !order.contains(Uri.parse(action.route).path),
+                      );
                       final navigationBar = NavigationBar(
-                        selectedIndex: _indexForBottomNav(location, order),
+                        selectedIndex: inMore
+                            ? order.indexOf(_morePath)
+                            : _indexForBottomNav(location, order),
                         onDestinationSelected: (index) =>
-                            _router.go(order[index]),
+                            order[index] == _morePath
+                            ? _showMoreMenu(
+                                context: context,
+                                actions: more,
+                                onOpen: _openAction,
+                              )
+                            : _router.go(order[index]),
                         labelBehavior:
                             MediaQuery.textScalerOf(context).scale(1) >= 1.5
                             ? NavigationDestinationLabelBehavior
@@ -1225,12 +1329,17 @@ class _ProductShellState extends State<_ProductShell> {
                         destinations: [
                           for (final path in order)
                             NavigationDestination(
+                              key: path == _morePath
+                                  ? const Key('bottom-nav-more')
+                                  : null,
                               icon: Icon(
-                                path == fifth.path
-                                    ? _fifthSlotIcon(fifth)
+                                path == _morePath
+                                    ? Icons.more_horiz
                                     : _destinationFor(path).icon,
                               ),
-                              label: strings.destination(path),
+                              label: path == _morePath
+                                  ? strings.feature('Mer')
+                                  : strings.destination(path),
                             ),
                         ],
                       );
@@ -1263,7 +1372,9 @@ class _ProductShellState extends State<_ProductShell> {
                                     context: context,
                                     contextValue: widget.contextValue,
                                     currentLocation: _currentPageLocation,
-                                    onNavigate: _router.go,
+                                    onNavigate: _openAction,
+                                    publicUrl: _publicUrl,
+                                    refereeLabel: _refereeLabel,
                                   );
                                 }
                               },
@@ -1765,10 +1876,160 @@ extension on _QuickAction {
 ///
 /// Within each page the first action is that page's main one: it is what
 /// the sheet leads with on pages that have no actions of their own.
+/// Special routes the shell opens itself rather than through the router.
+const _refereeBoardRoute = 'teamzone:referee-board';
+const _ownProfileRoute = 'teamzone:own-profile';
+
+/// What the fifth button "Mer" holds, by role and capability. Leaders find
+/// Utveckling and Statistik under Arbetsytor as well.
+List<_QuickAction> _moreActionsFor(
+  BuildContext context,
+  TeamZoneContext contextValue, {
+  String? publicUrl,
+  String? refereeLabel,
+}) {
+  final strings = AppStrings.of(context);
+  final leader =
+      contextValue.rolePackage == 'leader' ||
+      contextValue.rolePackages.contains('leader');
+  return [
+    if (leader)
+      (
+        icon: _destinationFor(ProductRouteContract.workspaces).icon,
+        label: strings.destination(ProductRouteContract.workspaces),
+        route: ProductRouteContract.workspaces,
+      )
+    else
+      (
+        icon: _destinationFor(ProductRouteContract.development).icon,
+        label: strings.destination(ProductRouteContract.development),
+        route: ProductRouteContract.development,
+      ),
+    if (contextValue.can('event.manage') ||
+        contextValue.can('event.attendance.manage'))
+      (
+        icon: Icons.query_stats_outlined,
+        label: strings.feature('Lagstatistik'),
+        route: ProductRouteContract.teamStatistics,
+      ),
+    if (_hasEconomyCapability(contextValue))
+      (
+        icon: Icons.account_balance_wallet_outlined,
+        label: strings.feature('Ekonomi'),
+        route: ProductRouteContract.economy,
+      ),
+    if (_hasBoardCapability(contextValue))
+      (
+        icon: Icons.badge_outlined,
+        label: strings.feature('Styrelse'),
+        route: ProductRouteContract.board,
+      ),
+    if (refereeLabel != null)
+      (
+        icon: Icons.assignment_ind_outlined,
+        label: refereeLabel,
+        route: _refereeBoardRoute,
+      ),
+    if (contextValue.can('club.billing.manage'))
+      (
+        icon: Icons.payments_outlined,
+        label: strings.feature('Abonnemang'),
+        route: ProductRouteContract.billing,
+      ),
+    if (contextValue.can('publication.manage'))
+      (
+        icon: Icons.newspaper_outlined,
+        label: strings.feature('Nyhetsredaktion'),
+        route: ProductRouteContract.editorial,
+      ),
+    if (contextValue.can('publication.manage') ||
+        contextValue.can('team.roster.manage'))
+      (
+        icon: Icons.public_outlined,
+        label: strings.feature('Publika sidor'),
+        route: ProductRouteContract.publication,
+      ),
+    if (publicUrl != null)
+      (
+        icon: Icons.language,
+        label: strings.feature('Vår publika sida'),
+        route: publicUrl,
+      ),
+    (
+      icon: Icons.person_outline,
+      label: strings.feature('Min profil'),
+      route: _ownProfileRoute,
+    ),
+    (
+      icon: Icons.settings_outlined,
+      label: strings.destination(ProductRouteContract.settings),
+      route: ProductRouteContract.settings,
+    ),
+  ];
+}
+
+/// The "Mer" sheet: the fifth button's destinations as a grid.
+Future<void> _showMoreMenu({
+  required BuildContext context,
+  required List<_QuickAction> actions,
+  required ValueChanged<String> onOpen,
+}) => showModalBottomSheet<void>(
+  context: context,
+  useSafeArea: true,
+  isScrollControlled: true,
+  showDragHandle: true,
+  builder: (sheetContext) {
+    final theme = Theme.of(sheetContext);
+    return SafeArea(
+      child: SingleChildScrollView(
+        key: const Key('more-menu'),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              AppStrings.of(sheetContext).feature('Mer'),
+              style: theme.textTheme.titleLarge,
+            ),
+            const SizedBox(height: 16),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final columns = constraints.maxWidth >= 480 ? 4 : 3;
+                final width =
+                    (constraints.maxWidth - 8 * (columns - 1)) / columns;
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final action in actions)
+                      SizedBox(
+                        width: width,
+                        child: _QuickActionTile(
+                          action: action,
+                          onTap: () {
+                            Navigator.of(sheetContext).pop();
+                            onOpen(action.route);
+                          },
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  },
+);
+
 List<_QuickAction> _quickActionsFor(
   BuildContext context,
-  TeamZoneContext contextValue,
-) {
+  TeamZoneContext contextValue, {
+  String? publicUrl,
+  String? refereeLabel,
+}) {
   final strings = AppStrings.of(context);
   final canManageRoster =
       contextValue.can('club.memberships.manage') ||
@@ -1850,44 +2111,14 @@ List<_QuickAction> _quickActionsFor(
       label: strings.feature('Öppna inkorgen'),
       route: ProductRouteContract.inbox,
     ),
-    if (contextValue.can('event.manage') ||
-        contextValue.can('event.attendance.manage'))
-      (
-        icon: Icons.query_stats_outlined,
-        label: strings.feature('Lagstatistik'),
-        route: ProductRouteContract.teamStatistics,
-      ),
-    if (contextValue.can('club.billing.manage'))
-      (
-        icon: Icons.payments_outlined,
-        label: strings.feature('Abonnemang'),
-        route: ProductRouteContract.billing,
-      ),
-    if (_hasEconomyCapability(contextValue))
-      (
-        icon: Icons.account_balance_wallet_outlined,
-        label: strings.feature('Ekonomi'),
-        route: ProductRouteContract.economy,
-      ),
-    if (_hasBoardCapability(contextValue))
-      (
-        icon: Icons.badge_outlined,
-        label: strings.feature('Styrelse'),
-        route: ProductRouteContract.board,
-      ),
-    if (contextValue.can('publication.manage'))
-      (
-        icon: Icons.newspaper_outlined,
-        label: strings.feature('Nyhetsredaktion'),
-        route: ProductRouteContract.editorial,
-      ),
-    if (contextValue.can('publication.manage') ||
-        contextValue.can('team.roster.manage'))
-      (
-        icon: Icons.public_outlined,
-        label: strings.feature('Publika sidor'),
-        route: ProductRouteContract.publication,
-      ),
+    // Everything under "Mer" too: workspaces, statistics, club areas, the
+    // public page, the profile and the settings.
+    ..._moreActionsFor(
+      context,
+      contextValue,
+      publicUrl: publicUrl,
+      refereeLabel: refereeLabel,
+    ),
   ];
 }
 
@@ -1934,10 +2165,17 @@ Future<void> _showQuickActionsMenu({
   required TeamZoneContext contextValue,
   required String currentLocation,
   required ValueChanged<String> onNavigate,
+  String? publicUrl,
+  String? refereeLabel,
 }) {
   final strings = AppStrings.of(context);
   final groups = _groupQuickActions(
-    _quickActionsFor(context, contextValue),
+    _quickActionsFor(
+      context,
+      contextValue,
+      publicUrl: publicUrl,
+      refereeLabel: refereeLabel,
+    ),
     currentLocation,
   );
   return showModalBottomSheet<void>(
@@ -2283,7 +2521,9 @@ class _AppNavigationPanel extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              name.isEmpty ? strings.signOut : name,
+                              name.trim().isEmpty
+                                  ? strings.feature('Min profil')
+                                  : name,
                               key: const Key('drawer-own-name'),
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.titleMedium,
@@ -2358,14 +2598,21 @@ class _AppNavigationPanel extends StatelessWidget {
                     selected: currentLocation.startsWith(path),
                     onTap: () => _go(path),
                   ),
-                _NavPanelRow(
-                  icon: _destinationFor(ProductRouteContract.development).icon,
-                  label: strings.destination(ProductRouteContract.development),
-                  selected: currentLocation.startsWith(
-                    ProductRouteContract.development,
+                // Leaders find Utveckling under Arbetsytor.
+                if (contextValue.rolePackage != 'leader' &&
+                    !contextValue.rolePackages.contains('leader'))
+                  _NavPanelRow(
+                    icon: _destinationFor(
+                      ProductRouteContract.development,
+                    ).icon,
+                    label: strings.destination(
+                      ProductRouteContract.development,
+                    ),
+                    selected: currentLocation.startsWith(
+                      ProductRouteContract.development,
+                    ),
+                    onTap: () => _go(ProductRouteContract.development),
                   ),
-                  onTap: () => _go(ProductRouteContract.development),
-                ),
                 if (contextValue.rolePackage == 'leader' ||
                     contextValue.rolePackages.contains('leader'))
                   _NavPanelRow(

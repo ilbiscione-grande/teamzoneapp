@@ -82,8 +82,15 @@ class ProductRouteContract {
       Uri(path: team, queryParameters: {'action': 'intake'}).toString();
   static String teamApplications() =>
       Uri(path: team, queryParameters: {'action': 'applications'}).toString();
-  static String inboxCompose() =>
-      Uri(path: inbox, queryParameters: {'action': 'compose'}).toString();
+
+  /// [to]: accounts to start with as recipients (when allowed).
+  static String inboxCompose({List<String> to = const []}) => Uri(
+    path: inbox,
+    queryParameters: {
+      'action': 'compose',
+      if (to.isNotEmpty) 'to': to.join(','),
+    },
+  ).toString();
   static String inboxAnnouncement() =>
       Uri(path: inbox, queryParameters: {'action': 'announce'}).toString();
 

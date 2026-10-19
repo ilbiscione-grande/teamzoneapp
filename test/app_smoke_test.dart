@@ -70,7 +70,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Statistik moved to Laget; leaders get Arbetsytor instead.
-    for (final label in ['Hem', 'Laget', 'Kalender', 'Inbox', 'Arbetsytor']) {
+    for (final label in ['Hem', 'Laget', 'Kalender', 'Inkorg', 'Arbetsytor']) {
       await tester.scrollUntilVisible(
         find.text(label),
         250,

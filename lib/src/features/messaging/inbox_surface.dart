@@ -12,6 +12,7 @@ class _InboxSurface extends StatefulWidget {
     this.initialPoolInterestId,
     this.initialPoolListingId,
     this.initialAction,
+    this.initialRecipients = const [],
     required this.onNavigate,
   });
   final TeamZoneContext contextValue;
@@ -33,6 +34,10 @@ class _InboxSurface extends StatefulWidget {
   // (ProductRouteContract.inboxCompose) to open the compose dialog
   // immediately on arrival — see _openInitialAction.
   final String? initialAction;
+
+  /// With compose: the accounts chosen from the start (from a player's
+  /// page: the player and the guardians), where allowed.
+  final List<String> initialRecipients;
   final ValueChanged<String> onNavigate;
   @override
   State<_InboxSurface> createState() => _InboxSurfaceState();
@@ -362,7 +367,14 @@ class _InboxSurfaceState extends State<_InboxSurface>
     }
     _openedInitialAction = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(_compose(announcement: action == 'announce'));
+      if (mounted) {
+        unawaited(
+          _compose(
+            announcement: action == 'announce',
+            preselected: widget.initialRecipients,
+          ),
+        );
+      }
     });
   }
 
@@ -1079,7 +1091,8 @@ class _InboxSurfaceState extends State<_InboxSurface>
         oldWidget.initialPoolListingId != widget.initialPoolListingId) {
       _openInitialPoolConversation();
     }
-    if (oldWidget.initialAction != widget.initialAction) {
+    if (oldWidget.initialAction != widget.initialAction ||
+        !listEquals(oldWidget.initialRecipients, widget.initialRecipients)) {
       _openedInitialAction = false;
       _openInitialAction();
     }
@@ -1776,7 +1789,10 @@ class _InboxSurfaceState extends State<_InboxSurface>
     }
   }
 
-  Future<void> _compose({bool announcement = false}) async {
+  Future<void> _compose({
+    bool announcement = false,
+    List<String> preselected = const [],
+  }) async {
     final strings = AppStrings.of(context);
     List<AllowedRecipient> recipients;
     try {
@@ -1815,6 +1831,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
             widget.contextValue.rolePackage == 'leader' ||
             clubMessagingContext != null,
         startAsAnnouncement: announcement,
+        preselected: preselected,
       ),
     );
     if (draft == null || !mounted) return;
@@ -2606,8 +2623,12 @@ class _ComposeDialog extends StatefulWidget {
     required this.teamName,
     required this.clubName,
     this.startAsAnnouncement = false,
+    this.preselected = const [],
   });
   final List<AllowedRecipient> recipients;
+
+  /// Accounts ticked from the start; those not allowed are left out.
+  final List<String> preselected;
   final bool hasTeamScope;
   final bool canUseClubScope;
   final bool canCreateAnnouncement;
@@ -2624,7 +2645,10 @@ class _ComposeDialogState extends State<_ComposeDialog> {
   final _subject = TextEditingController();
   final _body = TextEditingController();
   final _search = TextEditingController();
-  final Set<String> _selected = {};
+  late final Set<String> _selected = {
+    for (final recipient in widget.recipients)
+      if (widget.preselected.contains(recipient.profileId)) recipient.profileId,
+  };
   final Set<String> _audienceRoles = {};
   // Message or announcement; for a message the thread type follows the
   // number of recipients (see _type).
@@ -3208,7 +3232,7 @@ class _InboxIntake {
 String _inboxTime(BuildContext context, DateTime value) {
   final local = value.toLocal();
   final material = MaterialLocalizations.of(context);
-  return '${material.formatCompactDate(local)} · ${material.formatTimeOfDay(TimeOfDay.fromDateTime(local))}';
+  return '${material.formatShortDate(local)} · ${material.formatTimeOfDay(TimeOfDay.fromDateTime(local))}';
 }
 
 String _notificationPreview(NotificationItem item) {

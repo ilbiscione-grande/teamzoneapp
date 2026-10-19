@@ -401,7 +401,7 @@ void main() {
     await closeSheet();
 
     // Inbox: new message and announcement come first.
-    await tester.tap(find.text('Inbox'));
+    await tester.tap(find.text('Inkorg'));
     await tester.pumpAndSettle();
     await openSheet();
     expect(above('Skicka meddelande', 'Skapa nytt event'), isTrue);

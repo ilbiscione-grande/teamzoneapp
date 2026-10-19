@@ -93,7 +93,7 @@ class CalendarProjection {
   DateTime get dayStart =>
       DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
   DateTime get weekStart =>
-      dayStart.subtract(Duration(days: dayStart.weekday - DateTime.monday));
+      calendarAddDays(dayStart, DateTime.monday - dayStart.weekday);
   DateTime get rangeStart => switch (mode) {
     CalendarViewMode.agenda || CalendarViewMode.day => dayStart,
     CalendarViewMode.week => weekStart,
@@ -101,8 +101,8 @@ class CalendarProjection {
   };
   DateTime? get rangeEnd => switch (mode) {
     CalendarViewMode.agenda => null,
-    CalendarViewMode.day => dayStart.add(const Duration(days: 1)),
-    CalendarViewMode.week => weekStart.add(const Duration(days: 7)),
+    CalendarViewMode.day => calendarAddDays(dayStart, 1),
+    CalendarViewMode.week => calendarAddDays(weekStart, 7),
     CalendarViewMode.month => DateTime(
       selectedDate.year,
       selectedDate.month + 1,
@@ -135,7 +135,7 @@ class CalendarProjection {
   /// leading and trailing days from the neighbouring months show theirs.
   List<CalendarEventSummary> eventsOn(DateTime date) {
     final start = DateTime(date.year, date.month, date.day);
-    final end = start.add(const Duration(days: 1));
+    final end = calendarAddDays(start, 1);
     final result = events
         .where(
           (event) =>
@@ -784,3 +784,17 @@ class SquadCandidate {
     rolePackage: json['role_package'] as String?,
   );
 }
+
+/// [days] calendar days after a local date and time, keeping the clock
+/// time. Adding 24-hour durations goes wrong where summer time starts or
+/// ends: midnight on 25 October plus one day is 23:00 the same day.
+DateTime calendarAddDays(DateTime date, int days) => DateTime(
+  date.year,
+  date.month,
+  date.day + days,
+  date.hour,
+  date.minute,
+  date.second,
+  date.millisecond,
+  date.microsecond,
+);

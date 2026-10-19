@@ -196,27 +196,54 @@ void main() {
         destination.label,
     ];
 
-    testWidgets('players get Inställningar, never Statistik', (tester) async {
+    Future<List<String>> moreLabels(WidgetTester tester) async {
+      await tester.tap(find.byKey(const Key('bottom-nav-more')));
+      await tester.pumpAndSettle();
+      final labels = [
+        for (final text in tester.widgetList<Text>(
+          find.descendant(
+            of: find.byKey(const Key('more-menu')),
+            matching: find.byType(Text),
+          ),
+        ))
+          text.data ?? '',
+      ];
+      return labels;
+    }
+
+    testWidgets('the fifth button is Mer for everyone', (tester) async {
       await pumpPhone(tester, context0(role: 'player'));
-      expect(labels(tester), [
-        'Laget',
-        'Kalender',
-        'Hem',
-        'Inbox',
-        'Inställningar',
-      ]);
+      expect(labels(tester), ['Laget', 'Kalender', 'Hem', 'Inkorg', 'Mer']);
     });
 
-    testWidgets('leaders get Arbetsytor', (tester) async {
-      await pumpPhone(tester, context0(role: 'leader'));
-      expect(labels(tester).last, 'Arbetsytor');
+    testWidgets('a player gets Utveckling, the profile and the settings', (
+      tester,
+    ) async {
+      await pumpPhone(tester, context0(role: 'player'));
+      final more = await moreLabels(tester);
+      expect(more, containsAll(['Utveckling', 'Min profil', 'Inställningar']));
+      expect(more, isNot(contains('Arbetsytor')));
+      expect(more, isNot(contains('Lagstatistik')));
+    });
+
+    testWidgets('leaders get Arbetsytor with Utveckling and Statistik', (
+      tester,
+    ) async {
+      await pumpPhone(
+        tester,
+        context0(role: 'leader', capabilities: {'event.manage'}),
+      );
+      final more = await moreLabels(tester);
+      expect(more, containsAll(['Arbetsytor', 'Lagstatistik']));
       await tester.tap(find.text('Arbetsytor'));
       await tester.pumpAndSettle();
       expect(find.text('Planerade arbetsytor'), findsOneWidget);
       expect(find.byKey(const Key('workspace-development')), findsOneWidget);
+      expect(find.byKey(const Key('workspace-statistics')), findsOneWidget);
+      expect(labels(tester).last, 'Mer');
     });
 
-    testWidgets('a club treasurer gets Ekonomi', (tester) async {
+    testWidgets('a club treasurer finds Ekonomi under Mer', (tester) async {
       await pumpPhone(
         tester,
         context0(
@@ -225,29 +252,7 @@ void main() {
           capabilities: {'economy.read'},
         ),
       );
-      expect(labels(tester).last, 'Ekonomi');
-    });
-
-    testWidgets('an own choice is used when allowed', (tester) async {
-      final preferences = MemoryNavigationPreferences();
-      await preferences.writeFifthSlot(FifthSlot.development);
-      await pumpPhone(
-        tester,
-        context0(role: 'player'),
-        preferences: preferences,
-      );
-      expect(labels(tester).last, 'Utveckling');
-    });
-
-    testWidgets('a choice the role does not allow falls back', (tester) async {
-      final preferences = MemoryNavigationPreferences();
-      await preferences.writeFifthSlot(FifthSlot.economy);
-      await pumpPhone(
-        tester,
-        context0(role: 'player'),
-        preferences: preferences,
-      );
-      expect(labels(tester).last, 'Inställningar');
+      expect(await moreLabels(tester), contains('Ekonomi'));
     });
   });
 

@@ -835,6 +835,15 @@ void main() {
       findsNothing,
     );
   });
+  testWidgets('Påminn sits next to the search and opens the review', (
+    tester,
+  ) async {
+    final calendar = _Calendar();
+    await _openParticipants(tester, calendar);
+    await tester.tap(find.byKey(const ValueKey('participants-remind-all')));
+    await tester.pumpAndSettle();
+    expect(find.text('Granska påminnelser'), findsOneWidget);
+  });
   testWidgets('bulk reminder previews recipients and allows deselection', (
     tester,
   ) async {

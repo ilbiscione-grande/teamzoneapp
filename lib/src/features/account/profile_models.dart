@@ -283,3 +283,49 @@ class ProfileException implements Exception {
   @override
   String toString() => 'ProfileException($code)';
 }
+
+/// UX: a player's guardians on the player's page.
+class PersonGuardian {
+  const PersonGuardian({
+    required this.personId,
+    required this.name,
+    this.hasAccount = false,
+    this.contactEmail,
+    this.phone,
+    this.canSeeContact = false,
+  });
+  factory PersonGuardian.fromJson(Map<String, dynamic> json) => PersonGuardian(
+    personId: json['person_id'] as String,
+    name: json['name'] as String? ?? '',
+    hasAccount: json['has_account'] == true,
+    contactEmail: json['contact_email'] as String?,
+    phone: json['phone'] as String?,
+    canSeeContact: json['can_see_contact'] == true,
+  );
+  final String personId, name;
+  final bool hasAccount, canSeeContact;
+  final String? contactEmail, phone;
+}
+
+class PersonGuardians {
+  const PersonGuardians({
+    this.guardians = const [],
+    this.messageProfileIds = const [],
+  });
+  factory PersonGuardians.fromJson(Map<String, dynamic> json) =>
+      PersonGuardians(
+        guardians: [
+          for (final row
+              in (json['guardians'] as List? ?? const []).whereType<Map>())
+            PersonGuardian.fromJson(row.cast<String, dynamic>()),
+        ],
+        messageProfileIds: [
+          for (final id in (json['message_profile_ids'] as List? ?? const []))
+            if (id is String) id,
+        ],
+      );
+  final List<PersonGuardian> guardians;
+
+  /// The player's and the guardians' accounts, for a message.
+  final List<String> messageProfileIds;
+}

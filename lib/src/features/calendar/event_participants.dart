@@ -1030,6 +1030,28 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                     ),
                   ),
                 ),
+                // Reminding is the common action before an activity: its own
+                // button, shown while someone can be reminded.
+                if (!_eventEnded &&
+                    widget.squad.can('remind_callup') &&
+                    people.any((p) => p.canRemindAt(DateTime.now())))
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Tooltip(
+                      message: _s.feature('Påminn alla obesvarade'),
+                      child: TextButton.icon(
+                        key: const ValueKey('participants-remind-all'),
+                        onPressed: _working || _selectionFrozen
+                            ? null
+                            : _remindAllUnanswered,
+                        icon: const Icon(
+                          Icons.notifications_active_outlined,
+                          size: 20,
+                        ),
+                        label: Text(_s.feature('Påminn')),
+                      ),
+                    ),
+                  ),
                 PopupMenuButton<String>(
                   tooltip: _s.feature('Fler åtgärder'),
                   enabled: !_working && !_selectionFrozen,
