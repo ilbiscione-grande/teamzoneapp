@@ -240,8 +240,12 @@ class _ProductShellState extends State<_ProductShell> {
           AppErrors.caught('product_shell._loadOwnSummary', error);
         }
       }
-      // Without a display name, the login address rather than nothing.
-      final name = details.displayName.trim().isNotEmpty
+      // The name the own profile in the active team shows, else the
+      // account's name, else the login address rather than nothing.
+      final teamName = await _ownNameInTeam();
+      final name = teamName != null && teamName.trim().isNotEmpty
+          ? teamName
+          : details.displayName.trim().isNotEmpty
           ? details.displayName
           : details.loginEmail ?? details.contactEmail;
       return (name: name, avatar: avatar);
@@ -249,6 +253,21 @@ class _ProductShellState extends State<_ProductShell> {
       AppErrors.caught('product_shell._loadOwnSummary', error);
 
       return (name: null, avatar: null);
+    }
+  }
+
+  /// Your own person's name in the active team; null without one.
+  Future<String?> _ownNameInTeam() async {
+    final teamId = widget.contextValue.teamId;
+    if (teamId == null) return null;
+    try {
+      final roles = await widget.roster
+          .listTeamRoles(clubId: widget.contextValue.clubId, teamId: teamId)
+          .timeout(const Duration(seconds: 15));
+      return roles.roles.where((role) => role.isSelf).firstOrNull?.name;
+    } catch (error) {
+      AppErrors.caught('product_shell._ownNameInTeam', error);
+      return null;
     }
   }
 
@@ -977,6 +996,7 @@ class _ProductShellState extends State<_ProductShell> {
       _refereeSummary = _loadRefereeSummary();
       _publicUrl = null;
       unawaited(_loadPublicPage());
+      _ownSummary = _loadOwnSummary();
     }
   }
 

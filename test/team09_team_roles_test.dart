@@ -481,10 +481,8 @@ void main() {
       ],
     );
     await _openRoster(tester, roster);
-    // No players yet, but the leader is listed in the squad.
-    expect(find.text('LEDARE (1)'), findsOneWidget);
-    expect(find.text('Inga spelare i truppen ännu.'), findsOneWidget);
-    expect(find.text('Thomas Emilson (du)'), findsOneWidget);
+    // A club functionary is not one of the team's leaders until added.
+    expect(find.textContaining('LEDARE ('), findsNothing);
     await _openRolesSheet(tester);
     expect(find.text('Klubbfunktionär'), findsWidgets);
     await tester.tap(find.byKey(const ValueKey('add-team-leader')));
@@ -1035,6 +1033,24 @@ void main() {
       find.text('Behörighet: Klubbfunktionär – hela klubben'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('a club functionary without a leader role is not a team leader', (
+    tester,
+  ) async {
+    final roster = _Roster(
+      roles: [
+        const TeamRole(personId: 'lars', name: 'Lars Ledare', role: 'leader'),
+        const TeamRole(
+          personId: 'thomas',
+          name: 'Thomas Emilson',
+          role: 'club_functionary',
+        ),
+      ],
+    );
+    await _openRoster(tester, roster);
+    expect(find.byKey(const ValueKey('roster-leader-lars')), findsOneWidget);
+    expect(find.byKey(const ValueKey('roster-leader-thomas')), findsNothing);
   });
 
   testWidgets('read-only roster viewer sees leaders without actions', (

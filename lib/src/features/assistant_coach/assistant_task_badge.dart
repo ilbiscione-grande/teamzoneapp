@@ -121,17 +121,40 @@ class _AssistantTaskBadgeState extends State<AssistantTaskBadge>
               : _important > 0
               ? '$_count aktuella uppgifter i assistenten, $_important viktiga'
               : '$_count aktuella uppgifter i assistenten',
-          child: Badge.count(
-            key: const Key('assistant-task-count'),
-            count: _count ?? 0,
-            isLabelVisible: (_count ?? 0) > 0,
-            backgroundColor: _important > 0
-                ? Theme.of(context).colorScheme.error
-                : Theme.of(context).colorScheme.secondary,
-            textColor: _important > 0
-                ? Theme.of(context).colorScheme.onError
-                : Theme.of(context).colorScheme.onSecondary,
-            child: widget.child,
+          // Important tasks add a yellow "!" on the other corner, so the
+          // closed assistant shows that something needs doing.
+          child: Badge(
+            key: const Key('assistant-task-important'),
+            isLabelVisible: _important > 0,
+            alignment: AlignmentDirectional.topStart,
+            offset: const Offset(-6, -6),
+            largeSize: 24,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            backgroundColor: const Color(0xFFFFC107),
+            textColor: Colors.black,
+            textStyle: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+            label: const Text('!'),
+            child: Badge.count(
+              key: const Key('assistant-task-count'),
+              count: _count ?? 0,
+              isLabelVisible: (_count ?? 0) > 0,
+              largeSize: 24,
+              padding: const EdgeInsets.symmetric(horizontal: 7),
+              textStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+              backgroundColor: _important > 0
+                  ? Theme.of(context).colorScheme.error
+                  : Theme.of(context).colorScheme.secondary,
+              textColor: _important > 0
+                  ? Theme.of(context).colorScheme.onError
+                  : Theme.of(context).colorScheme.onSecondary,
+              child: widget.child,
+            ),
           ),
         );
 }

@@ -1064,7 +1064,11 @@ class _RosterSurfaceState extends State<_RosterSurface> {
       final entry = byPerson.putIfAbsent(role.personId, () => (role, []));
       entry.$2.add(role.role);
     }
-    return byPerson.values.toList();
+    // Only the team's leaders: a club functionary without a leader role in
+    // this team is not one of its leaders.
+    return byPerson.values
+        .where((entry) => entry.$2.contains('leader'))
+        .toList();
   }
 
   Widget _rosterGroupHeader(String label, int count) => Padding(

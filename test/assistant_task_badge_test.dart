@@ -44,6 +44,37 @@ void main() {
     await tester.pump();
   }
 
+  testWidgets('important tasks add a yellow exclamation badge', (tester) async {
+    final today = AssistantTask(
+      context: fixtures.team('a'),
+      eventId: 'today',
+      stale: false,
+      generatedAt: DateTime.now(),
+      startsAt: DateTime.now().add(const Duration(hours: 3)),
+      task: const LeaderHomeTask(
+        kind: 'pending_callups',
+        title: 'Kallelser',
+        count: 16,
+        route: '/calendar?event=today',
+        priority: 1,
+        assistantStatus: 'active',
+      ),
+    );
+    await mount(
+      tester,
+      () async => AssistantTaskSnapshot([today, task('active')], []),
+    );
+    final important = find.byKey(const Key('assistant-task-important'));
+    expect(tester.widget<Badge>(important).isLabelVisible, isTrue);
+    expect(find.text('!'), findsOneWidget);
+    await mount(
+      tester,
+      () async => AssistantTaskSnapshot([task('active')], []),
+      token: 1,
+    );
+    expect(tester.widget<Badge>(important).isLabelVisible, isFalse);
+  });
+
   testWidgets('counts only active cards and hides zero', (tester) async {
     await mount(
       tester,
@@ -55,13 +86,23 @@ void main() {
       ], []),
     );
     expect(find.text('2'), findsOneWidget);
-    expect(tester.widget<Badge>(find.byType(Badge)).isLabelVisible, isTrue);
+    expect(
+      tester
+          .widget<Badge>(find.byKey(const Key('assistant-task-count')))
+          .isLabelVisible,
+      isTrue,
+    );
     await mount(
       tester,
       () async => const AssistantTaskSnapshot([], []),
       token: 1,
     );
-    expect(tester.widget<Badge>(find.byType(Badge)).isLabelVisible, isFalse);
+    expect(
+      tester
+          .widget<Badge>(find.byKey(const Key('assistant-task-count')))
+          .isLabelVisible,
+      isFalse,
+    );
   });
 
   testWidgets('does not display an incomplete or stale count', (tester) async {
@@ -69,13 +110,23 @@ void main() {
       tester,
       () async => AssistantTaskSnapshot([task('active')], [fixtures.team('b')]),
     );
-    expect(tester.widget<Badge>(find.byType(Badge)).isLabelVisible, isFalse);
+    expect(
+      tester
+          .widget<Badge>(find.byKey(const Key('assistant-task-count')))
+          .isLabelVisible,
+      isFalse,
+    );
     await mount(
       tester,
       () async => AssistantTaskSnapshot([task('active', stale: true)], []),
       token: 1,
     );
-    expect(tester.widget<Badge>(find.byType(Badge)).isLabelVisible, isFalse);
+    expect(
+      tester
+          .widget<Badge>(find.byKey(const Key('assistant-task-count')))
+          .isLabelVisible,
+      isFalse,
+    );
   });
 
   testWidgets('late response cannot replace the new context count', (
