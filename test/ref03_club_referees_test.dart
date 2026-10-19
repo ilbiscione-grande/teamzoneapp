@@ -188,15 +188,16 @@ Widget _wrap(Widget child) => MaterialApp(
 );
 
 void main() {
-  testWidgets('the home shows Domartillsättning and Mina domaruppdrag', (
-    tester,
-  ) async {
-    await tester.pumpWidget(_wrap(RefereeHomeCards(services: _Services())));
-    await tester.pumpAndSettle();
-    expect(find.text('Domartillsättning'), findsOneWidget);
-    expect(find.text('Mina domaruppdrag'), findsOneWidget);
-    expect(find.text('2 lediga uppdrag att anmäla sig till'), findsOneWidget);
-  });
+  testWidgets(
+    'the home shows Mina domaruppdrag; Domartillsättning is in the menu',
+    (tester) async {
+      await tester.pumpWidget(_wrap(RefereeHomeCards(services: _Services())));
+      await tester.pumpAndSettle();
+      expect(find.text('Domartillsättning'), findsNothing);
+      expect(find.text('Mina domaruppdrag'), findsOneWidget);
+      expect(find.text('2 lediga uppdrag att anmäla sig till'), findsOneWidget);
+    },
+  );
 
   testWidgets('the domaransvarig assigns, approves a sign-up and sets a rule', (
     tester,
@@ -246,6 +247,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('17 år · 4 uppdrag i år'), findsOneWidget);
     expect(find.text('Lägg till domaransvarig'), findsOneWidget);
+  });
+
+  testWidgets('the board starts with the active team, the club a tap away', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ClubRefereeBoardPage(
+          services: _Services(),
+          clubId: 'eksjo',
+          clubName: 'IF Eksjö Fotboll',
+          teamId: 'a-lag',
+          teamName: 'A-lag',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Inga matcher i perioden.'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('referee-board-only-team')));
+    await tester.pumpAndSettle();
+    expect(find.text('2 matcher saknar föreningsdomare.'), findsOneWidget);
   });
 
   testWidgets('a club referee signs up for an open place', (tester) async {

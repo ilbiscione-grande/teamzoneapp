@@ -110,6 +110,47 @@ class _ProductShellState extends State<_ProductShell> {
   late Future<AssistantIdentityPreference> _assistantPreference;
   // Your own profile picture for the menu; none on failure.
   late Future<_OwnSummary> _ownSummary = _loadOwnSummary();
+  // REF-02: Domartillsättning/Domarersättning in the menu for the active club.
+  late Future<RefereeSummary> _refereeSummary = _loadRefereeSummary();
+
+  Future<RefereeSummary> _loadRefereeSummary() async {
+    try {
+      return await widget.calendar.referees.summary().timeout(
+        const Duration(seconds: 15),
+      );
+    } catch (error) {
+      AppErrors.caught('product_shell._loadRefereeSummary', error);
+      return const RefereeSummary();
+    }
+  }
+
+  /// Opens the referee board for the active club; the matches start with
+  /// the active team.
+  Future<void> _openRefereeBoard(
+    ({String id, String name, bool canManage, bool canPay, int pendingReports})
+    club,
+  ) async {
+    _scaffoldKey.currentState?.closeDrawer();
+    final navigator = _productNavigatorKey.currentState;
+    if (navigator == null) return;
+    await navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => ClubRefereeBoardPage(
+          services: widget.calendar.referees,
+          clubId: club.id,
+          clubName: club.name,
+          canManage: club.canManage,
+          canPay: club.canPay,
+          teamId: widget.contextValue.teamId,
+          teamName: widget.contextValue.teamName,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    setState(() {
+      _refereeSummary = _loadRefereeSummary();
+    });
+  }
 
   /// Your current name and picture for the menu. Reloaded after you edit
   /// your details; falls back to the name from sign-in.
@@ -864,6 +905,7 @@ class _ProductShellState extends State<_ProductShell> {
     if (oldWidget.contextValue.clubId != widget.contextValue.clubId ||
         oldWidget.contextValue.id != widget.contextValue.id) {
       _pendingTeamRequests = _loadPendingTeamRequests();
+      _refereeSummary = _loadRefereeSummary();
     }
   }
 
@@ -977,6 +1019,8 @@ class _ProductShellState extends State<_ProductShell> {
           onTeamCreated: widget.onTeamCreated,
           pendingTeamRequests: _pendingTeamRequests,
           onTeamRequestsChanged: _refreshPendingTeamRequests,
+          refereeSummary: _refereeSummary,
+          onOpenRefereeBoard: _openRefereeBoard,
           onSignOut: widget.onSignOut,
           closeDrawer: usesSidebar
               ? null
@@ -2127,7 +2171,17 @@ class _AppNavigationPanel extends StatelessWidget {
     required this.closeDrawer,
     required this.onOpenOwnProfile,
     required this.ownSummary,
+    this.refereeSummary,
+    this.onOpenRefereeBoard,
   });
+
+  /// REF-02: the clubs where the person is domaransvarig or pays referees.
+  final Future<RefereeSummary>? refereeSummary;
+  final void Function(
+    ({String id, String name, bool canManage, bool canPay, int pendingReports})
+    club,
+  )?
+  onOpenRefereeBoard;
 
   final TeamZoneProfile profile;
   final TeamZoneContext contextValue;
@@ -2321,6 +2375,38 @@ class _AppNavigationPanel extends StatelessWidget {
                       ProductRouteContract.workspaces,
                     ),
                     onTap: () => _go(ProductRouteContract.workspaces),
+                  ),
+                // REF-02: one row for the active club's referees.
+                if (refereeSummary != null && onOpenRefereeBoard != null)
+                  FutureBuilder<RefereeSummary>(
+                    future: refereeSummary,
+                    builder: (context, snapshot) {
+                      final club = snapshot.data?.coordinatorClubs
+                          .where((item) => item.id == contextValue.clubId)
+                          .firstOrNull;
+                      if (club == null) return const SizedBox.shrink();
+                      final label = strings.feature(
+                        club.canManage
+                            ? 'Domartillsättning'
+                            : 'Domarersättning',
+                      );
+                      return Tooltip(
+                        message: label,
+                        child: ListTile(
+                          key: const Key('drawer-referee-board'),
+                          leading: Icon(
+                            club.canManage
+                                ? Icons.assignment_ind_outlined
+                                : Icons.payments_outlined,
+                          ),
+                          title: Text(label),
+                          trailing: club.canManage && club.pendingReports > 0
+                              ? Badge.count(count: club.pendingReports)
+                              : null,
+                          onTap: () => onOpenRefereeBoard!(club),
+                        ),
+                      );
+                    },
                   ),
                 if (hasAdminLinks) ...[
                   const Divider(height: 1),

@@ -138,6 +138,83 @@ class _EventRefereesSectionState extends State<EventRefereesSection> {
     );
   }
 
+  /// REF-02: the domaransvarig asks whether a club referee refereed.
+  Future<void> _answerControl(String reportId, bool confirmed) async {
+    final services = widget.services;
+    if (services == null) return;
+    String? note;
+    if (!confirmed) {
+      var text = '';
+      note = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Domaren dömde inte'),
+          content: TextField(
+            key: const ValueKey('referee-control-note'),
+            autofocus: true,
+            maxLength: 500,
+            decoration: const InputDecoration(
+              labelText: 'Vad hände? (frivilligt)',
+            ),
+            onChanged: (value) => text = value,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Avbryt'),
+            ),
+            FilledButton(
+              key: const ValueKey('referee-control-note-send'),
+              onPressed: () => Navigator.pop(dialogContext, text.trim()),
+              child: const Text('Skicka'),
+            ),
+          ],
+        ),
+      );
+      if (note == null || !mounted) return;
+    }
+    await _run(() => services.answerControl(reportId, confirmed, note: note));
+  }
+
+  Widget _controlQuestion(
+    BuildContext context,
+    ({String id, String slot, String name}) question,
+  ) => Container(
+    key: ValueKey('event-referee-control-${question.id}'),
+    margin: const EdgeInsets.only(top: 8),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.secondaryContainer,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Kontrollfråga från domaransvarig: dömde ${question.name} matchen som ${refereeSlotLabel(question.slot).toLowerCase()}?',
+        ),
+        Wrap(
+          alignment: WrapAlignment.end,
+          spacing: 8,
+          children: [
+            OutlinedButton(
+              key: ValueKey('event-referee-control-no-${question.id}'),
+              onPressed: _busy
+                  ? null
+                  : () => _answerControl(question.id, false),
+              child: const Text('Nej'),
+            ),
+            FilledButton(
+              key: ValueKey('event-referee-control-yes-${question.id}'),
+              onPressed: _busy ? null : () => _answerControl(question.id, true),
+              child: const Text('Ja'),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+
   String _stateLabel(EventReferee referee) => switch (referee.state) {
     'awaiting_referee' => 'Väntar på svar från domaren',
     'awaiting_team' => 'Vill döma matchen',
@@ -155,7 +232,10 @@ class _EventRefereesSectionState extends State<EventRefereesSection> {
         final view = snapshot.data;
         if (view == null) return const SizedBox.shrink();
         final organiser = view.canManage || view.canManageClubReferees;
-        if (view.slots == 0 && view.referees.isEmpty && !organiser) {
+        if (view.slots == 0 &&
+            view.referees.isEmpty &&
+            view.controlQuestions.isEmpty &&
+            !organiser) {
           return const SizedBox.shrink();
         }
         final theme = Theme.of(context);
@@ -226,6 +306,8 @@ class _EventRefereesSectionState extends State<EventRefereesSection> {
                 ],
                 for (final slot in refereeSlots.take(view.slots))
                   _slot(context, view, slot),
+                for (final question in view.controlQuestions)
+                  _controlQuestion(context, question),
                 if (view.slots == 0 && view.canManage)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
@@ -355,7 +437,8 @@ class _RefereeChoice {
   final String? personId, writtenName;
 }
 
-/// Search referees in TeamZone, or write in one who is not.
+/// One search field: referees in TeamZone as you type, and when the one
+/// you look for is not there, adding them by the name you wrote.
 class _RefereePicker extends StatefulWidget {
   const _RefereePicker({required this.services, required this.slot});
   final RefereeServices services;
@@ -367,27 +450,24 @@ class _RefereePicker extends StatefulWidget {
 
 class _RefereePickerState extends State<_RefereePicker> {
   final _query = TextEditingController();
-  final _written = TextEditingController();
   Timer? _debounce;
   List<RefereeCandidate>? _results;
-  bool _writeIn = false;
 
   @override
   void dispose() {
     _debounce?.cancel();
     _query.dispose();
-    _written.dispose();
     super.dispose();
   }
 
   void _search(String value) {
     _debounce?.cancel();
+    final text = value.trim();
+    if (text.length < 2) {
+      setState(() => _results = null);
+      return;
+    }
     _debounce = Timer(const Duration(milliseconds: 300), () async {
-      final text = value.trim();
-      if (text.length < 2) {
-        if (mounted) setState(() => _results = null);
-        return;
-      }
       try {
         final results = await widget.services.searchReferees(text);
         if (mounted && _query.text.trim() == text) {
@@ -403,6 +483,15 @@ class _RefereePickerState extends State<_RefereePicker> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final text = _query.text.trim();
+    final results = _results;
+    // Offered once a search is done and no hit has exactly that name.
+    final canAdd =
+        results != null &&
+        text.length >= 2 &&
+        !results.any(
+          (candidate) => candidate.name.toLowerCase() == text.toLowerCase(),
+        );
     return Padding(
       padding: EdgeInsets.fromLTRB(
         16,
@@ -419,91 +508,82 @@ class _RefereePickerState extends State<_RefereePicker> {
             style: theme.textTheme.titleLarge,
           ),
           const SizedBox(height: 8),
-          SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(value: false, label: Text('Sök i TeamZone')),
-              ButtonSegment(value: true, label: Text('Skriv in namn')),
-            ],
-            selected: {_writeIn},
-            onSelectionChanged: (value) =>
-                setState(() => _writeIn = value.first),
+          TextField(
+            key: const ValueKey('referee-search'),
+            controller: _query,
+            autofocus: true,
+            maxLength: 120,
+            onChanged: _search,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search),
+              labelText: 'Sök domare',
+              counterText: '',
+              suffixIcon: text.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Rensa',
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        _query.clear();
+                        _search('');
+                      },
+                    ),
+            ),
           ),
-          const SizedBox(height: 12),
-          if (_writeIn) ...[
-            TextField(
-              key: const ValueKey('referee-written-name'),
-              controller: _written,
-              autofocus: true,
-              maxLength: 120,
-              decoration: const InputDecoration(
-                labelText: 'Domarens namn',
-                helperText:
-                    'För en domare som inte finns i TeamZone. Sparas direkt som bekräftad.',
-              ),
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton(
-                key: const ValueKey('referee-written-save'),
-                onPressed: () {
-                  final name = _written.text.trim();
-                  if (name.isEmpty) return;
-                  Navigator.pop(context, _RefereeChoice(writtenName: name));
-                },
-                child: const Text('Spara'),
-              ),
-            ),
-          ] else ...[
-            TextField(
-              key: const ValueKey('referee-search'),
-              controller: _query,
-              autofocus: true,
-              onChanged: _search,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
-                labelText: 'Sök domare eller domarklubb',
-              ),
-            ),
-            const SizedBox(height: 8),
-            if (_results == null)
-              Text(
-                'Skriv minst två bokstäver.',
-                style: theme.textTheme.bodySmall,
-              )
-            else if (_results!.isEmpty)
-              Text(
-                'Ingen träff. Du kan skriva in domaren i stället.',
-                style: theme.textTheme.bodySmall,
-              )
-            else
-              Flexible(
-                child: ListView(
-                  shrinkWrap: true,
-                  children: [
-                    for (final candidate in _results!)
-                      ListTile(
-                        key: ValueKey(
-                          'referee-candidate-${candidate.personId}',
-                        ),
-                        leading: const Icon(Icons.sports),
-                        title: Text(candidate.name),
-                        subtitle: Text(
-                          [
-                            candidate.clubName,
-                            candidate.confirmable
-                                ? 'bekräftar förfrågan'
-                                : 'läggs till direkt',
-                          ].join(' · '),
-                        ),
-                        onTap: () => Navigator.pop(
-                          context,
-                          _RefereeChoice(personId: candidate.personId),
-                        ),
+          const SizedBox(height: 8),
+          if (results == null)
+            Text(
+              'Skriv domarens namn eller domarklubb.',
+              style: theme.textTheme.bodySmall,
+            )
+          else
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final candidate in results)
+                    ListTile(
+                      key: ValueKey('referee-candidate-${candidate.personId}'),
+                      leading: const Icon(Icons.sports),
+                      title: Text(candidate.name),
+                      subtitle: Text(
+                        [
+                          candidate.clubName,
+                          candidate.confirmable
+                              ? 'bekräftar förfrågan'
+                              : 'läggs till direkt',
+                        ].join(' · '),
                       ),
-                  ],
-                ),
+                      onTap: () => Navigator.pop(
+                        context,
+                        _RefereeChoice(personId: candidate.personId),
+                      ),
+                    ),
+                  if (results.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                        'Ingen domare i TeamZone heter så.',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  if (canAdd)
+                    ListTile(
+                      key: const ValueKey('referee-add-written'),
+                      leading: const Icon(Icons.person_add_alt_1_outlined),
+                      title: Text('Lägg till "$text"'),
+                      subtitle: const Text(
+                        'För en domare som inte finns i TeamZone. Sparas direkt som bekräftad.',
+                      ),
+                      onTap: () => Navigator.pop(
+                        context,
+                        _RefereeChoice(writtenName: text),
+                      ),
+                    ),
+                ],
               ),
-          ],
+            ),
         ],
       ),
     );

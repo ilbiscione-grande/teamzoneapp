@@ -25,6 +25,8 @@ String refereeErrorText(Object error) {
     'not_pending': 'Förfrågan är redan besvarad.',
     'too_young': 'Domaren behöver vara minst 3 år äldre än lagets spelare.',
     'no_assignment': 'Personen behöver ha en roll i klubben först.',
+    'nothing_to_pay': 'Det finns inga godkända uppdrag att betala ut.',
+    'in_payout': 'Uppdraget finns redan på en utbetalningslista.',
   };
   for (final entry in known.entries) {
     if (text.contains(entry.key)) return entry.value;
@@ -34,6 +36,24 @@ String refereeErrorText(Object error) {
 
 DateTime? _time(Object? value) =>
     value is String ? DateTime.tryParse(value) : null;
+
+List<Map<String, dynamic>> _maps(Object? value) => [
+  if (value is List)
+    for (final row in value.whereType<Map>()) row.cast<String, dynamic>(),
+];
+
+int _int(Object? value) => (value as num?)?.toInt() ?? 0;
+
+/// "1 250 kr", with a non-breaking space between thousands.
+String formatKronor(int amount) {
+  final digits = amount.abs().toString();
+  final grouped = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) grouped.write('\u00a0');
+    grouped.write(digits[i]);
+  }
+  return '${amount < 0 ? '-' : ''}$grouped\u00a0kr';
+}
 
 class EventReferee {
   const EventReferee({
@@ -73,9 +93,18 @@ class EventRefereeView {
     required this.referees,
     this.refereeKind,
     this.canManageClubReferees = false,
+    this.controlQuestions = const [],
   });
   factory EventRefereeView.fromJson(Map<String, dynamic> json) =>
       EventRefereeView(
+        controlQuestions: [
+          for (final row in _maps(json['control_questions']))
+            (
+              id: row['id'] as String,
+              slot: row['slot'] as String? ?? 'main',
+              name: row['name'] as String? ?? '',
+            ),
+        ],
         slots: (json['slots'] as num?)?.toInt() ?? 0,
         canManage: json['can_manage'] == true,
         refereeKind: json['referee_kind'] as String?,
@@ -97,6 +126,10 @@ class EventRefereeView {
 
   /// The domaransvarig: assigns club referees and answers their sign-ups.
   final bool canManageClubReferees;
+
+  /// REF-02: the domaransvarig asks the team's leaders whether a club
+  /// referee refereed the match.
+  final List<({String id, String slot, String name})> controlQuestions;
 
   EventReferee? inSlot(String slot) =>
       referees.where((referee) => referee.slot == slot).firstOrNull;
@@ -410,15 +443,296 @@ class RefereeSummary {
           in (json['coordinator_clubs'] as List? ?? const [])
               .whereType<Map>()
               .map((row) => row.cast<String, dynamic>()))
-        (id: row['club_id'] as String, name: row['club_name'] as String? ?? ''),
+        (
+          id: row['club_id'] as String,
+          name: row['club_name'] as String? ?? '',
+          canManage: row['can_manage'] != false,
+          canPay: row['can_pay'] == true,
+          pendingReports: _int(row['pending_reports']),
+        ),
     ],
     openCount: (json['open_count'] as num?)?.toInt() ?? 0,
   );
 
   /// The person, or a child they answer for, is a club referee.
   final bool clubReferee;
-  final List<({String id, String name})> coordinatorClubs;
+
+  /// Clubs where the person is domaransvarig or pays referees.
+  final List<
+    ({String id, String name, bool canManage, bool canPay, int pendingReports})
+  >
+  coordinatorClubs;
   final int openCount;
+}
+
+/// REF-02 phase 2: a club referee's report for a played match.
+class ClubRefereeReport {
+  const ClubRefereeReport({
+    required this.id,
+    required this.slot,
+    required this.name,
+    required this.amount,
+    required this.state,
+    required this.match,
+    this.personId,
+    this.refereeNote,
+    this.controlState,
+    this.controlNote,
+    this.rejectReason,
+    this.payoutId,
+  });
+  factory ClubRefereeReport.fromJson(Map<String, dynamic> json) =>
+      ClubRefereeReport(
+        id: json['id'] as String,
+        slot: json['slot'] as String? ?? 'main',
+        name: json['name'] as String? ?? '',
+        amount: _int(json['amount']),
+        state: json['state'] as String? ?? 'pending',
+        match: RefereeMatch.fromJson(
+          (json['match'] as Map? ?? const {'event_id': ''})
+              .cast<String, dynamic>(),
+        ),
+        personId: json['person_id'] as String?,
+        refereeNote: json['referee_note'] as String?,
+        controlState: json['control_state'] as String?,
+        controlNote: json['control_note'] as String?,
+        rejectReason: json['reject_reason'] as String?,
+        payoutId: json['payout_id'] as String?,
+      );
+  final String id, slot, name;
+  final int amount;
+
+  /// pending, approved, rejected or paid.
+  final String state;
+  final RefereeMatch match;
+  final String? personId, refereeNote, rejectReason, payoutId;
+
+  /// asked, confirmed or denied by the team's leader; null when not asked.
+  final String? controlState;
+  final String? controlNote;
+
+  /// Not yet on a payout list: can be decided and its amount changed.
+  bool get open => payoutId == null && state != 'paid';
+}
+
+String refereeReportStateLabel(String state) => switch (state) {
+  'pending' => 'Att godkänna',
+  'approved' => 'Godkänd',
+  'rejected' => 'Inte godkänd',
+  'paid' => 'Utbetald',
+  _ => state,
+};
+
+class ClubRefereeReports {
+  const ClubRefereeReports({
+    this.reports = const [],
+    this.counts = const {},
+    this.canManage = false,
+    this.canPay = false,
+  });
+  factory ClubRefereeReports.fromJson(Map<String, dynamic> json) =>
+      ClubRefereeReports(
+        reports: [
+          for (final row in _maps(json['reports']))
+            ClubRefereeReport.fromJson(row),
+        ],
+        counts: {
+          for (final entry in (json['counts'] as Map? ?? const {}).entries)
+            entry.key as String: _int(entry.value),
+        },
+        canManage: json['can_manage'] == true,
+        canPay: json['can_pay'] == true,
+      );
+  final List<ClubRefereeReport> reports;
+  final Map<String, int> counts;
+  final bool canManage, canPay;
+}
+
+/// A fee for the main referee and for assistants; null when not set.
+class RefereeFee {
+  const RefereeFee({
+    this.teamId,
+    required this.name,
+    this.main,
+    this.assistant,
+  });
+  final String? teamId;
+  final String name;
+  final int? main, assistant;
+}
+
+class ClubRefereeFees {
+  const ClubRefereeFees({required this.club, this.teams = const []});
+  factory ClubRefereeFees.fromJson(Map<String, dynamic> json) {
+    final club = (json['club'] as Map?)?.cast<String, dynamic>();
+    return ClubRefereeFees(
+      club: RefereeFee(
+        name: 'Hela klubben',
+        main: (club?['fee_main'] as num?)?.toInt(),
+        assistant: (club?['fee_assistant'] as num?)?.toInt(),
+      ),
+      teams: [
+        for (final row in _maps(json['teams']))
+          RefereeFee(
+            teamId: row['team_id'] as String,
+            name: row['team_name'] as String? ?? '',
+            main: (row['fee_main'] as num?)?.toInt(),
+            assistant: (row['fee_assistant'] as num?)?.toInt(),
+          ),
+      ],
+    );
+  }
+  final RefereeFee club;
+  final List<RefereeFee> teams;
+}
+
+class RefereePayoutLine {
+  const RefereePayoutLine({
+    required this.id,
+    required this.name,
+    required this.reportCount,
+    required this.amount,
+    required this.yearTotal,
+    this.personId,
+    this.age,
+    this.guardians,
+  });
+  factory RefereePayoutLine.fromJson(Map<String, dynamic> json) =>
+      RefereePayoutLine(
+        id: json['id'] as String,
+        name: json['name'] as String? ?? '',
+        reportCount: _int(json['report_count']),
+        amount: _int(json['amount']),
+        yearTotal: _int(json['year_total']),
+        personId: json['person_id'] as String?,
+        age: (json['age'] as num?)?.toInt(),
+        guardians: json['guardians'] as String?,
+      );
+  final String id, name;
+  final int reportCount, amount, yearTotal;
+  final String? personId;
+  final int? age;
+
+  /// Under 18: the guardians, who may receive the pay.
+  final String? guardians;
+}
+
+class RefereePayoutRow {
+  const RefereePayoutRow({
+    required this.name,
+    required this.slot,
+    required this.amount,
+    required this.startsAt,
+    required this.teamName,
+    this.opponentName,
+  });
+  factory RefereePayoutRow.fromJson(Map<String, dynamic> json) =>
+      RefereePayoutRow(
+        name: json['name'] as String? ?? '',
+        slot: json['slot'] as String? ?? 'main',
+        amount: _int(json['amount']),
+        startsAt: _time(json['starts_at']) ?? DateTime.now(),
+        teamName: json['team_name'] as String? ?? '',
+        opponentName: json['opponent_name'] as String?,
+      );
+  final String name, slot, teamName;
+  final int amount;
+  final DateTime startsAt;
+  final String? opponentName;
+}
+
+class RefereePayout {
+  const RefereePayout({
+    required this.id,
+    required this.throughDate,
+    required this.state,
+    required this.total,
+    required this.lineCount,
+    this.paidAt,
+    this.limit = 0,
+    this.lines = const [],
+    this.rows = const [],
+  });
+  factory RefereePayout.fromJson(Map<String, dynamic> json) => RefereePayout(
+    id: json['id'] as String,
+    throughDate: _time(json['through_date']) ?? DateTime.now(),
+    state: json['state'] as String? ?? 'draft',
+    total: _int(json['total']),
+    lineCount: _int(json['line_count']),
+    paidAt: _time(json['paid_at']),
+    limit: _int(json['limit']),
+    lines: [
+      for (final row in _maps(json['lines'])) RefereePayoutLine.fromJson(row),
+    ],
+    rows: [
+      for (final row in _maps(json['reports'])) RefereePayoutRow.fromJson(row),
+    ],
+  );
+  final String id;
+  final DateTime throughDate;
+
+  /// draft (not paid yet) or paid.
+  final String state;
+  final int total, lineCount;
+  final DateTime? paidAt;
+
+  /// The year's guide: half a prisbasbelopp.
+  final int limit;
+  final List<RefereePayoutLine> lines;
+  final List<RefereePayoutRow> rows;
+}
+
+class RefereePayouts {
+  const RefereePayouts({
+    this.payouts = const [],
+    this.readyCount = 0,
+    this.readyTotal = 0,
+    this.payers = const [],
+    this.canAppointPayers = false,
+  });
+  factory RefereePayouts.fromJson(Map<String, dynamic> json) => RefereePayouts(
+    payouts: [
+      for (final row in _maps(json['payouts'])) RefereePayout.fromJson(row),
+    ],
+    readyCount: _int(json['ready_count']),
+    readyTotal: _int(json['ready_total']),
+    payers: [for (final row in _maps(json['payers'])) ClubPerson.fromJson(row)],
+    canAppointPayers: json['can_appoint_payers'] == true,
+  );
+  final List<RefereePayout> payouts;
+
+  /// Approved and not on a list yet.
+  final int readyCount, readyTotal;
+  final List<ClubPerson> payers;
+  final bool canAppointPayers;
+}
+
+/// A club referee's own pay (a guardian sees the child's).
+class MyRefereePay {
+  const MyRefereePay({
+    required this.personId,
+    required this.name,
+    required this.year,
+    required this.yearTotal,
+    required this.limit,
+    required this.canNote,
+    this.reports = const [],
+  });
+  factory MyRefereePay.fromJson(Map<String, dynamic> json) => MyRefereePay(
+    personId: json['person_id'] as String,
+    name: json['name'] as String? ?? '',
+    year: _int(json['year']),
+    yearTotal: _int(json['year_total']),
+    limit: _int(json['limit']),
+    canNote: json['can_note'] == true,
+    reports: [
+      for (final row in _maps(json['reports'])) ClubRefereeReport.fromJson(row),
+    ],
+  );
+  final String personId, name;
+  final int year, yearTotal, limit;
+  final bool canNote;
+  final List<ClubRefereeReport> reports;
 }
 
 abstract interface class RefereeServices {
@@ -466,6 +780,28 @@ abstract interface class RefereeServices {
   Future<List<OpenClubMatch>> openClubMatches();
   Future<void> requestClub(String eventId, String slot, String personId);
   Future<RefereeSummary> summary();
+
+  // REF-02 phase 2: fees, reports and payout lists.
+  Future<ClubRefereeFees> fees(String clubId);
+  Future<int> saveFee(String clubId, String? teamId, int? main, int? assistant);
+  Future<ClubRefereeReports> reports(String clubId, {String? state});
+  Future<void> askControl(String reportId);
+  Future<void> answerControl(String reportId, bool confirmed, {String? note});
+  Future<int> decideReports(
+    String clubId,
+    List<String> reportIds,
+    bool approve, {
+    String? reason,
+  });
+  Future<void> setReportAmount(String reportId, int amount);
+  Future<void> noteReport(String reportId, String note);
+  Future<List<MyRefereePay>> myPay();
+  Future<String> createPayout(String clubId, DateTime throughDate);
+  Future<RefereePayout> payout(String payoutId);
+  Future<RefereePayouts> payouts(String clubId);
+  Future<void> markPayoutPaid(String payoutId);
+  Future<void> cancelPayout(String payoutId);
+  Future<void> setPayer(String clubId, String personId, bool enabled);
 }
 
 class UnconfiguredRefereeServices implements RefereeServices {
@@ -537,6 +873,49 @@ class UnconfiguredRefereeServices implements RefereeServices {
       _fail();
   @override
   Future<RefereeSummary> summary() async => const RefereeSummary();
+
+  @override
+  Future<ClubRefereeFees> fees(String clubId) => _fail();
+  @override
+  Future<int> saveFee(
+    String clubId,
+    String? teamId,
+    int? main,
+    int? assistant,
+  ) => _fail();
+  @override
+  Future<ClubRefereeReports> reports(String clubId, {String? state}) => _fail();
+  @override
+  Future<void> askControl(String reportId) => _fail();
+  @override
+  Future<void> answerControl(String reportId, bool confirmed, {String? note}) =>
+      _fail();
+  @override
+  Future<int> decideReports(
+    String clubId,
+    List<String> reportIds,
+    bool approve, {
+    String? reason,
+  }) => _fail();
+  @override
+  Future<void> setReportAmount(String reportId, int amount) => _fail();
+  @override
+  Future<void> noteReport(String reportId, String note) => _fail();
+  @override
+  Future<List<MyRefereePay>> myPay() async => const [];
+  @override
+  Future<String> createPayout(String clubId, DateTime throughDate) => _fail();
+  @override
+  Future<RefereePayout> payout(String payoutId) => _fail();
+  @override
+  Future<RefereePayouts> payouts(String clubId) => _fail();
+  @override
+  Future<void> markPayoutPaid(String payoutId) => _fail();
+  @override
+  Future<void> cancelPayout(String payoutId) => _fail();
+  @override
+  Future<void> setPayer(String clubId, String personId, bool enabled) =>
+      _fail();
 }
 
 class SupabaseRefereeServices implements RefereeServices {
@@ -756,5 +1135,134 @@ class SupabaseRefereeServices implements RefereeServices {
     return value is Map
         ? RefereeSummary.fromJson(value.cast<String, dynamic>())
         : const RefereeSummary();
+  }
+
+  Map<String, dynamic> _map(Object? value) =>
+      value is Map ? value.cast<String, dynamic>() : const {};
+
+  @override
+  Future<ClubRefereeFees> fees(String clubId) async => ClubRefereeFees.fromJson(
+    _map(await _rpc('get_club_referee_fees', {'target_club_id': clubId})),
+  );
+
+  @override
+  Future<int> saveFee(
+    String clubId,
+    String? teamId,
+    int? main,
+    int? assistant,
+  ) async => _int(
+    await _rpc('save_club_referee_fee', {
+      'target_club_id': clubId,
+      'target_team_id': teamId,
+      'fee_main': main,
+      'fee_assistant': assistant,
+    }),
+  );
+
+  @override
+  Future<ClubRefereeReports> reports(String clubId, {String? state}) async =>
+      ClubRefereeReports.fromJson(
+        _map(
+          await _rpc('list_club_referee_reports', {
+            'target_club_id': clubId,
+            'target_state': state,
+          }),
+        ),
+      );
+
+  @override
+  Future<void> askControl(String reportId) async {
+    await _rpc('ask_club_referee_control', {'target_report_id': reportId});
+  }
+
+  @override
+  Future<void> answerControl(
+    String reportId,
+    bool confirmed, {
+    String? note,
+  }) async {
+    await _rpc('answer_club_referee_control', {
+      'target_report_id': reportId,
+      'confirmed': confirmed,
+      'note': note,
+    });
+  }
+
+  @override
+  Future<int> decideReports(
+    String clubId,
+    List<String> reportIds,
+    bool approve, {
+    String? reason,
+  }) async => _int(
+    await _rpc('decide_club_referee_reports', {
+      'target_club_id': clubId,
+      'report_ids': reportIds,
+      'approve': approve,
+      'reason': reason,
+    }),
+  );
+
+  @override
+  Future<void> setReportAmount(String reportId, int amount) async {
+    await _rpc('set_club_referee_report_amount', {
+      'target_report_id': reportId,
+      'amount': amount,
+    });
+  }
+
+  @override
+  Future<void> noteReport(String reportId, String note) async {
+    await _rpc('note_club_referee_report', {
+      'target_report_id': reportId,
+      'note': note,
+    });
+  }
+
+  @override
+  Future<List<MyRefereePay>> myPay() async => [
+    for (final row in _rows(await _rpc('list_my_referee_reports')))
+      MyRefereePay.fromJson(row),
+  ];
+
+  @override
+  Future<String> createPayout(String clubId, DateTime throughDate) async =>
+      await _rpc('create_club_referee_payout', {
+            'target_club_id': clubId,
+            'through_date': _date(throughDate),
+          })
+          as String;
+
+  @override
+  Future<RefereePayout> payout(String payoutId) async => RefereePayout.fromJson(
+    _map(await _rpc('get_club_referee_payout', {'target_payout_id': payoutId})),
+  );
+
+  @override
+  Future<RefereePayouts> payouts(String clubId) async =>
+      RefereePayouts.fromJson(
+        _map(
+          await _rpc('list_club_referee_payouts', {'target_club_id': clubId}),
+        ),
+      );
+
+  @override
+  Future<void> markPayoutPaid(String payoutId) async {
+    await _rpc('mark_club_referee_payout_paid', {'target_payout_id': payoutId});
+  }
+
+  @override
+  Future<void> cancelPayout(String payoutId) async {
+    await _rpc('cancel_club_referee_payout', {'target_payout_id': payoutId});
+  }
+
+  @override
+  Future<void> setPayer(String clubId, String personId, bool enabled) async {
+    await _rpc('set_club_referee_payer', {
+      'target_club_id': clubId,
+      'target_person_id': personId,
+      'enabled': enabled,
+    });
   }
 }

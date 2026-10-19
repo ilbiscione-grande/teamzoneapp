@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:teamzone_app/src/core/observability/app_errors.dart';
+import 'package:teamzone_app/src/features/calendar/club_referee_pay.dart';
 import 'package:teamzone_app/src/features/calendar/referee_home.dart';
 import 'package:teamzone_app/src/features/calendar/referee_services.dart';
 
-/// REF-02: föreningsdomare and the club's domaransvarig. The home page gets
-/// a card for each: "Domartillsättning" opens the board (matches, referees,
-/// team rules), "Mina domaruppdrag" the club referee's own page.
+/// REF-02: föreningsdomare and the club's domaransvarig. The home page has
+/// "Mina domaruppdrag" for club referees (and their guardians); the board
+/// ("Domartillsättning", or "Domarersättning" for the one who only pays)
+/// opens from the menu for the active club.
 class RefereeHomeCards extends StatefulWidget {
   const RefereeHomeCards({super.key, required this.services});
   final RefereeServices? services;
@@ -49,30 +51,12 @@ class _RefereeHomeCardsState extends State<RefereeHomeCards> {
       future: _summary,
       builder: (context, snapshot) {
         final summary = snapshot.data;
-        if (summary == null ||
-            (!summary.clubReferee && summary.coordinatorClubs.isEmpty)) {
+        if (summary == null || !summary.clubReferee) {
           return const SizedBox.shrink();
         }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final club in summary.coordinatorClubs)
-              Card(
-                key: ValueKey('referee-board-card-${club.id}'),
-                child: ListTile(
-                  leading: const Icon(Icons.assignment_ind_outlined),
-                  title: const Text('Domartillsättning'),
-                  subtitle: Text(club.name),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _open(
-                    ClubRefereeBoardPage(
-                      services: services,
-                      clubId: club.id,
-                      clubName: club.name,
-                    ),
-                  ),
-                ),
-              ),
             if (summary.clubReferee)
               Card(
                 key: const ValueKey('club-referee-card'),
@@ -250,6 +234,10 @@ class _ClubRefereePageState extends State<ClubRefereePage> {
                 );
               },
             ),
+            MyRefereePaySection(
+              key: ValueKey('club-referee-pay-$_revision'),
+              services: widget.services,
+            ),
           ],
         ),
       ),
@@ -266,9 +254,23 @@ class ClubRefereeBoardPage extends StatefulWidget {
     required this.services,
     required this.clubId,
     required this.clubName,
+    this.canManage = true,
+    this.canPay = false,
+    this.teamId,
+    this.teamName,
   });
   final RefereeServices services;
   final String clubId, clubName;
+
+  /// The active team: its matches are shown first; the whole club is one
+  /// tap away.
+  final String? teamId, teamName;
+
+  /// Domaransvarig: matches, reports, referees and rules.
+  final bool canManage;
+
+  /// Domarersättning: the payout lists.
+  final bool canPay;
 
   @override
   State<ClubRefereeBoardPage> createState() => _ClubRefereeBoardPageState();
@@ -276,8 +278,9 @@ class ClubRefereeBoardPage extends StatefulWidget {
 
 class _ClubRefereeBoardPageState extends State<ClubRefereeBoardPage> {
   late DateTime _from = DateUtils.dateOnly(DateTime.now());
-  late Future<ClubRefereeBoard> _board = _load();
+  late Future<ClubRefereeBoard>? _board = widget.canManage ? _load() : null;
   bool _onlyMissing = false;
+  late bool _onlyTeam = widget.teamId != null;
   bool _busy = false;
 
   DateTime get _to => _from.add(const Duration(days: 13));
@@ -525,21 +528,8 @@ class _ClubRefereeBoardPageState extends State<ClubRefereeBoardPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) => DefaultTabController(
-    length: 3,
-    child: Scaffold(
-      appBar: AppBar(
-        title: Text('Domartillsättning · ${widget.clubName}'),
-        bottom: const TabBar(
-          tabs: [
-            Tab(text: 'Matcher'),
-            Tab(text: 'Domare'),
-            Tab(text: 'Regler'),
-          ],
-        ),
-      ),
-      body: FutureBuilder<ClubRefereeBoard>(
+  Widget _withBoard(Widget Function(ClubRefereeBoard board) build) =>
+      FutureBuilder<ClubRefereeBoard>(
         future: _board,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -554,23 +544,70 @@ class _ClubRefereeBoardPageState extends State<ClubRefereeBoardPage> {
           if (board == null) {
             return const Center(child: CircularProgressIndicator());
           }
-          return TabBarView(
-            children: [_matches(board), _referees(board), _rules(board)],
-          );
+          return build(board);
         },
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final tabs = <(String, Widget)>[
+      if (widget.canManage) ...[
+        ('Matcher', _withBoard(_matches)),
+        (
+          'Rapporter',
+          ClubRefereeReportsView(
+            services: widget.services,
+            clubId: widget.clubId,
+          ),
+        ),
+        ('Domare', _withBoard(_referees)),
+        ('Regler', _withBoard(_rules)),
+      ],
+      if (widget.canPay)
+        (
+          'Ersättning',
+          ClubRefereePayoutsView(
+            services: widget.services,
+            clubId: widget.clubId,
+            pickPerson: _pickPerson,
+          ),
+        ),
+    ];
+    final title = widget.canManage ? 'Domartillsättning' : 'Domarersättning';
+    if (tabs.length == 1) {
+      return Scaffold(
+        appBar: AppBar(title: Text('$title · ${widget.clubName}')),
+        body: tabs.single.$2,
+      );
+    }
+    return DefaultTabController(
+      length: tabs.length,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('$title · ${widget.clubName}'),
+          bottom: TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            tabs: [for (final tab in tabs) Tab(text: tab.$1)],
+          ),
+        ),
+        body: TabBarView(children: [for (final tab in tabs) tab.$2]),
       ),
-    ),
-  );
+    );
+  }
 
   Widget _matches(ClubRefereeBoard board) {
     final material = MaterialLocalizations.of(context);
-    final shown = board.matches
+    final inScope = board.matches
+        .where((item) => !_onlyTeam || item.teamId == widget.teamId)
+        .toList();
+    final shown = inScope
         .where(
           (item) =>
               !_onlyMissing || (item.refereeKind == 'club' && item.missing > 0),
         )
         .toList();
-    final missing = board.matches
+    final missing = inScope
         .where((item) => item.refereeKind == 'club' && item.missing > 0)
         .length;
     return ListView(
@@ -611,6 +648,16 @@ class _ClubRefereeBoardPageState extends State<ClubRefereeBoardPage> {
                     : '$missing matcher saknar föreningsdomare.',
               ),
             ),
+            if (widget.teamId != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: FilterChip(
+                  key: const ValueKey('referee-board-only-team'),
+                  label: Text(widget.teamName ?? 'Laget'),
+                  selected: _onlyTeam,
+                  onSelected: (value) => setState(() => _onlyTeam = value),
+                ),
+              ),
             FilterChip(
               key: const ValueKey('referee-board-only-missing'),
               label: const Text('Bara saknade'),
@@ -863,6 +910,7 @@ class _ClubRefereeBoardPageState extends State<ClubRefereeBoardPage> {
           trailing: const Icon(Icons.edit_outlined),
           onTap: () => _editRule(rule),
         ),
+      ClubRefereeFeesSection(services: widget.services, clubId: widget.clubId),
     ],
   );
 }

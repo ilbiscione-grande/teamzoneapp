@@ -46,12 +46,13 @@ class _Referees extends UnconfiguredRefereeServices {
 
   @override
   Future<List<RefereeCandidate>> searchReferees(String query) async => [
-    RefereeCandidate.fromJson({
-      'person_id': 'anna',
-      'name': 'Anna Domare',
-      'club_name': 'Njudungs FDK',
-      'confirmable': true,
-    }),
+    if ('anna domare'.contains(query.toLowerCase()))
+      RefereeCandidate.fromJson({
+        'person_id': 'anna',
+        'name': 'Anna Domare',
+        'club_name': 'Njudungs FDK',
+        'confirmable': true,
+      }),
   ];
 
   @override
@@ -136,13 +137,14 @@ void main() {
       find.byKey(const ValueKey('event-referee-add-assistant_1')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Skriv in namn'));
-    await tester.pumpAndSettle();
     await tester.enterText(
-      find.byKey(const ValueKey('referee-written-name')),
+      find.byKey(const ValueKey('referee-search')),
       'Kalle Extern',
     );
-    await tester.tap(find.byKey(const ValueKey('referee-written-save')));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    expect(find.text('Ingen domare i TeamZone heter så.'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('referee-add-written')));
     await tester.pumpAndSettle();
     expect(services.calls.last, 'propose:assistant_1:Kalle Extern');
     expect(find.textContaining('Inskriven av laget'), findsOneWidget);
