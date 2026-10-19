@@ -1437,7 +1437,7 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 
 ### REF-02 – Föreningsdomare och domaransvarig
 
-**Status:** `[~]` – fas 1 (tillsättning) i drift 2026-10-18 (migration `20261109090000`, commit `cd21c10`). Fas 2 (ersättning) byggd 2026-10-18 (migration `20261110090000`); väntar på migration, driftsättning och skarp provning.
+**Status:** `[x]` – klar 2026-10-19. Fas 1 (tillsättning, migration `20261109090000`, commit `cd21c10`) och fas 2 (ersättning, migration `20261110090000`, commit `0d78cc0`) i drift och skarpt provade av produktägaren.
 
 **Bakgrund 2026-10-18:** REF-01 gäller förbundsdomare, som tillsätts och betalas via domarklubben och förbundet. Klubbar behöver också föreningsdomare: ungdomar och andra i klubben som dömer yngre lags matcher, tillsätts av klubbens domaransvarige och får betalt av klubben.
 
@@ -1457,8 +1457,8 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 - [x] Förberett för direktbetalning: listan har metod (export/direkt) och raderna eget läge och betalreferens.
 - [x] Föreningsdomaren ser årets ersättning och sina uppdrag med läge under "Mina domaruppdrag"; vårdnadshavare ser barnets till 18 år.
 - [x] Domaransvarig arbetar i "Domartillsättning" (i sidomenyn för det aktiva lagets klubb; matcherna visar först det aktiva laget, hela klubben ett tryck bort; flyttad från startsidan 2026-10-18): matcher två veckor i taget med typ av domare, tillsättning med förslag och godkännande av anmälningar; föreningsdomare med utbildning; domaransvariga (utses av administratören); regler per lag. Föreningsdomare har "Mina domaruppdrag" med lediga uppdrag i klubben, och uppdragen syns i kalendern.
-- [ ] Skarp provning fas 1: regel per lag, tillsättning av en föreningsdomare under 15 (vårdnadshavaren svarar), anmälan från en föreningsdomare som godkänns.
-- [ ] Skarp provning fas 2: arvode, rapport efter spelad match, kontrollfråga och svar, godkännande, utbetalningslista med export och utbetald.
+- [x] Skarp provning fas 1: regel per lag, tillsättning av en föreningsdomare under 15 (vårdnadshavaren svarar), anmälan från en föreningsdomare som godkänns.
+- [x] Skarp provning fas 2: arvode, rapport efter spelad match, kontrollfråga och svar, godkännande, utbetalningslista med export och utbetald.
 
 ### SET-01 – Klubbinställningar
 
