@@ -12,6 +12,8 @@ export type WebtoolApp = {
   description: string;
   features: string[];
   status: AppStatus;
+  /** Where the app itself opens, once it is there. */
+  href?: string;
 };
 
 export const webtoolApps: WebtoolApp[] = [
@@ -35,12 +37,13 @@ export const webtoolApps: WebtoolApp[] = [
   },
   {
     slug: "bokningshanterare",
+    href: "/bokningar",
     name: "Bokningshanterare",
     mark: "BH",
     tagline: "Boka planer, hallar och material.",
-    description: "Håll ordning på planer, hallar, omklädningsrum och material. Se vad som är ledigt, boka och få översikt över klubbens anläggningar.",
-    features: ["Kalender per anläggning", "Bokningsförfrågningar", "Krockkontroll", "Material och utrustning"],
-    status: "planned",
+    description: "Boka allt från planer, hallar och omklädningsrum till minibussar och kameror. Fungerar för alla sporter och föreningar, med eller utan TeamZone. Med TeamZone bokar ledare för sina lag och kopplar bokningen till en aktivitet, till exempel minibussen till bortamatchen.",
+    features: ["Planer, lokaler, fordon och utrustning", "Krockar stoppas", "Godkännande per resurs", "Bokning för laget och aktiviteten i TeamZone"],
+    status: "beta",
   },
   {
     slug: "turneringsplanerare",
@@ -66,7 +69,10 @@ export function findApp(slug: string): WebtoolApp | undefined {
 /** Only Webtools' own pages are valid places to return to after signing in. */
 export function safeReturnTo(value: string | null | undefined): string {
   if (!value) return "/";
-  if (value === "/" || value === "/konto") return value;
+  if (value === "/" || value === "/konto" || value === "/bokningar") return value;
+  if (/^\/bokningar\/[0-9a-f-]{36}$/.test(value)) return value;
+  // An invitation link survives signing in.
+  if (/^\/bokningar\?inbjudan=[0-9a-f]{64}$/.test(value)) return value;
   const app = /^\/appar\/([a-z0-9-]+)$/.exec(value);
   return app && findApp(app[1]) ? value : "/";
 }

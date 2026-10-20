@@ -167,4 +167,20 @@ void main() {
       'kassa',
     );
   });
+
+  test('an activity shows its bookings from Webtools', () {
+    final booking = EventBooking.fromJson({
+      'id': 'b1',
+      'resource_name': 'Minibuss',
+      'category': 'vehicle',
+      'organization_name': 'Demoklubben IF',
+      'starts_at': '2026-10-24T08:00:00Z',
+      'ends_at': '2026-10-24T14:00:00Z',
+      'status': 'pending',
+      'title': 'Bortamatch',
+    });
+    expect(booking.resourceName, 'Minibuss');
+    expect(booking.pending, isTrue);
+    expect(booking.endsAt.difference(booking.startsAt).inHours, 6);
+  });
 }

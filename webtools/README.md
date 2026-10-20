@@ -46,3 +46,17 @@ The public site links to it through `NEXT_PUBLIC_WEBTOOLS_URL`.
 
 Sign-up confirmation links return to `/logga-in?konto=bekraftat` on this
 origin, so the origin must be in Supabase Auth's redirect allow list.
+
+## Bokningshanterare (beta)
+
+`/bokningar`. An organisation (club, association, company...) owns
+resources: pitches, halls, locker rooms, rooms, vehicles, equipment. Bookings
+of one resource never overlap; each resource either confirms at once or
+needs an admin's approval. Members join through a 14-day, single-use
+invitation link. Without TeamZone that is all.
+
+Linked to a TeamZone club (by someone who administers both): the club's
+leaders and functionaries book without an invitation, a booking can be for
+one of their teams and attached to one of its activities, and the activity
+lists its bookings in the TeamZone app. Database: migration
+`20261115090000_booking_manager.sql`, test `supabase/tests/booking_manager.local.mjs`.

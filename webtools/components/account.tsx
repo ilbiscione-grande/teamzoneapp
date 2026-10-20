@@ -8,6 +8,8 @@ import { requiresAcceptance } from "../lib/account";
 type Links = { siteUrl: string; appUrl: string };
 
 type Account = {
+  /** The signed-in Supabase client for the apps' own API calls. */
+  client: SupabaseClient | null;
   /** False until the configuration and any stored session are read. */
   ready: boolean;
   available: boolean;
@@ -123,7 +125,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
 
   const accepted = !!legal && !requiresAcceptance(legal);
   return (
-    <Context.Provider value={{ ready, available, session, legal, accepted, displayName, connections, links, error, signIn, signUp, signOut, acceptLegal }}>
+    <Context.Provider value={{ client, ready, available, session, legal, accepted, displayName, connections, links, error, signIn, signUp, signOut, acceptLegal }}>
       {children}
     </Context.Provider>
   );

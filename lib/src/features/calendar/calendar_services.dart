@@ -21,6 +21,11 @@ class CalendarSyncEvent {
   final bool invalidated;
 }
 
+/// Webtools Bokningshanterare: the bookings attached to an activity.
+abstract interface class EventBookingServices {
+  Future<List<EventBooking>> listEventBookings(String eventId);
+}
+
 abstract interface class CalendarServices {
   /// The event's Förberedelser workspace (items, note, files).
   EventPreparationServices get preparation;
@@ -461,7 +466,24 @@ class UnconfiguredCalendarServices implements CalendarServices {
   }) => const Stream.empty();
 }
 
-class SupabaseCalendarServices implements CalendarServices {
+class SupabaseCalendarServices
+    implements CalendarServices, EventBookingServices {
+  @override
+  Future<List<EventBooking>> listEventBookings(String eventId) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'list_event_bookings',
+          params: {'target_event_id': eventId},
+        )
+        .timeout(const Duration(seconds: 15));
+    if (value is! List) throw const FormatException('Invalid event bookings.');
+    return value
+        .whereType<Map<String, dynamic>>()
+        .map(EventBooking.fromJson)
+        .toList(growable: false);
+  }
+
   SupabaseCalendarServices(this._client)
     : preparation = SupabaseEventPreparationServices(_client),
       referees = SupabaseRefereeServices(_client);

@@ -905,3 +905,34 @@ class EventLineup {
   final List<({String personId, String name, String? position})> starters;
   final List<({String personId, String name, String? position})> substitutes;
 }
+
+/// Webtools Bokningshanterare: a booking attached to the activity, such as
+/// the minibus for an away match.
+class EventBooking {
+  const EventBooking({
+    required this.id,
+    required this.resourceName,
+    required this.category,
+    required this.organizationName,
+    required this.startsAt,
+    required this.endsAt,
+    required this.status,
+    this.title,
+  });
+  final String id, resourceName, category, organizationName, status;
+  final DateTime startsAt, endsAt;
+  final String? title;
+
+  bool get pending => status == 'pending';
+
+  factory EventBooking.fromJson(Map<String, dynamic> json) => EventBooking(
+    id: json['id'] as String,
+    resourceName: json['resource_name'] as String,
+    category: json['category'] as String,
+    organizationName: json['organization_name'] as String,
+    startsAt: DateTime.parse(json['starts_at'] as String),
+    endsAt: DateTime.parse(json['ends_at'] as String),
+    status: json['status'] as String,
+    title: json['title'] as String?,
+  );
+}

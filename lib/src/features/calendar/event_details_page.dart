@@ -714,6 +714,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         // REF-01: who referees the match.
         if (event.type == 'match')
           EventRefereesSection(eventId: event.id, services: _refereeServices()),
+        // Webtools: rooms, pitches or a minibus booked for the activity.
+        if (widget.calendar case final EventBookingServices bookings)
+          _EventBookingsSection(eventId: event.id, services: bookings),
         // About the assistant's reminders: for those who call up.
         if (!event.callupsRequired &&
             (_contextCanCoManage || _contextCanManageRoster) &&
@@ -2003,4 +2006,76 @@ String? _localizedDeclineReason(AppStrings strings, EventRosterPerson person) {
   if (label == null) return null;
   final detail = person.declineReasonText?.trim();
   return detail == null || detail.isEmpty ? label : '$label – $detail';
+}
+
+/// The activity's bookings from Webtools Bokningshanterare. Nothing is shown
+/// without any, or when they cannot be read.
+class _EventBookingsSection extends StatefulWidget {
+  const _EventBookingsSection({required this.eventId, required this.services});
+  final String eventId;
+  final EventBookingServices services;
+
+  @override
+  State<_EventBookingsSection> createState() => _EventBookingsSectionState();
+}
+
+class _EventBookingsSectionState extends State<_EventBookingsSection> {
+  late Future<List<EventBooking>> _bookings = _load();
+
+  Future<List<EventBooking>> _load() async {
+    try {
+      return await widget.services.listEventBookings(widget.eventId);
+    } catch (error) {
+      AppErrors.caught('event_details_page._EventBookingsSection', error);
+      return const [];
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _EventBookingsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.eventId != widget.eventId) _bookings = _load();
+  }
+
+  static IconData _icon(String category) => switch (category) {
+    'vehicle' => Icons.airport_shuttle_outlined,
+    'locker_room' => Icons.checkroom_outlined,
+    'pitch' => Icons.grass_outlined,
+    'hall' => Icons.sports_handball_outlined,
+    'equipment' => Icons.videocam_outlined,
+    'room' => Icons.meeting_room_outlined,
+    _ => Icons.event_available_outlined,
+  };
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<List<EventBooking>>(
+    future: _bookings,
+    builder: (context, snapshot) {
+      final bookings = snapshot.data ?? const <EventBooking>[];
+      if (bookings.isEmpty) return const SizedBox.shrink();
+      final strings = AppStrings.of(context);
+      String time(DateTime value) =>
+          TimeOfDay.fromDateTime(value.toLocal()).format(context);
+      return Column(
+        key: const ValueKey('event-bookings'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final booking in bookings)
+            ListTile(
+              key: ValueKey('event-booking-${booking.id}'),
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(_icon(booking.category)),
+              title: Text(booking.resourceName),
+              subtitle: Text(
+                [
+                  '${time(booking.startsAt)}–${time(booking.endsAt)}',
+                  booking.organizationName,
+                  if (booking.pending) strings.feature('Väntar på godkännande'),
+                ].join(' · '),
+              ),
+            ),
+        ],
+      );
+    },
+  );
 }

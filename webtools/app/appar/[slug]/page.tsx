@@ -38,13 +38,15 @@ export default async function AppPage({ params }: Props) {
         </div>
         <RequireAccount returnTo={`/appar/${app.slug}`}>
           <section className="wt-panel">
-            <h2>{app.status === "planned" ? "Vi bygger appen" : "Öppna appen"}</h2>
+            <h2>{app.href ? "Öppna appen" : "Vi bygger appen"}</h2>
             <p>
-              {app.status === "planned"
-                ? `${app.name} är inte klar än. Den öppnas här med ditt TeamZone-konto när den är det.`
-                : `${app.name} öppnas med ditt TeamZone-konto.`}
+              {app.href
+                ? `${app.name} är i beta. Den öppnas med ditt TeamZone-konto.`
+                : `${app.name} är inte klar än. Den öppnas här med ditt TeamZone-konto när den är det.`}
             </p>
-            <Link className="wt-link" href="/">Tillbaka till alla appar</Link>
+            {app.href
+              ? <Link className="wt-button" href={app.href}>Öppna {app.name}</Link>
+              : <Link className="wt-link" href="/">Tillbaka till alla appar</Link>}
           </section>
         </RequireAccount>
       </section>
