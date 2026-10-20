@@ -490,11 +490,21 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                   services: widget.calendar.preparation,
                   onChanged: widget.onChanged,
                   allowEdit: _contextCanCoManage,
+                  // Match mode is for leaders; players see the line-up.
                   onOpenMatchMode:
                       event.preparationActions.contains(
-                        EventPreparationAction.matchSpace,
-                      )
+                            EventPreparationAction.matchSpace,
+                          ) &&
+                          (_contextCanCoManage || event.can('match_live'))
                       ? _showMatchSpace
+                      : null,
+                  lineup: event.type == 'match'
+                      ? _EventLineupSection(
+                          key: ValueKey('event-lineup-${event.id}'),
+                          eventId: event.id,
+                          calendar: widget.calendar,
+                          people: squad.roster,
+                        )
                       : null,
                 ),
                 _FollowupTab(
@@ -505,8 +515,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                   onOpenParticipants: () => _tabController.animateTo(1),
                   onOpenMatchMode:
                       event.preparationActions.contains(
-                        EventPreparationAction.matchSpace,
-                      )
+                            EventPreparationAction.matchSpace,
+                          ) &&
+                          (_contextCanCoManage || event.can('match_live'))
                       ? _showMatchSpace
                       : null,
                 ),
@@ -520,6 +531,100 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
 
   Widget _scroll(Widget child) =>
       SingleChildScrollView(padding: const EdgeInsets.all(20), child: child);
+
+  bool _savingAbsence = false;
+
+  Future<void> _reportAbsence(String personId) async {
+    final reason = await _declineCallupReasonDialog(context);
+    if (reason == null || !mounted) return;
+    setState(() => _savingAbsence = true);
+    try {
+      await widget.calendar.reportEventAbsence(
+        eventId: event.id,
+        personId: personId,
+        reasonCode: reason.$1,
+        reasonText: reason.$2,
+      );
+      await _refreshParticipants();
+    } catch (error) {
+      AppErrors.caught('event_details_page._reportAbsence', error);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Frånvaron kunde inte anmälas. Försök igen.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingAbsence = false);
+    }
+  }
+
+  Future<void> _withdrawAbsence(String personId) async {
+    setState(() => _savingAbsence = true);
+    try {
+      await widget.calendar.withdrawEventAbsence(
+        eventId: event.id,
+        personId: personId,
+      );
+      await _refreshParticipants();
+    } catch (error) {
+      AppErrors.caught('event_details_page._withdrawAbsence', error);
+    } finally {
+      if (mounted) setState(() => _savingAbsence = false);
+    }
+  }
+
+  Widget _absenceTile(
+    BuildContext context,
+    ({String personId, String name}) person,
+  ) {
+    final strings = AppStrings.of(context);
+    final notice = squad.noticeFor(person.personId);
+    final self = squad.representedPeople.length == 1;
+    final who = self ? strings.feature('Du') : person.name;
+    return Card(
+      key: ValueKey('event-absence-${person.personId}'),
+      margin: const EdgeInsets.only(top: 8),
+      child: ListTile(
+        leading: Icon(
+          notice == null ? Icons.event_available_outlined : Icons.event_busy,
+        ),
+        title: Text(
+          notice == null
+              ? (self
+                    ? strings.feature('Kan du inte komma?')
+                    : '${strings.feature('Kan inte')} ${person.name} ${strings.feature('komma?')}')
+              : '$who ${strings.feature('har anmält frånvaro')}',
+        ),
+        subtitle: Text(
+          notice == null
+              ? strings.feature(
+                  'Ledarna får besked. Du behöver inte svara om du kommer.',
+                )
+              : [
+                  _declineReasonLabel(notice.reasonCode),
+                  ?notice.reasonText,
+                ].join(' · '),
+        ),
+        trailing: notice == null
+            ? FilledButton.tonal(
+                key: ValueKey('event-absence-report-${person.personId}'),
+                onPressed: _savingAbsence
+                    ? null
+                    : () => _reportAbsence(person.personId),
+                child: Text(strings.feature('Anmäl')),
+              )
+            : TextButton(
+                key: ValueKey('event-absence-withdraw-${person.personId}'),
+                onPressed: _savingAbsence
+                    ? null
+                    : () => _withdrawAbsence(person.personId),
+                child: Text(strings.feature('Ångra')),
+              ),
+      ),
+    );
+  }
 
   Widget _info(BuildContext context) {
     final strings = AppStrings.of(context);
@@ -612,9 +717,15 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
             leading: const Icon(Icons.unsubscribe_outlined),
             title: const Text('Kallelse behövs inte'),
             subtitle: const Text(
-              'Assistenten påminner inte om saknade kallelser. Ändras i menyn ⋮.',
+              'Alla i laget förväntas komma, och den som inte kan anmäler frånvaro. Assistenten påminner inte om kallelser. Ändras i menyn ⋮.',
             ),
           ),
+        // Without callups: you (or your child) report not coming.
+        if (!event.callupsRequired &&
+            event.state != 'cancelled' &&
+            event.endsAt.isAfter(DateTime.now()))
+          for (final person in squad.representedPeople)
+            _absenceTile(context, person),
         if (_report case final report? when report.body.isNotEmpty)
           ListTile(
             key: const Key('event-match-report'),

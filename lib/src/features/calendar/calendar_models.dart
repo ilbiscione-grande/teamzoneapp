@@ -652,6 +652,8 @@ class SquadDetails {
     this.callupVisibilityRevision = 0,
     this.callupVisibilitySource = 'default',
     this.teamShowsCallups = false,
+    this.absenceNotices = const [],
+    this.representedPeople = const [],
     this.squadRevisionId,
     this.revision,
   });
@@ -673,6 +675,17 @@ class SquadDetails {
 
   /// The team's default, shown beside the event's own choice.
   final bool teamShowsCallups;
+
+  /// Without callups: who cannot come, and why (leaders see all, others
+  /// their own).
+  final List<AbsenceNotice> absenceNotices;
+
+  /// The people in the event's teams you answer for: yourself, and a
+  /// guardian's children.
+  final List<({String personId, String name})> representedPeople;
+
+  AbsenceNotice? noticeFor(String personId) =>
+      absenceNotices.where((notice) => notice.personId == personId).firstOrNull;
   bool can(String action) => callerActions.contains(action);
   factory SquadDetails.fromJson(Map<String, dynamic> json) {
     final state = json['squad_state'] as String? ?? 'empty';
@@ -759,6 +772,21 @@ class SquadDetails {
       callupVisibilitySource:
           json['callup_visibility_source'] as String? ?? 'default',
       teamShowsCallups: json['team_shows_callups'] == true,
+      absenceNotices: [
+        for (final row
+            in (json['absence_notices'] as List? ?? const []).whereType<Map>())
+          AbsenceNotice.fromJson(row.cast<String, dynamic>()),
+      ],
+      representedPeople: [
+        for (final row
+            in (json['represented_people'] as List? ?? const [])
+                .whereType<Map>())
+          if (row['person_id'] is String)
+            (
+              personId: row['person_id'] as String,
+              name: row['name'] as String? ?? '',
+            ),
+      ],
     );
   }
 }
@@ -816,4 +844,64 @@ int calendarIsoWeek(DateTime date) {
   final thursday = calendarAddDays(date, 3 - ((date.weekday + 6) % 7));
   final day = DateTime.utc(thursday.year, thursday.month, thursday.day);
   return (day.difference(DateTime.utc(thursday.year)).inDays / 7).floor() + 1;
+}
+
+/// UX review: someone who cannot come to an activity without callups.
+class AbsenceNotice {
+  const AbsenceNotice({
+    required this.personId,
+    required this.name,
+    required this.reasonCode,
+    this.reasonText,
+  });
+  factory AbsenceNotice.fromJson(Map<String, dynamic> json) => AbsenceNotice(
+    personId: json['person_id'] as String,
+    name: json['name'] as String? ?? '',
+    reasonCode: json['reason_code'] as String? ?? 'other',
+    reasonText: json['reason_text'] as String?,
+  );
+  final String personId, name, reasonCode;
+  final String? reasonText;
+}
+
+/// The starting line-up of a match: set under Förberedelser by those who
+/// call up, shown to the players once published.
+class EventLineup {
+  const EventLineup({
+    required this.canEdit,
+    required this.published,
+    required this.revision,
+    this.formation,
+    this.starters = const [],
+    this.substitutes = const [],
+  });
+  factory EventLineup.fromJson(Map<String, dynamic> json) => EventLineup(
+    canEdit: json['can_edit'] == true,
+    published: json['published'] == true,
+    revision: (json['revision'] as num?)?.toInt() ?? 0,
+    formation: json['formation'] as String?,
+    starters: [
+      for (final row
+          in (json['starters'] as List? ?? const []).whereType<Map>())
+        (
+          personId: row['person_id'] as String? ?? '',
+          name: row['name'] as String? ?? '',
+          position: row['position'] as String?,
+        ),
+    ],
+    substitutes: [
+      for (final row
+          in (json['substitutes'] as List? ?? const []).whereType<Map>())
+        (
+          personId: row['person_id'] as String? ?? '',
+          name: row['name'] as String? ?? '',
+          position: null,
+        ),
+    ],
+  );
+  final bool canEdit, published;
+  final int revision;
+  final String? formation;
+  final List<({String personId, String name, String? position})> starters;
+  final List<({String personId, String name, String? position})> substitutes;
 }

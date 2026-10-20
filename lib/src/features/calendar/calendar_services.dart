@@ -65,6 +65,36 @@ abstract interface class CalendarServices {
   /// The event back to its team's default for who sees the callups.
   Future<void> clearEventCallupVisibility(String eventId);
 
+  /// Without callups: someone cannot come, or can after all.
+  Future<void> reportEventAbsence({
+    required String eventId,
+    required String personId,
+    required String reasonCode,
+    String? reasonText,
+  });
+  Future<void> withdrawEventAbsence({
+    required String eventId,
+    required String personId,
+  });
+
+  /// Whether the team's activities have callups, or everyone is expected
+  /// and reports absence.
+  Future<({bool callupsRequired, bool canChange})> getTeamEventSettings(
+    String teamId,
+  );
+  Future<int> setTeamEventSettings(String teamId, bool callupsRequired);
+
+  /// The starting line-up; null when not shown to you.
+  Future<EventLineup?> getEventLineup(String eventId);
+  Future<int> saveEventLineup({
+    required String eventId,
+    required String? formation,
+    required List<({String personId, String? position})> starters,
+    required List<String> substitutes,
+    required bool published,
+    required int expectedRevision,
+  });
+
   /// Whether the team's members see who is called up by default.
   Future<({bool show, bool canChange})> getTeamCallupVisibility(String teamId);
   Future<void> setTeamCallupVisibility(String teamId, bool show);
@@ -282,6 +312,36 @@ class UnconfiguredCalendarServices implements CalendarServices {
   @override
   Future<void> clearEventCallupVisibility(String eventId) =>
       Future.error(_error);
+  @override
+  Future<void> reportEventAbsence({
+    required String eventId,
+    required String personId,
+    required String reasonCode,
+    String? reasonText,
+  }) => Future.error(_error);
+  @override
+  Future<void> withdrawEventAbsence({
+    required String eventId,
+    required String personId,
+  }) => Future.error(_error);
+  @override
+  Future<({bool callupsRequired, bool canChange})> getTeamEventSettings(
+    String teamId,
+  ) async => (callupsRequired: true, canChange: false);
+  @override
+  Future<int> setTeamEventSettings(String teamId, bool callupsRequired) =>
+      Future.error(_error);
+  @override
+  Future<EventLineup?> getEventLineup(String eventId) async => null;
+  @override
+  Future<int> saveEventLineup({
+    required String eventId,
+    required String? formation,
+    required List<({String personId, String? position})> starters,
+    required List<String> substitutes,
+    required bool published,
+    required int expectedRevision,
+  }) => Future.error(_error);
   @override
   Future<({bool show, bool canChange})> getTeamCallupVisibility(
     String teamId,
@@ -633,6 +693,113 @@ class SupabaseCalendarServices implements CalendarServices {
       throw const FormatException('Invalid callup visibility revision.');
     }
     return value.toInt();
+  }
+
+  @override
+  Future<void> reportEventAbsence({
+    required String eventId,
+    required String personId,
+    required String reasonCode,
+    String? reasonText,
+  }) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'report_event_absence',
+          params: {
+            'target_event_id': eventId,
+            'target_person_id': personId,
+            'reason_code': reasonCode,
+            'reason_text': reasonText,
+          },
+        );
+  }
+
+  @override
+  Future<void> withdrawEventAbsence({
+    required String eventId,
+    required String personId,
+  }) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'withdraw_event_absence',
+          params: {'target_event_id': eventId, 'target_person_id': personId},
+        );
+  }
+
+  @override
+  Future<({bool callupsRequired, bool canChange})> getTeamEventSettings(
+    String teamId,
+  ) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'get_team_event_settings',
+          params: {'target_team_id': teamId},
+        );
+    final map = value is Map ? value : const {};
+    return (
+      callupsRequired: map['callups_required'] != false,
+      canChange: map['can_change'] == true,
+    );
+  }
+
+  @override
+  Future<int> setTeamEventSettings(String teamId, bool callupsRequired) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'set_team_event_settings',
+          params: {
+            'target_team_id': teamId,
+            'callups_required': callupsRequired,
+          },
+        );
+    return (value as num?)?.toInt() ?? 0;
+  }
+
+  @override
+  Future<EventLineup?> getEventLineup(String eventId) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>('get_event_lineup', params: {'target_event_id': eventId});
+    return value is Map
+        ? EventLineup.fromJson(value.cast<String, dynamic>())
+        : null;
+  }
+
+  @override
+  Future<int> saveEventLineup({
+    required String eventId,
+    required String? formation,
+    required List<({String personId, String? position})> starters,
+    required List<String> substitutes,
+    required bool published,
+    required int expectedRevision,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'save_event_lineup',
+          params: {
+            'target_event_id': eventId,
+            'formation': formation,
+            'starters': [
+              for (final item in starters)
+                {
+                  'person_id': item.personId,
+                  if (item.position != null) 'position': item.position,
+                },
+            ],
+            'substitutes': [
+              for (final id in substitutes) {'person_id': id},
+            ],
+            'published': published,
+            'expected_revision': expectedRevision,
+          },
+        );
+    return (value as num?)?.toInt() ?? 0;
   }
 
   @override

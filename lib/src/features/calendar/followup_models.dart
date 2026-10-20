@@ -110,6 +110,8 @@ class AttendanceSummary {
     this.absent = 0,
     this.registered = 0,
     this.unregistered = 0,
+    this.absenceNotices = 0,
+    this.absentReported = 0,
     this.extra = 0,
     this.lateMinutesAverage,
     this.attendanceRate,
@@ -117,6 +119,10 @@ class AttendanceSummary {
   });
   final int called, accepted, declined, pending;
   final int present, late, partial, absent, registered, unregistered;
+
+  /// Without callups: who reported they could not come, and of the absent
+  /// how many had.
+  final int absenceNotices, absentReported;
 
   /// Attended without being called; not part of the attendance rate.
   final int extra;
@@ -135,6 +141,8 @@ class AttendanceSummary {
       absent: count('absent'),
       registered: count('registered'),
       unregistered: count('unregistered'),
+      absenceNotices: count('absence_notices'),
+      absentReported: count('absent_reported'),
       extra: count('extra'),
       lateMinutesAverage: _number(json['late_minutes_avg']),
       attendanceRate: _number(json['attendance_rate']),

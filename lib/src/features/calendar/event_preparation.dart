@@ -15,6 +15,7 @@ class _PreparationTab extends StatefulWidget {
     required this.allowEdit,
     this.onOpenMatchMode,
     this.onChanged,
+    this.lineup,
   });
 
   final EventDetails event;
@@ -28,6 +29,9 @@ class _PreparationTab extends StatefulWidget {
   final bool allowEdit;
   final VoidCallback? onOpenMatchMode;
   final VoidCallback? onChanged;
+
+  /// For a match: the starting line-up section.
+  final Widget? lineup;
 
   @override
   State<_PreparationTab> createState() => _PreparationTabState();
@@ -162,6 +166,7 @@ class _PreparationTabState extends State<_PreparationTab> {
     final type = widget.event.type;
     final sections = <Widget?>[
       if (type == 'match' && widget.onOpenMatchMode != null) _matchModeCard(),
+      if (type == 'match') widget.lineup,
       _eventDetailsSection(),
       _KpiGoalsSection(
         key: ValueKey('kpi-goals-${widget.event.id}'),
@@ -1930,6 +1935,331 @@ class _FileVisibilitySheetState extends State<_FileVisibilitySheet> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// UX review: the match's starting line-up under Förberedelser. Those who
+/// call up set it (starters with an optional position, substitutes, the
+/// formation) and choose when the players see it; players see it then.
+class _EventLineupSection extends StatefulWidget {
+  const _EventLineupSection({
+    super.key,
+    required this.eventId,
+    required this.calendar,
+    required this.people,
+  });
+  final String eventId;
+  final CalendarServices calendar;
+
+  /// The players to choose from (the event's roster).
+  final List<EventRosterPerson> people;
+
+  @override
+  State<_EventLineupSection> createState() => _EventLineupSectionState();
+}
+
+class _EventLineupSectionState extends State<_EventLineupSection> {
+  late Future<EventLineup?> _lineup = _load();
+
+  Future<EventLineup?> _load() async {
+    try {
+      return await widget.calendar
+          .getEventLineup(widget.eventId)
+          .timeout(const Duration(seconds: 15));
+    } catch (error) {
+      AppErrors.caught('event_preparation._EventLineupSection', error);
+      return null;
+    }
+  }
+
+  Future<void> _edit(EventLineup lineup) async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _LineupEditor(
+          eventId: widget.eventId,
+          calendar: widget.calendar,
+          lineup: lineup,
+          people: widget.people
+              .where((person) => person.rolePackage == 'player')
+              .toList(),
+        ),
+      ),
+    );
+    if (saved == true && mounted) {
+      setState(() {
+        _lineup = _load();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<EventLineup?>(
+    future: _lineup,
+    builder: (context, snapshot) {
+      final lineup = snapshot.data;
+      if (lineup == null) return const SizedBox.shrink();
+      final theme = Theme.of(context);
+      final strings = AppStrings.of(context);
+      final empty = lineup.starters.isEmpty && lineup.substitutes.isEmpty;
+      return Padding(
+        key: const ValueKey('event-lineup'),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+        child: Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        [
+                          strings.feature('Startelva'),
+                          ?lineup.formation,
+                        ].join(' · '),
+                        style: theme.textTheme.titleMedium,
+                      ),
+                    ),
+                    if (lineup.canEdit)
+                      TextButton(
+                        key: const ValueKey('event-lineup-edit'),
+                        onPressed: () => _edit(lineup),
+                        child: Text(
+                          strings.feature(empty ? 'Sätt startelva' : 'Ändra'),
+                        ),
+                      ),
+                  ],
+                ),
+                if (lineup.canEdit && !empty)
+                  Text(
+                    strings.feature(
+                      lineup.published
+                          ? 'Spelarna ser startelvan.'
+                          : 'Spelarna ser inte startelvan än.',
+                    ),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                if (empty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, right: 8),
+                    child: Text(
+                      strings.feature('Ingen startelva ännu.'),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                for (final (index, item) in lineup.starters.indexed)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      [
+                        '${index + 1}. ${item.name}',
+                        ?item.position,
+                      ].join(' · '),
+                    ),
+                  ),
+                if (lineup.substitutes.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8, right: 8),
+                    child: Text(
+                      '${strings.feature('Avbytare')}: ${lineup.substitutes.map((item) => item.name).join(', ')}',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// Choose who starts, who is on the bench, positions and the formation.
+class _LineupEditor extends StatefulWidget {
+  const _LineupEditor({
+    required this.eventId,
+    required this.calendar,
+    required this.lineup,
+    required this.people,
+  });
+  final String eventId;
+  final CalendarServices calendar;
+  final EventLineup lineup;
+  final List<EventRosterPerson> people;
+
+  @override
+  State<_LineupEditor> createState() => _LineupEditorState();
+}
+
+class _LineupEditorState extends State<_LineupEditor> {
+  // start, bench or none per person, in the order chosen.
+  late final Map<String, String> _choice = {
+    for (final item in widget.lineup.starters) item.personId: 'start',
+    for (final item in widget.lineup.substitutes) item.personId: 'bench',
+  };
+  late final Map<String, String> _positions = {
+    for (final item in widget.lineup.starters)
+      if (item.position != null) item.personId: item.position!,
+  };
+  late String _formation = widget.lineup.formation ?? '';
+  late bool _published = widget.lineup.published;
+  bool _saving = false;
+
+  /// Accepted first, then the rest, declined last.
+  List<EventRosterPerson> get _ordered {
+    int rank(EventRosterPerson person) => switch (person.callupState) {
+      'accepted' => 0,
+      'declined' => 2,
+      _ => 1,
+    };
+    return [...widget.people]..sort((a, b) {
+      final byRank = rank(a).compareTo(rank(b));
+      return byRank != 0 ? byRank : a.name.compareTo(b.name);
+    });
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      await widget.calendar.saveEventLineup(
+        eventId: widget.eventId,
+        formation: _formation.trim().isEmpty ? null : _formation.trim(),
+        starters: [
+          for (final entry in _choice.entries)
+            if (entry.value == 'start')
+              (
+                personId: entry.key,
+                position: (_positions[entry.key]?.trim().isEmpty ?? true)
+                    ? null
+                    : _positions[entry.key]!.trim(),
+              ),
+        ],
+        substitutes: [
+          for (final entry in _choice.entries)
+            if (entry.value == 'bench') entry.key,
+        ],
+        published: _published,
+        expectedRevision: widget.lineup.revision,
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (error) {
+      AppErrors.caught('event_preparation._LineupEditor', error);
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppStrings.of(
+                context,
+              ).feature('Startelvan kunde inte sparas. Försök igen.'),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final starters = _choice.values.where((value) => value == 'start').length;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${strings.feature('Startelva')} ($starters)'),
+        actions: [
+          TextButton(
+            key: const ValueKey('lineup-save'),
+            onPressed: _saving ? null : _save,
+            child: Text(strings.feature('Spara')),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          TextFormField(
+            key: const ValueKey('lineup-formation'),
+            initialValue: _formation,
+            maxLength: 20,
+            decoration: InputDecoration(
+              labelText: strings.feature('Formation (t.ex. 4-4-2)'),
+            ),
+            onChanged: (value) => _formation = value,
+          ),
+          SwitchListTile(
+            key: const ValueKey('lineup-published'),
+            contentPadding: EdgeInsets.zero,
+            value: _published,
+            onChanged: (value) => setState(() => _published = value),
+            title: Text(strings.feature('Visa för spelarna')),
+          ),
+          const Divider(),
+          if (widget.people.isEmpty)
+            Text(strings.feature('Inga spelare att välja.')),
+          for (final person in _ordered)
+            Padding(
+              key: ValueKey('lineup-person-${person.personId}'),
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          [
+                            person.name,
+                            if (person.callupState == 'declined')
+                              strings.feature('avböjt'),
+                          ].join(' · '),
+                        ),
+                      ),
+                      SegmentedButton<String>(
+                        showSelectedIcon: false,
+                        segments: [
+                          ButtonSegment(
+                            value: 'start',
+                            label: Text(strings.feature('Start')),
+                          ),
+                          ButtonSegment(
+                            value: 'bench',
+                            label: Text(strings.feature('Bänk')),
+                          ),
+                          const ButtonSegment(value: 'none', label: Text('–')),
+                        ],
+                        selected: {_choice[person.personId] ?? 'none'},
+                        onSelectionChanged: (value) => setState(() {
+                          // Keeping the chosen order: a change moves to
+                          // the end of its group.
+                          _choice.remove(person.personId);
+                          if (value.first != 'none') {
+                            _choice[person.personId] = value.first;
+                          }
+                        }),
+                      ),
+                    ],
+                  ),
+                  if (_choice[person.personId] == 'start')
+                    TextFormField(
+                      key: ValueKey('lineup-position-${person.personId}'),
+                      initialValue: _positions[person.personId] ?? '',
+                      maxLength: 30,
+                      decoration: InputDecoration(
+                        isDense: true,
+                        counterText: '',
+                        labelText: strings.feature('Position (frivilligt)'),
+                      ),
+                      onChanged: (value) => _positions[person.personId] = value,
+                    ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -199,7 +199,11 @@ Ekonomi- och styrelsebehörigheter kan inte delas ut i appen idag (lucka 3 i avs
 **Produktägarens beslut 2026-10-19** (byggt samma dag, väntar på migration och driftsättning):
 
 - **F-S3 och G02** *Byggt:* Utveckling visas inte i sidomenyn eller i Mer, för någon roll. Ledare når den via Arbetsytor. Den kan komma tillbaka när arbetsytorna öppnas för fler roller.
-- **F-S4** *Öppen fråga:* ett läge per lag eller aktivitet, där man i stället för kallelser låter dem som inte kan komma anmäla frånvaro. Se förslaget nedan.
+- **F-S4** *Byggt (kräver migration `20261113090000`):* frånvaroanmälan.
+  - **Läget:** ett lag kan stänga av "Kallelser till aktiviteter" på Laget → Översikt. Då förväntas alla komma, och nya och kommande aktiviteter utan skickade kallelser följer valet. Varje aktivitet kan ändras med "Kallelse behövs" i menyn ⋮.
+  - **Spelaren:** spelaren, eller vårdnadshavaren för sitt barn, anmäler med "Kan du inte komma?" → Anmäl på Info-fliken, med samma anledningar som vid avböjd kallelse, och kan ångra.
+  - **Ledaren:** ledarna får en notis, "Frånvaroanmälan", som inte visar vem eller varför. Ledaren ser anmälan med anledning på Deltagare. Efter aktiviteten bekräftar första trycket frånvaron.
+  - **Uppföljningen:** visar "Anmäld frånvaro: N · X av Y frånvarande hade anmält".
 - **F-S5** *Byggt:* texten om assistentens påminnelser visas bara för dem som kallar.
 - **F-S6** *Byggt:* före aktiviteten visar Uppföljning spelaren "Uppföljningen visas när aktiviteten är genomförd."
 - **F-S7** *Byggt:* ledarna på Laget → Översikt går att trycka på och öppnar ledarens sida.
@@ -209,7 +213,7 @@ Ekonomi- och styrelsebehörigheter kan inte delas ut i appen idag (lucka 3 i avs
 - **F-S11** Min profil markerar Laget, och det är rätt. *Rättat:* inkorgsraden visar alltid datum, även när förhandsvisningen är lång.
 - **F-S12** *Byggt:* spelare ser inga cirklar för att välja trupp, inga påminnelseklockor och inga pilar på andras rader på Deltagare.
 - **F-S13 Integritetsfel** *(rättat, kräver migration)*: sedan CAL-11 såg alla i laget allas kallelser och närvaro. Kallelser är nu privata som standard igen. Ett lag kan visa dem för spelarna ("Spelarna ser vilka som är kallade" på Laget → Översikt), och varje aktivitet kan välja annat under Deltagare → ⋮ → "Vad spelarna ser…". Närvaro syns bara för dem som hanterar laget och för personen själv.
-- **Matchläget i Förberedelser** *(öppen fråga)*: ska spelare kunna öppna det?
+- **Matchläget** *Byggt:* matchläget visas bara för ledare och för den som har behörighet för matchdagen. **Startelva** finns i stället under Förberedelser vid matcher. Ledaren sätter startelva (start, bänk, position och formation) och väljer "Visa för spelarna". Spelarna ser den då direkt under Förberedelser *(kräver migration `20261113090000`)*.
 
 
 ---

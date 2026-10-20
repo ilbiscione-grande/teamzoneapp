@@ -5258,11 +5258,13 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
                 );
               },
             ),
-            if (widget.contextValue.teamId case final teamId?)
+            if (widget.contextValue.teamId case final teamId?) ...[
+              _TeamEventSettingsTile(calendar: widget.calendar, teamId: teamId),
               _TeamCallupVisibilityTile(
                 calendar: widget.calendar,
                 teamId: teamId,
               ),
+            ],
             if (showAdmin) ...[
               const SizedBox(height: 24),
               Align(
@@ -6937,6 +6939,100 @@ class _TeamCallupVisibilityTileState extends State<_TeamCallupVisibilityTile> {
         subtitle: Text(
           strings.feature(
             'Gäller lagets aktiviteter. Varje aktivitet kan ändras under Deltagare.',
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Whether the team's activities have callups, or everyone is expected and
+/// reports absence. Coming activities without sent callups follow at once.
+class _TeamEventSettingsTile extends StatefulWidget {
+  const _TeamEventSettingsTile({required this.calendar, required this.teamId});
+  final CalendarServices calendar;
+  final String teamId;
+
+  @override
+  State<_TeamEventSettingsTile> createState() => _TeamEventSettingsTileState();
+}
+
+class _TeamEventSettingsTileState extends State<_TeamEventSettingsTile> {
+  ({bool callupsRequired, bool canChange})? _value;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final value = await widget.calendar
+          .getTeamEventSettings(widget.teamId)
+          .timeout(const Duration(seconds: 15));
+      if (mounted) setState(() => _value = value);
+    } catch (error) {
+      AppErrors.caught('roster_surface._TeamEventSettingsTile', error);
+    }
+  }
+
+  Future<void> _set(bool callupsRequired) async {
+    final strings = AppStrings.of(context);
+    setState(() => _saving = true);
+    try {
+      final changed = await widget.calendar.setTeamEventSettings(
+        widget.teamId,
+        callupsRequired,
+      );
+      if (!mounted) return;
+      setState(
+        () => _value = (callupsRequired: callupsRequired, canChange: true),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            changed == 0
+                ? strings.feature('Sparat. Gäller nya aktiviteter.')
+                : '${strings.feature('Sparat. Kommande aktiviteter som ändrades:')} $changed',
+          ),
+        ),
+      );
+    } catch (error) {
+      AppErrors.caught('roster_surface._TeamEventSettingsTile', error);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              strings.feature('Valet kunde inte sparas. Försök igen.'),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final value = _value;
+    if (value == null || !value.canChange) return const SizedBox.shrink();
+    final strings = AppStrings.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: SwitchListTile(
+        key: const ValueKey('team-callups-required'),
+        contentPadding: EdgeInsets.zero,
+        value: value.callupsRequired,
+        onChanged: _saving ? null : _set,
+        title: Text(strings.feature('Kallelser till aktiviteter')),
+        subtitle: Text(
+          strings.feature(
+            value.callupsRequired
+                ? 'Spelarna kallas och svarar. Stäng av så förväntas alla komma, och den som inte kan anmäler frånvaro.'
+                : 'Alla i laget förväntas komma, och den som inte kan anmäler frånvaro. Varje aktivitet kan ändras i menyn ⋮.',
           ),
         ),
       ),

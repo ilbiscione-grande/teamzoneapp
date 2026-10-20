@@ -1404,12 +1404,22 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
     final expected = _expected(p);
     final canRespond = !_working && _canRespond(p);
     final canOpen = _canManage || _canRecordAttendance || _canRespond(p);
+    // Without callups: reported as not coming.
+    final notice = widget.squad.noticeFor(p.personId);
+    final noticeLabel = notice == null
+        ? null
+        : [
+            _s.feature('Anmäld frånvaro'),
+            _declineReasonLabel(notice.reasonCode),
+            ?notice.reasonText,
+          ].join(' · ');
     final attendanceLabel = switch (status) {
       'present' => _s.feature('Närvarande'),
       'absent' when expected => _s.feature('Frånvarande'),
       'late' => _s.feature('Sen'),
       'partial' => _s.feature('Delvis närvarande'),
       _ when !expected => _s.feature('Ej kallad'),
+      _ when notice != null => _s.feature('Anmäld frånvaro'),
       _ => _s.feature('Ej registrerad'),
     };
     VoidCallback? primary;
@@ -1420,6 +1430,8 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         // callup nobody is expected: a walk-in goes straight back to
         // unregistered instead of becoming an absence.
         primary = () => _setAttendance(p, switch (status) {
+          // A reported absence is prefilled: the first tap confirms it.
+          'unknown' when notice != null => 'absent',
           'unknown' => 'present',
           'absent' => 'unknown',
           _ => expected ? 'absent' : 'unknown',
@@ -1510,6 +1522,13 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                                     : Colors.blueGrey,
                                 attendanceLabel,
                                 primary,
+                              )
+                            else if (noticeLabel != null && !p.isCalled)
+                              _smallAction(
+                                Icons.event_busy,
+                                Colors.orange.shade700,
+                                noticeLabel,
+                                null,
                               )
                             else if (!p.isCalled && !_canManage)
                               const SizedBox.shrink()

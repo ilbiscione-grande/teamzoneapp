@@ -861,6 +861,18 @@ class _FollowupTabState extends State<_FollowupTab> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
+        // Without callups: who reported, and how many of the absent did.
+        if (summary.absenceNotices > 0)
+          Padding(
+            key: const ValueKey('followup-absence-notices'),
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              summary.absent > 0
+                  ? 'Anmäld frånvaro: ${summary.absenceNotices} · ${summary.absentReported} av ${summary.absent} frånvarande hade anmält'
+                  : 'Anmäld frånvaro: ${summary.absenceNotices}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
       ],
     );
   }

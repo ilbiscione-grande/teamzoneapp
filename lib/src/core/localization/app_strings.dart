@@ -1677,6 +1677,38 @@ class AppStrings {
     'Medicinskt ansvarig': 'Medical staff',
     'Kassör': 'Treasurer',
     'Mer': 'More',
+    'Anmäl': "Report",
+    'Anmäld frånvaro': "Reported absence",
+    'Avbytare': "Substitutes",
+    'Bänk': "Bench",
+    'Du': "You",
+    'Formation (t.ex. 4-4-2)': "Formation (e.g. 4-4-2)",
+    'Inga spelare att välja.': "No players to choose from.",
+    'Ingen startelva ännu.': "No starting line-up yet.",
+    'Kallelser till aktiviteter': "Callups for activities",
+    'Kan du inte komma?': "Can't you come?",
+    'Ledarna får besked. Du behöver inte svara om du kommer.':
+        "The leaders are told. You don't need to answer if you come.",
+    'Position (frivilligt)': "Position (optional)",
+    'Sparat. Gäller nya aktiviteter.': "Saved. Applies to new activities.",
+    'Sparat. Kommande aktiviteter som ändrades:':
+        "Saved. Coming activities changed:",
+    'Startelva': "Starting line-up",
+    'Startelvan kunde inte sparas. Försök igen.':
+        "The line-up could not be saved. Try again.",
+    'Visa för spelarna': "Show to the players",
+    'avböjt': "declined",
+    'har anmält frånvaro': "has reported absence",
+    'komma?': "come?",
+    'Ångra': "Undo",
+    'Spelarna ser startelvan.': "The players see the line-up.",
+    'Spelarna ser inte startelvan än.':
+        "The players do not see the line-up yet.",
+    'Sätt startelva': "Set line-up",
+    'Spelarna kallas och svarar. Stäng av så förväntas alla komma, och den som inte kan anmäler frånvaro.':
+        "Players are called up and answer. Turn off to expect everyone, and those who cannot come report absence.",
+    'Alla i laget förväntas komma, och den som inte kan anmäler frånvaro. Varje aktivitet kan ändras i menyn ⋮.':
+        "Everyone in the team is expected, and those who cannot come report absence. Each activity can be changed in the ⋮ menu.",
     'Vad spelarna ser…': 'What players see…',
     'visas': 'shown',
     'dolt': 'hidden',
