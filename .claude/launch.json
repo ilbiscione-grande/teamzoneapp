@@ -22,6 +22,15 @@
         "process.env.TEAMZONE_LOCAL_PUBLIC_VIEW='1';require('child_process').spawn('npm',['run','dev','--','-p','5001'],{cwd:'public-site',stdio:'inherit',shell:true}).on('exit',c=>process.exit(c??0))"
       ],
       "port": 5001
+    },
+    {
+      "name": "webtools",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "Object.assign(process.env,{SUPABASE_URL:'https://hgcshgunvooyudvrcpig.supabase.co',SUPABASE_PUBLISHABLE_KEY:'sb_publishable_lOnfOqPc-jBxRE28IXmEhQ_sRKFNw8O'});require('child_process').spawn('npm',['run','dev'],{cwd:'webtools',stdio:'inherit',shell:true}).on('exit',c=>process.exit(c??0))"
+      ],
+      "port": 3100
     }
   ]
 }

@@ -1,0 +1,29 @@
+# TeamZone Webtools on Firebase App Hosting (test environment). It runs on
+# the backend's own hosted.app address until webtools.teamzoneapp.se moves
+# over from the old site.
+
+runConfig:
+  minInstances: 0
+  maxInstances: 2
+  concurrency: 40
+
+env:
+  - variable: SUPABASE_URL
+    value: https://hgcshgunvooyudvrcpig.supabase.co
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: SUPABASE_PUBLISHABLE_KEY
+    value: sb_publishable_lOnfOqPc-jBxRE28IXmEhQ_sRKFNw8O
+    availability:
+      - RUNTIME
+  - variable: TEAMZONE_SITE_URL
+    value: https://teamzoneapp.se
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: TEAMZONE_APP_URL
+    value: https://app.teamzoneapp.se
+    availability:
+      - BUILD
+      - RUNTIME

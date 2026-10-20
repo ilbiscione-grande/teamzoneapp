@@ -36,6 +36,13 @@ env:
     value: sb_publishable_lOnfOqPc-jBxRE28IXmEhQ_sRKFNw8O
     availability:
       - RUNTIME
+  # TeamZone Webtools on its temporary address until webtools.teamzoneapp.se
+  # moves over; the header and footer link to it.
+  - variable: NEXT_PUBLIC_WEBTOOLS_URL
+    value: https://teamzoneapp-webtools--teamzoneapp-b02a2.europe-west4.hosted.app
+    availability:
+      - BUILD
+      - RUNTIME
   - variable: PUBLIC_PERSONAL_HOME_ENABLED
     value: "1"
     availability:

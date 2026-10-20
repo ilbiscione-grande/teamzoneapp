@@ -6,6 +6,13 @@ import { clubSiteFonts } from "./club-site";
 // status pages) in the same look as the club and team pages.
 export const portalClass = `cs ${clubSiteFonts}`;
 
+/** TeamZone Webtools; hidden until its address is configured. */
+export function webtoolsUrl(): string | null {
+  // NEXT_PUBLIC_: set at build, the same on the server and in the browser.
+  const value = process.env.NEXT_PUBLIC_WEBTOOLS_URL;
+  return value && /^https:\/\/[a-z0-9.-]+$/.test(value) ? value : null;
+}
+
 export function PortalHeader({ active }: { active?: "home" | "search" | "legal" | "matchpool" }) {
   return (
     <header className="cs-header">
@@ -15,6 +22,7 @@ export function PortalHeader({ active }: { active?: "home" | "search" | "legal" 
           <Link href="/" aria-current={active === "home" ? "page" : undefined}>Start</Link>
           <Link href="/klubbar" aria-current={active === "search" ? "page" : undefined}>Hitta klubb</Link>
           <Link href="/matchpool" aria-current={active === "matchpool" ? "page" : undefined}>Matchpool</Link>
+          {webtoolsUrl() && <a href={webtoolsUrl()!}>Webtools</a>}
           <a href="https://app.teamzoneapp.se">Öppna appen</a>
         </nav>
       </div></div>
@@ -27,7 +35,7 @@ export function PortalFooter() {
     <footer className="cs-footer">
       <div className="cs-wrap cs-footer-grid">
         <div className="cs-footer-club"><span className="pz-mark large" aria-hidden="true">TZ</span><div><strong>TeamZone</strong><span>Klubbar, lag och gemenskap</span></div></div>
-        <div><h2>Upptäck</h2><ul><li><Link href="/klubbar">Hitta klubb eller lag</Link></li><li><Link href="/">Min startsida</Link></li></ul></div>
+        <div><h2>Upptäck</h2><ul><li><Link href="/klubbar">Hitta klubb eller lag</Link></li><li><Link href="/">Min startsida</Link></li><li><Link href="/matchpool">Matchpoolen</Link></li>{webtoolsUrl() && <li><a href={webtoolsUrl()!}>Webtools</a></li>}</ul></div>
         <div><h2>Konto</h2><ul><li><a href="https://app.teamzoneapp.se">Öppna TeamZone-appen</a></li><li><a href="https://app.teamzoneapp.se">Skapa konto</a></li></ul></div>
         <div><h2>Juridik</h2><ul><li><Link href="/integritet">Integritetspolicy</Link></li><li><Link href="/villkor">Användarvillkor</Link></li></ul></div>
       </div>
