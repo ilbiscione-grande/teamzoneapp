@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teamzone_app/src/app/product_route_contract.dart';
+import 'package:teamzone_app/src/core/identity/identity_models.dart';
 import 'package:teamzone_app/src/features/account/profile_models.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_models.dart';
 import 'package:teamzone_app/src/features/messaging/messaging_models.dart';
@@ -124,6 +125,46 @@ void main() {
         'role_package': 'club_functionary',
       }).teamNames,
       isNull,
+    );
+  });
+
+  test('club duties also apply in your team contexts in that club', () {
+    TeamZoneContext context(
+      String id,
+      String club,
+      String? team,
+      String role,
+      Set<String> caps,
+    ) => TeamZoneContext(
+      id: id,
+      clubId: club,
+      clubName: club,
+      teamId: team,
+      teamName: team,
+      rolePackage: role,
+      capabilities: caps,
+    );
+    final result = withClubDuties([
+      context('lead', 'c1', 'P2012', 'leader', {'event.manage'}),
+      context('kassa', 'c1', null, 'club_functionary', {'economy.read'}),
+      context('child', 'c1', 'F2013', 'guardian', {'team.roster.view'}),
+      context('other', 'c2', 'A', 'leader', {'event.manage'}),
+    ]);
+    expect(result[0].can('economy.read'), isTrue);
+    expect(result[0].can('event.manage'), isTrue);
+    expect(result[0].clubContextId, 'kassa');
+    expect(
+      result[1].clubContextId,
+      isNull,
+      reason: 'the club context stays as it is',
+    );
+    expect(result[2].can('economy.read'), isTrue);
+    expect(result[3].can('economy.read'), isFalse, reason: 'another club');
+    expect(result[3].clubContextId, isNull);
+    // Titles keep the duties.
+    expect(
+      result[0].withTitles(['head_coach'], const []).clubContextId,
+      'kassa',
     );
   });
 }

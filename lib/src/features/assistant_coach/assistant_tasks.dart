@@ -106,6 +106,10 @@ class AssistantTask {
   final TeamZoneContext? overlappingContext;
   final String? response, overlappingResponse;
   bool get isPersonalConflict => task.kind == 'personal_calendar_conflict';
+
+  /// DR-01: a task of your club role (board, economy, applications), not
+  /// of an activity. It opens its page; it has no snooze or archive.
+  bool get isClubDuty => task.kind.startsWith('club_');
   bool get isImportant {
     if (task.kind == 'calendar_conflict' || isPersonalConflict) return true;
     if (!{
@@ -145,24 +149,31 @@ class AssistantTask {
     return '${value.clubName} · ${value.teamName}';
   }
 
-  String get key =>
-      '${context.clubId}:$eventId:${task.kind}'
-      '${overlappingEvent == null ? '' : ':${overlappingEvent!.id}'}';
-  String get route => Uri(
-    path: ProductRouteContract.calendarEvent(eventId),
-    queryParameters: {
-      'context': context.id,
-      'tab': task.kind == 'unfinished_preparation'
-          ? 'preparation'
-          : isMatchFollowup || task.kind == 'calendar_conflict'
-          ? 'info'
-          : 'participants',
-    },
-  ).toString();
+  String get key => isClubDuty
+      ? '${context.clubId}:${task.kind}'
+      : '${context.clubId}:$eventId:${task.kind}'
+            '${overlappingEvent == null ? '' : ':${overlappingEvent!.id}'}';
+  String get route => isClubDuty
+      ? task.route
+      : Uri(
+          path: ProductRouteContract.calendarEvent(eventId),
+          queryParameters: {
+            'context': context.id,
+            'tab': task.kind == 'unfinished_preparation'
+                ? 'preparation'
+                : isMatchFollowup || task.kind == 'calendar_conflict'
+                ? 'info'
+                : 'participants',
+          },
+        ).toString();
   bool get isMatchFollowup =>
       task.kind == 'missing_match_result' ||
       task.kind == 'missing_match_report';
   String get actionLabel => switch (task.kind) {
+    'club_board_changes' => 'Öppna Styrelse',
+    'club_economy_entries' => 'Öppna Ekonomi',
+    'club_applications' => 'Granska ansökningar',
+    'club_team_requests' => 'Granska förfrågningar',
     'personal_calendar_conflict' => 'Öppna aktivitet och hantera krock',
     'calendar_conflict' => 'Välj aktivitet och ändra tid',
     'unfinished_preparation' => 'Öppna förberedelser',
@@ -174,6 +185,12 @@ class AssistantTask {
     _ => 'Öppna kallelser',
   };
   String get explanation => switch (task.kind) {
+    'club_board_changes' =>
+      '${task.count} ändringar av styrelsemandat väntar på godkännande.',
+    'club_economy_entries' => '${task.count} ekonomiposter väntar på attest.',
+    'club_applications' => '${task.count} medlemsansökningar väntar på beslut.',
+    'club_team_requests' =>
+      '${task.count} förfrågningar om nya lag väntar på beslut.',
     'personal_calendar_conflict' =>
       'Dina egna kallelser i olika lag överlappar under kommande sju dagar. '
           'Två ja-svar innebär dubbelbokning; ett obesvarat svar innebär en möjlig krock. '
@@ -349,6 +366,93 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
       // Do not retain a partially read team's tasks on permission/read errors.
       tasks.removeWhere((_, task) => task.context.id == context.id);
       failed.add(context);
+    }
+  }
+  // DR-01: your club role reports too (board, economy, applications),
+  // whichever context is active.
+  if (overview is ClubHomeServices) {
+    final clubs = [
+      for (final context in contexts)
+        if (context.teamId == null &&
+            context.rolePackage == 'club_functionary' &&
+            (!preferences.currentTeamOnly ||
+                context.clubId == activeContext?.clubId))
+          context,
+    ];
+    for (final club in clubs) {
+      try {
+        final home = await (overview as ClubHomeServices)
+            .loadClubHome(club.id)
+            .timeout(const Duration(seconds: 15));
+        // Board and economy open in the active context when it is the same
+        // club (its team context carries the duties); the queues need the
+        // club context.
+        final sameClub = activeContext?.clubId == club.clubId;
+        String route(String path, {bool clubOnly = false}) =>
+            sameClub && !clubOnly
+            ? path
+            : Uri.parse(path)
+                  .replace(
+                    queryParameters: {
+                      ...Uri.parse(path).queryParameters,
+                      'context': club.id,
+                    },
+                  )
+                  .toString();
+        final duties = <(String, String, int, String)>[
+          if (home.board case final board? when board.pendingChanges > 0)
+            (
+              'club_board_changes',
+              'Mandatändringar väntar',
+              board.pendingChanges,
+              route(ProductRouteContract.board),
+            ),
+          if (home.economy case final economy? when economy.pendingEntries > 0)
+            (
+              'club_economy_entries',
+              'Poster väntar på attest',
+              economy.pendingEntries,
+              route(ProductRouteContract.economy),
+            ),
+          if (home.members case final members?
+              when members.pendingApplications > 0)
+            (
+              'club_applications',
+              'Medlemsansökningar',
+              members.pendingApplications,
+              route(ProductRouteContract.teamApplications(), clubOnly: true),
+            ),
+          if (home.members case final members?
+              when members.pendingTeamRequests > 0)
+            (
+              'club_team_requests',
+              'Förfrågningar om nya lag',
+              members.pendingTeamRequests,
+              route('/team?action=team-requests', clubOnly: true),
+            ),
+        ];
+        for (final (kind, title, count, path) in duties) {
+          if (!preferences.shows(kind)) continue;
+          final item = AssistantTask(
+            context: club,
+            task: LeaderHomeTask(
+              kind: kind,
+              title: title,
+              count: count,
+              route: path,
+              priority: 50,
+            ),
+            eventId: '',
+            generatedAt: DateTime.now(),
+            stale: false,
+            eventTitle: club.clubName,
+          );
+          tasks[item.key] = item;
+        }
+      } catch (error) {
+        AppErrors.caught('assistant_tasks.loadAssistantTasks.club', error);
+        failed.add(club);
+      }
     }
   }
   if (overview is PersonalCalendarConflictServices &&
@@ -1237,6 +1341,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
     final canOrganize =
         widget.overview is AssistantTaskStateServices &&
         !item.stale &&
+        !item.isClubDuty &&
         !_opening;
     final title =
         item.task.kind == 'missing_callups' ||
@@ -1437,6 +1542,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                             child: const Text('Öppna aktiviteten'),
                           ),
                         if (item.task.assistantStatus == 'active' &&
+                            !item.isClubDuty &&
                             widget.overview is AssistantTaskFeedbackServices)
                           TextButton(
                             key: ValueKey('assistant-not-helpful-${item.key}'),
@@ -1449,9 +1555,13 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                     ),
                   const SizedBox(height: 8),
                   Text(
-                    'Källa: lagets kalender, kallelser, förberedelselistor och uppföljning. '
-                    'Hämtat ${material.formatShortDate(observed)} '
-                    '${material.formatTimeOfDay(TimeOfDay.fromDateTime(observed))}.',
+                    item.isClubDuty
+                        ? 'Källa: klubbens styrelse, ekonomi och ansökningar. '
+                              'Hämtat ${material.formatShortDate(observed)} '
+                              '${material.formatTimeOfDay(TimeOfDay.fromDateTime(observed))}.'
+                        : 'Källa: lagets kalender, kallelser, förberedelselistor och uppföljning. '
+                              'Hämtat ${material.formatShortDate(observed)} '
+                              '${material.formatTimeOfDay(TimeOfDay.fromDateTime(observed))}.',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -1500,7 +1610,8 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                     ),
                   ),
                 ),
-                if (item.task.assistantStatus == 'active') ...[
+                if (item.task.assistantStatus == 'active' &&
+                    !item.isClubDuty) ...[
                   const SizedBox(width: 8),
                   Expanded(
                     child: PopupMenuButton<int>(

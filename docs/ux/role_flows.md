@@ -419,11 +419,15 @@ En kontext för hela klubben, till exempel "IF Eksjö · Klubbfunktionär". Pers
 - **Spelare som också är föreningsdomare:** "Mina domaruppdrag" på Hem och domaruppdrag i kalendern, utan att byta kontext.
 - **Ledare som också är domaransvarig:** Domartillsättning i sidomenyn gäller klubben för det aktiva laget.
 
-- [ ] DR-01 Ledare och kassör: hitta Ekonomi utan att leta.
+- [x] DR-01 Ledare och kassör: hitta Ekonomi utan att leta. *Provat 2026-10-20 som Hugo Olofsson i P2012.*
 - [ ] DR-02 Klubbadmin som också är ledare: vad visas i lagkontexten och vad i klubbkontexten?
 - [ ] DR-03 Föreningsdomare under 15: vårdnadshavaren svarar på förfrågan och ser ersättning.
 
-**Fynd:**
+**Fynd (2026-10-20):**
+
+- DR-F1 Inget testkonto hade dubbla roller. Ett klubbuppdrag utan lag (kassör, ordförande, klubbadmin) blev en egen kontext, så en ledare som också är kassör måste byta till klubbkontexten för att se Ekonomi.
+- *Byggt:* klubbuppdragets behörigheter följer med in i dina lagkontexter i samma klubb. Ekonomi och Styrelse syns i menyn och under Mer i laget (inte på lagets Hem, beslut 2026-10-20), klubbrollens möten visas på lagets Hem under Klubbens möten, assistenten rapporterar klubbrollens uppgifter (mandatändringar, poster att attestera, ansökningar) i alla kontexter, och menyn visar "Huvudtränare · Kassör". Klubbkontexten finns kvar för klubbens Hem och lag. Medlemsansökningar och lagförfrågningar för hela klubben ligger kvar i klubbkontexten.
+- Testdata: Hugo Olofsson (+tranare, ledare i P2012) görs också till kassör med en SQL som produktägaren kör.
 
 ---
 

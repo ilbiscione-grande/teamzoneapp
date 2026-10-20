@@ -318,11 +318,14 @@ class SupabaseIdentityServices
       throw const FormatException('Context response is not a list.');
     }
     // One context per team you hold roles in, not one per assignment.
-    final contexts = mergeTeamContexts(
-      value
-          .whereType<Map<String, dynamic>>()
-          .map(TeamZoneContext.fromJson)
-          .toList(growable: false),
+    // DR-01: your club duties also apply in your team contexts.
+    final contexts = withClubDuties(
+      mergeTeamContexts(
+        value
+            .whereType<Map<String, dynamic>>()
+            .map(TeamZoneContext.fromJson)
+            .toList(growable: false),
+      ),
     );
     return _withOwnTitles(contexts);
   }

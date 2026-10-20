@@ -251,7 +251,7 @@ class _ProductShellState extends State<_ProductShell> {
       // account's name, else the login address rather than nothing.
       // A club context: your name in the club and your board offices.
       final club = await _ownClubSummary();
-      if (club != null) {
+      if (club != null && widget.contextValue.teamId == null) {
         _ownName.value = club.name;
         return (
           name: club.name ?? details.displayName,
@@ -270,7 +270,15 @@ class _ProductShellState extends State<_ProductShell> {
           : details.displayName.trim().isNotEmpty
           ? details.displayName
           : details.loginEmail ?? details.contactEmail;
-      return (name: name, avatar: avatar, title: null);
+      // DR-01: your board office after your role in the team.
+      final office = club?.title;
+      return (
+        name: name,
+        avatar: avatar,
+        title: office == null || !mounted
+            ? null
+            : '${_contextRolesLabel(AppStrings.of(context), widget.contextValue)} · $office',
+      );
     } catch (error) {
       AppErrors.caught('product_shell._loadOwnSummary', error);
 
@@ -282,12 +290,14 @@ class _ProductShellState extends State<_ProductShell> {
   /// ("Ordförande"); null in a team context or when unknown.
   Future<({String? name, String? title})?> _ownClubSummary() async {
     final overview = widget.overview;
-    if (widget.contextValue.teamId != null || overview is! ClubHomeServices) {
-      return null;
-    }
+    // The club context itself, or the one a team context carries duties from.
+    final clubContextId = widget.contextValue.teamId == null
+        ? widget.contextValue.id
+        : widget.contextValue.clubContextId;
+    if (clubContextId == null || overview is! ClubHomeServices) return null;
     try {
       final home = await (overview as ClubHomeServices).loadClubHome(
-        widget.contextValue.id,
+        clubContextId,
       );
       if (!mounted) return null;
       final name = home.ownName?.trim();

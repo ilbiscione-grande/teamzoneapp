@@ -621,4 +621,65 @@ void main() {
     expect(find.byKey(const Key('assistant-task-error')), findsNothing);
     expect(find.text('Träning one'), findsOneWidget);
   });
+
+  test('the club role reports its duties beside the team', () async {
+    final club = TeamZoneContext(
+      id: 'club-ctx',
+      clubId: 'club-a',
+      clubName: 'Klubb A',
+      rolePackage: 'club_functionary',
+      capabilities: const {'economy.read'},
+    );
+    final lead = TeamZoneContext(
+      id: 'lead',
+      clubId: 'club-a',
+      clubName: 'Klubb A',
+      teamId: 'p2012',
+      teamName: 'P2012',
+      rolePackage: 'leader',
+      capabilities: const {'economy.read'},
+      clubContextId: 'club-ctx',
+    );
+    final overview = _ClubOverview();
+    final snapshot = await loadAssistantTasks(
+      contexts: [lead, club],
+      activeContext: lead,
+      overview: overview,
+      loadEvent: event,
+    );
+    final duty = snapshot.tasks.single;
+    expect(duty.isClubDuty, isTrue);
+    expect(duty.task.kind, 'club_economy_entries');
+    expect(duty.task.count, 3);
+    // Same club: economy opens in the team context.
+    expect(duty.route, ProductRouteContract.economy);
+    expect(overview.clubCalls, ['club-ctx']);
+
+    final elsewhere = await loadAssistantTasks(
+      contexts: [team('x'), club],
+      activeContext: team('x'),
+      overview: overview,
+      loadEvent: event,
+    );
+    expect(
+      Uri.parse(elsewhere.tasks.single.route).queryParameters['context'],
+      'club-ctx',
+      reason: 'another club opens in the club context',
+    );
+  });
+}
+
+class _ClubOverview extends Overview implements ClubHomeServices {
+  final List<String> clubCalls = [];
+  @override
+  Future<ClubHome> loadClubHome(String contextId) async {
+    clubCalls.add(contextId);
+    return ClubHome.fromJson({
+      'club_id': 'club-a',
+      'own_offices': ['treasurer'],
+      'economy': {'accounts': 1, 'pending_entries': 3},
+      'can_announce': false,
+      'teams': [],
+    });
+  }
 }

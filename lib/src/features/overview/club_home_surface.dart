@@ -455,3 +455,108 @@ class _ClubTeamPageState extends State<_ClubTeamPage> {
     );
   }
 }
+
+/// DR-01: the coming meetings of your club role on a team context's Home,
+/// read from your club context's calendar.
+class _ClubMeetingsSection extends StatefulWidget {
+  const _ClubMeetingsSection({
+    required this.clubContextId,
+    required this.calendar,
+    required this.onNavigate,
+  });
+  final String clubContextId;
+  final CalendarServices calendar;
+  final ValueChanged<String> onNavigate;
+
+  @override
+  State<_ClubMeetingsSection> createState() => _ClubMeetingsSectionState();
+}
+
+class _ClubMeetingsSectionState extends State<_ClubMeetingsSection> {
+  late Future<List<CalendarEventSummary>> _meetings = _load();
+
+  Future<List<CalendarEventSummary>> _load() async {
+    final now = DateTime.now();
+    try {
+      final events = await widget.calendar
+          .listCalendar(
+            contextIds: [widget.clubContextId],
+            from: now,
+            to: now.add(const Duration(days: 60)),
+          )
+          .timeout(const Duration(seconds: 15));
+      return events
+          .where(
+            (event) =>
+                event.type == 'meeting' &&
+                event.state != 'cancelled' &&
+                event.endsAt.isAfter(now),
+          )
+          .take(3)
+          .toList(growable: false);
+    } catch (error) {
+      AppErrors.caught('club_home_surface._ClubMeetingsSection', error);
+      return const [];
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _ClubMeetingsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.clubContextId != widget.clubContextId) _meetings = _load();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      FutureBuilder<List<CalendarEventSummary>>(
+        future: _meetings,
+        builder: (context, snapshot) {
+          final meetings = snapshot.data ?? const <CalendarEventSummary>[];
+          // Nothing to show is shown as nothing.
+          if (meetings.isEmpty) return const SizedBox.shrink();
+          final strings = AppStrings.of(context);
+          return Column(
+            key: const ValueKey('club-meetings'),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+                child: Text(
+                  strings.feature('Klubbens möten'),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              Card(
+                child: Column(
+                  children: [
+                    for (final meeting in meetings)
+                      ListTile(
+                        key: ValueKey('club-meeting-${meeting.id}'),
+                        leading: const Icon(Icons.groups_outlined),
+                        title: Text(meeting.title),
+                        subtitle: Text(
+                          _clubEventWhen(
+                            context,
+                            ClubTeamEvent(
+                              title: meeting.title,
+                              eventType: meeting.type,
+                              startsAt: meeting.startsAt,
+                              endsAt: meeting.endsAt,
+                              allDay: meeting.allDay,
+                            ),
+                          ),
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => widget.onNavigate(
+                          ProductRouteContract.calendarEvent(meeting.id),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          );
+        },
+      );
+}

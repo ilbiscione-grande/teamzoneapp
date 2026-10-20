@@ -34,6 +34,7 @@ class TeamZoneContext {
     this.titles = const [],
     this.customTitles = const [],
     this.mainTitle,
+    this.clubContextId,
   });
 
   /// The primary assignment. Role-bound server calls (homes, messaging) use it.
@@ -64,6 +65,11 @@ class TeamZoneContext {
   /// The title you chose as your main one, shown instead of the role.
   final String? mainTitle;
 
+  /// DR-01: your club-wide context in the same club (a club functionary
+  /// assignment such as treasurer), whose club capabilities this team
+  /// context also carries, so club duties need no switch of context.
+  final String? clubContextId;
+
   TeamZoneContext withTitles(
     List<String> titles,
     List<String> customTitles, {
@@ -81,6 +87,24 @@ class TeamZoneContext {
         titles: titles,
         customTitles: customTitles,
         mainTitle: mainTitle,
+        clubContextId: clubContextId,
+      );
+
+  /// This team context with your club-wide duties in the same club.
+  TeamZoneContext withClubDuties(TeamZoneContext club) => TeamZoneContext(
+        id: id,
+        clubId: clubId,
+        clubName: clubName,
+        teamId: teamId,
+        teamName: teamName,
+        rolePackage: rolePackage,
+        capabilities: {...capabilities, ...club.capabilities},
+        rolePackages: rolePackages,
+        aliasIds: aliasIds,
+        titles: titles,
+        customTitles: customTitles,
+        mainTitle: mainTitle,
+        clubContextId: club.id,
       );
 
   List<String> get roles => rolePackages.isEmpty ? [rolePackage] : rolePackages;
@@ -127,6 +151,28 @@ List<TeamZoneContext> mergeTeamContexts(List<TeamZoneContext> contexts) {
   return [
     for (final group in groups.values)
       if (group.length == 1) group.single else _mergeTeamGroup(group),
+  ];
+}
+
+/// DR-01: a club functionary assignment without a team (treasurer, chair,
+/// club admin) is club-wide, so its capabilities also apply in your team
+/// contexts in that club: economy and board are reachable where you work.
+/// The server checks club capabilities across all your assignments; the
+/// club context itself stays for the club's Home and teams.
+List<TeamZoneContext> withClubDuties(List<TeamZoneContext> contexts) {
+  final clubs = {
+    for (final context in contexts)
+      if (context.teamId == null && context.rolePackage == 'club_functionary')
+        context.clubId: context,
+  };
+  if (clubs.isEmpty) return contexts;
+  return [
+    for (final context in contexts)
+      if (context.teamId != null ? clubs[context.clubId] : null
+          case final club?)
+        context.withClubDuties(club)
+      else
+        context,
   ];
 }
 
