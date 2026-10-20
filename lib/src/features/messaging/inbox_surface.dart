@@ -2937,8 +2937,19 @@ class _ComposeDialogState extends State<_ComposeDialog> {
         Expanded(
           child: matches.isEmpty
               ? Center(
-                  child: Text(
-                    strings.feature('Inga mottagare matchar sökningen.'),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      // Nobody at all: say why, not that the search missed.
+                      widget.recipients.isEmpty
+                          ? strings.feature(
+                              'Ingen i laget kan ta emot meddelanden från dig i appen än. Ledare och spelare behöver ett konto kopplat till laget.',
+                            )
+                          : strings.feature(
+                              'Inga mottagare matchar sökningen.',
+                            ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 )
               : ListView.builder(

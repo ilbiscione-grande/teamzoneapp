@@ -1230,8 +1230,7 @@ class _DayTimelineEventCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final start = event.startsAt.toLocal();
     final end = event.endsAt.toLocal();
-    final time =
-        '${TimeOfDay.fromDateTime(start).format(context)}–${TimeOfDay.fromDateTime(end).format(context)}';
+    final time = _eventTimeRange(context, start, end);
     final colorScheme = Theme.of(context).colorScheme;
     final cancelled = event.state == 'cancelled';
     return Opacity(
@@ -1758,6 +1757,21 @@ class _CalendarSelectedDayPanel extends StatelessWidget {
   }
 }
 
+/// "17:30–19:00", or with the dates when it spans days:
+/// "30 okt. 16:00 – 1 nov. 16:00" rather than "16:00–16:00".
+String _eventTimeRange(BuildContext context, DateTime start, DateTime end) {
+  final from = TimeOfDay.fromDateTime(start).format(context);
+  final to = TimeOfDay.fromDateTime(end).format(context);
+  final sameDay =
+      start.year == end.year &&
+      start.month == end.month &&
+      start.day == end.day;
+  if (sameDay) return '$from–$to';
+  final localizations = MaterialLocalizations.of(context);
+  return '${localizations.formatShortMonthDay(start)} $from – '
+      '${localizations.formatShortMonthDay(end)} $to';
+}
+
 class _CalendarEventTile extends StatelessWidget {
   const _CalendarEventTile({required this.event, required this.onTap});
   final CalendarEventSummary event;
@@ -1769,7 +1783,7 @@ class _CalendarEventTile extends StatelessWidget {
     final end = event.endsAt.toLocal();
     final time = event.allDay
         ? strings.feature('Heldag')
-        : '${TimeOfDay.fromDateTime(start).format(context)}–${TimeOfDay.fromDateTime(end).format(context)}';
+        : _eventTimeRange(context, start, end);
     final cancelled = event.state == 'cancelled';
     return ColoredBox(
       color: cancelled

@@ -50,6 +50,18 @@ void main() {
     },
   );
 
+  test('children in other teams are listed and switch the team', () {
+    final shell = File('lib/src/app/product_shell.dart').readAsStringSync();
+    // The child must belong to the context's team, so another team's child
+    // is shown by switching context first.
+    expect(surface, contains('_loadChildrenElsewhere'));
+    expect(surface, contains('value.children.length + elsewhere.length > 1'));
+    expect(surface, contains('onChildElsewhere?.call(other)'));
+    expect(surface, contains('pending.contextId == widget.contextValue.id'));
+    expect(shell, contains("if (item.rolePackage == 'guardian') item"));
+    expect(shell, contains('widget.onContextChanged(target)'));
+  });
+
   test('acting-as survives the callup mutation', () {
     expect(surface, contains('actingAsPersonId: callup.actingAsPersonId'));
     expect(surface, contains('expectedRevision: callup.revision'));

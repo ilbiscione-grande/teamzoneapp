@@ -424,37 +424,40 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           ?resultHeader,
-          // Mirrors the reference app's header-collapse: the status
-          // circles shrink and the surrounding padding tightens on every
-          // tab except Info, tracking the swipe itself rather than
-          // snapping once the tab settles.
-          AnimatedBuilder(
-            animation: _tabController.animation!,
-            builder: (context, child) {
-              final expanded =
-                  (1 - _tabController.animation!.value.clamp(0.0, 1.0)).clamp(
-                    0.0,
-                    1.0,
-                  );
-              final scale = 0.82 + 0.18 * expanded;
-              return Padding(
-                padding: EdgeInsets.fromLTRB(20, 8 + 4 * expanded, 20, 0),
-                // Transform.scale only shrinks the paint; heightFactor
-                // shrinks the layout too, so the gap to the tab row stays
-                // constant and the tabs move up with the circles.
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  heightFactor: scale,
-                  child: Transform.scale(
-                    scale: scale,
+          // The squad counts are for those who call up; players and
+          // guardians see their own answer instead.
+          if (event.can('manage_roster') || event.can('revise'))
+            // Mirrors the reference app's header-collapse: the status
+            // circles shrink and the surrounding padding tightens on every
+            // tab except Info, tracking the swipe itself rather than
+            // snapping once the tab settles.
+            AnimatedBuilder(
+              animation: _tabController.animation!,
+              builder: (context, child) {
+                final expanded =
+                    (1 - _tabController.animation!.value.clamp(0.0, 1.0)).clamp(
+                      0.0,
+                      1.0,
+                    );
+                final scale = 0.82 + 0.18 * expanded;
+                return Padding(
+                  padding: EdgeInsets.fromLTRB(20, 8 + 4 * expanded, 20, 0),
+                  // Transform.scale only shrinks the paint; heightFactor
+                  // shrinks the layout too, so the gap to the tab row stays
+                  // constant and the tabs move up with the circles.
+                  child: Align(
                     alignment: Alignment.topCenter,
-                    child: child,
+                    heightFactor: scale,
+                    child: Transform.scale(
+                      scale: scale,
+                      alignment: Alignment.topCenter,
+                      child: child,
+                    ),
                   ),
-                ),
-              );
-            },
-            child: _StatusHeaderRow(event: event, squad: squad),
-          ),
+                );
+              },
+              child: _StatusHeaderRow(event: event, squad: squad),
+            ),
           const SizedBox(height: 4),
           TabBar(
             controller: _tabController,
@@ -495,7 +498,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                       event.preparationActions.contains(
                             EventPreparationAction.matchSpace,
                           ) &&
-                          (_contextCanCoManage || event.can('match_live'))
+                          event.can('match_live')
                       ? _showMatchSpace
                       : null,
                   lineup: event.type == 'match'
@@ -517,7 +520,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                       event.preparationActions.contains(
                             EventPreparationAction.matchSpace,
                           ) &&
-                          (_contextCanCoManage || event.can('match_live'))
+                          event.can('match_live')
                       ? _showMatchSpace
                       : null,
                 ),
@@ -581,7 +584,10 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
   ) {
     final strings = AppStrings.of(context);
     final notice = squad.noticeFor(person.personId);
-    final self = squad.representedPeople.length == 1;
+    // A guardian answers for the child: the child's name, not "Du".
+    final self =
+        squad.representedPeople.length == 1 &&
+        !widget.contextValue.roles.contains('guardian');
     final who = self ? strings.feature('Du') : person.name;
     return Card(
       key: ValueKey('event-absence-${person.personId}'),
@@ -710,7 +716,8 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
           EventRefereesSection(eventId: event.id, services: _refereeServices()),
         // About the assistant's reminders: for those who call up.
         if (!event.callupsRequired &&
-            (_contextCanCoManage || _contextCanManageRoster))
+            (_contextCanCoManage || _contextCanManageRoster) &&
+            event.can('revise'))
           ListTile(
             key: const Key('event-callups-not-required'),
             contentPadding: EdgeInsets.zero,

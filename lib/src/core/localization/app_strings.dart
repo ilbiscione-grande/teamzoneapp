@@ -1677,6 +1677,8 @@ class AppStrings {
     'Medicinskt ansvarig': 'Medical staff',
     'Kassör': 'Treasurer',
     'Mer': 'More',
+    'Ingen i laget kan ta emot meddelanden från dig i appen än. Ledare och spelare behöver ett konto kopplat till laget.':
+        'Nobody in the team can receive messages from you in the app yet. Leaders and players need an account linked to the team.',
     'Anmäl': "Report",
     'Anmäld frånvaro': "Reported absence",
     'Avbytare': "Substitutes",

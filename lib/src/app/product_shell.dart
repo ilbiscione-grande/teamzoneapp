@@ -113,6 +113,10 @@ class _ProductShellState extends State<_ProductShell> {
   // Your name for Home's greeting: the one in the active team, else the
   // account's; never the login address.
   final ValueNotifier<String?> _ownName = ValueNotifier<String?>(null);
+
+  /// VH-03: the child chosen on Home from another team, shown after the
+  /// switch to that team.
+  ({String contextId, String childId})? _guardianChildAfterSwitch;
   // REF-02: Domartillsättning/Domarersättning in the menu for the active club.
   late Future<RefereeSummary> _refereeSummary = _loadRefereeSummary();
   // The club's public page when published, for "Mer" and "Gå till".
@@ -597,6 +601,18 @@ class _ProductShellState extends State<_ProductShell> {
                   destination: destination,
                   profile: widget.profile,
                   ownName: _ownName,
+                  guardianContexts: [
+                    for (final item in widget.contexts)
+                      if (item.rolePackage == 'guardian') item,
+                  ],
+                  guardianChildAfterSwitch: _guardianChildAfterSwitch,
+                  onGuardianChildElsewhere: (target, childId) {
+                    _guardianChildAfterSwitch = (
+                      contextId: target.id,
+                      childId: childId,
+                    );
+                    widget.onContextChanged(target);
+                  },
                   contextValue: widget.contextValue,
                   overview: widget.overview,
                   calendar: widget.calendar,
@@ -2552,6 +2568,9 @@ class _AppNavigationPanel extends StatelessWidget {
                                   : name,
                               key: const Key('drawer-own-name'),
                               textAlign: TextAlign.center,
+                              // A login address as the name stays on one line.
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                           ],

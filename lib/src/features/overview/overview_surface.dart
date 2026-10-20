@@ -10,7 +10,19 @@ class _OverviewSurface extends StatefulWidget {
     required this.messaging,
     required this.onNavigate,
     this.ownName,
+    this.guardianContexts = const [],
+    this.onGuardianChildElsewhere,
+    this.guardianChildAfterSwitch,
   });
+
+  /// VH-03: your other guardian contexts, whose children the child picker
+  /// also lists; choosing one switches to that team.
+  final List<TeamZoneContext> guardianContexts;
+  final void Function(TeamZoneContext context, String childId)?
+  onGuardianChildElsewhere;
+
+  /// The child chosen in another team before the switch, for that context.
+  final ({String contextId, String childId})? guardianChildAfterSwitch;
 
   final _Destination destination;
   final TeamZoneProfile profile;
@@ -35,6 +47,7 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
   StreamSubscription<void>? _notificationSync;
   Timer? _homeRefreshDebounce;
   String? _guardianChildId;
+  late Future<List<_GuardianChildElsewhere>> _childrenElsewhere;
   Future<MainSurfacesProjection> _reload() =>
       widget.overview.load(contextIds: [widget.contextValue.id]);
 
@@ -48,7 +61,9 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
     );
     _leaderHome = _reloadLeaderHome();
     _playerHome = _reloadPlayerHome();
+    _guardianChildId = _childAfterSwitch();
     _guardianHome = _reloadGuardianHome();
+    _childrenElsewhere = _loadChildrenElsewhere();
     unawaited(_data.load());
     _subscribeHomeSignals();
   }
@@ -154,9 +169,46 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
       );
       _leaderHome = _reloadLeaderHome();
       _playerHome = _reloadPlayerHome();
-      _guardianChildId = null;
+      _guardianChildId = _childAfterSwitch();
       _guardianHome = _reloadGuardianHome();
+      _childrenElsewhere = _loadChildrenElsewhere();
     }
+  }
+
+  String? _childAfterSwitch() {
+    final pending = widget.guardianChildAfterSwitch;
+    return pending != null && pending.contextId == widget.contextValue.id
+        ? pending.childId
+        : null;
+  }
+
+  /// The children in your other guardian teams, with the team to switch to.
+  Future<List<_GuardianChildElsewhere>> _loadChildrenElsewhere() async {
+    if (widget.destination.path != '/home' ||
+        widget.contextValue.rolePackage != 'guardian') {
+      return const [];
+    }
+    final found = <_GuardianChildElsewhere>[];
+    for (final other in widget.guardianContexts) {
+      if (other.id == widget.contextValue.id) continue;
+      try {
+        final home = await widget.overview
+            .loadGuardianHome(other.id)
+            .timeout(const Duration(seconds: 15));
+        for (final child in home.children) {
+          found.add(
+            _GuardianChildElsewhere(
+              context: other,
+              childId: child.id,
+              name: child.displayName,
+            ),
+          );
+        }
+      } catch (error) {
+        AppErrors.caught('overview_surface._loadChildrenElsewhere', error);
+      }
+    }
+    return found;
   }
 
   @override
@@ -335,17 +387,33 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
                           ),
                         );
                       }
-                      return _GuardianHomeContent(
-                        value: snapshot.data!,
-                        calendar: widget.calendar,
-                        onNavigate: widget.onNavigate,
-                        onChildChanged: (childId) => setState(() {
-                          _guardianChildId = childId;
-                          _guardianHome = _reloadGuardianHome();
-                        }),
-                        onChanged: () => setState(() {
-                          _guardianHome = _reloadGuardianHome();
-                        }),
+                      return FutureBuilder<List<_GuardianChildElsewhere>>(
+                        future: _childrenElsewhere,
+                        builder: (context, elsewhere) => _GuardianHomeContent(
+                          value: snapshot.data!,
+                          elsewhere: [
+                            for (final item
+                                in elsewhere.data ??
+                                    const <_GuardianChildElsewhere>[])
+                              // The same child in two teams is listed once.
+                              if (!snapshot.data!.children.any(
+                                (child) => child.id == item.childId,
+                              ))
+                                item,
+                          ],
+                          onChildElsewhere: (item) => widget
+                              .onGuardianChildElsewhere
+                              ?.call(item.context, item.childId),
+                          calendar: widget.calendar,
+                          onNavigate: widget.onNavigate,
+                          onChildChanged: (childId) => setState(() {
+                            _guardianChildId = childId;
+                            _guardianHome = _reloadGuardianHome();
+                          }),
+                          onChanged: () => setState(() {
+                            _guardianHome = _reloadGuardianHome();
+                          }),
+                        ),
                       );
                     },
                   )
@@ -467,15 +535,30 @@ class _HomeGreetingHeader extends StatelessWidget {
   }
 }
 
+/// A child in another of your guardian teams.
+class _GuardianChildElsewhere {
+  const _GuardianChildElsewhere({
+    required this.context,
+    required this.childId,
+    required this.name,
+  });
+  final TeamZoneContext context;
+  final String childId, name;
+}
+
 class _GuardianHomeContent extends StatelessWidget {
   const _GuardianHomeContent({
     required this.value,
+    this.elsewhere = const [],
+    this.onChildElsewhere,
     required this.calendar,
     required this.onNavigate,
     required this.onChildChanged,
     required this.onChanged,
   });
   final GuardianHomeProjection value;
+  final List<_GuardianChildElsewhere> elsewhere;
+  final ValueChanged<_GuardianChildElsewhere>? onChildElsewhere;
   final CalendarServices calendar;
   final ValueChanged<String> onNavigate, onChildChanged;
   final VoidCallback onChanged;
@@ -484,32 +567,58 @@ class _GuardianHomeContent extends StatelessWidget {
     final child = value.selectedChild;
     return Column(
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: DropdownButtonFormField<String>(
-              initialValue: value.selectedChildId,
-              decoration: const InputDecoration(
-                labelText: 'Visa för barn',
-                prefixIcon: Icon(Icons.child_care_outlined),
+        // One child: nothing to choose, the card below names the child.
+        if (value.children.length + elsewhere.length > 1)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: DropdownButtonFormField<String>(
+                initialValue: value.selectedChildId,
+                decoration: const InputDecoration(
+                  labelText: 'Visa för barn',
+                  prefixIcon: Icon(Icons.child_care_outlined),
+                ),
+                isExpanded: true,
+                items: [
+                  for (final item in value.children)
+                    DropdownMenuItem(
+                      value: item.id,
+                      child: Text(
+                        elsewhere.isEmpty
+                            ? item.displayName
+                            : '${item.displayName} · ${value.team.teamName}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  for (final item in elsewhere)
+                    DropdownMenuItem(
+                      value: 'elsewhere:${item.context.id}:${item.childId}',
+                      child: Text(
+                        '${item.name} · ${item.context.teamName ?? item.context.clubName}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: value.isStale
+                    ? null
+                    : (id) {
+                        if (id == null || id == value.selectedChildId) return;
+                        final other = elsewhere
+                            .where(
+                              (item) =>
+                                  id ==
+                                  'elsewhere:${item.context.id}:${item.childId}',
+                            )
+                            .firstOrNull;
+                        if (other != null) {
+                          onChildElsewhere?.call(other);
+                        } else {
+                          onChildChanged(id);
+                        }
+                      },
               ),
-              items: [
-                for (final item in value.children)
-                  DropdownMenuItem(
-                    value: item.id,
-                    child: Text(item.displayName),
-                  ),
-              ],
-              onChanged: value.isStale
-                  ? null
-                  : (id) {
-                      if (id != null && id != value.selectedChildId) {
-                        onChildChanged(id);
-                      }
-                    },
             ),
           ),
-        ),
         Card(
           color: Theme.of(context).colorScheme.secondaryContainer,
           child: ListTile(

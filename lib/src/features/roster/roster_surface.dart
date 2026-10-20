@@ -5217,6 +5217,15 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
                   return Text(strings.feature('Inga ledare visas ännu.'));
                 }
                 final roles = rolesSnapshot.data;
+                // As on the member page: guardians do not open member
+                // details, so the row is not a link for them.
+                final contextValue = widget.contextValue;
+                final canOpen =
+                    contextValue.teamId != null &&
+                    contextValue.rolePackage != 'guardian' &&
+                    (contextValue.can('team.roster.view') ||
+                        contextValue.can('club.memberships.manage') ||
+                        contextValue.can('team.roster.manage'));
                 return Material(
                   type: MaterialType.transparency,
                   child: Column(
@@ -5244,12 +5253,16 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
                               visualDensity: VisualDensity.compact,
                               title: Text(leader.displayName),
                               subtitle: titles.isEmpty ? null : Text(titles),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => GoRouter.of(context).push(
-                                ProductRouteContract.teamMember(
-                                  leader.personId,
-                                ),
-                              ),
+                              trailing: canOpen
+                                  ? const Icon(Icons.chevron_right)
+                                  : null,
+                              onTap: canOpen
+                                  ? () => GoRouter.of(context).push(
+                                      ProductRouteContract.teamMember(
+                                        leader.personId,
+                                      ),
+                                    )
+                                  : null,
                             );
                           },
                         ),

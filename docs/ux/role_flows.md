@@ -235,7 +235,19 @@ Ekonomi- och styrelsebehörigheter kan inte delas ut i appen idag (lucka 3 i avs
 - [ ] VH-03 Två barn i olika lag: hitta båda barnens nästa aktivitet snabbt.
 - [ ] VH-04 Kontakta barnets ledare.
 
-**Fynd:**
+**Fynd (2026-10-20, Hanna i F2013 och Liam i P2015):**
+
+- VH-F1 Matchläget syntes för vårdnadshavaren. *Åtgärdat:* kräver ledarbehörigheten för matchdagen (`match_live`).
+- VH-F2 Ledartexten "Kallelse behövs inte … Ändras i menyn ⋮" syntes. *Åtgärdat:* bara för den som kan ändra aktiviteten.
+- VH-F3 Frånvarokortet sa "Kan du inte komma?" till vårdnadshavaren. *Åtgärdat:* "Kan inte Hanna komma?".
+- VH-F4 Ledarna på Laget → Översikt ledde till "Medlemsdetaljen är inte tillgänglig". *Åtgärdat:* raderna är inte länkar för vårdnadshavare.
+- VH-F5 (VH-04) "Nytt meddelande" var tomt och sa "Inga mottagare matchar sökningen". F2013:s ledare saknar konton (demodata). *Åtgärdat:* tomläget förklarar varför.
+- VH-F6 Barnväljaren visades med ett enda barn. *Åtgärdat:* döljs med ett barn.
+- VH-F7 Utan visningsnamn visas inloggningsadressen i menyn på två rader. *Åtgärdat:* en rad.
+- VH-F8 Flerdagsaktiviteter visades "16:00–16:00" i kalenderns lista. *Åtgärdat:* med datum.
+- VH-F9 (VH-03) Barn i olika lag syns bara efter lagbyte i menyn. *Åtgärdat:* barnväljaren listar barnen i alla dina vårdnadshavarlag ("Liam · P2015"), och ett barn i ett annat lag byter lag och visar det barnet.
+- VH-F10 "Skapa en ny klubb" ligger i lagbytet för alla roller. *Beslut:* ska finnas kvar för alla, även vårdnadshavare.
+- VH-F11 Räknarna (utkast, kallade, ja, obesvarade, nej) överst på aktiviteten sa inget för vårdnadshavaren. *Åtgärdat:* visas bara för den som kallar.
 
 ---
 
