@@ -8,6 +8,11 @@ import 'package:teamzone_app/src/core/observability/web_error_reporter.dart';
 
 class _AppDefect implements Exception {}
 
+// A different runtimeType must not turn an expected timeout into a defect.
+class _SlowProfileTimeout extends TimeoutException {
+  _SlowProfileTimeout() : super('slow profile');
+}
+
 void main() {
   final reported = <(String, Object)>[];
   setUp(() {
@@ -49,6 +54,14 @@ void main() {
   test('without an installed sink nothing happens', () {
     AppErrors.uninstall();
     AppErrors.caught('roster._save', _AppDefect());
+    expect(reported, isEmpty);
+  });
+
+  test('timeout classification does not depend on its runtime type name', () {
+    final error = _SlowProfileTimeout();
+    expect(error.runtimeType.toString(), isNot('TimeoutException'));
+    AppErrors.caught('product_shell._loadOwnSummary', error);
+    expect(AppErrors.isExpected(error), isTrue);
     expect(reported, isEmpty);
   });
 

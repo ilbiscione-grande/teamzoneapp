@@ -1,3 +1,5 @@
+import 'dart:async';
+
 /// Failures the app has already handled (a fallback, a neutral message) but
 /// that operations should still see. main() installs the sink; tests and an
 /// unconfigured app have none, so reporting is then a no-op.
@@ -37,10 +39,12 @@ abstract final class AppErrors {
   /// Being offline or slow is not a defect: timeouts and transport failures
   /// (matched by type name, so this file needs no dart:io).
   static bool isExpected(Object error) =>
+      // dart2js minifies runtimeType names in release builds. A timeout
+      // must remain expected even when its name becomes e.g. minified_H6.
+      error is TimeoutException ||
       _expectedTypes.contains(error.runtimeType.toString());
 
   static const _expectedTypes = {
-    'TimeoutException',
     'SocketException',
     'HttpException',
     'ClientException',
