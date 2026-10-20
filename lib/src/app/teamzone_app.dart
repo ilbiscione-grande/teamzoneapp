@@ -159,6 +159,13 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
   ThemeMode _themeMode = ThemeMode.system;
   FifthSlot? _fifthSlot;
 
+  // Web: the root navigator keeps its key while the app key is the same, so
+  // a theme or preference change does not rebuild the signed-in app from
+  // scratch (which repeated the start-up checks). A new app key (sign-in,
+  // sign-out, invitation) still starts over.
+  GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
+  String? _rootNavigatorKeyFor;
+
   @override
   void initState() {
     super.initState();
@@ -289,10 +296,17 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
       '${_sessionStatus.name}:$_recoveringPassword:'
       '${invitationToken != null}:$_showInvitationSignIn',
     );
+    if (_rootNavigatorKeyFor != appKey.value) {
+      _rootNavigatorKeyFor = appKey.value;
+      _rootNavigatorKey = GlobalKey<NavigatorState>();
+    }
     final materialApp = kIsWeb
         ? MaterialApp.router(
             key: appKey,
-            routerDelegate: _StaticRootRouterDelegate(root),
+            routerDelegate: _StaticRootRouterDelegate(
+              root,
+              navigatorKey: _rootNavigatorKey,
+            ),
             debugShowCheckedModeBanner: false,
             title: 'TeamZone',
             theme: theme,
@@ -360,14 +374,16 @@ class _TeamZoneScrollBehavior extends MaterialScrollBehavior {
 
 class _StaticRootRouterDelegate extends RouterDelegate<Object>
     with ChangeNotifier {
-  _StaticRootRouterDelegate(this.root);
+  _StaticRootRouterDelegate(this.root, {required this.navigatorKey});
 
   final Widget root;
-  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
+  /// Owned by the app state: a new delegate per build keeps the navigator.
+  final GlobalKey<NavigatorState> navigatorKey;
 
   @override
   Widget build(BuildContext context) => Navigator(
-    key: _navigatorKey,
+    key: navigatorKey,
     pages: [MaterialPage<void>(key: const ValueKey('root'), child: root)],
     onDidRemovePage: (_) {},
   );

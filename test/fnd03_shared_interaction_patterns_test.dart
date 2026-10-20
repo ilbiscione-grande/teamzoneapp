@@ -160,7 +160,9 @@ void main() {
 
     expect(source, contains('if (kIsWeb)'));
     expect(source, contains('MaterialApp.router('));
-    expect(source, contains('_StaticRootRouterDelegate(root)'));
+    expect(source, contains('routerDelegate: _StaticRootRouterDelegate('));
+    // The navigator survives rebuilds with the same app key.
+    expect(source, contains('navigatorKey: _rootNavigatorKey'));
     expect(
       source,
       contains('Future<void> setNewRoutePath(Object configuration)'),
