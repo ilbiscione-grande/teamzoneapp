@@ -15,6 +15,11 @@ abstract interface class OverviewServices {
 }
 
 /// Actions must not use a cached projection after authorization was revoked.
+/// UX review: the Home of a club context without a team.
+abstract interface class ClubHomeServices {
+  Future<ClubHome> loadClubHome(String contextId);
+}
+
 abstract interface class FreshLeaderOverviewServices {
   Future<LeaderHomeProjection> loadFreshLeaderHome(String contextId);
 }
@@ -54,6 +59,7 @@ class UnconfiguredOverviewServices implements OverviewServices {
 class SupabaseOverviewServices
     implements
         OverviewServices,
+        ClubHomeServices,
         FreshLeaderOverviewServices,
         PersonalCalendarConflictServices,
         AssistantTaskPreferencesServices,
@@ -248,6 +254,18 @@ class SupabaseOverviewServices
       if (cached != null) return cached.asStale();
       rethrow;
     }
+  }
+
+  @override
+  Future<ClubHome> loadClubHome(String contextId) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>('get_club_home', params: {'target_context_id': contextId})
+        .timeout(const Duration(seconds: 15));
+    if (value is! Map<String, dynamic>) {
+      throw const FormatException('Invalid club home.');
+    }
+    return ClubHome.fromJson(value);
   }
 
   @override

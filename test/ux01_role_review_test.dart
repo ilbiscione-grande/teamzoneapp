@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teamzone_app/src/app/product_route_contract.dart';
 import 'package:teamzone_app/src/features/account/profile_models.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_models.dart';
+import 'package:teamzone_app/src/features/messaging/messaging_models.dart';
+import 'package:teamzone_app/src/features/overview/overview_models.dart';
 
 void main() {
   test('a message from the player page starts with its recipients', () {
@@ -69,5 +71,59 @@ void main() {
     ]);
     expect(lineup.substitutes.single.name, 'Cia');
     expect(lineup.formation, '4-4-2');
+  });
+
+  test('the club home carries only what your permissions give', () {
+    final home = ClubHome.fromJson({
+      'club_id': 'c1',
+      'own_name': 'Benjamin Jonsson',
+      'own_offices': ['chair'],
+      'board': {'active_mandates': 5, 'pending_changes': 1},
+      'economy': null,
+      'members': null,
+      'can_announce': true,
+      'teams': [
+        {
+          'team_id': 't1',
+          'name': 'F2013',
+          'member_count': 15,
+          'upcoming': [
+            {
+              'title': 'Träning',
+              'event_type': 'training',
+              'starts_at': '2026-10-21T15:00:00Z',
+              'ends_at': '2026-10-21T16:30:00Z',
+              'all_day': false,
+              'location_name': 'Demovallen',
+            },
+          ],
+        },
+      ],
+    });
+    expect(home.ownOffices, ['chair']);
+    expect(home.board?.pendingChanges, 1);
+    expect(home.economy, isNull);
+    expect(home.members, isNull);
+    expect(home.canAnnounce, isTrue);
+    expect(home.teams.single.memberCount, 15);
+    expect(home.teams.single.upcoming.single.locationName, 'Demovallen');
+  });
+
+  test('a recipient names the teams they are in', () {
+    final recipient = AllowedRecipient.fromJson({
+      'profile_id': 'p1',
+      'display_name': 'Anna',
+      'role_package': 'player',
+      'team_names': 'F2013, P2015',
+    });
+    expect(recipient.teamNames, 'F2013, P2015');
+    expect(
+      AllowedRecipient.fromJson({
+        'profile_id': 'p2',
+        'display_name': 'Bo',
+        'role_package': 'club_functionary',
+      }).teamNames,
+      isNull,
+    );
   });
 }

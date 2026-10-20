@@ -392,7 +392,24 @@ En kontext för hela klubben, till exempel "IF Eksjö · Klubbfunktionär". Pers
 - [ ] DA-02 Tillsätta, godkänna anmälningar och sätta regler per lag.
 - [ ] DA-03 Godkänna rapporter och skicka kontrollfråga.
 
-**Fynd:**
+**Fynd (2026-10-20, Benjamin Jonsson, ordförande: board.read/manage, economy.read, club.messaging.manage):**
+
+- KF-F1 Hem har bara räknarna "Kommande aktiviteter 102" och "Kallelser att svara på 0", plus nästa aktivitet med rå tidsstämpel ("2026-10-20 17:30:00.000"). Inget om styrelse, ekonomi eller klubbens lag. (Lucka 1 bekräftad.)
+- KF-F2 Hem och Kalender säger emot varandra: Hem räknar 102 kommande och visar en träning i dag, men kalendern visar bara cupresan.
+- KF-F3 Laget säger "Du är inte kopplad till något lag" med en knapp till Inställningar. (Lucka 2 bekräftad.)
+- KF-F4 Menyn visar e-postadressen och "Klubbfunktionär", fast personen heter Benjamin Jonsson och är ordförande enligt Styrelse.
+- KF-F5 Styrelse visar mandaten (ordförande, kassör, sekreterare, ledamot, revisor) med ISO-datum. Klubbtitlarna finns alltså som mandat (lucka 4 delvis fel). Ärenden och beslut (OR-01/02) finns inte.
+- KF-F6 Ekonomi har rubriken "Economy" på engelska och uppmanar till att skapa en kassa utan någon knapp för det (personen har bara economy.read).
+- KF-F7 Mottagarlistan i Nytt meddelande har rader utan namn (konton utan visningsnamn; listan läser bara kontots namn, inte personens namn i klubben) och "Ledare" säger inte vilket lag.
+- KF-F8 Anslag till spelare, ledare, vårdnadshavare eller alla i klubben fungerar (OR-03).
+- KF-F9 Kalendern tog runt tio sekunder att ladda i klubbkontexten.
+
+**Byggt 2026-10-20 (kräver migration 20261114090000):**
+
+- A. Hem för en klubbkontext utan lag: kort efter behörighet (Styrelse med väntande mandatändringar, Ekonomi med poster att attestera, Medlemsansökningar och Förfrågningar om nya lag för klubbadministratören, Domartillsättning, Skicka anslag), sedan Klubbens lag. Räknarna och den råa tidsstämpeln är borta (KF-F1, KF-F2).
+- B. Laget utan lag visar Klubbens lag med medlemmar och nästa aktivitet. Ett lag öppnas som läsvy: bild, om laget, ledare och de fem närmaste aktiviteterna (vad, när, var; inte deltagare). Klubbadministratörens köer öppnas också härifrån (KF-F3).
+- C. Menyn visar namnet i klubben och styrelsetiteln (KF-F4), Styrelse visar svenska datum (KF-F5), Ekonomi heter Ekonomi och säger att kassören skapar kassorna för den som bara får läsa (KF-F6), mottagarlistan visar personens namn i klubben och lagen (KF-F7).
+- Kvar: kalenderns laddtid i klubbkontexten (KF-F9) och ärenden/beslut i Styrelse (OR-01/02).
 
 ---
 

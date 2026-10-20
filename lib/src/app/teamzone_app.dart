@@ -120,6 +120,7 @@ part '../features/match/match_result_card.dart';
 part '../features/match/written_report_card.dart';
 part '../features/messaging/inbox_surface.dart';
 part '../features/overview/overview_surface.dart';
+part '../features/overview/club_home_surface.dart';
 part '../features/publication/editorial_surface.dart';
 part '../features/publication/publication_management_surface.dart';
 part '../features/publication/publication_self_service_surface.dart';

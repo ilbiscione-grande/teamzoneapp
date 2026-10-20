@@ -1677,6 +1677,30 @@ class AppStrings {
     'Medicinskt ansvarig': 'Medical staff',
     'Kassör': 'Treasurer',
     'Mer': 'More',
+    'Ordförande': "Chair",
+    'Sekreterare': "Secretary",
+    'Revisor': "Auditor",
+    'Ledamot': "Board member",
+    'mandatändringar väntar': "mandate changes waiting",
+    'aktiva mandat': "active mandates",
+    'Inga kassor än': "No accounts yet",
+    'poster väntar på attest': "entries waiting for approval",
+    'kassor': "accounts",
+    'väntar på beslut': "waiting for a decision",
+    'Inga väntande': "None waiting",
+    'Domartillsättning': "Referee assignment",
+    'Klubbens matcher och domare': "The club's matches and referees",
+    'Skicka anslag': "Send an announcement",
+    'Till ledare, spelare eller hela klubben':
+        "To leaders, players or the whole club",
+    'Klubbens lag': "The club's teams",
+    'Klubben har inga lag än.': "The club has no teams yet.",
+    'lagmedlemmar': "team members",
+    'Laddar klubbens lag': "Loading the club's teams",
+    'Laddar klubbens översikt': "Loading the club's overview",
+    'Du har inget eget lag. Här ser du klubbens lag och vad som är på gång.':
+        "You have no team of your own. Here are the club's teams and what is coming up.",
+    'Inga kommande aktiviteter.': "No coming activities.",
     'Ingen i laget kan ta emot meddelanden från dig i appen än. Ledare och spelare behöver ett konto kopplat till laget.':
         'Nobody in the team can receive messages from you in the app yet. Leaders and players need an account linked to the team.',
     'Anmäl': "Report",
@@ -2389,9 +2413,44 @@ class AppStrings {
   String get partial => isSwedish ? 'Delvis' : 'Partial';
   String get absent => isSwedish ? 'Frånvarande' : 'Absent';
   String get unknown => isSwedish ? 'Ej registrerad' : 'Not recorded';
-  String nextEventAt(DateTime value) => isSwedish
-      ? 'Nästa aktivitet ${value.toLocal()}'
-      : 'Next event ${value.toLocal()}';
+  String nextEventAt(DateTime value) {
+    // "Nästa aktivitet 20 okt 17:30", not the raw timestamp.
+    final local = value.toLocal();
+    const sv = [
+      'jan',
+      'feb',
+      'mar',
+      'apr',
+      'maj',
+      'jun',
+      'jul',
+      'aug',
+      'sep',
+      'okt',
+      'nov',
+      'dec',
+    ];
+    const en = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final time =
+        '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+    return isSwedish
+        ? 'Nästa aktivitet ${local.day} ${sv[local.month - 1]} $time'
+        : 'Next event ${en[local.month - 1]} ${local.day} $time';
+  }
+
   String action(String value) => switch (value) {
     'create_event' => isSwedish ? 'Skapa aktivitet' : 'Create event',
     'manage_roster' => isSwedish ? 'Hantera trupp' : 'Manage roster',

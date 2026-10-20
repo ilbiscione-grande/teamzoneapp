@@ -2969,7 +2969,13 @@ class _ComposeDialogState extends State<_ComposeDialog> {
                       value: _selected.contains(item.profileId),
                       onChanged: (_) => _toggle(item),
                       title: Text(item.displayName),
-                      subtitle: Text(strings.domainValue(item.rolePackage)),
+                      // "Ledare · P2012": which team, not only the role.
+                      subtitle: Text(
+                        [
+                          strings.domainValue(item.rolePackage),
+                          ?item.teamNames,
+                        ].join(' · '),
+                      ),
                     );
                   },
                 ),

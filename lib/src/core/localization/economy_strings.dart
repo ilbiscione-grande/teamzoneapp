@@ -8,12 +8,12 @@ class EconomyStrings {
     Localizations.localeOf(context).languageCode.toLowerCase() == 'sv',
   );
 
-  String get title => 'Economy';
+  String get title => isSwedish ? 'Ekonomi' : 'Economy';
   String get noAccess => isSwedish
       ? 'Du saknar behörighet att visa klubbens ekonomi.'
       : 'You do not have permission to view the club economy.';
   String get inactiveTitle =>
-      isSwedish ? 'Economy är inte aktiv' : 'Economy is not active';
+      isSwedish ? 'Ekonomi är inte aktiv' : 'Economy is not active';
   String get inactiveMessage => isSwedish
       ? 'Modulen måste aktiveras för klubben innan ekonomidata kan visas.'
       : 'The module must be activated for the club before economy data can be shown.';
@@ -31,6 +31,9 @@ class EconomyStrings {
   String get noAccountsMessage => isSwedish
       ? 'Skapa en klubb- eller lagkassa för att börja intern uppföljning.'
       : 'Create a club or team account to begin internal tracking.';
+  String get noAccountsReadOnly => isSwedish
+      ? 'Kassorna skapas av kassören. De visas här när de finns.'
+      : 'The treasurer creates the accounts. They show here once they exist.';
   String get clubAccount => isSwedish ? 'Klubbkassa' : 'Club account';
   String get teamAccount => isSwedish ? 'Lagkassa' : 'Team account';
   String get entries => isSwedish ? 'Poster' : 'Entries';

@@ -254,13 +254,18 @@ class AllowedRecipient {
     required this.profileId,
     required this.displayName,
     required this.rolePackage,
+    this.teamNames,
   });
   final String profileId, displayName, rolePackage;
+
+  /// The teams the person is in, e.g. "F2013, P2015"; null for club roles.
+  final String? teamNames;
   factory AllowedRecipient.fromJson(Map<String, dynamic> json) =>
       AllowedRecipient(
         profileId: json['profile_id'] as String,
         displayName: json['display_name'] as String,
         rolePackage: json['role_package'] as String,
+        teamNames: json['team_names'] as String?,
       );
 }
 

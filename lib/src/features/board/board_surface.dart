@@ -256,7 +256,7 @@ class _BoardSurfaceState extends State<_BoardSurface> {
                       '${mandate.name} · ${copy.office(mandate.office)}',
                     ),
                     subtitle: Text(
-                      '${copy.state(mandate.state)} · ${_date(mandate.startsAt)}–${_date(mandate.endsAt)}',
+                      '${copy.state(mandate.state)} · ${_date(context, mandate.startsAt)} – ${_date(context, mandate.endsAt)}',
                     ),
                     trailing:
                         mandate.state == 'active' &&
@@ -353,5 +353,6 @@ class _BoardSurfaceState extends State<_BoardSurface> {
   }
 }
 
-String _date(DateTime value) =>
-    '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+/// "7 sep. 2026" rather than "2026-09-07".
+String _date(BuildContext context, DateTime value) =>
+    MaterialLocalizations.of(context).formatMediumDate(value.toLocal());

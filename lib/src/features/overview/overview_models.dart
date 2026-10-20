@@ -551,3 +551,112 @@ List<T> uniqueHomeAttention<T>(
   result.sort((a, b) => priority(a).compareTo(priority(b)));
   return result;
 }
+
+/// UX review: the Home of a club context without a team. The parts you lack
+/// the permission for are null.
+class ClubHome {
+  const ClubHome({
+    required this.clubId,
+    required this.ownName,
+    required this.ownOffices,
+    required this.board,
+    required this.economy,
+    required this.members,
+    required this.canAnnounce,
+    required this.teams,
+  });
+  final String clubId;
+  final String? ownName;
+
+  /// Your active board offices: chair, treasurer, secretary, member, auditor.
+  final List<String> ownOffices;
+  final ({int activeMandates, int pendingChanges})? board;
+  final ({int accounts, int pendingEntries})? economy;
+  final ({int pendingApplications, int pendingTeamRequests})? members;
+  final bool canAnnounce;
+  final List<ClubHomeTeam> teams;
+
+  factory ClubHome.fromJson(Map<String, dynamic> json) {
+    int count(Map<String, dynamic>? map, String key) =>
+        (map?[key] as num?)?.toInt() ?? 0;
+    final board = json['board'] as Map<String, dynamic>?;
+    final economy = json['economy'] as Map<String, dynamic>?;
+    final members = json['members'] as Map<String, dynamic>?;
+    return ClubHome(
+      clubId: json['club_id'] as String,
+      ownName: json['own_name'] as String?,
+      ownOffices: (json['own_offices'] as List? ?? const [])
+          .whereType<String>()
+          .toList(growable: false),
+      board: board == null
+          ? null
+          : (
+              activeMandates: count(board, 'active_mandates'),
+              pendingChanges: count(board, 'pending_changes'),
+            ),
+      economy: economy == null
+          ? null
+          : (
+              accounts: count(economy, 'accounts'),
+              pendingEntries: count(economy, 'pending_entries'),
+            ),
+      members: members == null
+          ? null
+          : (
+              pendingApplications: count(members, 'pending_applications'),
+              pendingTeamRequests: count(members, 'pending_team_requests'),
+            ),
+      canAnnounce: json['can_announce'] as bool? ?? false,
+      teams: _maps(
+        json['teams'],
+      ).map(ClubHomeTeam.fromJson).toList(growable: false),
+    );
+  }
+}
+
+class ClubHomeTeam {
+  const ClubHomeTeam({
+    required this.teamId,
+    required this.name,
+    required this.memberCount,
+    required this.upcoming,
+  });
+  final String teamId, name;
+  final int memberCount;
+
+  /// The next few scheduled activities: what, when and where only.
+  final List<ClubTeamEvent> upcoming;
+
+  factory ClubHomeTeam.fromJson(Map<String, dynamic> json) => ClubHomeTeam(
+    teamId: json['team_id'] as String,
+    name: json['name'] as String,
+    memberCount: (json['member_count'] as num?)?.toInt() ?? 0,
+    upcoming: _maps(
+      json['upcoming'],
+    ).map(ClubTeamEvent.fromJson).toList(growable: false),
+  );
+}
+
+class ClubTeamEvent {
+  const ClubTeamEvent({
+    required this.title,
+    required this.eventType,
+    required this.startsAt,
+    required this.endsAt,
+    required this.allDay,
+    this.locationName,
+  });
+  final String title, eventType;
+  final DateTime startsAt, endsAt;
+  final bool allDay;
+  final String? locationName;
+
+  factory ClubTeamEvent.fromJson(Map<String, dynamic> json) => ClubTeamEvent(
+    title: json['title'] as String,
+    eventType: json['event_type'] as String,
+    startsAt: DateTime.parse(json['starts_at'] as String),
+    endsAt: DateTime.parse(json['ends_at'] as String),
+    allDay: json['all_day'] as bool? ?? false,
+    locationName: json['location_name'] as String?,
+  );
+}

@@ -10,6 +10,7 @@ class _RosterSurface extends StatefulWidget {
     this.initialTab,
     this.initialAction,
     this.profileServices = const UnconfiguredProfileServices(),
+    this.clubHome,
   });
 
   final TeamZoneContext contextValue;
@@ -18,6 +19,9 @@ class _RosterSurface extends StatefulWidget {
   final CalendarServices calendar;
   final Future<void> Function(String teamId) onTeamCreated;
   final ProfileServices profileServices;
+
+  /// Lists the club's teams in a club context without a team.
+  final ClubHomeServices? clubHome;
   final String? initialTab;
   // Set by the swipe-up quick actions sheet's "Bjud in spelare" shortcut
   // (ProductRouteContract.teamInvite) to open the invitations/team-codes
@@ -346,10 +350,21 @@ class _RosterSurfaceState extends State<_RosterSurface> {
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     if (widget.contextValue.teamId == null) {
-      return _NoTeamMembershipSurface(
+      final noTeam = _NoTeamMembershipSurface(
         onManageConnections: () =>
             GoRouter.of(context).go(ProductRouteContract.settings),
       );
+      final clubHome = widget.clubHome;
+      return clubHome == null
+          ? noTeam
+          : _ClubTeamsSurface(
+              contextValue: widget.contextValue,
+              clubHome: clubHome,
+              roster: widget.roster,
+              membership: widget.membership,
+              initialAction: widget.initialAction,
+              fallback: noTeam,
+            );
     }
     // Laget → Statistik is for the people who manage the team.
     final showStatistics = _canSeeTeamStatistics(widget.contextValue);

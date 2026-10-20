@@ -262,7 +262,10 @@ class _EconomySurfaceState extends State<_EconomySurface> {
                 _StateCard(
                   icon: Icons.account_balance_wallet_outlined,
                   title: copy.noAccounts,
-                  message: copy.noAccountsMessage,
+                  // Only those who may create one are asked to.
+                  message: widget.contextValue.can('economy.manage')
+                      ? copy.noAccountsMessage
+                      : copy.noAccountsReadOnly,
                 ),
               for (final account in data.accounts)
                 Card(

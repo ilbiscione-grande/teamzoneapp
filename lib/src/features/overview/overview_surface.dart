@@ -11,6 +11,7 @@ class _OverviewSurface extends StatefulWidget {
     required this.onNavigate,
     this.ownName,
     this.guardianContexts = const [],
+    this.roster,
     this.onGuardianChildElsewhere,
     this.guardianChildAfterSwitch,
   });
@@ -18,6 +19,9 @@ class _OverviewSurface extends StatefulWidget {
   /// VH-03: your other guardian contexts, whose children the child picker
   /// also lists; choosing one switches to that team.
   final List<TeamZoneContext> guardianContexts;
+
+  /// Opens the club's teams from a club context's Home.
+  final RosterServices? roster;
   final void Function(TeamZoneContext context, String childId)?
   onGuardianChildElsewhere;
 
@@ -48,6 +52,7 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
   Timer? _homeRefreshDebounce;
   String? _guardianChildId;
   late Future<List<_GuardianChildElsewhere>> _childrenElsewhere;
+  late Future<ClubHome?> _clubHome;
   Future<MainSurfacesProjection> _reload() =>
       widget.overview.load(contextIds: [widget.contextValue.id]);
 
@@ -64,6 +69,7 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
     _guardianChildId = _childAfterSwitch();
     _guardianHome = _reloadGuardianHome();
     _childrenElsewhere = _loadChildrenElsewhere();
+    _clubHome = _loadClubHome();
     unawaited(_data.load());
     _subscribeHomeSignals();
   }
@@ -172,6 +178,25 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
       _guardianChildId = _childAfterSwitch();
       _guardianHome = _reloadGuardianHome();
       _childrenElsewhere = _loadChildrenElsewhere();
+      _clubHome = _loadClubHome();
+    }
+  }
+
+  /// A club context without a team gets the club's Home.
+  bool get _isClubHome =>
+      widget.destination.path == '/home' &&
+      widget.contextValue.teamId == null &&
+      widget.overview is ClubHomeServices;
+
+  Future<ClubHome?> _loadClubHome() async {
+    if (!_isClubHome) return null;
+    try {
+      return await (widget.overview as ClubHomeServices).loadClubHome(
+        widget.contextValue.id,
+      );
+    } catch (error) {
+      AppErrors.caught('overview_surface._loadClubHome', error);
+      return null;
     }
   }
 
@@ -414,6 +439,37 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
                             _guardianHome = _reloadGuardianHome();
                           }),
                         ),
+                      );
+                    },
+                  )
+                else if (_isClubHome)
+                  FutureBuilder<ClubHome?>(
+                    future: _clubHome,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState != ConnectionState.done) {
+                        return AppLoadingIndicator(
+                          label: strings.feature('Laddar klubbens översikt'),
+                        );
+                      }
+                      final home = snapshot.data;
+                      if (home == null) {
+                        return _StateCard(
+                          icon: Icons.sync_problem,
+                          title: strings.couldNotLoad,
+                          message: strings.safeError,
+                          action: FilledButton(
+                            onPressed: () => setState(() {
+                              _clubHome = _loadClubHome();
+                            }),
+                            child: Text(strings.retry),
+                          ),
+                        );
+                      }
+                      return _ClubHomeContent(
+                        home: home,
+                        contextValue: widget.contextValue,
+                        roster: widget.roster,
+                        onNavigate: widget.onNavigate,
                       );
                     },
                   )

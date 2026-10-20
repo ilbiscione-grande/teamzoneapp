@@ -249,6 +249,16 @@ class _ProductShellState extends State<_ProductShell> {
       }
       // The name the own profile in the active team shows, else the
       // account's name, else the login address rather than nothing.
+      // A club context: your name in the club and your board offices.
+      final club = await _ownClubSummary();
+      if (club != null) {
+        _ownName.value = club.name;
+        return (
+          name: club.name ?? details.displayName,
+          avatar: avatar,
+          title: club.title,
+        );
+      }
       final teamName = await _ownNameInTeam();
       _ownName.value = teamName != null && teamName.trim().isNotEmpty
           ? teamName
@@ -260,11 +270,34 @@ class _ProductShellState extends State<_ProductShell> {
           : details.displayName.trim().isNotEmpty
           ? details.displayName
           : details.loginEmail ?? details.contactEmail;
-      return (name: name, avatar: avatar);
+      return (name: name, avatar: avatar, title: null);
     } catch (error) {
       AppErrors.caught('product_shell._loadOwnSummary', error);
 
-      return (name: null, avatar: null);
+      return (name: null, avatar: null, title: null);
+    }
+  }
+
+  /// In a club context: your name in the club and your board offices
+  /// ("Ordförande"); null in a team context or when unknown.
+  Future<({String? name, String? title})?> _ownClubSummary() async {
+    final overview = widget.overview;
+    if (widget.contextValue.teamId != null || overview is! ClubHomeServices) {
+      return null;
+    }
+    try {
+      final home = await (overview as ClubHomeServices).loadClubHome(
+        widget.contextValue.id,
+      );
+      if (!mounted) return null;
+      final name = home.ownName?.trim();
+      return (
+        name: name == null || name.isEmpty ? null : name,
+        title: _boardOfficesLabel(AppStrings.of(context), home.ownOffices),
+      );
+    } catch (error) {
+      AppErrors.caught('product_shell._ownClubSummary', error);
+      return null;
     }
   }
 
@@ -550,6 +583,9 @@ class _ProductShellState extends State<_ProductShell> {
                   initialTab: state.uri.queryParameters['tab'],
                   initialAction: state.uri.queryParameters['action'],
                   profileServices: widget.profileServices,
+                  clubHome: widget.overview is ClubHomeServices
+                      ? widget.overview as ClubHomeServices
+                      : null,
                 )
               : destination.path == '/calendar'
               ? _CalendarSurface(
@@ -601,6 +637,7 @@ class _ProductShellState extends State<_ProductShell> {
                   destination: destination,
                   profile: widget.profile,
                   ownName: _ownName,
+                  roster: widget.roster,
                   guardianContexts: [
                     for (final item in widget.contexts)
                       if (item.rolePackage == 'guardian') item,
@@ -956,6 +993,11 @@ class _ProductShellState extends State<_ProductShell> {
   }
 
   void _navigateFromSurface(String path) {
+    // Home's cards may name the referee board.
+    if (path == _refereeBoardRoute) {
+      _openAction(path);
+      return;
+    }
     final location = ProductRouteContract.canonicalizeLocation(path);
     if (location.startsWith('${ProductRouteContract.calendar}/event/')) {
       _router.push(location);
@@ -1924,6 +1966,7 @@ extension on _QuickAction {
 /// the sheet leads with on pages that have no actions of their own.
 /// Special routes the shell opens itself rather than through the router.
 const _refereeBoardRoute = 'teamzone:referee-board';
+const _clubTeamRequestsRoute = '/team?action=team-requests';
 const _ownProfileRoute = 'teamzone:own-profile';
 
 /// What the fifth button "Mer" holds, by role and capability. Leaders find
@@ -2577,10 +2620,15 @@ class _AppNavigationPanel extends StatelessWidget {
                         );
                       },
                     ),
-                    Text(
-                      _contextRolesLabel(strings, contextValue),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall,
+                    FutureBuilder<_OwnSummary>(
+                      future: ownSummary,
+                      builder: (context, snapshot) => Text(
+                        snapshot.data?.title ??
+                            _contextRolesLabel(strings, contextValue),
+                        key: const Key('drawer-own-roles'),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ),
                   ],
                 ),
@@ -2939,4 +2987,5 @@ String _contextRolesLabel(AppStrings strings, TeamZoneContext context) {
   ].join(' · ');
 }
 
-typedef _OwnSummary = ({String? name, String? avatar});
+/// Title: your board offices in a club context, shown instead of the role.
+typedef _OwnSummary = ({String? name, String? avatar, String? title});

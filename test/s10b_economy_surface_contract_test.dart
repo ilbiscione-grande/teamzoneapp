@@ -32,7 +32,7 @@ void main() {
       contains('void didUpdateWidget(covariant _EconomySurface oldWidget)'),
     );
     expect(surface, contains('EconomyStrings.of(context)'));
-    expect(strings, contains('Economy är inte aktiv'));
+    expect(strings, contains('Ekonomi är inte aktiv'));
     expect(strings, contains('Economy is not active'));
     expect(surface, contains('approvalCount'));
     expect(strings, contains('Du har redan godkänt'));
