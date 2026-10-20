@@ -85,7 +85,7 @@ if (/^https:\/\/[a-z0-9]{20}\.supabase\.co$/.test(productionUrl)) {
 // Flutter web error reports, sent as sanitized text/plain beacons by
 // WebErrorReporter; written to Cloud Logging (PAR-OPS-05).
 exports.clientErrorSink = onRequest(
-  {region: "europe-west1", timeoutSeconds: 10, memory: "128MiB", maxInstances: 2},
+  {region: "europe-west1", timeoutSeconds: 10, memory: "256MiB", maxInstances: 2},
   (request, response) => {
     response.set("cache-control", "no-store");
     if (request.method !== "POST") return response.status(405).send("Method not allowed");
