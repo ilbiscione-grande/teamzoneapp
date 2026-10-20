@@ -147,6 +147,9 @@ class _RosterSurfaceState extends State<_RosterSurface> {
   /// Opens a capability-checked management sheet requested by a team deep
   /// link. This supports both invitations and the separate application queue.
   void _openInitialAction() {
+    // A club context has no squad: its Laget (_ClubTeamsSurface) opens the
+    // club-wide queues itself, so this would open a second sheet.
+    if (widget.contextValue.teamId == null) return;
     final action = widget.initialAction;
     if (!const {'invite', 'applications', 'roles', 'intake'}.contains(action) ||
         _openedInitialAction) {
@@ -6811,9 +6814,22 @@ class _MembershipReviewSheetState extends State<_MembershipReviewSheet> {
           final items = snapshot.requireData;
           return ListView(
             children: [
-              Text(
-                strings.feature('Medlemsansökningar'),
-                style: Theme.of(context).textTheme.headlineSmall,
+              // The sheet fills the screen: it needs its own way out.
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      strings.feature('Medlemsansökningar'),
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                  ),
+                  IconButton(
+                    key: const ValueKey('membership-review-close'),
+                    tooltip: strings.feature('Stäng'),
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).maybePop(),
+                  ),
+                ],
               ),
               if (_error != null) ...[
                 const SizedBox(height: 12),

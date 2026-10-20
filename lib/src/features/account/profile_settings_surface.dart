@@ -715,6 +715,8 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
     ),
     const SizedBox(height: 16),
     SegmentedButton<CalendarViewMode>(
+      // Four segments on a phone: the check mark broke "Månad" in two.
+      showSelectedIcon: false,
       segments: [
         for (final value in CalendarViewMode.values)
           ButtonSegment(
