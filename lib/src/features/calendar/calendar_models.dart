@@ -918,10 +918,16 @@ class EventBooking {
     required this.endsAt,
     required this.status,
     this.title,
+    this.groupId,
+    this.canCancel = false,
   });
   final String id, resourceName, category, organizationName, status;
   final DateTime startsAt, endsAt;
   final String? title;
+
+  /// Resources booked together share a group and can be cancelled at once.
+  final String? groupId;
+  final bool canCancel;
 
   bool get pending => status == 'pending';
 
@@ -934,6 +940,8 @@ class EventBooking {
     endsAt: DateTime.parse(json['ends_at'] as String),
     status: json['status'] as String,
     title: json['title'] as String?,
+    groupId: json['group_id'] as String?,
+    canCancel: json['can_cancel'] as bool? ?? false,
   );
 }
 

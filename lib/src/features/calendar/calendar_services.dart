@@ -47,6 +47,12 @@ abstract interface class EventBookingServices {
     String? teamId,
     String? eventId,
   });
+
+  /// Cancels one booking, or every active one in its group.
+  Future<void> cancelEventBooking(
+    EventBooking booking, {
+    bool wholeGroup = false,
+  });
 }
 
 abstract interface class CalendarServices {
@@ -544,6 +550,20 @@ class SupabaseCalendarServices
         .timeout(const Duration(seconds: 15));
     if (value is! Map) throw const FormatException('Invalid booking.');
     return (value['pending'] as num?)?.toInt() ?? 0;
+  }
+
+  @override
+  Future<void> cancelEventBooking(
+    EventBooking booking, {
+    bool wholeGroup = false,
+  }) async {
+    final (name, params) = wholeGroup && booking.groupId != null
+        ? ('cancel_booking_group', {'target_group_id': booking.groupId})
+        : ('cancel_booking', {'target_booking_id': booking.id});
+    await _client
+        .schema('api')
+        .rpc<Object?>(name, params: params)
+        .timeout(const Duration(seconds: 15));
   }
 
   @override

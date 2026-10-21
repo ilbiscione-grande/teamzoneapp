@@ -2103,6 +2103,75 @@ class _EventBookingsSectionState extends State<_EventBookingsSection> {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
+  /// Cancels after a question; resources booked together may go at once.
+  Future<void> _cancel(EventBooking booking, List<EventBooking> all) async {
+    final strings = AppStrings.of(context);
+    final together = booking.groupId == null
+        ? 1
+        : all
+              .where(
+                (item) => item.groupId == booking.groupId && item.canCancel,
+              )
+              .length;
+    final choice = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(strings.feature('Avboka resurs')),
+        content: Text(
+          together > 1
+              ? strings.feature(
+                  'Resurserna bokades tillsammans. Vill du avboka bara den här eller alla?',
+                )
+              : '${strings.feature('Avboka')} ${booking.resourceName}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(strings.feature('Avbryt')),
+          ),
+          if (together > 1)
+            TextButton(
+              key: const ValueKey('event-booking-cancel-one'),
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(strings.feature('Bara den här')),
+            ),
+          FilledButton(
+            key: const ValueKey('event-booking-cancel-confirm'),
+            onPressed: () => Navigator.pop(dialogContext, together > 1),
+            child: Text(
+              together > 1
+                  ? '${strings.feature('Avboka alla')} $together'
+                  : strings.feature('Avboka'),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (choice == null || !mounted) return;
+    try {
+      await widget.services.cancelEventBooking(booking, wholeGroup: choice);
+      if (!mounted) return;
+      setState(() => _bookings = _load());
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(strings.feature('Avbokat.'))));
+    } catch (error) {
+      AppErrors.caught(
+        'event_details_page._EventBookingsSection.cancel',
+        error,
+      );
+      if (!mounted) return;
+      setState(() => _bookings = _load());
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            strings.feature('Bokningen kunde inte avbokas. Försök igen.'),
+          ),
+        ),
+      );
+    }
+  }
+
   Future<List<EventBooking>> _load() async {
     try {
       return await widget.services.listEventBookings(widget.eventId);
@@ -2171,6 +2240,14 @@ class _EventBookingsSectionState extends State<_EventBookingsSection> {
                 if (booking.pending) strings.feature('Väntar på godkännande'),
               ].join(' · '),
             ),
+            trailing: booking.canCancel
+                ? IconButton(
+                    key: ValueKey('event-booking-cancel-${booking.id}'),
+                    tooltip: strings.feature('Avboka'),
+                    onPressed: () => _cancel(booking, bookings),
+                    icon: const Icon(Icons.close),
+                  )
+                : null,
           ),
         for (final target in targets)
           Align(

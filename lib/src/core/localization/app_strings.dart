@@ -1704,6 +1704,15 @@ class AppStrings {
     'Annan tid eller återkommande? Öppna Bokningshanteraren':
         "Another time or recurring? Open the booking manager",
     'Boka resurs': 'Book a resource',
+    'Avboka resurs': 'Cancel a booking',
+    'Avboka': 'Cancel booking',
+    'Avboka alla': 'Cancel all',
+    'Bara den här': 'Only this one',
+    'Resurserna bokades tillsammans. Vill du avboka bara den här eller alla?':
+        'The resources were booked together. Cancel only this one or all of them?',
+    'Avbokat.': 'Cancelled.',
+    'Bokningen kunde inte avbokas. Försök igen.':
+        'The booking could not be cancelled. Try again.',
     'Väntar på godkännande': 'Waiting for approval',
     'Klubbens möten': "The club's meetings",
     'Ordförande': "Chair",

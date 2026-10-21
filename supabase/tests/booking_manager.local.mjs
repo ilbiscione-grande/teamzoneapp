@@ -7,7 +7,7 @@ const read = p => readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
 const db = new PGlite();
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 let locker2;
-const owner = id(1), friend = id(2), coach = id(3), clubAdmin = id(4), stranger = id(5);
+const owner = id(1), friend = id(2), coach = id(3), clubAdmin = id(4), stranger = id(5), coach2 = id(6);
 const club = id(10), team = id(20), otherTeam = id(21), event = id(30), otherEvent = id(31);
 const as = who => db.query("select set_config('request.jwt.claim.sub',$1,false)", [who ?? '']);
 const asRole = async (role, fn) => { await db.exec(`set role ${role}`); const result = await fn(); await db.exec('reset role'); return result; };
@@ -24,19 +24,20 @@ create schema internal; create schema api; create schema core; create schema aut
 set check_function_bodies = off;
 create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
 create table auth.users(id uuid primary key, email text);
-insert into auth.users values ('${owner}','olle@example.se'),('${friend}','frida@example.se'),('${coach}','coach@example.se'),('${clubAdmin}','admin@example.se'),('${stranger}','sten@example.se');
+insert into auth.users values ('${owner}','olle@example.se'),('${friend}','frida@example.se'),('${coach}','coach@example.se'),('${clubAdmin}','admin@example.se'),('${stranger}','sten@example.se'),('${coach2}','coach2@example.se');
 create table core.profiles(id uuid primary key, display_name text);
-insert into core.profiles values ('${owner}','Olle'),('${friend}',''),('${coach}','Coach'),('${clubAdmin}','Adam'),('${stranger}','Sten');
+insert into core.profiles values ('${owner}','Olle'),('${friend}',''),('${coach}','Coach'),('${clubAdmin}','Adam'),('${stranger}','Sten'),('${coach2}','Cia');
 create table core.clubs(id uuid primary key, name text); insert into core.clubs values ('${club}','Demoklubben IF');
 create table core.teams(id uuid primary key, club_id uuid, name text, status text default 'active');
 insert into core.teams values ('${team}','${club}','P2012'),('${otherTeam}','${club}','F2013');
 create table core.club_people(id uuid primary key, club_id uuid, display_name text);
 insert into core.club_people values ('${id(50)}','${club}','Coach Person'),('${id(51)}','${club}','Adam Admin');
 create table core.person_account_links(profile_id uuid, club_id uuid, club_person_id uuid, state text);
-insert into core.person_account_links values ('${coach}','${club}','${id(50)}','active'),('${clubAdmin}','${club}','${id(51)}','active');
+insert into core.person_account_links values ('${coach}','${club}','${id(50)}','active'),('${clubAdmin}','${club}','${id(51)}','active'),('${coach2}','${club}','${id(52)}','active');
 create table core.assignments(id uuid primary key default gen_random_uuid(), club_id uuid, team_id uuid, club_person_id uuid, role_package text, state text default 'active',
   starts_at timestamptz default now()-interval '1 year', ends_at timestamptz);
 insert into core.assignments(id, club_id, team_id, club_person_id, role_package) values (gen_random_uuid(),'${club}','${team}','${id(50)}','leader'),
+  (gen_random_uuid(),'${club}','${team}','${id(52)}','leader'),
   ('${id(61)}','${club}',null,'${id(51)}','club_functionary');
 create table core.capability_grants(club_id uuid, assignment_id uuid, capability text, scope_type text, scope_id uuid, starts_at timestamptz default now()-interval '1 day', ends_at timestamptz);
 insert into core.capability_grants(club_id, assignment_id, capability, scope_type, scope_id) values ('${club}','${id(61)}','club.memberships.manage','club','${club}');
@@ -60,6 +61,7 @@ await db.exec(read('supabase/migrations/20261116110000_booking_from_event.sql'))
 await db.exec(read('supabase/migrations/20261117090000_booking_series.sql'));
 await db.exec(read('supabase/migrations/20261117100000_booking_groups.sql'));
 await db.exec(read('supabase/migrations/20261117110000_booking_availability.sql'));
+await db.exec(read('supabase/migrations/20261118090000_booking_cancel_from_event.sql'));
 await db.exec('begin');
 
 // Standalone: anyone signed in creates an organisation and becomes admin.
@@ -155,11 +157,17 @@ assert.deepEqual((await call(clubAdmin, 'select api.list_event_booking_targets($
 await fails(stranger, 'select api.list_event_booking_targets($1)', [event], /not_found/);
 // The app: the activity lists its bookings for those who see it.
 const onEvent = await call(coach, 'select api.list_event_bookings($1)', [event]);
-assert.deepEqual(onEvent.map(b => [b.resource_name, b.status, b.organization_name]), [['Minibuss', 'pending', 'Demoklubben IF']]);
+assert.deepEqual(onEvent.map(b => [b.resource_name, b.status, b.organization_name, b.can_cancel]), [['Minibuss', 'pending', 'Demoklubben IF', true]]);
 await fails(stranger, 'select api.list_event_bookings($1)', [event], /not_found/);
 // Members can be turned off for the club.
 await call(clubAdmin, "select api.update_booking_organization($1,'Demoklubben IF','club',null,false)", [clubOrg]);
 assert.deepEqual(await call(coach, 'select api.list_booking_organizations()'), []);
+// The team's other leader cancels the team's booking in the app; the
+// booker hears of it. A stranger cannot.
+await fails(stranger, 'select api.cancel_booking($1)', [busForMatch.id], /not_found/);
+await call(coach2, 'select api.cancel_booking($1)', [busForMatch.id]);
+assert.equal((await inbox(coach)).items[0].kind, 'cancelled');
+assert.deepEqual(await call(coach, 'select api.list_event_bookings($1)', [event]), []);
 // Recurring: every Tuesday and Thursday for four weeks, from next Monday.
 const monday = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() + ((8 - d.getUTCDay()) % 7 || 7)); return d.toISOString().slice(0, 10); })();
 const plusDays = (day, n) => { const d = new Date(day + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
