@@ -73,3 +73,17 @@ test("days, scores and the list by day", () => {
   const days = matchesByDay([match("late", new Date(2026, 10, 15, 9).toISOString()), match("none", null), match("early", new Date(2026, 10, 14, 9).toISOString())]);
   assert.deepEqual(days.map(d => [d.day, d.matches.map(m => m.id)]), [["2026-11-14", ["early"]], ["2026-11-15", ["late"]], [null, ["none"]]]);
 });
+
+test("the public page groups by Swedish day, whatever the server's zone", async () => {
+  const { publicMatchesByDay, swedishClock, swedishDayLabel } = await import("../lib/public-tournament.ts");
+  const match = (id: string, starts: string) => ({
+    id, class_id: "c", group_id: null, stage: "group" as const, round: 1, label: null, sort_order: 0, home_registration_id: null, away_registration_id: null,
+    home_name: null, away_name: null, pitch_id: null, starts_at: starts, ends_at: null, status: "scheduled" as const,
+    home_score: null, away_score: null, home_penalties: null, away_penalties: null,
+  });
+  // 23:30 UTC is already the next day in Stockholm.
+  const days = publicMatchesByDay([match("late", "2026-11-14T23:30:00Z"), match("early", "2026-11-14T08:00:00Z")]);
+  assert.deepEqual(days.map(d => [d.day, d.matches.map(m => m.id)]), [["2026-11-14", ["early"]], ["2026-11-15", ["late"]]]);
+  assert.equal(swedishClock("2026-11-14T08:00:00Z"), "09:00");
+  assert.equal(swedishDayLabel("2026-11-14"), "lördag 14 november");
+});

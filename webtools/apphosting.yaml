@@ -17,6 +17,11 @@ env:
     value: sb_publishable_lOnfOqPc-jBxRE28IXmEhQ_sRKFNw8O
     availability:
       - RUNTIME
+  # The server reads public tournament pages; never sent to the browser.
+  - variable: SUPABASE_SECRET_KEY
+    secret: teamzoneapp-supabase-secret-key
+    availability:
+      - RUNTIME
   - variable: TEAMZONE_SITE_URL
     value: https://teamzoneapp.se
     availability:

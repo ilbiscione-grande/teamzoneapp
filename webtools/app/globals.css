@@ -349,3 +349,7 @@ a { color: var(--wt-brand); }
   .tp-match-when { display: flex; gap: 8px; }
   .tp-match .bk-booking-actions { justify-content: flex-start; }
 }
+.tp-public { display: grid; gap: 16px; }
+.tp-public .wt-page-title { margin-bottom: 4px; }
+.tp-class-picker a { display: inline-flex; align-items: center; min-height: 38px; padding: 0 14px; border: 1px solid var(--wt-line); border-radius: 999px; background: white; color: var(--wt-text); font-weight: 700; text-decoration: none; }
+.tp-class-picker a[aria-current="page"] { background: var(--wt-ink); border-color: var(--wt-ink); color: white; }

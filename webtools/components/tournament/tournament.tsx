@@ -73,6 +73,8 @@ export function TournamentView({ id }: { id: string }) {
 function Overview({ tournament, onChanged }: { tournament: Tournament; onChanged: () => void }) {
   const [link, setLink] = useState("");
   useEffect(() => { setLink(`${window.location.origin}/turneringar/${tournament.id}`); }, [tournament.id]);
+  // The page anyone opens without an account.
+  const publicLink = link.replace("/turneringar/", "/turnering/");
   const organizer = tournament.role === "organizer";
   return (
     <div className="tp-overview">
@@ -87,7 +89,17 @@ function Overview({ tournament, onChanged }: { tournament: Tournament; onChanged
             <input readOnly value={link} onFocus={event => event.target.select()} aria-label="Anmälningslänk" />
             <button type="button" className="wt-button secondary small" onClick={() => void navigator.clipboard?.writeText(link)}>Kopiera</button>
           </div>
+          <h3>Publik sida</h3>
+          <p>För föräldrar och publik: spelschema, resultat och tabeller utan inloggning. Kontaktuppgifter till lagen visas inte.</p>
+          <div className="bk-invite">
+            <input readOnly value={publicLink} onFocus={event => event.target.select()} aria-label="Publik sida" />
+            <button type="button" className="wt-button secondary small" onClick={() => void navigator.clipboard?.writeText(publicLink)}>Kopiera</button>
+            <a className="wt-link" href={publicLink} target="_blank" rel="noreferrer">Öppna</a>
+          </div>
         </section>
+      )}
+      {!organizer && tournament.status !== "draft" && (
+        <p className="wt-small"><a className="wt-link" href={`/turnering/${tournament.id}`}>Publik sida med spelschema och tabeller</a>, att dela med föräldrar och publik.</p>
       )}
       {(tournament.description || tournament.contact_email) && (
         <section className="wt-panel">

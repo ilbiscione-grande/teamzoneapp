@@ -18,7 +18,7 @@ const fails = async (who, sql, params, pattern) => {
   await assert.rejects(call(who, sql, params), pattern);
   await db.exec('rollback to s');
 };
-await db.exec(`create role anon; create role authenticated;
+await db.exec(`create role anon; create role authenticated; create role service_role;
 create schema internal; create schema api; create schema core; create schema auth;
 set check_function_bodies = off;
 create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
@@ -45,10 +45,11 @@ create function internal.create_event_v2_for_actor(c uuid, t uuid, title text, d
 create function internal.revise_event_v3_for_actor(e uuid, scope text, patch jsonb, expected bigint, k uuid) returns bigint language sql as
   $$update core.events set starts_at = (patch->>'starts_at')::timestamptz, ends_at = (patch->>'ends_at')::timestamptz, revision = revision + 1
   where id = e and revision = expected returning revision$$;
-grant usage on schema api, internal, core, auth to authenticated;`);
+grant usage on schema api, internal, core, auth to authenticated, service_role;`);
 await db.exec(read('supabase/migrations/20261119090000_tournament_planner.sql'));
 await db.exec(read('supabase/migrations/20261120090000_tournament_schedule.sql'));
 await db.exec(read('supabase/migrations/20261121090000_tournament_teamzone.sql'));
+await db.exec(read('supabase/migrations/20261122090000_tournament_public_page.sql'));
 await db.exec('begin');
 
 const cup = await call(host, "select api.create_tournament('Höstcupen','Fotboll','Demovallen','2099-11-14','2099-11-15')");
@@ -126,5 +127,22 @@ assert.equal(await call(coach, 'select api.get_event_tournament($1)', [id(99)]),
 // Unpublished again: the activity shows nothing of it.
 await call(host, 'select api.set_tournament_class_schedule_published($1,false)', [p12]);
 assert.equal(await call(parent, 'select api.get_event_tournament($1)', [day1]), null);
+
+// A new tournament is searchable once published, unless turned off.
+const fresh = await call(host, "select api.create_tournament('Vårcupen',null,null,'2099-05-01','2099-05-01')");
+assert.equal((await call(host, 'select api.get_tournament($1)', [fresh])).searchable, true);
+
+// The public page, read by Webtools' server: published only, no contacts.
+const publicView = async target => { await as(null); return asRole('service_role', async () => (await db.query('select api.get_public_tournament($1) v', [target])).rows[0].v); };
+assert.equal(await publicView(fresh), null, 'a draft has no public page');
+await call(host, 'select api.set_tournament_class_schedule_published($1,true)', [p12]);
+const page = await publicView(cup);
+assert.equal(page.name, 'Höstcupen');
+assert.deepEqual(page.classes.map(c => [c.name, c.teams.map(t => t.team_name)]), [['P12', ['Demoklubben P12', 'Aneby SK']]]);
+assert.ok(!JSON.stringify(page).includes('coach@example.se'), 'no team contacts');
+assert.deepEqual(page.schedule.map(c => [c.name, c.matches.length, c.groups[0].standings[0].team_name]), [['P12', 3, 'Demoklubben P12']]);
+await call(host, 'select api.set_tournament_class_schedule_published($1,false)', [p12]);
+assert.deepEqual((await publicView(cup)).schedule, [], 'an unpublished schedule stays hidden');
+await fails(coach, 'select api.get_public_tournament($1)', [cup], /permission denied/);
 
 console.log('tournament teamzone: ok');
