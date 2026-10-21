@@ -69,7 +69,7 @@ export function findApp(slug: string): WebtoolApp | undefined {
 /** Only Webtools' own pages are valid places to return to after signing in. */
 export function safeReturnTo(value: string | null | undefined): string {
   if (!value) return "/";
-  if (value === "/" || value === "/konto" || value === "/bokningar") return value;
+  if (value === "/" || value === "/konto" || value === "/bokningar" || value === "/aviseringar") return value;
   if (/^\/bokningar\/[0-9a-f-]{36}$/.test(value)) return value;
   // An invitation link survives signing in.
   if (/^\/bokningar\?inbjudan=[0-9a-f]{64}$/.test(value)) return value;

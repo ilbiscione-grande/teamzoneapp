@@ -184,3 +184,52 @@ export function invitationToken(value: string): string | null {
   const match = /([0-9a-f]{64})/.exec(value.trim());
   return match ? match[1] : null;
 }
+
+// The calendar grid: hours from GRID_START to GRID_END, local time.
+export const GRID_START = 6;
+export const GRID_END = 24;
+
+/** Monday of the week the day is in. */
+export function weekStart(key: string): string {
+  const [y, m, d] = key.split("-").map(Number);
+  const weekday = (new Date(y, m - 1, d).getDay() + 6) % 7;
+  return addDays(key, -weekday);
+}
+
+/**
+ * Where a booking sits in one day's column, as fractions of the grid from
+ * GRID_START to GRID_END; null when it is not on that day. Parts outside
+ * the grid are cut at its edges, and say so.
+ */
+export function gridPlacement(startsAt: string, endsAt: string, key: string): { top: number; height: number; cutTop: boolean; cutBottom: boolean } | null {
+  const grid0 = new Date(localInstant(key, `${String(GRID_START).padStart(2, "0")}:00`)).getTime();
+  const grid1 = new Date(localInstant(addDays(key, GRID_END === 24 ? 1 : 0), GRID_END === 24 ? "00:00" : `${GRID_END}:00`)).getTime();
+  const start = new Date(startsAt).getTime();
+  const end = new Date(endsAt).getTime();
+  if (end <= grid0 || start >= grid1) return null;
+  const from = Math.max(start, grid0);
+  const to = Math.min(end, grid1);
+  const span = grid1 - grid0;
+  return { top: (from - grid0) / span, height: Math.max((to - from) / span, 0.012), cutTop: start < grid0, cutBottom: end > grid1 };
+}
+
+/** A tap at a fraction of the grid as "HH:MM", on the half hour before it. */
+export function slotAt(fraction: number): string {
+  const minutes = GRID_START * 60 + Math.floor((Math.min(Math.max(fraction, 0), 0.9999) * (GRID_END - GRID_START) * 60) / 30) * 30;
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+/** "HH:MM" plus minutes, kept within the day. */
+export function addMinutes(time: string, minutes: number): string {
+  const [h, m] = time.split(":").map(Number);
+  const total = Math.min(h * 60 + m + minutes, 23 * 60 + 59);
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+/** Where "now" is in the day's grid, or null outside it or another day. */
+export function nowFraction(key: string, now = new Date()): number | null {
+  if (dateKey(now) !== key) return null;
+  const hours = now.getHours() + now.getMinutes() / 60;
+  if (hours < GRID_START || hours >= GRID_END) return null;
+  return (hours - GRID_START) / (GRID_END - GRID_START);
+}

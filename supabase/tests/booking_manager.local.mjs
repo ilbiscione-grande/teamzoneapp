@@ -30,12 +30,18 @@ create table core.clubs(id uuid primary key, name text); insert into core.clubs 
 create table core.teams(id uuid primary key, club_id uuid, name text, status text default 'active');
 insert into core.teams values ('${team}','${club}','P2012'),('${otherTeam}','${club}','F2013');
 create table core.club_people(id uuid primary key, club_id uuid, display_name text);
-insert into core.club_people values ('${id(50)}','${club}','Coach Person');
+insert into core.club_people values ('${id(50)}','${club}','Coach Person'),('${id(51)}','${club}','Adam Admin');
 create table core.person_account_links(profile_id uuid, club_id uuid, club_person_id uuid, state text);
-insert into core.person_account_links values ('${coach}','${club}','${id(50)}','active');
-create table core.assignments(club_id uuid, team_id uuid, club_person_id uuid, role_package text, state text default 'active',
+insert into core.person_account_links values ('${coach}','${club}','${id(50)}','active'),('${clubAdmin}','${club}','${id(51)}','active');
+create table core.assignments(id uuid primary key default gen_random_uuid(), club_id uuid, team_id uuid, club_person_id uuid, role_package text, state text default 'active',
   starts_at timestamptz default now()-interval '1 year', ends_at timestamptz);
-insert into core.assignments(club_id, team_id, club_person_id, role_package) values ('${club}','${team}','${id(50)}','leader');
+insert into core.assignments(id, club_id, team_id, club_person_id, role_package) values (gen_random_uuid(),'${club}','${team}','${id(50)}','leader'),
+  ('${id(61)}','${club}',null,'${id(51)}','club_functionary');
+create table core.capability_grants(club_id uuid, assignment_id uuid, capability text, scope_type text, scope_id uuid, starts_at timestamptz default now()-interval '1 day', ends_at timestamptz);
+insert into core.capability_grants(club_id, assignment_id, capability, scope_type, scope_id) values ('${club}','${id(61)}','club.memberships.manage','club','${club}');
+create table internal.notification_outbox(id uuid primary key default gen_random_uuid(), club_id uuid, domain_event_id uuid, event_type text,
+  aggregate_type text, aggregate_id uuid, recipient_profile_id uuid, recipient_person_id uuid, payload_ref jsonb, state text default 'pending',
+  unique(domain_event_id, recipient_person_id));
 create table core.events(id uuid primary key, title text, event_type text, state text, starts_at timestamptz, ends_at timestamptz, archived_at timestamptz, home_away text, opponent_name text);
 insert into core.events values ('${event}','Bortamatch','match','scheduled',now()+interval '3 days',now()+interval '3 days 2 hours',null,'away','Aneby SK'),
   ('${otherEvent}','F-träning','training','scheduled',now()+interval '3 days',now()+interval '3 days 1 hour',null,null,null);
@@ -47,6 +53,7 @@ create function internal.actor_can_read_event(e uuid) returns boolean language s
 grant usage on schema api, internal, core, auth to authenticated;`);
 await db.exec(read('supabase/migrations/20261115090000_booking_manager.sql'));
 await db.exec(read('supabase/migrations/20261115100000_booking_team_events_venue.sql'));
+await db.exec(read('supabase/migrations/20261116090000_booking_notifications.sql'));
 await db.exec('begin');
 
 // Standalone: anyone signed in creates an organisation and becomes admin.
@@ -80,10 +87,14 @@ assert.equal(back.status, 'confirmed', 'touching ends do not clash');
 const request = await call(friend, 'select api.create_booking($1,$2,$3,$4,null,null,null)', [bus, t(48), t(52), 'Cup']);
 assert.equal(request.status, 'pending');
 assert.equal(request.can_decide, false);
+const inbox = async who => call(who, 'select api.list_booking_notifications()');
+assert.deepEqual((await inbox(owner)).items.map(n => [n.kind, n.resource_name, n.read]), [['requested', 'Minibuss', false]]);
+assert.equal((await inbox(friend)).unread, 0, 'not the one who asked');
 const pending = await call(owner, 'select api.list_pending_bookings($1)', [org]);
 assert.deepEqual(pending.map(b => [b.resource_name, b.can_decide]), [['Minibuss', true]]);
 await fails(friend, 'select api.decide_booking($1,true)', [request.id], /not_admin/);
 await call(owner, 'select api.decide_booking($1,true)', [request.id]);
+assert.deepEqual((await inbox(friend)).items.map(n => n.kind), ['approved']);
 await fails(owner, 'select api.create_booking($1,$2,$3,null,null,null,null)', [bus, t(50), t(51)], /resource_busy/);
 await fails(friend, 'select api.create_booking($1,$2,$3,null,null,null,null)', [pitch, t(-3), t(-2)], /in_the_past/);
 const list = await call(stranger === friend ? owner : friend, 'select api.list_bookings($1,$2,$3)', [org, t(0), t(72)]);
@@ -92,7 +103,13 @@ assert.equal(list.length, 3);
 const ownerBooking = await call(owner, 'select api.create_booking($1,$2,$3,null,null,null,null)', [pitch, t(30), t(31)]);
 await fails(friend, 'select api.cancel_booking($1)', [ownerBooking.id], /not_allowed/);
 await call(friend, 'select api.cancel_booking($1)', [back.id]);
-assert.equal((await call(owner, 'select api.list_bookings($1,$2,$3)', [org, t(0), t(72)])).length, 3);
+assert.equal((await inbox(friend)).unread, 1, 'cancelling your own booking tells nobody');
+await call(owner, 'select api.cancel_booking($1)', [confirmed.id]);
+assert.deepEqual((await inbox(friend)).items.map(n => n.kind), ['cancelled', 'approved']);
+await call(friend, 'select api.mark_booking_notifications_read()');
+assert.equal((await inbox(friend)).unread, 0);
+assert.equal(Number((await db.query('select count(*) from internal.notification_outbox')).rows[0].count), 0, 'no push without a club');
+assert.equal((await call(owner, 'select api.list_bookings($1,$2,$3)', [org, t(0), t(72)])).length, 2);
 
 // TeamZone: only a club admin links; then the club's leaders book, for
 // their own team and its activities.
@@ -114,6 +131,10 @@ const busForMatch = await call(coach, 'select api.create_booking($1,$2,$3,$4,nul
 assert.equal(busForMatch.status, 'pending');
 assert.equal(busForMatch.team_name, 'P2012');
 assert.equal(busForMatch.event_title, 'Bortamatch');
+// The club's admin hears of it in Webtools and as a push opening the match.
+assert.deepEqual((await inbox(clubAdmin)).items.map(n => [n.kind, n.organization_name]), [['requested', 'Demoklubben IF']]);
+const pushes = (await db.query('select event_type, aggregate_type, aggregate_id, recipient_person_id from internal.notification_outbox')).rows;
+assert.deepEqual(pushes, [{ event_type: 'booking.requested.v1', aggregate_type: 'event', aggregate_id: event, recipient_person_id: id(51) }]);
 await fails(coach, 'select api.create_booking($1,$2,$3,null,null,$4,null)', [locker, t(70), t(71), otherTeam], /not_team_leader/);
 await fails(coach, 'select api.create_booking($1,$2,$3,null,null,$4,$5)', [locker, t(70), t(71), team, otherEvent], /event_not_found/);
 await fails(coach, 'select api.create_booking($1,$2,$3,null,null,null,$4)', [locker, t(70), t(71), event], /event_needs_team/);

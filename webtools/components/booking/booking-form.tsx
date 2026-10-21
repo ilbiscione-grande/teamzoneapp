@@ -5,18 +5,21 @@ import { bookingError, dateKey, eventOptionLabel, localInstant, timeOf, type Org
 import { useAccount } from "../account";
 
 /** Book a resource: time, a title and, with TeamZone, a team and activity. */
-export function BookingForm({ org, resource, day, onClose, onBooked }: {
+export function BookingForm({ org, resource, day, startTime = "18:00", endTime = "19:30", onClose, onBooked }: {
   org: Organization;
   resource: Resource;
   day: string;
+  /** From the slot tapped in the calendar. */
+  startTime?: string;
+  endTime?: string;
   onClose: () => void;
   onBooked: (status: string) => void;
 }) {
   const { client } = useAccount();
   const dialog = useRef<HTMLDialogElement>(null);
   const [date, setDate] = useState(day);
-  const [start, setStart] = useState("18:00");
-  const [end, setEnd] = useState("19:30");
+  const [start, setStart] = useState(startTime);
+  const [end, setEnd] = useState(endTime);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [teamId, setTeamId] = useState("");

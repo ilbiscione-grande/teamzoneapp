@@ -47,3 +47,27 @@ test("a match in the activity list says home or away", async () => {
   assert.match(eventOptionLabel({ ...base, title: "Bortamatch", home_away: "home", opponent_name: "Aneby SK" }), /^Bortamatch · mot Aneby SK · Hemma · /);
   assert.doesNotMatch(eventOptionLabel({ ...base, title: "Träning", event_type: "training" }), /Hemma|Borta/);
 });
+
+test("the calendar places bookings on the day's grid and turns taps into times", async () => {
+  const { gridPlacement, slotAt, addMinutes, weekStart, GRID_START, GRID_END } = await import("../lib/booking.ts");
+  const span = GRID_END - GRID_START;
+  const at = (day: string, time: string) => localInstant(day, time);
+  const place = gridPlacement(at("2026-10-21", "18:00"), at("2026-10-21", "19:30"), "2026-10-21");
+  assert.ok(place);
+  assert.equal(Math.round(place.top * span * 60), (18 - GRID_START) * 60);
+  assert.equal(Math.round(place.height * span * 60), 90);
+  assert.equal(gridPlacement(at("2026-10-22", "10:00"), at("2026-10-22", "11:00"), "2026-10-21"), null);
+  const early = gridPlacement(at("2026-10-21", "04:00"), at("2026-10-21", "08:00"), "2026-10-21");
+  assert.equal(early?.top, 0);
+  assert.equal(early?.cutTop, true);
+  // A minibus over a weekend fills the day in between.
+  const weekend = gridPlacement(at("2026-10-23", "16:00"), at("2026-10-25", "16:00"), "2026-10-24");
+  assert.deepEqual([weekend?.top, weekend?.height, weekend?.cutTop, weekend?.cutBottom], [0, 1, true, true]);
+  assert.equal(gridPlacement(at("2026-10-21", "22:00"), at("2026-10-22", "02:00"), "2026-10-22"), null, "the night is outside the grid");
+  assert.equal(slotAt(0), `${String(GRID_START).padStart(2, "0")}:00`);
+  assert.equal(slotAt((18.4 - GRID_START) / span), "18:00");
+  assert.equal(slotAt((18.6 - GRID_START) / span), "18:30");
+  assert.equal(addMinutes("23:30", 60), "23:59");
+  assert.equal(weekStart("2026-10-21"), "2026-10-19");
+  assert.equal(weekStart("2026-10-25"), "2026-10-19");
+});

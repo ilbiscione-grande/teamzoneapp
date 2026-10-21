@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAccount } from "./account";
+import { NotificationBell } from "./notifications";
 
 export function Header() {
   const { session, links, signOut } = useAccount();
@@ -26,6 +27,7 @@ export function Header() {
           ) : (
             <Link href={`/logga-in?returnTo=${encodeURIComponent(path ?? "/")}`} aria-current={path === "/logga-in" ? "page" : undefined}>Logga in</Link>
           )}
+          <NotificationBell />
           <a href={links.siteUrl} className="wt-nav-out">teamzoneapp.se</a>
         </nav>
       </div>
