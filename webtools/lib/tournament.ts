@@ -119,6 +119,19 @@ const errorMessages: Record<string, string> = {
   invalid_role: "Okänd roll.",
   last_organizer: "Turneringen behöver minst en arrangör.",
   not_signed_in: "Logga in först.",
+  pitch_name_taken: "Det finns redan en plan med det namnet.",
+  pitch_in_use: "Planen har matcher. Flytta dem först.",
+  invalid_schedule: "Spelschemat gick inte att spara. Planera om och försök igen.",
+  has_results: "Det finns redan resultat. Rensa dem först om spelschemat ska göras om.",
+  no_playoff_in_pool: "Poolspel har inget slutspel.",
+  team_not_approved: "Ett lag är inte längre godkänt i klassen. Planera om grupperna.",
+  invalid_time: "Kontrollera tiden.",
+  no_results_in_pool: "Poolspel har inga resultat.",
+  teams_not_known: "Lagen i matchen är inte klara än.",
+  later_match_played: "En senare match bygger på resultatet och är redan spelad.",
+  invalid_result: "Skriv båda lagens mål.",
+  needs_winner: "En slutspelsmatch behöver en vinnare. Skriv straffarna.",
+  team_in_schedule: "Laget finns i spelschemat. Planera om grupperna utan laget först.",
 };
 
 export function tournamentError(error: { message?: string } | null | undefined): string {

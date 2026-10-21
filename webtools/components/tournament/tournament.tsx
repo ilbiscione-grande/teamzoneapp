@@ -8,8 +8,9 @@ import {
 } from "../../lib/tournament";
 import { useAccount } from "../account";
 import { ClassesAdmin, RegistrationsAdmin, SettingsAdmin, StaffAdmin } from "./organizer";
+import { ScheduleTab } from "./schedule";
 
-type Tab = "overview" | "registrations" | "classes" | "settings" | "staff";
+type Tab = "overview" | "schedule" | "registrations" | "classes" | "settings" | "staff";
 
 export function TournamentView({ id }: { id: string }) {
   const { client } = useAccount();
@@ -30,11 +31,13 @@ export function TournamentView({ id }: { id: string }) {
   if (!tournament) return <p className="wt-status">Laddar…</p>;
   const organizer = tournament.role === "organizer";
   const pending = tournament.classes.reduce((sum, item) => sum + item.pending, 0);
-  const tabs: [Tab, string][] = tournament.role ? [
+  // Everyone sees the schedule of a published tournament; staff the rest.
+  const tabs: [Tab, string][] = [
     ["overview", "Översikt"],
-    ["registrations", pending && organizer ? `Anmälningar (${pending})` : "Anmälningar"],
+    ...(tournament.role || tournament.status !== "draft" ? [["schedule", "Spelschema"]] as [Tab, string][] : []),
+    ...(tournament.role ? [["registrations", pending && organizer ? `Anmälningar (${pending})` : "Anmälningar"]] as [Tab, string][] : []),
     ...(organizer ? [["classes", "Klasser"], ["settings", "Inställningar"], ["staff", "Funktionärer"]] as [Tab, string][] : []),
-  ] : [];
+  ];
   return (
     <div className="bk-org">
       <div className="bk-org-head">
@@ -49,7 +52,7 @@ export function TournamentView({ id }: { id: string }) {
         </div>
         <Link className="wt-link" href="/turneringar">Dina turneringar</Link>
       </div>
-      {tabs.length > 0 && (
+      {tabs.length > 1 && (
         <div className="bk-tabs" role="tablist" aria-label="Turneringen">
           {tabs.map(([value, label]) => (
             <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => setTab(value)}>{label}</button>
@@ -57,6 +60,7 @@ export function TournamentView({ id }: { id: string }) {
         </div>
       )}
       {tab === "overview" && <Overview tournament={tournament} onChanged={load} />}
+      {tab === "schedule" && <ScheduleTab tournament={tournament} />}
       {tab === "registrations" && tournament.role && <RegistrationsAdmin tournament={tournament} onChanged={load} />}
       {tab === "classes" && organizer && <ClassesAdmin tournament={tournament} onChanged={load} />}
       {tab === "settings" && organizer && <SettingsAdmin tournament={tournament} onChanged={load} />}
