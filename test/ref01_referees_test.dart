@@ -149,7 +149,14 @@ void main() {
     expect(services.calls.last, 'propose:assistant_1:Kalle Extern');
     expect(find.textContaining('Inskriven av laget'), findsOneWidget);
 
-    await tester.tap(find.text('3'));
+    // The number sits in a dropdown beside the kind of referee.
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) => widget is DropdownButtonFormField<int>,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('3').last);
     await tester.pumpAndSettle();
     expect(services.calls.last, 'slots:3');
     expect(find.text('Assisterande domare 2'), findsOneWidget);

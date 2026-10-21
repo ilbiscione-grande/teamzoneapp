@@ -256,54 +256,93 @@ class _EventRefereesSectionState extends State<EventRefereesSection> {
                     ),
                   ],
                 ),
-                // REF-02: förbundsdomare, föreningsdomare or none.
+                // REF-02: förbundsdomare, föreningsdomare or none, with the
+                // number of referees beside it on one row.
                 if (organiser)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: DropdownButtonFormField<String>(
-                      key: const ValueKey('event-referee-kind'),
-                      initialValue: view.refereeKind,
-                      decoration: const InputDecoration(
-                        labelText: 'Typ av domare',
-                      ),
-                      items: [
-                        for (final kind in const ['federation', 'club', 'none'])
-                          DropdownMenuItem(
-                            value: kind,
-                            child: Text(refereeKindLabel(kind)),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            key: const ValueKey('event-referee-kind'),
+                            initialValue: view.refereeKind,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Typ av domare',
+                            ),
+                            items: [
+                              for (final kind in const [
+                                'federation',
+                                'club',
+                                'none',
+                              ])
+                                DropdownMenuItem(
+                                  value: kind,
+                                  child: Text(
+                                    refereeKindLabel(kind),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                            ],
+                            onChanged: _busy
+                                ? null
+                                : (kind) {
+                                    if (kind == null) return;
+                                    _run(
+                                      () => services.setKind(
+                                        widget.eventId,
+                                        kind,
+                                      ),
+                                    );
+                                  },
                           ),
+                        ),
+                        if (view.canManage && view.refereeKind != 'none') ...[
+                          const SizedBox(width: 12),
+                          SizedBox(
+                            width: 112,
+                            child: DropdownButtonFormField<int>(
+                              key: ValueKey(
+                                'event-referee-count-${view.slots}',
+                              ),
+                              initialValue: view.slots.clamp(0, 3),
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Antal',
+                              ),
+                              items: [
+                                for (final count in const [0, 1, 2, 3])
+                                  DropdownMenuItem(
+                                    value: count,
+                                    child: Text(
+                                      count == 0 ? 'Ingen' : '$count',
+                                    ),
+                                  ),
+                              ],
+                              onChanged: _busy
+                                  ? null
+                                  : (count) {
+                                      if (count == null ||
+                                          count == view.slots) {
+                                        return;
+                                      }
+                                      _run(
+                                        () => services.setSlots(
+                                          widget.eventId,
+                                          count,
+                                        ),
+                                      );
+                                    },
+                            ),
+                          ),
+                        ],
                       ],
-                      onChanged: _busy
-                          ? null
-                          : (kind) {
-                              if (kind == null) return;
-                              _run(
-                                () => services.setKind(widget.eventId, kind),
-                              );
-                            },
                     ),
                   )
                 else if (view.refereeKind != null)
                   Text(refereeKindLabel(view.refereeKind)),
-                if (view.canManage && view.refereeKind != 'none') ...[
-                  const SizedBox(height: 8),
-                  SegmentedButton<int>(
-                    key: const ValueKey('event-referee-count'),
-                    segments: const [
-                      ButtonSegment(value: 0, label: Text('Ingen')),
-                      ButtonSegment(value: 1, label: Text('1')),
-                      ButtonSegment(value: 2, label: Text('2')),
-                      ButtonSegment(value: 3, label: Text('3')),
-                    ],
-                    selected: {view.slots},
-                    onSelectionChanged: _busy
-                        ? null
-                        : (value) => _run(
-                            () =>
-                                services.setSlots(widget.eventId, value.first),
-                          ),
-                  ),
-                ],
                 for (final slot in refereeSlots.take(view.slots))
                   _slot(context, view, slot),
                 for (final question in view.controlQuestions)
