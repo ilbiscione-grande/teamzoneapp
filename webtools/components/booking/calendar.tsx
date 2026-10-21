@@ -17,7 +17,12 @@ const hours = Array.from({ length: GRID_END - GRID_START }, (_, index) => GRID_S
  * The booking calendar: a day with the resources side by side, or a week
  * of one resource. Bookings sit on their time; tapping a free time books it.
  */
-export function BookingCalendar({ org }: { org: Organization }) {
+export function BookingCalendar({ org, prefill, onPrefillUsed }: {
+  org: Organization;
+  /** From the app's "Boka resurs": open the form for this team and activity. */
+  prefill?: { teamId?: string; eventId: string };
+  onPrefillUsed?: () => void;
+}) {
   const { client } = useAccount();
   const [view, setView] = useState<View>("day");
   const [day, setDay] = useState(() => dateKey(new Date()));
@@ -27,7 +32,8 @@ export function BookingCalendar({ org }: { org: Organization }) {
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [draft, setDraft] = useState<{ resource: Resource; day: string; start: string; end: string } | null>(null);
+  const [draft, setDraft] = useState<{ resource: Resource | null; day: string; start: string; end: string; teamId?: string; eventId?: string } | null>(
+    () => prefill ? { resource: null, day: dateKey(new Date()), start: "18:00", end: "19:30", teamId: prefill.teamId, eventId: prefill.eventId } : null);
   const [open, setOpen] = useState<Booking | null>(null);
   const [now, setNow] = useState(() => new Date());
   const scroller = useRef<HTMLDivElement>(null);
@@ -192,8 +198,10 @@ export function BookingCalendar({ org }: { org: Organization }) {
 
       {draft && (
         <BookingForm org={org} resource={draft.resource} day={draft.day} startTime={draft.start} endTime={draft.end}
-          onClose={() => setDraft(null)}
+          teamId={draft.teamId} eventId={draft.eventId}
+          onClose={() => { if (draft.eventId) onPrefillUsed?.(); setDraft(null); }}
           onBooked={status => {
+            if (draft.eventId) onPrefillUsed?.();
             setDraft(null);
             setNotice(status === "pending" ? "Förfrågan är skickad. Den visas som väntande tills en administratör har godkänt den." : "Bokningen är klar.");
             void load();

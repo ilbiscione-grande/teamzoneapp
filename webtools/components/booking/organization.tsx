@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { bookingError, bookingSpan, kindLabels, statusLabels, type Booking, type Organization } from "../../lib/booking";
 import { useAccount } from "../account";
@@ -14,6 +15,15 @@ export function BookingOrganization({ id }: { id: string }) {
   const [org, setOrg] = useState<Organization | null>(null);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("calendar");
+  const params = useSearchParams();
+  const router = useRouter();
+  const path = usePathname();
+  // From the app: ?boka=1&lag=<team>&aktivitet=<event>.
+  const uuid = /^[0-9a-f-]{36}$/;
+  const eventParam = params.get("aktivitet");
+  const teamParam = params.get("lag");
+  const prefill = params.get("boka") === "1" && eventParam && uuid.test(eventParam)
+    ? { eventId: eventParam, teamId: teamParam && uuid.test(teamParam) ? teamParam : undefined } : undefined;
 
   const load = useCallback(async () => {
     if (!client) return;
@@ -48,7 +58,7 @@ export function BookingOrganization({ id }: { id: string }) {
           <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => setTab(value)}>{label}</button>
         ))}
       </div>
-      {tab === "calendar" && <BookingCalendar org={org} />}
+      {tab === "calendar" && <BookingCalendar org={org} prefill={prefill} onPrefillUsed={() => router.replace(path)} />}
       {tab === "mine" && <MyBookings org={org} />}
       {tab === "pending" && admin && <Pending org={org} onChanged={load} />}
       {tab === "resources" && admin && <ResourcesAdmin org={org} onChanged={load} />}

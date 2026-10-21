@@ -716,7 +716,15 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
           EventRefereesSection(eventId: event.id, services: _refereeServices()),
         // Webtools: rooms, pitches or a minibus booked for the activity.
         if (widget.calendar case final EventBookingServices bookings)
-          _EventBookingsSection(eventId: event.id, services: bookings),
+          _EventBookingsSection(
+            eventId: event.id,
+            services: bookings,
+            // Booking is for what is still to come.
+            canBook:
+                event.state != 'cancelled' &&
+                event.archivedAt == null &&
+                event.endsAt.isAfter(DateTime.now()),
+          ),
         // About the assistant's reminders: for those who call up.
         if (!event.callupsRequired &&
             (_contextCanCoManage || _contextCanManageRoster) &&
@@ -2011,9 +2019,14 @@ String? _localizedDeclineReason(AppStrings strings, EventRosterPerson person) {
 /// The activity's bookings from Webtools Bokningshanterare. Nothing is shown
 /// without any, or when they cannot be read.
 class _EventBookingsSection extends StatefulWidget {
-  const _EventBookingsSection({required this.eventId, required this.services});
+  const _EventBookingsSection({
+    required this.eventId,
+    required this.services,
+    this.canBook = false,
+  });
   final String eventId;
   final EventBookingServices services;
+  final bool canBook;
 
   @override
   State<_EventBookingsSection> createState() => _EventBookingsSectionState();
@@ -2021,6 +2034,34 @@ class _EventBookingsSection extends StatefulWidget {
 
 class _EventBookingsSectionState extends State<_EventBookingsSection> {
   late Future<List<EventBooking>> _bookings = _load();
+  late Future<List<({String organizationId, String name, String? teamId})>>
+  _targets = _loadTargets();
+
+  Future<List<({String organizationId, String name, String? teamId})>>
+  _loadTargets() async {
+    if (!widget.canBook) return const [];
+    try {
+      return await widget.services.listEventBookingTargets(widget.eventId);
+    } catch (error) {
+      AppErrors.caught('event_details_page._EventBookingsSection', error);
+      return const [];
+    }
+  }
+
+  /// Webtools' booking form for this activity and its team.
+  Future<void> _book(
+    ({String organizationId, String name, String? teamId}) target,
+  ) async {
+    final uri = Uri.parse('$webtoolsOrigin/bokningar/${target.organizationId}')
+        .replace(
+          queryParameters: {
+            'boka': '1',
+            if (target.teamId != null) 'lag': target.teamId!,
+            'aktivitet': widget.eventId,
+          },
+        );
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
 
   Future<List<EventBooking>> _load() async {
     try {
@@ -2034,7 +2075,11 @@ class _EventBookingsSectionState extends State<_EventBookingsSection> {
   @override
   void didUpdateWidget(covariant _EventBookingsSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.eventId != widget.eventId) _bookings = _load();
+    if (oldWidget.eventId != widget.eventId ||
+        oldWidget.canBook != widget.canBook) {
+      _bookings = _load();
+      _targets = _loadTargets();
+    }
   }
 
   static IconData _icon(String category) => switch (category) {
@@ -2050,32 +2095,58 @@ class _EventBookingsSectionState extends State<_EventBookingsSection> {
   @override
   Widget build(BuildContext context) => FutureBuilder<List<EventBooking>>(
     future: _bookings,
-    builder: (context, snapshot) {
-      final bookings = snapshot.data ?? const <EventBooking>[];
-      if (bookings.isEmpty) return const SizedBox.shrink();
-      final strings = AppStrings.of(context);
-      String time(DateTime value) =>
-          TimeOfDay.fromDateTime(value.toLocal()).format(context);
-      return Column(
-        key: const ValueKey('event-bookings'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final booking in bookings)
-            ListTile(
-              key: ValueKey('event-booking-${booking.id}'),
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(_icon(booking.category)),
-              title: Text(booking.resourceName),
-              subtitle: Text(
-                [
-                  '${time(booking.startsAt)}–${time(booking.endsAt)}',
-                  booking.organizationName,
-                  if (booking.pending) strings.feature('Väntar på godkännande'),
-                ].join(' · '),
+    builder: (context, snapshot) => FutureBuilder(
+      future: _targets,
+      builder: (context, targetSnapshot) => _content(
+        context,
+        snapshot.data ?? const <EventBooking>[],
+        targetSnapshot.data ?? const [],
+      ),
+    ),
+  );
+
+  Widget _content(
+    BuildContext context,
+    List<EventBooking> bookings,
+    List<({String organizationId, String name, String? teamId})> targets,
+  ) {
+    if (bookings.isEmpty && targets.isEmpty) return const SizedBox.shrink();
+    final strings = AppStrings.of(context);
+    String time(DateTime value) =>
+        TimeOfDay.fromDateTime(value.toLocal()).format(context);
+    return Column(
+      key: const ValueKey('event-bookings'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final booking in bookings)
+          ListTile(
+            key: ValueKey('event-booking-${booking.id}'),
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(_icon(booking.category)),
+            title: Text(booking.resourceName),
+            subtitle: Text(
+              [
+                '${time(booking.startsAt)}–${time(booking.endsAt)}',
+                booking.organizationName,
+                if (booking.pending) strings.feature('Väntar på godkännande'),
+              ].join(' · '),
+            ),
+          ),
+        for (final target in targets)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              key: ValueKey('event-book-${target.organizationId}'),
+              onPressed: () => _book(target),
+              icon: const Icon(Icons.add_circle_outline),
+              label: Text(
+                targets.length == 1
+                    ? strings.feature('Boka resurs')
+                    : '${strings.feature('Boka resurs')} · ${target.name}',
               ),
             ),
-        ],
-      );
-    },
-  );
+          ),
+      ],
+    );
+  }
 }

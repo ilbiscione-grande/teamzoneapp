@@ -71,3 +71,11 @@ test("the calendar places bookings on the day's grid and turns taps into times",
   assert.equal(weekStart("2026-10-21"), "2026-10-19");
   assert.equal(weekStart("2026-10-25"), "2026-10-19");
 });
+
+test("the app's booking link survives signing in, and only well-formed", () => {
+  const org = "00000000-0000-4000-8000-000000000001";
+  const id = "00000000-0000-4000-8000-000000000002";
+  assert.equal(safeReturnTo(`/bokningar/${org}?boka=1&lag=${id}&aktivitet=${id}`), `/bokningar/${org}?boka=1&lag=${id}&aktivitet=${id}`);
+  assert.equal(safeReturnTo(`/bokningar/${org}?boka=1&aktivitet=${id}`), `/bokningar/${org}?boka=1&aktivitet=${id}`);
+  assert.equal(safeReturnTo(`/bokningar/${org}?boka=1&aktivitet=x`), "/");
+});

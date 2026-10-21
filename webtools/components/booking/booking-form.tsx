@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { bookingError, dateKey, eventOptionLabel, localInstant, timeOf, type Organization, type Resource, type TeamEvent } from "../../lib/booking";
+import { bookingError, categoryLabels, dateKey, eventOptionLabel, groupResources, localInstant, timeOf, type Organization, type Resource, type TeamEvent } from "../../lib/booking";
 import { useAccount } from "../account";
 
 /** Book a resource: time, a title and, with TeamZone, a team and activity. */
-export function BookingForm({ org, resource, day, startTime = "18:00", endTime = "19:30", onClose, onBooked }: {
+export function BookingForm({ org, resource: given, day, startTime = "18:00", endTime = "19:30", teamId: givenTeam, eventId: givenEvent, onClose, onBooked }: {
   org: Organization;
-  resource: Resource;
+  /** Null when coming from the app: the resource is chosen in the form. */
+  resource: Resource | null;
+  /** From the app: the team and activity the booking is for. */
+  teamId?: string;
+  eventId?: string;
   day: string;
   /** From the slot tapped in the calendar. */
   startTime?: string;
@@ -22,8 +26,11 @@ export function BookingForm({ org, resource, day, startTime = "18:00", endTime =
   const [end, setEnd] = useState(endTime);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
-  const [teamId, setTeamId] = useState("");
+  const [resourceId, setResourceId] = useState(given?.id ?? "");
+  const resource = given ?? org.resources.find(item => item.id === resourceId && item.active) ?? null;
+  const [teamId, setTeamId] = useState(givenTeam && org.teams.some(team => team.team_id === givenTeam) ? givenTeam : "");
   const [eventId, setEventId] = useState("");
+  const [pendingEvent, setPendingEvent] = useState(givenEvent ?? "");
   const [events, setEvents] = useState<TeamEvent[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -39,9 +46,16 @@ export function BookingForm({ org, resource, day, startTime = "18:00", endTime =
       .then(({ data }) => setEvents((data as TeamEvent[]) ?? []));
   }, [client, org.id, teamId]);
 
-  const chooseEvent = (id: string) => {
+  // From the app: the activity is chosen once the team's list is in.
+  useEffect(() => {
+    if (!pendingEvent || events.length === 0) return;
+    if (events.some(item => item.event_id === pendingEvent)) chooseEvent(pendingEvent, events);
+    setPendingEvent("");
+  }, [events, pendingEvent]);
+
+  const chooseEvent = (id: string, list = events) => {
     setEventId(id);
-    const chosen = events.find(item => item.event_id === id);
+    const chosen = list.find(item => item.event_id === id);
     if (!chosen) return;
     // The activity's own time, which the booking usually follows.
     setDate(dateKey(new Date(chosen.starts_at)));
@@ -53,6 +67,7 @@ export function BookingForm({ org, resource, day, startTime = "18:00", endTime =
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!client) return;
+    if (!resource) { setError("Välj vad du vill boka."); return; }
     const startsAt = localInstant(date, start);
     let endsAt = localInstant(date, end);
     // Past midnight: the end is on the next day.
@@ -76,8 +91,20 @@ export function BookingForm({ org, resource, day, startTime = "18:00", endTime =
   return (
     <dialog ref={dialog} className="bk-dialog" onClose={onClose} aria-labelledby="booking-form-title">
       <form className="wt-form" onSubmit={submit}>
-        <h2 id="booking-form-title">Boka {resource.name}</h2>
-        {resource.requires_approval && org.role !== "admin" && (
+        <h2 id="booking-form-title">{given ? `Boka ${given.name}` : "Boka"}</h2>
+        {!given && (
+          <label>Vad vill du boka?
+            <select value={resourceId} onChange={event => setResourceId(event.target.value)} required>
+              <option value="">Välj resurs</option>
+              {groupResources(org.resources).map(group => (
+                <optgroup key={group.category} label={categoryLabels[group.category]}>
+                  {group.items.map(item => <option key={item.id} value={item.id}>{item.name}{item.requires_approval ? " (godkänns)" : ""}</option>)}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+        )}
+        {resource?.requires_approval && org.role !== "admin" && (
           <p className="wt-note">Bokningar av den här resursen godkänns av en administratör.</p>
         )}
         {/* Why there is no team or activity to choose. */}
@@ -118,7 +145,7 @@ export function BookingForm({ org, resource, day, startTime = "18:00", endTime =
         <label>Anteckning (frivilligt)<textarea value={notes} onChange={event => setNotes(event.target.value)} maxLength={2000} rows={3} /></label>
         {error && <p role="alert" className="wt-error">{error}</p>}
         <div className="wt-actions">
-          <button type="submit" className="wt-button" disabled={busy}>{resource.requires_approval && org.role !== "admin" ? "Skicka förfrågan" : "Boka"}</button>
+          <button type="submit" className="wt-button" disabled={busy || !resource}>{resource?.requires_approval && org.role !== "admin" ? "Skicka förfrågan" : "Boka"}</button>
           <button type="button" className="wt-button secondary" onClick={() => dialog.current?.close()}>Avbryt</button>
         </div>
       </form>

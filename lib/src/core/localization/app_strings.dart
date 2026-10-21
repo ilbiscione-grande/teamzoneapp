@@ -1677,6 +1677,7 @@ class AppStrings {
     'Medicinskt ansvarig': 'Medical staff',
     'Kassör': 'Treasurer',
     'Mer': 'More',
+    'Boka resurs': 'Book a resource',
     'Väntar på godkännande': 'Waiting for approval',
     'Klubbens möten': "The club's meetings",
     'Ordförande': "Chair",

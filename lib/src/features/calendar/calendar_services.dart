@@ -24,6 +24,11 @@ class CalendarSyncEvent {
 /// Webtools Bokningshanterare: the bookings attached to an activity.
 abstract interface class EventBookingServices {
   Future<List<EventBooking>> listEventBookings(String eventId);
+
+  /// Where you can book for the activity: organisations linked to its club,
+  /// with the activity's team you lead there, if any.
+  Future<List<({String organizationId, String name, String? teamId})>>
+  listEventBookingTargets(String eventId);
 }
 
 abstract interface class CalendarServices {
@@ -468,6 +473,29 @@ class UnconfiguredCalendarServices implements CalendarServices {
 
 class SupabaseCalendarServices
     implements CalendarServices, EventBookingServices {
+  @override
+  Future<List<({String organizationId, String name, String? teamId})>>
+  listEventBookingTargets(String eventId) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'list_event_booking_targets',
+          params: {'target_event_id': eventId},
+        )
+        .timeout(const Duration(seconds: 15));
+    if (value is! List) {
+      throw const FormatException('Invalid booking targets.');
+    }
+    return [
+      for (final row in value.whereType<Map<String, dynamic>>())
+        (
+          organizationId: row['organization_id'] as String,
+          name: row['name'] as String,
+          teamId: row['team_id'] as String?,
+        ),
+    ];
+  }
+
   @override
   Future<List<EventBooking>> listEventBookings(String eventId) async {
     final value = await _client

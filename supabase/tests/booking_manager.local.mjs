@@ -42,8 +42,8 @@ insert into core.capability_grants(club_id, assignment_id, capability, scope_typ
 create table internal.notification_outbox(id uuid primary key default gen_random_uuid(), club_id uuid, domain_event_id uuid, event_type text,
   aggregate_type text, aggregate_id uuid, recipient_profile_id uuid, recipient_person_id uuid, payload_ref jsonb, state text default 'pending',
   unique(domain_event_id, recipient_person_id));
-create table core.events(id uuid primary key, title text, event_type text, state text, starts_at timestamptz, ends_at timestamptz, archived_at timestamptz, home_away text, opponent_name text);
-insert into core.events values ('${event}','Bortamatch','match','scheduled',now()+interval '3 days',now()+interval '3 days 2 hours',null,'away','Aneby SK'),
+create table core.events(id uuid primary key, club_id uuid default '${club}', title text, event_type text, state text, starts_at timestamptz, ends_at timestamptz, archived_at timestamptz, home_away text, opponent_name text);
+insert into core.events(id, title, event_type, state, starts_at, ends_at, archived_at, home_away, opponent_name) values ('${event}','Bortamatch','match','scheduled',now()+interval '3 days',now()+interval '3 days 2 hours',null,'away','Aneby SK'),
   ('${otherEvent}','F-träning','training','scheduled',now()+interval '3 days',now()+interval '3 days 1 hour',null,null,null);
 create table core.event_teams(event_id uuid, club_id uuid, team_id uuid);
 insert into core.event_teams values ('${event}','${club}','${team}'),('${otherEvent}','${club}','${otherTeam}');
@@ -55,6 +55,7 @@ await db.exec(read('supabase/migrations/20261115090000_booking_manager.sql'));
 await db.exec(read('supabase/migrations/20261115100000_booking_team_events_venue.sql'));
 await db.exec(read('supabase/migrations/20261116090000_booking_notifications.sql'));
 await db.exec(read('supabase/migrations/20261116100000_booking_approvals_for_assistant.sql'));
+await db.exec(read('supabase/migrations/20261116110000_booking_from_event.sql'));
 await db.exec('begin');
 
 // Standalone: anyone signed in creates an organisation and becomes admin.
@@ -144,6 +145,10 @@ assert.deepEqual(pushes, [{ event_type: 'booking.requested.v1', aggregate_type: 
 await fails(coach, 'select api.create_booking($1,$2,$3,null,null,$4,null)', [locker, t(70), t(71), otherTeam], /not_team_leader/);
 await fails(coach, 'select api.create_booking($1,$2,$3,null,null,$4,$5)', [locker, t(70), t(71), team, otherEvent], /event_not_found/);
 await fails(coach, 'select api.create_booking($1,$2,$3,null,null,null,$4)', [locker, t(70), t(71), event], /event_needs_team/);
+// The app: where the coach can book for the match, and for which team.
+assert.deepEqual(await call(coach, 'select api.list_event_booking_targets($1)', [event]), [{ organization_id: clubOrg, name: 'Demoklubben IF', team_id: team }]);
+assert.deepEqual((await call(clubAdmin, 'select api.list_event_booking_targets($1)', [event])).map(t => t.team_id), [null], 'an admin who leads no team books without one');
+await fails(stranger, 'select api.list_event_booking_targets($1)', [event], /not_found/);
 // The app: the activity lists its bookings for those who see it.
 const onEvent = await call(coach, 'select api.list_event_bookings($1)', [event]);
 assert.deepEqual(onEvent.map(b => [b.resource_name, b.status, b.organization_name]), [['Minibuss', 'pending', 'Demoklubben IF']]);
