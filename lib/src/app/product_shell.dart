@@ -715,6 +715,18 @@ class _ProductShellState extends State<_ProductShell> {
   }
 
   Future<void> _openAssistantTask(AssistantTask task) async {
+    // Bookings to approve are decided in the app; Webtools stays one tap away.
+    if (task.task.kind == 'club_booking_requests' &&
+        widget.overview is BookingDecisionServices) {
+      await showBookingApprovalsSheet(
+        context,
+        services: widget.overview as BookingDecisionServices,
+        organizationId: Uri.parse(task.route).pathSegments.last,
+        organizationName: task.eventTitle ?? '',
+        webtoolsUrl: task.route,
+      );
+      return;
+    }
     // Webtools (the booking manager) opens outside the app.
     if (task.route.startsWith('https://')) {
       await launchUrl(

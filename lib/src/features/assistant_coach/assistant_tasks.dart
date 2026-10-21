@@ -181,7 +181,7 @@ class AssistantTask {
     'club_economy_entries' => 'Öppna Ekonomi',
     'club_applications' => 'Granska ansökningar',
     'club_team_requests' => 'Granska förfrågningar',
-    'club_booking_requests' => 'Öppna Bokningshanteraren',
+    'club_booking_requests' => 'Granska bokningar',
     'personal_calendar_conflict' => 'Öppna aktivitet och hantera krock',
     'calendar_conflict' => 'Välj aktivitet och ändra tid',
     'unfinished_preparation' => 'Öppna förberedelser',
@@ -200,7 +200,7 @@ class AssistantTask {
     'club_team_requests' =>
       '${task.count} förfrågningar om nya lag väntar på beslut.',
     'club_booking_requests' =>
-      '${task.count} bokningar väntar på ditt godkännande i Bokningshanteraren i Webtools.',
+      '${task.count} bokningar väntar på ditt godkännande i Bokningshanteraren.',
     'personal_calendar_conflict' =>
       'Dina egna kallelser i olika lag överlappar under kommande sju dagar. '
           'Två ja-svar innebär dubbelbokning; ett obesvarat svar innebär en möjlig krock. '

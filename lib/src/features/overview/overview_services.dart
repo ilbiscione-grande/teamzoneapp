@@ -25,6 +25,15 @@ abstract interface class BookingApprovalServices {
   Future<List<BookingApproval>> listMyBookingApprovals();
 }
 
+/// Webtools Bokningshanterare: approve or decline the waiting bookings in
+/// the app.
+abstract interface class BookingDecisionServices {
+  Future<List<PendingBooking>> listPendingBookings(String organizationId);
+
+  /// Decides the booking, or its whole series or group.
+  Future<void> decideBooking(PendingBooking booking, {required bool approve});
+}
+
 abstract interface class FreshLeaderOverviewServices {
   Future<LeaderHomeProjection> loadFreshLeaderHome(String contextId);
 }
@@ -66,6 +75,7 @@ class SupabaseOverviewServices
         OverviewServices,
         ClubHomeServices,
         BookingApprovalServices,
+        BookingDecisionServices,
         FreshLeaderOverviewServices,
         PersonalCalendarConflictServices,
         AssistantTaskPreferencesServices,
@@ -275,6 +285,42 @@ class SupabaseOverviewServices
         .whereType<Map<String, dynamic>>()
         .map(BookingApproval.fromJson)
         .toList(growable: false);
+  }
+
+  @override
+  Future<List<PendingBooking>> listPendingBookings(
+    String organizationId,
+  ) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'list_pending_bookings',
+          params: {'target_organization_id': organizationId},
+        )
+        .timeout(const Duration(seconds: 15));
+    if (value is! List) {
+      throw const FormatException('Invalid pending bookings.');
+    }
+    return value
+        .whereType<Map<String, dynamic>>()
+        .map(PendingBooking.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<void> decideBooking(
+    PendingBooking booking, {
+    required bool approve,
+  }) async {
+    final (name, params) = booking.seriesId != null
+        ? ('decide_booking_series', {'target_series_id': booking.seriesId})
+        : booking.groupId != null
+        ? ('decide_booking_group', {'target_group_id': booking.groupId})
+        : ('decide_booking', {'target_booking_id': booking.id});
+    await _client
+        .schema('api')
+        .rpc<Object?>(name, params: {...params, 'approve': approve})
+        .timeout(const Duration(seconds: 15));
   }
 
   @override

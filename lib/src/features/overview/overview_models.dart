@@ -684,3 +684,47 @@ class BookingApproval {
         clubId: json['teamzone_club_id'] as String?,
       );
 }
+
+/// A booking waiting for your approval. A recurring series or several
+/// resources booked together are decided as a whole.
+class PendingBooking {
+  const PendingBooking({
+    required this.id,
+    required this.resourceName,
+    required this.startsAt,
+    required this.endsAt,
+    this.title,
+    this.notes,
+    this.bookedByName,
+    this.teamName,
+    this.eventTitle,
+    this.seriesId,
+    this.seriesRemaining,
+    this.groupId,
+    this.groupResources = const [],
+  });
+  final String id, resourceName;
+  final DateTime startsAt, endsAt;
+  final String? title, notes, bookedByName, teamName, eventTitle;
+  final String? seriesId, groupId;
+  final int? seriesRemaining;
+  final List<String> groupResources;
+
+  factory PendingBooking.fromJson(Map<String, dynamic> json) => PendingBooking(
+    id: json['id'] as String,
+    resourceName: json['resource_name'] as String? ?? '',
+    startsAt: DateTime.parse(json['starts_at'] as String),
+    endsAt: DateTime.parse(json['ends_at'] as String),
+    title: json['title'] as String?,
+    notes: json['notes'] as String?,
+    bookedByName: json['booked_by_name'] as String?,
+    teamName: json['team_name'] as String?,
+    eventTitle: json['event_title'] as String?,
+    seriesId: json['series_id'] as String?,
+    seriesRemaining: (json['series_remaining'] as num?)?.toInt(),
+    groupId: json['group_id'] as String?,
+    groupResources: (json['group_resources'] as List? ?? const [])
+        .whereType<String>()
+        .toList(growable: false),
+  );
+}

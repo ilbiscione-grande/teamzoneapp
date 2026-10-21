@@ -2223,12 +2223,19 @@ class _BookResourcesSheetState extends State<_BookResourcesSheet> {
   bool _busy = false;
   String? _error;
 
-  Future<List<ResourceAvailability>> _load() =>
-      widget.services.listBookingAvailability(
+  // A failure is reported, then shown as the sheet's error.
+  Future<List<ResourceAvailability>> _load() async {
+    try {
+      return await widget.services.listBookingAvailability(
         organizationId: widget.organizationId,
         startsAt: widget.startsAt,
         endsAt: widget.endsAt,
       );
+    } catch (error) {
+      AppErrors.caught('event_details_page._BookResourcesSheet.load', error);
+      rethrow;
+    }
+  }
 
   static const _categories = {
     'pitch': 'Planer',
