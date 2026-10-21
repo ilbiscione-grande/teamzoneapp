@@ -283,6 +283,7 @@ class AppStrings {
         'The action could not be saved. Reload and try again.',
     // Laget → Statistik, the fifth bottom-bar button and Arbetsytor.
     'Lagstatistik': 'Team statistics',
+    'Turneringar': 'Tournaments',
     '30 dagar': '30 days',
     '90 dagar': '90 days',
     'I år': 'This year',

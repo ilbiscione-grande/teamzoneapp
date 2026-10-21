@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   dateSpan, feeLabel, formatLabels, placesLeft, registrationStatusLabels, roleLabels, tournamentError,
-  tournamentStatusLabels, type Registration, type Tournament,
+  tournamentStatusLabels, type LeaderTeam, type Registration, type Tournament,
 } from "../../lib/tournament";
 import { useAccount } from "../account";
 import { ClassesAdmin, RegistrationsAdmin, SettingsAdmin, StaffAdmin } from "./organizer";
@@ -124,6 +124,7 @@ function Overview({ tournament, onChanged }: { tournament: Tournament; onChanged
 function MyRegistrations({ tournament, onChanged }: { tournament: Tournament; onChanged: () => void }) {
   const { client } = useAccount();
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const mine = tournament.my_registrations.filter(item => item.status !== "withdrawn");
   if (mine.length === 0) return null;
   const withdraw = async (registration: Registration) => {
@@ -132,11 +133,23 @@ function MyRegistrations({ tournament, onChanged }: { tournament: Tournament; on
     if (withdrawError) { setError(tournamentError(withdrawError)); return; }
     onChanged();
   };
+  // The team's tournament days as activities in its TeamZone calendar.
+  const sync = async (registration: Registration) => {
+    if (!client) return;
+    setError(""); setMessage("");
+    const { data, error: syncError } = await client.schema("api").rpc("sync_tournament_team_calendar", { target_registration_id: registration.id });
+    if (syncError) { setError(tournamentError(syncError)); return; }
+    const result = data as { created: number; moved: number; days: number };
+    setMessage(result.created ? `${result.created} ${result.created === 1 ? "dag är inlagd" : "dagar är inlagda"} i lagets kalender i TeamZone.`
+      : result.moved ? "Kalendern är uppdaterad med de nya tiderna." : "Kalendern stämmer redan med spelschemat.");
+    onChanged();
+  };
   const fees = mine.some(item => item.status !== "declined" && !item.paid
     && (tournament.classes.find(c => c.id === item.class_id)?.fee_sek ?? 0) > 0);
   return (
     <section className="wt-panel">
       <h2>Dina anmälda lag</h2>
+      {message && <p className="wt-note" role="status">{message}</p>}
       {error && <p role="alert" className="wt-error">{error}</p>}
       <ul className="bk-bookings">
         {mine.map(item => {
@@ -149,6 +162,9 @@ function MyRegistrations({ tournament, onChanged }: { tournament: Tournament; on
                 <span>{[item.club_name, registrationStatusLabels[item.status], fee ? (item.paid ? "Avgiften är betald" : `Avgift ${feeLabel(fee)}`) : null].filter(Boolean).join(" · ")}</span>
               </div>
               <div className="bk-booking-actions">
+                {item.status === "approved" && item.can_sync && (
+                  <button type="button" className="wt-button small" onClick={() => void sync(item)}>{item.calendar_days ? "Uppdatera lagets kalender" : "Lägg in i lagets kalender"}</button>
+                )}
                 {(item.status === "pending" || item.status === "approved") && (
                   <button type="button" className="wt-button secondary small" onClick={() => void withdraw(item)}>Ta tillbaka</button>
                 )}
@@ -162,11 +178,16 @@ function MyRegistrations({ tournament, onChanged }: { tournament: Tournament; on
   );
 }
 
-const emptyRegistration = { class_id: "", team_name: "", club_name: "", contact_name: "", contact_email: "", contact_phone: "", notes: "" };
+const emptyRegistration = { class_id: "", team_id: "", team_name: "", club_name: "", contact_name: "", contact_email: "", contact_phone: "", notes: "" };
 
 function RegisterForm({ tournament, onRegistered }: { tournament: Tournament; onRegistered: () => void }) {
   const { client, session, displayName } = useAccount();
   const [form, setForm] = useState(emptyRegistration);
+  // Your teams in TeamZone: registered as one, the tournament can go in its calendar.
+  const [teams, setTeams] = useState<LeaderTeam[]>([]);
+  useEffect(() => {
+    client?.schema("api").rpc("list_tournament_leader_teams").then(({ data }) => setTeams((data as LeaderTeam[] | null) ?? []));
+  }, [client]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -191,8 +212,8 @@ function RegisterForm({ tournament, onRegistered }: { tournament: Tournament; on
     event.preventDefault();
     if (!client) return;
     setBusy(true); setError(""); setMessage("");
-    const { error: registerError } = await client.schema("api").rpc("register_tournament_team", {
-      target_class_id: form.class_id, registration_team_name: form.team_name, registration_club_name: form.club_name || null,
+    const { error: registerError } = await client.schema("api").rpc("register_tournament_team_v2", {
+      target_class_id: form.class_id, target_team_id: form.team_id || null, registration_team_name: form.team_name, registration_club_name: form.club_name || null,
       registration_contact_name: form.contact_name, registration_contact_email: form.contact_email,
       registration_contact_phone: form.contact_phone || null, registration_notes: form.notes || null,
     });
@@ -214,6 +235,17 @@ function RegisterForm({ tournament, onRegistered }: { tournament: Tournament; on
               {open.map(item => <option key={item.id} value={item.id}>{[item.name, item.description, feeLabel(item.fee_sek)].filter(Boolean).join(" · ")}</option>)}
             </select>
           </label>
+          {teams.length > 0 && (
+            <label>Ditt lag i TeamZone (frivilligt)
+              <select value={form.team_id} onChange={event => {
+                const team = teams.find(item => item.team_id === event.target.value);
+                setForm({ ...form, team_id: event.target.value, ...(team ? { team_name: `${team.club_name} ${team.team_name}`, club_name: team.club_name } : {}) });
+              }}>
+                <option value="">Inget, jag skriver lagets namn</option>
+                {teams.map(team => <option key={team.team_id} value={team.team_id}>{team.team_name} · {team.club_name}</option>)}
+              </select>
+            </label>
+          )}
           <label>Lagets namn<input value={form.team_name} onChange={event => setForm({ ...form, team_name: event.target.value })} maxLength={120} required placeholder="T.ex. Demoklubben P12 Blå" /></label>
           <label>Klubb eller förening (frivilligt)<input value={form.club_name} onChange={event => setForm({ ...form, club_name: event.target.value })} maxLength={120} /></label>
           <label>Kontaktperson<input value={form.contact_name} onChange={event => setForm({ ...form, contact_name: event.target.value })} maxLength={120} required /></label>

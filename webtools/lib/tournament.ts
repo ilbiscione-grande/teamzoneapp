@@ -49,7 +49,13 @@ export type Registration = {
   registered_by_name: string | null;
   teamzone_team_id: string | null;
   created_at: string;
+  /** Your own registrations: the team's days in its TeamZone calendar, and whether you may put them there. */
+  calendar_days?: number;
+  can_sync?: boolean;
 };
+
+/** A team you lead in TeamZone. */
+export type LeaderTeam = { team_id: string; team_name: string; club_id: string; club_name: string };
 
 export type StaffMember = { profile_id: string; name: string | null; role: TournamentRole; is_self: boolean };
 
@@ -66,6 +72,8 @@ export type Tournament = {
   status: TournamentStatus;
   registration_open: boolean;
   registration_closes_at: string | null;
+  /** Found by leaders searching in the TeamZone app. */
+  searchable: boolean;
   /** Published, open, and before the closing time. */
   registration_is_open: boolean;
   role: TournamentRole | null;
@@ -132,6 +140,11 @@ const errorMessages: Record<string, string> = {
   invalid_result: "Skriv båda lagens mål.",
   needs_winner: "En slutspelsmatch behöver en vinnare. Skriv straffarna.",
   team_in_schedule: "Laget finns i spelschemat. Planera om grupperna utan laget först.",
+  not_team_leader: "Du kan bara anmäla lag där du är ledare.",
+  team_already_registered: "Laget är redan anmält i klassen.",
+  not_approved: "Anmälan är inte godkänd än.",
+  schedule_not_published: "Arrangören har inte publicerat spelschemat än.",
+  no_matches: "Laget har inga matcher med tid än.",
 };
 
 export function tournamentError(error: { message?: string } | null | undefined): string {

@@ -60,6 +60,7 @@ import 'package:teamzone_app/src/features/economy/economy_services.dart';
 import 'package:teamzone_app/src/features/overview/overview_models.dart';
 import 'package:teamzone_app/src/features/overview/overview_services.dart';
 import 'package:teamzone_app/src/features/overview/booking_approvals_sheet.dart';
+import 'package:teamzone_app/src/features/tournaments/tournaments.dart';
 import 'package:teamzone_app/src/features/publication/editorial_models.dart';
 import 'package:teamzone_app/src/features/publication/editorial_services.dart';
 import 'package:teamzone_app/src/features/messaging/messaging_models.dart';

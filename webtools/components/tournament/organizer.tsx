@@ -208,18 +208,20 @@ export function SettingsAdmin({ tournament, onChanged }: { tournament: Tournamen
     contact_email: tournament.contact_email ?? "", payment_info: tournament.payment_info ?? "",
     status: tournament.status, registration_open: tournament.registration_open,
     registration_closes_at: localInput(tournament.registration_closes_at),
+    searchable: tournament.searchable,
   });
   const { run, message, error } = useRunner(onChanged);
   if (!client) return null;
   const save = (event: React.FormEvent) => {
     event.preventDefault();
-    void run(() => client.schema("api").rpc("update_tournament", {
+    void run(() => client.schema("api").rpc("update_tournament_v2", {
       target_tournament_id: tournament.id, tournament_name: form.name, tournament_sport: form.sport || null,
       tournament_location: form.location || null, tournament_starts_on: form.starts_on, tournament_ends_on: form.ends_on,
       tournament_description: form.description || null, tournament_contact_email: form.contact_email || null,
       tournament_payment_info: form.payment_info || null, tournament_status: form.status,
       tournament_registration_open: form.registration_open && form.status === "published",
       tournament_registration_closes_at: form.registration_closes_at ? new Date(form.registration_closes_at).toISOString() : null,
+      tournament_searchable: form.searchable && form.status === "published",
     }), "Sparat.");
   };
   return (
@@ -245,6 +247,8 @@ export function SettingsAdmin({ tournament, onChanged }: { tournament: Tournamen
       </label>
       <label className="wt-check"><input type="checkbox" checked={form.registration_open && form.status === "published"} disabled={form.status !== "published"} onChange={event => setForm({ ...form, registration_open: event.target.checked })} /><span>Anmälan är öppen</span></label>
       <label>Anmälan stänger (frivilligt)<input type="datetime-local" value={form.registration_closes_at} onChange={event => setForm({ ...form, registration_closes_at: event.target.value })} /></label>
+      <label className="wt-check"><input type="checkbox" checked={form.searchable && form.status === "published"} disabled={form.status !== "published"} onChange={event => setForm({ ...form, searchable: event.target.checked })} /><span>Sökbar för lag i TeamZone-appen</span></label>
+      <p className="wt-small">En sökbar turnering hittas av ledare i appen, som anmäler sitt lag där. Utan det når lagen den bara via länken.</p>
       {form.status === "draft" && tournament.classes.length === 0 && <p className="wt-small">Lägg upp klasserna innan du publicerar.</p>}
       <button type="submit" className="wt-button">Spara</button>
     </form>

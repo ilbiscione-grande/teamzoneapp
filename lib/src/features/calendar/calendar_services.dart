@@ -5,6 +5,7 @@ import 'package:teamzone_app/src/features/calendar/calendar_models.dart';
 import 'package:teamzone_app/src/features/calendar/preparation_services.dart';
 import 'package:teamzone_app/src/features/calendar/referee_services.dart';
 import 'package:teamzone_app/src/core/observability/app_errors.dart';
+import 'package:teamzone_app/src/features/tournaments/tournaments.dart';
 
 export 'package:teamzone_app/src/features/calendar/preparation_services.dart';
 export 'package:teamzone_app/src/features/calendar/referee_services.dart';
@@ -496,7 +497,93 @@ class UnconfiguredCalendarServices implements CalendarServices {
 }
 
 class SupabaseCalendarServices
-    implements CalendarServices, EventBookingServices {
+    implements CalendarServices, EventBookingServices, TournamentServices {
+  @override
+  String? get accountEmail => _client.auth.currentUser?.email;
+
+  Future<Object?> _tournamentRpc(String name, [Map<String, dynamic>? params]) =>
+      _client
+          .schema('api')
+          .rpc<Object?>(name, params: params)
+          .timeout(const Duration(seconds: 15));
+
+  List<T> _tournamentList<T>(
+    Object? value,
+    T Function(Map<String, dynamic>) parse,
+  ) {
+    if (value is! List) throw const FormatException('Invalid tournaments.');
+    return value
+        .whereType<Map<String, dynamic>>()
+        .map(parse)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<List<TeamTournament>> listMyTeamTournaments() async => _tournamentList(
+    await _tournamentRpc('list_my_team_tournaments'),
+    TeamTournament.fromJson,
+  );
+
+  @override
+  Future<List<LeaderTeam>> listLeaderTeams() async => _tournamentList(
+    await _tournamentRpc('list_tournament_leader_teams'),
+    LeaderTeam.fromJson,
+  );
+
+  @override
+  Future<List<FoundTournament>> searchTournaments(String text) async =>
+      _tournamentList(
+        await _tournamentRpc('search_tournaments', {'search_text': text}),
+        FoundTournament.fromJson,
+      );
+
+  @override
+  Future<void> registerTeam({
+    required String classId,
+    required String teamId,
+    required String teamName,
+    required String clubName,
+    required String contactName,
+    required String contactEmail,
+    String? contactPhone,
+    String? notes,
+  }) async {
+    await _tournamentRpc('register_tournament_team_v2', {
+      'target_class_id': classId,
+      'target_team_id': teamId,
+      'registration_team_name': teamName,
+      'registration_club_name': clubName,
+      'registration_contact_name': contactName,
+      'registration_contact_email': contactEmail,
+      'registration_contact_phone': contactPhone,
+      'registration_notes': notes,
+    });
+  }
+
+  @override
+  Future<({int created, int moved})> syncTeamCalendar(
+    String registrationId,
+  ) async {
+    final value = await _tournamentRpc('sync_tournament_team_calendar', {
+      'target_registration_id': registrationId,
+    });
+    if (value is! Map) throw const FormatException('Invalid sync.');
+    return (
+      created: (value['created'] as num?)?.toInt() ?? 0,
+      moved: (value['moved'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  @override
+  Future<EventTournament?> getEventTournament(String eventId) async {
+    final value = await _tournamentRpc('get_event_tournament', {
+      'target_event_id': eventId,
+    });
+    return value is Map<String, dynamic>
+        ? EventTournament.fromJson(value)
+        : null;
+  }
+
   @override
   Future<List<ResourceAvailability>> listBookingAvailability({
     required String organizationId,

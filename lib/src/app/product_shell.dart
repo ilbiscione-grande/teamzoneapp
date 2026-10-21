@@ -163,9 +163,33 @@ class _ProductShellState extends State<_ProductShell> {
       if (club != null) unawaited(_openRefereeBoard(club));
     } else if (route == _ownProfileRoute) {
       _openOwnProfile();
+    } else if (route == _tournamentsRoute) {
+      unawaited(_openTournaments());
     } else {
       _router.go(route);
     }
+  }
+
+  /// Webtools Turneringsplanerare: the teams' tournaments and finding one.
+  Future<void> _openTournaments() async {
+    _scaffoldKey.currentState?.closeDrawer();
+    final navigator = _productNavigatorKey.currentState;
+    final services = widget.calendar;
+    if (navigator == null || services is! TournamentServices) return;
+    // Your name as the registration's contact.
+    final own = await _ownSummary.catchError(
+      (Object _) => (name: null, avatar: null, title: null) as _OwnSummary,
+    );
+    if (!mounted) return;
+    await navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => TournamentsPage(
+          services: services as TournamentServices,
+          activeTeamId: widget.contextValue.teamId,
+          contactName: own.name,
+        ),
+      ),
+    );
   }
 
   void _openOwnProfile() {
@@ -1998,6 +2022,7 @@ extension on _QuickAction {
 const _refereeBoardRoute = 'teamzone:referee-board';
 const _clubTeamRequestsRoute = '/team?action=team-requests';
 const _ownProfileRoute = 'teamzone:own-profile';
+const _tournamentsRoute = 'teamzone:tournaments';
 
 /// What the fifth button "Mer" holds, by role and capability. Leaders find
 /// Utveckling and Statistik under Arbetsytor.
@@ -2044,6 +2069,13 @@ List<_QuickAction> _moreActionsFor(
         icon: Icons.assignment_ind_outlined,
         label: refereeLabel,
         route: _refereeBoardRoute,
+      ),
+    // Webtools: tournaments for the teams a leader runs.
+    if (leader && contextValue.can('event.manage'))
+      (
+        icon: Icons.emoji_events_outlined,
+        label: strings.feature('Turneringar'),
+        route: _tournamentsRoute,
       ),
     if (contextValue.can('club.billing.manage'))
       (

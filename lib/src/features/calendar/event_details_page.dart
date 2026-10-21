@@ -714,6 +714,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         // REF-01: who referees the match.
         if (event.type == 'match')
           EventRefereesSection(eventId: event.id, services: _refereeServices()),
+        // Webtools: a tournament day shows the team's matches and table.
+        if (widget.calendar case final TournamentServices tournaments)
+          EventTournamentSection(eventId: event.id, services: tournaments),
         // Webtools: rooms, pitches or a minibus booked for the activity.
         if (widget.calendar case final EventBookingServices bookings)
           _EventBookingsSection(
