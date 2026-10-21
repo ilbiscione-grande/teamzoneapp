@@ -58,6 +58,9 @@ export type Booking = {
   /** A recurring booking: its series and how many coming times are left. */
   series_id?: string | null;
   series_remaining?: number | null;
+  /** Booked together with other resources: the group and its resources. */
+  group_id?: string | null;
+  group_resources?: string[] | null;
 };
 
 /** A planned or booked series: every time, and whether it clashes. */
@@ -207,9 +210,14 @@ export function invitationToken(value: string): string | null {
   return match ? match[1] : null;
 }
 
-// The calendar grid: hours from GRID_START to GRID_END, local time.
+// The calendar grid: hours from GRID_START to GRID_END, local time, unless
+// the calendar's filter narrows them.
 export const GRID_START = 6;
 export const GRID_END = 24;
+
+/** The hours a calendar shows, start inclusive, end exclusive (0–24). */
+export type GridRange = { start: number; end: number };
+export const defaultRange: GridRange = { start: GRID_START, end: GRID_END };
 
 /** Monday of the week the day is in. */
 export function weekStart(key: string): string {
@@ -219,13 +227,13 @@ export function weekStart(key: string): string {
 }
 
 /**
- * Where a booking sits in one day's column, as fractions of the grid from
- * GRID_START to GRID_END; null when it is not on that day. Parts outside
- * the grid are cut at its edges, and say so.
+ * Where a booking sits in one day's column, as fractions of the grid's hours;
+ * null when it is not on that day. Parts outside the grid are cut at its
+ * edges, and say so.
  */
-export function gridPlacement(startsAt: string, endsAt: string, key: string): { top: number; height: number; cutTop: boolean; cutBottom: boolean } | null {
-  const grid0 = new Date(localInstant(key, `${String(GRID_START).padStart(2, "0")}:00`)).getTime();
-  const grid1 = new Date(localInstant(addDays(key, GRID_END === 24 ? 1 : 0), GRID_END === 24 ? "00:00" : `${GRID_END}:00`)).getTime();
+export function gridPlacement(startsAt: string, endsAt: string, key: string, range: GridRange = defaultRange): { top: number; height: number; cutTop: boolean; cutBottom: boolean } | null {
+  const grid0 = new Date(localInstant(key, `${String(range.start).padStart(2, "0")}:00`)).getTime();
+  const grid1 = new Date(localInstant(range.end === 24 ? addDays(key, 1) : key, range.end === 24 ? "00:00" : `${String(range.end).padStart(2, "0")}:00`)).getTime();
   const start = new Date(startsAt).getTime();
   const end = new Date(endsAt).getTime();
   if (end <= grid0 || start >= grid1) return null;
@@ -236,8 +244,8 @@ export function gridPlacement(startsAt: string, endsAt: string, key: string): { 
 }
 
 /** A tap at a fraction of the grid as "HH:MM", on the half hour before it. */
-export function slotAt(fraction: number): string {
-  const minutes = GRID_START * 60 + Math.floor((Math.min(Math.max(fraction, 0), 0.9999) * (GRID_END - GRID_START) * 60) / 30) * 30;
+export function slotAt(fraction: number, range: GridRange = defaultRange): string {
+  const minutes = range.start * 60 + Math.floor((Math.min(Math.max(fraction, 0), 0.9999) * (range.end - range.start) * 60) / 30) * 30;
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
@@ -249,9 +257,55 @@ export function addMinutes(time: string, minutes: number): string {
 }
 
 /** Where "now" is in the day's grid, or null outside it or another day. */
-export function nowFraction(key: string, now = new Date()): number | null {
+export function nowFraction(key: string, now = new Date(), range: GridRange = defaultRange): number | null {
   if (dateKey(now) !== key) return null;
   const hours = now.getHours() + now.getMinutes() / 60;
-  if (hours < GRID_START || hours >= GRID_END) return null;
-  return (hours - GRID_START) / (GRID_END - GRID_START);
+  if (hours < range.start || hours >= range.end) return null;
+  return (hours - range.start) / (range.end - range.start);
+}
+
+/** What the calendar shows; null lists mean all. */
+export type CalendarFilter = {
+  resourceIds: string[] | null;
+  /** Team ids, and "none" for bookings without a team. */
+  teams: string[] | null;
+  range: GridRange;
+  onlyMine: boolean;
+  onlyPending: boolean;
+};
+
+export const emptyFilter: CalendarFilter = { resourceIds: null, teams: null, range: defaultRange, onlyMine: false, onlyPending: false };
+
+/** How many filters differ from showing everything. */
+export function activeFilterCount(filter: CalendarFilter): number {
+  return [
+    filter.resourceIds !== null,
+    filter.teams !== null,
+    filter.range.start !== defaultRange.start || filter.range.end !== defaultRange.end,
+    filter.onlyMine,
+    filter.onlyPending,
+  ].filter(Boolean).length;
+}
+
+/** Whether a booking matches the filter; those that do not are dimmed. */
+export function matchesFilter(booking: Booking, filter: CalendarFilter): boolean {
+  if (filter.onlyMine && !booking.is_mine) return false;
+  if (filter.onlyPending && booking.status !== "pending") return false;
+  if (filter.teams !== null && !filter.teams.includes(booking.team_id ?? "none")) return false;
+  return true;
+}
+
+/** A stored filter, or nothing when it is unreadable or stale. */
+export function parseFilter(value: string | null): CalendarFilter | null {
+  if (!value) return null;
+  try {
+    const raw = JSON.parse(value) as Partial<CalendarFilter>;
+    const list = (item: unknown) => Array.isArray(item) && item.every(entry => typeof entry === "string") ? item as string[] : null;
+    const start = Number(raw.range?.start);
+    const end = Number(raw.range?.end);
+    const range = Number.isInteger(start) && Number.isInteger(end) && start >= 0 && end <= 24 && end - start >= 2 ? { start, end } : defaultRange;
+    return { resourceIds: list(raw.resourceIds), teams: list(raw.teams), range, onlyMine: raw.onlyMine === true, onlyPending: raw.onlyPending === true };
+  } catch {
+    return null;
+  }
 }

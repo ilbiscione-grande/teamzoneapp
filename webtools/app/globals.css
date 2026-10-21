@@ -272,3 +272,26 @@ a { color: var(--wt-brand); }
 .bk-weekdays button[aria-pressed="true"] { background: var(--wt-ink); border-color: var(--wt-ink); color: var(--wt-accent); }
 .bk-plan p { margin: 0 0 6px; }
 .bk-plan ul { margin: 4px 0 6px; padding-left: 20px; text-transform: capitalize; }
+
+/* Several resources at once */
+.bk-pick { display: grid; gap: 10px; margin: 0; padding: 12px 14px; border: 1px solid var(--wt-line); border-radius: 6px; max-height: 260px; overflow-y: auto; }
+.bk-pick legend { padding: 0 6px; font-weight: 700; }
+.bk-pick-group { display: grid; gap: 4px; }
+.bk-pick-group > span { color: var(--wt-muted); font-size: .8rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.bk-pick .wt-check { margin: 0; }
+.bk-pick .wt-check[data-busy="true"] span { color: var(--wt-red); }
+
+/* Calendar filter */
+.cal-filter-button[aria-expanded="true"] { background: var(--wt-ink); color: var(--wt-accent); border-color: var(--wt-ink); }
+.cal-filter-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 18px; margin-bottom: 14px; }
+.cal-filter-panel fieldset { display: grid; gap: 6px; align-content: start; margin: 0; padding: 0; border: 0; }
+.cal-filter-panel legend { margin-bottom: 4px; font-family: var(--wt-display), sans-serif; font-size: 1.15rem; font-weight: 700; text-transform: uppercase; }
+.cal-filter-panel .wt-check { margin: 0; }
+.cal-filter-panel .wt-small { margin: 0 0 4px; }
+.cal-filter-actions { display: flex; gap: 12px; }
+.cal-filter-group { display: grid; gap: 2px; padding-left: 2px; }
+.cal-filter-group .wt-check:not(.cal-filter-category) { padding-left: 24px; }
+.cal-filter-category span { font-weight: 700; }
+.cal-filter-panel select { width: 100%; min-height: 40px; padding: 0 10px; border: 1px solid var(--wt-line); border-radius: 4px; font: inherit; background: white; }
+.cal-filter-reset { justify-self: start; margin-top: 6px; }
+.cal-booking[data-dimmed="true"] { opacity: .35; filter: grayscale(.7); }

@@ -58,6 +58,7 @@ await db.exec(read('supabase/migrations/20261116090000_booking_notifications.sql
 await db.exec(read('supabase/migrations/20261116100000_booking_approvals_for_assistant.sql'));
 await db.exec(read('supabase/migrations/20261116110000_booking_from_event.sql'));
 await db.exec(read('supabase/migrations/20261117090000_booking_series.sql'));
+await db.exec(read('supabase/migrations/20261117100000_booking_groups.sql'));
 await db.exec('begin');
 
 // Standalone: anyone signed in creates an organisation and becomes admin.
@@ -189,4 +190,26 @@ assert.equal(await call(friend, 'select api.cancel_booking_series($1)', [booked.
 await fails(friend, 'select api.cancel_booking_series($1)', [booked.series_id], /not_active/);
 await fails(friend, "select api.create_booking_series($1,'{9}'::smallint[],1::smallint,$2::date,$3::date,'18:00','19:00','Europe/Stockholm',null,null,null,true)", [locker2, monday, plusDays(monday, 7)], /invalid_series/);
 await fails(friend, "select api.create_booking_series($1,'{1,2,3,4,5,6,7}'::smallint[],1::smallint,$2::date,$3::date,'18:00','19:00','Europe/Stockholm',null,null,null,true)", [locker2, monday, plusDays(monday, 360)], /series_too_long/);
+// Several at once: a locker room (approval) and the pitch (direct).
+const gStart = t(200), gEnd = t(202);
+const groupCall = (who, ids, dry, from = gStart, to = gEnd) => call(who, 'select api.create_booking_group($1::uuid[],$2,$3,$4,null,null,null,$5)', [ids, from, to, 'Match', dry]);
+const check = await groupCall(friend, [locker2, pitch], true);
+assert.deepEqual(check.items.map(i => [i.name, i.busy, i.requires_approval]), [['Omklädningsrum 1', false, true], ['Plan 1', false, false]]);
+const ownerUnread = (await inbox(owner)).unread;
+const group = await groupCall(friend, [locker2, pitch], false);
+assert.equal(group.pending, 1);
+assert.equal((await inbox(owner)).unread, ownerUnread + 1, 'one request for the group');
+const groupBookings = (await call(friend, 'select api.list_bookings($1,$2,$3)', [org, t(199), t(203)])).filter(b => b.group_id === group.group_id);
+assert.deepEqual(groupBookings.map(b => b.status).sort(), ['confirmed', 'pending']);
+assert.deepEqual(groupBookings[0].group_resources, ['Omklädningsrum 1', 'Plan 1']);
+// All or nothing: the pitch is now busy, so the bus is not booked either.
+const busyCheck = await groupCall(friend, [pitch, bus], true);
+assert.deepEqual(busyCheck.items.map(i => [i.name, i.busy]), [['Plan 1', true], ['Minibuss', false]]);
+await fails(friend, 'select api.create_booking_group($1::uuid[],$2,$3,null,null,null,null,false)', [[pitch, bus], gStart, gEnd], /resource_busy/);
+assert.equal((await call(friend, 'select api.list_bookings($1,$2,$3)', [org, t(199), t(203)])).filter(b => b.resource_name === 'Minibuss').length, 0);
+await fails(friend, 'select api.create_booking_group($1::uuid[],$2,$3,null,null,null,null,true)', [[pitch, pitch], gStart, gEnd], /invalid_resources/);
+await fails(friend, 'select api.create_booking_group($1::uuid[],$2,$3,null,null,null,null,true)', [[pitch, locker], gStart, gEnd], /invalid_resources/, 'another organisation');
+await fails(friend, 'select api.decide_booking_group($1,true)', [group.group_id], /not_admin/);
+assert.equal(await call(owner, 'select api.decide_booking_group($1,true)', [group.group_id]), 1);
+assert.equal(await call(friend, 'select api.cancel_booking_group($1)', [group.group_id]), 2);
 console.log('booking manager: ok');

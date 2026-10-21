@@ -17,8 +17,8 @@ export function BookingForm({ org, resource: given, day, startTime = "18:00", en
   startTime?: string;
   endTime?: string;
   onClose: () => void;
-  /** Count: how many times a series booked. */
-  onBooked: (status: string, count?: number) => void;
+  /** Count: how many times a series, or how many resources a group, booked. */
+  onBooked: (status: string, count?: number, kind?: "times" | "resources") => void;
 }) {
   const { client } = useAccount();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -27,8 +27,14 @@ export function BookingForm({ org, resource: given, day, startTime = "18:00", en
   const [end, setEnd] = useState(endTime);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
-  const [resourceId, setResourceId] = useState(given?.id ?? "");
-  const resource = given ?? org.resources.find(item => item.id === resourceId && item.active) ?? null;
+  // Several resources at once: all are booked, or none.
+  const [selected, setSelected] = useState<string[]>(given ? [given.id] : []);
+  const [showMore, setShowMore] = useState(!given);
+  const [availability, setAvailability] = useState<Record<string, boolean>>({});
+  const resourceId = selected.length === 1 ? selected[0] : "";
+  const resource = selected.length === 1 ? org.resources.find(item => item.id === selected[0] && item.active) ?? null : null;
+  const many = selected.length > 1;
+  const toggle = (id: string) => setSelected(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id].slice(0, 10));
   const [teamId, setTeamId] = useState(givenTeam && org.teams.some(team => team.team_id === givenTeam) ? givenTeam : "");
   const [eventId, setEventId] = useState("");
   const [pendingEvent, setPendingEvent] = useState(givenEvent ?? "");
@@ -45,6 +51,26 @@ export function BookingForm({ org, resource: given, day, startTime = "18:00", en
   useEffect(() => { setPlan(null); }, [date, start, end, weekdays, interval, until, resourceId, teamId]);
 
   useEffect(() => { dialog.current?.showModal(); }, []);
+
+  // Which of the chosen resources are free at the time, checked as you go.
+  useEffect(() => {
+    if (!client || selected.length === 0 || repeat) { setAvailability({}); return; }
+    const startsAt = localInstant(date, start);
+    let endsAt = localInstant(date, end);
+    if (new Date(endsAt) <= new Date(startsAt)) endsAt = new Date(new Date(endsAt).getTime() + 86400e3).toISOString();
+    if (new Date(endsAt) <= new Date()) { setAvailability({}); return; }
+    let current = true;
+    const timer = setTimeout(() => {
+      client.schema("api").rpc("create_booking_group", {
+        target_resource_ids: selected, booking_starts_at: startsAt, booking_ends_at: endsAt,
+        booking_title: null, booking_notes: null, target_team_id: null, target_event_id: null, dry_run: true,
+      }).then(({ data }) => {
+        if (!current || !data) return;
+        setAvailability(Object.fromEntries((data as { items: { resource_id: string; busy: boolean }[] }).items.map(item => [item.resource_id, item.busy])));
+      });
+    }, 300);
+    return () => { current = false; clearTimeout(timer); };
+  }, [client, selected, date, start, end, repeat]);
 
   // A team's coming activities, to attach the booking to.
   useEffect(() => {
@@ -76,6 +102,8 @@ export function BookingForm({ org, resource: given, day, startTime = "18:00", en
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!client) return;
+    if (selected.length === 0) { setError("Välj vad du vill boka."); return; }
+    if (many) { await group(); return; }
     if (!resource) { setError("Välj vad du vill boka."); return; }
     if (repeat) { await series(plan === null); return; }
     const startsAt = localInstant(date, start);
@@ -96,6 +124,27 @@ export function BookingForm({ org, resource: given, day, startTime = "18:00", en
     setBusy(false);
     if (bookError) { setError(bookingError(bookError)); return; }
     onBooked((data as { status: string }).status);
+  };
+
+  const group = async () => {
+    if (!client) return;
+    const startsAt = localInstant(date, start);
+    let endsAt = localInstant(date, end);
+    if (new Date(endsAt) <= new Date(startsAt)) endsAt = new Date(new Date(endsAt).getTime() + 86400e3).toISOString();
+    setBusy(true);
+    setError("");
+    const { data, error: groupError } = await client.schema("api").rpc("create_booking_group", {
+      target_resource_ids: selected, booking_starts_at: startsAt, booking_ends_at: endsAt,
+      booking_title: title || null, booking_notes: notes || null,
+      target_team_id: teamId || null, target_event_id: eventId || null, dry_run: false,
+    });
+    setBusy(false);
+    if (groupError) {
+      setError(groupError.message === "resource_busy" ? "Någon av resurserna är upptagen den tiden. Ingen av dem har bokats." : bookingError(groupError));
+      return;
+    }
+    const result = data as { pending: number };
+    onBooked(result.pending > 0 ? "pending" : "confirmed", selected.length, "resources");
   };
 
   // First a dry run to show the times and clashes; then the booking.
@@ -128,26 +177,38 @@ export function BookingForm({ org, resource: given, day, startTime = "18:00", en
 
   const free = plan ? plan.times.filter(time => !time.clash).length : 0;
   const clashes = plan ? plan.times.filter(time => time.clash) : [];
-  const asks = resource?.requires_approval && org.role !== "admin";
+  const chosen = org.resources.filter(item => selected.includes(item.id));
+  const asks = chosen.some(item => item.requires_approval) && org.role !== "admin";
+  const busyChosen = chosen.filter(item => availability[item.id]);
 
   return (
     <dialog ref={dialog} className="bk-dialog" onClose={onClose} aria-labelledby="booking-form-title">
       <form className="wt-form" onSubmit={submit}>
-        <h2 id="booking-form-title">{given ? `Boka ${given.name}` : "Boka"}</h2>
-        {!given && (
-          <label>Vad vill du boka?
-            <select value={resourceId} onChange={event => setResourceId(event.target.value)} required>
-              <option value="">Välj resurs</option>
-              {groupResources(org.resources).map(group => (
-                <optgroup key={group.category} label={categoryLabels[group.category]}>
-                  {group.items.map(item => <option key={item.id} value={item.id}>{item.name}{item.requires_approval ? " (godkänns)" : ""}</option>)}
-                </optgroup>
-              ))}
-            </select>
-          </label>
+        <h2 id="booking-form-title">{given && !many ? `Boka ${given.name}` : "Boka"}</h2>
+        {showMore ? (
+          <fieldset className="bk-pick">
+            <legend>Vad vill du boka?</legend>
+            {groupResources(org.resources).map(category => (
+              <div key={category.category} className="bk-pick-group">
+                <span>{categoryLabels[category.category]}</span>
+                {category.items.map(item => (
+                  <label key={item.id} className="wt-check" data-busy={availability[item.id] === true}>
+                    <input type="checkbox" checked={selected.includes(item.id)} onChange={() => toggle(item.id)} disabled={repeat && !selected.includes(item.id) && selected.length >= 1} />
+                    <span>{item.name}{item.requires_approval ? " · godkänns" : ""}{availability[item.id] === true ? " · upptagen" : ""}</span>
+                  </label>
+                ))}
+              </div>
+            ))}
+            {repeat && <p className="wt-small">Återkommande bokningar gäller en resurs i taget.</p>}
+          </fieldset>
+        ) : (
+          <p className="wt-small">
+            {availability[selected[0]] === true && <strong className="wt-error">Upptagen den tiden. </strong>}
+            <button type="button" className="wt-link-button" onClick={() => setShowMore(true)}>Boka fler resurser samtidigt</button>
+          </p>
         )}
-        {resource?.requires_approval && org.role !== "admin" && (
-          <p className="wt-note">Bokningar av den här resursen godkänns av en administratör.</p>
+        {asks && (
+          <p className="wt-note">{many ? "Några av resurserna godkänns av en administratör. De övriga är bokade direkt." : "Bokningar av den här resursen godkänns av en administratör."}</p>
         )}
         {/* Why there is no team or activity to choose. */}
         {!org.teamzone_club_id && (
@@ -183,13 +244,13 @@ export function BookingForm({ org, resource: given, day, startTime = "18:00", en
           <label>Från<input type="time" value={start} onChange={event => setStart(event.target.value)} required step={300} /></label>
           <label>Till<input type="time" value={end} onChange={event => setEnd(event.target.value)} required step={300} /></label>
         </div>
-        {!eventId && (
+        {!eventId && !many && (
           <label className="wt-check">
             <input type="checkbox" checked={repeat} onChange={event => { setRepeat(event.target.checked); setPlan(null); }} />
             <span>Återkommande, till exempel varje vecka under säsongen</span>
           </label>
         )}
-        {repeat && !eventId && (
+        {repeat && !eventId && !many && (
           <fieldset className="bk-repeat" onChange={() => setPlan(null)}>
             <legend>Upprepa</legend>
             <div className="bk-weekdays" role="group" aria-label="Veckodagar">
@@ -225,10 +286,15 @@ export function BookingForm({ org, resource: given, day, startTime = "18:00", en
             {asks && <p className="wt-small">Hela serien godkänns av en administratör i ett steg.</p>}
           </div>
         )}
+        {busyChosen.length > 0 && !repeat && (
+          <p role="alert" className="wt-error">Upptaget den tiden: {busyChosen.map(item => item.name).join(", ")}. Välj en annan tid eller ta bort {busyChosen.length === 1 ? "den" : "dem"}.</p>
+        )}
         {error && <p role="alert" className="wt-error">{error}</p>}
         <div className="wt-actions">
-          <button type="submit" className="wt-button" disabled={busy || !resource || (plan !== null && free === 0)}>
-            {repeat
+          <button type="submit" className="wt-button" disabled={busy || selected.length === 0 || busyChosen.length > 0 || (plan !== null && free === 0)}>
+            {many
+              ? `Boka ${selected.length} resurser`
+              : repeat
               ? plan === null ? "Visa tillfällen" : asks ? `Skicka förfrågan för ${free} tillfällen` : `Boka ${free} tillfällen`
               : asks ? "Skicka förfrågan" : "Boka"}
           </button>

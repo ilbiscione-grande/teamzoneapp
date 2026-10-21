@@ -86,3 +86,23 @@ test("weekdays run Monday to Sunday", async () => {
   assert.equal(isoWeekday("2026-10-25"), 7);
   assert.deepEqual(weekdayLabels, ["Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön"]);
 });
+
+test("the calendar filter: hours, teams, mine, pending, and what is stored", async () => {
+  const { gridPlacement, slotAt, nowFraction, matchesFilter, activeFilterCount, parseFilter, emptyFilter } = await import("../lib/booking.ts");
+  const evening = { start: 16, end: 22 };
+  const place = gridPlacement(localInstant("2026-10-21", "18:00"), localInstant("2026-10-21", "19:00"), "2026-10-21", evening);
+  assert.equal(Math.round((place?.top ?? 0) * 6 * 60), 120);
+  assert.equal(gridPlacement(localInstant("2026-10-21", "10:00"), localInstant("2026-10-21", "11:00"), "2026-10-21", evening), null);
+  assert.equal(slotAt(0.5, evening), "19:00");
+  assert.equal(nowFraction("2026-10-21", new Date(2026, 9, 21, 12), evening), null);
+  const booking = { team_id: "p2012", is_mine: false, status: "confirmed" } as Parameters<typeof matchesFilter>[0];
+  assert.equal(matchesFilter(booking, emptyFilter), true);
+  assert.equal(matchesFilter(booking, { ...emptyFilter, teams: ["f2013"] }), false);
+  assert.equal(matchesFilter({ ...booking, team_id: null }, { ...emptyFilter, teams: ["none"] }), true);
+  assert.equal(matchesFilter(booking, { ...emptyFilter, onlyMine: true }), false);
+  assert.equal(matchesFilter(booking, { ...emptyFilter, onlyPending: true }), false);
+  assert.equal(activeFilterCount({ ...emptyFilter, range: evening, onlyMine: true }), 2);
+  assert.deepEqual(parseFilter(JSON.stringify({ ...emptyFilter, range: evening, teams: ["p2012"] }))?.range, evening);
+  assert.deepEqual(parseFilter(JSON.stringify({ range: { start: 20, end: 21 } }))?.range, { start: 6, end: 24 }, "too narrow falls back");
+  assert.equal(parseFilter("not json"), null);
+});

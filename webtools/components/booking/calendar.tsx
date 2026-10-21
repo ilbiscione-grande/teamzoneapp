@@ -2,16 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  GRID_END, GRID_START, addDays, addMinutes, bookingError, bookingSpan, categoryLabels, categoryOrder, dateKey, dayLabel,
-  gridPlacement, groupResources, localInstant, nowFraction, slotAt, statusLabels, weekStart,
-  type Booking, type Organization, type Resource, type ResourceCategory,
+  activeFilterCount, addDays, addMinutes, bookingError, bookingSpan, categoryLabels, dateKey, dayLabel, emptyFilter,
+  gridPlacement, groupResources, localInstant, matchesFilter, nowFraction, parseFilter, slotAt, statusLabels, weekStart,
+  type Booking, type CalendarFilter, type Organization, type Resource,
 } from "../../lib/booking";
 import { useAccount } from "../account";
 import { BookingForm } from "./booking-form";
 
 type View = "day" | "week";
 const HOUR_PX = 52;
-const hours = Array.from({ length: GRID_END - GRID_START }, (_, index) => GRID_START + index);
 
 /**
  * The booking calendar: a day with the resources side by side, or a week
@@ -26,8 +25,19 @@ export function BookingCalendar({ org, prefill, onPrefillUsed }: {
   const { client } = useAccount();
   const [view, setView] = useState<View>("day");
   const [day, setDay] = useState(() => dateKey(new Date()));
-  const [category, setCategory] = useState<ResourceCategory | "all">("all");
   const active = useMemo(() => groupResources(org.resources).flatMap(group => group.items), [org.resources]);
+  // What the calendar shows, kept per organisation in this browser.
+  const storageKey = `wt-booking-filter-${org.id}`;
+  const [filter, setFilterState] = useState<CalendarFilter>(emptyFilter);
+  const [filtering, setFiltering] = useState(false);
+  useEffect(() => {
+    try { setFilterState(parseFilter(window.localStorage.getItem(storageKey)) ?? emptyFilter); } catch { /* storage off */ }
+  }, [storageKey]);
+  const setFilter = (next: CalendarFilter) => {
+    setFilterState(next);
+    try { window.localStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* storage off */ }
+  };
+  const hours = Array.from({ length: filter.range.end - filter.range.start }, (_, index) => filter.range.start + index);
   const [resourceId, setResourceId] = useState<string>(() => active[0]?.id ?? "");
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [error, setError] = useState("");
@@ -57,12 +67,14 @@ export function BookingCalendar({ org, prefill, onPrefillUsed }: {
 
   // Open at the working day rather than at six in the morning.
   useEffect(() => {
-    const target = Math.max((Math.min(new Date().getHours(), 17) - 1 - GRID_START), 1) * HOUR_PX;
+    const target = Math.max((Math.min(new Date().getHours(), 17) - 1 - filter.range.start), 0) * HOUR_PX;
     scroller.current?.scrollTo({ top: target });
-  }, [view]);
+  }, [view, filter.range.start]);
 
-  const categories = categoryOrder.filter(value => active.some(resource => resource.category === value));
-  const shown = category === "all" ? active : active.filter(resource => resource.category === category);
+  const shown = filter.resourceIds === null ? active : active.filter(resource => filter.resourceIds!.includes(resource.id));
+  // Teams to filter by: yours, and those with bookings in view.
+  const teams = new Map<string, string>(org.teams.map(team => [team.team_id, team.name]));
+  for (const booking of bookings ?? []) if (booking.team_id && booking.team_name) teams.set(booking.team_id, booking.team_name);
   const weekResource = active.find(resource => resource.id === resourceId) ?? active[0];
   const columns: { key: string; resource: Resource; day: string; title: string; subtitle: string }[] = view === "day"
     ? shown.map(resource => ({ key: resource.id, resource, day, title: resource.name, subtitle: categoryLabels[resource.category] }))
@@ -79,7 +91,7 @@ export function BookingCalendar({ org, prefill, onPrefillUsed }: {
 
   const tap = (event: React.MouseEvent<HTMLDivElement>, resource: Resource, columnDay: string) => {
     const box = event.currentTarget.getBoundingClientRect();
-    const start = slotAt((event.clientY - box.top) / box.height);
+    const start = slotAt((event.clientY - box.top) / box.height, filter.range);
     if (new Date(localInstant(columnDay, addMinutes(start, 30))) <= new Date()) {
       setNotice("Den tiden har redan passerat.");
       return;
@@ -115,14 +127,10 @@ export function BookingCalendar({ org, prefill, onPrefillUsed }: {
         </div>
       </div>
       <div className="cal-filters">
-        {view === "day" ? (
-          categories.length > 1 && (
-            <div className="cal-chips" role="group" aria-label="Visa resurser">
-              <button type="button" aria-pressed={category === "all"} onClick={() => setCategory("all")}>Alla</button>
-              {categories.map(value => <button key={value} type="button" aria-pressed={category === value} onClick={() => setCategory(value)}>{categoryLabels[value]}</button>)}
-            </div>
-          )
-        ) : (
+        <button type="button" className="wt-button secondary small cal-filter-button" aria-expanded={filtering} onClick={() => setFiltering(!filtering)}>
+          Filter{activeFilterCount(filter) > 0 ? ` (${activeFilterCount(filter)})` : ""}
+        </button>
+        {view === "week" && (
           <label className="cal-resource">Resurs
             <select value={weekResource?.id} onChange={event => setResourceId(event.target.value)}>
               {groupResources(org.resources).map(group => (
@@ -135,6 +143,10 @@ export function BookingCalendar({ org, prefill, onPrefillUsed }: {
         )}
         <span className="wt-small cal-hint">Tryck på en ledig tid för att boka.</span>
       </div>
+      {filtering && (
+        <FilterPanel org={org} filter={filter} teams={[...teams.entries()].sort((a, b) => a[1].localeCompare(b[1], "sv"))} onChange={setFilter} />
+      )}
+      {view === "day" && shown.length === 0 && <p className="wt-note">Inga resurser matchar filtret. Välj resurser under Filter.</p>}
       {notice && <p className="wt-note" role="status">{notice}</p>}
       {error && <p className="wt-error" role="alert">{error}</p>}
 
@@ -148,10 +160,10 @@ export function BookingCalendar({ org, prefill, onPrefillUsed }: {
             </div>
           ))}
           <div className="cal-hours" style={{ height: hours.length * HOUR_PX }}>
-            {hours.map(hour => <span key={hour} style={{ top: (hour - GRID_START) * HOUR_PX }}>{String(hour).padStart(2, "0")}:00</span>)}
+            {hours.map(hour => <span key={hour} style={{ top: (hour - filter.range.start) * HOUR_PX }}>{String(hour).padStart(2, "0")}:00</span>)}
           </div>
           {columns.map(column => {
-            const line = nowFraction(column.day, now);
+            const line = nowFraction(column.day, now, filter.range);
             const own = (bookings ?? []).filter(booking => booking.resource_id === column.resource.id);
             return (
               <div
@@ -164,7 +176,7 @@ export function BookingCalendar({ org, prefill, onPrefillUsed }: {
               >
                 {line !== null && <div className="cal-now" style={{ top: `${line * 100}%` }} aria-hidden="true" />}
                 {own.map(booking => {
-                  const place = gridPlacement(booking.starts_at, booking.ends_at, column.day);
+                  const place = gridPlacement(booking.starts_at, booking.ends_at, column.day, filter.range);
                   if (!place) return null;
                   return (
                     <button
@@ -175,6 +187,7 @@ export function BookingCalendar({ org, prefill, onPrefillUsed }: {
                       data-mine={booking.is_mine}
                       data-cut-top={place.cutTop}
                       data-cut-bottom={place.cutBottom}
+                      data-dimmed={!matchesFilter(booking, filter)}
                       style={{ top: `${place.top * 100}%`, height: `${place.height * 100}%` }}
                       onClick={() => setOpen(booking)}
                       aria-label={`${bookingSpan(booking.starts_at, booking.ends_at)} ${booking.title ?? "Bokad"}${booking.status === "pending" ? ", väntar på godkännande" : ""}`}
@@ -200,10 +213,10 @@ export function BookingCalendar({ org, prefill, onPrefillUsed }: {
         <BookingForm org={org} resource={draft.resource} day={draft.day} startTime={draft.start} endTime={draft.end}
           teamId={draft.teamId} eventId={draft.eventId}
           onClose={() => { if (draft.eventId) onPrefillUsed?.(); setDraft(null); }}
-          onBooked={(status, count) => {
+          onBooked={(status, count, kind) => {
             if (draft.eventId) onPrefillUsed?.();
             setDraft(null);
-            const what = count ? `${count} tillfällen` : "Bokningen";
+            const what = count ? `${count} ${kind === "resources" ? "resurser" : "tillfällen"}` : "Bokningen";
             setNotice(status === "pending"
               ? `Förfrågan för ${count ? what.toLowerCase() : "bokningen"} är skickad. Den visas som väntande tills en administratör har godkänt den.`
               : count ? `${what} är bokade.` : "Bokningen är klar.");
@@ -212,6 +225,89 @@ export function BookingCalendar({ org, prefill, onPrefillUsed }: {
       )}
       {open && <BookingDetails booking={open} onClose={() => setOpen(null)} onChanged={() => { setOpen(null); void load(); }} />}
     </section>
+  );
+}
+
+/** Which resources, teams' bookings, hours and bookings the calendar shows. */
+function FilterPanel({ org, filter, teams, onChange }: {
+  org: Organization;
+  filter: CalendarFilter;
+  teams: [string, string][];
+  onChange: (next: CalendarFilter) => void;
+}) {
+  const groups = groupResources(org.resources);
+  const allIds = groups.flatMap(group => group.items.map(item => item.id));
+  const shownIds = filter.resourceIds ?? allIds;
+  const setResources = (ids: string[]) => onChange({ ...filter, resourceIds: ids.length === allIds.length ? null : ids });
+  const teamKeys = [...teams.map(([id]) => id), "none"];
+  const shownTeams = filter.teams ?? teamKeys;
+  const setTeams = (ids: string[]) => onChange({ ...filter, teams: ids.length === teamKeys.length ? null : ids });
+  const hourOptions = Array.from({ length: 25 }, (_, hour) => hour);
+  return (
+    <div className="wt-panel cal-filter-panel">
+      <fieldset>
+        <legend>Resurser</legend>
+        <div className="cal-filter-actions">
+          <button type="button" className="wt-link-button" onClick={() => setResources(allIds)}>Alla</button>
+          <button type="button" className="wt-link-button" onClick={() => setResources([])}>Inga</button>
+        </div>
+        {groups.map(group => {
+          const ids = group.items.map(item => item.id);
+          const all = ids.every(id => shownIds.includes(id));
+          return (
+            <div key={group.category} className="cal-filter-group">
+              <label className="wt-check cal-filter-category">
+                <input type="checkbox" checked={all} onChange={() => setResources(all ? shownIds.filter(id => !ids.includes(id)) : [...new Set([...shownIds, ...ids])])} />
+                <span>{categoryLabels[group.category]}</span>
+              </label>
+              {group.items.map(item => (
+                <label key={item.id} className="wt-check">
+                  <input type="checkbox" checked={shownIds.includes(item.id)} onChange={() => setResources(shownIds.includes(item.id) ? shownIds.filter(id => id !== item.id) : [...shownIds, item.id])} />
+                  <span>{item.name}</span>
+                </label>
+              ))}
+            </div>
+          );
+        })}
+      </fieldset>
+      <fieldset>
+        <legend>Lagens bokningar</legend>
+        <p className="wt-small">Andra bokningar tonas ner, så att du ser att tiden är upptagen.</p>
+        {teams.map(([id, name]) => (
+          <label key={id} className="wt-check">
+            <input type="checkbox" checked={shownTeams.includes(id)} onChange={() => setTeams(shownTeams.includes(id) ? shownTeams.filter(key => key !== id) : [...shownTeams, id])} />
+            <span>{name}</span>
+          </label>
+        ))}
+        <label className="wt-check">
+          <input type="checkbox" checked={shownTeams.includes("none")} onChange={() => setTeams(shownTeams.includes("none") ? shownTeams.filter(key => key !== "none") : [...shownTeams, "none"])} />
+          <span>Utan lag</span>
+        </label>
+        <label className="wt-check"><input type="checkbox" checked={filter.onlyMine} onChange={event => onChange({ ...filter, onlyMine: event.target.checked })} /><span>Bara mina bokningar</span></label>
+        <label className="wt-check"><input type="checkbox" checked={filter.onlyPending} onChange={event => onChange({ ...filter, onlyPending: event.target.checked })} /><span>Bara väntande</span></label>
+      </fieldset>
+      <fieldset>
+        <legend>Tider</legend>
+        <div className="bk-times">
+          <label>Från
+            <select value={filter.range.start} onChange={event => onChange({ ...filter, range: { start: Number(event.target.value), end: Math.max(filter.range.end, Number(event.target.value) + 2) } })}>
+              {hourOptions.slice(0, 23).map(hour => <option key={hour} value={hour}>{String(hour).padStart(2, "0")}:00</option>)}
+            </select>
+          </label>
+          <label>Till
+            <select value={filter.range.end} onChange={event => onChange({ ...filter, range: { start: Math.min(filter.range.start, Number(event.target.value) - 2), end: Number(event.target.value) } })}>
+              {hourOptions.slice(2).map(hour => <option key={hour} value={hour}>{String(hour).padStart(2, "0")}:00</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="cal-chips">
+          {[["Hela dygnet", 0, 24], ["06–24", 6, 24], ["Dag 08–18", 8, 18], ["Kväll 16–23", 16, 23]].map(([label, start, end]) => (
+            <button key={label as string} type="button" aria-pressed={filter.range.start === start && filter.range.end === end} onClick={() => onChange({ ...filter, range: { start: start as number, end: end as number } })}>{label}</button>
+          ))}
+        </div>
+        <button type="button" className="wt-button secondary small cal-filter-reset" onClick={() => onChange(emptyFilter)} disabled={activeFilterCount(filter) === 0}>Återställ</button>
+      </fieldset>
+    </div>
   );
 }
 
@@ -232,14 +328,16 @@ function BookingDetails({ booking, onClose, onChanged }: { booking: Booking; onC
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => { dialog.current?.showModal(); }, []);
-  const act = async (name: "cancel_booking" | "decide_booking" | "cancel_booking_series" | "decide_booking_series", approve?: boolean) => {
+  const act = async (name: "cancel_booking" | "decide_booking" | "cancel_booking_series" | "decide_booking_series" | "cancel_booking_group" | "decide_booking_group", approve?: boolean) => {
     if (!client) return;
     if (name === "cancel_booking" && !window.confirm("Avboka den här bokningen?")) return;
     if (name === "cancel_booking_series" && !window.confirm(`Avboka alla ${booking.series_remaining ?? ""} kommande tillfällen i serien?`)) return;
+    if (name === "cancel_booking_group" && !window.confirm(`Avboka alla ${booking.group_resources?.length ?? ""} resurser i bokningen?`)) return;
     setBusy(true);
-    const params = name.endsWith("_series")
-      ? { target_series_id: booking.series_id, ...(approve === undefined ? {} : { approve }) }
-      : { target_booking_id: booking.id, ...(approve === undefined ? {} : { approve }) };
+    const decision = approve === undefined ? {} : { approve };
+    const params = name.endsWith("_series") ? { target_series_id: booking.series_id, ...decision }
+      : name.endsWith("_group") ? { target_group_id: booking.group_id, ...decision }
+      : { target_booking_id: booking.id, ...decision };
     const { error: actError } = await client.schema("api").rpc(name, params);
     setBusy(false);
     if (actError) { setError(bookingError(actError)); return; }
@@ -258,14 +356,18 @@ function BookingDetails({ booking, onClose, onChanged }: { booking: Booking; onC
         {booking.event_title && <><dt>Aktivitet</dt><dd>{booking.event_title}</dd></>}
         {booking.notes && <><dt>Anteckning</dt><dd>{booking.notes}</dd></>}
         {booking.series_id && <><dt>Serie</dt><dd>Återkommande, {booking.series_remaining} kommande tillfällen</dd></>}
+        {booking.group_id && (booking.group_resources?.length ?? 0) > 1 && <><dt>Bokat tillsammans</dt><dd>{booking.group_resources?.join(", ")}</dd></>}
       </dl>
       {error && <p role="alert" className="wt-error">{error}</p>}
       <div className="wt-actions">
         {booking.can_decide && booking.series_id && <button type="button" className="wt-button" disabled={busy} onClick={() => act("decide_booking_series", true)}>Godkänn hela serien</button>}
         {booking.can_decide && booking.series_id && <button type="button" className="wt-button secondary" disabled={busy} onClick={() => act("decide_booking_series", false)}>Neka hela serien</button>}
-        {booking.can_decide && !booking.series_id && <button type="button" className="wt-button" disabled={busy} onClick={() => act("decide_booking", true)}>Godkänn</button>}
-        {booking.can_decide && !booking.series_id && <button type="button" className="wt-button secondary" disabled={busy} onClick={() => act("decide_booking", false)}>Neka</button>}
-        {booking.can_cancel && <button type="button" className="wt-button secondary" disabled={busy} onClick={() => act("cancel_booking")}>{booking.series_id ? "Avboka detta tillfälle" : "Avboka"}</button>}
+        {booking.can_decide && booking.group_id && <button type="button" className="wt-button" disabled={busy} onClick={() => act("decide_booking_group", true)}>Godkänn allt som väntar</button>}
+        {booking.can_decide && booking.group_id && <button type="button" className="wt-button secondary" disabled={busy} onClick={() => act("decide_booking_group", false)}>Neka allt som väntar</button>}
+        {booking.can_decide && !booking.series_id && !booking.group_id && <button type="button" className="wt-button" disabled={busy} onClick={() => act("decide_booking", true)}>Godkänn</button>}
+        {booking.can_decide && !booking.series_id && !booking.group_id && <button type="button" className="wt-button secondary" disabled={busy} onClick={() => act("decide_booking", false)}>Neka</button>}
+        {booking.can_cancel && <button type="button" className="wt-button secondary" disabled={busy} onClick={() => act("cancel_booking")}>{booking.series_id ? "Avboka detta tillfälle" : (booking.group_resources?.length ?? 0) > 1 ? `Avboka ${booking.resource_name}` : "Avboka"}</button>}
+        {booking.can_cancel && booking.group_id && (booking.group_resources?.length ?? 0) > 1 && <button type="button" className="wt-button secondary" disabled={busy} onClick={() => act("cancel_booking_group")}>Avboka alla resurser</button>}
         {booking.can_cancel && booking.series_id && (booking.series_remaining ?? 0) > 1 && <button type="button" className="wt-button secondary" disabled={busy} onClick={() => act("cancel_booking_series")}>Avboka alla kommande</button>}
         <button type="button" className="wt-button secondary" onClick={() => dialog.current?.close()}>Stäng</button>
       </div>
