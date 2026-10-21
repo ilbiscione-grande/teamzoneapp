@@ -715,6 +715,14 @@ class _ProductShellState extends State<_ProductShell> {
   }
 
   Future<void> _openAssistantTask(AssistantTask task) async {
+    // Webtools (the booking manager) opens outside the app.
+    if (task.route.startsWith('https://')) {
+      await launchUrl(
+        Uri.parse(task.route),
+        mode: LaunchMode.externalApplication,
+      );
+      return;
+    }
     if (task.isPersonalConflict) {
       await _openPersonalConflict(task);
       return;

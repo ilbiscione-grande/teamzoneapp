@@ -667,6 +667,53 @@ void main() {
       reason: 'another club opens in the club context',
     );
   });
+
+  test(
+    'bookings to approve in Webtools show under the club, and open Webtools',
+    () async {
+      final lead = TeamZoneContext(
+        id: 'lead',
+        clubId: 'club-a',
+        clubName: 'Klubb A',
+        teamId: 'p2012',
+        teamName: 'P2012',
+        rolePackage: 'leader',
+        capabilities: const {},
+      );
+      final snapshot = await loadAssistantTasks(
+        contexts: [lead],
+        activeContext: lead,
+        overview: _BookingOverview(),
+        loadEvent: event,
+      );
+      final task = snapshot.tasks.single;
+      expect(task.task.kind, 'club_booking_requests');
+      expect(task.task.count, 2);
+      expect(task.isClubDuty, isTrue, reason: 'no snooze or archive');
+      expect(task.context.id, 'lead');
+      expect(task.route, '$webtoolsOrigin/bokningar/org-1');
+    },
+  );
+}
+
+class _BookingOverview extends Overview implements BookingApprovalServices {
+  @override
+  Future<List<BookingApproval>> listMyBookingApprovals() async => const [
+    BookingApproval(
+      organizationId: 'org-1',
+      name: 'Demoklubben IF',
+      pending: 2,
+      clubId: 'club-a',
+    ),
+    // Without TeamZone, or in another club: Webtools' own notifications only.
+    BookingApproval(organizationId: 'org-2', name: 'Fristående', pending: 1),
+    BookingApproval(
+      organizationId: 'org-3',
+      name: 'Annan klubb',
+      pending: 1,
+      clubId: 'club-x',
+    ),
+  ];
 }
 
 class _ClubOverview extends Overview implements ClubHomeServices {

@@ -13,6 +13,13 @@ import '../overview/overview_models.dart';
 import '../overview/overview_services.dart';
 import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
+/// TeamZone Webtools, where the booking manager lives.
+const webtoolsOrigin = String.fromEnvironment(
+  'WEBTOOLS_ORIGIN',
+  defaultValue:
+      'https://teamzoneapp-webtools--teamzoneapp-b02a2.europe-west4.hosted.app',
+);
+
 /// Page context is presentation only. Every read and action is authorized by
 /// the existing domain endpoints, independently of the assistant signal gate.
 class AssistantPageContext {
@@ -174,6 +181,7 @@ class AssistantTask {
     'club_economy_entries' => 'Öppna Ekonomi',
     'club_applications' => 'Granska ansökningar',
     'club_team_requests' => 'Granska förfrågningar',
+    'club_booking_requests' => 'Öppna Bokningshanteraren',
     'personal_calendar_conflict' => 'Öppna aktivitet och hantera krock',
     'calendar_conflict' => 'Välj aktivitet och ändra tid',
     'unfinished_preparation' => 'Öppna förberedelser',
@@ -191,6 +199,8 @@ class AssistantTask {
     'club_applications' => '${task.count} medlemsansökningar väntar på beslut.',
     'club_team_requests' =>
       '${task.count} förfrågningar om nya lag väntar på beslut.',
+    'club_booking_requests' =>
+      '${task.count} bokningar väntar på ditt godkännande i Bokningshanteraren i Webtools.',
     'personal_calendar_conflict' =>
       'Dina egna kallelser i olika lag överlappar under kommande sju dagar. '
           'Två ja-svar innebär dubbelbokning; ett obesvarat svar innebär en möjlig krock. '
@@ -453,6 +463,47 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
         AppErrors.caught('assistant_tasks.loadAssistantTasks.club', error);
         failed.add(club);
       }
+    }
+  }
+  // Bookings to approve in Webtools, for organisations linked to one of
+  // your clubs: shown under a context in that club, the active one first.
+  if (overview is BookingApprovalServices &&
+      preferences.shows('club_booking_requests')) {
+    try {
+      final approvals = await (overview as BookingApprovalServices)
+          .listMyBookingApprovals()
+          .timeout(const Duration(seconds: 15));
+      for (final approval in approvals) {
+        final clubId = approval.clubId;
+        if (clubId == null || approval.pending <= 0) continue;
+        if (preferences.currentTeamOnly && activeContext?.clubId != clubId) {
+          continue;
+        }
+        final context = activeContext?.clubId == clubId
+            ? activeContext!
+            : contexts
+                  .where((item) => item.clubId == clubId && item.teamId == null)
+                  .followedBy(contexts.where((item) => item.clubId == clubId))
+                  .firstOrNull;
+        if (context == null) continue;
+        final item = AssistantTask(
+          context: context,
+          task: LeaderHomeTask(
+            kind: 'club_booking_requests',
+            title: 'Bokningar att godkänna',
+            count: approval.pending,
+            route: '$webtoolsOrigin/bokningar/${approval.organizationId}',
+            priority: 40,
+          ),
+          eventId: '',
+          generatedAt: DateTime.now(),
+          stale: false,
+          eventTitle: approval.name,
+        );
+        tasks[item.key] = item;
+      }
+    } catch (error) {
+      AppErrors.caught('assistant_tasks.loadAssistantTasks.bookings', error);
     }
   }
   if (overview is PersonalCalendarConflictServices &&

@@ -54,6 +54,7 @@ grant usage on schema api, internal, core, auth to authenticated;`);
 await db.exec(read('supabase/migrations/20261115090000_booking_manager.sql'));
 await db.exec(read('supabase/migrations/20261115100000_booking_team_events_venue.sql'));
 await db.exec(read('supabase/migrations/20261116090000_booking_notifications.sql'));
+await db.exec(read('supabase/migrations/20261116100000_booking_approvals_for_assistant.sql'));
 await db.exec('begin');
 
 // Standalone: anyone signed in creates an organisation and becomes admin.
@@ -89,12 +90,16 @@ assert.equal(request.status, 'pending');
 assert.equal(request.can_decide, false);
 const inbox = async who => call(who, 'select api.list_booking_notifications()');
 assert.deepEqual((await inbox(owner)).items.map(n => [n.kind, n.resource_name, n.read]), [['requested', 'Minibuss', false]]);
+// The assistant: the admin approves one booking here; the booker nothing.
+assert.deepEqual((await call(owner, 'select api.list_my_booking_approvals()')).map(a => [a.name, a.pending]), [['Bollklubben', 1]]);
+assert.deepEqual(await call(friend, 'select api.list_my_booking_approvals()'), []);
 assert.equal((await inbox(friend)).unread, 0, 'not the one who asked');
 const pending = await call(owner, 'select api.list_pending_bookings($1)', [org]);
 assert.deepEqual(pending.map(b => [b.resource_name, b.can_decide]), [['Minibuss', true]]);
 await fails(friend, 'select api.decide_booking($1,true)', [request.id], /not_admin/);
 await call(owner, 'select api.decide_booking($1,true)', [request.id]);
 assert.deepEqual((await inbox(friend)).items.map(n => n.kind), ['approved']);
+assert.deepEqual(await call(owner, 'select api.list_my_booking_approvals()'), [], 'nothing waits once decided');
 await fails(owner, 'select api.create_booking($1,$2,$3,null,null,null,null)', [bus, t(50), t(51)], /resource_busy/);
 await fails(friend, 'select api.create_booking($1,$2,$3,null,null,null,null)', [pitch, t(-3), t(-2)], /in_the_past/);
 const list = await call(stranger === friend ? owner : friend, 'select api.list_bookings($1,$2,$3)', [org, t(0), t(72)]);
@@ -134,6 +139,7 @@ assert.equal(busForMatch.event_title, 'Bortamatch');
 // The club's admin hears of it in Webtools and as a push opening the match.
 assert.deepEqual((await inbox(clubAdmin)).items.map(n => [n.kind, n.organization_name]), [['requested', 'Demoklubben IF']]);
 const pushes = (await db.query('select event_type, aggregate_type, aggregate_id, recipient_person_id from internal.notification_outbox')).rows;
+assert.deepEqual((await call(clubAdmin, 'select api.list_my_booking_approvals()')).map(a => [a.name, a.pending, a.teamzone_club_id]), [['Demoklubben IF', 1, club]]);
 assert.deepEqual(pushes, [{ event_type: 'booking.requested.v1', aggregate_type: 'event', aggregate_id: event, recipient_person_id: id(51) }]);
 await fails(coach, 'select api.create_booking($1,$2,$3,null,null,$4,null)', [locker, t(70), t(71), otherTeam], /not_team_leader/);
 await fails(coach, 'select api.create_booking($1,$2,$3,null,null,$4,$5)', [locker, t(70), t(71), team, otherEvent], /event_not_found/);

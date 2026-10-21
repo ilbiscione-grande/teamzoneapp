@@ -660,3 +660,27 @@ class ClubTeamEvent {
     locationName: json['location_name'] as String?,
   );
 }
+
+/// Webtools Bokningshanterare: an organisation where you approve bookings,
+/// with the requests that wait.
+class BookingApproval {
+  const BookingApproval({
+    required this.organizationId,
+    required this.name,
+    required this.pending,
+    this.clubId,
+  });
+  final String organizationId, name;
+  final int pending;
+
+  /// The linked TeamZone club; null for an organisation without TeamZone.
+  final String? clubId;
+
+  factory BookingApproval.fromJson(Map<String, dynamic> json) =>
+      BookingApproval(
+        organizationId: json['organization_id'] as String,
+        name: json['name'] as String,
+        pending: (json['pending'] as num?)?.toInt() ?? 0,
+        clubId: json['teamzone_club_id'] as String?,
+      );
+}

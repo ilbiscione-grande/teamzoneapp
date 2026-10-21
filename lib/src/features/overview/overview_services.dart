@@ -20,6 +20,11 @@ abstract interface class ClubHomeServices {
   Future<ClubHome> loadClubHome(String contextId);
 }
 
+/// Webtools Bokningshanterare: the bookings waiting for your approval.
+abstract interface class BookingApprovalServices {
+  Future<List<BookingApproval>> listMyBookingApprovals();
+}
+
 abstract interface class FreshLeaderOverviewServices {
   Future<LeaderHomeProjection> loadFreshLeaderHome(String contextId);
 }
@@ -60,6 +65,7 @@ class SupabaseOverviewServices
     implements
         OverviewServices,
         ClubHomeServices,
+        BookingApprovalServices,
         FreshLeaderOverviewServices,
         PersonalCalendarConflictServices,
         AssistantTaskPreferencesServices,
@@ -254,6 +260,21 @@ class SupabaseOverviewServices
       if (cached != null) return cached.asStale();
       rethrow;
     }
+  }
+
+  @override
+  Future<List<BookingApproval>> listMyBookingApprovals() async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>('list_my_booking_approvals')
+        .timeout(const Duration(seconds: 15));
+    if (value is! List) {
+      throw const FormatException('Invalid booking approvals.');
+    }
+    return value
+        .whereType<Map<String, dynamic>>()
+        .map(BookingApproval.fromJson)
+        .toList(growable: false);
   }
 
   @override
