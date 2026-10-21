@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { bookingError, dateKey, localInstant, timeOf, type Organization, type Resource, type TeamEvent } from "../../lib/booking";
+import { bookingError, dateKey, eventOptionLabel, localInstant, timeOf, type Organization, type Resource, type TeamEvent } from "../../lib/booking";
 import { useAccount } from "../account";
 
 /** Book a resource: time, a title and, with TeamZone, a team and activity. */
@@ -77,6 +77,17 @@ export function BookingForm({ org, resource, day, onClose, onBooked }: {
         {resource.requires_approval && org.role !== "admin" && (
           <p className="wt-note">Bokningar av den här resursen godkänns av en administratör.</p>
         )}
+        {/* Why there is no team or activity to choose. */}
+        {!org.teamzone_club_id && (
+          <p className="wt-small">
+            {org.role === "admin"
+              ? "Vill du boka för ett lag och en aktivitet i TeamZone? Koppla organisationen till klubben under Inställningar."
+              : "Organisationen är inte kopplad till TeamZone, så bokningen kan inte gälla ett lag eller en aktivitet."}
+          </p>
+        )}
+        {org.teamzone_club_id && org.teams.length === 0 && (
+          <p className="wt-small">Du är inte ledare för något lag i {org.teamzone_club_name}, så bokningen blir din egen.</p>
+        )}
         {org.teams.length > 0 && (
           <label>För laget
             <select value={teamId} onChange={event => setTeamId(event.target.value)}>
@@ -90,9 +101,7 @@ export function BookingForm({ org, resource, day, onClose, onBooked }: {
             <select value={eventId} onChange={event => chooseEvent(event.target.value)}>
               <option value="">Ingen aktivitet</option>
               {events.map(item => (
-                <option key={item.event_id} value={item.event_id}>
-                  {item.title} · {new Date(item.starts_at).toLocaleDateString("sv-SE", { weekday: "short", day: "numeric", month: "short" })} {timeOf(item.starts_at)}
-                </option>
+                <option key={item.event_id} value={item.event_id}>{eventOptionLabel(item)}</option>
               ))}
             </select>
           </label>

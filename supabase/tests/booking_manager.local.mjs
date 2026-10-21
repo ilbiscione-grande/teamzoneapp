@@ -36,9 +36,9 @@ insert into core.person_account_links values ('${coach}','${club}','${id(50)}','
 create table core.assignments(club_id uuid, team_id uuid, club_person_id uuid, role_package text, state text default 'active',
   starts_at timestamptz default now()-interval '1 year', ends_at timestamptz);
 insert into core.assignments(club_id, team_id, club_person_id, role_package) values ('${club}','${team}','${id(50)}','leader');
-create table core.events(id uuid primary key, title text, event_type text, state text, starts_at timestamptz, ends_at timestamptz, archived_at timestamptz);
-insert into core.events values ('${event}','Bortamatch','match','scheduled',now()+interval '3 days',now()+interval '3 days 2 hours',null),
-  ('${otherEvent}','F-träning','training','scheduled',now()+interval '3 days',now()+interval '3 days 1 hour',null);
+create table core.events(id uuid primary key, title text, event_type text, state text, starts_at timestamptz, ends_at timestamptz, archived_at timestamptz, home_away text, opponent_name text);
+insert into core.events values ('${event}','Bortamatch','match','scheduled',now()+interval '3 days',now()+interval '3 days 2 hours',null,'away','Aneby SK'),
+  ('${otherEvent}','F-träning','training','scheduled',now()+interval '3 days',now()+interval '3 days 1 hour',null,null,null);
 create table core.event_teams(event_id uuid, club_id uuid, team_id uuid);
 insert into core.event_teams values ('${event}','${club}','${team}'),('${otherEvent}','${club}','${otherTeam}');
 create function internal.actor_has_capability(c uuid, t uuid, cap text) returns boolean language sql stable as
@@ -46,6 +46,7 @@ create function internal.actor_has_capability(c uuid, t uuid, cap text) returns 
 create function internal.actor_can_read_event(e uuid) returns boolean language sql stable as $$select auth.uid() in ('${coach}'::uuid, '${clubAdmin}'::uuid)$$;
 grant usage on schema api, internal, core, auth to authenticated;`);
 await db.exec(read('supabase/migrations/20261115090000_booking_manager.sql'));
+await db.exec(read('supabase/migrations/20261115100000_booking_team_events_venue.sql'));
 await db.exec('begin');
 
 // Standalone: anyone signed in creates an organisation and becomes admin.
@@ -107,7 +108,7 @@ const clubBus = await call(clubAdmin, "select api.save_booking_resource($1,null,
 const coachView = await call(coach, 'select api.get_booking_organization($1)', [clubOrg]);
 assert.deepEqual(coachView.teams, [{ team_id: team, name: 'P2012' }]);
 const events = await call(coach, 'select api.list_booking_team_events($1,$2)', [clubOrg, team]);
-assert.deepEqual(events.map(e => e.title), ['Bortamatch']);
+assert.deepEqual(events.map(e => [e.title, e.home_away, e.opponent_name]), [['Bortamatch', 'away', 'Aneby SK']]);
 await fails(coach, 'select api.list_booking_team_events($1,$2)', [clubOrg, otherTeam], /not_team_leader/);
 const busForMatch = await call(coach, 'select api.create_booking($1,$2,$3,$4,null,$5,$6)', [clubBus, t(70), t(76), 'Bortamatch', team, event]);
 assert.equal(busForMatch.status, 'pending');

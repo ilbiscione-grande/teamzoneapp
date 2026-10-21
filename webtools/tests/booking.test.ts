@@ -39,3 +39,11 @@ test("booking pages and invitations are valid places to return to", () => {
   assert.equal(safeReturnTo(`/bokningar?inbjudan=${"b".repeat(64)}`), `/bokningar?inbjudan=${"b".repeat(64)}`);
   assert.equal(safeReturnTo("/bokningar?inbjudan=x"), "/");
 });
+
+test("a match in the activity list says home or away", async () => {
+  const { eventOptionLabel } = await import("../lib/booking.ts");
+  const base = { event_id: "e", event_type: "match", starts_at: "2026-10-24T08:00:00Z", ends_at: "2026-10-24T10:00:00Z" };
+  assert.match(eventOptionLabel({ ...base, title: "P2012 – Aneby SK", home_away: "away", opponent_name: "Aneby SK" }), /^P2012 – Aneby SK · Borta · /);
+  assert.match(eventOptionLabel({ ...base, title: "Bortamatch", home_away: "home", opponent_name: "Aneby SK" }), /^Bortamatch · mot Aneby SK · Hemma · /);
+  assert.doesNotMatch(eventOptionLabel({ ...base, title: "Träning", event_type: "training" }), /Hemma|Borta/);
+});

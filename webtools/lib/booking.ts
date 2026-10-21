@@ -57,7 +57,24 @@ export type Booking = {
   can_decide: boolean;
 };
 
-export type TeamEvent = { event_id: string; title: string; event_type: string; starts_at: string; ends_at: string };
+export type TeamEvent = {
+  event_id: string;
+  title: string;
+  event_type: string;
+  starts_at: string;
+  ends_at: string;
+  home_away?: "home" | "away" | null;
+  opponent_name?: string | null;
+};
+
+/** "P2012 – Aneby SK · Borta · lör 24 okt. 10:00": a match says home or away. */
+export function eventOptionLabel(event: TeamEvent): string {
+  const when = new Date(event.starts_at).toLocaleDateString("sv-SE", { weekday: "short", day: "numeric", month: "short" });
+  const venue = event.home_away === "away" ? "Borta" : event.home_away === "home" ? "Hemma" : null;
+  // The opponent, when the title does not already name it.
+  const opponent = event.opponent_name && !event.title.includes(event.opponent_name) ? `mot ${event.opponent_name}` : null;
+  return [event.title, opponent, venue, `${when} ${timeOf(event.starts_at)}`].filter(Boolean).join(" · ");
+}
 
 export const kindLabels: Record<OrgKind, string> = {
   club: "Idrottsklubb",
