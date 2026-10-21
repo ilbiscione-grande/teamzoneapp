@@ -295,3 +295,8 @@ a { color: var(--wt-brand); }
 .cal-filter-panel select { width: 100%; min-height: 40px; padding: 0 10px; border: 1px solid var(--wt-line); border-radius: 4px; font: inherit; background: white; }
 .cal-filter-reset { justify-self: start; margin-top: 6px; }
 .cal-booking[data-dimmed="true"] { opacity: .35; filter: grayscale(.7); }
+
+/* Tournament planner */
+.tp-overview { display: grid; gap: 16px; max-width: 760px; }
+.tp-text { white-space: pre-line; overflow-wrap: anywhere; }
+.tp-count { color: var(--wt-muted); font-size: .9rem; font-weight: 400; text-transform: none; letter-spacing: 0; }

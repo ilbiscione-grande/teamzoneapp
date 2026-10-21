@@ -47,12 +47,13 @@ export const webtoolApps: WebtoolApp[] = [
   },
   {
     slug: "turneringsplanerare",
+    href: "/turneringar",
     name: "Turneringsplanerare",
     mark: "TP",
     tagline: "Planera cuper och turneringar.",
-    description: "Lägg upp grupper, spelschema och slutspel. Fördela planer och tider, för in resultat och visa tabeller för lag och publik.",
-    features: ["Grupper och slutspel", "Spelschema med planer", "Resultat och tabeller", "Publik sida för cupen"],
-    status: "planned",
+    description: "Skapa turneringen och dess klasser, öppna anmälan och dela länken. Lag anmäler sig och du godkänner dem och bockar av avgifterna. Fungerar med eller utan TeamZone. Grupper, spelschema, resultat och slutspel kommer härnäst.",
+    features: ["Klasser med gruppspel och slutspel eller poolspel", "Anmälan via länk med godkännande", "Avgifter och betalningar", "Arrangörer och funktionärer"],
+    status: "beta",
   },
 ];
 
@@ -69,7 +70,10 @@ export function findApp(slug: string): WebtoolApp | undefined {
 /** Only Webtools' own pages are valid places to return to after signing in. */
 export function safeReturnTo(value: string | null | undefined): string {
   if (!value) return "/";
-  if (value === "/" || value === "/konto" || value === "/bokningar" || value === "/aviseringar") return value;
+  if (value === "/" || value === "/konto" || value === "/bokningar" || value === "/aviseringar" || value === "/turneringar") return value;
+  // A tournament, which is also its registration link, and staff invitations.
+  if (/^\/turneringar\/[0-9a-f-]{36}$/.test(value)) return value;
+  if (/^\/turneringar\?inbjudan=[0-9a-f]{64}$/.test(value)) return value;
   if (/^\/bokningar\/[0-9a-f-]{36}$/.test(value)) return value;
   // From the app's "Boka resurs": the team and activity to book for.
   if (/^\/bokningar\/[0-9a-f-]{36}\?boka=1(&lag=[0-9a-f-]{36})?&aktivitet=[0-9a-f-]{36}$/.test(value)) return value;
