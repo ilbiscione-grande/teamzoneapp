@@ -1677,6 +1677,32 @@ class AppStrings {
     'Medicinskt ansvarig': 'Medical staff',
     'Kassör': 'Treasurer',
     'Mer': 'More',
+    'Boka': 'Book',
+    'Bokat.': "Booked.",
+    'Förfrågan är skickad för godkännande.':
+        "The request is sent for approval.",
+    'Bokat. Några resurser väntar på godkännande.':
+        "Booked. Some resources wait for approval.",
+    'Någon av resurserna hann bli upptagen. Ingen har bokats. Välj igen.':
+        "One of the resources was just taken. Nothing was booked. Choose again.",
+    'Bokningen kunde inte göras. Försök igen.':
+        "The booking could not be made. Try again.",
+    'Resurserna kunde inte hämtas. Försök igen.':
+        "The resources could not be loaded. Try again.",
+    'Organisationen har inga resurser att boka än.':
+        "The organisation has no resources to book yet.",
+    'Planer': "Pitches",
+    'Hallar': "Halls",
+    'Omklädningsrum': "Locker rooms",
+    'Lokaler': "Rooms",
+    'Fordon': "Vehicles",
+    'Utrustning': "Equipment",
+    'Upptagen': "Busy",
+    'Godkänns av en administratör': "Approved by an admin",
+    'Några av resurserna godkänns av en administratör. De övriga bokas direkt.':
+        "Some of the resources are approved by an admin. The others are booked at once.",
+    'Annan tid eller återkommande? Öppna Bokningshanteraren':
+        "Another time or recurring? Open the booking manager",
     'Boka resurs': 'Book a resource',
     'Väntar på godkännande': 'Waiting for approval',
     'Klubbens möten': "The club's meetings",

@@ -59,6 +59,7 @@ await db.exec(read('supabase/migrations/20261116100000_booking_approvals_for_ass
 await db.exec(read('supabase/migrations/20261116110000_booking_from_event.sql'));
 await db.exec(read('supabase/migrations/20261117090000_booking_series.sql'));
 await db.exec(read('supabase/migrations/20261117100000_booking_groups.sql'));
+await db.exec(read('supabase/migrations/20261117110000_booking_availability.sql'));
 await db.exec('begin');
 
 // Standalone: anyone signed in creates an organisation and becomes admin.
@@ -209,6 +210,11 @@ await fails(friend, 'select api.create_booking_group($1::uuid[],$2,$3,null,null,
 assert.equal((await call(friend, 'select api.list_bookings($1,$2,$3)', [org, t(199), t(203)])).filter(b => b.resource_name === 'Minibuss').length, 0);
 await fails(friend, 'select api.create_booking_group($1::uuid[],$2,$3,null,null,null,null,true)', [[pitch, pitch], gStart, gEnd], /invalid_resources/);
 await fails(friend, 'select api.create_booking_group($1::uuid[],$2,$3,null,null,null,null,true)', [[pitch, locker], gStart, gEnd], /invalid_resources/, 'another organisation');
+// The app's sheet: every resource for the time, busy ones with what.
+const free = await call(friend, 'select api.list_booking_availability($1,$2,$3)', [org, gStart, gEnd]);
+assert.deepEqual(free.filter(r => r.busy).map(r => [r.name, r.busy_with]), [['Omklädningsrum 1', 'Match'], ['Plan 1', 'Match']]);
+assert.equal(free.find(r => r.name === 'Minibuss').busy, false);
+await fails(stranger, 'select api.list_booking_availability($1,$2,$3)', [org, gStart, gEnd], /not_found/);
 await fails(friend, 'select api.decide_booking_group($1,true)', [group.group_id], /not_admin/);
 assert.equal(await call(owner, 'select api.decide_booking_group($1,true)', [group.group_id]), 1);
 assert.equal(await call(friend, 'select api.cancel_booking_group($1)', [group.group_id]), 2);

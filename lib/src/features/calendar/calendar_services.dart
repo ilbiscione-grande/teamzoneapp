@@ -29,6 +29,24 @@ abstract interface class EventBookingServices {
   /// with the activity's team you lead there, if any.
   Future<List<({String organizationId, String name, String? teamId})>>
   listEventBookingTargets(String eventId);
+
+  /// Every active resource of the organisation for the time.
+  Future<List<ResourceAvailability>> listBookingAvailability({
+    required String organizationId,
+    required DateTime startsAt,
+    required DateTime endsAt,
+  });
+
+  /// Books the resources for the time, all or none; how many wait for
+  /// approval.
+  Future<int> createBookingGroup({
+    required List<String> resourceIds,
+    required DateTime startsAt,
+    required DateTime endsAt,
+    String? title,
+    String? teamId,
+    String? eventId,
+  });
 }
 
 abstract interface class CalendarServices {
@@ -473,6 +491,61 @@ class UnconfiguredCalendarServices implements CalendarServices {
 
 class SupabaseCalendarServices
     implements CalendarServices, EventBookingServices {
+  @override
+  Future<List<ResourceAvailability>> listBookingAvailability({
+    required String organizationId,
+    required DateTime startsAt,
+    required DateTime endsAt,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'list_booking_availability',
+          params: {
+            'target_organization_id': organizationId,
+            'range_start': startsAt.toUtc().toIso8601String(),
+            'range_end': endsAt.toUtc().toIso8601String(),
+          },
+        )
+        .timeout(const Duration(seconds: 15));
+    if (value is! List) {
+      throw const FormatException('Invalid availability.');
+    }
+    return value
+        .whereType<Map<String, dynamic>>()
+        .map(ResourceAvailability.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<int> createBookingGroup({
+    required List<String> resourceIds,
+    required DateTime startsAt,
+    required DateTime endsAt,
+    String? title,
+    String? teamId,
+    String? eventId,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'create_booking_group',
+          params: {
+            'target_resource_ids': resourceIds,
+            'booking_starts_at': startsAt.toUtc().toIso8601String(),
+            'booking_ends_at': endsAt.toUtc().toIso8601String(),
+            'booking_title': title,
+            'booking_notes': null,
+            'target_team_id': teamId,
+            'target_event_id': eventId,
+            'dry_run': false,
+          },
+        )
+        .timeout(const Duration(seconds: 15));
+    if (value is! Map) throw const FormatException('Invalid booking.');
+    return (value['pending'] as num?)?.toInt() ?? 0;
+  }
+
   @override
   Future<List<({String organizationId, String name, String? teamId})>>
   listEventBookingTargets(String eventId) async {

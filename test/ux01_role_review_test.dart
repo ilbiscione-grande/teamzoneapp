@@ -183,4 +183,30 @@ void main() {
     expect(booking.pending, isTrue);
     expect(booking.endsAt.difference(booking.startsAt).inHours, 6);
   });
+
+  test('a resource for a time says whether it is free, and what holds it', () {
+    final busy = ResourceAvailability.fromJson({
+      'resource_id': 'r1',
+      'name': 'Omklädningsrum 2',
+      'category': 'locker_room',
+      'requires_approval': false,
+      'busy': true,
+      'busy_with': 'F2013',
+      'busy_from': '2026-10-24T08:00:00Z',
+      'busy_to': '2026-10-24T09:30:00Z',
+    });
+    expect(busy.busy, isTrue);
+    expect(busy.busyWith, 'F2013');
+    expect(busy.busyTo!.difference(busy.busyFrom!).inMinutes, 90);
+    final free = ResourceAvailability.fromJson({
+      'resource_id': 'r2',
+      'name': 'Veo-kamera',
+      'category': 'equipment',
+      'requires_approval': true,
+      'busy': false,
+    });
+    expect(free.busy, isFalse);
+    expect(free.busyFrom, isNull);
+    expect(free.requiresApproval, isTrue);
+  });
 }

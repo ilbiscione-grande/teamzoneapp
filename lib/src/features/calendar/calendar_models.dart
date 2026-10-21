@@ -936,3 +936,36 @@ class EventBooking {
     title: json['title'] as String?,
   );
 }
+
+/// Webtools Bokningshanterare: a resource for a time, free or what it is
+/// booked for.
+class ResourceAvailability {
+  const ResourceAvailability({
+    required this.resourceId,
+    required this.name,
+    required this.category,
+    required this.requiresApproval,
+    required this.busy,
+    this.location,
+    this.busyWith,
+    this.busyFrom,
+    this.busyTo,
+  });
+  final String resourceId, name, category;
+  final bool requiresApproval, busy;
+  final String? location, busyWith;
+  final DateTime? busyFrom, busyTo;
+
+  factory ResourceAvailability.fromJson(Map<String, dynamic> json) =>
+      ResourceAvailability(
+        resourceId: json['resource_id'] as String,
+        name: json['name'] as String,
+        category: json['category'] as String,
+        requiresApproval: json['requires_approval'] as bool? ?? false,
+        busy: json['busy'] as bool? ?? false,
+        location: json['location'] as String?,
+        busyWith: json['busy_with'] as String?,
+        busyFrom: DateTime.tryParse(json['busy_from'] as String? ?? ''),
+        busyTo: DateTime.tryParse(json['busy_to'] as String? ?? ''),
+      );
+}

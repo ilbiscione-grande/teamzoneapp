@@ -718,6 +718,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         if (widget.calendar case final EventBookingServices bookings)
           _EventBookingsSection(
             eventId: event.id,
+            eventTitle: event.title,
+            startsAt: event.startsAt,
+            endsAt: event.endsAt,
             services: bookings,
             // Booking is for what is still to come.
             canBook:
@@ -2021,10 +2024,14 @@ String? _localizedDeclineReason(AppStrings strings, EventRosterPerson person) {
 class _EventBookingsSection extends StatefulWidget {
   const _EventBookingsSection({
     required this.eventId,
+    required this.eventTitle,
+    required this.startsAt,
+    required this.endsAt,
     required this.services,
     this.canBook = false,
   });
-  final String eventId;
+  final String eventId, eventTitle;
+  final DateTime startsAt, endsAt;
   final EventBookingServices services;
   final bool canBook;
 
@@ -2048,8 +2055,41 @@ class _EventBookingsSectionState extends State<_EventBookingsSection> {
     }
   }
 
-  /// Webtools' booking form for this activity and its team.
+  /// Books in the app for the activity's team; without a team to book for,
+  /// Webtools' form opens instead.
   Future<void> _book(
+    ({String organizationId, String name, String? teamId}) target,
+  ) async {
+    if (target.teamId != null) {
+      final booked = await showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        showDragHandle: true,
+        builder: (_) => _BookResourcesSheet(
+          services: widget.services,
+          organizationId: target.organizationId,
+          organizationName: target.name,
+          teamId: target.teamId!,
+          eventId: widget.eventId,
+          eventTitle: widget.eventTitle,
+          startsAt: widget.startsAt,
+          endsAt: widget.endsAt,
+          onMore: () => _openWebtools(target),
+        ),
+      );
+      if (booked != null && mounted) {
+        setState(() => _bookings = _load());
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(booked)));
+      }
+      return;
+    }
+    await _openWebtools(target);
+  }
+
+  Future<void> _openWebtools(
     ({String organizationId, String name, String? teamId}) target,
   ) async {
     final uri = Uri.parse('$webtoolsOrigin/bokningar/${target.organizationId}')
@@ -2147,6 +2187,264 @@ class _EventBookingsSectionState extends State<_EventBookingsSection> {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Book resources for an activity in the app: the organisation's resources
+/// for the activity's time, busy ones shown with what they are booked for.
+/// All chosen ones are booked, or none.
+class _BookResourcesSheet extends StatefulWidget {
+  const _BookResourcesSheet({
+    required this.services,
+    required this.organizationId,
+    required this.organizationName,
+    required this.teamId,
+    required this.eventId,
+    required this.eventTitle,
+    required this.startsAt,
+    required this.endsAt,
+    required this.onMore,
+  });
+  final EventBookingServices services;
+  final String organizationId, organizationName, teamId, eventId, eventTitle;
+  final DateTime startsAt, endsAt;
+
+  /// Webtools, for other times, recurring bookings and more.
+  final VoidCallback onMore;
+
+  @override
+  State<_BookResourcesSheet> createState() => _BookResourcesSheetState();
+}
+
+class _BookResourcesSheetState extends State<_BookResourcesSheet> {
+  late Future<List<ResourceAvailability>> _resources = _load();
+  final _chosen = <String>{};
+  bool _busy = false;
+  String? _error;
+
+  Future<List<ResourceAvailability>> _load() =>
+      widget.services.listBookingAvailability(
+        organizationId: widget.organizationId,
+        startsAt: widget.startsAt,
+        endsAt: widget.endsAt,
+      );
+
+  static const _categories = {
+    'pitch': 'Planer',
+    'hall': 'Hallar',
+    'locker_room': 'Omklädningsrum',
+    'room': 'Lokaler',
+    'vehicle': 'Fordon',
+    'equipment': 'Utrustning',
+    'other': 'Övrigt',
+  };
+
+  Future<void> _submit(List<ResourceAvailability> resources) async {
+    final strings = AppStrings.of(context);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final pending = await widget.services.createBookingGroup(
+        resourceIds: _chosen.toList(),
+        startsAt: widget.startsAt,
+        endsAt: widget.endsAt,
+        title: widget.eventTitle,
+        teamId: widget.teamId,
+        eventId: widget.eventId,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(
+        pending == 0
+            ? strings.feature('Bokat.')
+            : pending == _chosen.length
+            ? strings.feature('Förfrågan är skickad för godkännande.')
+            : strings.feature('Bokat. Några resurser väntar på godkännande.'),
+      );
+    } catch (error) {
+      AppErrors.caught('event_details_page._BookResourcesSheet', error);
+      if (!mounted) return;
+      final busy = error.toString().contains('resource_busy');
+      setState(() {
+        _busy = false;
+        _error = strings.feature(
+          busy
+              ? 'Någon av resurserna hann bli upptagen. Ingen har bokats. Välj igen.'
+              : 'Bokningen kunde inte göras. Försök igen.',
+        );
+        if (busy) {
+          _chosen.clear();
+          _resources = _load();
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final theme = Theme.of(context);
+    String time(DateTime value) =>
+        TimeOfDay.fromDateTime(value.toLocal()).format(context);
+    final localizations = MaterialLocalizations.of(context);
+    return FutureBuilder<List<ResourceAvailability>>(
+      future: _resources,
+      builder: (context, snapshot) {
+        final resources = snapshot.data ?? const <ResourceAvailability>[];
+        final asks = resources.any(
+          (item) => _chosen.contains(item.resourceId) && item.requiresApproval,
+        );
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            0,
+            20,
+            16 + MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                strings.feature('Boka resurs'),
+                style: theme.textTheme.titleLarge,
+              ),
+              Text(
+                '${widget.organizationName} · ${localizations.formatMediumDate(widget.startsAt.toLocal())} '
+                '${time(widget.startsAt)}–${time(widget.endsAt)}',
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              Flexible(
+                child: snapshot.connectionState != ConnectionState.done
+                    ? const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    : snapshot.hasError
+                    ? Text(
+                        strings.feature(
+                          'Resurserna kunde inte hämtas. Försök igen.',
+                        ),
+                      )
+                    : resources.isEmpty
+                    ? Text(
+                        strings.feature(
+                          'Organisationen har inga resurser att boka än.',
+                        ),
+                      )
+                    : ListView(
+                        shrinkWrap: true,
+                        children: [
+                          for (final entry in _categories.entries)
+                            if (resources.any(
+                              (item) => item.category == entry.key,
+                            )) ...[
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 12,
+                                  bottom: 2,
+                                ),
+                                child: Text(
+                                  strings.feature(entry.value).toUpperCase(),
+                                  style: theme.textTheme.labelSmall,
+                                ),
+                              ),
+                              for (final item in resources.where(
+                                (item) => item.category == entry.key,
+                              ))
+                                CheckboxListTile(
+                                  key: ValueKey(
+                                    'book-resource-${item.resourceId}',
+                                  ),
+                                  contentPadding: EdgeInsets.zero,
+                                  dense: true,
+                                  value: _chosen.contains(item.resourceId),
+                                  onChanged: item.busy || _busy
+                                      ? null
+                                      : (value) => setState(() {
+                                          if (value == true &&
+                                              _chosen.length < 10) {
+                                            _chosen.add(item.resourceId);
+                                          } else {
+                                            _chosen.remove(item.resourceId);
+                                          }
+                                        }),
+                                  title: Text(item.name),
+                                  subtitle: item.busy
+                                      ? Text(
+                                          [
+                                            strings.feature('Upptagen'),
+                                            ?item.busyWith,
+                                            if (item.busyFrom != null &&
+                                                item.busyTo != null)
+                                              '${time(item.busyFrom!)}–${time(item.busyTo!)}',
+                                          ].join(' · '),
+                                          style: TextStyle(
+                                            color: theme.colorScheme.error,
+                                          ),
+                                        )
+                                      : item.requiresApproval
+                                      ? Text(
+                                          strings.feature(
+                                            'Godkänns av en administratör',
+                                          ),
+                                        )
+                                      : item.location == null
+                                      ? null
+                                      : Text(item.location!),
+                                ),
+                            ],
+                        ],
+                      ),
+              ),
+              if (asks)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    strings.feature(
+                      'Några av resurserna godkänns av en administratör. De övriga bokas direkt.',
+                    ),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
+              if (_error case final error?)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    error,
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              FilledButton(
+                key: const ValueKey('book-resources-submit'),
+                onPressed: _chosen.isEmpty || _busy
+                    ? null
+                    : () => _submit(resources),
+                child: Text(
+                  _chosen.length <= 1
+                      ? strings.feature('Boka')
+                      : '${strings.feature('Boka')} ${_chosen.length}',
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  widget.onMore();
+                },
+                child: Text(
+                  strings.feature(
+                    'Annan tid eller återkommande? Öppna Bokningshanteraren',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
