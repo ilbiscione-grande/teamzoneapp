@@ -116,6 +116,13 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    // Collapsed, only the head referee shows; Tillsätt opens the rest.
+    expect(find.text('Huvuddomare'), findsOneWidget);
+    expect(find.text('Assisterande domare 1'), findsNothing);
+    expect(find.byKey(const ValueKey('event-referee-kind')), findsNothing);
+    expect(find.textContaining('+1 assisterande'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('event-referee-edit')));
+    await tester.pumpAndSettle();
     expect(find.text('Huvuddomare'), findsOneWidget);
     expect(find.text('Assisterande domare 1'), findsOneWidget);
     expect(find.text('Assisterande domare 2'), findsNothing);

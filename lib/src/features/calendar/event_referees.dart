@@ -27,6 +27,10 @@ class _EventRefereesSectionState extends State<EventRefereesSection> {
   late Future<EventRefereeView?> _view = _load();
   bool _busy = false;
 
+  /// An organiser sees the head referee's row; the kind, the number and
+  /// every place open under "Tillsätt" or "Ändra".
+  bool _editing = false;
+
   Future<EventRefereeView?> _load() async {
     final services = widget.services;
     if (services == null) return null;
@@ -256,110 +260,155 @@ class _EventRefereesSectionState extends State<EventRefereesSection> {
                     ),
                   ],
                 ),
-                // REF-02: förbundsdomare, föreningsdomare or none, with the
-                // number of referees beside it on one row.
-                if (organiser)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            key: const ValueKey('event-referee-kind'),
-                            initialValue: view.refereeKind,
-                            isExpanded: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Typ av domare',
-                            ),
-                            items: [
-                              for (final kind in const [
-                                'federation',
-                                'club',
-                                'none',
-                              ])
-                                DropdownMenuItem(
-                                  value: kind,
-                                  child: Text(
-                                    refereeKindLabel(kind),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                            ],
-                            onChanged: _busy
-                                ? null
-                                : (kind) {
-                                    if (kind == null) return;
-                                    _run(
-                                      () => services.setKind(
-                                        widget.eventId,
-                                        kind,
-                                      ),
-                                    );
-                                  },
-                          ),
-                        ),
-                        if (view.canManage && view.refereeKind != 'none') ...[
-                          const SizedBox(width: 12),
-                          SizedBox(
-                            width: 112,
-                            child: DropdownButtonFormField<int>(
-                              key: ValueKey(
-                                'event-referee-count-${view.slots}',
-                              ),
-                              initialValue: view.slots.clamp(0, 3),
-                              isExpanded: true,
-                              decoration: const InputDecoration(
-                                labelText: 'Antal',
-                              ),
-                              items: [
-                                for (final count in const [0, 1, 2, 3])
-                                  DropdownMenuItem(
-                                    value: count,
-                                    child: Text(
-                                      count == 0 ? 'Ingen' : '$count',
-                                    ),
-                                  ),
-                              ],
-                              onChanged: _busy
-                                  ? null
-                                  : (count) {
-                                      if (count == null ||
-                                          count == view.slots) {
-                                        return;
-                                      }
-                                      _run(
-                                        () => services.setSlots(
-                                          widget.eventId,
-                                          count,
-                                        ),
-                                      );
-                                    },
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  )
-                else if (view.refereeKind != null)
-                  Text(refereeKindLabel(view.refereeKind)),
-                for (final slot in refereeSlots.take(view.slots))
-                  _slot(context, view, slot),
+                if (!organiser) ...[
+                  if (view.refereeKind != null)
+                    Text(refereeKindLabel(view.refereeKind)),
+                  for (final slot in refereeSlots.take(view.slots))
+                    _slot(context, view, slot),
+                ] else
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 200),
+                    alignment: Alignment.topCenter,
+                    child: _editing || _needsAnswer(view)
+                        ? _editor(context, view)
+                        : _summary(context, view),
+                  ),
                 for (final question in view.controlQuestions)
                   _controlQuestion(context, question),
-                if (view.slots == 0 && view.canManage)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      'Välj hur många domare matchen ska ha. Domare kan också anmäla sig själva till matchen.',
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  /// A referee who waits for your answer keeps the editor open.
+  bool _needsAnswer(EventRefereeView view) => view.referees.any(
+    (referee) =>
+        (view.canManage && referee.state == 'awaiting_team') ||
+        (view.canManageClubReferees && referee.state == 'awaiting_coordinator'),
+  );
+
+  /// Collapsed: the head referee, how many more, and "Tillsätt" or "Ändra".
+  Widget _summary(BuildContext context, EventRefereeView view) {
+    final main = view.slots == 0 ? null : view.inSlot('main');
+    final assistants = view.slots - 1;
+    return ListTile(
+      key: const ValueKey('event-referee-summary'),
+      contentPadding: EdgeInsets.zero,
+      title: Text(refereeSlotLabel('main')),
+      subtitle: Text(
+        [
+          if (view.refereeKind == 'none' || view.slots == 0)
+            'Ingen domare'
+          else if (main == null)
+            'Ledig'
+          else ...[
+            main.name,
+            ?main.clubName,
+            _stateLabel(main),
+          ],
+          if (view.refereeKind != null && view.refereeKind != 'none')
+            refereeKindLabel(view.refereeKind),
+          if (assistants > 0) '+$assistants assisterande',
+        ].join(' · '),
+      ),
+      trailing: TextButton(
+        key: const ValueKey('event-referee-edit'),
+        onPressed: _busy ? null : () => setState(() => _editing = true),
+        child: Text(view.referees.isEmpty ? 'Tillsätt' : 'Ändra'),
+      ),
+    );
+  }
+
+  /// Expanded: the kind and the number on one row, then every place.
+  Widget _editor(BuildContext context, EventRefereeView view) {
+    final services = widget.services!;
+    final theme = Theme.of(context);
+    return Column(
+      key: const ValueKey('event-referee-editor'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  key: const ValueKey('event-referee-kind'),
+                  initialValue: view.refereeKind,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Typ av domare'),
+                  items: [
+                    for (final kind in const ['federation', 'club', 'none'])
+                      DropdownMenuItem(
+                        value: kind,
+                        child: Text(
+                          refereeKindLabel(kind),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: _busy
+                      ? null
+                      : (kind) {
+                          if (kind == null) return;
+                          _run(() => services.setKind(widget.eventId, kind));
+                        },
+                ),
+              ),
+              if (view.canManage && view.refereeKind != 'none') ...[
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 112,
+                  child: DropdownButtonFormField<int>(
+                    key: ValueKey('event-referee-count-${view.slots}'),
+                    initialValue: view.slots.clamp(0, 3),
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Antal'),
+                    items: [
+                      for (final count in const [0, 1, 2, 3])
+                        DropdownMenuItem(
+                          value: count,
+                          child: Text(count == 0 ? 'Ingen' : '$count'),
+                        ),
+                    ],
+                    onChanged: _busy
+                        ? null
+                        : (count) {
+                            if (count == null || count == view.slots) return;
+                            _run(
+                              () => services.setSlots(widget.eventId, count),
+                            );
+                          },
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        for (final slot in refereeSlots.take(view.slots))
+          _slot(context, view, slot),
+        if (view.slots == 0 && view.canManage)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Välj hur många domare matchen ska ha. Domare kan också anmäla sig själva till matchen.',
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+        if (!_needsAnswer(view))
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              key: const ValueKey('event-referee-done'),
+              onPressed: () => setState(() => _editing = false),
+              child: const Text('Klar'),
+            ),
+          ),
+      ],
     );
   }
 

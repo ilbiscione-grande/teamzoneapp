@@ -297,6 +297,9 @@ void main() {
       _wrap(EventRefereesSection(eventId: 'm1', services: services)),
     );
     await tester.pumpAndSettle();
+    expect(find.textContaining('Föreningsdomare'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('event-referee-edit')));
+    await tester.pumpAndSettle();
     expect(find.text('Föreningsdomare'), findsOneWidget);
     await tester.tap(
       find.byKey(const ValueKey('event-referee-assign-club-main')),
