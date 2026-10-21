@@ -179,7 +179,7 @@ export function BookingCalendar({ org, prefill, onPrefillUsed }: {
                       onClick={() => setOpen(booking)}
                       aria-label={`${bookingSpan(booking.starts_at, booking.ends_at)} ${booking.title ?? "Bokad"}${booking.status === "pending" ? ", väntar på godkännande" : ""}`}
                     >
-                      <span className="cal-booking-time">{bookingSpan(booking.starts_at, booking.ends_at)}</span>
+                      <span className="cal-booking-time">{bookingSpan(booking.starts_at, booking.ends_at)}{booking.series_id ? " ↻" : ""}</span>
                       <strong>{booking.title ?? booking.team_name ?? "Bokad"}</strong>
                       <span>{[booking.title ? booking.team_name : null, booking.is_mine ? "Du" : booking.booked_by_name].filter(Boolean).join(" · ")}</span>
                     </button>
@@ -200,10 +200,13 @@ export function BookingCalendar({ org, prefill, onPrefillUsed }: {
         <BookingForm org={org} resource={draft.resource} day={draft.day} startTime={draft.start} endTime={draft.end}
           teamId={draft.teamId} eventId={draft.eventId}
           onClose={() => { if (draft.eventId) onPrefillUsed?.(); setDraft(null); }}
-          onBooked={status => {
+          onBooked={(status, count) => {
             if (draft.eventId) onPrefillUsed?.();
             setDraft(null);
-            setNotice(status === "pending" ? "Förfrågan är skickad. Den visas som väntande tills en administratör har godkänt den." : "Bokningen är klar.");
+            const what = count ? `${count} tillfällen` : "Bokningen";
+            setNotice(status === "pending"
+              ? `Förfrågan för ${count ? what.toLowerCase() : "bokningen"} är skickad. Den visas som väntande tills en administratör har godkänt den.`
+              : count ? `${what} är bokade.` : "Bokningen är klar.");
             void load();
           }} />
       )}
@@ -229,11 +232,15 @@ function BookingDetails({ booking, onClose, onChanged }: { booking: Booking; onC
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => { dialog.current?.showModal(); }, []);
-  const act = async (name: "cancel_booking" | "decide_booking", approve?: boolean) => {
+  const act = async (name: "cancel_booking" | "decide_booking" | "cancel_booking_series" | "decide_booking_series", approve?: boolean) => {
     if (!client) return;
     if (name === "cancel_booking" && !window.confirm("Avboka den här bokningen?")) return;
+    if (name === "cancel_booking_series" && !window.confirm(`Avboka alla ${booking.series_remaining ?? ""} kommande tillfällen i serien?`)) return;
     setBusy(true);
-    const { error: actError } = await client.schema("api").rpc(name, name === "cancel_booking" ? { target_booking_id: booking.id } : { target_booking_id: booking.id, approve });
+    const params = name.endsWith("_series")
+      ? { target_series_id: booking.series_id, ...(approve === undefined ? {} : { approve }) }
+      : { target_booking_id: booking.id, ...(approve === undefined ? {} : { approve }) };
+    const { error: actError } = await client.schema("api").rpc(name, params);
     setBusy(false);
     if (actError) { setError(bookingError(actError)); return; }
     onChanged();
@@ -250,12 +257,16 @@ function BookingDetails({ booking, onClose, onChanged }: { booking: Booking; onC
         {booking.team_name && <><dt>Lag</dt><dd>{booking.team_name}</dd></>}
         {booking.event_title && <><dt>Aktivitet</dt><dd>{booking.event_title}</dd></>}
         {booking.notes && <><dt>Anteckning</dt><dd>{booking.notes}</dd></>}
+        {booking.series_id && <><dt>Serie</dt><dd>Återkommande, {booking.series_remaining} kommande tillfällen</dd></>}
       </dl>
       {error && <p role="alert" className="wt-error">{error}</p>}
       <div className="wt-actions">
-        {booking.can_decide && <button type="button" className="wt-button" disabled={busy} onClick={() => act("decide_booking", true)}>Godkänn</button>}
-        {booking.can_decide && <button type="button" className="wt-button secondary" disabled={busy} onClick={() => act("decide_booking", false)}>Neka</button>}
-        {booking.can_cancel && <button type="button" className="wt-button secondary" disabled={busy} onClick={() => act("cancel_booking")}>Avboka</button>}
+        {booking.can_decide && booking.series_id && <button type="button" className="wt-button" disabled={busy} onClick={() => act("decide_booking_series", true)}>Godkänn hela serien</button>}
+        {booking.can_decide && booking.series_id && <button type="button" className="wt-button secondary" disabled={busy} onClick={() => act("decide_booking_series", false)}>Neka hela serien</button>}
+        {booking.can_decide && !booking.series_id && <button type="button" className="wt-button" disabled={busy} onClick={() => act("decide_booking", true)}>Godkänn</button>}
+        {booking.can_decide && !booking.series_id && <button type="button" className="wt-button secondary" disabled={busy} onClick={() => act("decide_booking", false)}>Neka</button>}
+        {booking.can_cancel && <button type="button" className="wt-button secondary" disabled={busy} onClick={() => act("cancel_booking")}>{booking.series_id ? "Avboka detta tillfälle" : "Avboka"}</button>}
+        {booking.can_cancel && booking.series_id && (booking.series_remaining ?? 0) > 1 && <button type="button" className="wt-button secondary" disabled={busy} onClick={() => act("cancel_booking_series")}>Avboka alla kommande</button>}
         <button type="button" className="wt-button secondary" onClick={() => dialog.current?.close()}>Stäng</button>
       </div>
     </dialog>

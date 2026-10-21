@@ -79,3 +79,10 @@ test("the app's booking link survives signing in, and only well-formed", () => {
   assert.equal(safeReturnTo(`/bokningar/${org}?boka=1&aktivitet=${id}`), `/bokningar/${org}?boka=1&aktivitet=${id}`);
   assert.equal(safeReturnTo(`/bokningar/${org}?boka=1&aktivitet=x`), "/");
 });
+
+test("weekdays run Monday to Sunday", async () => {
+  const { isoWeekday, weekdayLabels } = await import("../lib/booking.ts");
+  assert.equal(isoWeekday("2026-10-19"), 1);
+  assert.equal(isoWeekday("2026-10-25"), 7);
+  assert.deepEqual(weekdayLabels, ["Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön"]);
+});

@@ -70,11 +70,15 @@ export function BookingOrganization({ id }: { id: string }) {
 function BookingRow({ booking, onChanged, showResource = false, showDate = false }: { booking: Booking; onChanged: () => void; showResource?: boolean; showDate?: boolean }) {
   const { client } = useAccount();
   const [error, setError] = useState("");
+  // A pending series is decided as a whole.
+  const series = booking.can_decide && !!booking.series_id;
   const act = async (name: "cancel_booking" | "decide_booking", approve?: boolean) => {
     if (!client) return;
     if (name === "cancel_booking" && !window.confirm("Avboka den här bokningen?")) return;
-    const { error: actError } = await client.schema("api").rpc(name, name === "cancel_booking"
-      ? { target_booking_id: booking.id } : { target_booking_id: booking.id, approve });
+    const { error: actError } = name === "decide_booking" && series
+      ? await client.schema("api").rpc("decide_booking_series", { target_series_id: booking.series_id, approve })
+      : await client.schema("api").rpc(name, name === "cancel_booking"
+        ? { target_booking_id: booking.id } : { target_booking_id: booking.id, approve });
     if (actError) { setError(bookingError(actError)); return; }
     onChanged();
   };
@@ -87,12 +91,13 @@ function BookingRow({ booking, onChanged, showResource = false, showDate = false
       <div className="bk-booking-body">
         <strong>{[showResource ? booking.resource_name : null, booking.title].filter(Boolean).join(" · ") || "Bokad"}</strong>
         <span>{[booking.team_name, booking.event_title ? `till ${booking.event_title}` : null, booking.is_mine ? "Du" : booking.booked_by_name].filter(Boolean).join(" · ")}</span>
+        {booking.series_id && <span>Återkommande · {booking.series_remaining} kommande tillfällen</span>}
         {booking.status === "pending" && <span className="bk-badge">{statusLabels.pending}</span>}
         {error && <span role="alert" className="wt-error">{error}</span>}
       </div>
       <div className="bk-booking-actions">
-        {booking.can_decide && <button type="button" className="wt-button small" onClick={() => act("decide_booking", true)}>Godkänn</button>}
-        {booking.can_decide && <button type="button" className="wt-button secondary small" onClick={() => act("decide_booking", false)}>Neka</button>}
+        {booking.can_decide && <button type="button" className="wt-button small" onClick={() => act("decide_booking", true)}>{series ? "Godkänn serien" : "Godkänn"}</button>}
+        {booking.can_decide && <button type="button" className="wt-button secondary small" onClick={() => act("decide_booking", false)}>{series ? "Neka serien" : "Neka"}</button>}
         {booking.can_cancel && !booking.can_decide && <button type="button" className="wt-button secondary small" onClick={() => act("cancel_booking")}>Avboka</button>}
       </div>
     </li>
@@ -140,7 +145,8 @@ function Pending({ org, onChanged }: { org: Organization; onChanged: () => void 
   return (
     <section className="wt-panel" aria-label="Att godkänna">
       {bookings.length === 0 ? <p>Inga förfrågningar väntar på godkännande.</p> : (
-        <ul className="bk-bookings">{bookings.map(item => <BookingRow key={item.id} booking={item} onChanged={() => { void load(); onChanged(); }} showResource showDate />)}</ul>
+        <ul className="bk-bookings">{bookings.filter((item, index) => !item.series_id || bookings.findIndex(other => other.series_id === item.series_id) === index)
+          .map(item => <BookingRow key={item.id} booking={item} onChanged={() => { void load(); onChanged(); }} showResource showDate />)}</ul>
       )}
     </section>
   );

@@ -55,7 +55,26 @@ export type Booking = {
   event_title: string | null;
   can_cancel: boolean;
   can_decide: boolean;
+  /** A recurring booking: its series and how many coming times are left. */
+  series_id?: string | null;
+  series_remaining?: number | null;
 };
+
+/** A planned or booked series: every time, and whether it clashes. */
+export type SeriesPlan = {
+  series_id: string | null;
+  status: "pending" | "confirmed";
+  created: number;
+  times: { starts_at: string; ends_at: string; clash: boolean }[];
+};
+
+export const weekdayLabels = ["Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön"];
+
+/** ISO weekday of a local date key: 1 for Monday to 7 for Sunday. */
+export function isoWeekday(key: string): number {
+  const [y, m, d] = key.split("-").map(Number);
+  return ((new Date(y, m - 1, d).getDay() + 6) % 7) + 1;
+}
 
 export type TeamEvent = {
   event_id: string;
@@ -119,6 +138,9 @@ const errorMessages: Record<string, string> = {
   not_found: "Hittades inte, eller så har du inte tillgång.",
   not_allowed: "Du kan inte ändra den här bokningen.",
   not_pending: "Bokningen är redan hanterad.",
+  not_active: "Det finns inga kommande tillfällen kvar att avboka.",
+  invalid_series: "Kontrollera upprepningen: minst en veckodag, ett slutdatum efter startdatumet och högst ett år.",
+  series_too_long: "Serien blir för lång. Högst 200 tillfällen åt gången.",
 };
 
 export function bookingError(error: { message?: string } | null | undefined): string {

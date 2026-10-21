@@ -263,3 +263,12 @@ a { color: var(--wt-brand); }
 .wt-notifications li[data-kind="declined"] a, .wt-notifications li[data-kind="cancelled"] a { border-left-color: var(--wt-red); }
 .wt-notifications span { color: var(--wt-text); }
 .wt-notifications small { color: var(--wt-muted); }
+
+/* Recurring bookings */
+.bk-repeat { display: grid; gap: 12px; margin: 0; padding: 14px; border: 1px solid var(--wt-line); border-radius: 6px; }
+.bk-repeat legend { padding: 0 6px; font-weight: 700; }
+.bk-weekdays { display: flex; gap: 6px; flex-wrap: wrap; }
+.bk-weekdays button { min-width: 48px; min-height: 40px; border: 1px solid var(--wt-line); border-radius: 4px; background: white; font: inherit; font-weight: 600; cursor: pointer; }
+.bk-weekdays button[aria-pressed="true"] { background: var(--wt-ink); border-color: var(--wt-ink); color: var(--wt-accent); }
+.bk-plan p { margin: 0 0 6px; }
+.bk-plan ul { margin: 4px 0 6px; padding-left: 20px; text-transform: capitalize; }

@@ -6,6 +6,7 @@ import { PGlite } from '../../.tmp-search-test/node_modules/@electric-sql/pglite
 const read = p => readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
 const db = new PGlite();
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+let locker2;
 const owner = id(1), friend = id(2), coach = id(3), clubAdmin = id(4), stranger = id(5);
 const club = id(10), team = id(20), otherTeam = id(21), event = id(30), otherEvent = id(31);
 const as = who => db.query("select set_config('request.jwt.claim.sub',$1,false)", [who ?? '']);
@@ -56,6 +57,7 @@ await db.exec(read('supabase/migrations/20261115100000_booking_team_events_venue
 await db.exec(read('supabase/migrations/20261116090000_booking_notifications.sql'));
 await db.exec(read('supabase/migrations/20261116100000_booking_approvals_for_assistant.sql'));
 await db.exec(read('supabase/migrations/20261116110000_booking_from_event.sql'));
+await db.exec(read('supabase/migrations/20261117090000_booking_series.sql'));
 await db.exec('begin');
 
 // Standalone: anyone signed in creates an organisation and becomes admin.
@@ -156,4 +158,35 @@ await fails(stranger, 'select api.list_event_bookings($1)', [event], /not_found/
 // Members can be turned off for the club.
 await call(clubAdmin, "select api.update_booking_organization($1,'Demoklubben IF','club',null,false)", [clubOrg]);
 assert.deepEqual(await call(coach, 'select api.list_booking_organizations()'), []);
+// Recurring: every Tuesday and Thursday for four weeks, from next Monday.
+const monday = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() + ((8 - d.getUTCDay()) % 7 || 7)); return d.toISOString().slice(0, 10); })();
+const plusDays = (day, n) => { const d = new Date(day + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const seriesArgs = (who, resource, dry, interval = 1) => call(who,
+  "select api.create_booking_series($1,'{2,4}'::smallint[],$2::smallint,$3::date,$4::date,'18:00','19:30','Europe/Stockholm','Träning',null,null,$5)",
+  [resource, interval, monday, plusDays(monday, 27), dry]);
+// A clash on the second Tuesday.
+const busyTuesday = new Date(plusDays(monday, 8) + 'T17:00:00Z').toISOString();
+await call(owner, 'select api.create_booking($1,$2,$3,null,null,null,null)', [locker2 = await call(owner, "select api.save_booking_resource($1,null,'Omklädningsrum 1','locker_room',null,null,null,true,true)", [org]), busyTuesday, new Date(Date.parse(busyTuesday) + 3600e3).toISOString()]);
+const plan = await seriesArgs(friend, locker2, true);
+assert.equal(plan.times.length, 8);
+assert.equal(plan.times.filter(t => t.clash).length, 1);
+assert.equal(plan.series_id, null, 'a dry run books nothing');
+assert.equal(plan.status, 'pending', 'approval resource, not an admin');
+assert.equal(new Date(plan.times[0].starts_at).toISOString().slice(11, 16), '17:00', '18:00 in Stockholm in winter');
+const before = (await inbox(owner)).unread;
+const booked = await seriesArgs(friend, locker2, false);
+assert.equal(booked.created, 7);
+assert.equal((await inbox(owner)).unread, before + 1, 'one request for the whole series');
+const fortnightly = await seriesArgs(friend, pitch, true, 2);
+assert.equal(fortnightly.times.length, 4, 'every second week');
+const pendingSeries = (await call(owner, 'select api.list_pending_bookings($1)', [org])).filter(b => b.series_id === booked.series_id);
+assert.equal(pendingSeries.length, 7);
+assert.equal(pendingSeries[0].series_remaining, 7);
+await fails(friend, 'select api.decide_booking_series($1,true)', [booked.series_id], /not_admin/);
+assert.equal(await call(owner, 'select api.decide_booking_series($1,true)', [booked.series_id]), 7);
+assert.equal((await inbox(friend)).items[0].kind, 'approved');
+assert.equal(await call(friend, 'select api.cancel_booking_series($1)', [booked.series_id]), 7);
+await fails(friend, 'select api.cancel_booking_series($1)', [booked.series_id], /not_active/);
+await fails(friend, "select api.create_booking_series($1,'{9}'::smallint[],1::smallint,$2::date,$3::date,'18:00','19:00','Europe/Stockholm',null,null,null,true)", [locker2, monday, plusDays(monday, 7)], /invalid_series/);
+await fails(friend, "select api.create_booking_series($1,'{1,2,3,4,5,6,7}'::smallint[],1::smallint,$2::date,$3::date,'18:00','19:00','Europe/Stockholm',null,null,null,true)", [locker2, monday, plusDays(monday, 360)], /series_too_long/);
 console.log('booking manager: ok');
