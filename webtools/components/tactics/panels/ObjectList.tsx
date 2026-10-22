@@ -1,7 +1,9 @@
 "use client";
 
 // Everything on the board, the top-most first: choose, show or hide, lock,
-// move up or down, or remove. Players are grouped by team.
+// move up or down, or remove. Players are grouped by team. Choosing keeps
+// the list in sight (Shift, Ctrl or Cmd adds to the selection); a double
+// click opens the object's properties.
 import { kindName, objectLabel, restack } from "../../../lib/tactics/document.ts";
 import type { Board, TacticsObject } from "../../../lib/tactics/model.ts";
 import { activeObjects, useEditor } from "../store.ts";
@@ -11,7 +13,7 @@ const icon = (item: TacticsObject, board: Board) => {
   return <span className="tb-kind" aria-hidden="true">{kindName(item.type).slice(0, 1)}</span>;
 };
 
-export function ObjectList({ board }: { board: Board }) {
+export function ObjectList({ board, onOpen }: { board: Board; onOpen: () => void }) {
   const objects = useEditor(activeObjects);
   const selection = useEditor(state => state.selection);
   const { select, patch, changeObjects } = useEditor.getState();
@@ -26,7 +28,8 @@ export function ObjectList({ board }: { board: Board }) {
         const selected = selection.includes(item.id);
         return (
           <li key={item.id} data-selected={selected} data-hidden={item.hidden}>
-            <button type="button" className="tb-object-name" onClick={event => select([item.id], event.shiftKey || event.metaKey || event.ctrlKey)}>
+            <button type="button" className="tb-object-name" onClick={event => select([item.id], event.shiftKey || event.metaKey || event.ctrlKey)}
+              onDoubleClick={() => { select([item.id]); onOpen(); }}>
               {icon(item, board)}
               <span>{objectLabel(item, board)}</span>
             </button>

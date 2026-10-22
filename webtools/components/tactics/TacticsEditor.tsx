@@ -43,8 +43,9 @@ export function TacticsWorkspace() {
   const board = useEditor(activeBoard);
   const selectionCount = useEditor(state => state.selection.length);
   useShortcuts();
-  // Choosing something shows its properties, unless effects are being chosen for it.
-  useEffect(() => { if (selectionCount > 0) setPanel(current => current === "frames" ? current : "properties"); }, [selectionCount]);
+  // Choosing something shows its properties, unless effects are being chosen
+  // for it or it is chosen in the object list (where more can be added).
+  useEffect(() => { if (selectionCount > 0) setPanel(current => current === "frames" || current === "objects" ? current : "properties"); }, [selectionCount]);
   if (!board) return null;
   if (presenting) return <Presenter onClose={() => setPresenting(false)} />;
   const tabs: [Panel, React.ReactNode][] = [["properties", selectionCount ? "Egenskaper" : "Tavlan"], ["frames", "Frames"], ["objects", "Objekt"], ["squad", "Lag"]];
@@ -69,7 +70,7 @@ export function TacticsWorkspace() {
           {panelOpen && (
             <div className="tb-panel-body">
               <ErrorBoundary key={panel} label="Panelen">
-                {panel === "objects" && <ObjectList board={board} />}
+                {panel === "objects" && <ObjectList board={board} onOpen={() => setPanel("properties")} />}
                 {panel === "properties" && <Inspector board={board} />}
                 {panel === "frames" && <FramesPanel board={board} />}
                 {panel === "squad" && <SquadPanel board={board} />}
