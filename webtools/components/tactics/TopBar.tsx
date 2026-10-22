@@ -11,6 +11,7 @@ import { useAccount } from "../account";
 import { useEditor, type SaveState, NONE } from "./store.ts";
 import { saveNow } from "./use-autosave.ts";
 import { ShareDialog } from "./ShareDialog.tsx";
+import { ExportDialog } from "./export/ExportDialog.tsx";
 
 const saveLabels: Record<SaveState, string> = {
   saved: "Sparat", dirty: "Ändrat", saving: "Sparar…", error: "Kunde inte spara", conflict: "Ändrat på annat håll",
@@ -86,10 +87,12 @@ export function TopBar() {
   const canRedo = useEditor(state => state.history.future.length > 0);
   const { undo, redo, setMeta } = useEditor.getState();
   const [sharing, setSharing] = useState(false);
+  const [exporting, setExporting] = useState(false);
   if (!meta) return null;
   return (
     <header className="tb-top">
       {sharing && <ShareDialog onClose={() => setSharing(false)} />}
+      {exporting && <ExportDialog onClose={() => setExporting(false)} />}
       <div className="tb-top-row">
         <Link href="/tacticsboard" className="tb-back" aria-label="Till projekten">‹</Link>
         <input className="tb-name" value={meta.name} maxLength={120} aria-label="Projektets namn" onChange={event => setMeta({ name: event.target.value })} />
@@ -97,6 +100,7 @@ export function TopBar() {
         <span className="tb-spacer" />
         <button type="button" className="tb-icon" onClick={undo} disabled={!canUndo} aria-label="Ångra" title="Ångra (Ctrl+Z)">↶</button>
         <button type="button" className="tb-icon" onClick={redo} disabled={!canRedo} aria-label="Gör om" title="Gör om (Ctrl+Y)">↷</button>
+        <button type="button" className="tb-icon tb-pdf" onClick={() => setExporting(true)} aria-label="Skapa PDF" title="Skapa PDF">PDF</button>
         <button type="button" className="tb-share" onClick={() => setSharing(true)}>Dela</button>
         <span className="tb-save" data-state={saveState} role="status">
           {saveLabels[saveState]}

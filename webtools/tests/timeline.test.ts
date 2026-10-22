@@ -118,3 +118,28 @@ test("curves pass through their middle point and lines draw out by length", asyn
   assert.deepEqual(partialPolyline([0, 0, 10, 0], 0), [0, 0, 0, 0]);
   assert.deepEqual(partialPolyline([0, 0, 10, 0], 1), [0, 0, 10, 0]);
 });
+
+test("PDF pages: one picture a page, four frames to a page, or the last frame", async () => {
+  const { layoutPages, PAGE, pdfFileName } = await import("../lib/tactics/pdf-layout.ts");
+  const { newBoard, insertFrame } = await import("../lib/tactics/document.ts");
+  let animated = newBoard("Anfall");
+  for (let i = 0; i < 4; i++) animated = insertFrame(animated, i);
+  animated = { ...animated, frames: animated.frames.map((frame, i) => i === 1 ? { ...frame, note: " Djupledslöpning " } : frame) };
+  const still = newBoard("Uppställning");
+  const boards = [still, animated];
+  const grid = layoutPages(boards, [0, 1], "grid");
+  assert.deepEqual(grid.map(page => [page.title, page.placements.length]), [["Uppställning", 1], ["Anfall", 4], ["Anfall", 1]]);
+  assert.equal(grid[0].placements[0].caption, null, "a still board has no frame captions");
+  assert.equal(grid[1].placements[1].caption, "Ram 2 av 5");
+  assert.equal(grid[1].placements[1].note, "Djupledslöpning");
+  for (const page of grid) for (const item of page.placements) {
+    assert.ok(item.x >= PAGE.margin - 1e-9 && item.x + item.width <= PAGE.width - PAGE.margin + 1e-9, "inside the margins");
+    assert.ok(item.y + item.height <= PAGE.height - PAGE.margin - PAGE.footer + 1e-9);
+    near(item.width / item.height, 1.5);
+  }
+  assert.equal(layoutPages(boards, [1], "each").length, 5);
+  const last = layoutPages(boards, [1], "last");
+  assert.deepEqual([last.length, last[0].placements[0].frameIndex, last[0].placements[0].caption], [1, 4, null]);
+  assert.equal(pdfFileName(" Match mot Aneby SK! "), "Match_mot_Aneby_SK.pdf");
+  assert.equal(pdfFileName("??"), "tavla.pdf");
+});
