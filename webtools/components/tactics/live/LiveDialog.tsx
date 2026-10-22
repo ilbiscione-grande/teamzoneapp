@@ -10,6 +10,7 @@ import { useEditor } from "../store.ts";
 import { saveNow } from "../use-autosave.ts";
 import { useLive } from "./live-store.ts";
 import { broadcastOnce } from "./use-live-host.ts";
+import { endLesson } from "./use-live-idle.ts";
 
 export function LiveDialog({ onClose }: { onClose: () => void }) {
   const { client } = useAccount();
@@ -54,10 +55,7 @@ export function LiveDialog({ onClose }: { onClose: () => void }) {
   });
   const end = () => run(async () => {
     if (!client || !session || !window.confirm("Avsluta lektionen? Länken slutar fungera för alla.")) return null;
-    await broadcastOnce(client, session.id, "ended");
-    const { error: endError } = await client.schema("api").rpc("end_tactics_live", { target_session_id: session.id });
-    if (endError) return "Lektionen kunde inte avslutas.";
-    useLive.getState().set({ session: null, participants: [] });
+    await endLesson(client, session.id);
     onClose();
     return null;
   });
@@ -77,7 +75,7 @@ export function LiveDialog({ onClose }: { onClose: () => void }) {
         </div>
         {!session ? (
           <>
-            <p className="tb-hint">Deltagarna följer tavlan som du visar den: tavla, frame, uppspelning och tidslinje, och din pekare över planen. De kan inte ändra något.</p>
+            <p className="tb-hint">Deltagarna följer tavlan som du visar den: tavla, frame, uppspelning och tidslinje, och din pekare över planen. De kan inte ändra något. Lektionen avslutas av sig själv efter 30 minuter utan aktivitet.</p>
             <label className="tb-check"><input type="checkbox" checked={guests} onChange={event => setGuests(event.target.checked)} />Tillåt gäster utan konto (de skriver bara sitt namn)</label>
             <div className="tb-actions"><button type="button" className="wt-button small" disabled={busy} onClick={() => void start()}>Starta livelektion</button></div>
           </>

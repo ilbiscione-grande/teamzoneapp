@@ -53,7 +53,7 @@ export function LivePanel() {
           <h3>✋ Räcker upp handen ({up.length})</h3>
           <ol className="tb-live-hands">
             {up.map(person => (
-              <li key={person.key}>{person.name}<button type="button" className="tb-link" onClick={() => send("lower-hand", { key: person.key })}>Sänk</button></li>
+              <li key={person.key}><span>{person.name}</span><button type="button" className="tb-link" onClick={() => send("lower-hand", { key: person.key })}>Sänk</button></li>
             ))}
           </ol>
         </>

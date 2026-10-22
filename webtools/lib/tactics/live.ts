@@ -93,3 +93,12 @@ export function throttle<A extends unknown[]>(fn: (...args: A) => void, ms: numb
     cancel: () => { if (timer) clearTimeout(timer); timer = null; pending = null; },
   };
 }
+
+/** A lesson with nothing happening ends after 30 minutes; the host is warned 5 minutes before. */
+export const IDLE_LIMIT_MS = 30 * 60_000;
+export const IDLE_WARNING_MS = 25 * 60_000;
+
+export function idleState(lastActivity: number, now: number): "active" | "warning" | "expired" {
+  const idle = now - lastActivity;
+  return idle >= IDLE_LIMIT_MS ? "expired" : idle >= IDLE_WARNING_MS ? "warning" : "active";
+}

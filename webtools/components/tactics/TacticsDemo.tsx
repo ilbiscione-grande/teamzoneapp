@@ -9,6 +9,8 @@ import { applyFormation, createObject, insertFrame, newDocument, updateFrame } f
 import { formations } from "../../lib/tactics/formations.ts";
 import type { ProjectDocument } from "../../lib/tactics/model.ts";
 import { SharedViewer } from "./SharedViewer.tsx";
+import { useChat } from "./live/chat-store.ts";
+import { useLive } from "./live/live-store.ts";
 import { useEditor } from "./store.ts";
 import { TacticsWorkspace } from "./TacticsEditor.tsx";
 
@@ -43,7 +45,7 @@ export function TacticsDemo() {
       created_at: new Date().toISOString(), updated_at: new Date().toISOString(), document,
     }, document);
     // For trying things from the console.
-    (window as unknown as { tacticsEditor: typeof useEditor }).tacticsEditor = useEditor;
+    Object.assign(window, { tacticsEditor: useEditor, tacticsLive: useLive, tacticsChat: useChat });
     setReady(true);
   }, [document, shared]);
   if (shared) {

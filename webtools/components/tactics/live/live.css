@@ -24,7 +24,7 @@
 
 /* The chat, the hands and the host's panel. */
 .tb-badge { display: inline-block; margin-left: 6px; min-width: 18px; padding: 0 6px; border-radius: 999px; background: #ef4444; color: white; font-size: .72rem; font-weight: 800; line-height: 18px; text-align: center; }
-.tb-chat { display: grid; grid-template-rows: minmax(0, 1fr) auto auto auto; gap: 8px; min-height: 0; }
+.tb-chat { display: grid; grid-template-rows: minmax(0, 1fr) auto auto auto; gap: 8px; min-height: 0; min-width: 0; }
 .tb-chat-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; align-content: start; max-height: 50dvh; overflow-y: auto; }
 .tb-chat-list li { padding: 6px 10px; border-radius: 8px; background: white; border: 1px solid var(--wt-line); }
 .tb-chat-list li[data-host="true"] { border-color: var(--wt-brand); background: #f0f9e8; }
@@ -39,9 +39,24 @@
 .tb-chat-notice { margin: 0; color: var(--wt-muted); font-size: .82rem; }
 .tb-chat-form { display: flex; gap: 6px; }
 .tb-chat-form input { flex: 1; min-width: 0; min-height: 36px; padding: 6px 8px; border: 1px solid var(--wt-line); border-radius: 6px; font: inherit; font-size: .92rem; }
-.tb-live-hands { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
-.tb-live-hands li, .tb-live-people-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.tb-live-people-list { display: grid; gap: 4px; }
+.tb-live-hands { margin: 0; padding-left: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.tb-live-people-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+/* The name gives way; the button beside it always shows whole. */
+.tb-live-hands li, .tb-live-people-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.tb-live-hands li > span, .tb-live-people-list li > span { min-width: 0; overflow-wrap: anywhere; }
+.tb-live-hands button, .tb-live-people-list button { flex: none; white-space: nowrap; }
 .tb-live-people-list li { border-radius: 8px; }
 .tb-present-live { font-size: 1rem; }
 .tb-present-live .tb-live-panel { padding: 0; }
+/* The panel and the chat never grow wider than the side panel. */
+.tb-live-panel, .tb-chat { grid-template-columns: minmax(0, 1fr); }
+.tb-live-panel > *, .tb-chat > * { min-width: 0; }
+/* The participant's top row: the title gives way, the buttons scroll sideways. */
+.tb-live .tb-top-row > .tb-viewer-title { flex: 0 1 auto; min-width: 0; }
+.tb-live .tb-viewer-title strong, .tb-live .tb-viewer-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-live .tb-top-row > .tb-live-actions { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.tb-live-actions::-webkit-scrollbar { display: none; }
+.tb-live-actions > * { flex: none; }
+/* A word about the lesson: near the end for want of activity, or ended. */
+.tb-live-notice { position: fixed; top: 120px; left: 50%; transform: translateX(-50%); z-index: 70; display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 24px); padding: 10px 14px; border-radius: 10px; background: #fef3c7; color: #78350f; font-size: .9rem; font-weight: 600; box-shadow: 0 10px 30px rgba(0, 0, 0, .3); }
+.tb-live-notice .tb-modal-close { width: 28px; height: 28px; flex: none; }

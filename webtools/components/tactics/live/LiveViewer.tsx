@@ -72,14 +72,17 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
             <span>{kindLabels[joined.kind]} · live med {joined.host_name}</span>
           </div>
           <span className="tb-spacer" />
-          <span className="tb-live-status" data-host={hostHere}>{state === "connecting" ? "Ansluter…" : hostHere ? "Följer läraren" : "Väntar på läraren"}</span>
-          {handsAllowed && state === "following" && (
-            <button type="button" className="tb-present-toggle" aria-pressed={!!hand} onClick={() => setHand(!hand)} title={hand ? "Sänk handen" : "Räck upp handen"}>✋</button>
-          )}
-          {(chatMode !== "off" || hasMessages) && (
-            <button type="button" className="tb-present-toggle" aria-pressed={aside === "chat"} onClick={() => toggle("chat")}><LiveBadge label="Chatt" /></button>
-          )}
-          <button type="button" className="tb-present-toggle" aria-pressed={aside === "text"} onClick={() => toggle("text")}>Beskrivning</button>
+          {/* On a phone the row scrolls sideways rather than lose a button. */}
+          <div className="tb-live-actions">
+            <span className="tb-live-status" data-host={hostHere}>{state === "connecting" ? "Ansluter…" : hostHere ? "Följer läraren" : "Väntar på läraren"}</span>
+            {handsAllowed && state === "following" && (
+              <button type="button" className="tb-present-toggle" aria-pressed={!!hand} onClick={() => setHand(!hand)} title={hand ? "Sänk handen" : "Räck upp handen"}>✋</button>
+            )}
+            {(chatMode !== "off" || hasMessages) && (
+              <button type="button" className="tb-present-toggle" aria-pressed={aside === "chat"} onClick={() => toggle("chat")}><LiveBadge label="Chatt" /></button>
+            )}
+            <button type="button" className="tb-present-toggle" aria-pressed={aside === "text"} onClick={() => toggle("text")}>Beskrivning</button>
+          </div>
         </div>
       </header>
       <div className="tb-present-body">

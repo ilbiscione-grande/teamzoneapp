@@ -12,6 +12,7 @@ import { activeBoard, useEditor } from "../store.ts";
 import { listenChat, useChat } from "./chat-store.ts";
 import { participantsOf, useLive } from "./live-store.ts";
 import { useLiveHostChat } from "./use-live-host-chat.ts";
+import { useLiveIdle } from "./use-live-idle.ts";
 
 type State = ReturnType<typeof useEditor.getState>;
 const viewOf = (state: State): LiveView | null => state.boardId === null ? null : {
@@ -22,6 +23,7 @@ export function useLiveHost(client: SupabaseClient | null) {
   const projectId = useEditor(state => state.meta?.id);
   const sessionId = useLive(state => state.session?.id);
   useLiveHostChat(client, sessionId);
+  useLiveIdle(client, sessionId);
 
   // A session still running after a reload is picked up again.
   useEffect(() => {
@@ -37,7 +39,9 @@ export function useLiveHost(client: SupabaseClient | null) {
     let ready = false;
     let lastView: LiveView | null = null;
     let lastBoard: unknown = null;
-    const send = (event: string, payload: object) => { if (ready) void channel?.send({ type: "broadcast", event, payload }); };
+    const sendQuietly = (event: string, payload: object) => { if (ready) void channel?.send({ type: "broadcast", event, payload }); };
+    // Whatever the host sends is the host doing something, save the heartbeat below.
+    const send = (event: string, payload: object) => { useLive.getState().markActivity(); sendQuietly(event, payload); };
     const sendView = throttle((view: LiveView) => send("view", view), 60);
     const sendBoard = throttle(() => {
       const board = activeBoard(useEditor.getState());
@@ -69,7 +73,7 @@ export function useLiveHost(client: SupabaseClient | null) {
       if (board && board !== lastBoard && state.boardId === before.boardId) { lastBoard = board; sendBoard.call(); }
     });
     // While playing, the participants are kept in step now and then.
-    const heartbeat = setInterval(() => { const view = viewOf(useEditor.getState()); if (view?.playing) send("view", view); }, 2000);
+    const heartbeat = setInterval(() => { const view = viewOf(useEditor.getState()); if (view?.playing) sendQuietly("view", view); }, 2000);
     pitchPointer.add(sendPointer.call);
     objectDrag.add(sendDrag.call);
 
@@ -78,7 +82,7 @@ export function useLiveHost(client: SupabaseClient | null) {
       channel = client.channel(liveTopic(sessionId), { config: { private: true, presence: { key: "host" } } });
       channel
         .on("presence", { event: "sync" }, () => useLive.getState().set({ participants: participantsOf(channel!.presenceState()) }))
-        .on("presence", { event: "join" }, ({ key }) => { if (key !== "host") sync(); });
+        .on("presence", { event: "join" }, ({ key }) => { if (key !== "host") { useLive.getState().markActivity(); sync(); } });
       listenChat(channel);
       channel.subscribe((status, error) => {
           if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {

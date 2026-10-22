@@ -8,6 +8,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { BoardText, hasBoardText } from "./BoardText.tsx";
 import { LiveBadge } from "./live/LiveBadge.tsx";
+import { LiveNotice } from "./live/LiveButton.tsx";
 import { LivePanel } from "./live/LivePanel.tsx";
 import { useLive } from "./live/live-store.ts";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
@@ -53,6 +54,7 @@ export function Presenter({ onClose }: { onClose: () => void }) {
   const step = (by: number) => { const next = boards[boardIndex + by]; if (next) useEditor.getState().setBoard(next.id); };
   return (
     <div ref={root} className="tb-present" data-text={aside !== null}>
+      <LiveNotice />
       <header className="tb-present-top">
         {boards.length > 1 && <button type="button" className="tb-icon" onClick={() => step(-1)} disabled={boardIndex <= 0} aria-label="Föregående tavla">‹</button>}
         <strong className="tb-present-title">{board.name || "Tavla"}{boards.length > 1 && <small> {boardIndex + 1} av {boards.length}</small>}</strong>

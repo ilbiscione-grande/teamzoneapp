@@ -71,3 +71,10 @@ test("live chat: messages once and in order, refusals in words, hands in turn", 
   assert.match(chatError("too_fast"), /Vänta/);
   assert.deepEqual(raisedHands([{ n: 1, hand: 30 }, { n: 2, hand: null }, { n: 3, hand: 10 }]).map(person => person.n), [3, 1]);
 });
+
+test("live: a lesson with nothing happening is warned about, then over", async () => {
+  const { idleState, IDLE_LIMIT_MS, IDLE_WARNING_MS } = await import("../lib/tactics/live.ts");
+  assert.equal(idleState(0, 60_000), "active");
+  assert.equal(idleState(0, IDLE_WARNING_MS), "warning");
+  assert.equal(idleState(0, IDLE_LIMIT_MS + 1), "expired");
+});

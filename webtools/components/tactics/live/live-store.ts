@@ -19,6 +19,12 @@ type LiveState = {
   channelError: string;
   /** Hosting: sends on the lesson's channel while it is open. */
   send: ((event: string, payload: object) => void) | null;
+  /** Hosting: when the host last did something, and whether the lesson is about to end for want of it. */
+  activityAt: number;
+  idle: "active" | "warning";
+  /** Hosting: a word about the lesson, such as that it ended by itself. */
+  notice: string;
+  markActivity: () => void;
   set: (changes: Partial<Omit<LiveState, "set">>) => void;
 };
 
@@ -29,6 +35,10 @@ export const useLive = create<LiveState>(set => ({
   hostHere: false,
   channelError: "",
   send: null,
+  activityAt: 0,
+  idle: "active",
+  notice: "",
+  markActivity: () => set({ activityAt: Date.now(), idle: "active" }),
   set: changes => set(changes),
 }));
 

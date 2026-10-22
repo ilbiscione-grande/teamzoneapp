@@ -77,7 +77,13 @@ export function useLiveFollow(client: SupabaseClient, sessionId: string, me: Liv
         }
       });
     })();
+    // A lesson that ended by itself sends nothing; it is asked now and then.
+    const poll = setInterval(async () => {
+      const { data: open } = await client.schema("api").rpc("tactics_live_open", { target_session_id: sessionId });
+      if (open === false) { setState("ended"); if (channelRef.current) void client.removeChannel(channelRef.current); }
+    }, 120_000);
     return () => {
+      clearInterval(poll);
       disposed = true;
       if (channelRef.current) void client.removeChannel(channelRef.current);
       channelRef.current = null;
