@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { newDocument, newBoard } from "../lib/tactics/document.ts";
-import { applyBoard, joinError, liveLink, liveTopic, normalizeCode, throttle, viewChanged, type LiveView } from "../lib/tactics/live.ts";
+import { createPlayer, newDocument, newBoard } from "../lib/tactics/document.ts";
+import { applyBoard, applyMoves, joinError, liveLink, liveTopic, normalizeCode, throttle, viewChanged, type LiveView } from "../lib/tactics/live.ts";
 
 test("live: codes, links and topics", () => {
   assert.equal(normalizeCode(" k7p-2qx "), "K7P2QX");
@@ -21,6 +21,17 @@ test("live: a board from the host replaces the participant's, or is added", () =
   const added = applyBoard(document, newBoard("Ny"));
   assert.deepEqual(added.boards.map(board => board.name), ["Tavla 1", "Ny"]);
   assert.equal(document.boards[0].name, "Tavla 1", "the old document is untouched");
+});
+
+test("live: objects dragged by the host move on the participant's board", () => {
+  const document = newDocument("Tavla 1");
+  const board = document.boards[0];
+  const player = createPlayer({ x: 10, y: 10 }, "home", []);
+  const withPlayer = { ...document, boards: [{ ...board, frames: [{ ...board.frames[0], objects: [player] }] }] };
+  const moved = applyMoves(withPlayer, { boardId: board.id, frameIndex: 0, moves: { [player.id]: { x: 20, y: 15 } } });
+  const after = moved.boards[0].frames[0].objects[0];
+  assert.deepEqual([after.x, after.y], [20, 15]);
+  assert.equal(applyMoves(withPlayer, { boardId: "other", frameIndex: 0, moves: { [player.id]: { x: 1, y: 1 } } }).boards[0].frames[0].objects[0].x, 10);
 });
 
 test("live: what is worth sending of the host's view", () => {

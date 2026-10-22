@@ -11,7 +11,7 @@ import { dropBall } from "../../../lib/tactics/ball.ts";
 import { keepOnGrass } from "../../../lib/tactics/document.ts";
 import type { BallObject, TacticsObject } from "../../../lib/tactics/model.ts";
 import { activeObjects, useEditor } from "../store.ts";
-import { trashAt, useStage } from "./stage-context.ts";
+import { objectDrag, trashAt, useStage } from "./stage-context.ts";
 
 type Start = Map<string, { x: number; y: number }>;
 
@@ -71,6 +71,10 @@ export function useObjectDrag(item: TacticsObject) {
         shared.nodes.get(id)?.position({ x: start.x + dx, y: start.y + dy });
       });
       trashAt(shared, event.target.getStage(), true);
+      if (objectDrag.size) {
+        const moves = Object.fromEntries([...starts.current].map(([id, start]) => [id, { x: start.x + dx, y: start.y + dy }]));
+        objectDrag.forEach(listen => listen(moves));
+      }
     },
     onDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => {
       const own = starts.current.get(item.id);

@@ -3,10 +3,11 @@
 // Following a live lesson: the session's channel is listened to and the
 // board follows the host. A view moves the board, frame and playhead (a
 // playing board is played on here from where the host was); a board
-// replaces the participant's copy; the pointer shows where the host points.
+// replaces the participant's copy; a drag moves objects on the way; the
+// pointer shows where the host points.
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
-import { applyBoard, liveTopic, type LivePresence, type LiveView } from "../../../lib/tactics/live.ts";
+import { applyBoard, applyMoves, liveTopic, type LiveDrag, type LivePresence, type LiveView } from "../../../lib/tactics/live.ts";
 import type { Board, Point } from "../../../lib/tactics/model.ts";
 import { useEditor } from "../store.ts";
 import { useLive } from "./live-store.ts";
@@ -29,8 +30,10 @@ function applyBoardFromHost(board: Board) {
   if (document) useEditor.setState({ document: applyBoard(document, board) });
 }
 
-export function useLiveFollow(client: SupabaseClient, sessionId: string, me: LivePresence): FollowState {
+/** The follow state, and when the channel could not be opened, Realtime's own reason. */
+export function useLiveFollow(client: SupabaseClient, sessionId: string, me: LivePresence): { state: FollowState; detail: string } {
   const [state, setState] = useState<FollowState>("connecting");
+  const [detail, setDetail] = useState("");
   useEffect(() => {
     let channel: RealtimeChannel | null = null;
     let disposed = false;
@@ -41,6 +44,10 @@ export function useLiveFollow(client: SupabaseClient, sessionId: string, me: Liv
       channel
         .on("broadcast", { event: "view" }, ({ payload }) => applyView(payload as LiveView))
         .on("broadcast", { event: "board" }, ({ payload }) => applyBoardFromHost((payload as { board: Board }).board))
+        .on("broadcast", { event: "drag" }, ({ payload }) => {
+          const { document } = useEditor.getState();
+          if (document) useEditor.setState({ document: applyMoves(document, payload as LiveDrag) });
+        })
         .on("broadcast", { event: "pointer" }, ({ payload }) => useLive.getState().set({ pointer: (payload as { point: Point | null }).point }))
         .on("broadcast", { event: "ended" }, () => { setState("ended"); void channel?.unsubscribe(); })
         .on("broadcast", { event: "guests-off" }, () => { if (me.guest) { setState("removed"); void channel?.unsubscribe(); } })
@@ -48,9 +55,13 @@ export function useLiveFollow(client: SupabaseClient, sessionId: string, me: Liv
           const present = Object.values(channel!.presenceState<LivePresence>()).some(metas => metas.some(meta => meta.role === "host"));
           useLive.getState().set({ hostHere: present, ...(present ? {} : { pointer: null }) });
         })
-        .subscribe(status => {
+        .subscribe((status, error) => {
           if (status === "SUBSCRIBED") { setState(current => current === "connecting" ? "following" : current); void channel!.track(me); }
-          if (status === "CHANNEL_ERROR") setState(current => current === "connecting" ? "failed" : current);
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            console.error("tactics live channel", status, error);
+            setDetail(error?.message ? `${status}: ${error.message}` : status);
+            setState(current => current === "connecting" ? "failed" : current);
+          }
         });
     })();
     return () => {
@@ -59,5 +70,5 @@ export function useLiveFollow(client: SupabaseClient, sessionId: string, me: Liv
       useLive.getState().set({ pointer: null, hostHere: false });
     };
   }, [client, sessionId, me]);
-  return state;
+  return { state, detail };
 }

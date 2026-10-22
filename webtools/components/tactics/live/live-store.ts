@@ -15,6 +15,8 @@ type LiveState = {
   /** Participating: the host's pointer on the pitch, and whether the host is connected. */
   pointer: Point | null;
   hostHere: boolean;
+  /** Hosting: why the channel could not be opened, when it could not. */
+  channelError: string;
   set: (changes: Partial<Omit<LiveState, "set">>) => void;
 };
 
@@ -23,6 +25,7 @@ export const useLive = create<LiveState>(set => ({
   participants: [],
   pointer: null,
   hostHere: false,
+  channelError: "",
   set: changes => set(changes),
 }));
 

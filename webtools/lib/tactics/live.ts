@@ -1,7 +1,9 @@
 // Live lessons: what the host sends over the session's channel and how a
 // participant applies it. The host sends where the board is (board, frame,
-// playhead, playing), the board in hand when it changes, and a pointer;
-// participants only listen. Pure, so it can be tested and later replayed.
+// playhead, playing), the board in hand when it changes, objects while they
+// are dragged, and a pointer; participants only listen. Pure, so it can be
+// tested and later replayed.
+import { updateFrame } from "./document.ts";
 import type { Board, Point, ProjectDocument, ProjectKind } from "./model.ts";
 
 export type LiveSession = { id: string; code: string; project_id: string; allow_guests: boolean; live: boolean; created_at: string };
@@ -17,8 +19,12 @@ export type LiveEvent =
   | { event: "view"; payload: LiveView }
   | { event: "board"; payload: { board: Board } }
   | { event: "pointer"; payload: { point: Point | null } }
+  | { event: "drag"; payload: LiveDrag }
   | { event: "guests-off"; payload: Record<string, never> }
   | { event: "ended"; payload: Record<string, never> };
+
+/** Objects on their way while the host drags them: where each is now. */
+export type LiveDrag = { boardId: string; frameIndex: number; moves: Record<string, Point> };
 
 /** Who is on the channel: the host, or a participant with their name. */
 export type LivePresence = { role: "host" | "participant"; name: string; guest: boolean };
@@ -37,6 +43,12 @@ export const liveLink = (origin: string, code: string) => `${origin}/live/${code
 export function applyBoard(document: ProjectDocument, board: Board): ProjectDocument {
   const known = document.boards.some(item => item.id === board.id);
   return { ...document, boards: known ? document.boards.map(item => item.id === board.id ? board : item) : [...document.boards, board] };
+}
+
+/** The dragged objects moved in the participant's copy; balls held by a moved player go along. */
+export function applyMoves(document: ProjectDocument, drag: LiveDrag): ProjectDocument {
+  return updateFrame(document, drag.boardId, drag.frameIndex, objects =>
+    objects.map(item => drag.moves[item.id] ? { ...item, ...drag.moves[item.id] } : item));
 }
 
 /** Whether two views differ enough to send: anything but the playhead while playing (played on locally). */

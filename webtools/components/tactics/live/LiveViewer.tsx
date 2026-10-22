@@ -35,7 +35,7 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
     setShowText(hasBoardText(useEditor.getState()));
     setReady(true);
   }, [joined]);
-  const state = useLiveFollow(client, joined.id, me);
+  const { state, detail } = useLiveFollow(client, joined.id, me);
   usePlayback();
   const board = useEditor(activeBoard);
   const boards = useEditor(store => store.document?.boards ?? NONE);
@@ -44,7 +44,12 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
   const hostHere = useLive(store => store.hostHere);
 
   if (state === "ended" || state === "removed" || state === "failed") {
-    return <div className="wt-wrap wt-section"><p className="wt-status" role="status">{ended[state]}</p></div>;
+    return (
+      <div className="wt-wrap wt-section">
+        <p className="wt-status" role="status">{ended[state]}</p>
+        {state === "failed" && detail && <p className="wt-small">Felet från anslutningen: {detail}</p>}
+      </div>
+    );
   }
   if (!ready || !board) return null;
   const frame = Math.floor(playhead) + 1;

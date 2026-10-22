@@ -16,6 +16,7 @@ export function LiveDialog({ onClose }: { onClose: () => void }) {
   const meta = useEditor(state => state.meta);
   const session = useLive(state => state.session);
   const participants = useLive(state => state.participants);
+  const channelError = useLive(state => state.channelError);
   const [guests, setGuests] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -104,6 +105,7 @@ export function LiveDialog({ onClose }: { onClose: () => void }) {
           </>
         )}
         {error && <p className="wt-error" role="alert">{error}</p>}
+        {session && channelError && <p className="wt-error" role="alert">Kanalen till deltagarna kunde inte öppnas ({channelError}).</p>}
       </div>
     </div>
   );
