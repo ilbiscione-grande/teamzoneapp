@@ -110,9 +110,19 @@ void main() {
     expect(tester.widget<ChoiceChip>(midfield).selected, isTrue);
     await tester.tap(striker);
     await tester.pump();
+    // The shirt number goes with the positions.
+    final number = find.byKey(const ValueKey('jersey-number'));
+    await tester.ensureVisible(number);
+    await tester.enterText(number, '-1');
+    await tester.tap(find.byKey(const ValueKey('save-team-person-details')));
+    await tester.pumpAndSettle();
+    expect(find.text('Tröjnumret är ett heltal 0–999.'), findsOneWidget);
+    expect(roster.savedMainPosition, isNull);
+    await tester.enterText(number, '9');
     await tester.tap(find.byKey(const ValueKey('save-team-person-details')));
     await tester.pumpAndSettle();
     expect(roster.savedMainPosition, 'striker');
+    expect(roster.savedJerseyNumber, 9);
     expect(
       find.text(
         'Centralanfallare (huvudposition) · Central mittfältare · Vänsterytter',
@@ -124,7 +134,7 @@ void main() {
     await tester.pumpAndSettle();
     final row = find.byKey(const ValueKey('roster-player-ada'));
     expect(
-      find.descendant(of: row, matching: find.text('Centralanfallare')),
+      find.descendant(of: row, matching: find.text('#9 · Centralanfallare')),
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('roster-avatar-ada')), findsOneWidget);
@@ -1222,6 +1232,7 @@ class _Roster extends UnconfiguredRosterServices {
   final detailKeys = <String>[];
   String? savedMainPosition;
   String? savedMainTitle;
+  int? savedJerseyNumber;
   List<String> grantable = const [];
   final permissionCalls = <(String, List<String>, List<String>, String?)>[];
 
@@ -1291,12 +1302,14 @@ class _Roster extends UnconfiguredRosterServices {
     required List<String> customPositions,
     String? mainPosition,
     String? mainTitle,
+    int? jerseyNumber,
     required int expectedRevision,
     required String idempotencyKey,
   }) async {
     detailKeys.add(idempotencyKey);
     savedMainPosition = mainPosition;
     savedMainTitle = mainTitle;
+    savedJerseyNumber = jerseyNumber;
     if (failWith != null) throw failWith!;
     roles = [
       for (final r in roles)
@@ -1314,6 +1327,7 @@ class _Roster extends UnconfiguredRosterServices {
             customPositions: customPositions,
             mainPosition: mainPosition,
             mainTitle: mainTitle,
+            jerseyNumber: jerseyNumber,
             detailsRevision: expectedRevision + 1,
           ),
     ];

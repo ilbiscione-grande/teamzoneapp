@@ -99,15 +99,19 @@ String _anyPositionLabel(AppStrings strings, String position) =>
     ? _positionLabel(strings, position)
     : position;
 
-/// The main position as shown in the squad list, or null without one.
-/// For the squad list: the main position, else the first one chosen.
+/// For the squad list: the shirt number and the main position, else the
+/// first one chosen; null without either.
 String? _listPositionLabel(AppStrings strings, TeamRole? role) {
   if (role == null) return null;
   final key =
       role.mainPosition ??
       role.positions.firstOrNull ??
       role.customPositions.firstOrNull;
-  return key == null ? null : _anyPositionLabel(strings, key);
+  final parts = [
+    if (role.jerseyNumber != null) '#${role.jerseyNumber}',
+    if (key != null) _anyPositionLabel(strings, key),
+  ];
+  return parts.isEmpty ? null : parts.join(' · ');
 }
 
 /// Positions in catalog order and then own labels; a general position is
@@ -209,6 +213,9 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
   late String? _main = _person.mainPosition;
   late String? _mainTitle = _person.mainTitle;
   late int _revision = _person.detailsRevision;
+  late final _number = TextEditingController(
+    text: _person.jerseyNumber?.toString() ?? '',
+  );
   final _customTitle = TextEditingController();
   final _customPosition = TextEditingController();
   // A new key per distinct selection; a retry of the same selection reuses it.
@@ -225,6 +232,7 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
 
   @override
   void dispose() {
+    _number.dispose();
     _customTitle.dispose();
     _customPosition.dispose();
     super.dispose();
@@ -300,6 +308,7 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
           _customPositions = [...person.customPositions];
           _main = person.mainPosition;
           _mainTitle = person.mainTitle;
+          _number.text = person.jerseyNumber?.toString() ?? '';
           _revision = person.detailsRevision;
           _key = _newUuid();
           _error = null;
@@ -321,9 +330,24 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
     }
   }
 
+  /// The shirt number written, null when empty; invalid stays invalid.
+  ({int? value, bool valid}) get _jerseyNumber {
+    final text = _number.text.trim();
+    if (text.isEmpty) return (value: null, valid: true);
+    final value = int.tryParse(text);
+    return (value: value, valid: value != null && value >= 0 && value <= 999);
+  }
+
   Future<void> _save() async {
     if (_busy || _stale) return;
     final strings = AppStrings.of(context);
+    final number = _jerseyNumber;
+    if (_isPlayer && !number.valid) {
+      setState(
+        () => _error = strings.feature('Tröjnumret är ett heltal 0–999.'),
+      );
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -340,6 +364,7 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
             customPositions: _isPlayer ? _customPositions : const [],
             mainPosition: _isPlayer ? _main : null,
             mainTitle: _isLeader ? _mainTitle : null,
+            jerseyNumber: _isPlayer ? number.value : null,
             expectedRevision: _revision,
             idempotencyKey: _key,
           )
@@ -352,6 +377,8 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
           _error = strings.feature(
             _stale
                 ? 'Uppgifterna har ändrats av någon annan. Hämta senaste uppgifter innan du sparar.'
+                : error.toString().contains('jersey_number_taken')
+                ? 'Tröjnumret används redan av en annan spelare i laget.'
                 : 'Kunde inte spara. Kontrollera anslutningen och din behörighet och försök igen.',
           );
         });
@@ -513,6 +540,23 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
                   ],
                 ],
                 if (_isPlayer) ...[
+                  _heading(strings.feature('Tröjnummer')),
+                  SizedBox(
+                    width: 120,
+                    child: TextField(
+                      key: const ValueKey('jersey-number'),
+                      controller: _number,
+                      enabled: !_busy && !_stale,
+                      keyboardType: TextInputType.number,
+                      maxLength: 3,
+                      onChanged: (_) => _changed(() {}),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        counterText: '',
+                        prefixText: '# ',
+                      ),
+                    ),
+                  ),
                   _heading(
                     '${strings.feature('Position')} · ${_sportLabel(strings, _data.sport)}',
                   ),

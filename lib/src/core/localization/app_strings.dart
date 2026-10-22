@@ -284,6 +284,11 @@ class AppStrings {
     // Laget → Statistik, the fifth bottom-bar button and Arbetsytor.
     'Lagstatistik': 'Team statistics',
     'Turneringar': 'Tournaments',
+    'Tröjnummer': 'Shirt number',
+    'Tröjnumret är ett heltal 0–999.':
+        'The shirt number is a whole number 0–999.',
+    'Tröjnumret används redan av en annan spelare i laget.':
+        'Another player in the team already has that shirt number.',
     '30 dagar': '30 days',
     '90 dagar': '90 days',
     'I år': 'This year',
