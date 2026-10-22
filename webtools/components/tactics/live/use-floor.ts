@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import { throttle } from "../../../lib/tactics/live.ts";
 import { objectDrag, objectDrop } from "../stage/stage-context.ts";
 import { useEditor } from "../store.ts";
+import { useDraw } from "./draw-store.ts";
 
 type Moves = Record<string, { x: number; y: number }>;
 
@@ -19,6 +20,10 @@ export function useFloorMoves(client: SupabaseClient, sessionId: string, hasFloo
       if (!boardId) return;
       void client.schema("api").rpc("move_tactics_live_floor", {
         target_session_id: sessionId, target_board_id: boardId, target_frame_index: frameIndex, object_moves: moves, dropped,
+      }).then(({ error }) => {
+        // Said under the board, so a move that did not reach the host is not silent.
+        if (error) useDraw.getState().set({ error: `Flytten nådde inte läraren (${error.message}).` });
+        else if (dropped) useDraw.getState().set({ error: "" });
       });
     };
     const onTheWay = throttle((moves: Moves) => send(moves, false), 150);

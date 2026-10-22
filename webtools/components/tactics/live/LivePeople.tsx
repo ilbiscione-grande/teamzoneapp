@@ -7,9 +7,13 @@ import type { LiveSession } from "../../../lib/tactics/live.ts";
 import { useDraw } from "./draw-store.ts";
 import { useLive } from "./live-store.ts";
 
+/** "14:05:31" for when a move came in. */
+const clockSeconds = (at: number) => new Date(at).toLocaleTimeString("sv-SE");
+
 export function LivePeople({ client, session, onError }: { client: SupabaseClient; session: LiveSession; onError: (message: string) => void }) {
   const participants = useLive(state => state.participants);
   const floorHolder = useDraw(state => state.floorHolder);
+  const floorMoveAt = useLive(state => state.floorMoveAt);
   const send = (event: string, payload: object) => useLive.getState().send?.(event, payload);
 
   const mute = async (key: string, muted: boolean) => {
@@ -31,7 +35,7 @@ export function LivePeople({ client, session, onError }: { client: SupabaseClien
     <ul className="tb-live-people tb-live-people-list">
       {participants.map(person => (
         <li key={person.key} data-floor={person.key === floorHolder}>
-          <span>{person.hand ? "✋ " : ""}{person.name}{person.guest && <small> gäst</small>}{person.key === floorHolder && <small> har ordet</small>}</span>
+          <span>{person.hand ? "✋ " : ""}{person.name}{person.guest && <small> gäst</small>}{person.key === floorHolder && <small> har ordet{floorMoveAt > 0 && `, flyttade ${clockSeconds(floorMoveAt)}`}</small>}</span>
           <span className="tb-live-person-actions">
             <button type="button" className="tb-link" onClick={() => void floor(person.key === floorHolder ? null : person.key)}>
               {person.key === floorHolder ? "Ta tillbaka ordet" : "Ge ordet"}

@@ -117,6 +117,7 @@ export function useLiveHost(client: SupabaseClient | null) {
 /** Moves by the one with the floor: shown on the way, taken into the board (and saved) where dropped. */
 function takeFloorMove(move: FloorMove) {
   useLive.getState().markActivity();
+  useLive.getState().set({ floorMoveAt: Date.now() });
   const { document, change } = useEditor.getState();
   if (!document) return;
   if (move.dropped) change(current => applyMoves(current, move));

@@ -24,6 +24,8 @@ type LiveState = {
   idle: "active" | "warning";
   /** Hosting: a word about the lesson, such as that it ended by itself. */
   notice: string;
+  /** Hosting: when a move by the one with the floor last came in. */
+  floorMoveAt: number;
   markActivity: () => void;
   set: (changes: Partial<Omit<LiveState, "set">>) => void;
 };
@@ -38,6 +40,7 @@ export const useLive = create<LiveState>(set => ({
   activityAt: 0,
   idle: "active",
   notice: "",
+  floorMoveAt: 0,
   markActivity: () => set({ activityAt: Date.now(), idle: "active" }),
   set: changes => set(changes),
 }));
