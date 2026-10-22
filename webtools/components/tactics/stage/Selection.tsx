@@ -1,7 +1,8 @@
 "use client";
 
 // Handles for the selection: a transformer to turn and resize equipment,
-// areas and text, and for a single line its two ends and a middle point that
+// areas and text with one corner handle (equipment grows around its middle,
+// so the object itself stays easy to see), and for a single line its two ends and a middle point that
 // bends it. Handles are sized for a finger whatever the zoom.
 import type Konva from "konva";
 import { useEffect, useRef, useState } from "react";
@@ -27,7 +28,7 @@ function Transform({ items, upright }: { items: TacticsObject[]; upright: number
   const resizable = single !== null && (single.type === "rect" || single.type === "ellipse" || single.type === "text");
   return (
     <Transformer ref={ref} rotateEnabled flipEnabled={false} keepRatio={!resizable}
-      enabledAnchors={resizable ? ["top-left", "top-right", "bottom-left", "bottom-right", "middle-left", "middle-right", "top-center", "bottom-center"] : ["top-left", "top-right", "bottom-left", "bottom-right"]}
+      enabledAnchors={["bottom-right"]} centeredScaling={!resizable} padding={10}
       anchorSize={22} anchorCornerRadius={11} borderStroke="#facc15" anchorStroke="#facc15" rotationSnaps={[0, 45, 90, 135, 180, 225, 270, 315]}
       ignoreStroke
       onTransformEnd={() => {
