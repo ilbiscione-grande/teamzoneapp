@@ -49,7 +49,7 @@ export function TemplateDialog({ onClose }: { onClose: () => void }) {
           </>
         ) : (
           <>
-            <p className="tb-hint">En mall är tavlor att börja från: spelare, linjer, ramar och anteckningar följer med. Kopplingar till spelare i laget följer inte med.</p>
+            <p className="tb-hint">En mall är tavlor att börja från: spelare, linjer, frames och anteckningar följer med. Kopplingar till spelare i laget följer inte med.</p>
             {boards.length > 1 && (
               <div className="tb-field" role="radiogroup" aria-label="Vad som sparas">
                 <label className="tb-check"><input type="radio" name="scope" checked={scope === "project"} onChange={() => { setScope("project"); setName(meta?.name ?? ""); }} />Hela projektet ({boards.length} tavlor)</label>

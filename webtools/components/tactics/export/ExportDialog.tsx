@@ -79,13 +79,13 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
         )}
         {animated && (
           <fieldset className="tb-choice">
-            <legend>Ramar</legend>
-            <label><input type="radio" checked={frames === "grid"} onChange={() => setFrames("grid")} />Alla ramar, fyra per sida</label>
-            <label><input type="radio" checked={frames === "each"} onChange={() => setFrames("each")} />Alla ramar, en per sida</label>
-            <label><input type="radio" checked={frames === "last"} onChange={() => setFrames("last")} />Bara sista ramen</label>
+            <legend>Frames</legend>
+            <label><input type="radio" checked={frames === "grid"} onChange={() => setFrames("grid")} />Alla frames, fyra per sida</label>
+            <label><input type="radio" checked={frames === "each"} onChange={() => setFrames("each")} />Alla frames, en per sida</label>
+            <label><input type="radio" checked={frames === "last"} onChange={() => setFrames("last")} />Bara sista framen</label>
           </fieldset>
         )}
-        <p className="tb-hint">A4 liggande, med projektets och tavlans namn, ramarnas nummer och anteckningar.</p>
+        <p className="tb-hint">A4 liggande, med projektets och tavlans namn, numret och anteckningen för varje frame.</p>
         {error && <p className="wt-error" role="alert">{error}</p>}
         <div className="tb-actions">
           <button type="button" className="wt-button" disabled={progress !== null} onClick={() => void make()}>{progress ?? "Skapa PDF"}</button>

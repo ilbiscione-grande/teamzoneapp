@@ -102,7 +102,7 @@ function Motion({ item, frameIndex }: { item: TacticsObject; frameIndex: number 
   const patch = (changes: Partial<TacticsObject>) => useEditor.getState().patch({ [item.id]: changes });
   return (
     <>
-      {frameIndex > 0 && <p className="tb-hint">Effekt i ramen: {item.effect ? effects[item.effect].label : "ingen"}. Effekter väljer du under Ramar.</p>}
+      {frameIndex > 0 && <p className="tb-hint">Effekt i framen: {item.effect ? effects[item.effect].label : "ingen"}. Effekter väljer du under Frames.</p>}
       {frameIndex > 0 && item.pathControl && <button type="button" className="tb-link" onClick={() => patch({ pathControl: null })}>Rak väg hit</button>}
       {frameIndex > 0 && !item.pathControl && <p className="tb-hint">Dra i punkten mitt på spåret för att böja vägen hit.</p>}
     </>

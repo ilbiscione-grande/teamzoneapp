@@ -46,7 +46,7 @@ export function BoardSettings({ board }: { board: Board }) {
         <textarea rows={4} maxLength={2000} value={board.description ?? ""} placeholder="T.ex. organisation, anvisningar och coachpunkter. Visas bredvid tavlan i visningsläget."
           onChange={event => change(current => ({ ...current, description: event.target.value }))} />
       </label>
-      <p className="tb-hint">Anteckningar för varje ram skriver du under Ramar.</p>
+      <p className="tb-hint">Anteckningar för varje frame skriver du under Frames.</p>
       <label className="tb-check"><input type="checkbox" checked={board.showNames} onChange={event => change(current => ({ ...current, showNames: event.target.checked }))} />Visa spelarnas namn</label>
       <label className="tb-check"><input type="checkbox" checked={board.showPositions ?? false} onChange={event => change(current => ({ ...current, showPositions: event.target.checked }))} />Visa spelarnas positioner</label>
       <label className="tb-check"><input type="checkbox" checked={attachBall} onChange={event => setAttachBall(event.target.checked)} />Bollen fäster vid spelare</label>

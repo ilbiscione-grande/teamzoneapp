@@ -26,7 +26,7 @@ export function FramesPanel({ board }: { board: Board }) {
     setFrame(frameIndex + 1);
   };
   const remove = () => {
-    if (frames.length < 2 || !window.confirm(`Ta bort ram ${frameIndex + 1}?`)) return;
+    if (frames.length < 2 || !window.confirm(`Ta bort frame ${frameIndex + 1}?`)) return;
     changeBoard(current => removeFrame(current, frameIndex));
     setFrame(Math.min(frameIndex, frames.length - 2));
   };
@@ -44,14 +44,14 @@ export function FramesPanel({ board }: { board: Board }) {
 
   return (
     <div className="tb-inspector tb-frames-panel">
-      <h3>Ramar</h3>
+      <h3>Frames</h3>
       <ol className="tb-frame-list">
         {frames.map((item, index) => {
           const count = item.objects.filter(object => object.effect).length;
           return (
             <li key={item.id}>
               <button type="button" aria-current={index === frameIndex} onClick={() => setFrame(index)}>
-                <strong>Ram {index + 1}</strong>
+                <strong>Frame {index + 1}</strong>
                 <span>{[index > 0 ? seconds(item.durationMs) : "Start", count > 0 ? `${count} ${count === 1 ? "effekt" : "effekter"}` : null, item.note?.trim() || null].filter(Boolean).join(" · ")}</span>
               </button>
             </li>
@@ -59,14 +59,14 @@ export function FramesPanel({ board }: { board: Board }) {
         })}
       </ol>
       <div className="tb-actions">
-        <button type="button" className="wt-button small" onClick={add} disabled={playing}>+ Ny ram</button>
-        <button type="button" className="wt-button secondary small" onClick={() => move(-1)} disabled={playing || frameIndex === 0} aria-label="Flytta ramen bakåt">↑</button>
-        <button type="button" className="wt-button secondary small" onClick={() => move(1)} disabled={playing || frameIndex >= frames.length - 1} aria-label="Flytta ramen framåt">↓</button>
+        <button type="button" className="wt-button small" onClick={add} disabled={playing}>+ Ny frame</button>
+        <button type="button" className="wt-button secondary small" onClick={() => move(-1)} disabled={playing || frameIndex === 0} aria-label="Flytta framen bakåt">↑</button>
+        <button type="button" className="wt-button secondary small" onClick={() => move(1)} disabled={playing || frameIndex >= frames.length - 1} aria-label="Flytta framen framåt">↓</button>
         <button type="button" className="wt-button secondary small" onClick={remove} disabled={playing || frames.length < 2}>Ta bort</button>
       </div>
-      <p className="tb-hint">En ny ram är en kopia av den du står på. Flytta spelarna i den, så spelas rörelsen upp mellan ramarna.</p>
+      <p className="tb-hint">En ny frame är en kopia av den du står på. Flytta spelarna i den, så spelas rörelsen upp mellan dina frames.</p>
 
-      <h3>Ram {frameIndex + 1}</h3>
+      <h3>Frame {frameIndex + 1}</h3>
       {frameIndex > 0 && (
         <label className="tb-field">Förflyttning hit
           <select value={frame.durationMs} onChange={event => changeBoard(current => setFrameDuration(current, frameIndex, Number(event.target.value)))}>
@@ -81,14 +81,14 @@ export function FramesPanel({ board }: { board: Board }) {
 
       <h3>Effekter</h3>
       {frameIndex === 0 ? (
-        <p className="tb-hint">Effekter spelas när tavlan går in i en ram. Välj ram 2 eller senare{frames.length < 2 ? ", eller lägg till en ny ram" : ""}.</p>
+        <p className="tb-hint">Effekter spelas när tavlan går in i en frame. Välj frame 2 eller senare{frames.length < 2 ? ", eller lägg till en ny frame" : ""}.</p>
       ) : (
         <>
           {selected.length === 0 ? (
-            <p className="tb-hint">Markera ett eller flera objekt på planen för att ge dem en effekt i ram {frameIndex + 1}.</p>
+            <p className="tb-hint">Markera ett eller flera objekt på planen för att ge dem en effekt i frame {frameIndex + 1}.</p>
           ) : (
             <>
-              <p className="tb-hint">{selected.length === 1 ? objectLabel(selected[0], board) : `${selected.length} markerade`}: välj effekt när ram {frameIndex + 1} nås.</p>
+              <p className="tb-hint">{selected.length === 1 ? objectLabel(selected[0], board) : `${selected.length} markerade`}: välj effekt när frame {frameIndex + 1} nås.</p>
               <div className="tb-effects">
                 {effectKinds.map(kind => {
                   const suits = selected.some(item => effectSuits(kind, item));
@@ -106,12 +106,12 @@ export function FramesPanel({ board }: { board: Board }) {
             </>
           )}
           {withEffect.length > 0 && (
-            <ul className="tb-effect-list" aria-label={`Effekter i ram ${frameIndex + 1}`}>
+            <ul className="tb-effect-list" aria-label={`Effekter i frame ${frameIndex + 1}`}>
               {withEffect.map(item => (
                 <li key={item.id} data-selected={selection.includes(item.id)}>
                   <button type="button" className="tb-effect-name" onClick={() => select([item.id])}>
                     {objectLabel(item, board)}
-                    <small>{before.has(item.id) ? "finns sedan förut" : "ny i ramen"}</small>
+                    <small>{before.has(item.id) ? "finns sedan förut" : "ny i framen"}</small>
                   </button>
                   <select value={item.effect ?? ""} aria-label={`Effekt för ${objectLabel(item, board)}`}
                     onChange={event => patch({ [item.id]: { effect: (event.target.value || null) as Effect | null } })}>
@@ -123,7 +123,7 @@ export function FramesPanel({ board }: { board: Board }) {
             </ul>
           )}
           <div className="tb-actions">
-            <button type="button" className="wt-button secondary small" disabled={playing} onClick={() => preview(frameIndex)}>▶ Spela ram {frameIndex} → {frameIndex + 1}</button>
+            <button type="button" className="wt-button secondary small" disabled={playing} onClick={() => preview(frameIndex)}>▶ Spela frame {frameIndex} → {frameIndex + 1}</button>
           </div>
           <p className="tb-hint">Nya objekt tonar in och borttagna tonar ut av sig själva.</p>
         </>

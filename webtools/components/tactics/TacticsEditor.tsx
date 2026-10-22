@@ -41,7 +41,7 @@ export function TacticsWorkspace() {
   useEffect(() => { if (selectionCount > 0) setPanel(current => current === "frames" ? current : "properties"); }, [selectionCount]);
   if (!board) return null;
   if (presenting) return <Presenter onClose={() => setPresenting(false)} />;
-  const tabs: [Panel, string][] = [["properties", selectionCount ? "Egenskaper" : "Tavlan"], ["frames", "Ramar"], ["objects", "Objekt"], ["squad", "Lag"]];
+  const tabs: [Panel, string][] = [["properties", selectionCount ? "Egenskaper" : "Tavlan"], ["frames", "Frames"], ["objects", "Objekt"], ["squad", "Lag"]];
   return (
     <div className="tb-editor" data-panel={panelOpen}>
       <TopBar onPresent={() => setPresenting(true)} />

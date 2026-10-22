@@ -130,7 +130,7 @@ test("PDF pages: one picture a page, four frames to a page, or the last frame", 
   const grid = layoutPages(boards, [0, 1], "grid");
   assert.deepEqual(grid.map(page => [page.title, page.placements.length]), [["Uppställning", 1], ["Anfall", 4], ["Anfall", 1]]);
   assert.equal(grid[0].placements[0].caption, null, "a still board has no frame captions");
-  assert.equal(grid[1].placements[1].caption, "Ram 2 av 5");
+  assert.equal(grid[1].placements[1].caption, "Frame 2 av 5");
   assert.equal(grid[1].placements[1].note, "Djupledslöpning");
   for (const page of grid) for (const item of page.placements) {
     assert.ok(item.x >= PAGE.margin - 1e-9 && item.x + item.width <= PAGE.width - PAGE.margin + 1e-9, "inside the margins");

@@ -12,7 +12,7 @@ export type Placement = {
   y: number;
   width: number;
   height: number;
-  /** "Ram 2 av 4" and the frame's note, under the picture. */
+  /** "Frame 2 av 4" and the frame's note, under the picture. */
   caption: string | null;
   note: string | null;
 };
@@ -44,7 +44,7 @@ export function layoutPages(boards: Board[], boardIndexes: number[], frames: Fra
     if (!board) continue;
     const count = board.frames.length;
     const chosen = count === 1 || frames === "last" ? [count - 1] : board.frames.map((_, index) => index);
-    const caption = (index: number) => count > 1 && frames !== "last" ? `Ram ${index + 1} av ${count}` : null;
+    const caption = (index: number) => count > 1 && frames !== "last" ? `Frame ${index + 1} av ${count}` : null;
     const note = (index: number) => board.frames[index]?.note?.trim() || null;
     if (frames === "grid" && chosen.length > 1) {
       // Four to a page, two by two.

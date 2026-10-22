@@ -67,7 +67,7 @@ export function Presenter({ onClose }: { onClose: () => void }) {
             {description ? <p>{description}</p> : <p className="tb-present-empty">Tavlan har ingen beskrivning. Skriv en under Tavlan i redigeringen.</p>}
             {note && (
               <>
-                <h3>Ram {frameIndex + 1}</h3>
+                <h3>Frame {frameIndex + 1}</h3>
                 <p>{note}</p>
               </>
             )}
