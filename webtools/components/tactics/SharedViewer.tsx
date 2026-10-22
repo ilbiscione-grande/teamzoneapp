@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { normalizeDocument } from "../../lib/tactics/document.ts";
 import type { SharedTactics } from "../../lib/tactics/shared.ts";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
+import { BigQr } from "./QrCode.tsx";
 import { activeBoard, useEditor, NONE } from "./store.ts";
 import { Timeline } from "./timeline/Timeline.tsx";
 import { kindLabels } from "./TopBar.tsx";
@@ -16,6 +17,7 @@ const BoardStage = dynamic(() => import("./stage/BoardStage.tsx"), { ssr: false,
 
 export function SharedViewer({ shared }: { shared: SharedTactics }) {
   const [ready, setReady] = useState(false);
+  const [qr, setQr] = useState(false);
   const board = useEditor(activeBoard);
   const boards = useEditor(state => state.document?.boards ?? NONE);
   const boardId = useEditor(state => state.boardId);
@@ -32,10 +34,13 @@ export function SharedViewer({ shared }: { shared: SharedTactics }) {
     <div className="tb-editor tb-viewer">
       <header className="tb-top">
         <div className="tb-top-row">
+          <span className="tb-viewer-mark" aria-hidden="true">TZ</span>
           <div className="tb-viewer-title">
             <strong>{shared.name}</strong>
             <span>{[kindLabels[shared.kind], shared.team_name].filter(Boolean).join(" · ")}</span>
           </div>
+          <span className="tb-spacer" />
+          <button type="button" className="tb-icon tb-pdf" onClick={() => setQr(true)} title="Visa länken som QR-kod">QR</button>
         </div>
         {boards.length > 1 && (
           <div className="tb-boards" role="tablist" aria-label="Tavlor">
@@ -47,6 +52,7 @@ export function SharedViewer({ shared }: { shared: SharedTactics }) {
           </div>
         )}
       </header>
+      {qr && <BigQr text={window.location.href} title={shared.name} onClose={() => setQr(false)} />}
       <div className="tb-center">
         <ErrorBoundary label="Tavlan"><BoardStage editable={false} /></ErrorBoundary>
         <ErrorBoundary label="Tidslinjen"><Timeline board={board} readOnly /></ErrorBoundary>

@@ -114,3 +114,18 @@ test("undo and redo step through whole documents", () => {
   for (let i = 0; i < HISTORY_LIMIT + 5; i++) long = record(long, a);
   assert.equal(long.past.length, HISTORY_LIMIT);
 });
+
+test("a share link's QR code has its finder squares and draws as runs", async () => {
+  const { qrModules, qrPath } = await import("../lib/tactics/qr.ts");
+  const modules = qrModules("https://teamzoneapp-webtools--teamzoneapp-b02a2.europe-west4.hosted.app/delad/0a1518d7a70b4ef3aba659a2d17de366a7d836b8");
+  const size = modules.length;
+  assert.ok(size >= 21 && (size - 17) % 4 === 0, "a QR size");
+  // The three finder patterns: dark corners with a light ring inside.
+  for (const [r, c] of [[0, 0], [0, size - 7], [size - 7, 0]]) {
+    assert.equal(modules[r][c], true);
+    assert.equal(modules[r + 1][c + 1], false);
+    assert.equal(modules[r + 3][c + 3], true);
+  }
+  const path = qrPath([[true, true, false, true]], 0);
+  assert.equal(path, "M0 0h2v1h-2zM3 0h1v1h-1z");
+});

@@ -183,3 +183,18 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
 .tb-choice legend { padding: 0 6px; font-weight: 700; font-size: .9rem; }
 .tb-choice label { display: flex; align-items: center; gap: 8px; font-size: .92rem; }
 .tb-choice input { accent-color: var(--wt-brand); width: 18px; height: 18px; }
+
+/* A shared board stands alone: no Webtools header (no sign-in in sight). */
+body:has(.tb-viewer) .wt-header { display: none; }
+.tb-viewer-mark { display: inline-grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 8px; background: var(--wt-accent); color: var(--wt-accent-ink); font-weight: 800; font-size: .9rem; }
+
+/* More ways to share a link, and its QR code. */
+.tb-share-ways { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; font-size: .88rem; }
+.tb-share-ways a { color: var(--wt-brand); font-weight: 600; }
+.tb-share-ways .tb-link { margin-left: auto; color: #b91c1c; }
+.tb-qr-box { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 10px; border-radius: 8px; background: var(--wt-bg-alt); }
+.tb-qr { display: block; border-radius: 6px; }
+.tb-qr-actions { flex: 1 1 180px; display: grid; gap: 8px; justify-items: start; }
+.tb-bigqr { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; align-content: center; gap: 18px; padding: 20px; background: #ffffff; color: var(--wt-ink); text-align: center; cursor: pointer; }
+.tb-bigqr strong { font-size: clamp(1.4rem, 4vw, 2.4rem); text-transform: uppercase; }
+.tb-bigqr span { color: var(--wt-muted); font-size: 1rem; }
