@@ -31,6 +31,15 @@
         "Object.assign(process.env,{SUPABASE_URL:'https://hgcshgunvooyudvrcpig.supabase.co',SUPABASE_PUBLISHABLE_KEY:'sb_publishable_lOnfOqPc-jBxRE28IXmEhQ_sRKFNw8O'});require('child_process').spawn('npm',['run','dev'],{cwd:'webtools',stdio:'inherit',shell:true}).on('exit',c=>process.exit(c??0))"
       ],
       "port": 3100
+    },
+    {
+      "name": "webtools-prod",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "Object.assign(process.env,{TACTICS_DEMO:'1',SUPABASE_URL:'https://hgcshgunvooyudvrcpig.supabase.co',SUPABASE_PUBLISHABLE_KEY:'sb_publishable_lOnfOqPc-jBxRE28IXmEhQ_sRKFNw8O'});require('child_process').spawn('npx',['next','start','-p','3200'],{cwd:'webtools',stdio:'inherit',shell:true}).on('exit',c=>process.exit(c??0))"
+      ],
+      "port": 3200
     }
   ]
 }

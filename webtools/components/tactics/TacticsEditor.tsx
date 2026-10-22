@@ -18,6 +18,7 @@ import { TopBar } from "./TopBar.tsx";
 import { useAutosave } from "./use-autosave.ts";
 import { useShortcuts } from "./use-shortcuts.ts";
 import { Timeline } from "./timeline/Timeline.tsx";
+import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import "./tactics.css";
 
 const BoardStage = dynamic(() => import("./stage/BoardStage.tsx"), { ssr: false, loading: () => <div className="tb-stage" /> });
@@ -42,8 +43,8 @@ export function TacticsWorkspace() {
       <div className="tb-body">
         <Toolbar homeColor={board.teams.home.color} awayColor={board.teams.away.color} />
         <div className="tb-center">
-          <BoardStage />
-          <Timeline board={board} />
+          <ErrorBoundary label="Tavlan"><BoardStage /></ErrorBoundary>
+          <ErrorBoundary label="Tidslinjen"><Timeline board={board} /></ErrorBoundary>
         </div>
         <aside className="tb-panel" aria-label="Panel">
           <div className="tb-panel-tabs" role="tablist">
@@ -54,9 +55,11 @@ export function TacticsWorkspace() {
           </div>
           {panelOpen && (
             <div className="tb-panel-body">
-              {panel === "objects" && <ObjectList board={board} />}
-              {panel === "properties" && <Inspector board={board} />}
-              {panel === "squad" && <SquadPanel board={board} />}
+              <ErrorBoundary key={panel} label="Panelen">
+                {panel === "objects" && <ObjectList board={board} />}
+                {panel === "properties" && <Inspector board={board} />}
+                {panel === "squad" && <SquadPanel board={board} />}
+              </ErrorBoundary>
             </div>
           )}
         </aside>
