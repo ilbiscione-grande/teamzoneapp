@@ -16,7 +16,7 @@ const fails = async (who, sql, params, pattern) => {
   await assert.rejects(call(who, sql, params), pattern);
   await db.exec('rollback to s');
 };
-await db.exec(`create role anon; create role authenticated;
+await db.exec(`create role anon; create role authenticated; create role service_role;
 create schema internal; create schema api; create schema core; create schema auth;
 set check_function_bodies = off;
 create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
@@ -39,11 +39,12 @@ create table core.events(id uuid primary key);
 create function internal.booking_person_name(p uuid) returns text language sql stable as $$select null::text$$;
 create function internal.actor_can_read_event(e uuid) returns boolean language sql stable as $$select false$$;
 create function internal.actor_has_capability(c uuid, t uuid, cap text) returns boolean language sql stable as $$select true$$;
-grant usage on schema api, internal, core, auth to authenticated;`);
+grant usage on schema api, internal, core, auth to authenticated, service_role;`);
 await db.exec(read('supabase/migrations/20261119090000_tournament_planner.sql'));
 await db.exec(read('supabase/migrations/20261120090000_tournament_schedule.sql'));
 await db.exec(read('supabase/migrations/20261121090000_tournament_teamzone.sql'));
 await db.exec(read('supabase/migrations/20261123090000_tacticsboard.sql'));
+await db.exec(read('supabase/migrations/20261124090000_tactics_share_links.sql'));
 await db.exec('begin');
 
 const doc = boards => JSON.stringify({ schemaVersion: 1, boards });
@@ -70,6 +71,27 @@ assert.deepEqual(list.map(p => [p.name, p.board_count, p.revision]), [['Matchgen
 assert.deepEqual((await call(coach, 'select api.list_tactics_team_players($1)', [team])).map(p => [p.name, p.number, p.position]),
   [['Bror', 7, 'Mittfält'], ['Alva', null, 'Målvakt']], 'numbered first');
 await fails(coach, 'select api.list_tactics_team_players($1)', [otherTeam], /not_team_leader/);
+
+// Share links: the owner makes one per board (or the project), anyone
+// with it sees the boards through Webtools' server; revoked, nothing.
+const shared = async token => { await as(null); return asRole('service_role', async () => (await db.query('select api.get_shared_tactics($1) v', [token])).rows[0].v); };
+const whole = await call(coach, 'select api.create_tactics_share_link($1,null)', [created.id]);
+assert.match(whole, /^[0-9a-f]{40}$/);
+assert.equal(await call(coach, 'select api.create_tactics_share_link($1,null)', [created.id]), whole, 'the same link again');
+const one = await call(coach, "select api.create_tactics_share_link($1,'b2')", [created.id]);
+assert.notEqual(one, whole);
+await fails(coach, "select api.create_tactics_share_link($1,'nope')", [created.id], /not_found/);
+await fails(other, 'select api.create_tactics_share_link($1,null)', [created.id], /not_found/);
+assert.deepEqual((await call(coach, 'select api.list_tactics_share_links($1)', [created.id])).map(l => l.board_id), [null, 'b2']);
+const page = await shared(whole);
+assert.deepEqual([page.name, page.kind, page.team_name, page.boards.map(b => b.id)], ['Matchgenomgång v2', 'match', 'P2012', ['b1', 'b2']]);
+assert.deepEqual((await shared(one)).boards.map(b => b.id), ['b2']);
+assert.equal(await shared('0'.repeat(40)), null);
+await fails(coach, 'select api.get_shared_tactics($1)', [whole], /permission denied/);
+await fails(other, 'select api.revoke_tactics_share_link($1)', [one], /not_found/);
+await call(coach, 'select api.revoke_tactics_share_link($1)', [one]);
+assert.equal(await shared(one), null);
+assert.equal((await call(coach, 'select api.list_tactics_share_links($1)', [created.id])).length, 1);
 
 await fails(other, 'select api.delete_tactics_project($1)', [created.id], /not_found/);
 await call(coach, 'select api.delete_tactics_project($1)', [created.id]);

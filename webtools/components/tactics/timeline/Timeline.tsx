@@ -13,7 +13,8 @@ import { canRecord, download, recordBoard } from "./video-export.ts";
 const durations = [500, 750, 1000, 1500, 2000, 3000, 4000];
 const speeds = [0.5, 1, 1.5, 2];
 
-export function Timeline({ board }: { board: Board }) {
+/** readOnly: for a shared link, playing and choosing frames only. */
+export function Timeline({ board, readOnly = false }: { board: Board; readOnly?: boolean }) {
   usePlayback();
   const frameIndex = useEditor(state => state.frameIndex);
   const playing = useEditor(state => state.playing);
@@ -66,7 +67,7 @@ export function Timeline({ board }: { board: Board }) {
             <button key={frame.id} type="button" role="tab" aria-selected={!playing && index === frameIndex}
               data-current={playing && Math.round(playhead) === index} onClick={() => setFrame(index)}>{index + 1}</button>
           ))}
-          <button type="button" className="tb-frame-add" onClick={add} disabled={playing} aria-label="Ny ram (kopia av denna)" title="Ny ram: en kopia av den här att flytta vidare i">+</button>
+          {!readOnly && <button type="button" className="tb-frame-add" onClick={add} disabled={playing} aria-label="Ny ram (kopia av denna)" title="Ny ram: en kopia av den här att flytta vidare i">+</button>}
         </div>
         <span className="tb-spacer" />
         <label className="tb-mini" title="Spela om och om igen">
@@ -81,7 +82,7 @@ export function Timeline({ board }: { board: Board }) {
           </button>
         )}
       </div>
-      {!playing && frameIndex > 0 && (
+      {!readOnly && !playing && frameIndex > 0 && (
         <div className="tb-timeline-row tb-frame-tools">
           <span className="tb-mini-text">Ram {frameIndex + 1}</span>
           <label className="tb-mini"><span className="tb-mini-text">Förflyttning</span>
@@ -97,7 +98,7 @@ export function Timeline({ board }: { board: Board }) {
           <button type="button" className="tb-mini-button" onClick={remove}>Ta bort ram</button>
         </div>
       )}
-      {!playing && frameIndex === 0 && frames.length < 2 && (
+      {!readOnly && !playing && frameIndex === 0 && frames.length < 2 && (
         <p className="tb-timeline-hint">Tryck + för en ny ram, flytta spelarna och tryck ▶ för att se rörelsen.</p>
       )}
       {error && <p className="tb-timeline-hint" role="alert">{error}</p>}

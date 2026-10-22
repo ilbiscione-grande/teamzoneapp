@@ -133,7 +133,8 @@ export default function BoardStage({ editable = true }: { editable?: boolean }) 
   // Hidden objects stay in the list, not on the pitch. Playing shows the moves.
   const shown = playing ? objectsAt(board.frames, playhead) : objects;
   const visible = shown.filter(item => !item.hidden);
-  const previous = !playing && frameIndex > 0 ? board.frames[frameIndex - 1]?.objects : undefined;
+  // Ghosts of the frame before are for editing; a shared board shows none.
+  const previous = canEdit && frameIndex > 0 ? board.frames[frameIndex - 1]?.objects : undefined;
   const fitted = { x: fit.x, y: fit.y, scaleX: fit.scale, scaleY: fit.scale, rotation: fit.rotation };
   const zoomed = { x: viewport.x, y: viewport.y, scaleX: viewport.scale, scaleY: viewport.scale };
 

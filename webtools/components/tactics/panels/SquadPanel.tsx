@@ -7,12 +7,12 @@ import { applyFormation, createPlayer, updateBoard } from "../../../lib/tactics/
 import { formations, parseFormation } from "../../../lib/tactics/formations.ts";
 import type { Board, Side, SquadPlayer } from "../../../lib/tactics/model.ts";
 import { useAccount } from "../../account";
-import { activeObjects, useEditor } from "../store.ts";
+import { activeObjects, useEditor, NONE } from "../store.ts";
 
 export function SquadPanel({ board }: { board: Board }) {
   const { client } = useAccount();
   const meta = useEditor(state => state.meta);
-  const squad = useEditor(state => state.document?.squad ?? []);
+  const squad = useEditor(state => state.document?.squad ?? NONE);
   const objects = useEditor(activeObjects);
   const [side, setSide] = useState<Side>("home");
   const [formation, setFormation] = useState("4-3-3");

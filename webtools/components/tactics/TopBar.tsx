@@ -8,8 +8,9 @@ import { newBoard } from "../../lib/tactics/document.ts";
 import type { ProjectKind } from "../../lib/tactics/model.ts";
 import type { LeaderTeam } from "../../lib/tournament";
 import { useAccount } from "../account";
-import { useEditor, type SaveState } from "./store.ts";
+import { useEditor, type SaveState, NONE } from "./store.ts";
 import { saveNow } from "./use-autosave.ts";
+import { ShareDialog } from "./ShareDialog.tsx";
 
 const saveLabels: Record<SaveState, string> = {
   saved: "Sparat", dirty: "Ändrat", saving: "Sparar…", error: "Kunde inte spara", conflict: "Ändrat på annat håll",
@@ -18,7 +19,7 @@ const saveLabels: Record<SaveState, string> = {
 export const kindLabels: Record<ProjectKind, string> = { match: "Match", training: "Träning", education: "Utbildning" };
 
 function Boards() {
-  const boards = useEditor(state => state.document?.boards ?? []);
+  const boards = useEditor(state => state.document?.boards ?? NONE);
   const boardId = useEditor(state => state.boardId);
   const { setBoard, change } = useEditor.getState();
   const add = () => {
@@ -84,9 +85,11 @@ export function TopBar() {
   const canUndo = useEditor(state => state.history.past.length > 0);
   const canRedo = useEditor(state => state.history.future.length > 0);
   const { undo, redo, setMeta } = useEditor.getState();
+  const [sharing, setSharing] = useState(false);
   if (!meta) return null;
   return (
     <header className="tb-top">
+      {sharing && <ShareDialog onClose={() => setSharing(false)} />}
       <div className="tb-top-row">
         <Link href="/tacticsboard" className="tb-back" aria-label="Till projekten">‹</Link>
         <input className="tb-name" value={meta.name} maxLength={120} aria-label="Projektets namn" onChange={event => setMeta({ name: event.target.value })} />
@@ -94,6 +97,7 @@ export function TopBar() {
         <span className="tb-spacer" />
         <button type="button" className="tb-icon" onClick={undo} disabled={!canUndo} aria-label="Ångra" title="Ångra (Ctrl+Z)">↶</button>
         <button type="button" className="tb-icon" onClick={redo} disabled={!canRedo} aria-label="Gör om" title="Gör om (Ctrl+Y)">↷</button>
+        <button type="button" className="tb-share" onClick={() => setSharing(true)}>Dela</button>
         <span className="tb-save" data-state={saveState} role="status">
           {saveLabels[saveState]}
           {saveState === "error" && client && <button type="button" className="tb-link" onClick={() => void saveNow(client)}>Försök igen</button>}

@@ -146,6 +146,9 @@ export const useEditor = create<EditorState>((set, get) => ({
   })),
 }));
 
+/** One empty list for selectors, so an empty result is the same value each time (React subscribes by identity). */
+export const NONE: never[] = [];
+
 /** After undo or redo the frame being edited may be gone. */
 function frameWithin(document: ProjectDocument, state: { boardId: string | null; frameIndex: number }) {
   const board = document.boards.find(item => item.id === state.boardId) ?? document.boards[0];
@@ -161,5 +164,5 @@ export function activeBoard(state: { document: ProjectDocument | null; boardId: 
 /** The active frame's objects. */
 export function activeObjects(state: { document: ProjectDocument | null; boardId: string | null; frameIndex: number }): TacticsObject[] {
   const board = activeBoard(state);
-  return board?.frames[Math.min(state.frameIndex, board.frames.length - 1)]?.objects ?? [];
+  return board?.frames[Math.min(state.frameIndex, board.frames.length - 1)]?.objects ?? NONE;
 }
