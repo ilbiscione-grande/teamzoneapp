@@ -5,10 +5,12 @@
 // tested and later replayed.
 import { updateFrame } from "./document.ts";
 import type { ChatMode } from "./live-chat.ts";
+import type { DrawMode } from "./live-draw.ts";
 import type { Board, Point, ProjectDocument, ProjectKind } from "./model.ts";
 
 export type LiveSession = {
-  id: string; code: string; project_id: string; allow_guests: boolean; live: boolean; chat_mode: ChatMode; hands: boolean; created_at: string;
+  id: string; code: string; project_id: string; allow_guests: boolean; live: boolean; chat_mode: ChatMode; hands: boolean;
+  draw_mode: DrawMode; floor_holder: string | null; floor_name: string | null; created_at: string;
 };
 
 export type LiveJoined = LiveSession & {

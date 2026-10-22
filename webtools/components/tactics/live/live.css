@@ -60,3 +60,9 @@
 /* A word about the lesson: near the end for want of activity, or ended. */
 .tb-live-notice { position: fixed; top: 120px; left: 50%; transform: translateX(-50%); z-index: 70; display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 24px); padding: 10px 14px; border-radius: 10px; background: #fef3c7; color: #78350f; font-size: .9rem; font-weight: 600; box-shadow: 0 10px 30px rgba(0, 0, 0, .3); }
 .tb-live-notice .tb-modal-close { width: 28px; height: 28px; flex: none; }
+/* Drawing and the floor. */
+.tb-live-floor { margin: 0 0 4px; color: #fde68a; font-weight: 700; }
+.tb-live-person-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px 10px; }
+.tb-live-people-list li[data-floor="true"] { box-shadow: inset 3px 0 0 var(--wt-brand); }
+.tb-live-panel .tb-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.tb-live-panel .tb-row select { width: 100%; min-width: 0; }

@@ -11,12 +11,16 @@ import { normalizeDocument } from "../../../lib/tactics/document.ts";
 import type { LiveJoined, LivePresence } from "../../../lib/tactics/live.ts";
 import { BoardText, hasBoardText } from "../BoardText.tsx";
 import { ErrorBoundary } from "../ErrorBoundary.tsx";
-import { activeBoard, isBetween, useEditor, NONE } from "../store.ts";
+import { activeBoard, useEditor } from "../store.ts";
 import { usePlayback } from "../timeline/use-playback.ts";
 import { kindLabels } from "../TopBar.tsx";
 import { useChat } from "./chat-store.ts";
 import { ChatPanel } from "./ChatPanel.tsx";
+import { useDraw } from "./draw-store.ts";
 import { Laser } from "./Laser.tsx";
+import { LiveStrokes } from "./LiveStrokes.tsx";
+import { LiveDrawButtons, LiveWhere } from "./LiveWhere.tsx";
+import { useFloorMoves } from "./use-floor.ts";
 import { LiveBadge } from "./LiveBadge.tsx";
 import { useLive } from "./live-store.ts";
 import { useLiveFollow } from "./use-live-follow.ts";
@@ -36,6 +40,7 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
       board_count: document.boards.length, revision: 0, created_at: joined.created_at, updated_at: joined.created_at, document,
     }, document);
     useChat.getState().set({ messages: [], unread: 0, chatMode: joined.chat_mode, hands: joined.hands, muted: joined.muted });
+    useDraw.getState().set({ strokes: [], own: [], pen: false, error: "", drawMode: joined.draw_mode, floorHolder: joined.floor_holder, floorName: joined.floor_name });
     setAside(hasBoardText(useEditor.getState()) ? "text" : null);
     setReady(true);
   }, [joined]);
@@ -46,10 +51,10 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
   const toggle = (which: "text" | "chat") => setAside(aside === which ? null : which);
   usePlayback();
   const board = useEditor(activeBoard);
-  const boards = useEditor(store => store.document?.boards ?? NONE);
-  const playhead = useEditor(store => store.playhead);
-  const between = useEditor(isBetween);
   const hostHere = useLive(store => store.hostHere);
+  const selfId = useChat(store => store.selfId);
+  const hasFloor = useDraw(store => !!store.floorHolder && store.floorHolder === selfId);
+  useFloorMoves(client, joined.id, hasFloor);
 
   if (state === "ended" || state === "removed" || state === "failed") {
     return (
@@ -60,8 +65,6 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
     );
   }
   if (!ready || !board) return null;
-  const frame = Math.floor(playhead) + 1;
-  const where = between ? `Mellan frame ${frame} och ${frame + 1}` : `Frame ${Math.round(playhead) + 1} av ${board.frames.length}`;
   return (
     <div className="tb-editor tb-viewer tb-live" data-text={aside !== null}>
       <header className="tb-top">
@@ -81,17 +84,18 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
             {(chatMode !== "off" || hasMessages) && (
               <button type="button" className="tb-present-toggle" aria-pressed={aside === "chat"} onClick={() => toggle("chat")}><LiveBadge label="Chatt" /></button>
             )}
+            {state === "following" && <LiveDrawButtons />}
             <button type="button" className="tb-present-toggle" aria-pressed={aside === "text"} onClick={() => toggle("text")}>Beskrivning</button>
           </div>
         </div>
       </header>
       <div className="tb-present-body">
         <div className="tb-center">
-          <ErrorBoundary label="Tavlan"><BoardStage editable={false} extra={<Laser />} /></ErrorBoundary>
-          <div className="tb-live-where" aria-live="polite">
-            <strong>{board.name || "Tavla"}</strong>{boards.length > 1 && <span> · tavla {boards.findIndex(item => item.id === board.id) + 1} av {boards.length}</span>}
-            {board.frames.length > 1 && <span> · {where}</span>}
-          </div>
+          <ErrorBoundary label="Tavlan">
+            <BoardStage editable={hasFloor} moveOnly
+              extra={<><LiveStrokes pen={selfId ? { client, sessionId: joined.id, selfId } : undefined} /><Laser /></>} />
+          </ErrorBoundary>
+          <LiveWhere hasFloor={hasFloor} />
         </div>
         {aside === "text" && <BoardText emptyHint="Tavlan har ingen beskrivning." />}
         {aside === "chat" && <aside className="tb-present-text tb-present-live"><ChatPanel client={client} sessionId={joined.id} host={false} /></aside>}

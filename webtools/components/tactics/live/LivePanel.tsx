@@ -1,15 +1,20 @@
 "use client";
 
-// Running a live lesson, for the host: the chat's mode and whether hands
-// may be raised, the hands in the order they went up (lowered with a
-// click), who is in with their chat on or off, and the chat itself. In the
-// editor's side panel, and beside the board when presenting.
+// Running a live lesson, for the host: the chat's mode, whether hands may
+// be raised and how participants may draw (with clearing the shared
+// drawings), the hands in the order they went up (lowered with a click),
+// who is in (LivePeople) and the chat itself. In the editor's side panel,
+// and beside the board when presenting.
 import { useState } from "react";
 import { chatModeLabels, raisedHands, type ChatMode } from "../../../lib/tactics/live-chat.ts";
+import { drawModeLabels, type DrawMode } from "../../../lib/tactics/live-draw.ts";
 import type { LiveSession } from "../../../lib/tactics/live.ts";
 import { useAccount } from "../../account";
+import { useEditor } from "../store.ts";
 import { useChat } from "./chat-store.ts";
 import { ChatPanel } from "./ChatPanel.tsx";
+import { useDraw } from "./draw-store.ts";
+import { LivePeople } from "./LivePeople.tsx";
 import { useLive } from "./live-store.ts";
 
 export function LivePanel() {
@@ -18,22 +23,33 @@ export function LivePanel() {
   const participants = useLive(state => state.participants);
   const chatMode = useChat(state => state.chatMode);
   const hands = useChat(state => state.hands);
+  const drawMode = useDraw(state => state.drawMode);
+  const strokeCount = useDraw(state => state.strokes.length);
   const [error, setError] = useState("");
   if (!client || !session) return null;
   const send = (event: string, payload: object) => useLive.getState().send?.(event, payload);
+  const saved = (data: unknown) => useLive.getState().set({ session: data as LiveSession });
 
-  const settings = async (mode: ChatMode, handsAllowed: boolean) => {
+  const chatSettings = async (mode: ChatMode, handsAllowed: boolean) => {
     setError("");
     const { data, error: saveError } = await client.schema("api").rpc("set_tactics_live_chat", { target_session_id: session.id, new_chat_mode: mode, hands_allowed: handsAllowed });
     if (saveError) { setError("Inställningen kunde inte sparas."); return; }
-    useLive.getState().set({ session: data as LiveSession });
+    saved(data);
     useChat.getState().set({ chatMode: mode, hands: handsAllowed });
-    send("settings", { chatMode: mode, hands: handsAllowed });
+    send("settings", { chatMode: mode, hands: handsAllowed, drawMode });
   };
-  const mute = async (key: string, muted: boolean) => {
-    const { error: muteError } = await client.schema("api").rpc("mute_tactics_live_participant", { target_session_id: session.id, target_profile_id: key, is_muted: muted });
-    if (muteError) { setError("Det gick inte att ändra deltagarens chatt."); return; }
-    send("muted", { profileId: key, muted });
+  const drawSettings = async (mode: DrawMode) => {
+    setError("");
+    const { data, error: saveError } = await client.schema("api").rpc("set_tactics_live_drawing", { target_session_id: session.id, new_draw_mode: mode });
+    if (saveError) { setError("Inställningen kunde inte sparas."); return; }
+    saved(data);
+    useDraw.getState().set({ drawMode: mode });
+    send("settings", { chatMode, hands, drawMode: mode });
+  };
+  const clear = async () => {
+    if (!window.confirm("Rensa allas ritningar på den här tavlan?")) return;
+    const { error: clearError } = await client.schema("api").rpc("clear_tactics_live_strokes", { target_session_id: session.id, target_board_id: useEditor.getState().boardId });
+    if (clearError) setError("Ritningarna kunde inte rensas.");
   };
   const up = raisedHands(participants);
 
@@ -42,12 +58,18 @@ export function LivePanel() {
       <h3>Livelektion · {session.code}</h3>
       <div className="tb-row">
         <label className="tb-field">Chatt
-          <select value={chatMode} onChange={event => void settings(event.target.value as ChatMode, hands)}>
+          <select value={chatMode} onChange={event => void chatSettings(event.target.value as ChatMode, hands)}>
             {(Object.keys(chatModeLabels) as ChatMode[]).map(mode => <option key={mode} value={mode}>{chatModeLabels[mode]}</option>)}
           </select>
         </label>
+        <label className="tb-field">Eleverna ritar
+          <select value={drawMode} onChange={event => void drawSettings(event.target.value as DrawMode)}>
+            {(Object.keys(drawModeLabels) as DrawMode[]).map(mode => <option key={mode} value={mode}>{drawModeLabels[mode]}</option>)}
+          </select>
+        </label>
       </div>
-      <label className="tb-check"><input type="checkbox" checked={hands} onChange={event => void settings(chatMode, event.target.checked)} />Deltagarna kan räcka upp handen</label>
+      <label className="tb-check"><input type="checkbox" checked={hands} onChange={event => void chatSettings(chatMode, event.target.checked)} />Deltagarna kan räcka upp handen</label>
+      {strokeCount > 0 && <button type="button" className="tb-link" onClick={() => void clear()}>Rensa allas ritningar på tavlan</button>}
       {hands && up.length > 0 && (
         <>
           <h3>✋ Räcker upp handen ({up.length})</h3>
@@ -59,16 +81,7 @@ export function LivePanel() {
         </>
       )}
       <h3>Med nu ({participants.length})</h3>
-      {participants.length === 0 ? <p className="tb-hint">Ingen än.</p> : (
-        <ul className="tb-live-people tb-live-people-list">
-          {participants.map(person => (
-            <li key={person.key}>
-              <span>{person.hand ? "✋ " : ""}{person.name}{person.guest && <small> gäst</small>}</span>
-              <button type="button" className="tb-link" onClick={() => void mute(person.key, !person.muted)}>{person.muted ? "Slå på chatten" : "Stäng av chatten"}</button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <LivePeople client={client} session={session} onError={setError} />
       {error && <p className="wt-error" role="alert">{error}</p>}
       <h3>Chatt</h3>
       <ChatPanel client={client} sessionId={session.id} host />

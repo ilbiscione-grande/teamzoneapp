@@ -40,6 +40,8 @@ export const pitchPointer = new Set<(point: { x: number; y: number } | null) => 
 
 /** Listeners to objects being dragged, where each is now: a live lesson's host. */
 export const objectDrag = new Set<(moves: Record<string, { x: number; y: number }>) => void>();
+/** Listeners to objects dropped, where each was put: a participant given the floor. */
+export const objectDrop = new Set<(moves: Record<string, { x: number; y: number }>) => void>();
 
 /** The mounted Konva stage, for recording the board as a video. */
 export const stageHolder: { current: Konva.Stage | null } = { current: null };

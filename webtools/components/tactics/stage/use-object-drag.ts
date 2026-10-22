@@ -11,7 +11,7 @@ import { dropBall } from "../../../lib/tactics/ball.ts";
 import { keepOnGrass } from "../../../lib/tactics/document.ts";
 import type { BallObject, TacticsObject } from "../../../lib/tactics/model.ts";
 import { activeObjects, useEditor } from "../store.ts";
-import { objectDrag, trashAt, useStage } from "./stage-context.ts";
+import { objectDrag, objectDrop, trashAt, useStage } from "./stage-context.ts";
 
 type Start = Map<string, { x: number; y: number }>;
 
@@ -104,6 +104,10 @@ export function useObjectDrag(item: TacticsObject) {
           : other);
       });
       starts.current = new Map();
+      if (objectDrop.size) {
+        const dropped = Object.fromEntries(moved);
+        objectDrop.forEach(listen => listen(dropped));
+      }
     },
   };
 }

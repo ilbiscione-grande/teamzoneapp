@@ -6,10 +6,11 @@
 // they are dragged, the pointer while it moves over the pitch. Someone joining gets the whole state.
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { useEffect } from "react";
-import { liveTopic, throttle, viewChanged, type LiveView } from "../../../lib/tactics/live.ts";
+import { applyMoves, liveTopic, throttle, viewChanged, type LiveView } from "../../../lib/tactics/live.ts";
 import { objectDrag, pitchPointer } from "../stage/stage-context.ts";
 import { activeBoard, useEditor } from "../store.ts";
 import { listenChat, useChat } from "./chat-store.ts";
+import { listenDraw, useDraw, type FloorMove } from "./draw-store.ts";
 import { participantsOf, useLive } from "./live-store.ts";
 import { useLiveHostChat } from "./use-live-host-chat.ts";
 import { useLiveIdle } from "./use-live-idle.ts";
@@ -55,7 +56,7 @@ export function useLiveHost(client: SupabaseClient | null) {
     // Everything, for someone who just came in.
     const sync = () => {
       const { chatMode, hands } = useChat.getState();
-      send("settings", { chatMode, hands });
+      send("settings", { chatMode, hands, drawMode: useDraw.getState().drawMode });
       const state = useEditor.getState();
       const board = activeBoard(state);
       if (board) send("board", { board });
@@ -84,6 +85,7 @@ export function useLiveHost(client: SupabaseClient | null) {
         .on("presence", { event: "sync" }, () => useLive.getState().set({ participants: participantsOf(channel!.presenceState()) }))
         .on("presence", { event: "join" }, ({ key }) => { if (key !== "host") { useLive.getState().markActivity(); sync(); } });
       listenChat(channel);
+      listenDraw(channel, takeFloorMove);
       channel.subscribe((status, error) => {
           if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
             console.error("tactics live channel", status, error);
@@ -110,6 +112,15 @@ export function useLiveHost(client: SupabaseClient | null) {
       useLive.getState().set({ participants: [], send: null });
     };
   }, [client, sessionId]);
+}
+
+/** Moves by the one with the floor: shown on the way, taken into the board (and saved) where dropped. */
+function takeFloorMove(move: FloorMove) {
+  useLive.getState().markActivity();
+  const { document, change } = useEditor.getState();
+  if (!document) return;
+  if (move.dropped) change(current => applyMoves(current, move));
+  else useEditor.setState({ document: applyMoves(document, move) });
 }
 
 /** Tells everyone on the channel, before the session's state changes in the database. */

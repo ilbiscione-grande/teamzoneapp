@@ -9,10 +9,12 @@
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "../../../lib/tactics/live-chat.ts";
+import type { Stroke } from "../../../lib/tactics/live-draw.ts";
 import { applyBoard, applyMoves, liveTopic, type LiveDrag, type LivePresence, type LiveView } from "../../../lib/tactics/live.ts";
 import type { Board, Point, ProjectDocument } from "../../../lib/tactics/model.ts";
 import { useEditor } from "../store.ts";
 import { listenChat, useChat } from "./chat-store.ts";
+import { listenDraw, useDraw } from "./draw-store.ts";
 import { useLive } from "./live-store.ts";
 
 export type FollowState = "connecting" | "following" | "ended" | "removed" | "failed";
@@ -63,11 +65,17 @@ export function useLiveFollow(client: SupabaseClient, sessionId: string, me: Liv
           useLive.getState().set({ hostHere: present, ...(present ? {} : { pointer: null }) });
         });
       listenChat(channel, { id: selfId, onLowerHand: () => setHandState(null) });
+      // The floor's moves, but not this participant's own coming back (the drag is still under their finger).
+      listenDraw(channel, move => { if (move.by !== selfId) edit(document => applyMoves(document, move)); });
       channel.subscribe(async (status, error) => {
         if (status === "SUBSCRIBED") {
           setState(current => current === "connecting" ? "following" : current);
-          const { data } = await client.schema("api").rpc("list_tactics_live_messages", { target_session_id: sessionId });
+          const [{ data }, { data: strokes }] = await Promise.all([
+            client.schema("api").rpc("list_tactics_live_messages", { target_session_id: sessionId }),
+            client.schema("api").rpc("list_tactics_live_strokes", { target_session_id: sessionId }),
+          ]);
           useChat.getState().add((data as ChatMessage[] | null) ?? []);
+          useDraw.getState().addStrokes((strokes as Stroke[] | null) ?? []);
           if (!useChat.getState().open) useChat.getState().set({ unread: 0 });
         }
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {

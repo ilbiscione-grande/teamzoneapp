@@ -29,8 +29,11 @@ Konva.hitOnDragEnabled = false;
 // Sharper than 2× costs more than it shows on a tablet.
 if (typeof window !== "undefined") Konva.pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
 
-/** extra: drawn over the objects, in metres (a live lesson's pointer). */
-export default function BoardStage({ editable = true, extra }: { editable?: boolean; extra?: React.ReactNode }) {
+/**
+ * extra: drawn over the objects, in metres (a live lesson's pointer and drawings).
+ * moveOnly: objects can be dragged and nothing else (a participant given the floor).
+ */
+export default function BoardStage({ editable = true, moveOnly = false, extra }: { editable?: boolean; moveOnly?: boolean; extra?: React.ReactNode }) {
   const frame = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const board = useEditor(activeBoard);
@@ -43,6 +46,8 @@ export default function BoardStage({ editable = true, extra }: { editable?: bool
   const between = useEditor(isBetween);
   // Nothing is edited while the board plays or stands between two frames.
   const canEdit = editable && !playing && !between;
+  // Everything but dragging: selecting with a band, handles, the bin, tools.
+  const fullEdit = canEdit && !moveOnly;
   const content = useRef<Konva.Group>(null);
   const nodes = useRef(new Map<string, Konva.Node>());
   const trash = useRef<HTMLDivElement>(null);
@@ -76,13 +81,13 @@ export default function BoardStage({ editable = true, extra }: { editable?: bool
   // Zoomed in, the grass moves the view; with the whole view in sight it selects.
   const zoomedIn = view.viewport.scale > 1.001;
   const pannable = zoomedIn && (tool === "select" || isPlaceTool(tool));
-  const bandable = canEdit && tool === "select" && !zoomedIn;
+  const bandable = fullEdit && tool === "select" && !zoomedIn;
   // Hidden objects stay in the list, not on the pitch. Playing shows the moves.
   const shown = playing || between ? objectsAt(board.frames, playhead) : objects;
   const visible = shown.filter(item => !item.hidden);
   const holders = ballHolders(visible);
   // Ghosts of the frame before are for editing; a shared board shows none.
-  const previous = canEdit && frameIndex > 0 ? board.frames[frameIndex - 1]?.objects : undefined;
+  const previous = fullEdit && frameIndex > 0 ? board.frames[frameIndex - 1]?.objects : undefined;
   const fitted = { x: fit.x, y: fit.y, scaleX: fit.scale, scaleY: fit.scale, rotation: fit.rotation };
   const zoomed = { x: view.viewport.x, y: view.viewport.y, scaleX: view.viewport.scale, scaleY: view.viewport.scale };
   const tapGrass = (target: Konva.Node) => {
@@ -103,7 +108,7 @@ export default function BoardStage({ editable = true, extra }: { editable?: bool
             }}
             onPointerDown={event => {
               if (view.pinch.current) return;
-              if (canEdit && isDrawTool(tool)) drawing.start();
+              if (fullEdit && isDrawTool(tool)) drawing.start();
               else if (bandable && event.target.name() === "grass") band.begin(event);
             }}
             onPointerMove={event => {
@@ -114,11 +119,11 @@ export default function BoardStage({ editable = true, extra }: { editable?: bool
             onPointerLeave={() => pitchPointer.forEach(listen => listen(null))}
             onPointerUp={event => { drawing.end(); band.end(event, visible.map(item => item.id)); }}
             onClick={event => {
-              if (band.consumeClick() || event.evt.button !== 0 || !canEdit) return;
+              if (band.consumeClick() || event.evt.button !== 0 || !fullEdit) return;
               tapGrass(event.target);
             }}
             onTap={event => {
-              if (band.consumeClick() || !canEdit || view.pinch.current) return;
+              if (band.consumeClick() || !fullEdit || view.pinch.current) return;
               tapGrass(event.target);
             }}>
             <Layer>
@@ -137,13 +142,13 @@ export default function BoardStage({ editable = true, extra }: { editable?: bool
                   {visible.map(item => (
                     <ObjectNode key={item.id} item={item} board={board} selected={selection.includes(item.id)} upright={upright} holding={holders.has(item.id)} />
                   ))}
-                  {canEdit && <Selection objects={objects} selection={selection} upright={upright} />}
+                  {fullEdit && <Selection objects={objects} selection={selection} upright={upright} />}
                   {drawing.draft && <DraftNode draft={drawing.draft} />}
                   {extra}
                 </Group>
               </Group>
             </Layer>
-            {canEdit && (
+            {fullEdit && (
               <Layer listening={false}>
                 <Rect ref={band.band} visible={false} fill="rgba(250,204,21,0.12)" stroke="#facc15" strokeWidth={1.5} dash={[6, 4]} />
               </Layer>
@@ -151,7 +156,7 @@ export default function BoardStage({ editable = true, extra }: { editable?: bool
           </Stage>
         </StageContext.Provider>
       )}
-      {canEdit && (
+      {fullEdit && (
         <div ref={trash} className="tb-trash" data-active="false" data-over="false" aria-hidden="true">
           <span>🗑</span>Släpp för att ta bort
         </div>

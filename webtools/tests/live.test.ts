@@ -78,3 +78,17 @@ test("live: a lesson with nothing happening is warned about, then over", async (
   assert.equal(idleState(0, IDLE_WARNING_MS), "warning");
   assert.equal(idleState(0, IDLE_LIMIT_MS + 1), "expired");
 });
+
+test("live drawing: thin strokes, steady colours, strokes once each", async () => {
+  const { colorFor, mergeStrokes, thinStroke } = await import("../lib/tactics/live-draw.ts");
+  assert.deepEqual(thinStroke([0, 0, 0.1, 0, 0.2, 0, 1, 0]), [0, 0, 1, 0], "points too close are dropped, the end kept");
+  assert.equal(thinStroke([5, 5, 5.01, 5]).length, 4, "a dot is still a stroke");
+  const long = Array.from({ length: 2000 }, (_, i) => [i, (i % 7) * 0.5]).flat();
+  const thinned = thinStroke(long);
+  assert.ok(thinned.length <= 600 && thinned.length % 2 === 0);
+  assert.deepEqual(thinned.slice(-2), [1999, 2]);
+  assert.equal(colorFor("abc"), colorFor("abc"));
+  assert.match(colorFor("x"), /^#[0-9a-f]{6}$/);
+  const stroke = (id: string, at: string) => ({ id, board_id: "b", profile_id: "p", name: "M", color: "#ef4444", points: [0, 0, 1, 1], created_at: at });
+  assert.deepEqual(mergeStrokes([stroke("b", "2"), stroke("a", "1")], [stroke("b", "2")]).map(item => item.id), ["a", "b"]);
+});

@@ -17,6 +17,7 @@ import { FramesPanel } from "./panels/FramesPanel.tsx";
 import { Presenter } from "./Presenter.tsx";
 import { LiveBadge } from "./live/LiveBadge.tsx";
 import { LivePanel } from "./live/LivePanel.tsx";
+import { LiveStrokes } from "./live/LiveStrokes.tsx";
 import { useLive } from "./live/live-store.ts";
 import { Toolbar } from "./panels/Toolbar.tsx";
 import { activeBoard, useEditor } from "./store.ts";
@@ -55,7 +56,7 @@ export function TacticsWorkspace() {
       <div className="tb-body">
         <Toolbar homeColor={board.teams.home.color} awayColor={board.teams.away.color} />
         <div className="tb-center">
-          <ErrorBoundary label="Tavlan"><BoardStage /></ErrorBoundary>
+          <ErrorBoundary label="Tavlan"><BoardStage extra={<LiveStrokes />} /></ErrorBoundary>
           <ErrorBoundary label="Tidslinjen"><Timeline board={board} /></ErrorBoundary>
         </div>
         <aside className="tb-panel" aria-label="Panel">

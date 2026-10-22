@@ -10,6 +10,7 @@ import { BoardText, hasBoardText } from "./BoardText.tsx";
 import { LiveBadge } from "./live/LiveBadge.tsx";
 import { LiveNotice } from "./live/LiveButton.tsx";
 import { LivePanel } from "./live/LivePanel.tsx";
+import { LiveStrokes } from "./live/LiveStrokes.tsx";
 import { useLive } from "./live/live-store.ts";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import { activeBoard, useEditor, NONE } from "./store.ts";
@@ -66,7 +67,7 @@ export function Presenter({ onClose }: { onClose: () => void }) {
       </header>
       <div className="tb-present-body">
         <div className="tb-center">
-          <ErrorBoundary label="Tavlan"><BoardStage editable={false} /></ErrorBoundary>
+          <ErrorBoundary label="Tavlan"><BoardStage editable={false} extra={<LiveStrokes />} /></ErrorBoundary>
           <ErrorBoundary label="Tidslinjen"><Timeline board={board} readOnly /></ErrorBoundary>
         </div>
         {aside === "text" && <BoardText emptyHint="Tavlan har ingen beskrivning. Skriv en under Tavlan i redigeringen." />}
