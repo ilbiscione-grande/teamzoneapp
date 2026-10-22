@@ -1,7 +1,8 @@
 "use client";
 
 // A player: a disc in the team's colour with the shirt number, the name
-// below when the board shows names and the position above when it shows them. The text stays upright when the pitch
+// below when the board shows names and the position above when it shows them.
+// Holding the ball, the player is lit like the ball. The text stays upright when the pitch
 // is turned on a tall screen.
 import { Circle, Group, Text } from "react-konva";
 import { PLAYER_RADIUS } from "../../../lib/tactics/ball.ts";
@@ -11,7 +12,7 @@ import { Glow, look } from "./look.tsx";
 import { nodeRef, useStage } from "../stage/stage-context.ts";
 import { useObjectDrag } from "../stage/use-object-drag.ts";
 
-export function PlayerNode({ item, board, selected, upright }: { item: PlayerObject & Rendered; board: Board; selected: boolean; upright: number }) {
+export function PlayerNode({ item, board, selected, upright, holding }: { item: PlayerObject & Rendered; board: Board; selected: boolean; upright: number; holding: boolean }) {
   const shared = useStage();
   const drag = useObjectDrag(item);
   const team = board.teams[item.side];
@@ -20,6 +21,7 @@ export function PlayerNode({ item, board, selected, upright }: { item: PlayerObj
   return (
     <Group ref={nodeRef(shared, item.id)} x={item.x} y={item.y} {...look(item)} {...drag}>
       <Glow item={item} radius={PLAYER_RADIUS * 2} />
+      {holding && <Circle radius={PLAYER_RADIUS + 0.75} fill="#ffffff" opacity={0.28} listening={false} perfectDrawEnabled={false} />}
       {selected && <Circle radius={PLAYER_RADIUS + 0.55} stroke="#facc15" strokeWidth={0.28} dash={[0.5, 0.35]} />}
       {/* No canvas shadows: they are redrawn for every player on every frame. */}
       <Circle radius={PLAYER_RADIUS + 0.12} fill="rgba(0,0,0,0.28)" y={0.18} listening={false} perfectDrawEnabled={false} />

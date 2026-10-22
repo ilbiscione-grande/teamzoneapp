@@ -38,6 +38,11 @@
 .tb-stage[data-tool="select"] { cursor: grab; }
 .tb-stage:not([data-tool="select"]) { cursor: crosshair; }
 .tb-zoom { position: absolute; right: 10px; bottom: 10px; display: grid; gap: 4px; }
+/* The bin: at the pitch's side while something is dragged. */
+.tb-trash { position: absolute; left: 10px; bottom: 10px; width: 96px; min-height: 84px; display: grid; place-items: center; align-content: center; gap: 2px; padding: 8px; border: 2px dashed rgba(255, 255, 255, .55); border-radius: 12px; background: rgba(11, 17, 28, .55); color: white; font-size: .72rem; font-weight: 700; text-align: center; line-height: 1.2; pointer-events: none; opacity: 0; transform: scale(.9); transition: opacity .15s, transform .15s, background .15s; }
+.tb-trash span { font-size: 1.6rem; }
+.tb-trash[data-active="true"] { opacity: 1; transform: none; }
+.tb-trash[data-over="true"] { background: rgba(220, 38, 38, .85); border-color: white; transform: scale(1.08); }
 .tb-zoom button { width: 40px; height: 40px; border: 0; border-radius: 8px; background: rgba(11, 17, 28, .72); color: white; font-size: 1.2rem; cursor: pointer; }
 .tb-zoom button:disabled { opacity: .4; cursor: default; }
 

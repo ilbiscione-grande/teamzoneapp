@@ -60,3 +60,18 @@ export function settleBalls(objects: TacticsObject[]): TacticsObject[] {
     return position.x === item.x && position.y === item.y ? item : { ...item, ...position };
   });
 }
+
+/**
+ * The players holding a ball: it is attached to them and lies at their
+ * feet. A ball on its way in a pass is attached already but not yet there.
+ */
+export function ballHolders(objects: TacticsObject[]): Set<string> {
+  const players = new Map(objects.filter(item => item.type === "player").map(item => [item.id, item]));
+  const holders = new Set<string>();
+  for (const item of objects) {
+    if (item.type !== "ball" || item.hidden || !item.attachedTo) continue;
+    const player = players.get(item.attachedTo);
+    if (player && !player.hidden && Math.hypot(player.x - item.x, player.y - item.y) <= PLAYER_RADIUS + BALL_RADIUS + 0.5) holders.add(player.id);
+  }
+  return holders;
+}

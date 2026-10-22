@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ATTACH_DISTANCE, ballPosition, dropBall, settleBalls } from "../lib/tactics/ball.ts";
+import { ATTACH_DISTANCE, ballHolders, ballPosition, dropBall, settleBalls } from "../lib/tactics/ball.ts";
 import { applyFormation, createObject, createPlayer, nextNumber, normalizeDocument, objectLabel, newBoard, restack, updateFrame } from "../lib/tactics/document.ts";
 import { formationPositions, formations, parseFormation } from "../lib/tactics/formations.ts";
 import { fitView, pitchToFrame, viewRect, zoomAround } from "../lib/tactics/geometry.ts";
@@ -159,4 +159,12 @@ test("templates: ready boards, saving without ties and using with new ids", () =
   const copy = copyBoard(lineup);
   assert.equal(copy.name, "Uppställning (kopia)");
   assert.notEqual(copy.id, lineup.id);
+});
+
+test("a player holding the ball: attached and at the player's feet", () => {
+  const player = createPlayer({ x: 50, y: 30 }, "home", []);
+  const ball = { ...createObject("ball", { x: 50 + ATTACH_DISTANCE, y: 30 }), attachedTo: player.id, offset: { x: ATTACH_DISTANCE, y: 0 } } as BallObject;
+  assert.deepEqual([...ballHolders([player, ball])], [player.id]);
+  assert.equal(ballHolders([player, { ...ball, x: 70 }]).size, 0, "on its way in a pass");
+  assert.equal(ballHolders([player, { ...ball, attachedTo: null }]).size, 0);
 });

@@ -6,6 +6,7 @@
 import type Konva from "konva";
 import { useEffect, useMemo, useRef } from "react";
 import { Group, Layer, Stage } from "react-konva";
+import { ballHolders } from "../../../lib/tactics/ball.ts";
 import { fitView, viewRect } from "../../../lib/tactics/geometry.ts";
 import type { Board, TacticsObject } from "../../../lib/tactics/model.ts";
 import { ObjectNode } from "../objects/ObjectNode.tsx";
@@ -19,6 +20,7 @@ export default function OffscreenBoard({ board, objects, onPicture }: { board: B
   const nodes = useRef(new Map<string, Konva.Node>());
   const content = useRef<Konva.Group>(null);
   const fit = fitView(viewRect(board.view), PICTURE.width, PICTURE.height);
+  const holders = ballHolders(objects);
   const shared = useMemo<StageShared>(() => ({ nodes: nodes.current, content, metresPerPixel: () => 1 / fit.scale, editable: false }), [fit.scale]);
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export default function OffscreenBoard({ board, objects, onPicture }: { board: B
           <Layer>
             <Group ref={content} x={fit.x} y={fit.y} scaleX={fit.scale} scaleY={fit.scale} rotation={fit.rotation}>
               {objects.filter(item => !item.hidden).map(item => (
-                <ObjectNode key={item.id} item={item} board={board} selected={false} upright={-fit.rotation} />
+                <ObjectNode key={item.id} item={item} board={board} selected={false} upright={-fit.rotation} holding={holders.has(item.id)} />
               ))}
             </Group>
           </Layer>

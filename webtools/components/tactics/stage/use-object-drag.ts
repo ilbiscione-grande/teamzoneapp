@@ -4,13 +4,14 @@
 // renders while a finger moves. The other selected objects and the balls of
 // moved players follow by moving their nodes directly. Only the drop is
 // written to the document, where a dropped ball may stick to a player.
+// Dropped on the bin beside the pitch, the dragged objects are removed.
 import type Konva from "konva";
 import { useRef } from "react";
 import { dropBall } from "../../../lib/tactics/ball.ts";
 import { keepOnGrass } from "../../../lib/tactics/document.ts";
 import type { BallObject, TacticsObject } from "../../../lib/tactics/model.ts";
 import { activeObjects, useEditor } from "../store.ts";
-import { useStage } from "./stage-context.ts";
+import { trashAt, useStage } from "./stage-context.ts";
 
 type Start = Map<string, { x: number; y: number }>;
 
@@ -46,7 +47,8 @@ export function useObjectDrag(item: TacticsObject) {
       if (useEditor.getState().tool === "select") event.cancelBubble = true;
       select(false);
     },
-    onDragStart: () => {
+    onDragStart: (event: Konva.KonvaEventObject<DragEvent>) => {
+      trashAt(shared, event.target.getStage(), true);
       starts.current = new Map();
       const objects = activeObjects(useEditor.getState());
       for (const mover of movers()) {
@@ -68,10 +70,22 @@ export function useObjectDrag(item: TacticsObject) {
         if (id === item.id) return;
         shared.nodes.get(id)?.position({ x: start.x + dx, y: start.y + dy });
       });
+      trashAt(shared, event.target.getStage(), true);
     },
     onDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => {
       const own = starts.current.get(item.id);
+      const binned = trashAt(shared, event.target.getStage(), true);
+      trashAt(shared, null, false);
       if (!own) return;
+      if (binned) {
+        // The dragged objects go; a ball that only came along with a player stays where it was.
+        const gone = new Set(movers().map(mover => mover.id));
+        starts.current.forEach((start, id) => { if (!gone.has(id)) shared.nodes.get(id)?.position(start); });
+        useEditor.getState().changeObjects(objects => objects.filter(other => !gone.has(other.id)));
+        useEditor.getState().select([]);
+        starts.current = new Map();
+        return;
+      }
       const dx = event.target.x() - own.x;
       const dy = event.target.y() - own.y;
       const moved = new Map<string, { x: number; y: number }>();

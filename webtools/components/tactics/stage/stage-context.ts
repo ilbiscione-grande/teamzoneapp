@@ -12,7 +12,26 @@ export type StageShared = {
   /** Metres per screen pixel at the current zoom: for handles of a finger's size. */
   metresPerPixel: () => number;
   editable: boolean;
+  /** The bin beside the pitch: shown while an object is dragged, removing what is dropped on it. */
+  trash?: React.RefObject<HTMLDivElement | null>;
 };
+
+/** Shows the bin while dragging, lit when the pointer is over it; whether it is. */
+export function trashAt(shared: StageShared, stage: Konva.Stage | null, dragging: boolean): boolean {
+  const bin = shared.trash?.current;
+  if (!bin) return false;
+  const pointer = stage?.getPointerPosition();
+  let over = false;
+  if (dragging && stage && pointer) {
+    const box = stage.container().getBoundingClientRect();
+    const zone = bin.getBoundingClientRect();
+    const x = box.left + pointer.x, y = box.top + pointer.y;
+    over = x >= zone.left && x <= zone.right && y >= zone.top && y <= zone.bottom;
+  }
+  bin.dataset.active = String(dragging);
+  bin.dataset.over = String(over);
+  return over;
+}
 
 export const StageContext = createContext<StageShared | null>(null);
 
