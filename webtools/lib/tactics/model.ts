@@ -1,0 +1,149 @@
+// Tacticsboard's document: a project of boards, each a list of frames, each
+// frame the objects on the pitch at that moment. Everything is measured in
+// metres on a 105 × 68 pitch, the home goal to the left. The whole document
+// is saved at once (core.tactics_projects.document) and carries its schema
+// version; ids are stable so a board can be linked from TeamZone.
+
+export const SCHEMA_VERSION = 1;
+export const PITCH_LENGTH = 105;
+export const PITCH_WIDTH = 68;
+
+export type Point = { x: number; y: number };
+export type Side = "home" | "away";
+
+type Base = {
+  id: string;
+  x: number;
+  y: number;
+  rotation: number;
+  locked: boolean;
+  hidden: boolean;
+  /** The object's own name in the object list. */
+  label?: string;
+};
+
+export type PlayerObject = Base & {
+  type: "player";
+  side: Side;
+  number: number | null;
+  name: string | null;
+  /** The TeamZone player, when placed from the team's squad. */
+  personId: string | null;
+  /** A colour of its own, such as a goalkeeper's; else the team's. */
+  color: string | null;
+};
+
+export type BallObject = Base & {
+  type: "ball";
+  /** The player the ball sticks to, and where on the player's edge. */
+  attachedTo: string | null;
+  offset: Point | null;
+};
+
+export type EquipmentKind = "cone" | "pole" | "mannequin" | "goal";
+
+export type EquipmentObject = Base & {
+  type: EquipmentKind;
+  color: string;
+  scale: number;
+};
+
+export type ArrowHead = "none" | "end" | "both";
+
+export type LineObject = Base & {
+  type: "line";
+  /** Start and end, relative to x and y. */
+  points: [number, number, number, number];
+  /** A curve's control point, relative to x and y; null when straight. */
+  control: Point | null;
+  arrow: ArrowHead;
+  dashed: boolean;
+  color: string;
+  width: number;
+};
+
+export type FreehandObject = Base & {
+  type: "freehand";
+  points: number[];
+  arrow: ArrowHead;
+  dashed: boolean;
+  color: string;
+  width: number;
+};
+
+export type ShapeObject = Base & {
+  type: "rect" | "ellipse";
+  width: number;
+  height: number;
+  color: string;
+  /** 0–1: how much the area is filled. */
+  fill: number;
+  dashed: boolean;
+};
+
+export type TextObject = Base & {
+  type: "text";
+  text: string;
+  size: number;
+  color: string;
+  background: boolean;
+};
+
+export type TacticsObject =
+  | PlayerObject
+  | BallObject
+  | EquipmentObject
+  | LineObject
+  | FreehandObject
+  | ShapeObject
+  | TextObject;
+
+export type ObjectType = TacticsObject["type"];
+
+export type Frame = {
+  id: string;
+  objects: TacticsObject[];
+  /** How long the move into this frame takes when played. */
+  durationMs: number;
+  note: string;
+};
+
+export type PitchView = "full" | "attack" | "defend" | "empty";
+export type PitchOverlay = "none" | "corridors" | "thirds" | "zones";
+
+export type TeamStyle = { name: string; color: string; numberColor: string };
+
+export type Board = {
+  id: string;
+  name: string;
+  view: PitchView;
+  overlay: PitchOverlay;
+  teams: Record<Side, TeamStyle>;
+  showNames: boolean;
+  frames: Frame[];
+};
+
+/** A player of the TeamZone team, as the project last read the squad. */
+export type SquadPlayer = { personId: string; name: string; number: number | null; position: string | null };
+
+export type ProjectDocument = {
+  schemaVersion: number;
+  boards: Board[];
+  squad: SquadPlayer[];
+};
+
+export type ProjectKind = "match" | "training" | "education";
+
+export type ProjectSummary = {
+  id: string;
+  name: string;
+  kind: ProjectKind;
+  teamzone_team_id: string | null;
+  team_name: string | null;
+  board_count: number;
+  revision: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Project = ProjectSummary & { document: ProjectDocument };

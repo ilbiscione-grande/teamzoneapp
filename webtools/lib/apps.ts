@@ -19,12 +19,13 @@ export type WebtoolApp = {
 export const webtoolApps: WebtoolApp[] = [
   {
     slug: "tacticsboard",
+    href: "/tacticsboard",
     name: "Tacticsboard",
     mark: "TB",
     tagline: "Rita, animera och presentera taktik.",
     description: "En taktiktavla för träning, genomgångar och matchförberedelser. Rita upp spelsystem och övningar, animera förlopp och visa dem för laget.",
-    features: ["Planer för flera sporter", "Animationer steg för steg", "Laguppställningar från din trupp", "Dela och exportera"],
-    status: "planned",
+    features: ["Spelare, boll, utrustning, pilar och ytor", "Formationer och truppen från TeamZone", "Objektlista med lås och dölj", "Animationer, delning och export kommer härnäst"],
+    status: "beta",
   },
   {
     slug: "video-analyzer",
@@ -70,7 +71,8 @@ export function findApp(slug: string): WebtoolApp | undefined {
 /** Only Webtools' own pages are valid places to return to after signing in. */
 export function safeReturnTo(value: string | null | undefined): string {
   if (!value) return "/";
-  if (value === "/" || value === "/konto" || value === "/bokningar" || value === "/aviseringar" || value === "/turneringar") return value;
+  if (value === "/" || value === "/konto" || value === "/bokningar" || value === "/aviseringar" || value === "/turneringar" || value === "/tacticsboard") return value;
+  if (/^\/tacticsboard\/[0-9a-f-]{36}$/.test(value)) return value;
   // A tournament, which is also its registration link, and staff invitations.
   if (/^\/turneringar\/[0-9a-f-]{36}$/.test(value)) return value;
   if (/^\/turneringar\?inbjudan=[0-9a-f]{64}$/.test(value)) return value;

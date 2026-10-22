@@ -1,0 +1,116 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { ATTACH_DISTANCE, ballPosition, dropBall, settleBalls } from "../lib/tactics/ball.ts";
+import { applyFormation, createObject, createPlayer, nextNumber, normalizeDocument, objectLabel, newBoard, restack, updateFrame } from "../lib/tactics/document.ts";
+import { formationPositions, formations, parseFormation } from "../lib/tactics/formations.ts";
+import { fitView, pitchToFrame, viewRect, zoomAround } from "../lib/tactics/geometry.ts";
+import { emptyHistory, HISTORY_LIMIT, record, redo, undo } from "../lib/tactics/history.ts";
+import type { BallObject, ProjectDocument, TacticsObject } from "../lib/tactics/model.ts";
+
+const near = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-9, `${a} ≈ ${b}`);
+
+test("a wide frame shows the pitch as it is, a tall one turns it a quarter", () => {
+  const rect = viewRect("full");
+  const wide = fitView(rect, 1130, 760);
+  assert.equal(wide.rotation, 0);
+  const corner = pitchToFrame({ x: rect.x, y: rect.y }, wide);
+  const far = pitchToFrame({ x: rect.x + rect.width, y: rect.y + rect.height }, wide);
+  assert.ok(corner.x >= -1e-9 && corner.y >= -1e-9 && far.x <= 1130 + 1e-9 && far.y <= 760 + 1e-9, "fits");
+  const tall = fitView(rect, 390, 700);
+  assert.equal(tall.rotation, 90);
+  // Turned: the home goal (x = 0) at the top, the touchline y = 0 on the right.
+  const goal = pitchToFrame({ x: 0, y: 34 }, tall);
+  const other = pitchToFrame({ x: 105, y: 34 }, tall);
+  assert.ok(goal.y < other.y);
+  near(goal.x, other.x);
+  const topLeft = pitchToFrame({ x: rect.x, y: rect.y + rect.height }, tall);
+  assert.ok(topLeft.x >= -1e-9 && topLeft.y >= -1e-9);
+  // Half views show their half.
+  assert.ok(viewRect("attack").x > 45 && viewRect("defend").x < 0 && viewRect("attack").width < 61);
+});
+
+test("zooming keeps the point under the fingers in place", () => {
+  const view = zoomAround({ x: 0, y: 0, scale: 1 }, 2, { x: 100, y: 50 });
+  assert.deepEqual(view, { scale: 2, x: -100, y: -50 });
+  assert.equal(zoomAround({ x: 0, y: 0, scale: 1 }, 100, { x: 0, y: 0 }).scale, 4, "clamped");
+});
+
+const objects = (): TacticsObject[] => [
+  createPlayer({ x: 50, y: 30 }, "home", []),
+  { ...createPlayer({ x: 70, y: 30 }, "away", []), id: "away-1" },
+];
+
+test("the ball sticks where it is dropped by a player and follows them", () => {
+  const items = objects();
+  const player = items[0];
+  const ball = createObject("ball", { x: 0, y: 0 }) as BallObject;
+  // Dropped just right of the player: on the right edge.
+  const stuck = dropBall(ball, { x: 52, y: 30 }, items);
+  assert.equal(stuck.attachedTo, player.id);
+  near(stuck.offset!.x, ATTACH_DISTANCE);
+  near(stuck.offset!.y, 0);
+  near(stuck.x, 50 + ATTACH_DISTANCE);
+  // Too far from anyone: loose.
+  assert.equal(dropBall(ball, { x: 60, y: 30 }, items).attachedTo, null);
+  // Not attaching when told not to.
+  assert.equal(dropBall(ball, { x: 52, y: 30 }, items, false).attachedTo, null);
+  // The player moves; the ball keeps its place on the edge.
+  const moved = items.map(item => item.id === player.id ? { ...item, x: 10, y: 10 } : item);
+  const settled = settleBalls([...moved, stuck]);
+  const followed = settled[2] as BallObject;
+  near(followed.x, 10 + ATTACH_DISTANCE);
+  near(ballPosition(followed, settled).y, 10);
+  // The player goes; the ball comes loose where it was.
+  const loose = settleBalls([items[1], followed])[1] as BallObject;
+  assert.equal(loose.attachedTo, null);
+});
+
+test("formations place the goalkeeper and the lines on the own half", () => {
+  const home = formationPositions(formations["4-3-3"], "home");
+  assert.equal(home.length, 11);
+  assert.ok(home.every(point => point.x <= 52.5));
+  const away = formationPositions(formations["4-3-3"], "away");
+  assert.ok(away.every(point => point.x >= 52.5));
+  assert.deepEqual(parseFormation(" 4 - 4 - 2 "), [4, 4, 2]);
+  assert.equal(parseFormation("4-4-4"), null, "eleven outfield players is too many");
+  assert.equal(parseFormation("hej"), null);
+  // Existing players move; missing ones come from the squad, then numbered.
+  const squad = [{ personId: "p1", name: "Alva", number: 9, position: null }];
+  const placed = applyFormation(objects(), "home", [2, 1, 1], squad);
+  const home5 = placed.filter(item => item.type === "player" && item.side === "home");
+  assert.equal(home5.length, 5);
+  assert.ok(home5.some(item => item.type === "player" && item.name === "Alva" && item.number === 9));
+});
+
+test("numbers, labels, order and frame updates", () => {
+  const board = newBoard("Tavla");
+  const items = objects();
+  assert.equal(nextNumber(items, "home"), 2);
+  assert.equal(objectLabel(items[0], board), "#1 Hemma");
+  assert.equal(objectLabel({ ...items[0], label: "Kapten" } as TacticsObject, board), "Kapten");
+  const cone = createObject("cone", { x: 1, y: 1 });
+  assert.deepEqual(restack([...items, cone], cone.id, -1).map(item => item.id), [items[0].id, cone.id, items[1].id]);
+  const document: ProjectDocument = { schemaVersion: 1, squad: [], boards: [{ ...board, frames: [{ ...board.frames[0], objects: items }] }] };
+  const next = updateFrame(document, board.id, 0, current => current.filter(item => item.id !== "away-1"));
+  assert.equal(next.boards[0].frames[0].objects.length, 1);
+  assert.equal(document.boards[0].frames[0].objects.length, 2, "the old document is untouched");
+  // A document from the server is made whole.
+  const normalized = normalizeDocument({ boards: [{ id: "b", name: "Gammal" }] });
+  assert.equal(normalized.boards[0].frames.length, 1);
+  assert.equal(normalized.boards[0].teams.home.name, "Hemma");
+  assert.equal(normalizeDocument(null).boards.length, 1);
+});
+
+test("undo and redo step through whole documents", () => {
+  const a = normalizeDocument(null), b = normalizeDocument(null), c = normalizeDocument(null);
+  let history = record(record(emptyHistory(), a), b);
+  const back = undo(history, c)!;
+  assert.equal(back.document, b);
+  history = back.history;
+  const forward = redo(history, b)!;
+  assert.equal(forward.document, c);
+  assert.equal(undo(emptyHistory(), a), null);
+  let long = emptyHistory();
+  for (let i = 0; i < HISTORY_LIMIT + 5; i++) long = record(long, a);
+  assert.equal(long.past.length, HISTORY_LIMIT);
+});
