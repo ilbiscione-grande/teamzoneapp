@@ -6,6 +6,7 @@ import { formationPositions, formations, parseFormation } from "../lib/tactics/f
 import { fitView, pitchToFrame, viewRect, zoomAround } from "../lib/tactics/geometry.ts";
 import { emptyHistory, HISTORY_LIMIT, record, redo, undo } from "../lib/tactics/history.ts";
 import type { BallObject, ProjectDocument, TacticsObject } from "../lib/tactics/model.ts";
+import { boardsForTemplate, boardsFromTemplate, copyBoard, starterBoard, starterSets } from "../lib/tactics/templates.ts";
 
 const near = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-9, `${a} ≈ ${b}`);
 
@@ -131,4 +132,31 @@ test("a share link's QR code has its finder squares and draws as runs", async ()
   }
   const path = qrPath([[true, true, false, true]], 0);
   assert.equal(path, "M0 0h2v1h-2zM3 0h1v1h-1z");
+});
+
+test("templates: ready boards, saving without ties and using with new ids", () => {
+  const lineup = starterBoard(starterSets.match.find(item => item.key === "lineup")!, "P2012");
+  const players = lineup.frames[0].objects.filter(item => item.type === "player");
+  assert.equal(players.length, 11);
+  assert.equal(lineup.teams.home.name, "P2012");
+  assert.ok(lineup.frames[0].objects.some(item => item.type === "ball"));
+  const corner = starterBoard(starterSets.match.find(item => item.key === "corner-for")!);
+  assert.equal(corner.view, "attack");
+  assert.ok(Object.values(starterSets).every(set => set.every(item => !item.formation || formations[item.formation])));
+
+  const tied = { ...lineup, frames: [{ ...lineup.frames[0], objects: lineup.frames[0].objects.map(item => item.type === "player" ? { ...item, personId: "p1", name: "Alva", position: "MV" } : item) }] };
+  const saved = boardsForTemplate([tied], false);
+  const savedPlayer = saved[0].frames[0].objects.find(item => item.type === "player");
+  assert.deepEqual(savedPlayer && savedPlayer.type === "player" && [savedPlayer.personId, savedPlayer.name, savedPlayer.position], [null, null, "MV"]);
+  const kept = boardsForTemplate([tied], true)[0].frames[0].objects.find(item => item.type === "player");
+  assert.equal(kept && kept.type === "player" && kept.name, "Alva");
+
+  const used = boardsFromTemplate(saved, "F2013");
+  assert.notEqual(used[0].id, saved[0].id);
+  assert.notEqual(used[0].frames[0].id, saved[0].frames[0].id);
+  assert.equal(used[0].teams.home.name, "F2013");
+  assert.equal(used[0].frames[0].objects.length, saved[0].frames[0].objects.length);
+  const copy = copyBoard(lineup);
+  assert.equal(copy.name, "Uppställning (kopia)");
+  assert.notEqual(copy.id, lineup.id);
 });

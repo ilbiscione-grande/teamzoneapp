@@ -6,7 +6,9 @@ import { updateBoard } from "../../../lib/tactics/document.ts";
 import type { Board, PitchOverlay, PitchView, Side } from "../../../lib/tactics/model.ts";
 import { useEditor } from "../store.ts";
 import { Swatches } from "./Swatches.tsx";
+import { useState } from "react";
 import { ProjectFields } from "../TopBar.tsx";
+import { TemplateDialog } from "../TemplateDialog.tsx";
 
 const views: Record<PitchView, string> = { full: "Hel plan", attack: "Anfallshalva", defend: "Försvarshalva", empty: "Tom yta" };
 const overlays: Record<PitchOverlay, string> = { none: "Inget rutnät", corridors: "Korridorer", thirds: "Tredjedelar", zones: "18 zoner" };
@@ -15,6 +17,7 @@ export function BoardSettings({ board }: { board: Board }) {
   const change = (next: (current: Board) => Board) => useEditor.getState().change(document => updateBoard(document, board.id, next));
   const attachBall = useEditor(state => state.attachBall);
   const setAttachBall = useEditor(state => state.setAttachBall);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const frameIndex = useEditor(state => Math.min(state.frameIndex, board.frames.length - 1));
   const team = (side: Side, changes: Partial<Board["teams"][Side]>) =>
     change(current => ({ ...current, teams: { ...current.teams, [side]: { ...current.teams[side], ...changes } } }));
@@ -23,6 +26,8 @@ export function BoardSettings({ board }: { board: Board }) {
       <div className="tb-project">
         <h3>Projektet</h3>
         <ProjectFields className="tb-panel-select" />
+        <button type="button" className="wt-button secondary small" onClick={() => setSavingTemplate(true)}>Spara som mall…</button>
+        {savingTemplate && <TemplateDialog onClose={() => setSavingTemplate(false)} />}
       </div>
       <h3>Tavlan</h3>
       <label className="tb-field">Namn<input value={board.name} maxLength={60} onChange={event => change(current => ({ ...current, name: event.target.value }))} /></label>

@@ -45,6 +45,7 @@ await db.exec(read('supabase/migrations/20261120090000_tournament_schedule.sql')
 await db.exec(read('supabase/migrations/20261121090000_tournament_teamzone.sql'));
 await db.exec(read('supabase/migrations/20261123090000_tacticsboard.sql'));
 await db.exec(read('supabase/migrations/20261124090000_tactics_share_links.sql'));
+await db.exec(read('supabase/migrations/20261125090000_tactics_templates.sql'));
 await db.exec('begin');
 
 const doc = boards => JSON.stringify({ schemaVersion: 1, boards });
@@ -92,6 +93,22 @@ await fails(other, 'select api.revoke_tactics_share_link($1)', [one], /not_found
 await call(coach, 'select api.revoke_tactics_share_link($1)', [one]);
 assert.equal(await shared(one), null);
 assert.equal((await call(coach, 'select api.list_tactics_share_links($1)', [created.id])).length, 1);
+
+// Templates: yours alone; the same name replaces, the boards' names listed.
+const tpl = await call(coach, "select api.save_tactics_template('Fasta situationer','match',$1)", [doc([{ id: 'h1', name: 'Hörna' }, { id: 'f1', name: 'Frispark' }])]);
+assert.equal(await call(coach, "select api.save_tactics_template(' fasta SITUATIONER ','match',$1)", [doc([{ id: 'h1', name: 'Hörna anfall' }])]), tpl, 'replaced by name');
+await call(coach, "select api.save_tactics_template('Uppvärmning','training',$1)", [doc([{ id: 'u1', name: 'Rondo' }])]);
+const templates = await call(coach, 'select api.list_my_tactics_templates()');
+assert.deepEqual(templates.map(t => [t.name, t.kind, t.boards.map(b => b.name)]).sort(), [['Uppvärmning', 'training', ['Rondo']], ['fasta SITUATIONER', 'match', ['Hörna anfall']]]);
+assert.deepEqual((await call(coach, 'select api.get_tactics_template($1)', [tpl])).document.boards, [{ id: 'h1', name: 'Hörna anfall' }]);
+assert.deepEqual(await call(other, 'select api.list_my_tactics_templates()'), []);
+await fails(other, 'select api.get_tactics_template($1)', [tpl], /not_found/);
+await fails(other, 'select api.delete_tactics_template($1)', [tpl], /not_found/);
+await fails(coach, "select api.save_tactics_template('Tom','match',$1)", [doc([])], /invalid_document/);
+await fails(coach, "select api.save_tactics_template('  ','match',$1)", [doc([{ id: 'x' }])], /invalid_name/);
+await fails(coach, "select api.save_tactics_template('X','party',$1)", [doc([{ id: 'x' }])], /invalid_kind/);
+await call(coach, 'select api.delete_tactics_template($1)', [tpl]);
+assert.equal((await call(coach, 'select api.list_my_tactics_templates()')).length, 1);
 
 await fails(other, 'select api.delete_tactics_project($1)', [created.id], /not_found/);
 await call(coach, 'select api.delete_tactics_project($1)', [created.id]);

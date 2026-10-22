@@ -5,7 +5,6 @@
 // and team are under the board's settings.
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { newBoard } from "../../lib/tactics/document.ts";
 import type { ProjectKind } from "../../lib/tactics/model.ts";
 import type { LeaderTeam } from "../../lib/tournament";
 import { useAccount } from "../account";
@@ -13,6 +12,7 @@ import { useEditor, type SaveState, NONE } from "./store.ts";
 import { saveNow } from "./use-autosave.ts";
 import { ShareDialog } from "./ShareDialog.tsx";
 import { ExportDialog } from "./export/ExportDialog.tsx";
+import { BoardMenu } from "./BoardMenu.tsx";
 
 const saveLabels: Record<SaveState, string> = {
   saved: "Sparat", dirty: "Ändrat", saving: "Sparar…", error: "Kunde inte spara", conflict: "Ändrat på annat håll",
@@ -24,11 +24,6 @@ function Boards() {
   const boards = useEditor(state => state.document?.boards ?? NONE);
   const boardId = useEditor(state => state.boardId);
   const { setBoard, change } = useEditor.getState();
-  const add = () => {
-    const board = newBoard(`Tavla ${boards.length + 1}`, boards[0]?.teams.home.name, boards[0]?.teams.away.name);
-    change(document => ({ ...document, boards: [...document.boards, board] }));
-    setBoard(board.id);
-  };
   const remove = (id: string, name: string) => {
     if (boards.length < 2 || !window.confirm(`Ta bort ${name}?`)) return;
     const next = boards.find(board => board.id !== id)!;
@@ -45,7 +40,7 @@ function Boards() {
           )}
         </span>
       ))}
-      <button type="button" className="tb-board-add" onClick={add} aria-label="Ny tavla">+ Tavla</button>
+      <BoardMenu />
     </div>
   );
 }
