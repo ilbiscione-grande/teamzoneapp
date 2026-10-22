@@ -40,6 +40,8 @@ type EditorState = {
   play: () => void;
   /** Plays the move into a frame and stops there, keeping the selection. */
   preview: (index: number) => void;
+  /** The playhead moved by hand on the timeline: paused there, between frames too. */
+  scrub: (playhead: number) => void;
   pause: () => void;
   setPlayhead: (playhead: number) => void;
   setLoop: (loop: boolean) => void;
@@ -84,11 +86,11 @@ export const useEditor = create<EditorState>((set, get) => ({
     const frameIndex = Math.min(board.frames.length - 1, Math.max(0, index));
     set({ frameIndex, playhead: frameIndex, playing: false, selection: [] });
   },
-  // From the frame being edited, or from the start when it is the last.
+  // From where it was stopped (between two frames too), or from the start when at the end.
   play: () => {
     const board = activeBoard(get());
     if (!board || board.frames.length < 2) return;
-    const start = get().frameIndex >= board.frames.length - 1 ? 0 : get().frameIndex;
+    const start = get().playhead >= board.frames.length - 1 ? 0 : get().playhead;
     set({ playing: true, playhead: start, stopAt: null, selection: [], tool: "select" });
   },
   preview: index => {
@@ -96,11 +98,14 @@ export const useEditor = create<EditorState>((set, get) => ({
     if (!board || index < 1 || index >= board.frames.length) return;
     set({ playing: true, playhead: index - 1, stopAt: index, tool: "select" });
   },
-  // Paused between two frames, the board shows the nearer one for editing.
-  pause: () => set(state => {
-    const frameIndex = Math.round(state.playhead);
-    return { playing: false, frameIndex, playhead: frameIndex, stopAt: null };
-  }),
+  // Paused between two frames, the board stays there; choosing a frame goes back to editing.
+  pause: () => set(state => ({ playing: false, frameIndex: Math.round(state.playhead), stopAt: null })),
+  scrub: playhead => {
+    const board = activeBoard(get());
+    if (!board) return;
+    const clamped = Math.min(board.frames.length - 1, Math.max(0, playhead));
+    set({ playing: false, stopAt: null, playhead: clamped, frameIndex: Math.round(clamped), selection: [] });
+  },
   setPlayhead: playhead => set({ playhead }),
   setLoop: loop => set({ loop }),
   setSpeed: speed => set({ speed }),
@@ -167,6 +172,10 @@ function frameWithin(document: ProjectDocument, state: { boardId: string | null;
 }
 
 /** The active board, or null before a project is loaded. */
+/** Stopped between two frames: the board shows the move, nothing is edited. */
+export const isBetween = (state: { playing: boolean; playhead: number; frameIndex: number }) =>
+  !state.playing && Math.abs(state.playhead - state.frameIndex) > 1e-6;
+
 export function activeBoard(state: { document: ProjectDocument | null; boardId: string | null }): Board | null {
   return state.document?.boards.find(board => board.id === state.boardId) ?? state.document?.boards[0] ?? null;
 }

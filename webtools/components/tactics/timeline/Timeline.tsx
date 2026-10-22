@@ -1,12 +1,13 @@
 "use client";
 
-// Under the board: play and pause, loop and speed, the frames to choose
-// from, a new frame copied from the one in hand, its length, moving and
+// Under the board: the timeline to scrub, play and pause, loop and speed,
+// the frames to choose from, a new frame copied from the one in hand, its length, moving and
 // removing it, and recording the play as a video.
 import { useState } from "react";
 import { insertFrame, moveFrame, removeFrame, setFrameDuration, updateBoard } from "../../../lib/tactics/document.ts";
 import type { Board } from "../../../lib/tactics/model.ts";
-import { useEditor } from "../store.ts";
+import { isBetween, useEditor } from "../store.ts";
+import { Scrubber } from "./Scrubber.tsx";
 import { usePlayback } from "./use-playback.ts";
 import { canRecord, download, recordBoard } from "./video-export.ts";
 
@@ -21,6 +22,7 @@ export function Timeline({ board, readOnly = false }: { board: Board; readOnly?:
   const playhead = useEditor(state => state.playhead);
   const loop = useEditor(state => state.loop);
   const speed = useEditor(state => state.speed);
+  const between = useEditor(isBetween);
   const { setFrame, play, pause, setLoop, setSpeed, change } = useEditor.getState();
   const [recording, setRecording] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -54,18 +56,18 @@ export function Timeline({ board, readOnly = false }: { board: Board; readOnly?:
     setRecording(null);
   };
 
-  const progress = last > 0 ? (playing ? playhead : frameIndex) / last : 0;
+  const moving = playing || between;
   return (
     <div className="tb-timeline" aria-label="Frames och uppspelning">
-      <div className="tb-progress" aria-hidden="true"><span style={{ width: `${progress * 100}%` }} /></div>
+      {frames.length > 1 ? <Scrubber frames={frames} /> : <div className="tb-progress" aria-hidden="true" />}
       <div className="tb-timeline-row">
         <button type="button" className="tb-play" disabled={frames.length < 2 || recording !== null}
           aria-label={playing ? "Pausa" : "Spela"} title={frames.length < 2 ? "Lägg till en frame för att spela" : undefined}
           onClick={() => (playing ? pause() : play())}>{playing ? "❚❚" : "▶"}</button>
         <div className="tb-frames" role="tablist" aria-label="Frames">
           {frames.map((frame, index) => (
-            <button key={frame.id} type="button" role="tab" aria-selected={!playing && index === frameIndex}
-              data-current={playing && Math.round(playhead) === index} onClick={() => setFrame(index)}>{index + 1}</button>
+            <button key={frame.id} type="button" role="tab" aria-selected={!moving && index === frameIndex}
+              data-current={moving && Math.round(playhead) === index} onClick={() => setFrame(index)}>{index + 1}</button>
           ))}
           {!readOnly && <button type="button" className="tb-frame-add" onClick={add} disabled={playing} aria-label="Ny frame (kopia av denna)" title="Ny frame: en kopia av den här att flytta vidare i">+</button>}
         </div>
@@ -82,7 +84,10 @@ export function Timeline({ board, readOnly = false }: { board: Board; readOnly?:
           </button>
         )}
       </div>
-      {!readOnly && !playing && frameIndex > 0 && (
+      {!readOnly && between && (
+        <p className="tb-timeline-hint">Mellan frame {Math.floor(playhead) + 1} och {Math.floor(playhead) + 2}. Välj en frame för att redigera.</p>
+      )}
+      {!readOnly && !moving && frameIndex > 0 && (
         <div className="tb-timeline-row tb-frame-tools">
           <span className="tb-mini-text">Frame {frameIndex + 1}</span>
           <label className="tb-mini"><span className="tb-mini-text">Förflyttning</span>

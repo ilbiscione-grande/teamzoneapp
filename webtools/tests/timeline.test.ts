@@ -153,3 +153,21 @@ test("PDF pages: one picture a page, four frames to a page, or the last frame", 
   assert.equal(pdfFileName(" Match mot Aneby SK! "), "Match_mot_Aneby_SK.pdf");
   assert.equal(pdfFileName("??"), "tavla.pdf");
 });
+
+test("scrubbing: the playhead as time and back, each move as long as it plays", async () => {
+  const { frameTimes, timeOfPlayhead, playheadOfTime, secondsLabel } = await import("../lib/tactics/scrub.ts");
+  const { newFrame } = await import("../lib/tactics/document.ts");
+  const frames = [newFrame(), { ...newFrame(), durationMs: 1000 }, { ...newFrame(), durationMs: 3000 }];
+  assert.deepEqual(frameTimes(frames), [0, 1000, 4000]);
+  assert.equal(timeOfPlayhead(frames, 1.5), 2500);
+  assert.equal(timeOfPlayhead(frames, 2), 4000);
+  near(playheadOfTime(frames, 2500), 1.5);
+  assert.equal(playheadOfTime(frames, -5), 0);
+  assert.equal(playheadOfTime(frames, 9000), 2);
+  for (const playhead of [0, 0.25, 1, 1.9]) near(playheadOfTime(frames, timeOfPlayhead(frames, playhead)), playhead);
+  assert.equal(timeOfPlayhead([newFrame()], 0), 0);
+  assert.equal(secondsLabel(2500), "2,5 s");
+  // Played on from where it was stopped between two frames.
+  const { playheadAt } = await import("../lib/tactics/timeline.ts");
+  near(playheadAt(frames, 1000, 1, false, 1.2)!, 1 + 1600 / 3000);
+});

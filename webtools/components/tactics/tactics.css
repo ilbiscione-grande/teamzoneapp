@@ -267,3 +267,16 @@ body:has(.tb-viewer) .wt-header { display: none; }
   .tb-present-body > .tb-center { order: 1; flex: 1; min-height: 0; }
   .tb-present-text { order: 2; flex: none; max-height: 38dvh; padding: 12px 14px; font-size: .95rem; }
 }
+
+/* The timeline to scrub: a frame's dot where it is reached in time. */
+.tb-scrub-row { display: flex; align-items: center; gap: 10px; padding: 6px 4px 4px; }
+.tb-scrub { position: relative; flex: 1; height: 30px; cursor: pointer; touch-action: none; outline: none; }
+.tb-scrub-track { position: absolute; left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px; border-radius: 2px; background: rgba(255, 255, 255, .14); overflow: hidden; }
+.tb-scrub-fill { display: block; height: 100%; background: var(--wt-accent); }
+.tb-scrub-tick { position: absolute; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; display: grid; place-items: center; padding: 0; border: 0; background: none; color: #a9b4c4; font: inherit; font-size: .62rem; font-weight: 700; cursor: pointer; }
+.tb-scrub-tick::before { content: ""; position: absolute; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--wt-accent); background: #13221a; }
+.tb-scrub-tick[data-passed="true"]::before { background: var(--wt-accent); }
+.tb-scrub-tick span { position: absolute; top: -12px; }
+.tb-scrub-thumb { position: absolute; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: white; box-shadow: 0 0 0 3px var(--wt-accent), 0 2px 6px rgba(0, 0, 0, .4); pointer-events: none; }
+.tb-scrub:focus-visible .tb-scrub-thumb { box-shadow: 0 0 0 3px var(--wt-accent), 0 0 0 6px rgba(255, 255, 255, .5); }
+.tb-scrub-time { min-width: 76px; color: #a9b4c4; font-size: .78rem; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }

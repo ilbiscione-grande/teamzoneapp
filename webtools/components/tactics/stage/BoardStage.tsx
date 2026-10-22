@@ -13,7 +13,7 @@ import { ballHolders } from "../../../lib/tactics/ball.ts";
 import { fitView, viewRect } from "../../../lib/tactics/geometry.ts";
 import { objectsAt } from "../../../lib/tactics/timeline.ts";
 import { ObjectNode } from "../objects/ObjectNode.tsx";
-import { activeBoard, activeObjects, useEditor } from "../store.ts";
+import { activeBoard, activeObjects, isBetween, useEditor } from "../store.ts";
 import { DraftNode } from "./DraftNode.tsx";
 import { Ghosts } from "./Ghosts.tsx";
 import { Pitch } from "./Pitch.tsx";
@@ -39,8 +39,9 @@ export default function BoardStage({ editable = true }: { editable?: boolean }) 
   const playing = useEditor(state => state.playing);
   const playhead = useEditor(state => state.playhead);
   const frameIndex = useEditor(state => state.frameIndex);
-  // Nothing is edited while the board plays.
-  const canEdit = editable && !playing;
+  const between = useEditor(isBetween);
+  // Nothing is edited while the board plays or stands between two frames.
+  const canEdit = editable && !playing && !between;
   const content = useRef<Konva.Group>(null);
   const nodes = useRef(new Map<string, Konva.Node>());
   const trash = useRef<HTMLDivElement>(null);
@@ -76,7 +77,7 @@ export default function BoardStage({ editable = true }: { editable?: boolean }) 
   const pannable = zoomedIn && (tool === "select" || isPlaceTool(tool));
   const bandable = canEdit && tool === "select" && !zoomedIn;
   // Hidden objects stay in the list, not on the pitch. Playing shows the moves.
-  const shown = playing ? objectsAt(board.frames, playhead) : objects;
+  const shown = playing || between ? objectsAt(board.frames, playhead) : objects;
   const visible = shown.filter(item => !item.hidden);
   const holders = ballHolders(visible);
   // Ghosts of the frame before are for editing; a shared board shows none.
