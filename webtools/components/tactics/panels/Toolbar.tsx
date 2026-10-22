@@ -2,55 +2,84 @@
 
 // The tools: select, place players and equipment, draw passes, runs and
 // areas. A placing tool stays in hand for several taps; a drawing tool goes
-// back to select after one stroke.
+// back to select after one stroke. On a wide screen the palette can be
+// wider, a short word under each icon, two or three to a row; the choice
+// stays in this browser. A phone always has the compact row.
+import { useEffect, useState } from "react";
 import { useEditor, type Tool } from "../store.ts";
 
-type Item = { tool: Tool; label: string; icon: string };
+type Item = { tool: Tool; label: string; short: string; icon: string };
 
 const groups: { title: string; items: Item[] }[] = [
-  { title: "Markera", items: [{ tool: "select", label: "Markera och flytta", icon: "↖" }] },
+  { title: "Markera", items: [{ tool: "select", label: "Markera och flytta", short: "Markera", icon: "↖" }] },
   {
     title: "Placera",
     items: [
-      { tool: "player-home", label: "Spelare, hemmalag", icon: "●" },
-      { tool: "player-away", label: "Spelare, bortalag", icon: "●" },
-      { tool: "ball", label: "Boll", icon: "⚽" },
-      { tool: "cone", label: "Kon", icon: "▲" },
-      { tool: "pole", label: "Pinne", icon: "┃" },
-      { tool: "mannequin", label: "Docka", icon: "⬬" },
-      { tool: "goal", label: "Mål", icon: "⊐" },
-      { tool: "text", label: "Text", icon: "T" },
+      { tool: "player-home", label: "Spelare, hemmalag", short: "Hemma", icon: "●" },
+      { tool: "player-away", label: "Spelare, bortalag", short: "Borta", icon: "●" },
+      { tool: "ball", label: "Boll", short: "Boll", icon: "⚽" },
+      { tool: "cone", label: "Kon", short: "Kon", icon: "▲" },
+      { tool: "pole", label: "Pinne", short: "Pinne", icon: "┃" },
+      { tool: "mannequin", label: "Docka", short: "Docka", icon: "⬬" },
+      { tool: "goal", label: "Mål", short: "Mål", icon: "⊐" },
+      { tool: "text", label: "Text", short: "Text", icon: "T" },
     ],
   },
   {
     title: "Rita",
     items: [
-      { tool: "arrow", label: "Passning", icon: "→" },
-      { tool: "run", label: "Löpning", icon: "⇢" },
-      { tool: "line", label: "Linje", icon: "／" },
-      { tool: "freehand", label: "Frihand", icon: "〰" },
-      { tool: "rect", label: "Yta", icon: "▭" },
-      { tool: "ellipse", label: "Zon", icon: "◯" },
+      { tool: "arrow", label: "Passning", short: "Pass", icon: "→" },
+      { tool: "run", label: "Löpning", short: "Löpning", icon: "⇢" },
+      { tool: "line", label: "Linje", short: "Linje", icon: "／" },
+      { tool: "freehand", label: "Frihand", short: "Frihand", icon: "〰" },
+      { tool: "rect", label: "Yta", short: "Yta", icon: "▭" },
+      { tool: "ellipse", label: "Zon", short: "Zon", icon: "◯" },
     ],
   },
 ];
 
+type Size = "compact" | "labels";
+const KEY = "teamzone:tactics:toolbar";
+
+/** The palette's size: as chosen in this browser, else with words on a wide screen. */
+function useToolbarSize(): [Size, (size: Size) => void] {
+  const [size, setSize] = useState<Size>("compact");
+  useEffect(() => {
+    let saved: string | null = null;
+    try { saved = localStorage.getItem(KEY); } catch { /* storage unavailable */ }
+    setSize(saved === "labels" || saved === "compact" ? saved : window.innerWidth >= 1280 ? "labels" : "compact");
+  }, []);
+  const choose = (next: Size) => {
+    setSize(next);
+    try { localStorage.setItem(KEY, next); } catch { /* storage unavailable */ }
+  };
+  return [size, choose];
+}
+
 export function Toolbar({ homeColor, awayColor }: { homeColor: string; awayColor: string }) {
   const tool = useEditor(state => state.tool);
   const setTool = useEditor(state => state.setTool);
+  const [size, setSize] = useToolbarSize();
   return (
-    <nav className="tb-tools" aria-label="Verktyg">
+    <nav className="tb-tools" data-size={size} aria-label="Verktyg">
       {groups.map(group => (
         <div key={group.title} className="tb-tool-group" role="group" aria-label={group.title}>
+          {size === "labels" && <span className="tb-tool-heading">{group.title}</span>}
           {group.items.map(item => (
             <button key={item.tool} type="button" title={item.label} aria-label={item.label} aria-pressed={tool === item.tool}
               onClick={() => setTool(tool === item.tool ? "select" : item.tool)}
               style={item.tool === "player-home" ? { color: homeColor } : item.tool === "player-away" ? { color: awayColor } : undefined}>
-              <span aria-hidden="true">{item.icon}</span>
+              <span className="tb-tool-icon" aria-hidden="true">{item.icon}</span>
+              <span className="tb-tool-label" aria-hidden="true">{item.short}</span>
             </button>
           ))}
         </div>
       ))}
+      <button type="button" className="tb-tools-size" onClick={() => setSize(size === "labels" ? "compact" : "labels")}
+        aria-label={size === "labels" ? "Smalare verktyg utan text" : "Bredare verktyg med text"}
+        title={size === "labels" ? "Smalare verktyg utan text" : "Bredare verktyg med text"}>
+        {size === "labels" ? "«" : "»"}
+      </button>
     </nav>
   );
 }

@@ -198,3 +198,26 @@ body:has(.tb-viewer) .wt-header { display: none; }
 .tb-bigqr { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; align-content: center; gap: 18px; padding: 20px; background: #ffffff; color: var(--wt-ink); text-align: center; cursor: pointer; }
 .tb-bigqr strong { font-size: clamp(1.4rem, 4vw, 2.4rem); text-transform: uppercase; }
 .tb-bigqr span { color: var(--wt-muted); font-size: 1rem; }
+
+/* The palette with words: wider, two or three tools to a row. */
+.tb-tool-label, .tb-tool-heading { display: none; }
+.tb-tools-size { margin-top: auto; width: 44px; height: 32px !important; border: 0; border-radius: 8px; background: rgba(255, 255, 255, .06); color: #a9b4c4; font-size: 1rem; cursor: pointer; }
+.tb-tools[data-size="labels"] { width: 172px; }
+.tb-tools[data-size="labels"] .tb-tool-group { grid-template-columns: repeat(2, 1fr); gap: 4px; }
+.tb-tools[data-size="labels"] .tb-tool-heading { display: block; grid-column: 1 / -1; padding: 2px 4px 0; color: #7f8ea3; font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.tb-tools[data-size="labels"] button:not(.tb-tools-size) { width: auto; height: 58px; display: grid; place-items: center; align-content: center; gap: 2px; padding: 4px 2px; }
+.tb-tools[data-size="labels"] .tb-tool-label { display: block; font-size: .72rem; font-weight: 600; line-height: 1.1; color: #c9d5cd; }
+.tb-tools[data-size="labels"] button[aria-pressed="true"] .tb-tool-label { color: var(--wt-accent-ink); }
+.tb-tools[data-size="labels"] .tb-tools-size { width: 100%; }
+@media (min-width: 1600px) {
+  .tb-tools[data-size="labels"] { width: 236px; }
+  .tb-tools[data-size="labels"] .tb-tool-group { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 760px) {
+  /* Phones: always the compact row. */
+  .tb-tools-size { display: none; }
+  .tb-tools[data-size="labels"] { width: auto; }
+  .tb-tools[data-size="labels"] .tb-tool-group { grid-template-columns: none; grid-auto-flow: column; }
+  .tb-tools[data-size="labels"] .tb-tool-heading, .tb-tools[data-size="labels"] .tb-tool-label { display: none; }
+  .tb-tools[data-size="labels"] button:not(.tb-tools-size) { width: 42px; height: 42px; }
+}
