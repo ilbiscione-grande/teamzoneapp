@@ -140,6 +140,16 @@ test("PDF pages: one picture a page, four frames to a page, or the last frame", 
   assert.equal(layoutPages(boards, [1], "each").length, 5);
   const last = layoutPages(boards, [1], "last");
   assert.deepEqual([last.length, last[0].placements[0].frameIndex, last[0].placements[0].caption], [1, 4, null]);
+  // A description takes a column on the board's first page only, the pictures narrower there.
+  const described = [{ ...still, description: " Organisation: 11 mot 11. " }, { ...animated, description: "Coachpunkter" }];
+  const withText = layoutPages(described, [0, 1], "grid");
+  assert.deepEqual(withText.map(page => page.description?.text ?? null), ["Organisation: 11 mot 11.", "Coachpunkter", null]);
+  for (const page of withText) for (const item of page.placements) {
+    if (page.description) assert.ok(item.x + item.width <= page.description.x - 1e-9, "left of the description");
+    near(item.width / item.height, 1.5);
+  }
+  assert.ok(withText[0].description!.x + withText[0].description!.width <= PAGE.width - PAGE.margin + 1e-9);
+  assert.equal(layoutPages(described, [1], "each").filter(page => page.description).length, 1);
   assert.equal(pdfFileName(" Match mot Aneby SK! "), "Match_mot_Aneby_SK.pdf");
   assert.equal(pdfFileName("??"), "tavla.pdf");
 });

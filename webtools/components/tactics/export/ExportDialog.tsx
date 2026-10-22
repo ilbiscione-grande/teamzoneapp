@@ -85,7 +85,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
             <label><input type="radio" checked={frames === "last"} onChange={() => setFrames("last")} />Bara sista framen</label>
           </fieldset>
         )}
-        <p className="tb-hint">A4 liggande, med projektets och tavlans namn, numret och anteckningen för varje frame.</p>
+        <p className="tb-hint">A4 liggande, med projektets och tavlans namn, numret och anteckningen för varje frame, och tavlans beskrivning.</p>
         {error && <p className="wt-error" role="alert">{error}</p>}
         <div className="tb-actions">
           <button type="button" className="wt-button" disabled={progress !== null} onClick={() => void make()}>{progress ?? "Skapa PDF"}</button>
