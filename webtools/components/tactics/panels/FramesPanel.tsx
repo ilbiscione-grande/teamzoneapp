@@ -1,0 +1,133 @@
+"use client";
+
+// The frames: each one with its move's length and note, a new one copied
+// from the one in hand, moving and removing it; and the effects of the
+// frame in hand: what shows how as the board moves into it, chosen for the
+// objects selected on the pitch and tried out with a preview.
+import { insertFrame, moveFrame, objectLabel, removeFrame, setFrameDuration, updateBoard } from "../../../lib/tactics/document.ts";
+import type { Board, Effect } from "../../../lib/tactics/model.ts";
+import { useEditor } from "../store.ts";
+import { effectKinds, effects, effectSuits } from "./effects.ts";
+
+const durations = [500, 750, 1000, 1500, 2000, 3000, 4000];
+const seconds = (ms: number) => `${(ms / 1000).toLocaleString("sv-SE")} s`;
+
+export function FramesPanel({ board }: { board: Board }) {
+  const frameIndex = useEditor(state => Math.min(state.frameIndex, board.frames.length - 1));
+  const selection = useEditor(state => state.selection);
+  const playing = useEditor(state => state.playing);
+  const { setFrame, change, patch, select, preview } = useEditor.getState();
+  const frames = board.frames;
+  const frame = frames[frameIndex];
+  const changeBoard = (next: (current: Board) => Board) => change(document => updateBoard(document, board.id, next));
+
+  const add = () => {
+    changeBoard(current => insertFrame(current, frameIndex));
+    setFrame(frameIndex + 1);
+  };
+  const remove = () => {
+    if (frames.length < 2 || !window.confirm(`Ta bort ram ${frameIndex + 1}?`)) return;
+    changeBoard(current => removeFrame(current, frameIndex));
+    setFrame(Math.min(frameIndex, frames.length - 2));
+  };
+  const move = (step: 1 | -1) => {
+    changeBoard(current => moveFrame(current, frameIndex, step));
+    setFrame(frameIndex + step);
+  };
+
+  const before = new Set(frames[frameIndex - 1]?.objects.map(item => item.id) ?? []);
+  const selected = frame.objects.filter(item => selection.includes(item.id));
+  const withEffect = frame.objects.filter(item => item.effect);
+  const give = (kind: Effect | null) => patch(Object.fromEntries(selected
+    .filter(item => kind === null || effectSuits(kind, item))
+    .map(item => [item.id, { effect: kind }])));
+
+  return (
+    <div className="tb-inspector tb-frames-panel">
+      <h3>Ramar</h3>
+      <ol className="tb-frame-list">
+        {frames.map((item, index) => {
+          const count = item.objects.filter(object => object.effect).length;
+          return (
+            <li key={item.id}>
+              <button type="button" aria-current={index === frameIndex} onClick={() => setFrame(index)}>
+                <strong>Ram {index + 1}</strong>
+                <span>{[index > 0 ? seconds(item.durationMs) : "Start", count > 0 ? `${count} ${count === 1 ? "effekt" : "effekter"}` : null, item.note?.trim() || null].filter(Boolean).join(" · ")}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+      <div className="tb-actions">
+        <button type="button" className="wt-button small" onClick={add} disabled={playing}>+ Ny ram</button>
+        <button type="button" className="wt-button secondary small" onClick={() => move(-1)} disabled={playing || frameIndex === 0} aria-label="Flytta ramen bakåt">↑</button>
+        <button type="button" className="wt-button secondary small" onClick={() => move(1)} disabled={playing || frameIndex >= frames.length - 1} aria-label="Flytta ramen framåt">↓</button>
+        <button type="button" className="wt-button secondary small" onClick={remove} disabled={playing || frames.length < 2}>Ta bort</button>
+      </div>
+      <p className="tb-hint">En ny ram är en kopia av den du står på. Flytta spelarna i den, så spelas rörelsen upp mellan ramarna.</p>
+
+      <h3>Ram {frameIndex + 1}</h3>
+      {frameIndex > 0 && (
+        <label className="tb-field">Förflyttning hit
+          <select value={frame.durationMs} onChange={event => changeBoard(current => setFrameDuration(current, frameIndex, Number(event.target.value)))}>
+            {[...new Set([...durations, frame.durationMs])].sort((a, b) => a - b).map(value => <option key={value} value={value}>{seconds(value)}</option>)}
+          </select>
+        </label>
+      )}
+      <label className="tb-field">Anteckning
+        <textarea rows={2} maxLength={500} value={frame.note ?? ""} placeholder="Visas under bilden i PDF:en och i visningsläget"
+          onChange={event => changeBoard(current => ({ ...current, frames: current.frames.map((item, index) => index === frameIndex ? { ...item, note: event.target.value } : item) }))} />
+      </label>
+
+      <h3>Effekter</h3>
+      {frameIndex === 0 ? (
+        <p className="tb-hint">Effekter spelas när tavlan går in i en ram. Välj ram 2 eller senare{frames.length < 2 ? ", eller lägg till en ny ram" : ""}.</p>
+      ) : (
+        <>
+          {selected.length === 0 ? (
+            <p className="tb-hint">Markera ett eller flera objekt på planen för att ge dem en effekt i ram {frameIndex + 1}.</p>
+          ) : (
+            <>
+              <p className="tb-hint">{selected.length === 1 ? objectLabel(selected[0], board) : `${selected.length} markerade`}: välj effekt när ram {frameIndex + 1} nås.</p>
+              <div className="tb-effects">
+                {effectKinds.map(kind => {
+                  const suits = selected.some(item => effectSuits(kind, item));
+                  const all = selected.every(item => item.effect === kind);
+                  return (
+                    <button key={kind} type="button" aria-pressed={all} disabled={!suits} title={effects[kind].hint} onClick={() => give(all ? null : kind)}>
+                      <span aria-hidden="true">{effects[kind].icon}</span>
+                      <strong>{effects[kind].label}</strong>
+                      <small>{effects[kind].hint}</small>
+                    </button>
+                  );
+                })}
+              </div>
+              {selected.some(item => item.effect) && <button type="button" className="tb-link" onClick={() => give(null)}>Ingen effekt</button>}
+            </>
+          )}
+          {withEffect.length > 0 && (
+            <ul className="tb-effect-list" aria-label={`Effekter i ram ${frameIndex + 1}`}>
+              {withEffect.map(item => (
+                <li key={item.id} data-selected={selection.includes(item.id)}>
+                  <button type="button" className="tb-effect-name" onClick={() => select([item.id])}>
+                    {objectLabel(item, board)}
+                    <small>{before.has(item.id) ? "finns sedan förut" : "ny i ramen"}</small>
+                  </button>
+                  <select value={item.effect ?? ""} aria-label={`Effekt för ${objectLabel(item, board)}`}
+                    onChange={event => patch({ [item.id]: { effect: (event.target.value || null) as Effect | null } })}>
+                    <option value="">Ingen</option>
+                    {effectKinds.filter(kind => effectSuits(kind, item)).map(kind => <option key={kind} value={kind}>{effects[kind].label}</option>)}
+                  </select>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="tb-actions">
+            <button type="button" className="wt-button secondary small" disabled={playing} onClick={() => preview(frameIndex)}>▶ Spela ram {frameIndex} → {frameIndex + 1}</button>
+          </div>
+          <p className="tb-hint">Nya objekt tonar in och borttagna tonar ut av sig själva.</p>
+        </>
+      )}
+    </div>
+  );
+}

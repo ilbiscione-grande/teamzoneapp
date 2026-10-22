@@ -8,6 +8,7 @@ import { normalizeDocument } from "../../lib/tactics/document.ts";
 import type { SharedTactics } from "../../lib/tactics/shared.ts";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import { BigQr } from "./QrCode.tsx";
+import { Presenter } from "./Presenter.tsx";
 import { activeBoard, useEditor, NONE } from "./store.ts";
 import { Timeline } from "./timeline/Timeline.tsx";
 import { kindLabels } from "./TopBar.tsx";
@@ -18,6 +19,7 @@ const BoardStage = dynamic(() => import("./stage/BoardStage.tsx"), { ssr: false,
 export function SharedViewer({ shared }: { shared: SharedTactics }) {
   const [ready, setReady] = useState(false);
   const [qr, setQr] = useState(false);
+  const [presenting, setPresenting] = useState(false);
   const board = useEditor(activeBoard);
   const boards = useEditor(state => state.document?.boards ?? NONE);
   const boardId = useEditor(state => state.boardId);
@@ -30,6 +32,7 @@ export function SharedViewer({ shared }: { shared: SharedTactics }) {
     setReady(true);
   }, [shared]);
   if (!ready || !board) return null;
+  if (presenting) return <div className="tb-viewer"><Presenter onClose={() => setPresenting(false)} /></div>;
   return (
     <div className="tb-editor tb-viewer">
       <header className="tb-top">
@@ -40,6 +43,7 @@ export function SharedViewer({ shared }: { shared: SharedTactics }) {
             <span>{[kindLabels[shared.kind], shared.team_name].filter(Boolean).join(" · ")}</span>
           </div>
           <span className="tb-spacer" />
+          <button type="button" className="tb-icon tb-pdf" onClick={() => setPresenting(true)} aria-label="Visa i helskärm" title="Visa i helskärm med beskrivning">⛶</button>
           <button type="button" className="tb-icon tb-pdf" onClick={() => setQr(true)} title="Visa länken som QR-kod">QR</button>
         </div>
         {boards.length > 1 && (

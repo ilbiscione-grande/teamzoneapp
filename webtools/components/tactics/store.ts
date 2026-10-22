@@ -34,8 +34,12 @@ type EditorState = {
   playhead: number;
   loop: boolean;
   speed: number;
+  /** Playing one move only (an effect's preview): the frame it stops on. */
+  stopAt: number | null;
   setFrame: (index: number) => void;
   play: () => void;
+  /** Plays the move into a frame and stops there, keeping the selection. */
+  preview: (index: number) => void;
   pause: () => void;
   setPlayhead: (playhead: number) => void;
   setLoop: (loop: boolean) => void;
@@ -72,6 +76,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   playhead: 0,
   loop: false,
   speed: 1,
+  stopAt: null,
 
   setFrame: index => {
     const board = activeBoard(get());
@@ -84,12 +89,17 @@ export const useEditor = create<EditorState>((set, get) => ({
     const board = activeBoard(get());
     if (!board || board.frames.length < 2) return;
     const start = get().frameIndex >= board.frames.length - 1 ? 0 : get().frameIndex;
-    set({ playing: true, playhead: start, selection: [], tool: "select" });
+    set({ playing: true, playhead: start, stopAt: null, selection: [], tool: "select" });
+  },
+  preview: index => {
+    const board = activeBoard(get());
+    if (!board || index < 1 || index >= board.frames.length) return;
+    set({ playing: true, playhead: index - 1, stopAt: index, tool: "select" });
   },
   // Paused between two frames, the board shows the nearer one for editing.
   pause: () => set(state => {
     const frameIndex = Math.round(state.playhead);
-    return { playing: false, frameIndex, playhead: frameIndex };
+    return { playing: false, frameIndex, playhead: frameIndex, stopAt: null };
   }),
   setPlayhead: playhead => set({ playhead }),
   setLoop: loop => set({ loop }),

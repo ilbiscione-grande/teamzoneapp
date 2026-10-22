@@ -141,6 +141,8 @@ export type Board = {
   overlay: PitchOverlay;
   teams: Record<Side, TeamStyle>;
   showNames: boolean;
+  /** What the board shows, such as an exercise's set-up and coaching points: shown beside it when presenting. */
+  description?: string;
   /** Positions above the players; missing on boards made before it. */
   showPositions?: boolean;
   frames: Frame[];

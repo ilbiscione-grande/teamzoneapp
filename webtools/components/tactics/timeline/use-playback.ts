@@ -2,7 +2,7 @@
 
 // Drives the playhead while the board plays: once per screen frame, from
 // the time played since it started. At the end it stops on the last frame,
-// unless it loops.
+// unless it loops; a preview stops on the frame it shows.
 import { useEffect } from "react";
 import { playheadAt } from "../../../lib/tactics/timeline.ts";
 import { activeBoard, useEditor } from "../store.ts";
@@ -18,7 +18,11 @@ export function usePlayback() {
       const state = useEditor.getState();
       const board = activeBoard(state);
       if (!state.playing || !board) return;
-      const playhead = playheadAt(board.frames, now - started, state.speed, state.loop, from);
+      const playhead = playheadAt(board.frames, now - started, state.speed, state.stopAt === null && state.loop, from);
+      if (state.stopAt !== null && (playhead === null || playhead >= state.stopAt)) {
+        useEditor.setState({ playing: false, playhead: state.stopAt, frameIndex: state.stopAt, stopAt: null });
+        return;
+      }
       if (playhead === null) {
         const last = board.frames.length - 1;
         useEditor.setState({ playing: false, playhead: last, frameIndex: last });

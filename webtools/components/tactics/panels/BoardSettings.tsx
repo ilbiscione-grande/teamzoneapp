@@ -18,7 +18,6 @@ export function BoardSettings({ board }: { board: Board }) {
   const attachBall = useEditor(state => state.attachBall);
   const setAttachBall = useEditor(state => state.setAttachBall);
   const [savingTemplate, setSavingTemplate] = useState(false);
-  const frameIndex = useEditor(state => Math.min(state.frameIndex, board.frames.length - 1));
   const team = (side: Side, changes: Partial<Board["teams"][Side]>) =>
     change(current => ({ ...current, teams: { ...current.teams, [side]: { ...current.teams[side], ...changes } } }));
   return (
@@ -43,10 +42,11 @@ export function BoardSettings({ board }: { board: Board }) {
           </select>
         </label>
       </div>
-      <label className="tb-field">{board.frames.length > 1 ? `Anteckning för ram ${frameIndex + 1}` : "Anteckning"}
-        <textarea rows={2} maxLength={500} value={board.frames[frameIndex]?.note ?? ""} placeholder="Visas under bilden i PDF:en"
-          onChange={event => change(current => ({ ...current, frames: current.frames.map((frame, index) => index === frameIndex ? { ...frame, note: event.target.value } : frame) }))} />
+      <label className="tb-field">Beskrivning
+        <textarea rows={4} maxLength={2000} value={board.description ?? ""} placeholder="T.ex. organisation, anvisningar och coachpunkter. Visas bredvid tavlan i visningsläget."
+          onChange={event => change(current => ({ ...current, description: event.target.value }))} />
       </label>
+      <p className="tb-hint">Anteckningar för varje ram skriver du under Ramar.</p>
       <label className="tb-check"><input type="checkbox" checked={board.showNames} onChange={event => change(current => ({ ...current, showNames: event.target.checked }))} />Visa spelarnas namn</label>
       <label className="tb-check"><input type="checkbox" checked={board.showPositions ?? false} onChange={event => change(current => ({ ...current, showPositions: event.target.checked }))} />Visa spelarnas positioner</label>
       <label className="tb-check"><input type="checkbox" checked={attachBall} onChange={event => setAttachBall(event.target.checked)} />Bollen fäster vid spelare</label>

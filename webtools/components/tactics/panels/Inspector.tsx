@@ -3,7 +3,8 @@
 // Properties of what is selected: one object's own fields, or what several
 // have in common. Nothing selected shows the board's settings.
 import { kindName, newId, objectLabel } from "../../../lib/tactics/document.ts";
-import type { Board, Effect, TacticsObject } from "../../../lib/tactics/model.ts";
+import type { Board, TacticsObject } from "../../../lib/tactics/model.ts";
+import { effects } from "./effects.ts";
 import { activeObjects, useEditor } from "../store.ts";
 import { BoardSettings } from "./BoardSettings.tsx";
 import { Swatches } from "./Swatches.tsx";
@@ -96,20 +97,12 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
   }
 }
 
-const effectLabels: Record<Effect, string> = { fade: "Tona in", pop: "Poppa", draw: "Rita fram", pulse: "Puls", highlight: "Markera" };
-
-/** How the object shows as this frame is reached, and its path's bend. */
+/** The object's effect in this frame (chosen under Ramar), and its path's bend. */
 function Motion({ item, frameIndex }: { item: TacticsObject; frameIndex: number }) {
   const patch = (changes: Partial<TacticsObject>) => useEditor.getState().patch({ [item.id]: changes });
-  const kinds = (Object.keys(effectLabels) as Effect[]).filter(kind => kind !== "draw" || item.type === "line" || item.type === "freehand");
   return (
     <>
-      <label className="tb-field">Effekt när ramen nås
-        <select value={item.effect ?? ""} onChange={event => patch({ effect: (event.target.value || null) as Effect | null })}>
-          <option value="">Ingen (nya objekt tonar in)</option>
-          {kinds.map(kind => <option key={kind} value={kind}>{effectLabels[kind]}</option>)}
-        </select>
-      </label>
+      {frameIndex > 0 && <p className="tb-hint">Effekt i ramen: {item.effect ? effects[item.effect].label : "ingen"}. Effekter väljer du under Ramar.</p>}
       {frameIndex > 0 && item.pathControl && <button type="button" className="tb-link" onClick={() => patch({ pathControl: null })}>Rak väg hit</button>}
       {frameIndex > 0 && !item.pathControl && <p className="tb-hint">Dra i punkten mitt på spåret för att böja vägen hit.</p>}
     </>

@@ -2,7 +2,8 @@
 
 // The editor: the project is read, then the workspace shows the board
 // between the tools and a side panel with the selection's properties, the
-// objects and the team. The board itself loads only in the browser (Konva).
+// frames and their effects, the objects and the team; or the board alone,
+// presented on the whole screen. The board itself loads only in the browser (Konva).
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -12,6 +13,8 @@ import { useAccount } from "../account";
 import { Inspector } from "./panels/Inspector.tsx";
 import { ObjectList } from "./panels/ObjectList.tsx";
 import { SquadPanel } from "./panels/SquadPanel.tsx";
+import { FramesPanel } from "./panels/FramesPanel.tsx";
+import { Presenter } from "./Presenter.tsx";
 import { Toolbar } from "./panels/Toolbar.tsx";
 import { activeBoard, useEditor } from "./store.ts";
 import { TopBar } from "./TopBar.tsx";
@@ -23,23 +26,25 @@ import "./tactics.css";
 
 const BoardStage = dynamic(() => import("./stage/BoardStage.tsx"), { ssr: false, loading: () => <div className="tb-stage" /> });
 
-type Panel = "properties" | "objects" | "squad";
+type Panel = "properties" | "frames" | "objects" | "squad";
 
 /** The loaded project's workspace. */
 export function TacticsWorkspace() {
   const [panel, setPanel] = useState<Panel>("properties");
+  const [presenting, setPresenting] = useState(false);
   // On a phone the board gets the room; the panel opens from its tabs.
   const [panelOpen, setPanelOpen] = useState(() => typeof window === "undefined" || window.innerWidth > 760);
   const board = useEditor(activeBoard);
   const selectionCount = useEditor(state => state.selection.length);
   useShortcuts();
-  // Choosing something shows its properties.
-  useEffect(() => { if (selectionCount > 0) setPanel("properties"); }, [selectionCount]);
+  // Choosing something shows its properties, unless effects are being chosen for it.
+  useEffect(() => { if (selectionCount > 0) setPanel(current => current === "frames" ? current : "properties"); }, [selectionCount]);
   if (!board) return null;
-  const tabs: [Panel, string][] = [["properties", selectionCount ? "Egenskaper" : "Tavlan"], ["objects", "Objekt"], ["squad", "Lag"]];
+  if (presenting) return <Presenter onClose={() => setPresenting(false)} />;
+  const tabs: [Panel, string][] = [["properties", selectionCount ? "Egenskaper" : "Tavlan"], ["frames", "Ramar"], ["objects", "Objekt"], ["squad", "Lag"]];
   return (
     <div className="tb-editor" data-panel={panelOpen}>
-      <TopBar />
+      <TopBar onPresent={() => setPresenting(true)} />
       <div className="tb-body">
         <Toolbar homeColor={board.teams.home.color} awayColor={board.teams.away.color} />
         <div className="tb-center">
@@ -58,6 +63,7 @@ export function TacticsWorkspace() {
               <ErrorBoundary key={panel} label="Panelen">
                 {panel === "objects" && <ObjectList board={board} />}
                 {panel === "properties" && <Inspector board={board} />}
+                {panel === "frames" && <FramesPanel board={board} />}
                 {panel === "squad" && <SquadPanel board={board} />}
               </ErrorBoundary>
             </div>

@@ -1,13 +1,14 @@
 "use client";
 
 // The board: the pitch fitted to its frame (turned on a tall screen), with
-// pan and zoom by dragging the grass, pinching, the mouse wheel or the
-// buttons. The pitch has a layer of its own that never redraws while an
+// zoom by pinching, the mouse wheel or the buttons. With the whole view in
+// sight, dragging over the grass draws a band that selects what it
+// touches; zoomed in, dragging the grass moves around the pitch instead. The pitch has a layer of its own that never redraws while an
 // object moves; zoom and pan move the Konva groups directly while fingers
 // move and are kept when they lift, so the board never waits for React.
 import Konva from "konva";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Group, Layer, Stage } from "react-konva";
+import { Group, Layer, Rect, Stage } from "react-konva";
 import { distance, fitView, midpoint, viewRect, zoomAround, type Viewport } from "../../../lib/tactics/geometry.ts";
 import type { Point } from "../../../lib/tactics/model.ts";
 import { objectsAt } from "../../../lib/tactics/timeline.ts";
@@ -49,6 +50,17 @@ export default function BoardStage({ editable = true }: { editable?: boolean }) 
   const live = useRef<Viewport>(IDENTITY);
   const pinch = useRef<{ distance: number; center: Point } | null>(null);
   const nodes = useRef(new Map<string, Konva.Node>());
+  // The selecting band, in the stage's pixels: drawn directly while it is dragged.
+  const band = useRef<Konva.Rect>(null);
+  const bandStart = useRef<Point | null>(null);
+  const bandMoved = useRef(false);
+  const cancelBand = () => {
+    bandStart.current = null;
+    band.current?.visible(false);
+    band.current?.getLayer()?.batchDraw();
+  };
+  const cancelBandRef = useRef(cancelBand);
+  cancelBandRef.current = cancelBand;
 
   useEffect(() => {
     const element = frame.current;
@@ -101,6 +113,7 @@ export default function BoardStage({ editable = true }: { editable?: boolean }) 
       if (!pair) return;
       event.preventDefault();
       if (pitchView.current?.isDragging()) pitchView.current.stopDrag();
+      cancelBandRef.current();
       nodes.current.forEach(node => { if (node.isDragging()) node.stopDrag(); });
       const gap = distance(pair[0], pair[1]);
       const center = midpoint(pair[0], pair[1]);
@@ -129,7 +142,30 @@ export default function BoardStage({ editable = true }: { editable?: boolean }) 
 
   if (!board) return <div ref={frame} className="tb-stage" />;
   const upright = -fit.rotation;
-  const pannable = tool === "select" || isPlaceTool(tool);
+  // Zoomed in, the grass moves the view; with the whole view in sight it selects.
+  const zoomedIn = viewport.scale > 1.001;
+  const pannable = zoomedIn && (tool === "select" || isPlaceTool(tool));
+  const bandable = canEdit && tool === "select" && !zoomedIn;
+  const stagePointer = (event: Konva.KonvaEventObject<PointerEvent>) => event.target.getStage()?.getPointerPosition() ?? null;
+  const endBand = (event: Konva.KonvaEventObject<PointerEvent>) => {
+    const start = bandStart.current;
+    const end = stagePointer(event);
+    cancelBand();
+    if (!start || !end || !bandMoved.current) return;
+    const area = { x: Math.min(start.x, end.x), y: Math.min(start.y, end.y), width: Math.abs(end.x - start.x), height: Math.abs(end.y - start.y) };
+    const touched = visible.filter(item => {
+      const node = nodes.current.get(item.id);
+      return node && Konva.Util.haveIntersection(area, node.getClientRect());
+    }).map(item => item.id);
+    const { select, selection: current } = useEditor.getState();
+    select(event.evt.shiftKey ? [...new Set([...current, ...touched])] : touched);
+  };
+  // A band that moved ends in a click on the grass; that click must not clear what it chose.
+  const afterBand = () => {
+    const moved = bandMoved.current;
+    bandMoved.current = false;
+    return moved;
+  };
   // Hidden objects stay in the list, not on the pitch. Playing shows the moves.
   const shown = playing ? objectsAt(board.frames, playhead) : objects;
   const visible = shown.filter(item => !item.hidden);
@@ -149,15 +185,32 @@ export default function BoardStage({ editable = true }: { editable?: boolean }) 
               const at = event.target.getStage()?.getPointerPosition();
               if (at) applyViewport(zoomAround(live.current, event.evt.deltaY > 0 ? 1 / 1.12 : 1.12, at), true);
             }}
-            onPointerDown={() => { if (!pinch.current && canEdit && isDrawTool(tool)) drawing.start(); }}
-            onPointerMove={() => drawing.move()}
-            onPointerUp={() => drawing.end()}
+            onPointerDown={event => {
+              if (pinch.current) return;
+              if (canEdit && isDrawTool(tool)) drawing.start();
+              else if (bandable && event.target.name() === "grass") {
+                bandStart.current = stagePointer(event);
+                bandMoved.current = false;
+              }
+            }}
+            onPointerMove={event => {
+              drawing.move();
+              const start = bandStart.current, at = bandStart.current && stagePointer(event);
+              if (!start || !at) return;
+              if (!bandMoved.current && Math.hypot(at.x - start.x, at.y - start.y) < 6) return;
+              bandMoved.current = true;
+              band.current?.setAttrs({ x: Math.min(start.x, at.x), y: Math.min(start.y, at.y), width: Math.abs(at.x - start.x), height: Math.abs(at.y - start.y), visible: true });
+              band.current?.getLayer()?.batchDraw();
+            }}
+            onPointerUp={event => { drawing.end(); endBand(event); }}
             onClick={event => {
+              if (afterBand()) return;
               if (event.evt.button !== 0 || !canEdit) return;
               if (isPlaceTool(tool)) drawing.place();
               else if (tool === "select" && event.target.name() === "grass") useEditor.getState().select([]);
             }}
             onTap={event => {
+              if (afterBand()) return;
               if (!canEdit || pinch.current) return;
               if (isPlaceTool(tool)) drawing.place();
               else if (tool === "select" && event.target.name() === "grass") useEditor.getState().select([]);
@@ -186,6 +239,11 @@ export default function BoardStage({ editable = true }: { editable?: boolean }) 
                 </Group>
               </Group>
             </Layer>
+            {canEdit && (
+              <Layer listening={false}>
+                <Rect ref={band} visible={false} fill="rgba(250,204,21,0.12)" stroke="#facc15" strokeWidth={1.5} dash={[6, 4]} />
+              </Layer>
+            )}
           </Stage>
         </StageContext.Provider>
       )}

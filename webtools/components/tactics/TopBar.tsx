@@ -76,7 +76,7 @@ export function ProjectFields({ className }: { className: string }) {
   );
 }
 
-export function TopBar() {
+export function TopBar({ onPresent }: { onPresent: () => void }) {
   const { client } = useAccount();
   const meta = useEditor(state => state.meta);
   const saveState = useEditor(state => state.saveState);
@@ -95,6 +95,7 @@ export function TopBar() {
         <Boards />
         <button type="button" className="tb-icon" onClick={undo} disabled={!canUndo} aria-label="Ångra" title="Ångra (Ctrl+Z)">↶</button>
         <button type="button" className="tb-icon" onClick={redo} disabled={!canRedo} aria-label="Gör om" title="Gör om (Ctrl+Y)">↷</button>
+        <button type="button" className="tb-icon tb-pdf" onClick={onPresent} aria-label="Visa i helskärm" title="Visa i helskärm, utan redigering">⛶</button>
         <button type="button" className="tb-icon tb-pdf" onClick={() => setExporting(true)} aria-label="Skapa PDF" title="Skapa PDF">PDF</button>
         <button type="button" className="tb-share" onClick={() => setSharing(true)}>Dela</button>
         <span className="tb-save" data-state={saveState} role="status">
