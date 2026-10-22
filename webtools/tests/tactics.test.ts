@@ -17,14 +17,16 @@ test("a wide frame shows the pitch as it is, a tall one turns it a quarter", () 
   const far = pitchToFrame({ x: rect.x + rect.width, y: rect.y + rect.height }, wide);
   assert.ok(corner.x >= -1e-9 && corner.y >= -1e-9 && far.x <= 1130 + 1e-9 && far.y <= 760 + 1e-9, "fits");
   const tall = fitView(rect, 390, 700);
-  assert.equal(tall.rotation, 90);
-  // Turned: the home goal (x = 0) at the top, the touchline y = 0 on the right.
+  assert.equal(tall.rotation, -90);
+  // Turned: the home goal (x = 0) at the foot, attacking upwards; the touchline y = 0 on the left.
   const goal = pitchToFrame({ x: 0, y: 34 }, tall);
   const other = pitchToFrame({ x: 105, y: 34 }, tall);
-  assert.ok(goal.y < other.y);
+  assert.ok(goal.y > other.y);
   near(goal.x, other.x);
-  const topLeft = pitchToFrame({ x: rect.x, y: rect.y + rect.height }, tall);
-  assert.ok(topLeft.x >= -1e-9 && topLeft.y >= -1e-9);
+  assert.ok(pitchToFrame({ x: 52, y: 0 }, tall).x < pitchToFrame({ x: 52, y: 68 }, tall).x);
+  const topLeft = pitchToFrame({ x: rect.x + rect.width, y: rect.y }, tall);
+  const bottomRight = pitchToFrame({ x: rect.x, y: rect.y + rect.height }, tall);
+  assert.ok(topLeft.x >= -1e-9 && topLeft.y >= -1e-9 && bottomRight.x <= 390 + 1e-9 && bottomRight.y <= 700 + 1e-9, "fits");
   // Half views show their half.
   assert.ok(viewRect("attack").x > 45 && viewRect("defend").x < 0 && viewRect("attack").width < 61);
 });

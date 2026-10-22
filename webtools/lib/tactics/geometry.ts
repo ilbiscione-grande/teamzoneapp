@@ -1,6 +1,7 @@
 // From the pitch (metres) to the screen and back: which part of the pitch a
 // view shows, and how it fits a frame of a given size. A tall frame turns the
-// pitch a quarter so it runs top to bottom, as on a phone held upright.
+// pitch a quarter so it runs bottom to top, as on a phone held upright: the
+// own goal at the foot, attacking upwards.
 import { PITCH_LENGTH, PITCH_WIDTH, type PitchView, type Point } from "./model.ts";
 
 export type Rect = { x: number; y: number; width: number; height: number };
@@ -18,7 +19,7 @@ export function viewRect(view: PitchView): Rect {
 }
 
 /** The pitch group's place, scale and turn that fit the view in the frame. */
-export type Fit = { x: number; y: number; scale: number; rotation: 0 | 90 };
+export type Fit = { x: number; y: number; scale: number; rotation: 0 | -90 };
 
 export function fitView(rect: Rect, frameWidth: number, frameHeight: number): Fit {
   if (frameWidth <= 0 || frameHeight <= 0) return { x: 0, y: 0, scale: 1, rotation: 0 };
@@ -30,14 +31,14 @@ export function fitView(rect: Rect, frameWidth: number, frameHeight: number): Fi
   const left = (frameWidth - width * scale) / 2;
   const top = (frameHeight - height * scale) / 2;
   if (!turn) return { x: left - rect.x * scale, y: top - rect.y * scale, scale, rotation: 0 };
-  // Turned a quarter clockwise: a point (x, y) lands at (-y, x).
-  return { x: left + (rect.y + rect.height) * scale, y: top - rect.x * scale, scale, rotation: 90 };
+  // Turned a quarter anticlockwise: a point (x, y) lands at (y, -x).
+  return { x: left - rect.y * scale, y: top + (rect.x + rect.width) * scale, scale, rotation: -90 };
 }
 
 /** A pitch point on the screen, before the user's zoom and pan. */
 export function pitchToFrame(point: Point, fit: Fit): Point {
   if (fit.rotation === 0) return { x: fit.x + point.x * fit.scale, y: fit.y + point.y * fit.scale };
-  return { x: fit.x - point.y * fit.scale, y: fit.y + point.x * fit.scale };
+  return { x: fit.x + point.y * fit.scale, y: fit.y - point.x * fit.scale };
 }
 
 export const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
