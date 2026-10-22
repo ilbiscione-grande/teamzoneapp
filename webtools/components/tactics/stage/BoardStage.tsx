@@ -10,12 +10,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Group, Layer, Stage } from "react-konva";
 import { distance, fitView, midpoint, viewRect, zoomAround, type Viewport } from "../../../lib/tactics/geometry.ts";
 import type { Point } from "../../../lib/tactics/model.ts";
+import { objectsAt } from "../../../lib/tactics/timeline.ts";
 import { ObjectNode } from "../objects/ObjectNode.tsx";
 import { activeBoard, activeObjects, useEditor } from "../store.ts";
 import { DraftNode } from "./DraftNode.tsx";
+import { Ghosts } from "./Ghosts.tsx";
 import { Pitch } from "./Pitch.tsx";
 import { Selection } from "./Selection.tsx";
-import { StageContext, type StageShared } from "./stage-context.ts";
+import { StageContext, stageHolder, type StageShared } from "./stage-context.ts";
 import { isDrawTool, isPlaceTool, useDrawing } from "./use-drawing.ts";
 
 // A drag moves one node; Konva need not rebuild its hit map on every step.
@@ -33,6 +35,11 @@ export default function BoardStage({ editable = true }: { editable?: boolean }) 
   const objects = useEditor(activeObjects);
   const selection = useEditor(state => state.selection);
   const tool = useEditor(state => state.tool);
+  const playing = useEditor(state => state.playing);
+  const playhead = useEditor(state => state.playhead);
+  const frameIndex = useEditor(state => state.frameIndex);
+  // Nothing is edited while the board plays.
+  const canEdit = editable && !playing;
   // The same zoom and pan on both layers: the pitch's group is dragged, the
   // objects' group follows.
   const pitchView = useRef<Konva.Group>(null);
@@ -62,8 +69,8 @@ export default function BoardStage({ editable = true }: { editable?: boolean }) 
     nodes: nodes.current,
     content,
     metresPerPixel: () => 1 / (fit.scale * live.current.scale || 1),
-    editable,
-  }), [fit.scale, editable]);
+    editable: canEdit,
+  }), [fit.scale, canEdit]);
 
   const pointer = () => content.current?.getRelativePointerPosition() ?? null;
   const drawing = useDrawing(pointer);
@@ -123,8 +130,10 @@ export default function BoardStage({ editable = true }: { editable?: boolean }) 
   if (!board) return <div ref={frame} className="tb-stage" />;
   const upright = -fit.rotation;
   const pannable = tool === "select" || isPlaceTool(tool);
-  // Hidden objects stay in the list, not on the pitch.
-  const visible = objects.filter(item => !item.hidden);
+  // Hidden objects stay in the list, not on the pitch. Playing shows the moves.
+  const shown = playing ? objectsAt(board.frames, playhead) : objects;
+  const visible = shown.filter(item => !item.hidden);
+  const previous = !playing && frameIndex > 0 ? board.frames[frameIndex - 1]?.objects : undefined;
   const fitted = { x: fit.x, y: fit.y, scaleX: fit.scale, scaleY: fit.scale, rotation: fit.rotation };
   const zoomed = { x: viewport.x, y: viewport.y, scaleX: viewport.scale, scaleY: viewport.scale };
 
@@ -132,22 +141,22 @@ export default function BoardStage({ editable = true }: { editable?: boolean }) 
     <div ref={frame} className="tb-stage" data-tool={tool}>
       {size.width > 0 && (
         <StageContext.Provider value={shared}>
-          <Stage width={size.width} height={size.height}
+          <Stage ref={node => { stageHolder.current = node; }} width={size.width} height={size.height}
             onWheel={event => {
               event.evt.preventDefault();
               const at = event.target.getStage()?.getPointerPosition();
               if (at) applyViewport(zoomAround(live.current, event.evt.deltaY > 0 ? 1 / 1.12 : 1.12, at), true);
             }}
-            onPointerDown={() => { if (!pinch.current && editable && isDrawTool(tool)) drawing.start(); }}
+            onPointerDown={() => { if (!pinch.current && canEdit && isDrawTool(tool)) drawing.start(); }}
             onPointerMove={() => drawing.move()}
             onPointerUp={() => drawing.end()}
             onClick={event => {
-              if (event.evt.button !== 0 || !editable) return;
+              if (event.evt.button !== 0 || !canEdit) return;
               if (isPlaceTool(tool)) drawing.place();
               else if (tool === "select" && event.target.name() === "grass") useEditor.getState().select([]);
             }}
             onTap={event => {
-              if (!editable || pinch.current) return;
+              if (!canEdit || pinch.current) return;
               if (isPlaceTool(tool)) drawing.place();
               else if (tool === "select" && event.target.name() === "grass") useEditor.getState().select([]);
             }}>
@@ -166,10 +175,11 @@ export default function BoardStage({ editable = true }: { editable?: boolean }) 
             <Layer>
               <Group ref={objectView} {...zoomed}>
                 <Group ref={content} {...fitted}>
+                  {previous && <Ghosts previous={previous} current={objects} selection={selection} editable={canEdit} />}
                   {visible.map(item => (
                     <ObjectNode key={item.id} item={item} board={board} selected={selection.includes(item.id)} upright={upright} />
                   ))}
-                  {editable && <Selection objects={objects} selection={selection} />}
+                  {canEdit && <Selection objects={objects} selection={selection} />}
                   {drawing.draft && <DraftNode draft={drawing.draft} />}
                 </Group>
               </Group>

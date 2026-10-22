@@ -6,17 +6,20 @@
 import { Circle, Group, Text } from "react-konva";
 import { PLAYER_RADIUS } from "../../../lib/tactics/ball.ts";
 import type { Board, PlayerObject } from "../../../lib/tactics/model.ts";
+import type { Rendered } from "../../../lib/tactics/timeline.ts";
+import { Glow, look } from "./look.tsx";
 import { nodeRef, useStage } from "../stage/stage-context.ts";
 import { useObjectDrag } from "../stage/use-object-drag.ts";
 
-export function PlayerNode({ item, board, selected, upright }: { item: PlayerObject; board: Board; selected: boolean; upright: number }) {
+export function PlayerNode({ item, board, selected, upright }: { item: PlayerObject & Rendered; board: Board; selected: boolean; upright: number }) {
   const shared = useStage();
   const drag = useObjectDrag(item);
   const team = board.teams[item.side];
   const fill = item.color ?? team.color;
   const lastName = item.name?.trim().split(/\s+/).slice(-1)[0] ?? null;
   return (
-    <Group ref={nodeRef(shared, item.id)} x={item.x} y={item.y} {...drag}>
+    <Group ref={nodeRef(shared, item.id)} x={item.x} y={item.y} {...look(item)} {...drag}>
+      <Glow item={item} radius={PLAYER_RADIUS * 2} />
       {selected && <Circle radius={PLAYER_RADIUS + 0.55} stroke="#facc15" strokeWidth={0.28} dash={[0.5, 0.35]} />}
       {/* No canvas shadows: they are redrawn for every player on every frame. */}
       <Circle radius={PLAYER_RADIUS + 0.12} fill="rgba(0,0,0,0.28)" y={0.18} listening={false} perfectDrawEnabled={false} />

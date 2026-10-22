@@ -20,7 +20,19 @@ type Base = {
   hidden: boolean;
   /** The object's own name in the object list. */
   label?: string;
+  /** Animation: the move into this frame bends through this pitch point. */
+  pathControl?: Point | null;
+  /** Animation: how the object shows as this frame is reached. */
+  effect?: Effect | null;
 };
+
+/**
+ * Effects play while the board moves into the frame that has them. An
+ * object new in a frame fades in and one gone from the next fades out by
+ * themselves; "pop" and "draw" are other ways in, "pulse" and "highlight"
+ * point at an object already there.
+ */
+export type Effect = "fade" | "pop" | "draw" | "pulse" | "highlight";
 
 export type PlayerObject = Base & {
   type: "player";

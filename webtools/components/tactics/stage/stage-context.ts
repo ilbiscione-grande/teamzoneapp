@@ -16,6 +16,9 @@ export type StageShared = {
 
 export const StageContext = createContext<StageShared | null>(null);
 
+/** The mounted Konva stage, for recording the board as a video. */
+export const stageHolder: { current: Konva.Stage | null } = { current: null };
+
 export function useStage(): StageShared {
   const shared = useContext(StageContext);
   if (!shared) throw new Error("useStage outside the board stage");

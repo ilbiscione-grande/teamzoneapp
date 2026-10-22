@@ -161,3 +161,32 @@ export function keepOnGrass(point: Point, margin = 6): Point {
   };
 }
 
+
+/** A copy of a frame put after it: the same objects (same ids, so they move between the two), no effects or bends of its own. */
+export function insertFrame(board: Board, afterIndex: number): Board {
+  const source = board.frames[afterIndex] ?? board.frames[board.frames.length - 1];
+  const copy: Frame = {
+    ...newFrame(source.objects.map(item => ({ ...item, effect: null, pathControl: null }) as TacticsObject)),
+    durationMs: source.durationMs,
+  };
+  const frames = [...board.frames];
+  frames.splice(afterIndex + 1, 0, copy);
+  return { ...board, frames };
+}
+
+export function removeFrame(board: Board, index: number): Board {
+  if (board.frames.length < 2) return board;
+  return { ...board, frames: board.frames.filter((_, i) => i !== index) };
+}
+
+export function moveFrame(board: Board, index: number, step: 1 | -1): Board {
+  const target = index + step;
+  if (target < 0 || target >= board.frames.length) return board;
+  const frames = [...board.frames];
+  [frames[index], frames[target]] = [frames[target], frames[index]];
+  return { ...board, frames };
+}
+
+export function setFrameDuration(board: Board, index: number, durationMs: number): Board {
+  return { ...board, frames: board.frames.map((frame, i) => i === index ? { ...frame, durationMs: Math.min(10000, Math.max(200, durationMs)) } : frame) };
+}

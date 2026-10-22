@@ -29,6 +29,17 @@ type EditorState = {
   attachBall: boolean;
   history: History;
   saveState: SaveState;
+  /** Playing: where the playhead is (in frames), and how. */
+  playing: boolean;
+  playhead: number;
+  loop: boolean;
+  speed: number;
+  setFrame: (index: number) => void;
+  play: () => void;
+  pause: () => void;
+  setPlayhead: (playhead: number) => void;
+  setLoop: (loop: boolean) => void;
+  setSpeed: (speed: number) => void;
   load: (project: Project, document: ProjectDocument) => void;
   setTool: (tool: Tool) => void;
   setAttachBall: (value: boolean) => void;
@@ -57,10 +68,36 @@ export const useEditor = create<EditorState>((set, get) => ({
   attachBall: true,
   history: emptyHistory(),
   saveState: "saved",
+  playing: false,
+  playhead: 0,
+  loop: false,
+  speed: 1,
+
+  setFrame: index => {
+    const board = activeBoard(get());
+    if (!board) return;
+    const frameIndex = Math.min(board.frames.length - 1, Math.max(0, index));
+    set({ frameIndex, playhead: frameIndex, playing: false, selection: [] });
+  },
+  // From the frame being edited, or from the start when it is the last.
+  play: () => {
+    const board = activeBoard(get());
+    if (!board || board.frames.length < 2) return;
+    const start = get().frameIndex >= board.frames.length - 1 ? 0 : get().frameIndex;
+    set({ playing: true, playhead: start, selection: [], tool: "select" });
+  },
+  // Paused between two frames, the board shows the nearer one for editing.
+  pause: () => set(state => {
+    const frameIndex = Math.round(state.playhead);
+    return { playing: false, frameIndex, playhead: frameIndex };
+  }),
+  setPlayhead: playhead => set({ playhead }),
+  setLoop: loop => set({ loop }),
+  setSpeed: speed => set({ speed }),
 
   load: (project, document) => set({
     meta: { id: project.id, name: project.name, kind: project.kind, teamId: project.teamzone_team_id, teamName: project.team_name, revision: project.revision },
-    document, boardId: document.boards[0]?.id ?? null, frameIndex: 0, selection: [], tool: "select",
+    document, boardId: document.boards[0]?.id ?? null, frameIndex: 0, selection: [], tool: "select", playing: false, playhead: 0,
     history: emptyHistory(), saveState: "saved",
   }),
   setTool: tool => set({ tool, selection: tool === "select" ? get().selection : [] }),
@@ -68,7 +105,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   select: (ids, additive = false) => set(state => ({
     selection: additive ? [...new Set([...state.selection.filter(id => !ids.includes(id)), ...ids.filter(id => !state.selection.includes(id))])] : ids,
   })),
-  setBoard: boardId => set({ boardId, frameIndex: 0, selection: [] }),
+  setBoard: boardId => set({ boardId, frameIndex: 0, playhead: 0, playing: false, selection: [] }),
 
   change: next => {
     const { document, history } = get();
@@ -94,12 +131,12 @@ export const useEditor = create<EditorState>((set, get) => ({
   undo: () => {
     const { document, history } = get();
     const step = document && undo(history, document);
-    if (step) set({ document: step.document, history: step.history, saveState: "dirty", selection: [] });
+    if (step) set(state => ({ document: step.document, history: step.history, saveState: "dirty", selection: [], ...frameWithin(step.document, state) }));
   },
   redo: () => {
     const { document, history } = get();
     const step = document && redo(history, document);
-    if (step) set({ document: step.document, history: step.history, saveState: "dirty", selection: [] });
+    if (step) set(state => ({ document: step.document, history: step.history, saveState: "dirty", selection: [], ...frameWithin(step.document, state) }));
   },
   setSaveState: saveState => set({ saveState }),
   // Saved as of this document; edits made meanwhile stay to be saved.
@@ -108,6 +145,13 @@ export const useEditor = create<EditorState>((set, get) => ({
     saveState: state.document === document ? "saved" : "dirty",
   })),
 }));
+
+/** After undo or redo the frame being edited may be gone. */
+function frameWithin(document: ProjectDocument, state: { boardId: string | null; frameIndex: number }) {
+  const board = document.boards.find(item => item.id === state.boardId) ?? document.boards[0];
+  const frameIndex = Math.min(state.frameIndex, (board?.frames.length ?? 1) - 1);
+  return { boardId: board?.id ?? null, frameIndex, playhead: frameIndex, playing: false };
+}
 
 /** The active board, or null before a project is loaded. */
 export function activeBoard(state: { document: ProjectDocument | null; boardId: string | null }): Board | null {

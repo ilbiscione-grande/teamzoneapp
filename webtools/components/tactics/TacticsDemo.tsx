@@ -21,6 +21,8 @@ export function TacticsDemo() {
       id: "demo", name: "Demo", kind: "match", teamzone_team_id: null, team_name: null, board_count: 1, revision: 1,
       created_at: new Date().toISOString(), updated_at: new Date().toISOString(), document,
     }, document);
+    // For trying things from the console.
+    (window as unknown as { tacticsEditor: typeof useEditor }).tacticsEditor = useEditor;
     setReady(true);
   }, []);
   return ready ? <TacticsWorkspace /> : null;

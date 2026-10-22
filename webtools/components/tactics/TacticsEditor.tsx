@@ -17,6 +17,7 @@ import { activeBoard, useEditor } from "./store.ts";
 import { TopBar } from "./TopBar.tsx";
 import { useAutosave } from "./use-autosave.ts";
 import { useShortcuts } from "./use-shortcuts.ts";
+import { Timeline } from "./timeline/Timeline.tsx";
 import "./tactics.css";
 
 const BoardStage = dynamic(() => import("./stage/BoardStage.tsx"), { ssr: false, loading: () => <div className="tb-stage" /> });
@@ -40,7 +41,10 @@ export function TacticsWorkspace() {
       <TopBar />
       <div className="tb-body">
         <Toolbar homeColor={board.teams.home.color} awayColor={board.teams.away.color} />
-        <BoardStage />
+        <div className="tb-center">
+          <BoardStage />
+          <Timeline board={board} />
+        </div>
         <aside className="tb-panel" aria-label="Panel">
           <div className="tb-panel-tabs" role="tablist">
             {tabs.map(([value, label]) => (

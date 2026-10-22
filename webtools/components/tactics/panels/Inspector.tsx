@@ -3,7 +3,7 @@
 // Properties of what is selected: one object's own fields, or what several
 // have in common. Nothing selected shows the board's settings.
 import { kindName, newId, objectLabel } from "../../../lib/tactics/document.ts";
-import type { Board, TacticsObject } from "../../../lib/tactics/model.ts";
+import type { Board, Effect, TacticsObject } from "../../../lib/tactics/model.ts";
 import { activeObjects, useEditor } from "../store.ts";
 import { BoardSettings } from "./BoardSettings.tsx";
 import { Swatches } from "./Swatches.tsx";
@@ -89,9 +89,30 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
   }
 }
 
+const effectLabels: Record<Effect, string> = { fade: "Tona in", pop: "Poppa", draw: "Rita fram", pulse: "Puls", highlight: "Markera" };
+
+/** How the object shows as this frame is reached, and its path's bend. */
+function Motion({ item, frameIndex }: { item: TacticsObject; frameIndex: number }) {
+  const patch = (changes: Partial<TacticsObject>) => useEditor.getState().patch({ [item.id]: changes });
+  const kinds = (Object.keys(effectLabels) as Effect[]).filter(kind => kind !== "draw" || item.type === "line" || item.type === "freehand");
+  return (
+    <>
+      <label className="tb-field">Effekt när ramen nås
+        <select value={item.effect ?? ""} onChange={event => patch({ effect: (event.target.value || null) as Effect | null })}>
+          <option value="">Ingen (nya objekt tonar in)</option>
+          {kinds.map(kind => <option key={kind} value={kind}>{effectLabels[kind]}</option>)}
+        </select>
+      </label>
+      {frameIndex > 0 && item.pathControl && <button type="button" className="tb-link" onClick={() => patch({ pathControl: null })}>Rak väg hit</button>}
+      {frameIndex > 0 && !item.pathControl && <p className="tb-hint">Dra i punkten mitt på spåret för att böja vägen hit.</p>}
+    </>
+  );
+}
+
 export function Inspector({ board }: { board: Board }) {
   const objects = useEditor(activeObjects);
   const selection = useEditor(state => state.selection);
+  const frameIndex = useEditor(state => state.frameIndex);
   const selected = objects.filter(item => selection.includes(item.id));
   const { patch, changeObjects, removeSelected, select } = useEditor.getState();
   if (selected.length === 0) return <BoardSettings board={board} />;
@@ -107,6 +128,7 @@ export function Inspector({ board }: { board: Board }) {
       <h3>{single ? objectLabel(single, board) : `${selected.length} markerade`}</h3>
       {single && <p className="tb-hint">{kindName(single.type)}</p>}
       {single && !single.locked && <Fields item={single} board={board} />}
+      {single && !single.locked && board.frames.length > 1 && <Motion item={single} frameIndex={frameIndex} />}
       {single && (
         <label className="tb-field">Namn i listan
           <input value={single.label ?? ""} maxLength={40} placeholder={objectLabel({ ...single, label: undefined }, board)}

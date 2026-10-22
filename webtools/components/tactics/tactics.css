@@ -106,3 +106,30 @@
 body:has(.tb-editor) .wt-footer { display: none; }
 body:has(.tb-editor) .wt-shell { height: 100dvh; min-height: 0; }
 body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-height: 0; }
+
+/* The board and its timeline share the middle column. */
+.tb-center { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.tb-center .tb-stage { flex: 1; }
+.tb-timeline { background: #13221a; border-top: 1px solid rgba(255, 255, 255, .08); padding: 0 8px 6px; }
+.tb-progress { height: 3px; margin: 0 -8px 6px; background: rgba(255, 255, 255, .08); }
+.tb-progress span { display: block; height: 100%; background: var(--wt-accent); transition: width .08s linear; }
+.tb-timeline-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tb-frame-tools { margin-top: 6px; color: #a9b4c4; font-size: .85rem; }
+.tb-play { width: 44px; height: 38px; border: 0; border-radius: 8px; background: var(--wt-accent); color: var(--wt-accent-ink); font-size: 1rem; font-weight: 800; cursor: pointer; }
+.tb-play:disabled { opacity: .35; cursor: default; }
+.tb-frames { display: flex; gap: 4px; overflow-x: auto; max-width: 100%; scrollbar-width: thin; }
+.tb-frames button { flex: none; min-width: 34px; height: 34px; border: 1px solid rgba(255, 255, 255, .18); border-radius: 6px; background: transparent; color: #dbe7df; font: inherit; font-weight: 700; font-size: .9rem; cursor: pointer; }
+.tb-frames button[aria-selected="true"] { background: white; color: var(--wt-ink); border-color: white; }
+.tb-frames button[data-current="true"] { border-color: var(--wt-accent); color: var(--wt-accent); }
+.tb-frames .tb-frame-add { border-style: dashed; color: var(--wt-accent); }
+.tb-frames button:disabled { opacity: .35; }
+.tb-mini { display: inline-flex; align-items: center; gap: 6px; color: #a9b4c4; font-size: .85rem; }
+.tb-mini input { accent-color: var(--wt-accent); }
+.tb-mini-select { min-height: 30px; padding: 0 6px; border: 1px solid rgba(255, 255, 255, .2); border-radius: 6px; background: var(--wt-ink-2); color: white; font: inherit; font-size: .85rem; }
+.tb-mini-button { min-height: 30px; padding: 0 10px; border: 1px solid rgba(255, 255, 255, .2); border-radius: 6px; background: transparent; color: #dbe7df; font: inherit; font-size: .85rem; cursor: pointer; }
+.tb-mini-button:disabled { opacity: .35; cursor: default; }
+.tb-timeline-hint { margin: 6px 0 0; color: #a9b4c4; font-size: .82rem; }
+@media (max-width: 760px) {
+  .tb-center { order: 1; }
+  .tb-timeline { padding: 0 6px 4px; }
+}

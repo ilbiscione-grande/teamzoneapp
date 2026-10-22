@@ -5,15 +5,17 @@
 // hit area makes thin lines easy to take with a finger.
 import { Arrow, Group, Line } from "react-konva";
 import type { FreehandObject, LineObject } from "../../../lib/tactics/model.ts";
+import { partialPolyline, sampleCurve } from "../../../lib/tactics/path.ts";
+import type { Rendered } from "../../../lib/tactics/timeline.ts";
 import { nodeRef, useStage } from "../stage/stage-context.ts";
 import { useObjectDrag } from "../stage/use-object-drag.ts";
 
 const DASH = [1.1, 0.8];
 
-/** The points drawn: through the control point when curved. */
+/** The points drawn: a curve through the control point when bent. */
 export function linePoints(item: LineObject): number[] {
   const [x1, y1, x2, y2] = item.points;
-  return item.control ? [x1, y1, item.control.x, item.control.y, x2, y2] : [x1, y1, x2, y2];
+  return sampleCurve({ x: x1, y: y1 }, { x: x2, y: y2 }, item.control);
 }
 
 function Stroke({ points, arrow, dashed, color, width, tension, selected }: {
@@ -30,23 +32,23 @@ function Stroke({ points, arrow, dashed, color, width, tension, selected }: {
   return <Arrow {...common} fill={color} pointerLength={1.5} pointerWidth={1.4} pointerAtBeginning={arrow === "both"} />;
 }
 
-export function LineNode({ item, selected }: { item: LineObject; selected: boolean }) {
+export function LineNode({ item, selected }: { item: LineObject & Rendered; selected: boolean }) {
   const shared = useStage();
   const drag = useObjectDrag(item);
   return (
-    <Group ref={nodeRef(shared, item.id)} x={item.x} y={item.y} {...drag}>
-      <Stroke points={linePoints(item)} arrow={item.arrow} dashed={item.dashed} color={item.color} width={item.width}
-        tension={item.control ? 0.5 : 0} selected={selected} />
+    <Group ref={nodeRef(shared, item.id)} x={item.x} y={item.y} opacity={item.opacity ?? 1} {...drag}>
+      <Stroke points={partialPolyline(linePoints(item), item.drawn ?? 1)} arrow={item.arrow} dashed={item.dashed} color={item.color} width={item.width}
+        tension={0} selected={selected} />
     </Group>
   );
 }
 
-export function FreehandNode({ item, selected }: { item: FreehandObject; selected: boolean }) {
+export function FreehandNode({ item, selected }: { item: FreehandObject & Rendered; selected: boolean }) {
   const shared = useStage();
   const drag = useObjectDrag(item);
   return (
-    <Group ref={nodeRef(shared, item.id)} x={item.x} y={item.y} {...drag}>
-      <Stroke points={item.points} arrow={item.arrow} dashed={item.dashed} color={item.color} width={item.width}
+    <Group ref={nodeRef(shared, item.id)} x={item.x} y={item.y} opacity={item.opacity ?? 1} {...drag}>
+      <Stroke points={partialPolyline(item.points, item.drawn ?? 1)} arrow={item.arrow} dashed={item.dashed} color={item.color} width={item.width}
         tension={0.45} selected={selected} />
     </Group>
   );
