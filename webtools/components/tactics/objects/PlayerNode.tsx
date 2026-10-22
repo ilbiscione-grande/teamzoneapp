@@ -18,8 +18,9 @@ export function PlayerNode({ item, board, selected, upright }: { item: PlayerObj
   return (
     <Group ref={nodeRef(shared, item.id)} x={item.x} y={item.y} {...drag}>
       {selected && <Circle radius={PLAYER_RADIUS + 0.55} stroke="#facc15" strokeWidth={0.28} dash={[0.5, 0.35]} />}
-      <Circle radius={PLAYER_RADIUS} fill={fill} stroke="#ffffff" strokeWidth={0.22}
-        shadowColor="#000000" shadowOpacity={0.35} shadowBlur={0.6} shadowOffsetY={0.2} />
+      {/* No canvas shadows: they are redrawn for every player on every frame. */}
+      <Circle radius={PLAYER_RADIUS + 0.12} fill="rgba(0,0,0,0.28)" y={0.18} listening={false} perfectDrawEnabled={false} />
+      <Circle radius={PLAYER_RADIUS} fill={fill} stroke="#ffffff" strokeWidth={0.22} perfectDrawEnabled={false} />
       <Group rotation={upright}>
         {item.number !== null && (
           <Text text={String(item.number)} fontSize={item.number > 99 ? 1.15 : 1.55} fontStyle="bold" fill={team.numberColor}
@@ -28,7 +29,7 @@ export function PlayerNode({ item, board, selected, upright }: { item: PlayerObj
         )}
         {board.showNames && lastName && (
           <Text text={lastName} fontSize={1.15} fontStyle="bold" fill="#ffffff" width={14} offsetX={7} y={PLAYER_RADIUS + 0.35}
-            align="center" shadowColor="#000000" shadowOpacity={0.8} shadowBlur={0.4} listening={false} />
+            align="center" stroke="rgba(11,17,28,0.9)" strokeWidth={0.14} fillAfterStrokeEnabled listening={false} perfectDrawEnabled={false} />
         )}
       </Group>
     </Group>

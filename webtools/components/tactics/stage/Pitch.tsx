@@ -3,7 +3,6 @@
 // A football pitch in metres: grass with mown stripes, the lines by the
 // laws of the game, and an optional grid for corridors, thirds or zones.
 import { Arc, Circle, Group, Line, Rect } from "react-konva";
-import { MARGIN } from "../../../lib/tactics/geometry.ts";
 import { PITCH_LENGTH as L, PITCH_WIDTH as W, type PitchOverlay, type PitchView } from "../../../lib/tactics/model.ts";
 
 const LINE = "rgba(255,255,255,0.88)";
@@ -64,7 +63,8 @@ function Grid({ overlay }: { overlay: PitchOverlay }) {
 
 export function Pitch({ view, overlay }: { view: PitchView; overlay: PitchOverlay }) {
   const stripes = 12;
-  const grass = { x: -MARGIN * 3, y: -MARGIN * 3, width: L + MARGIN * 6, height: W + MARGIN * 6 };
+  // Far beyond the frame whatever the zoom, so a press anywhere off the pitch still pans.
+  const grass = { x: -200, y: -200, width: L + 400, height: W + 400 };
   return (
     <Group>
       {/* The grass catches taps and drags on the empty pitch. */}
