@@ -9,6 +9,7 @@ import { Swatches } from "./Swatches.tsx";
 import { useState } from "react";
 import { ProjectFields } from "../TopBar.tsx";
 import { TemplateDialog } from "../TemplateDialog.tsx";
+import { HostNotes } from "../live/HostNotes.tsx";
 
 const views: Record<PitchView, string> = { full: "Hel plan", attack: "Anfallshalva", defend: "Försvarshalva", empty: "Tom yta" };
 const overlays: Record<PitchOverlay, string> = { none: "Inget rutnät", corridors: "Korridorer", thirds: "Tredjedelar", zones: "18 zoner" };
@@ -47,6 +48,7 @@ export function BoardSettings({ board }: { board: Board }) {
           onChange={event => change(current => ({ ...current, description: event.target.value }))} />
       </label>
       <p className="tb-hint">Anteckningar för varje frame skriver du under Frames.</p>
+      <HostNotes compact />
       <label className="tb-check"><input type="checkbox" checked={board.showNames} onChange={event => change(current => ({ ...current, showNames: event.target.checked }))} />Visa spelarnas namn</label>
       <label className="tb-check"><input type="checkbox" checked={board.showPositions ?? false} onChange={event => change(current => ({ ...current, showPositions: event.target.checked }))} />Visa spelarnas positioner</label>
       <label className="tb-check"><input type="checkbox" checked={attachBall} onChange={event => setAttachBall(event.target.checked)} />Bollen fäster vid spelare</label>

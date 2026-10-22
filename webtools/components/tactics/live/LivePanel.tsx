@@ -14,6 +14,7 @@ import { useEditor } from "../store.ts";
 import { useChat } from "./chat-store.ts";
 import { ChatPanel } from "./ChatPanel.tsx";
 import { useDraw } from "./draw-store.ts";
+import { HostNotes } from "./HostNotes.tsx";
 import { LivePeople } from "./LivePeople.tsx";
 import { useLive } from "./live-store.ts";
 
@@ -56,6 +57,7 @@ export function LivePanel() {
   return (
     <div className="tb-inspector tb-live-panel">
       <h3>Livelektion · {session.code}</h3>
+      <HostNotes />
       <div className="tb-row">
         <label className="tb-field">Chatt
           <select value={chatMode} onChange={event => void chatSettings(event.target.value as ChatMode, hands)}>

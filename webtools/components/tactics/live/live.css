@@ -66,3 +66,8 @@
 .tb-live-people-list li[data-floor="true"] { box-shadow: inset 3px 0 0 var(--wt-brand); }
 .tb-live-panel .tb-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
 .tb-live-panel .tb-row select { width: 100%; min-width: 0; }
+/* The presenter's own notes. */
+.tb-host-notes { display: grid; gap: 6px; padding: 8px 10px; border: 1px solid #fcd34d; border-radius: 8px; background: #fffbeb; }
+.tb-host-notes summary { cursor: pointer; font-weight: 700; font-size: .9rem; }
+.tb-host-notes summary small { color: #92400e; font-weight: 600; margin-left: 4px; }
+.tb-host-notes textarea { width: 100%; min-height: 80px; padding: 6px 8px; border: 1px solid var(--wt-line); border-radius: 6px; font: inherit; font-size: .92rem; line-height: 1.4; resize: vertical; }

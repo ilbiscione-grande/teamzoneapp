@@ -18,6 +18,7 @@ import { Presenter } from "./Presenter.tsx";
 import { LiveBadge } from "./live/LiveBadge.tsx";
 import { LivePanel } from "./live/LivePanel.tsx";
 import { LiveStrokes } from "./live/LiveStrokes.tsx";
+import { useHostNotes } from "./live/HostNotes.tsx";
 import { useLive } from "./live/live-store.ts";
 import { Toolbar } from "./panels/Toolbar.tsx";
 import { activeBoard, useEditor } from "./store.ts";
@@ -99,6 +100,7 @@ export function TacticsEditor({ id }: { id: string }) {
       if (loadError) { setError("Projektet hittades inte, eller så har du inte tillgång till det."); return; }
       const project = data as Project;
       useEditor.getState().load(project, normalizeDocument(project.document));
+      useHostNotes.getState().load(project.id, (data as { host_notes?: Record<string, string> }).host_notes ?? {});
     });
     return () => { cancelled = true; };
   }, [client, id]);
