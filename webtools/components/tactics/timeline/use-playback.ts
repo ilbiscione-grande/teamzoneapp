@@ -9,6 +9,7 @@ import { activeBoard, useEditor } from "../store.ts";
 
 export function usePlayback() {
   const playing = useEditor(state => state.playing);
+  const playSeq = useEditor(state => state.playSeq);
   useEffect(() => {
     if (!playing) return;
     const { playhead: from } = useEditor.getState();
@@ -33,5 +34,5 @@ export function usePlayback() {
     };
     request = requestAnimationFrame(step);
     return () => cancelAnimationFrame(request);
-  }, [playing]);
+  }, [playing, playSeq]);
 }

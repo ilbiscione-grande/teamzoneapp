@@ -1,4 +1,6 @@
 /* Tacticsboard's editor: dark tools around a grass board, a light side panel. */
+@import "./share.css";
+@import "./motion.css";
 .tb-editor { display: flex; flex-direction: column; flex: 1; min-height: 0; background: #0f1a14; color: #e6efe9; }
 .tb-top { background: var(--wt-ink); color: white; padding: 6px 10px 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
 .tb-top-row { display: flex; align-items: flex-end; gap: 8px; }
@@ -160,47 +162,6 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
   .tb-timeline-hint { display: none; }
 }
 
-/* Sharing */
-.tb-share { min-height: 34px; padding: 0 14px; border: 0; border-radius: 6px; background: var(--wt-accent); color: var(--wt-accent-ink); font: inherit; font-weight: 800; font-size: .9rem; cursor: pointer; }
-.tb-modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(11, 17, 28, .6); }
-.tb-modal-card { width: min(560px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; display: grid; gap: 12px; padding: 20px; border-radius: 10px; background: white; color: var(--wt-text); box-shadow: 0 30px 80px rgba(0, 0, 0, .35); }
-.tb-modal-head { display: flex; align-items: center; justify-content: space-between; }
-.tb-modal-head h2 { margin: 0; font-size: 1.5rem; text-transform: uppercase; }
-.tb-modal-close { width: 36px; height: 36px; border: 0; border-radius: 6px; background: var(--wt-bg-alt); font-size: 1.3rem; cursor: pointer; }
-.tb-links { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-.tb-links li { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--wt-line); border-radius: 8px; }
-.tb-links input { min-height: 36px; padding: 0 8px; border: 1px solid var(--wt-line); border-radius: 6px; font: inherit; font-size: .85rem; color: var(--wt-muted); }
-
-/* A shared board: the title instead of the editor's fields. */
-.tb-viewer { height: 100%; }
-.tb-viewer-title { display: grid; padding: 4px 6px 6px; }
-.tb-viewer-title strong { font-size: 1.05rem; }
-.tb-viewer-title span { color: #a9b4c4; font-size: .85rem; }
-.tb-viewer .tb-center { flex: 1; min-height: 0; }
-
-/* PDF: the pictures are drawn off screen. */
-.tb-offscreen { position: fixed; left: -10000px; top: 0; pointer-events: none; }
-.tb-pdf { width: auto; padding: 0 10px; font-size: .78rem; font-weight: 800; letter-spacing: .04em; }
-.tb-choice { margin: 0; padding: 10px 12px; border: 1px solid var(--wt-line); border-radius: 8px; display: grid; gap: 6px; }
-.tb-choice legend { padding: 0 6px; font-weight: 700; font-size: .9rem; }
-.tb-choice label { display: flex; align-items: center; gap: 8px; font-size: .92rem; }
-.tb-choice input { accent-color: var(--wt-brand); width: 18px; height: 18px; }
-
-/* A shared board stands alone: no Webtools header (no sign-in in sight). */
-body:has(.tb-viewer) .wt-header { display: none; }
-.tb-viewer-mark { display: inline-grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 8px; background: var(--wt-accent); color: var(--wt-accent-ink); font-weight: 800; font-size: .9rem; }
-
-/* More ways to share a link, and its QR code. */
-.tb-share-ways { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; font-size: .88rem; }
-.tb-share-ways a { color: var(--wt-brand); font-weight: 600; }
-.tb-share-ways .tb-link { margin-left: auto; color: #b91c1c; }
-.tb-qr-box { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 10px; border-radius: 8px; background: var(--wt-bg-alt); }
-.tb-qr { display: block; border-radius: 6px; }
-.tb-qr-actions { flex: 1 1 180px; display: grid; gap: 8px; justify-items: start; }
-.tb-bigqr { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; align-content: center; gap: 18px; padding: 20px; background: #ffffff; color: var(--wt-ink); text-align: center; cursor: pointer; }
-.tb-bigqr strong { font-size: clamp(1.4rem, 4vw, 2.4rem); text-transform: uppercase; }
-.tb-bigqr span { color: var(--wt-muted); font-size: 1rem; }
-
 /* The palette with words: wider, two or three tools to a row. */
 .tb-tool-label, .tb-tool-heading { display: none; }
 .tb-tools-size { margin-top: auto; width: 44px; height: 32px !important; border: 0; border-radius: 8px; background: rgba(255, 255, 255, .06); color: #a9b4c4; font-size: 1rem; cursor: pointer; }
@@ -230,53 +191,12 @@ body:has(.tb-viewer) .wt-header { display: none; }
 .tb-starters label { display: flex; align-items: center; gap: 8px; font-weight: 400; }
 .tb-starters input { width: 18px; height: 18px; accent-color: var(--wt-brand); }
 
-/* The frames panel: the frames to choose from, then the frame's effects. */
-.tb-frame-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.tb-frame-list button { width: 100%; display: grid; gap: 2px; text-align: left; padding: 8px 10px; border: 1px solid var(--wt-line); border-radius: 6px; background: white; color: inherit; font: inherit; cursor: pointer; }
-.tb-frame-list button[aria-current="true"] { border-color: var(--wt-brand); box-shadow: inset 3px 0 0 var(--wt-brand); }
-.tb-frame-list span { color: var(--wt-muted); font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tb-effects { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
-.tb-effects button { display: grid; justify-items: start; gap: 2px; padding: 8px; border: 1px solid var(--wt-line); border-radius: 8px; background: white; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-.tb-effects button span { font-size: 1.2rem; line-height: 1; }
-.tb-effects button strong { font-size: .88rem; }
-.tb-effects button small { color: var(--wt-muted); font-size: .74rem; line-height: 1.25; }
-.tb-effects button[aria-pressed="true"] { border-color: var(--wt-brand); background: #f0f9e8; box-shadow: inset 0 0 0 1px var(--wt-brand); }
-.tb-effects button:disabled { opacity: .4; cursor: default; }
-.tb-effect-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.tb-effect-list li { display: flex; align-items: center; gap: 6px; padding: 4px 4px 4px 8px; border: 1px solid var(--wt-line); border-radius: 6px; background: white; }
-.tb-effect-list li[data-selected="true"] { border-color: #facc15; }
-.tb-effect-name { flex: 1; min-width: 0; display: grid; text-align: left; border: 0; background: none; padding: 0; color: inherit; font: inherit; font-size: .88rem; cursor: pointer; }
-.tb-effect-name small { color: var(--wt-muted); font-size: .74rem; }
-.tb-effect-list select { min-height: 32px; border: 1px solid var(--wt-line); border-radius: 6px; background: white; font: inherit; font-size: .85rem; }
-
-/* Presenting: the board on the whole screen, its description beside it. */
-.tb-present { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: #0f1a14; color: #e6efe9; }
-.tb-present-top { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--wt-ink); }
-.tb-present-title { font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tb-present-title small { color: #a9b4c4; font-weight: 600; }
-.tb-present-toggle { min-height: 36px; padding: 0 12px; border: 1px solid rgba(255, 255, 255, .25); border-radius: 6px; background: transparent; color: white; font: inherit; font-weight: 700; cursor: pointer; }
-.tb-present-toggle[aria-pressed="true"] { background: var(--wt-accent); border-color: var(--wt-accent); color: var(--wt-ink); }
-.tb-present-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
-.tb-present[data-text="true"] .tb-present-body { grid-template-columns: minmax(0, 1fr) minmax(260px, 30%); }
-.tb-present-text { overflow-y: auto; padding: 18px 20px; background: #f7f9fb; color: var(--wt-text); font-size: 1.05rem; line-height: 1.5; }
-.tb-present-text p { margin: 0 0 12px; white-space: pre-wrap; }
-.tb-present-text h3 { margin: 16px 0 6px; font-size: .9rem; text-transform: uppercase; color: var(--wt-muted); }
-.tb-present-empty { color: var(--wt-muted); font-size: .9rem; }
-@media (max-width: 760px), (orientation: portrait) {
-  .tb-present[data-text="true"] .tb-present-body { display: flex; flex-direction: column; }
-  .tb-present-body > .tb-center { order: 1; flex: 1; min-height: 0; }
-  .tb-present-text { order: 2; flex: none; max-height: 38dvh; padding: 12px 14px; font-size: .95rem; }
+/* On a phone some top bar buttons move into the "more" menu. */
+.tb-narrow-only { display: none; }
+.tb-more-menu { width: 220px; }
+.tb-icon[data-live="true"] { box-shadow: inset 0 0 0 2px #ef4444; }
+@media (max-width: 760px) {
+  .tb-top .tb-wide-only { display: none; }
+  .tb-narrow-only { display: inline-flex; }
+  .tb-save[data-state="saved"] { display: none; }
 }
-
-/* The timeline to scrub: a frame's dot where it is reached in time. */
-.tb-scrub-row { display: flex; align-items: center; gap: 10px; padding: 6px 4px 4px; }
-.tb-scrub { position: relative; flex: 1; height: 30px; cursor: pointer; touch-action: none; outline: none; }
-.tb-scrub-track { position: absolute; left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px; border-radius: 2px; background: rgba(255, 255, 255, .14); overflow: hidden; }
-.tb-scrub-fill { display: block; height: 100%; background: var(--wt-accent); }
-.tb-scrub-tick { position: absolute; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; display: grid; place-items: center; padding: 0; border: 0; background: none; color: #a9b4c4; font: inherit; font-size: .62rem; font-weight: 700; cursor: pointer; }
-.tb-scrub-tick::before { content: ""; position: absolute; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--wt-accent); background: #13221a; }
-.tb-scrub-tick[data-passed="true"]::before { background: var(--wt-accent); }
-.tb-scrub-tick span { position: absolute; top: -12px; }
-.tb-scrub-thumb { position: absolute; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: white; box-shadow: 0 0 0 3px var(--wt-accent), 0 2px 6px rgba(0, 0, 0, .4); pointer-events: none; }
-.tb-scrub:focus-visible .tb-scrub-thumb { box-shadow: 0 0 0 3px var(--wt-accent), 0 0 0 6px rgba(255, 255, 255, .5); }
-.tb-scrub-time { min-width: 76px; color: #a9b4c4; font-size: .78rem; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }

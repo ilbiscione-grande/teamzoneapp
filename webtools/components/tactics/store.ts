@@ -36,6 +36,8 @@ type EditorState = {
   speed: number;
   /** Playing one move only (an effect's preview): the frame it stops on. */
   stopAt: number | null;
+  /** Counted up to play on afresh from a new playhead while playing (a live lesson's host). */
+  playSeq: number;
   setFrame: (index: number) => void;
   play: () => void;
   /** Plays the move into a frame and stops there, keeping the selection. */
@@ -79,6 +81,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   loop: false,
   speed: 1,
   stopAt: null,
+  playSeq: 0,
 
   setFrame: index => {
     const board = activeBoard(get());

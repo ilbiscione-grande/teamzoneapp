@@ -14,6 +14,8 @@ test("the catalog has the four planned apps with unique slugs", () => {
 test("only Webtools' own pages are returned to after sign-in", () => {
   assert.equal(safeReturnTo("/appar/tacticsboard"), "/appar/tacticsboard");
   assert.equal(safeReturnTo("/konto"), "/konto");
+  assert.equal(safeReturnTo("/live/K7P2QX"), "/live/K7P2QX");
+  assert.equal(safeReturnTo("/live/k7p2qx"), "/");
   assert.equal(safeReturnTo(null), "/");
   assert.equal(safeReturnTo("/appar/okand"), "/");
   assert.equal(safeReturnTo("https://evil.example"), "/");

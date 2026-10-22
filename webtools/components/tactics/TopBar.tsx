@@ -13,6 +13,9 @@ import { saveNow } from "./use-autosave.ts";
 import { ShareDialog } from "./ShareDialog.tsx";
 import { ExportDialog } from "./export/ExportDialog.tsx";
 import { BoardMenu } from "./BoardMenu.tsx";
+import { LiveButton } from "./live/LiveButton.tsx";
+import { LiveDialog } from "./live/LiveDialog.tsx";
+import { TopBarMore } from "./TopBarMore.tsx";
 
 const saveLabels: Record<SaveState, string> = {
   saved: "Sparat", dirty: "Ändrat", saving: "Sparar…", error: "Kunde inte spara", conflict: "Ändrat på annat håll",
@@ -85,18 +88,22 @@ export function TopBar({ onPresent }: { onPresent: () => void }) {
   const { undo, redo } = useEditor.getState();
   const [sharing, setSharing] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [living, setLiving] = useState(false);
   if (!meta) return null;
   return (
     <header className="tb-top">
       {sharing && <ShareDialog onClose={() => setSharing(false)} />}
       {exporting && <ExportDialog onClose={() => setExporting(false)} />}
+      {living && <LiveDialog onClose={() => setLiving(false)} />}
       <div className="tb-top-row">
         <Link href="/tacticsboard" className="tb-back" aria-label="Till projekten" title={meta.name}>‹</Link>
         <Boards />
         <button type="button" className="tb-icon" onClick={undo} disabled={!canUndo} aria-label="Ångra" title="Ångra (Ctrl+Z)">↶</button>
         <button type="button" className="tb-icon" onClick={redo} disabled={!canRedo} aria-label="Gör om" title="Gör om (Ctrl+Y)">↷</button>
-        <button type="button" className="tb-icon tb-pdf" onClick={onPresent} aria-label="Visa i helskärm" title="Visa i helskärm, utan redigering">⛶</button>
-        <button type="button" className="tb-icon tb-pdf" onClick={() => setExporting(true)} aria-label="Skapa PDF" title="Skapa PDF">PDF</button>
+        <button type="button" className="tb-icon tb-pdf tb-wide-only" onClick={onPresent} aria-label="Visa i helskärm" title="Visa i helskärm, utan redigering">⛶</button>
+        <button type="button" className="tb-icon tb-pdf tb-wide-only" onClick={() => setExporting(true)} aria-label="Skapa PDF" title="Skapa PDF">PDF</button>
+        <LiveButton onClick={() => setLiving(true)} />
+        <TopBarMore onPresent={onPresent} onPdf={() => setExporting(true)} onLive={() => setLiving(true)} />
         <button type="button" className="tb-share" onClick={() => setSharing(true)}>Dela</button>
         <span className="tb-save" data-state={saveState} role="status">
           {saveLabels[saveState]}

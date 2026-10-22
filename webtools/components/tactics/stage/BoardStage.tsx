@@ -18,7 +18,7 @@ import { DraftNode } from "./DraftNode.tsx";
 import { Ghosts } from "./Ghosts.tsx";
 import { Pitch } from "./Pitch.tsx";
 import { Selection } from "./Selection.tsx";
-import { StageContext, stageHolder, type StageShared } from "./stage-context.ts";
+import { pitchPointer, StageContext, stageHolder, type StageShared } from "./stage-context.ts";
 import { useBand } from "./use-band.ts";
 import { isDrawTool, isPlaceTool, useDrawing } from "./use-drawing.ts";
 import { IDENTITY, useViewport } from "./use-viewport.ts";
@@ -29,7 +29,8 @@ Konva.hitOnDragEnabled = false;
 // Sharper than 2× costs more than it shows on a tablet.
 if (typeof window !== "undefined") Konva.pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
 
-export default function BoardStage({ editable = true }: { editable?: boolean }) {
+/** extra: drawn over the objects, in metres (a live lesson's pointer). */
+export default function BoardStage({ editable = true, extra }: { editable?: boolean; extra?: React.ReactNode }) {
   const frame = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const board = useEditor(activeBoard);
@@ -105,7 +106,12 @@ export default function BoardStage({ editable = true }: { editable?: boolean }) 
               if (canEdit && isDrawTool(tool)) drawing.start();
               else if (bandable && event.target.name() === "grass") band.begin(event);
             }}
-            onPointerMove={event => { drawing.move(); band.move(event); }}
+            onPointerMove={event => {
+              drawing.move();
+              band.move(event);
+              if (pitchPointer.size) { const at = content.current?.getRelativePointerPosition() ?? null; pitchPointer.forEach(listen => listen(at)); }
+            }}
+            onPointerLeave={() => pitchPointer.forEach(listen => listen(null))}
             onPointerUp={event => { drawing.end(); band.end(event, visible.map(item => item.id)); }}
             onClick={event => {
               if (band.consumeClick() || event.evt.button !== 0 || !canEdit) return;
@@ -133,6 +139,7 @@ export default function BoardStage({ editable = true }: { editable?: boolean }) 
                   ))}
                   {canEdit && <Selection objects={objects} selection={selection} upright={upright} />}
                   {drawing.draft && <DraftNode draft={drawing.draft} />}
+                  {extra}
                 </Group>
               </Group>
             </Layer>

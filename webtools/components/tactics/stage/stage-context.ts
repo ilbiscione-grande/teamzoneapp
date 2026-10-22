@@ -35,6 +35,9 @@ export function trashAt(shared: StageShared, stage: Konva.Stage | null, dragging
 
 export const StageContext = createContext<StageShared | null>(null);
 
+/** Listeners to the pointer on the pitch, in metres (null when it leaves): a live lesson's host. */
+export const pitchPointer = new Set<(point: { x: number; y: number } | null) => void>();
+
 /** The mounted Konva stage, for recording the board as a video. */
 export const stageHolder: { current: Konva.Stage | null } = { current: null };
 

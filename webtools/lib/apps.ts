@@ -73,6 +73,8 @@ export function safeReturnTo(value: string | null | undefined): string {
   if (!value) return "/";
   if (value === "/" || value === "/konto" || value === "/bokningar" || value === "/aviseringar" || value === "/turneringar" || value === "/tacticsboard") return value;
   if (/^\/tacticsboard\/[0-9a-f-]{36}$/.test(value)) return value;
+  // A live lesson that asks for a login.
+  if (/^\/live\/[A-HJ-NP-Z2-9]{6}$/.test(value)) return value;
   // A tournament, which is also its registration link, and staff invitations.
   if (/^\/turneringar\/[0-9a-f-]{36}$/.test(value)) return value;
   if (/^\/turneringar\?inbjudan=[0-9a-f]{64}$/.test(value)) return value;

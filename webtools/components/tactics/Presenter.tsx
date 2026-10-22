@@ -6,6 +6,7 @@
 // buttons or the arrow keys; Escape leaves.
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
+import { BoardText, hasBoardText } from "./BoardText.tsx";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import { activeBoard, useEditor, NONE } from "./store.ts";
 import { Timeline } from "./timeline/Timeline.tsx";
@@ -16,10 +17,7 @@ export function Presenter({ onClose }: { onClose: () => void }) {
   const root = useRef<HTMLDivElement>(null);
   const board = useEditor(activeBoard);
   const boards = useEditor(state => state.document?.boards ?? NONE);
-  const frameIndex = useEditor(state => state.frameIndex);
-  const description = board?.description?.trim() ?? "";
-  const note = board?.frames[frameIndex]?.note?.trim() ?? "";
-  const [showText, setShowText] = useState(() => !!(description || note));
+  const [showText, setShowText] = useState(() => hasBoardText(useEditor.getState()));
   const boardIndex = boards.findIndex(item => item.id === board?.id);
 
   useEffect(() => {
@@ -62,17 +60,7 @@ export function Presenter({ onClose }: { onClose: () => void }) {
           <ErrorBoundary label="Tavlan"><BoardStage editable={false} /></ErrorBoundary>
           <ErrorBoundary label="Tidslinjen"><Timeline board={board} readOnly /></ErrorBoundary>
         </div>
-        {showText && (
-          <aside className="tb-present-text" aria-label="Beskrivning">
-            {description ? <p>{description}</p> : <p className="tb-present-empty">Tavlan har ingen beskrivning. Skriv en under Tavlan i redigeringen.</p>}
-            {note && (
-              <>
-                <h3>Frame {frameIndex + 1}</h3>
-                <p>{note}</p>
-              </>
-            )}
-          </aside>
-        )}
+        {showText && <BoardText emptyHint="Tavlan har ingen beskrivning. Skriv en under Tavlan i redigeringen." />}
       </div>
     </div>
   );

@@ -19,6 +19,7 @@ import { Toolbar } from "./panels/Toolbar.tsx";
 import { activeBoard, useEditor } from "./store.ts";
 import { TopBar } from "./TopBar.tsx";
 import { useAutosave } from "./use-autosave.ts";
+import { useLiveHost } from "./live/use-live-host.ts";
 import { useShortcuts } from "./use-shortcuts.ts";
 import { Timeline } from "./timeline/Timeline.tsx";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
@@ -79,6 +80,7 @@ export function TacticsEditor({ id }: { id: string }) {
   const [error, setError] = useState("");
   const loaded = useEditor(state => state.meta?.id === id);
   useAutosave(client);
+  useLiveHost(client);
 
   useEffect(() => {
     if (!client) return;
