@@ -4,12 +4,15 @@
 // are dragged, and a pointer; participants only listen. Pure, so it can be
 // tested and later replayed.
 import { updateFrame } from "./document.ts";
+import type { ChatMode } from "./live-chat.ts";
 import type { Board, Point, ProjectDocument, ProjectKind } from "./model.ts";
 
-export type LiveSession = { id: string; code: string; project_id: string; allow_guests: boolean; live: boolean; created_at: string };
+export type LiveSession = {
+  id: string; code: string; project_id: string; allow_guests: boolean; live: boolean; chat_mode: ChatMode; hands: boolean; created_at: string;
+};
 
 export type LiveJoined = LiveSession & {
-  name: string; kind: ProjectKind; document: unknown; participant_name: string; host_name: string;
+  name: string; kind: ProjectKind; document: unknown; participant_name: string; host_name: string; muted: boolean;
 };
 
 /** Where the host's board is. A playing board is played on locally from the playhead. */
@@ -26,8 +29,8 @@ export type LiveEvent =
 /** Objects on their way while the host drags them: where each is now. */
 export type LiveDrag = { boardId: string; frameIndex: number; moves: Record<string, Point> };
 
-/** Who is on the channel: the host, or a participant with their name. */
-export type LivePresence = { role: "host" | "participant"; name: string; guest: boolean };
+/** Who is on the channel: the host, or a participant with their name, hand (when raised) and whether their chat is off. */
+export type LivePresence = { role: "host" | "participant"; name: string; guest: boolean; hand?: number | null; muted?: boolean };
 
 export const liveTopic = (sessionId: string) => `tactics-live:${sessionId}`;
 

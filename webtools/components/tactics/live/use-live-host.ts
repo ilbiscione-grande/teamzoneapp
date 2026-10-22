@@ -9,7 +9,9 @@ import { useEffect } from "react";
 import { liveTopic, throttle, viewChanged, type LiveView } from "../../../lib/tactics/live.ts";
 import { objectDrag, pitchPointer } from "../stage/stage-context.ts";
 import { activeBoard, useEditor } from "../store.ts";
+import { listenChat, useChat } from "./chat-store.ts";
 import { participantsOf, useLive } from "./live-store.ts";
+import { useLiveHostChat } from "./use-live-host-chat.ts";
 
 type State = ReturnType<typeof useEditor.getState>;
 const viewOf = (state: State): LiveView | null => state.boardId === null ? null : {
@@ -19,6 +21,7 @@ const viewOf = (state: State): LiveView | null => state.boardId === null ? null 
 export function useLiveHost(client: SupabaseClient | null) {
   const projectId = useEditor(state => state.meta?.id);
   const sessionId = useLive(state => state.session?.id);
+  useLiveHostChat(client, sessionId);
 
   // A session still running after a reload is picked up again.
   useEffect(() => {
@@ -47,6 +50,8 @@ export function useLiveHost(client: SupabaseClient | null) {
     }, 40);
     // Everything, for someone who just came in.
     const sync = () => {
+      const { chatMode, hands } = useChat.getState();
+      send("settings", { chatMode, hands });
       const state = useEditor.getState();
       const board = activeBoard(state);
       if (board) send("board", { board });
@@ -73,8 +78,9 @@ export function useLiveHost(client: SupabaseClient | null) {
       channel = client.channel(liveTopic(sessionId), { config: { private: true, presence: { key: "host" } } });
       channel
         .on("presence", { event: "sync" }, () => useLive.getState().set({ participants: participantsOf(channel!.presenceState()) }))
-        .on("presence", { event: "join" }, ({ key }) => { if (key !== "host") sync(); })
-        .subscribe((status, error) => {
+        .on("presence", { event: "join" }, ({ key }) => { if (key !== "host") sync(); });
+      listenChat(channel);
+      channel.subscribe((status, error) => {
           if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
             console.error("tactics live channel", status, error);
             useLive.getState().set({ channelError: error?.message ? `${status}: ${error.message}` : status });
@@ -82,6 +88,7 @@ export function useLiveHost(client: SupabaseClient | null) {
           if (status !== "SUBSCRIBED") return;
           useLive.getState().set({ channelError: "" });
           ready = true;
+          useLive.getState().set({ send });
           void channel!.track({ role: "host", name: "Läraren", guest: false });
           lastView = viewOf(useEditor.getState());
           sync();
@@ -96,13 +103,13 @@ export function useLiveHost(client: SupabaseClient | null) {
       objectDrag.delete(sendDrag.call);
       sendView.cancel(); sendBoard.cancel(); sendPointer.cancel(); sendDrag.cancel();
       if (channel) void client.removeChannel(channel);
-      useLive.getState().set({ participants: [] });
+      useLive.getState().set({ participants: [], send: null });
     };
   }, [client, sessionId]);
 }
 
 /** Tells everyone on the channel, before the session's state changes in the database. */
-export async function broadcastOnce(client: SupabaseClient, sessionId: string, event: "ended" | "guests-off") {
+export async function broadcastOnce(client: SupabaseClient, sessionId: string, event: string, payload: object = {}) {
   const channel = client.getChannels().find(item => item.topic === `realtime:${liveTopic(sessionId)}`);
-  await channel?.send({ type: "broadcast", event, payload: {} });
+  await channel?.send({ type: "broadcast", event, payload });
 }

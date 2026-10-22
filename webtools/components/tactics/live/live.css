@@ -21,3 +21,27 @@
   .tb-live[data-text="true"] .tb-present-body { display: flex; flex-direction: column; }
   .tb-live .tb-viewer-title span { display: none; }
 }
+
+/* The chat, the hands and the host's panel. */
+.tb-badge { display: inline-block; margin-left: 6px; min-width: 18px; padding: 0 6px; border-radius: 999px; background: #ef4444; color: white; font-size: .72rem; font-weight: 800; line-height: 18px; text-align: center; }
+.tb-chat { display: grid; grid-template-rows: minmax(0, 1fr) auto auto auto; gap: 8px; min-height: 0; }
+.tb-chat-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; align-content: start; max-height: 50dvh; overflow-y: auto; }
+.tb-chat-list li { padding: 6px 10px; border-radius: 8px; background: white; border: 1px solid var(--wt-line); }
+.tb-chat-list li[data-host="true"] { border-color: var(--wt-brand); background: #f0f9e8; }
+.tb-chat-list li[data-own="true"] { background: #eef4ff; }
+.tb-chat-list p { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .92rem; line-height: 1.35; }
+.tb-chat-empty { color: var(--wt-muted); font-size: .88rem; border-style: dashed !important; }
+.tb-chat-meta { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--wt-muted); }
+.tb-chat-meta strong { color: var(--wt-text); font-size: .82rem; }
+.tb-chat-meta time { margin-left: auto; }
+.tb-chat-tag { padding: 0 6px; border-radius: 999px; background: #fef3c7; color: #92400e; font-weight: 700; }
+.tb-chat-remove { border: 0; background: none; color: var(--wt-muted); font-size: 1rem; line-height: 1; cursor: pointer; }
+.tb-chat-notice { margin: 0; color: var(--wt-muted); font-size: .82rem; }
+.tb-chat-form { display: flex; gap: 6px; }
+.tb-chat-form input { flex: 1; min-width: 0; min-height: 36px; padding: 6px 8px; border: 1px solid var(--wt-line); border-radius: 6px; font: inherit; font-size: .92rem; }
+.tb-live-hands { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.tb-live-hands li, .tb-live-people-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tb-live-people-list { display: grid; gap: 4px; }
+.tb-live-people-list li { border-radius: 8px; }
+.tb-present-live { font-size: 1rem; }
+.tb-present-live .tb-live-panel { padding: 0; }

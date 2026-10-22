@@ -15,6 +15,9 @@ import { ObjectList } from "./panels/ObjectList.tsx";
 import { SquadPanel } from "./panels/SquadPanel.tsx";
 import { FramesPanel } from "./panels/FramesPanel.tsx";
 import { Presenter } from "./Presenter.tsx";
+import { LiveBadge } from "./live/LiveBadge.tsx";
+import { LivePanel } from "./live/LivePanel.tsx";
+import { useLive } from "./live/live-store.ts";
 import { Toolbar } from "./panels/Toolbar.tsx";
 import { activeBoard, useEditor } from "./store.ts";
 import { TopBar } from "./TopBar.tsx";
@@ -27,12 +30,13 @@ import "./tactics.css";
 
 const BoardStage = dynamic(() => import("./stage/BoardStage.tsx"), { ssr: false, loading: () => <div className="tb-stage" /> });
 
-type Panel = "properties" | "frames" | "objects" | "squad";
+type Panel = "properties" | "frames" | "objects" | "squad" | "live";
 
 /** The loaded project's workspace. */
 export function TacticsWorkspace() {
   const [panel, setPanel] = useState<Panel>("properties");
   const [presenting, setPresenting] = useState(false);
+  const live = useLive(state => !!state.session);
   // On a phone the board gets the room; the panel opens from its tabs.
   const [panelOpen, setPanelOpen] = useState(() => typeof window === "undefined" || window.innerWidth > 760);
   const board = useEditor(activeBoard);
@@ -42,7 +46,9 @@ export function TacticsWorkspace() {
   useEffect(() => { if (selectionCount > 0) setPanel(current => current === "frames" ? current : "properties"); }, [selectionCount]);
   if (!board) return null;
   if (presenting) return <Presenter onClose={() => setPresenting(false)} />;
-  const tabs: [Panel, string][] = [["properties", selectionCount ? "Egenskaper" : "Tavlan"], ["frames", "Frames"], ["objects", "Objekt"], ["squad", "Lag"]];
+  const tabs: [Panel, React.ReactNode][] = [["properties", selectionCount ? "Egenskaper" : "Tavlan"], ["frames", "Frames"], ["objects", "Objekt"], ["squad", "Lag"]];
+  // While a live lesson runs, its chat, hands and settings have a tab first.
+  if (live) tabs.unshift(["live", <LiveBadge key="live" label="Live" hands />]);
   return (
     <div className="tb-editor" data-panel={panelOpen}>
       <TopBar onPresent={() => setPresenting(true)} />
@@ -66,6 +72,7 @@ export function TacticsWorkspace() {
                 {panel === "properties" && <Inspector board={board} />}
                 {panel === "frames" && <FramesPanel board={board} />}
                 {panel === "squad" && <SquadPanel board={board} />}
+                {panel === "live" && (live ? <LivePanel /> : <Inspector board={board} />)}
               </ErrorBoundary>
             </div>
           )}

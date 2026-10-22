@@ -17,6 +17,8 @@ type LiveState = {
   hostHere: boolean;
   /** Hosting: why the channel could not be opened, when it could not. */
   channelError: string;
+  /** Hosting: sends on the lesson's channel while it is open. */
+  send: ((event: string, payload: object) => void) | null;
   set: (changes: Partial<Omit<LiveState, "set">>) => void;
 };
 
@@ -26,6 +28,7 @@ export const useLive = create<LiveState>(set => ({
   pointer: null,
   hostHere: false,
   channelError: "",
+  send: null,
   set: changes => set(changes),
 }));
 

@@ -14,7 +14,10 @@ import { ErrorBoundary } from "../ErrorBoundary.tsx";
 import { activeBoard, isBetween, useEditor, NONE } from "../store.ts";
 import { usePlayback } from "../timeline/use-playback.ts";
 import { kindLabels } from "../TopBar.tsx";
+import { useChat } from "./chat-store.ts";
+import { ChatPanel } from "./ChatPanel.tsx";
 import { Laser } from "./Laser.tsx";
+import { LiveBadge } from "./LiveBadge.tsx";
 import { useLive } from "./live-store.ts";
 import { useLiveFollow } from "./use-live-follow.ts";
 
@@ -24,7 +27,7 @@ const ended = { ended: "Lektionen är slut. Tack för att du var med!", removed:
 
 export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; joined: LiveJoined; guest: boolean }) {
   const [ready, setReady] = useState(false);
-  const [showText, setShowText] = useState(false);
+  const [aside, setAside] = useState<"text" | "chat" | null>(null);
   const me = useMemo<LivePresence>(() => ({ role: "participant", name: joined.participant_name, guest }), [joined.participant_name, guest]);
   useEffect(() => {
     const document = normalizeDocument(joined.document);
@@ -32,10 +35,15 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
       id: joined.project_id, name: joined.name, kind: joined.kind, teamzone_team_id: null, team_name: null,
       board_count: document.boards.length, revision: 0, created_at: joined.created_at, updated_at: joined.created_at, document,
     }, document);
-    setShowText(hasBoardText(useEditor.getState()));
+    useChat.getState().set({ messages: [], unread: 0, chatMode: joined.chat_mode, hands: joined.hands, muted: joined.muted });
+    setAside(hasBoardText(useEditor.getState()) ? "text" : null);
     setReady(true);
   }, [joined]);
-  const { state, detail } = useLiveFollow(client, joined.id, me);
+  const { state, detail, hand, setHand } = useLiveFollow(client, joined.id, me);
+  const chatMode = useChat(store => store.chatMode);
+  const handsAllowed = useChat(store => store.hands);
+  const hasMessages = useChat(store => store.messages.length > 0);
+  const toggle = (which: "text" | "chat") => setAside(aside === which ? null : which);
   usePlayback();
   const board = useEditor(activeBoard);
   const boards = useEditor(store => store.document?.boards ?? NONE);
@@ -55,7 +63,7 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
   const frame = Math.floor(playhead) + 1;
   const where = between ? `Mellan frame ${frame} och ${frame + 1}` : `Frame ${Math.round(playhead) + 1} av ${board.frames.length}`;
   return (
-    <div className="tb-editor tb-viewer tb-live" data-text={showText}>
+    <div className="tb-editor tb-viewer tb-live" data-text={aside !== null}>
       <header className="tb-top">
         <div className="tb-top-row">
           <span className="tb-viewer-mark" aria-hidden="true">TZ</span>
@@ -65,7 +73,13 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
           </div>
           <span className="tb-spacer" />
           <span className="tb-live-status" data-host={hostHere}>{state === "connecting" ? "Ansluter…" : hostHere ? "Följer läraren" : "Väntar på läraren"}</span>
-          <button type="button" className="tb-present-toggle" aria-pressed={showText} onClick={() => setShowText(!showText)}>Beskrivning</button>
+          {handsAllowed && state === "following" && (
+            <button type="button" className="tb-present-toggle" aria-pressed={!!hand} onClick={() => setHand(!hand)} title={hand ? "Sänk handen" : "Räck upp handen"}>✋</button>
+          )}
+          {(chatMode !== "off" || hasMessages) && (
+            <button type="button" className="tb-present-toggle" aria-pressed={aside === "chat"} onClick={() => toggle("chat")}><LiveBadge label="Chatt" /></button>
+          )}
+          <button type="button" className="tb-present-toggle" aria-pressed={aside === "text"} onClick={() => toggle("text")}>Beskrivning</button>
         </div>
       </header>
       <div className="tb-present-body">
@@ -76,7 +90,8 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
             {board.frames.length > 1 && <span> · {where}</span>}
           </div>
         </div>
-        {showText && <BoardText emptyHint="Tavlan har ingen beskrivning." />}
+        {aside === "text" && <BoardText emptyHint="Tavlan har ingen beskrivning." />}
+        {aside === "chat" && <aside className="tb-present-text tb-present-live"><ChatPanel client={client} sessionId={joined.id} host={false} /></aside>}
       </div>
     </div>
   );

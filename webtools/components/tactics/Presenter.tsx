@@ -7,6 +7,9 @@
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { BoardText, hasBoardText } from "./BoardText.tsx";
+import { LiveBadge } from "./live/LiveBadge.tsx";
+import { LivePanel } from "./live/LivePanel.tsx";
+import { useLive } from "./live/live-store.ts";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import { activeBoard, useEditor, NONE } from "./store.ts";
 import { Timeline } from "./timeline/Timeline.tsx";
@@ -17,7 +20,10 @@ export function Presenter({ onClose }: { onClose: () => void }) {
   const root = useRef<HTMLDivElement>(null);
   const board = useEditor(activeBoard);
   const boards = useEditor(state => state.document?.boards ?? NONE);
-  const [showText, setShowText] = useState(() => hasBoardText(useEditor.getState()));
+  // Beside the board: the description, or while hosting a lesson its chat and hands.
+  const live = useLive(state => !!state.session);
+  const [aside, setAside] = useState<"text" | "live" | null>(() => live ? "live" : hasBoardText(useEditor.getState()) ? "text" : null);
+  const toggle = (which: "text" | "live") => setAside(aside === which ? null : which);
   const boardIndex = boards.findIndex(item => item.id === board?.id);
 
   useEffect(() => {
@@ -46,13 +52,14 @@ export function Presenter({ onClose }: { onClose: () => void }) {
   if (!board) return null;
   const step = (by: number) => { const next = boards[boardIndex + by]; if (next) useEditor.getState().setBoard(next.id); };
   return (
-    <div ref={root} className="tb-present" data-text={showText}>
+    <div ref={root} className="tb-present" data-text={aside !== null}>
       <header className="tb-present-top">
         {boards.length > 1 && <button type="button" className="tb-icon" onClick={() => step(-1)} disabled={boardIndex <= 0} aria-label="Föregående tavla">‹</button>}
         <strong className="tb-present-title">{board.name || "Tavla"}{boards.length > 1 && <small> {boardIndex + 1} av {boards.length}</small>}</strong>
         {boards.length > 1 && <button type="button" className="tb-icon" onClick={() => step(1)} disabled={boardIndex >= boards.length - 1} aria-label="Nästa tavla">›</button>}
         <span className="tb-spacer" />
-        <button type="button" className="tb-present-toggle" aria-pressed={showText} onClick={() => setShowText(!showText)}>Beskrivning</button>
+        {live && <button type="button" className="tb-present-toggle" aria-pressed={aside === "live"} onClick={() => toggle("live")}><LiveBadge label="Live" hands /></button>}
+        <button type="button" className="tb-present-toggle" aria-pressed={aside === "text"} onClick={() => toggle("text")}>Beskrivning</button>
         <button type="button" className="tb-icon" onClick={onClose} aria-label="Stäng visningen" title="Stäng (Esc)">×</button>
       </header>
       <div className="tb-present-body">
@@ -60,7 +67,8 @@ export function Presenter({ onClose }: { onClose: () => void }) {
           <ErrorBoundary label="Tavlan"><BoardStage editable={false} /></ErrorBoundary>
           <ErrorBoundary label="Tidslinjen"><Timeline board={board} readOnly /></ErrorBoundary>
         </div>
-        {showText && <BoardText emptyHint="Tavlan har ingen beskrivning. Skriv en under Tavlan i redigeringen." />}
+        {aside === "text" && <BoardText emptyHint="Tavlan har ingen beskrivning. Skriv en under Tavlan i redigeringen." />}
+        {aside === "live" && live && <aside className="tb-present-text tb-present-live"><LivePanel /></aside>}
       </div>
     </div>
   );
