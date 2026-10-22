@@ -15,20 +15,24 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
     case "player":
       return (
         <>
+          <label className="tb-field">Lag
+            <select value={item.side} onChange={event => patch({ side: event.target.value as "home" | "away" })}>
+              <option value="home">{board.teams.home.name}</option>
+              <option value="away">{board.teams.away.name}</option>
+            </select>
+          </label>
+          <PlayerLink item={item} />
+          <label className="tb-field">Namn<input value={item.name ?? ""} maxLength={40} onChange={event => patch({ name: event.target.value || null })} /></label>
           <div className="tb-row">
             <label className="tb-field">Nummer
               <input inputMode="numeric" value={item.number ?? ""} maxLength={3}
                 onChange={event => { const n = event.target.value.trim(); patch({ number: n === "" ? null : Number(n) || 0 }); }} />
             </label>
-            <label className="tb-field">Lag
-              <select value={item.side} onChange={event => patch({ side: event.target.value as "home" | "away" })}>
-                <option value="home">{board.teams.home.name}</option>
-                <option value="away">{board.teams.away.name}</option>
-              </select>
+            <label className="tb-field">Position
+              <input value={item.position ?? ""} maxLength={12} placeholder="t.ex. MV" onChange={event => patch({ position: event.target.value || null })} />
             </label>
           </div>
-          <PlayerLink item={item} />
-          <label className="tb-field">Namn<input value={item.name ?? ""} maxLength={40} onChange={event => patch({ name: event.target.value || null })} /></label>
+          {item.personId && <p className="tb-hint">Hämtat från laget när spelaren kopplades. Det du skriver här gäller på tavlan.</p>}
           <Swatches label="Egen färg (t.ex. målvakt)" value={item.color} onChange={color => patch({ color })} />
           {item.color && <button type="button" className="tb-link" onClick={() => patch({ color: null })}>Lagets färg</button>}
         </>
@@ -72,9 +76,10 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
       return (
         <>
           <label className="tb-field">Text<textarea rows={2} maxLength={200} value={item.text} onChange={event => patch({ text: event.target.value })} /></label>
-          <label className="tb-field">Storlek
-            <input type="range" min={1} max={6} step={0.2} value={item.size} onChange={event => patch({ size: Number(event.target.value) })} />
+          <label className="tb-field">Textstorlek
+            <input type="range" min={0.8} max={8} step={0.2} value={item.size} onChange={event => patch({ size: Number(event.target.value) })} />
           </label>
+          {item.width != null && <button type="button" className="tb-link" onClick={() => patch({ width: null, height: null })}>Anpassa rutan efter texten</button>}
           <label className="tb-check"><input type="checkbox" checked={item.background} onChange={event => patch({ background: event.target.checked })} />Bakgrund</label>
           <Swatches label="Färg" value={item.color} onChange={color => patch({ color })} />
         </>

@@ -1,7 +1,7 @@
 "use client";
 
 // A player: a disc in the team's colour with the shirt number, the name
-// below when the board shows names. The text stays upright when the pitch
+// below when the board shows names and the position above when it shows them. The text stays upright when the pitch
 // is turned on a tall screen.
 import { Circle, Group, Text } from "react-konva";
 import { PLAYER_RADIUS } from "../../../lib/tactics/ball.ts";
@@ -29,6 +29,10 @@ export function PlayerNode({ item, board, selected, upright }: { item: PlayerObj
           <Text text={String(item.number)} fontSize={item.number > 99 ? 1.15 : 1.55} fontStyle="bold" fill={team.numberColor}
             width={PLAYER_RADIUS * 2} height={PLAYER_RADIUS * 2} offsetX={PLAYER_RADIUS} offsetY={PLAYER_RADIUS}
             align="center" verticalAlign="middle" listening={false} />
+        )}
+        {board.showPositions && item.position && (
+          <Text text={item.position} fontSize={1} fontStyle="bold" fill="#facc15" width={10} offsetX={5} y={-PLAYER_RADIUS - 1.35}
+            align="center" stroke="rgba(11,17,28,0.9)" strokeWidth={0.12} fillAfterStrokeEnabled listening={false} perfectDrawEnabled={false} />
         )}
         {board.showNames && lastName && (
           <Text text={lastName} fontSize={1.15} fontStyle="bold" fill="#ffffff" width={14} offsetX={7} y={PLAYER_RADIUS + 0.35}

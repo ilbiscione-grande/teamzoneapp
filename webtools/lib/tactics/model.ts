@@ -39,7 +39,12 @@ export type PlayerObject = Base & {
   side: Side;
   number: number | null;
   name: string | null;
-  /** The TeamZone player, when placed from the team's squad. */
+  /** A position such as MV or YB; missing on players drawn before positions. */
+  position?: string | null;
+  /**
+   * The TeamZone player, when placed from the team's squad. The name, number
+   * and position are copied from the squad then, and edits here win over it.
+   */
   personId: string | null;
   /** A colour of its own, such as a goalkeeper's; else the team's. */
   color: string | null;
@@ -96,7 +101,11 @@ export type ShapeObject = Base & {
 export type TextObject = Base & {
   type: "text";
   text: string;
+  /** The letters' height, whatever the box. */
   size: number;
+  /** The box, once resized: the text wraps inside it. Missing, it fits the text. */
+  width?: number | null;
+  height?: number | null;
   color: string;
   background: boolean;
 };
@@ -132,6 +141,8 @@ export type Board = {
   overlay: PitchOverlay;
   teams: Record<Side, TeamStyle>;
   showNames: boolean;
+  /** Positions above the players; missing on boards made before it. */
+  showPositions?: boolean;
   frames: Frame[];
 };
 

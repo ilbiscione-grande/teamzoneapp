@@ -1,7 +1,8 @@
 "use client";
 
 // Areas and text: a rectangle or ellipse marking a zone, and a text label
-// that keeps reading upright on a turned pitch.
+// that keeps reading upright on a turned pitch. A resized text box wraps its
+// text; the letters keep their own size.
 import { Ellipse, Group, Label, Rect, Tag, Text } from "react-konva";
 import type { ShapeObject, TextObject } from "../../../lib/tactics/model.ts";
 import type { Rendered } from "../../../lib/tactics/timeline.ts";
@@ -38,7 +39,8 @@ export function TextNode({ item, upright }: { item: TextObject & Rendered; uprig
     <Group ref={nodeRef(shared, item.id)} x={item.x} y={item.y} rotation={item.rotation + upright} {...look(item)} {...drag}>
       <Label>
         {item.background && <Tag fill="rgba(15,23,38,0.78)" cornerRadius={0.4} />}
-        <Text text={item.text} fontSize={item.size} fontStyle="bold" fill={item.color} padding={item.background ? 0.45 : 0} />
+        <Text text={item.text} fontSize={item.size} fontStyle="bold" fill={item.color} padding={item.background ? 0.45 : 0}
+          width={item.width ?? undefined} height={item.height ?? undefined} wrap="word" />
       </Label>
     </Group>
   );

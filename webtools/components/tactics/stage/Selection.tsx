@@ -13,7 +13,7 @@ import { useStage } from "./stage-context.ts";
 
 const TRANSFORMABLE = new Set(["cone", "pole", "mannequin", "goal", "rect", "ellipse", "text"]);
 
-function Transform({ items }: { items: TacticsObject[] }) {
+function Transform({ items, upright }: { items: TacticsObject[]; upright: number }) {
   const shared = useStage();
   const ref = useRef<Konva.Transformer>(null);
   const ids = items.map(item => item.id).join(",");
@@ -24,7 +24,7 @@ function Transform({ items }: { items: TacticsObject[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ids, shared]);
   const single = items.length === 1 ? items[0] : null;
-  const resizable = single !== null && (single.type === "rect" || single.type === "ellipse");
+  const resizable = single !== null && (single.type === "rect" || single.type === "ellipse" || single.type === "text");
   return (
     <Transformer ref={ref} rotateEnabled flipEnabled={false} keepRatio={!resizable}
       enabledAnchors={resizable ? ["top-left", "top-right", "bottom-left", "bottom-right", "middle-left", "middle-right", "top-center", "bottom-center"] : ["top-left", "top-right", "bottom-left", "bottom-right"]}
@@ -41,7 +41,11 @@ function Transform({ items }: { items: TacticsObject[] }) {
             patches[item.id] = { ...common, width: Math.max(0.5, item.width * sx), height: Math.max(0.5, item.height * sy) };
             node.scale({ x: 1, y: 1 });
           } else if (item.type === "text") {
-            patches[item.id] = { ...common, size: Math.min(12, Math.max(0.8, item.size * sy)) };
+            // The box changes; the letters keep their size.
+            const text = (node as Konva.Group).findOne("Text");
+            const width = item.width ?? text?.width() ?? 1, height = item.height ?? text?.height() ?? 1;
+            // Text is drawn turned upright on a turned pitch; that turn is not its own.
+            patches[item.id] = { ...common, rotation: common.rotation - upright, width: Math.max(item.size, width * sx), height: Math.max(item.size, height * sy) };
             node.scale({ x: 1, y: 1 });
           } else if ("scale" in item) {
             patches[item.id] = { ...common, scale: Math.min(4, Math.max(0.3, sx)) };
@@ -88,13 +92,13 @@ function LineHandles({ item }: { item: LineObject }) {
   );
 }
 
-export function Selection({ objects, selection }: { objects: TacticsObject[]; selection: string[] }) {
+export function Selection({ objects, selection, upright }: { objects: TacticsObject[]; selection: string[]; upright: number }) {
   const selected = objects.filter(item => selection.includes(item.id) && !item.locked && !item.hidden);
   const transformable = selected.filter(item => TRANSFORMABLE.has(item.type));
   const line = selected.length === 1 && selected[0].type === "line" ? selected[0] : null;
   return (
     <>
-      {transformable.length > 0 && <Transform items={transformable} />}
+      {transformable.length > 0 && <Transform items={transformable} upright={upright} />}
       {line && <LineHandles key={line.id + line.points.join(",")} item={line} />}
     </>
   );

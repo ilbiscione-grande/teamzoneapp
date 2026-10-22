@@ -1,7 +1,8 @@
 "use client";
 
-// Above the board: back to the projects, the project's name and kind, its
-// TeamZone team, the boards as tabs, undo and redo, and how saving goes.
+// Above the board, on one row: back to the projects, the boards as tabs,
+// undo and redo, PDF, sharing and how saving goes. The project's name, kind
+// and team are under the board's settings.
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { newBoard } from "../../lib/tactics/document.ts";
@@ -49,7 +50,7 @@ function Boards() {
   );
 }
 
-/** The project's kind and TeamZone team: in the top bar, and on a phone in the board's settings. */
+/** The project's name, kind and TeamZone team, in the board's settings. */
 export function ProjectFields({ className }: { className: string }) {
   const { client } = useAccount();
   const meta = useEditor(state => state.meta);
@@ -61,6 +62,7 @@ export function ProjectFields({ className }: { className: string }) {
   if (!meta) return null;
   return (
     <>
+      <label className="tb-field">Namn<input value={meta.name} maxLength={120} onChange={event => setMeta({ name: event.target.value })} /></label>
       <select className={className} value={meta.kind} aria-label="Typ" onChange={event => setMeta({ kind: event.target.value as ProjectKind })}>
           {Object.entries(kindLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
@@ -85,7 +87,7 @@ export function TopBar() {
   const saveState = useEditor(state => state.saveState);
   const canUndo = useEditor(state => state.history.past.length > 0);
   const canRedo = useEditor(state => state.history.future.length > 0);
-  const { undo, redo, setMeta } = useEditor.getState();
+  const { undo, redo } = useEditor.getState();
   const [sharing, setSharing] = useState(false);
   const [exporting, setExporting] = useState(false);
   if (!meta) return null;
@@ -94,10 +96,8 @@ export function TopBar() {
       {sharing && <ShareDialog onClose={() => setSharing(false)} />}
       {exporting && <ExportDialog onClose={() => setExporting(false)} />}
       <div className="tb-top-row">
-        <Link href="/tacticsboard" className="tb-back" aria-label="Till projekten">‹</Link>
-        <input className="tb-name" value={meta.name} maxLength={120} aria-label="Projektets namn" onChange={event => setMeta({ name: event.target.value })} />
-        <span className="tb-desktop-only"><ProjectFields className="tb-select" /></span>
-        <span className="tb-spacer" />
+        <Link href="/tacticsboard" className="tb-back" aria-label="Till projekten" title={meta.name}>‹</Link>
+        <Boards />
         <button type="button" className="tb-icon" onClick={undo} disabled={!canUndo} aria-label="Ångra" title="Ångra (Ctrl+Z)">↶</button>
         <button type="button" className="tb-icon" onClick={redo} disabled={!canRedo} aria-label="Gör om" title="Gör om (Ctrl+Y)">↷</button>
         <button type="button" className="tb-icon tb-pdf" onClick={() => setExporting(true)} aria-label="Skapa PDF" title="Skapa PDF">PDF</button>
@@ -108,7 +108,6 @@ export function TopBar() {
           {saveState === "conflict" && <button type="button" className="tb-link" onClick={() => window.location.reload()}>Hämta senaste</button>}
         </span>
       </div>
-      <Boards />
     </header>
   );
 }

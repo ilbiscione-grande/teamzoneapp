@@ -30,6 +30,7 @@ export function newBoard(name: string, homeName = "Hemma", awayName = "Borta"): 
     view: "full",
     overlay: "none",
     showNames: true,
+    showPositions: false,
     teams: {
       home: { name: homeName, ...teamColors.home },
       away: { name: awayName, ...teamColors.away },
@@ -71,7 +72,7 @@ export function createPlayer(point: Point, side: Side, objects: TacticsObject[],
   return {
     ...base(point), type: "player", side,
     number: from ? from.number : nextNumber(objects, side),
-    name: from?.name ?? null, personId: from?.personId ?? null, color: null,
+    name: from?.name ?? null, position: from?.position ?? null, personId: from?.personId ?? null, color: null,
   };
 }
 
@@ -93,7 +94,7 @@ export function objectLabel(item: TacticsObject, board: Board): string {
   if (item.label) return item.label;
   if (item.type === "player") {
     const team = board.teams[item.side].name;
-    return [item.number !== null ? `#${item.number}` : null, item.name ?? team].filter(Boolean).join(" ");
+    return [item.number !== null ? `#${item.number}` : null, item.name ?? team, item.position ? `(${item.position})` : null].filter(Boolean).join(" ");
   }
   if (item.type === "line") return item.arrow === "none" ? "Linje" : item.dashed ? "Löpning" : "Pil";
   if (item.type === "text") return `Text: ${item.text.slice(0, 24)}`;

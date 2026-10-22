@@ -77,11 +77,11 @@ test("formations place the goalkeeper and the lines on the own half", () => {
   assert.equal(parseFormation("4-4-4"), null, "eleven outfield players is too many");
   assert.equal(parseFormation("hej"), null);
   // Existing players move; missing ones come from the squad, then numbered.
-  const squad = [{ personId: "p1", name: "Alva", number: 9, position: null }];
+  const squad = [{ personId: "p1", name: "Alva", number: 9, position: "ST" }];
   const placed = applyFormation(objects(), "home", [2, 1, 1], squad);
   const home5 = placed.filter(item => item.type === "player" && item.side === "home");
   assert.equal(home5.length, 5);
-  assert.ok(home5.some(item => item.type === "player" && item.name === "Alva" && item.number === 9));
+  assert.ok(home5.some(item => item.type === "player" && item.name === "Alva" && item.number === 9 && item.position === "ST"));
 });
 
 test("numbers, labels, order and frame updates", () => {
@@ -90,6 +90,7 @@ test("numbers, labels, order and frame updates", () => {
   assert.equal(nextNumber(items, "home"), 2);
   assert.equal(objectLabel(items[0], board), "#1 Hemma");
   assert.equal(objectLabel({ ...items[0], label: "Kapten" } as TacticsObject, board), "Kapten");
+  assert.equal(objectLabel({ ...items[0], name: "Alva", position: "MV" } as TacticsObject, board), "#1 Alva (MV)");
   const cone = createObject("cone", { x: 1, y: 1 });
   assert.deepEqual(restack([...items, cone], cone.id, -1).map(item => item.id), [items[0].id, cone.id, items[1].id]);
   const document: ProjectDocument = { schemaVersion: 1, squad: [], boards: [{ ...board, frames: [{ ...board.frames[0], objects: items }] }] };

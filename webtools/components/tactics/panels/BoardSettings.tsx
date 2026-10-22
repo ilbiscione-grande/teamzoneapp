@@ -20,7 +20,7 @@ export function BoardSettings({ board }: { board: Board }) {
     change(current => ({ ...current, teams: { ...current.teams, [side]: { ...current.teams[side], ...changes } } }));
   return (
     <div className="tb-inspector">
-      <div className="tb-mobile-only tb-project">
+      <div className="tb-project">
         <h3>Projektet</h3>
         <ProjectFields className="tb-panel-select" />
       </div>
@@ -43,6 +43,7 @@ export function BoardSettings({ board }: { board: Board }) {
           onChange={event => change(current => ({ ...current, frames: current.frames.map((frame, index) => index === frameIndex ? { ...frame, note: event.target.value } : frame) }))} />
       </label>
       <label className="tb-check"><input type="checkbox" checked={board.showNames} onChange={event => change(current => ({ ...current, showNames: event.target.checked }))} />Visa spelarnas namn</label>
+      <label className="tb-check"><input type="checkbox" checked={board.showPositions ?? false} onChange={event => change(current => ({ ...current, showPositions: event.target.checked }))} />Visa spelarnas positioner</label>
       <label className="tb-check"><input type="checkbox" checked={attachBall} onChange={event => setAttachBall(event.target.checked)} />Bollen fäster vid spelare</label>
       {(["home", "away"] as Side[]).map(side => (
         <fieldset key={side} className="tb-team">

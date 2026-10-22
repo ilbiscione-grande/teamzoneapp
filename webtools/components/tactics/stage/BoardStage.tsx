@@ -181,7 +181,7 @@ export default function BoardStage({ editable = true }: { editable?: boolean }) 
                   {visible.map(item => (
                     <ObjectNode key={item.id} item={item} board={board} selected={selection.includes(item.id)} upright={upright} />
                   ))}
-                  {canEdit && <Selection objects={objects} selection={selection} />}
+                  {canEdit && <Selection objects={objects} selection={selection} upright={upright} />}
                   {drawing.draft && <DraftNode draft={drawing.draft} />}
                 </Group>
               </Group>
