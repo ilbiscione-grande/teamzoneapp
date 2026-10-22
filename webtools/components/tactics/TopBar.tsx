@@ -47,28 +47,23 @@ function Boards() {
   );
 }
 
-export function TopBar() {
+/** The project's kind and TeamZone team: in the top bar, and on a phone in the board's settings. */
+export function ProjectFields({ className }: { className: string }) {
   const { client } = useAccount();
   const meta = useEditor(state => state.meta);
-  const saveState = useEditor(state => state.saveState);
-  const canUndo = useEditor(state => state.history.past.length > 0);
-  const canRedo = useEditor(state => state.history.future.length > 0);
-  const { undo, redo, setMeta } = useEditor.getState();
+  const { setMeta } = useEditor.getState();
   const [teams, setTeams] = useState<LeaderTeam[]>([]);
   useEffect(() => {
     client?.schema("api").rpc("list_tournament_leader_teams").then(({ data }) => setTeams((data as LeaderTeam[] | null) ?? []));
   }, [client]);
   if (!meta) return null;
   return (
-    <header className="tb-top">
-      <div className="tb-top-row">
-        <Link href="/tacticsboard" className="tb-back" aria-label="Till projekten">‹</Link>
-        <input className="tb-name" value={meta.name} maxLength={120} aria-label="Projektets namn" onChange={event => setMeta({ name: event.target.value })} />
-        <select className="tb-select" value={meta.kind} aria-label="Typ" onChange={event => setMeta({ kind: event.target.value as ProjectKind })}>
+    <>
+      <select className={className} value={meta.kind} aria-label="Typ" onChange={event => setMeta({ kind: event.target.value as ProjectKind })}>
           {Object.entries(kindLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
         {(teams.length > 0 || meta.teamId) && (
-          <select className="tb-select" value={meta.teamId ?? ""} aria-label="Lag i TeamZone"
+          <select className={className} value={meta.teamId ?? ""} aria-label="Lag i TeamZone"
             onChange={event => {
               const team = teams.find(item => item.team_id === event.target.value);
               setMeta({ teamId: team?.team_id ?? null, teamName: team?.team_name ?? null });
@@ -78,6 +73,24 @@ export function TopBar() {
             {teams.map(team => <option key={team.team_id} value={team.team_id}>{team.team_name} · {team.club_name}</option>)}
           </select>
         )}
+    </>
+  );
+}
+
+export function TopBar() {
+  const { client } = useAccount();
+  const meta = useEditor(state => state.meta);
+  const saveState = useEditor(state => state.saveState);
+  const canUndo = useEditor(state => state.history.past.length > 0);
+  const canRedo = useEditor(state => state.history.future.length > 0);
+  const { undo, redo, setMeta } = useEditor.getState();
+  if (!meta) return null;
+  return (
+    <header className="tb-top">
+      <div className="tb-top-row">
+        <Link href="/tacticsboard" className="tb-back" aria-label="Till projekten">‹</Link>
+        <input className="tb-name" value={meta.name} maxLength={120} aria-label="Projektets namn" onChange={event => setMeta({ name: event.target.value })} />
+        <span className="tb-desktop-only"><ProjectFields className="tb-select" /></span>
         <span className="tb-spacer" />
         <button type="button" className="tb-icon" onClick={undo} disabled={!canUndo} aria-label="Ångra" title="Ångra (Ctrl+Z)">↶</button>
         <button type="button" className="tb-icon" onClick={redo} disabled={!canRedo} aria-label="Gör om" title="Gör om (Ctrl+Y)">↷</button>

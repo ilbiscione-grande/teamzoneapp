@@ -63,8 +63,9 @@ function LineHandles({ item }: { item: LineObject }) {
   // While a handle moves, the line's own shape is redrawn directly.
   const redraw = (next: { start: Point; end: Point; control: Point | null }) => {
     setDraft(next);
-    const line = (shared.nodes.get(item.id) as Konva.Group | undefined)?.getChildren()[0] as Konva.Line | undefined;
-    line?.points(linePoints({ ...item, points: [next.start.x, next.start.y, next.end.x, next.end.y], control: next.control }));
+    // The line and its selection halo both follow.
+    const points = linePoints({ ...item, points: [next.start.x, next.start.y, next.end.x, next.end.y], control: next.control });
+    (shared.nodes.get(item.id) as Konva.Group | undefined)?.getChildren().forEach(child => (child as Konva.Line).points(points));
   };
   const commit = (next: { start: Point; end: Point; control: Point | null }) => {
     setDraft(null);

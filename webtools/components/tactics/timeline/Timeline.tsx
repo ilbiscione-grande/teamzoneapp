@@ -70,7 +70,7 @@ export function Timeline({ board }: { board: Board }) {
         </div>
         <span className="tb-spacer" />
         <label className="tb-mini" title="Spela om och om igen">
-          <input type="checkbox" checked={loop} onChange={event => setLoop(event.target.checked)} />Slinga
+          <input type="checkbox" checked={loop} onChange={event => setLoop(event.target.checked)} /><span className="tb-mini-text">Slinga</span><span className="tb-mini-icon" aria-hidden="true">⟲</span>
         </label>
         <select className="tb-mini-select" value={speed} aria-label="Hastighet" onChange={event => setSpeed(Number(event.target.value))}>
           {speeds.map(value => <option key={value} value={value}>{value}×</option>)}
@@ -83,8 +83,8 @@ export function Timeline({ board }: { board: Board }) {
       </div>
       {!playing && frameIndex > 0 && (
         <div className="tb-timeline-row tb-frame-tools">
-          <span>Ram {frameIndex + 1}</span>
-          <label className="tb-mini">Förflyttning
+          <span className="tb-mini-text">Ram {frameIndex + 1}</span>
+          <label className="tb-mini"><span className="tb-mini-text">Förflyttning</span>
             <select className="tb-mini-select" value={frames[frameIndex].durationMs}
               onChange={event => changeBoard(current => setFrameDuration(current, frameIndex, Number(event.target.value)))}>
               {[...new Set([...durations, frames[frameIndex].durationMs])].sort((a, b) => a - b).map(value => (

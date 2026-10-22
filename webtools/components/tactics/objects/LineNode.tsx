@@ -26,10 +26,14 @@ function Stroke({ points, arrow, dashed, color, width, tension, selected }: {
     points, stroke: color, strokeWidth: width, dash: dashed ? DASH : undefined, tension,
     lineCap: "round" as const, lineJoin: "round" as const,
     hitStrokeWidth: Math.max(2.4, shared.metresPerPixel() * 28),
-    shadowColor: selected ? "#facc15" : undefined, shadowBlur: selected ? 0.8 : 0, shadowOpacity: selected ? 1 : 0,
+    perfectDrawEnabled: false,
   };
-  if (arrow === "none") return <Line {...common} />;
-  return <Arrow {...common} fill={color} pointerLength={1.5} pointerWidth={1.4} pointerAtBeginning={arrow === "both"} />;
+  // Selected: a wide yellow line beneath. A canvas shadow would need a
+  // buffer the size of the board, which fails when the board has no height.
+  const halo = selected && <Line points={points} tension={tension} stroke="#facc15" strokeWidth={width + 0.7} opacity={0.6}
+    lineCap="round" lineJoin="round" listening={false} perfectDrawEnabled={false} />;
+  if (arrow === "none") return <>{halo}<Line {...common} /></>;
+  return <>{halo}<Arrow {...common} fill={color} pointerLength={1.5} pointerWidth={1.4} pointerAtBeginning={arrow === "both"} /></>;
 }
 
 export function LineNode({ item, selected }: { item: LineObject & Rendered; selected: boolean }) {

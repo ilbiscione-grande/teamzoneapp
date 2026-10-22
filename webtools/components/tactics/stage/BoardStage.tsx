@@ -139,7 +139,8 @@ export default function BoardStage({ editable = true }: { editable?: boolean }) 
 
   return (
     <div ref={frame} className="tb-stage" data-tool={tool}>
-      {size.width > 0 && (
+      {/* Konva fails drawing into a board without width or height (a phone with the panel open). */}
+      {size.width > 0 && size.height > 0 && (
         <StageContext.Provider value={shared}>
           <Stage ref={node => { stageHolder.current = node; }} width={size.width} height={size.height}
             onWheel={event => {

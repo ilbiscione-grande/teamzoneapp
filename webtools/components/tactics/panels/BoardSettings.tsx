@@ -6,6 +6,7 @@ import { updateBoard } from "../../../lib/tactics/document.ts";
 import type { Board, PitchOverlay, PitchView, Side } from "../../../lib/tactics/model.ts";
 import { useEditor } from "../store.ts";
 import { Swatches } from "./Swatches.tsx";
+import { ProjectFields } from "../TopBar.tsx";
 
 const views: Record<PitchView, string> = { full: "Hel plan", attack: "Anfallshalva", defend: "Försvarshalva", empty: "Tom yta" };
 const overlays: Record<PitchOverlay, string> = { none: "Inget rutnät", corridors: "Korridorer", thirds: "Tredjedelar", zones: "18 zoner" };
@@ -18,6 +19,10 @@ export function BoardSettings({ board }: { board: Board }) {
     change(current => ({ ...current, teams: { ...current.teams, [side]: { ...current.teams[side], ...changes } } }));
   return (
     <div className="tb-inspector">
+      <div className="tb-mobile-only tb-project">
+        <h3>Projektet</h3>
+        <ProjectFields className="tb-panel-select" />
+      </div>
       <h3>Tavlan</h3>
       <label className="tb-field">Namn<input value={board.name} maxLength={60} onChange={event => change(current => ({ ...current, name: event.target.value }))} /></label>
       <div className="tb-row">
