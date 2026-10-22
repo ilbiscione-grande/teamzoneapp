@@ -7,6 +7,7 @@ import type { Board, Effect, TacticsObject } from "../../../lib/tactics/model.ts
 import { activeObjects, useEditor } from "../store.ts";
 import { BoardSettings } from "./BoardSettings.tsx";
 import { Swatches } from "./Swatches.tsx";
+import { PlayerLink } from "./PlayerLink.tsx";
 
 function Fields({ item, board }: { item: TacticsObject; board: Board }) {
   const patch = (changes: Partial<TacticsObject>) => useEditor.getState().patch({ [item.id]: changes });
@@ -26,6 +27,7 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
               </select>
             </label>
           </div>
+          <PlayerLink item={item} />
           <label className="tb-field">Namn<input value={item.name ?? ""} maxLength={40} onChange={event => patch({ name: event.target.value || null })} /></label>
           <Swatches label="Egen färg (t.ex. målvakt)" value={item.color} onChange={color => patch({ color })} />
           {item.color && <button type="button" className="tb-link" onClick={() => patch({ color: null })}>Lagets färg</button>}

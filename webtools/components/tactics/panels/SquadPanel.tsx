@@ -3,23 +3,21 @@
 // Formations for either team, and the TeamZone team's squad: fetched into
 // the project and put on the pitch one by one or by a formation.
 import { useState } from "react";
-import { applyFormation, createPlayer, updateBoard } from "../../../lib/tactics/document.ts";
+import { applyFormation, createPlayer } from "../../../lib/tactics/document.ts";
 import { formations, parseFormation } from "../../../lib/tactics/formations.ts";
 import type { Board, Side, SquadPlayer } from "../../../lib/tactics/model.ts";
-import { useAccount } from "../../account";
 import { activeObjects, useEditor, NONE } from "../store.ts";
+import { useSquadFetch } from "../use-squad.ts";
 
 export function SquadPanel({ board }: { board: Board }) {
-  const { client } = useAccount();
   const meta = useEditor(state => state.meta);
   const squad = useEditor(state => state.document?.squad ?? NONE);
   const objects = useEditor(activeObjects);
   const [side, setSide] = useState<Side>("home");
   const [formation, setFormation] = useState("4-3-3");
   const [custom, setCustom] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const { changeObjects, change } = useEditor.getState();
+  const { fetchSquad, busy, error } = useSquadFetch();
+  const { changeObjects } = useEditor.getState();
   const placed = new Set(objects.flatMap(item => item.type === "player" && item.personId ? [item.personId] : []));
 
   const lines = custom.trim() ? parseFormation(custom) : formations[formation];
@@ -29,17 +27,6 @@ export function SquadPanel({ board }: { board: Board }) {
     changeObjects(current => applyFormation(current, side, lines, side === "home" ? squad : []));
   };
 
-  const fetchSquad = async () => {
-    if (!client || !meta?.teamId) return;
-    setBusy(true); setError("");
-    const { data, error: loadError } = await client.schema("api").rpc("list_tactics_team_players", { target_team_id: meta.teamId });
-    setBusy(false);
-    if (loadError) { setError("Truppen kunde inte hämtas."); return; }
-    const players = (data as { person_id: string; name: string; number: number | null; position: string | null }[])
-      .map(player => ({ personId: player.person_id, name: player.name, number: player.number, position: player.position }));
-    change(document => ({ ...document, squad: players }));
-    if (meta.teamName) change(document => updateBoard(document, board.id, current => ({ ...current, teams: { ...current.teams, home: { ...current.teams.home, name: meta.teamName! } } })));
-  };
 
   const placeOne = (player: SquadPlayer) => {
     // A free spot just inside the own half, stepping down for each one placed.
