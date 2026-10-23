@@ -38,6 +38,7 @@ Auditdokumenten beskriver **vad som finns och har verifierats**. Denna katalog b
 - `22_step_2_traceability_and_gate.md` – spårbarhet, kända öppningar och godkännandegrind för steg 2.
 - `23_technical_security_review.md` – teknisk/säkerhetsmässig review, livebaseline, korrigeringar och implementationsgrindar.
 - `24_implementation_slice_plan.md` – taskindelad plan för S01–S11, parameterberoenden, auditgrindar och separata livegodkännanden.
+- `26_module_foundations_decision.md` – elfte beslutspaketet om grunderna i Match, Träning, IDP och Team Development Plan före Tacticsboard-kopplingen.
 - `25_greenfield_bootstrap_plan.md` – S00 för ny kodbas i `C:\Dev\TeamzoneApp`, toolchain, Fluttergrund, secrets och evidens.
 
 ## Nästa grind
