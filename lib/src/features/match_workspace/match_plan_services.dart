@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/match_workspace/match_lineup_models.dart';
+import 'package:teamzone_app/src/features/match_workspace/match_live_models.dart';
 import 'package:teamzone_app/src/features/match_workspace/match_plan_models.dart';
 
 export 'package:teamzone_app/src/features/match_workspace/match_formations.dart';
@@ -54,6 +55,26 @@ abstract interface class MatchPlanServices {
     required List<PlannedSubstitution> plan,
     required bool published,
   });
+
+  /// The team's own Live buttons and this leader's Min vy.
+  Future<MatchButtons> getButtons(String eventId);
+  Future<int> saveButtons(
+    String eventId,
+    List<MatchButton> buttons,
+    int expectedRevision,
+  );
+
+  /// The keys to show; null shows every button again.
+  Future<void> saveMyView(String eventId, Set<String>? keys);
+
+  /// A tap on an own button: +1 counts, −1 takes the latest back.
+  Future<void> recordButton(
+    String commandId,
+    String eventId,
+    String buttonId,
+    int delta,
+    int minute,
+  );
 }
 
 class UnconfiguredMatchPlanServices implements MatchPlanServices {
@@ -101,6 +122,16 @@ class UnconfiguredMatchPlanServices implements MatchPlanServices {
     required List<PlannedSubstitution> plan,
     required bool published,
   }) => Future.error(_error);
+  @override
+  Future<MatchButtons> getButtons(String eventId) => Future.error(_error);
+  @override
+  Future<int> saveButtons(String a, List<MatchButton> b, int c) =>
+      Future.error(_error);
+  @override
+  Future<void> saveMyView(String a, Set<String>? b) => Future.error(_error);
+  @override
+  Future<void> recordButton(String a, String b, String c, int d, int e) =>
+      Future.error(_error);
 }
 
 class SupabaseMatchPlanServices implements MatchPlanServices {
@@ -233,4 +264,52 @@ class SupabaseMatchPlanServices implements MatchPlanServices {
       rethrow;
     }
   }
+
+  @override
+  Future<MatchButtons> getButtons(String eventId) async {
+    final value = await _rpc('get_match_buttons', {'target_event_id': eventId});
+    return MatchButtons.fromJson(Map<String, dynamic>.from(value as Map));
+  }
+
+  @override
+  Future<int> saveButtons(
+    String eventId,
+    List<MatchButton> buttons,
+    int expectedRevision,
+  ) async {
+    try {
+      final value = await _rpc('save_match_buttons', {
+        'target_event_id': eventId,
+        'new_buttons': [for (final button in buttons) button.toJson()],
+        'expected_revision': expectedRevision,
+      });
+      return (value as num).toInt();
+    } on PostgrestException catch (error) {
+      if (error.message.contains('stale_revision')) {
+        throw const MatchPlanConflict();
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> saveMyView(String eventId, Set<String>? keys) => _rpc(
+    'save_my_match_view',
+    {'target_event_id': eventId, 'shown_keys': keys?.toList()},
+  );
+
+  @override
+  Future<void> recordButton(
+    String commandId,
+    String eventId,
+    String buttonId,
+    int delta,
+    int minute,
+  ) => _rpc('record_match_button', {
+    'p_command_id': commandId,
+    'p_event_id': eventId,
+    'p_button_id': buttonId,
+    'p_delta': delta,
+    'p_minute': minute,
+  });
 }

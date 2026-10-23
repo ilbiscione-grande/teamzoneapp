@@ -261,10 +261,14 @@ IconData _liveIcon(String? type) => switch (type) {
 /// many we have so far, and a note.
 class _LiveActionGrid extends StatelessWidget {
   const _LiveActionGrid({
+    required this.view,
     required this.tally,
     required this.onKind,
     required this.onNote,
   });
+
+  /// Min vy: the keys shown, null for all.
+  final Set<String>? view;
   final Map<String, int> tally;
   final ValueChanged<LiveEventKind> onKind;
   final VoidCallback onNote;
@@ -318,14 +322,16 @@ class _LiveActionGrid extends StatelessWidget {
         final columns = box.maxWidth >= 560 ? 5 : 3;
         final buttons = [
           for (final kind in liveEventKinds)
-            button(
-              kind.type,
-              _liveIcon(kind.type),
-              kind.label,
-              () => onKind(kind),
-              tally[kind.type],
-            ),
-          button('note', _liveIcon('note'), 'Anteckning', onNote, null),
+            if (shownInView(view, kind.type))
+              button(
+                kind.type,
+                _liveIcon(kind.type),
+                kind.label,
+                () => onKind(kind),
+                tally[kind.type],
+              ),
+          if (shownInView(view, noteKey))
+            button('note', _liveIcon('note'), 'Anteckning', onNote, null),
         ];
         return GridView.count(
           crossAxisCount: columns,
@@ -503,7 +509,7 @@ class _LiveTimeline extends StatelessWidget {
       'half_time' => 'Halvtid',
       'full_time' => 'Slutsignal',
       'score_adjustment' => 'Ställningen ändrad',
-      'kpi' => detail['label'] as String? ?? 'KPI',
+      'kpi' => detail['label'] as String? ?? 'Räknare (matchmål)',
       _ => [
         kind?.label ?? type ?? '',
         ?who,
@@ -606,5 +612,43 @@ class _LiveSidePanelState extends State<_LiveSidePanel> {
       const SizedBox(height: 8),
       _events ? widget.timeline : widget.shotMap,
     ],
+  );
+}
+
+/// Above the buttons: Min vy, and the team's own buttons for those who
+/// prepare the match.
+class _LiveToolbar extends StatelessWidget {
+  const _LiveToolbar({required this.onMyView, this.onOwnButtons, this.error});
+  final VoidCallback onMyView;
+  final VoidCallback? onOwnButtons;
+  final String? error;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 8),
+    child: Wrap(
+      spacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        TextButton.icon(
+          key: const Key('live-my-view'),
+          onPressed: onMyView,
+          icon: const Icon(Icons.tune, size: 18),
+          label: const Text('Min vy'),
+        ),
+        if (onOwnButtons != null)
+          TextButton.icon(
+            key: const Key('live-own-buttons'),
+            onPressed: onOwnButtons,
+            icon: const Icon(Icons.add_box_outlined, size: 18),
+            label: const Text('Egna knappar'),
+          ),
+        if (error != null)
+          Text(
+            error!,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+      ],
+    ),
   );
 }

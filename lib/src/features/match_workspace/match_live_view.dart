@@ -26,7 +26,7 @@ class _MatchLiveView extends StatefulWidget {
 }
 
 class _MatchLiveViewState extends State<_MatchLiveView>
-    with WidgetsBindingObserver {
+    with _LiveCounterState, WidgetsBindingObserver {
   MatchSnapshot? _snapshot;
   MatchLineup? _lineup;
   final _roles = <String, String>{};
@@ -37,7 +37,10 @@ class _MatchLiveViewState extends State<_MatchLiveView>
   StreamSubscription<void>? _live;
   Timer? _liveDebounce;
 
+  @override
   String get _eventId => widget.eventId;
+  @override
+  List<Map<String, dynamic>> get _facts => _snapshot?.facts ?? const [];
   String get _state => _snapshot?.state ?? 'planning';
   bool get _canManage => _snapshot?.canManage ?? (_lineup?.canEdit ?? false);
   String get _opponentName {
@@ -54,12 +57,13 @@ class _MatchLiveViewState extends State<_MatchLiveView>
     });
     _live = widget.calendar.preparation.watchEventLive(_eventId).listen((_) {
       _liveDebounce?.cancel();
-      _liveDebounce = Timer(
-        const Duration(milliseconds: 300),
-        () => unawaited(_refresh()),
-      );
+      _liveDebounce = Timer(const Duration(milliseconds: 300), () {
+        unawaited(_refresh());
+        unawaited(_loadCounters());
+      });
     });
     unawaited(_loadLineup());
+    unawaited(_loadCounters());
     unawaited(_refresh());
   }
 
@@ -100,6 +104,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
     }
   }
 
+  @override
   Future<void> _refresh() async {
     try {
       final value = await widget.match.getSnapshot(_eventId);
@@ -179,6 +184,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
         'Okänd spelare';
   }
 
+  @override
   int get _minuteNow => max(1, _snapshot?.currentMinute ?? 1);
 
   /// Line-up players missing from the frozen squad (a squad frozen before
@@ -576,8 +582,14 @@ class _MatchLiveViewState extends State<_MatchLiveView>
               ],
             ),
           ),
+        if (manage)
+          _LiveToolbar(
+            onMyView: _openMyView,
+            onOwnButtons: (_buttons?.canEdit ?? false) ? _editButtons : null,
+            error: _counterError,
+          ),
         if (buttons) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
           if (wide)
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -585,6 +597,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
                 Expanded(
                   flex: 3,
                   child: _LiveActionGrid(
+                    view: _view,
                     tally: eventTally(facts, 'us'),
                     onKind: (kind) => _log(kind),
                     onNote: _note,
@@ -611,10 +624,15 @@ class _MatchLiveViewState extends State<_MatchLiveView>
             )
           else
             _LiveActionGrid(
+              view: _view,
               tally: eventTally(facts, 'us'),
               onKind: (kind) => _log(kind),
               onNote: _note,
             ),
+        ],
+        if (buttons && _counters.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _LiveCounters(counters: _counters, onDelta: _count, onEnter: _enter),
         ],
         if (_lineup != null && _starters.isNotEmpty) ...[
           const SizedBox(height: 12),

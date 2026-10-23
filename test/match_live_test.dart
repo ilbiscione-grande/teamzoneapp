@@ -123,5 +123,32 @@ void main() {
         {'shot', 'card', 'free_kick', 'injury'},
       );
     });
+
+    test('own buttons count their standing taps; Min vy hides the rest', () {
+      final buttons = MatchButtons.fromJson({
+        'buttons': [
+          {'id': 'wins', 'label': 'Brytningar'},
+        ],
+        'revision': 2,
+        'can_edit': true,
+        'my_view': ['shot', 'button:wins'],
+      });
+      expect(buttons.buttons.single.toJson(), {
+        'id': 'wins',
+        'label': 'Brytningar',
+      });
+      expect(buttons.myView, {'shot', 'button:wins'});
+      expect(MatchButtons.fromJson({'my_view': null}).myView, isNull);
+      expect(shownInView(buttons.myView, buttonKey('wins')), isTrue);
+      expect(shownInView(buttons.myView, kpiKey('t1')), isFalse);
+      expect(shownInView(null, noteKey), isTrue);
+      final facts = [
+        _fact('kpi', 3, detail: {'button_id': 'wins'}),
+        _fact('kpi', 4, detail: {'button_id': 'wins'}),
+        _fact('kpi', 5, detail: {'button_id': 'wins'}, state: 'voided'),
+        _fact('kpi', 6, detail: {'target_id': 't1'}),
+      ];
+      expect(buttonCounts(facts), {'wins': 2});
+    });
   });
 }

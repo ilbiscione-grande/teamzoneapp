@@ -182,3 +182,61 @@ List<ShotPoint> shotPoints(List<Map<String, dynamic>> facts) => [
               : (fact['detail'] as Map?)?['result'] as String? ?? 'missed',
         ),
 ];
+
+/// A team's own Live counter (ball wins, crosses …).
+class MatchButton {
+  const MatchButton({required this.id, required this.label});
+  factory MatchButton.fromJson(Map<String, dynamic> json) => MatchButton(
+    id: json['id'] as String? ?? '',
+    label: json['label'] as String? ?? '',
+  );
+  final String id, label;
+  Map<String, Object?> toJson() => {'id': id, 'label': label};
+}
+
+/// The team's own buttons and this leader's Min vy: the keys Live shows
+/// them, or null for everything.
+class MatchButtons {
+  const MatchButtons({
+    this.buttons = const [],
+    this.revision = 0,
+    this.canEdit = false,
+    this.myView,
+  });
+  factory MatchButtons.fromJson(Map<String, dynamic> json) => MatchButtons(
+    buttons: [
+      for (final row in (json['buttons'] as List? ?? const []).whereType<Map>())
+        MatchButton.fromJson(Map<String, dynamic>.from(row)),
+    ],
+    revision: (json['revision'] as num?)?.toInt() ?? 0,
+    canEdit: json['can_edit'] == true,
+    myView: json['my_view'] is List
+        ? (json['my_view'] as List).whereType<String>().toSet()
+        : null,
+  );
+  final List<MatchButton> buttons;
+  final int revision;
+  final bool canEdit;
+  final Set<String>? myView;
+}
+
+/// The keys of Live's buttons, for Min vy: a kind of event by its type,
+/// a note, a KPI goal and an own button.
+String kpiKey(String targetId) => 'kpi:$targetId';
+String buttonKey(String buttonId) => 'button:$buttonId';
+const noteKey = 'note';
+
+/// Whether Min vy shows the button with [key]; no choice shows all.
+bool shownInView(Set<String>? view, String key) =>
+    view == null || view.contains(key);
+
+/// Taps on each own button so far.
+Map<String, int> buttonCounts(List<Map<String, dynamic>> facts) {
+  final counts = <String, int>{};
+  for (final fact in activeFacts(facts)) {
+    if (fact['fact_type'] != 'kpi') continue;
+    final id = (fact['detail'] as Map?)?['button_id'];
+    if (id is String) counts[id] = (counts[id] ?? 0) + 1;
+  }
+  return counts;
+}

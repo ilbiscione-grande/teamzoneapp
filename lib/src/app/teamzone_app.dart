@@ -143,6 +143,8 @@ part '../features/match_workspace/match_live_view.dart';
 part '../features/match_workspace/match_live_parts.dart';
 part '../features/match_workspace/match_live_sheet.dart';
 part '../features/match_workspace/match_location_pitch.dart';
+part '../features/match_workspace/match_live_counters.dart';
+part '../features/match_workspace/match_live_counter_state.dart';
 part '../features/match_workspace/match_workspace_page.dart';
 part '../features/match_workspace/match_plan_editor.dart';
 part '../features/match_workspace/match_plan_summary.dart';
