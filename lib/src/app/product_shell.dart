@@ -664,6 +664,7 @@ class _ProductShellState extends State<_ProductShell> {
                   contextValue: widget.contextValue,
                   modules: widget.modules,
                   calendar: widget.calendar,
+                  roster: widget.roster,
                   onNavigate: _router.go,
                 )
               : destination.path == '/development'

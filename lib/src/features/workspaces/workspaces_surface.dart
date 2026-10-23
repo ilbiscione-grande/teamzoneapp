@@ -9,11 +9,13 @@ class _WorkspacesSurface extends StatefulWidget {
     required this.contextValue,
     required this.modules,
     required this.calendar,
+    required this.roster,
     required this.onNavigate,
   });
   final TeamZoneContext contextValue;
   final ModuleServices modules;
   final CalendarServices calendar;
+  final RosterServices roster;
   final ValueChanged<String> onNavigate;
 
   @override
@@ -50,11 +52,11 @@ class _WorkspacesSurfaceState extends State<_WorkspacesSurface> {
     final teamId = widget.contextValue.teamId;
     if (!module.open || teamId == null) return null;
     return switch (module.key) {
-      'module.match_workspace' => () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) =>
-              _MatchWorkspacePage(teamId: teamId, calendar: widget.calendar),
-        ),
+      'module.match_workspace' => () => _MatchModule.open(
+        context,
+        team: widget.contextValue,
+        calendar: widget.calendar,
+        roster: widget.roster,
       ),
       _ => null,
     };

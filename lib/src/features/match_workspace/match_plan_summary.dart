@@ -26,14 +26,11 @@ class _MatchPlanSectionState extends State<_MatchPlanSection> {
       .then<MatchPlan?>((plan) => plan, onError: (_) => null);
 
   Future<void> _open() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => _MatchPage(
-          eventId: widget.eventId,
-          title: widget.title,
-          calendar: widget.calendar,
-        ),
-      ),
+    await _MatchModule.openMatch(
+      context,
+      eventId: widget.eventId,
+      title: widget.title,
+      calendar: widget.calendar,
     );
     if (mounted) setState(() => _plan = _load());
   }

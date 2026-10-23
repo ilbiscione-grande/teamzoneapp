@@ -1,6 +1,9 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:teamzone_app/src/features/match_workspace/match_lineup_models.dart';
 import 'package:teamzone_app/src/features/match_workspace/match_plan_models.dart';
 
+export 'package:teamzone_app/src/features/match_workspace/match_formations.dart';
+export 'package:teamzone_app/src/features/match_workspace/match_lineup_models.dart';
 export 'package:teamzone_app/src/features/match_workspace/match_plan_models.dart';
 
 /// The plan changed elsewhere since it was read.
@@ -37,6 +40,19 @@ abstract interface class MatchPlanServices {
     required DateTime from,
     required DateTime to,
   });
+
+  /// The line-up in the module, or null when a player has nothing
+  /// published to see.
+  Future<MatchLineup?> getLineup(String eventId);
+  Future<int> saveLineup({
+    required String eventId,
+    required int expectedRevision,
+    required String? formation,
+    required List<LineupStarter> starters,
+    required List<String> substitutes,
+    required List<PlannedSubstitution> plan,
+    required bool published,
+  });
 }
 
 class UnconfiguredMatchPlanServices implements MatchPlanServices {
@@ -71,6 +87,18 @@ class UnconfiguredMatchPlanServices implements MatchPlanServices {
     required String teamId,
     required DateTime from,
     required DateTime to,
+  }) => Future.error(_error);
+  @override
+  Future<MatchLineup?> getLineup(String eventId) => Future.error(_error);
+  @override
+  Future<int> saveLineup({
+    required String eventId,
+    required int expectedRevision,
+    required String? formation,
+    required List<LineupStarter> starters,
+    required List<String> substitutes,
+    required List<PlannedSubstitution> plan,
+    required bool published,
   }) => Future.error(_error);
 }
 
@@ -157,5 +185,51 @@ class SupabaseMatchPlanServices implements MatchPlanServices {
       for (final row in (value as List? ?? const []).whereType<Map>())
         ModuleMatch.fromJson(Map<String, dynamic>.from(row)),
     ];
+  }
+
+  @override
+  Future<MatchLineup?> getLineup(String eventId) async {
+    final value = await _rpc('get_match_lineup', {'target_event_id': eventId});
+    return value is Map<String, dynamic> ? MatchLineup.fromJson(value) : null;
+  }
+
+  @override
+  Future<int> saveLineup({
+    required String eventId,
+    required int expectedRevision,
+    required String? formation,
+    required List<LineupStarter> starters,
+    required List<String> substitutes,
+    required List<PlannedSubstitution> plan,
+    required bool published,
+  }) async {
+    try {
+      final value = await _rpc('save_match_lineup', {
+        'target_event_id': eventId,
+        'expected_revision': expectedRevision,
+        'formation': formation,
+        'starters': [
+          for (final starter in starters)
+            {
+              'person_id': starter.personId,
+              'slot': ?starter.slot,
+              'position': ?starter.position,
+              'x': ?starter.x,
+              'y': ?starter.y,
+            },
+        ],
+        'substitutes': [
+          for (final id in substitutes) {'person_id': id},
+        ],
+        'substitution_plan': [for (final item in plan) item.toJson()],
+        'published': published,
+      });
+      return (value as num).toInt();
+    } on PostgrestException catch (error) {
+      if (error.message.contains('stale_revision')) {
+        throw const MatchPlanConflict();
+      }
+      rethrow;
+    }
   }
 }
