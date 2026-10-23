@@ -18,7 +18,7 @@ create table core.teams(id uuid primary key, club_id uuid, match_format text); i
 create table core.events(id uuid primary key, club_id uuid, owning_team_id uuid, event_type text, title text, state text default 'scheduled',
   starts_at timestamptz, archived_at timestamptz, opponent_name text, home_away text);
 insert into core.events values ('${match}','${club}','${team}','match','Match','scheduled', now() + interval '3 days', null, 'Aneby SK', 'home');
-create table core.club_people(id uuid primary key, club_id uuid, display_name text);
+create table core.club_people(id uuid primary key, club_id uuid, display_name text, person_id uuid);
 insert into core.club_people values ('${keeper}','${club}','Mia'),('${back}','${club}','Ali'),('${striker}','${club}','Sam'),('${sub}','${club}','Noa'),('${stranger}', gen_random_uuid(), 'X');
 create table core.team_person_details(club_id uuid, team_id uuid, club_person_id uuid, positions text[] default '{}', main_position text, jersey_number smallint);
 insert into core.team_person_details values ('${club}','${team}','${keeper}','{goalkeeper}','goalkeeper',1),('${club}','${team}','${striker}','{forward}','forward',9);
@@ -40,7 +40,7 @@ create function internal.actor_has_event_capability(target uuid, cap text) retur
 create function internal.actor_has_capability(c uuid, t uuid, cap text) returns boolean language sql stable as $$ select auth.uid() = '${coach}'::uuid $$;
 create function internal.actor_can_manage_squad(target uuid) returns boolean language sql stable as $$ select auth.uid() = '${coach}'::uuid $$;
 grant usage on schema api, internal, core, auth to authenticated;`);
-for (const name of ['20261202090000_module_foundation', '20261203090000_match_plans', '20261204090000_match_lineup'])
+for (const name of ['20261202090000_module_foundation', '20261203090000_match_plans', '20261204090000_match_lineup', '20261204100000_match_lineup_fix'])
   await db.exec(read(`supabase/migrations/${name}.sql`));
 await db.exec('begin');
 const call = async (who, sql, params = []) => {
