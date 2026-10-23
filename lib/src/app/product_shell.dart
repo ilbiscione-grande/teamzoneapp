@@ -663,6 +663,7 @@ class _ProductShellState extends State<_ProductShell> {
               ? _WorkspacesSurface(
                   contextValue: widget.contextValue,
                   modules: widget.modules,
+                  calendar: widget.calendar,
                   onNavigate: _router.go,
                 )
               : destination.path == '/development'

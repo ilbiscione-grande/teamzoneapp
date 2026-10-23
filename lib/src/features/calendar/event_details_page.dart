@@ -509,6 +509,14 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                           people: squad.roster,
                         )
                       : null,
+                  matchPlan: event.type == 'match'
+                      ? _MatchPlanSection(
+                          key: ValueKey('event-match-plan-${event.id}'),
+                          eventId: event.id,
+                          title: event.title,
+                          calendar: widget.calendar,
+                        )
+                      : null,
                 ),
                 _FollowupTab(
                   key: const ValueKey('event-followup-tab'),

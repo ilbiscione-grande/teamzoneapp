@@ -8,10 +8,12 @@ class _WorkspacesSurface extends StatefulWidget {
   const _WorkspacesSurface({
     required this.contextValue,
     required this.modules,
+    required this.calendar,
     required this.onNavigate,
   });
   final TeamZoneContext contextValue;
   final ModuleServices modules;
+  final CalendarServices calendar;
   final ValueChanged<String> onNavigate;
 
   @override
@@ -42,6 +44,21 @@ class _WorkspacesSurfaceState extends State<_WorkspacesSurface> {
     'module.training': Icons.fitness_center_outlined,
     'module.player_development': Icons.trending_up_outlined,
   };
+
+  /// The modules built so far open their page; the rest are still being built.
+  void Function()? _opener(ModuleInfo module) {
+    final teamId = widget.contextValue.teamId;
+    if (!module.open || teamId == null) return null;
+    return switch (module.key) {
+      'module.match_workspace' => () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              _MatchWorkspacePage(teamId: teamId, calendar: widget.calendar),
+        ),
+      ),
+      _ => null,
+    };
+  }
 
   /// The club's access in words: open in beta, bought, read-only once
   /// ended, or not included.
@@ -116,11 +133,14 @@ class _WorkspacesSurfaceState extends State<_WorkspacesSurface> {
                 for (final module in modules)
                   ListTile(
                     key: Key('workspace-module-${module.key}'),
-                    enabled: false,
+                    enabled: _opener(module) != null,
+                    onTap: _opener(module),
                     leading: Icon(_icons[module.key] ?? Icons.widgets_outlined),
                     title: Text(module.title),
                     subtitle: Text(
-                      '${module.description}. ${strings.feature('Byggs nu.')}',
+                      _opener(module) != null
+                          ? module.description
+                          : '${module.description}. ${strings.feature('Byggs nu.')}',
                     ),
                     trailing: Chip(
                       label: Text(strings.feature(_status(module))),

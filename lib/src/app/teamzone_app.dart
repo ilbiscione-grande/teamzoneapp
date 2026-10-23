@@ -56,6 +56,7 @@ import 'package:teamzone_app/src/features/board/board_services.dart';
 import 'package:teamzone_app/src/features/development/development_models.dart';
 import 'package:teamzone_app/src/features/development/development_services.dart';
 import 'package:teamzone_app/src/features/workspaces/module_services.dart';
+import 'package:teamzone_app/src/features/match_workspace/match_plan_services.dart';
 import 'package:teamzone_app/src/features/economy/economy_models.dart';
 import 'package:teamzone_app/src/features/economy/economy_services.dart';
 import 'package:teamzone_app/src/features/overview/overview_models.dart';
@@ -131,6 +132,12 @@ part '../features/publication/domain_management_surface.dart';
 part '../features/roster/roster_surface.dart';
 part '../features/roster/team_statistics_view.dart';
 part '../features/workspaces/workspaces_surface.dart';
+part '../features/match_workspace/match_workspace_page.dart';
+part '../features/match_workspace/match_plan_editor.dart';
+part '../features/match_workspace/match_plan_summary.dart';
+part '../features/match_workspace/match_plan_links.dart';
+part '../features/match_workspace/match_plan_parts.dart';
+part '../features/match_workspace/match_plan_section_card.dart';
 
 class TeamZoneApp extends StatefulWidget {
   const TeamZoneApp({

@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_models.dart';
 import 'package:teamzone_app/src/features/calendar/preparation_services.dart';
 import 'package:teamzone_app/src/features/calendar/referee_services.dart';
+import 'package:teamzone_app/src/features/match_workspace/match_plan_services.dart';
 import 'package:teamzone_app/src/core/observability/app_errors.dart';
 import 'package:teamzone_app/src/features/tournaments/tournaments.dart';
 
@@ -59,6 +60,9 @@ abstract interface class EventBookingServices {
 abstract interface class CalendarServices {
   /// The event's Förberedelser workspace (items, note, files).
   EventPreparationServices get preparation;
+
+  /// The Match module's match plans (decision package 11).
+  MatchPlanServices get matchPlans;
 
   /// REF-01: referees on matches.
   RefereeServices get referees;
@@ -282,6 +286,8 @@ class UnconfiguredCalendarServices implements CalendarServices {
   @override
   EventPreparationServices get preparation =>
       const UnconfiguredEventPreparationServices();
+  @override
+  MatchPlanServices get matchPlans => const UnconfiguredMatchPlanServices();
   @override
   RefereeServices get referees => const UnconfiguredRefereeServices();
   @override
@@ -694,10 +700,13 @@ class SupabaseCalendarServices
 
   SupabaseCalendarServices(this._client)
     : preparation = SupabaseEventPreparationServices(_client),
+      matchPlans = SupabaseMatchPlanServices(_client),
       referees = SupabaseRefereeServices(_client);
   final SupabaseClient _client;
   @override
   final EventPreparationServices preparation;
+  @override
+  final MatchPlanServices matchPlans;
   @override
   final RefereeServices referees;
 

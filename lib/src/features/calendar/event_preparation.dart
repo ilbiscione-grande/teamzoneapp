@@ -16,6 +16,7 @@ class _PreparationTab extends StatefulWidget {
     this.onOpenMatchMode,
     this.onChanged,
     this.lineup,
+    this.matchPlan,
   });
 
   final EventDetails event;
@@ -32,6 +33,9 @@ class _PreparationTab extends StatefulWidget {
 
   /// For a match: the starting line-up section.
   final Widget? lineup;
+
+  /// For a match where the club has the Match module: its match plan.
+  final Widget? matchPlan;
 
   @override
   State<_PreparationTab> createState() => _PreparationTabState();
@@ -167,6 +171,7 @@ class _PreparationTabState extends State<_PreparationTab> {
     final sections = <Widget?>[
       if (type == 'match' && widget.onOpenMatchMode != null) _matchModeCard(),
       if (type == 'match') widget.lineup,
+      if (type == 'match') widget.matchPlan,
       _eventDetailsSection(),
       _KpiGoalsSection(
         key: ValueKey('kpi-goals-${widget.event.id}'),
