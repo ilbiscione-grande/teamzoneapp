@@ -92,3 +92,23 @@ test("live drawing: thin strokes, steady colours, strokes once each", async () =
   const stroke = (id: string, at: string) => ({ id, board_id: "b", profile_id: "p", name: "M", color: "#ef4444", points: [0, 0, 1, 1], created_at: at });
   assert.deepEqual(mergeStrokes([stroke("b", "2"), stroke("a", "1")], [stroke("b", "2")]).map(item => item.id), ["a", "b"]);
 });
+
+test("live questions: merged as events come in, answers replaced per participant", async () => {
+  const { addAnswer, mergeQuestion, questionError } = await import("../lib/tactics/live-questions.ts");
+  const base = { board_id: "b", frame_index: 0, revealed: false, answer_count: 0, answers: null, mine: null, points: null };
+  const first = { ...base, id: "q1", prompt: "Var?", status: "open" as const, created_at: "1", mine: { x: 1, y: 2 } };
+  // The closing event carries no answer of one's own: the one known is kept.
+  const closed = mergeQuestion([first], { ...first, status: "closed", mine: null });
+  assert.deepEqual([closed.length, closed[0].status, closed[0].mine], [1, "closed", { x: 1, y: 2 }]);
+  // A new open question closes the one open before.
+  const both = mergeQuestion([first], { ...base, id: "q2", prompt: "Och?", status: "open", created_at: "2" });
+  assert.deepEqual(both.map(question => [question.id, question.status]), [["q1", "closed"], ["q2", "open"]]);
+  const host = { ...first, mine: null, answers: [] };
+  let answered = addAnswer([host], "q1", { profile_id: "p", name: "Mats", x: 10, y: 10 });
+  answered = addAnswer(answered, "q1", { profile_id: "p", name: "Mats", x: 12, y: 11 });
+  answered = addAnswer(answered, "q1", { profile_id: "g", name: "Gäst", x: 50, y: 30 });
+  assert.deepEqual([answered[0].answer_count, answered[0].points], [2, [[12, 11], [50, 30]]]);
+  // The host keeps the names when everyone hears the question again.
+  assert.equal(mergeQuestion(answered, { ...first, mine: null, answers: null, status: "closed" })[0].answers?.length, 2);
+  assert.match(questionError("question_closed"), /stängd/);
+});

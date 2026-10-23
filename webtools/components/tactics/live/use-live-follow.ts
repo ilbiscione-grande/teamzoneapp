@@ -15,6 +15,7 @@ import type { Board, Point, ProjectDocument } from "../../../lib/tactics/model.t
 import { useEditor } from "../store.ts";
 import { listenChat, useChat } from "./chat-store.ts";
 import { listenDraw, useDraw } from "./draw-store.ts";
+import { listenQuestions, loadQuestions } from "./question-store.ts";
 import { useLive } from "./live-store.ts";
 
 export type FollowState = "connecting" | "following" | "ended" | "removed" | "failed";
@@ -67,6 +68,7 @@ export function useLiveFollow(client: SupabaseClient, sessionId: string, me: Liv
       listenChat(channel, { id: selfId, onLowerHand: () => setHandState(null) });
       // The floor's moves, but not this participant's own coming back (the drag is still under their finger).
       listenDraw(channel, move => { if (move.by !== selfId) edit(document => applyMoves(document, move)); });
+      listenQuestions(channel);
       channel.subscribe(async (status, error) => {
         if (status === "SUBSCRIBED") {
           setState(current => current === "connecting" ? "following" : current);
@@ -76,6 +78,7 @@ export function useLiveFollow(client: SupabaseClient, sessionId: string, me: Liv
           ]);
           useChat.getState().add((data as ChatMessage[] | null) ?? []);
           useDraw.getState().addStrokes((strokes as Stroke[] | null) ?? []);
+          void loadQuestions(client, sessionId);
           if (!useChat.getState().open) useChat.getState().set({ unread: 0 });
         }
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {

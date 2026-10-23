@@ -19,6 +19,8 @@ import { ChatPanel } from "./ChatPanel.tsx";
 import { useDraw } from "./draw-store.ts";
 import { Laser } from "./Laser.tsx";
 import { LiveStrokes } from "./LiveStrokes.tsx";
+import { LiveAnswers } from "./LiveAnswers.tsx";
+import { useQuestions } from "./question-store.ts";
 import { LiveDrawButtons, LiveWhere } from "./LiveWhere.tsx";
 import { useFloorMoves } from "./use-floor.ts";
 import { LiveBadge } from "./LiveBadge.tsx";
@@ -40,6 +42,7 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
       board_count: document.boards.length, revision: 0, created_at: joined.created_at, updated_at: joined.created_at, document,
     }, document);
     useChat.getState().set({ messages: [], unread: 0, chatMode: joined.chat_mode, hands: joined.hands, muted: joined.muted });
+    useQuestions.getState().set({ questions: [], error: "" });
     useDraw.getState().set({ strokes: [], own: [], pen: false, error: "", drawMode: joined.draw_mode, floorHolder: joined.floor_holder, floorName: joined.floor_name });
     setAside(hasBoardText(useEditor.getState()) ? "text" : null);
     setReady(true);
@@ -93,7 +96,7 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
         <div className="tb-center">
           <ErrorBoundary label="Tavlan">
             <BoardStage editable={hasFloor} moveOnly
-              extra={<><LiveStrokes pen={selfId ? { client, sessionId: joined.id, selfId } : undefined} /><Laser /></>} />
+              extra={<><LiveStrokes pen={selfId ? { client, sessionId: joined.id, selfId } : undefined} /><LiveAnswers answering={{ client }} /><Laser /></>} />
           </ErrorBoundary>
           <LiveWhere hasFloor={hasFloor} />
         </div>

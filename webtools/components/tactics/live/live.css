@@ -71,3 +71,14 @@
 .tb-host-notes summary { cursor: pointer; font-weight: 700; font-size: .9rem; }
 .tb-host-notes summary small { color: #92400e; font-weight: 600; margin-left: 4px; }
 .tb-host-notes textarea { width: 100%; min-height: 80px; padding: 6px 8px; border: 1px solid var(--wt-line); border-radius: 6px; font: inherit; font-size: .92rem; line-height: 1.4; resize: vertical; }
+/* Questions on the pitch and the lesson's summary. */
+.tb-live-question { display: grid; gap: 6px; }
+.tb-live-prompt { margin: 0; font-weight: 700; }
+.tb-live-ask { margin: 0 0 4px; color: white; }
+.tb-live-ask span { color: #fde68a; }
+.tb-summary { display: grid; gap: 8px; }
+.tb-summary h3 { margin: 6px 0 0; }
+.tb-summary-question { display: grid; gap: 4px; padding: 8px; border: 1px solid var(--wt-line); border-radius: 8px; }
+.tb-summary-pitch { width: 100%; max-width: 360px; border-radius: 4px; }
+.tb-summary-chat { max-height: none; }
+.tb-live-history { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }

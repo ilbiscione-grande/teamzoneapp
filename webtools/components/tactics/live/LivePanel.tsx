@@ -16,6 +16,7 @@ import { ChatPanel } from "./ChatPanel.tsx";
 import { useDraw } from "./draw-store.ts";
 import { HostNotes } from "./HostNotes.tsx";
 import { LivePeople } from "./LivePeople.tsx";
+import { LiveQuestion } from "./LiveQuestion.tsx";
 import { useLive } from "./live-store.ts";
 
 export function LivePanel() {
@@ -82,6 +83,8 @@ export function LivePanel() {
           </ol>
         </>
       )}
+      <h3>Fråga på planen</h3>
+      <LiveQuestion client={client} sessionId={session.id} />
       <h3>Med nu ({participants.length})</h3>
       <LivePeople client={client} session={session} onError={setError} />
       {error && <p className="wt-error" role="alert">{error}</p>}

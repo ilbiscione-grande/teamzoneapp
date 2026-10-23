@@ -11,6 +11,7 @@ import { objectDrag, pitchPointer } from "../stage/stage-context.ts";
 import { activeBoard, useEditor } from "../store.ts";
 import { listenChat, useChat } from "./chat-store.ts";
 import { listenDraw, useDraw, type FloorMove } from "./draw-store.ts";
+import { listenQuestions } from "./question-store.ts";
 import { participantsOf, useLive } from "./live-store.ts";
 import { useLiveHostChat } from "./use-live-host-chat.ts";
 import { useLiveIdle } from "./use-live-idle.ts";
@@ -86,6 +87,7 @@ export function useLiveHost(client: SupabaseClient | null) {
         .on("presence", { event: "join" }, ({ key }) => { if (key !== "host") { useLive.getState().markActivity(); sync(); } });
       listenChat(channel);
       listenDraw(channel, takeFloorMove);
+      listenQuestions(channel);
       channel.subscribe((status, error) => {
           if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
             console.error("tactics live channel", status, error);

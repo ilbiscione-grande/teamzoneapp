@@ -1,7 +1,8 @@
 "use client";
 
 // Starting and running a live lesson: guests or login only, the code, link
-// and QR code to join with, who is in, and ending it.
+// and QR code to join with, who is in, and ending it; afterwards its
+// summary, and the earlier lessons on the project.
 import { useEffect, useState } from "react";
 import { liveLink, type LiveSession } from "../../../lib/tactics/live.ts";
 import { useAccount } from "../../account";
@@ -11,6 +12,7 @@ import { saveNow } from "../use-autosave.ts";
 import { useLive } from "./live-store.ts";
 import { broadcastOnce } from "./use-live-host.ts";
 import { endLesson } from "./use-live-idle.ts";
+import { LiveHistory } from "./LiveHistory.tsx";
 
 export function LiveDialog({ onClose }: { onClose: () => void }) {
   const { client } = useAccount();
@@ -23,6 +25,8 @@ export function LiveDialog({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState("");
   const [bigQr, setBigQr] = useState(false);
   const [copied, setCopied] = useState(false);
+  // A lesson's summary in sight: the one just ended, or one picked from the earlier lessons.
+  const [summaryId, setSummaryId] = useState<string | null>(null);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -55,8 +59,9 @@ export function LiveDialog({ onClose }: { onClose: () => void }) {
   });
   const end = () => run(async () => {
     if (!client || !session || !window.confirm("Avsluta lektionen? Länken slutar fungera för alla.")) return null;
-    await endLesson(client, session.id);
-    onClose();
+    const ended = session.id;
+    await endLesson(client, ended);
+    setSummaryId(ended);
     return null;
   });
 
@@ -75,9 +80,12 @@ export function LiveDialog({ onClose }: { onClose: () => void }) {
         </div>
         {!session ? (
           <>
-            <p className="tb-hint">Deltagarna följer tavlan som du visar den: tavla, frame, uppspelning och tidslinje, och din pekare över planen. De kan inte ändra något. Lektionen avslutas av sig själv efter 30 minuter utan aktivitet.</p>
-            <label className="tb-check"><input type="checkbox" checked={guests} onChange={event => setGuests(event.target.checked)} />Tillåt gäster utan konto (de skriver bara sitt namn)</label>
-            <div className="tb-actions"><button type="button" className="wt-button small" disabled={busy} onClick={() => void start()}>Starta livelektion</button></div>
+            {!summaryId && <>
+              <p className="tb-hint">Deltagarna följer tavlan som du visar den: tavla, frame, uppspelning och tidslinje, och din pekare över planen. De kan inte ändra något. Lektionen avslutas av sig själv efter 30 minuter utan aktivitet.</p>
+              <label className="tb-check"><input type="checkbox" checked={guests} onChange={event => setGuests(event.target.checked)} />Tillåt gäster utan konto (de skriver bara sitt namn)</label>
+              <div className="tb-actions"><button type="button" className="wt-button small" disabled={busy} onClick={() => void start()}>Starta livelektion</button></div>
+            </>}
+            {client && meta && <LiveHistory client={client} projectId={meta.id} open={summaryId} onOpen={setSummaryId} />}
           </>
         ) : (
           <>

@@ -10,6 +10,7 @@ import { useEffect } from "react";
 import { idleState } from "../../../lib/tactics/live.ts";
 import { useChat } from "./chat-store.ts";
 import { useDraw } from "./draw-store.ts";
+import { useQuestions } from "./question-store.ts";
 import { useLive } from "./live-store.ts";
 import { broadcastOnce } from "./use-live-host.ts";
 
@@ -22,6 +23,7 @@ export async function endLesson(client: SupabaseClient, sessionId: string, notic
   await client.schema("api").rpc("end_tactics_live", { target_session_id: sessionId });
   useLive.getState().set({ session: null, participants: [], idle: "active", notice });
   useDraw.getState().set({ strokes: [], floorHolder: null, floorName: null });
+  useQuestions.getState().set({ questions: [], error: "" });
 }
 
 export function useLiveIdle(client: SupabaseClient | null, sessionId: string | undefined) {

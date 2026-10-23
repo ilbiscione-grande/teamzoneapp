@@ -1,9 +1,11 @@
 "use client";
 
-// Under a participant's board: where the lesson is (board, frame), who has
-// the floor, and why a drawing could not be sent.
+// Under a participant's board: the question on the pitch (and how to
+// answer it, or that the answers are shown), where the lesson is (board,
+// frame), who has the floor, and why something could not be sent.
 import { activeBoard, isBetween, useEditor, NONE } from "../store.ts";
 import { useDraw } from "./draw-store.ts";
+import { latestQuestion, useQuestions } from "./question-store.ts";
 
 export function LiveWhere({ hasFloor }: { hasFloor: boolean }) {
   const board = useEditor(activeBoard);
@@ -13,11 +15,22 @@ export function LiveWhere({ hasFloor }: { hasFloor: boolean }) {
   const floorName = useDraw(store => store.floorName);
   const floorHolder = useDraw(store => store.floorHolder);
   const error = useDraw(store => store.error);
+  const question = useQuestions(latestQuestion);
+  const questionError = useQuestions(store => store.error);
   if (!board) return null;
   const frame = Math.floor(playhead) + 1;
   const where = between ? `Mellan frame ${frame} och ${frame + 1}` : `Frame ${Math.round(playhead) + 1} av ${board.frames.length}`;
   return (
     <div className="tb-live-where" aria-live="polite">
+      {question && question.status === "open" && (
+        <p className="tb-live-ask"><strong>Fråga:</strong> {question.prompt}
+          <span> {question.board_id !== board.id ? "Läraren ställde den på en annan tavla." : question.mine ? "Ditt svar är skickat. Tryck igen för att flytta det." : "Tryck på planen för att svara."}</span>
+        </p>
+      )}
+      {question && question.status === "closed" && question.revealed && question.board_id === board.id && (
+        <p className="tb-live-ask"><strong>Svaren:</strong> {question.prompt} <span>Den röda värmen visar var alla svarade{question.mine ? ", den gula ringen är ditt svar" : ""}.</span></p>
+      )}
+      {questionError && <p className="tb-live-floor" role="alert">{questionError}</p>}
       {hasFloor && <p className="tb-live-floor">Du har ordet: flytta spelarna och objekten på tavlan.</p>}
       {!hasFloor && floorHolder && floorName && <p className="tb-live-floor">{floorName} har ordet.</p>}
       {error && <p className="tb-live-floor" role="alert">{error}</p>}

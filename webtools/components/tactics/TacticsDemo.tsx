@@ -12,6 +12,7 @@ import { SharedViewer } from "./SharedViewer.tsx";
 import { useChat } from "./live/chat-store.ts";
 import { useDraw } from "./live/draw-store.ts";
 import { useHostNotes } from "./live/HostNotes.tsx";
+import { useQuestions } from "./live/question-store.ts";
 import { useLive } from "./live/live-store.ts";
 import { useEditor } from "./store.ts";
 import { TacticsWorkspace } from "./TacticsEditor.tsx";
@@ -47,7 +48,7 @@ export function TacticsDemo() {
       created_at: new Date().toISOString(), updated_at: new Date().toISOString(), document,
     }, document);
     // For trying things from the console.
-    Object.assign(window, { tacticsEditor: useEditor, tacticsLive: useLive, tacticsChat: useChat, tacticsDraw: useDraw, tacticsNotes: useHostNotes });
+    Object.assign(window, { tacticsEditor: useEditor, tacticsLive: useLive, tacticsChat: useChat, tacticsDraw: useDraw, tacticsNotes: useHostNotes, tacticsQuestions: useQuestions });
     setReady(true);
   }, [document, shared]);
   if (shared) {
