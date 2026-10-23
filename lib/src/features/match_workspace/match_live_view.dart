@@ -181,6 +181,27 @@ class _MatchLiveViewState extends State<_MatchLiveView>
 
   int get _minuteNow => max(1, _snapshot?.currentMinute ?? 1);
 
+  /// Line-up players missing from the frozen squad (a squad frozen before
+  /// the line-up was set, or without callups), who cannot be chosen yet.
+  List<String> get _missingFromSquad {
+    final snapshot = _snapshot;
+    if (snapshot == null || snapshot.rosterRevision == 0) return const [];
+    if (snapshot.state == 'completed') return const [];
+    final frozen = snapshot.roster.map((m) => m.personId).toSet();
+    return [
+      ..._starters,
+      for (final sub in _lineup?.substitutes ?? const <LineupPlayer>[])
+        sub.personId,
+    ].where((id) => !frozen.contains(id)).toList();
+  }
+
+  Future<void> _updateSquad() {
+    final key = _newUuid();
+    return _run(
+      () => widget.match.freezeRoster(key, _eventId, 'manual_correction'),
+    );
+  }
+
   // --- Clock ----------------------------------------------------------------
 
   Future<void> _primaryAction() async {
@@ -501,8 +522,11 @@ class _MatchLiveViewState extends State<_MatchLiveView>
     final facts = snapshot?.facts ?? const <Map<String, dynamic>>[];
     final live = _state == 'live';
     final manage = _canManage;
+    // On a wide screen the shot map stands beside the event buttons.
+    final wide = MediaQuery.sizeOf(context).width >= 900;
+    final buttons = manage && live;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
       children: [
         _LiveScoreboard(
           snapshot: snapshot,
@@ -533,13 +557,64 @@ class _MatchLiveViewState extends State<_MatchLiveView>
               ],
             ),
           ),
-        if (manage && live) ...[
-          const SizedBox(height: 12),
-          _LiveActionGrid(
-            tally: eventTally(facts, 'us'),
-            onKind: (kind) => _log(kind),
-            onNote: _note,
+        if (manage && _missingFromSquad.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: MaterialBanner(
+              key: const Key('live-squad-outdated'),
+              leading: const Icon(Icons.group_add_outlined),
+              content: Text(
+                '${_missingFromSquad.length} spelare i uppställningen finns inte '
+                'i matchtruppen och kan inte väljas.',
+              ),
+              actions: [
+                TextButton(
+                  key: const Key('live-squad-update'),
+                  onPressed: _busy ? null : _updateSquad,
+                  child: const Text('Uppdatera matchtruppen'),
+                ),
+              ],
+            ),
           ),
+        if (buttons) ...[
+          const SizedBox(height: 12),
+          if (wide)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: _LiveActionGrid(
+                    tally: eventTally(facts, 'us'),
+                    onKind: (kind) => _log(kind),
+                    onNote: _note,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: _LiveSidePanel(
+                    shotMap: _ShotMapCard(
+                      facts: facts,
+                      opponentName: _opponentName,
+                      showEmpty: true,
+                    ),
+                    timeline: _LiveTimeline(
+                      facts: facts,
+                      name: _name,
+                      opponentName: _opponentName,
+                      onTap: manage ? _openFact : null,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
+            _LiveActionGrid(
+              tally: eventTally(facts, 'us'),
+              onKind: (kind) => _log(kind),
+              onNote: _note,
+            ),
         ],
         if (_lineup != null && _starters.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -567,17 +642,19 @@ class _MatchLiveViewState extends State<_MatchLiveView>
                 : null,
           ),
         ],
-        if (shotPoints(facts).isNotEmpty) ...[
+        if (shotPoints(facts).isNotEmpty && !(wide && buttons)) ...[
           const SizedBox(height: 12),
           _ShotMapCard(facts: facts, opponentName: _opponentName),
         ],
-        const SizedBox(height: 12),
-        _LiveTimeline(
-          facts: facts,
-          name: _name,
-          opponentName: _opponentName,
-          onTap: manage ? _openFact : null,
-        ),
+        if (!(wide && buttons)) ...[
+          const SizedBox(height: 12),
+          _LiveTimeline(
+            facts: facts,
+            name: _name,
+            opponentName: _opponentName,
+            onTap: manage ? _openFact : null,
+          ),
+        ],
       ],
     );
   }

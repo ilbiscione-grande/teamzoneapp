@@ -164,9 +164,17 @@ class _GoalLocationDialogState extends State<_GoalLocationDialog> {
 /// The shot map: every placed shot and goal, ours or theirs, filled for a
 /// goal or on target and hollow when it missed.
 class _ShotMapCard extends StatefulWidget {
-  const _ShotMapCard({required this.facts, required this.opponentName});
+  const _ShotMapCard({
+    required this.facts,
+    required this.opponentName,
+    this.showEmpty = false,
+  });
   final List<Map<String, dynamic>> facts;
   final String opponentName;
+
+  /// Shown before any shot is placed, as beside the buttons on a wide
+  /// screen.
+  final bool showEmpty;
 
   @override
   State<_ShotMapCard> createState() => _ShotMapCardState();
@@ -179,7 +187,7 @@ class _ShotMapCardState extends State<_ShotMapCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final points = shotPoints(widget.facts);
-    if (points.isEmpty) return const SizedBox.shrink();
+    if (points.isEmpty && !widget.showEmpty) return const SizedBox.shrink();
     final shown = points
         .where((p) => _side == 'all' || p.side == _side)
         .toList();
@@ -240,9 +248,11 @@ class _ShotMapCardState extends State<_ShotMapCard> {
             ),
             const SizedBox(height: 6),
             Text(
-              '${shown.length} avslut · ${count('goal')} mål · '
-              '${count('on_target')} på mål · ${count('missed') + count('woodwork')} utanför · '
-              '${count('blocked')} blockerade',
+              points.isEmpty
+                  ? 'Markera avslut och mål på planen så syns de här.'
+                  : '${shown.length} avslut · ${count('goal')} mål · '
+                        '${count('on_target')} på mål · ${count('missed') + count('woodwork')} utanför · '
+                        '${count('blocked')} blockerade',
               style: theme.textTheme.bodySmall,
             ),
           ],

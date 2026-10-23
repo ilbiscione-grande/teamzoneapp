@@ -281,7 +281,11 @@ class _MatchModePageState extends State<_MatchModePage>
 
   bool get _squadOutdated {
     if (!_squadFrozen) return false;
-    final frozen = _snapshot!.roster.map((m) => m.personId).toSet();
+    // Players frozen from the Match module's line-up are not callups.
+    final frozen = _snapshot!.roster
+        .where((m) => m.sourceState != 'lineup')
+        .map((m) => m.personId)
+        .toSet();
     final expected = _expectedSquad.map((p) => p.personId).toSet();
     return frozen.length != expected.length || !frozen.containsAll(expected);
   }

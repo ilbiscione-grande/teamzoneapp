@@ -77,61 +77,53 @@ class _MatchPageState extends State<_MatchPage> {
       ),
     );
     return Scaffold(
-      appBar: AppBar(title: Text(strings.feature('Match'))),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            child: _MatchHeader(
-              match: match,
-              title: widget.title,
-              phase: _phase,
-              onPhase: (phase) => setState(() => _phase = phase),
-              onPrevious: _index > 0 ? () => _step(-1) : null,
-              onNext: _index >= 0 && _index < widget.matches.length - 1
-                  ? () => _step(1)
-                  : null,
-            ),
-          ),
-          Expanded(
-            child: switch (_phase) {
-              _MatchPhase.preparation => _MatchPreparation(
-                key: ValueKey('match-preparation-$eventId'),
-                eventId: eventId,
-                calendar: widget.calendar,
-              ),
-              _MatchPhase.live => _MatchLiveView(
-                key: ValueKey('match-live-$eventId'),
-                eventId: eventId,
-                calendar: widget.calendar,
-                match: widget.match,
-                sides: match == null
-                    ? widget.sides
-                    : (
-                        team: widget.sides.team,
-                        opponent: match.opponentName,
-                        homeAway: match.homeAway,
-                      ),
-              ),
-              _MatchPhase.analysis => later(
-                'Efteranalysen med speltid, statistik och händelser på planen '
-                'kommer när livedelen är klar.',
-              ),
-            },
-          ),
-        ],
+      appBar: _MatchAppBar(
+        match: match,
+        title: widget.title,
+        sides: widget.sides,
+        phase: _phase,
+        onPhase: (phase) => setState(() => _phase = phase),
+        onPrevious: _index > 0 ? () => _step(-1) : null,
+        onNext: _index >= 0 && _index < widget.matches.length - 1
+            ? () => _step(1)
+            : null,
       ),
+      body: switch (_phase) {
+        _MatchPhase.preparation => _MatchPreparation(
+          key: ValueKey('match-preparation-$eventId'),
+          eventId: eventId,
+          calendar: widget.calendar,
+        ),
+        _MatchPhase.live => _MatchLiveView(
+          key: ValueKey('match-live-$eventId'),
+          eventId: eventId,
+          calendar: widget.calendar,
+          match: widget.match,
+          sides: match == null
+              ? widget.sides
+              : (
+                  team: widget.sides.team,
+                  opponent: match.opponentName,
+                  homeAway: match.homeAway,
+                ),
+        ),
+        _MatchPhase.analysis => later(
+          'Efteranalysen med speltid, statistik och händelser på planen '
+          'kommer när livedelen är klar.',
+        ),
+      },
     );
   }
 }
 
-/// The match header: when and against whom, swiped or stepped to the
-/// neighbouring matches, with the phases below.
-class _MatchHeader extends StatelessWidget {
-  const _MatchHeader({
+/// The match in the app bar, to keep the screen for the match itself:
+/// against whom and when, swiped or stepped to the neighbouring matches,
+/// with the phases Förberedelse, Live and Efteranalys below it.
+class _MatchAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const _MatchAppBar({
     required this.match,
     required this.title,
+    required this.sides,
     required this.phase,
     required this.onPhase,
     this.onPrevious,
@@ -139,136 +131,121 @@ class _MatchHeader extends StatelessWidget {
   });
   final ModuleMatch? match;
   final String title;
+  final _MatchSides sides;
   final _MatchPhase phase;
   final ValueChanged<_MatchPhase> onPhase;
   final VoidCallback? onPrevious, onNext;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 48);
 
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     final colors = Theme.of(context).colorScheme;
     final match = this.match;
-    final name = match?.opponentName?.isNotEmpty == true
-        ? '${strings.feature('Mot')} ${match!.opponentName}'
+    final opponent = match?.opponentName ?? sides.opponent;
+    final name = opponent?.trim().isNotEmpty == true
+        ? '${strings.feature('Mot')} ${opponent!.trim()}'
         : match?.title ?? title;
-    final place = switch (match?.homeAway) {
+    final place = switch (match?.homeAway ?? sides.homeAway) {
       'home' => strings.feature('Hemma'),
       'away' => strings.feature('Borta'),
       _ => null,
     };
     final when = match == null
         ? null
-        : '${MaterialLocalizations.of(context).formatFullDate(match.startsAt)} '
+        : '${MaterialLocalizations.of(context).formatMediumDate(match.startsAt)} '
               '${TimeOfDay.fromDateTime(match.startsAt).format(context)}';
-    const white = TextStyle(color: Colors.white);
-    Widget arrow(IconData icon, VoidCallback? onTap, String tip) => IconButton(
-      tooltip: strings.feature(tip),
-      color: Colors.white,
-      disabledColor: Colors.white24,
-      onPressed: onTap,
-      icon: Icon(icon),
-    );
-    return DecoratedBox(
+    return AppBar(
       key: const Key('module-match-header'),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [
-            colors.primary,
-            Color.lerp(colors.primary, Colors.black, 0.4)!,
+      backgroundColor: colors.primary,
+      foregroundColor: Colors.white,
+      titleSpacing: 0,
+      title: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragEnd: (details) {
+          final velocity = details.primaryVelocity ?? 0;
+          if (velocity > 200) onPrevious?.call();
+          if (velocity < -200) onNext?.call();
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              place == null ? name : '$name ($place)',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            ),
+            if (when != null)
+              Text(
+                when,
+                style: const TextStyle(fontSize: 12, color: Colors.white70),
+              ),
           ],
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(4, 8, 4, 12),
-        child: Column(
-          children: [
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onHorizontalDragEnd: (details) {
-                final velocity = details.primaryVelocity ?? 0;
-                if (velocity > 200) onPrevious?.call();
-                if (velocity < -200) onNext?.call();
-              },
-              child: Row(
-                children: [
-                  if (match != null)
-                    arrow(Icons.chevron_left, onPrevious, 'Föregående match'),
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: match == null ? 12 : 0,
-                      ),
-                      child: Column(
-                        children: [
-                          if (when != null)
-                            Text(
-                              when,
-                              textAlign: TextAlign.center,
-                              style: white.copyWith(
-                                fontSize: 12,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          Text(
-                            place == null ? name : '$name ($place)',
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: white.copyWith(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (match != null)
-                    arrow(Icons.chevron_right, onNext, 'Nästa match'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: SegmentedButton<_MatchPhase>(
-                key: const Key('module-match-phase'),
-                showSelectedIcon: false,
-                style: ButtonStyle(
-                  foregroundColor: WidgetStateProperty.resolveWith(
-                    (states) => states.contains(WidgetState.selected)
-                        ? colors.primary
-                        : Colors.white,
-                  ),
-                  backgroundColor: WidgetStateProperty.resolveWith(
-                    (states) => states.contains(WidgetState.selected)
-                        ? Colors.white
-                        : Colors.transparent,
-                  ),
-                  side: const WidgetStatePropertyAll(
-                    BorderSide(color: Colors.white54),
-                  ),
+      actions: [
+        if (match != null) ...[
+          IconButton(
+            tooltip: strings.feature('Föregående match'),
+            disabledColor: Colors.white30,
+            onPressed: onPrevious,
+            icon: const Icon(Icons.chevron_left),
+          ),
+          IconButton(
+            tooltip: strings.feature('Nästa match'),
+            disabledColor: Colors.white30,
+            onPressed: onNext,
+            icon: const Icon(Icons.chevron_right),
+          ),
+        ],
+      ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(48),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+          child: SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<_MatchPhase>(
+              key: const Key('module-match-phase'),
+              showSelectedIcon: false,
+              style: ButtonStyle(
+                visualDensity: VisualDensity.compact,
+                foregroundColor: WidgetStateProperty.resolveWith(
+                  (states) => states.contains(WidgetState.selected)
+                      ? colors.primary
+                      : Colors.white,
                 ),
-                segments: [
-                  ButtonSegment(
-                    value: _MatchPhase.preparation,
-                    label: Text(strings.feature('Förberedelse')),
-                  ),
-                  ButtonSegment(
-                    value: _MatchPhase.live,
-                    label: Text(strings.feature('Live')),
-                  ),
-                  ButtonSegment(
-                    value: _MatchPhase.analysis,
-                    label: Text(strings.feature('Efteranalys')),
-                  ),
-                ],
-                selected: {phase},
-                onSelectionChanged: (value) => onPhase(value.first),
+                backgroundColor: WidgetStateProperty.resolveWith(
+                  (states) => states.contains(WidgetState.selected)
+                      ? Colors.white
+                      : Colors.transparent,
+                ),
+                side: const WidgetStatePropertyAll(
+                  BorderSide(color: Colors.white54),
+                ),
               ),
+              segments: [
+                ButtonSegment(
+                  value: _MatchPhase.preparation,
+                  label: Text(strings.feature('Förberedelse')),
+                ),
+                ButtonSegment(
+                  value: _MatchPhase.live,
+                  label: Text(strings.feature('Live')),
+                ),
+                ButtonSegment(
+                  value: _MatchPhase.analysis,
+                  label: Text(strings.feature('Efteranalys')),
+                ),
+              ],
+              selected: {phase},
+              onSelectionChanged: (value) => onPhase(value.first),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -300,7 +277,7 @@ class _MatchPreparationState extends State<_MatchPreparation> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: SegmentedButton<bool>(
             key: const Key('match-preparation-part'),
             segments: [

@@ -144,24 +144,39 @@ class _LiveScoreboard extends StatelessWidget {
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
-                    if (manage && live)
-                      PopupMenuButton<VoidCallback>(
-                        tooltip: 'Period och slutsignal',
-                        iconColor: Colors.white,
-                        onSelected: (action) => action(),
-                        itemBuilder: (_) => [
-                          if (!value!.isPaused &&
-                              value.currentPeriod < value.periodMinutes.length)
-                            PopupMenuItem(
-                              value: onEndPeriod,
-                              child: Text(
-                                'Avsluta ${_period(value.currentPeriod, value.periodMinutes.length).toLowerCase()}',
-                              ),
+                    if (manage && (primary != null || live))
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (primary != null)
+                            _LivePrimaryButton(
+                              icon: primary.$1,
+                              label: primary.$2,
+                              compact: live,
+                              busy: busy,
+                              onPressed: onPrimary,
                             ),
-                          PopupMenuItem(
-                            value: onFinish,
-                            child: const Text('Slutsignal'),
-                          ),
+                          if (live)
+                            PopupMenuButton<VoidCallback>(
+                              tooltip: 'Period och slutsignal',
+                              iconColor: Colors.white,
+                              onSelected: (action) => action(),
+                              itemBuilder: (_) => [
+                                if (!value!.isPaused &&
+                                    value.currentPeriod <
+                                        value.periodMinutes.length)
+                                  PopupMenuItem(
+                                    value: onEndPeriod,
+                                    child: Text(
+                                      'Avsluta ${_period(value.currentPeriod, value.periodMinutes.length).toLowerCase()}',
+                                    ),
+                                  ),
+                                PopupMenuItem(
+                                  value: onFinish,
+                                  child: const Text('Slutsignal'),
+                                ),
+                              ],
+                            ),
                         ],
                       ),
                   ],
@@ -169,29 +184,60 @@ class _LiveScoreboard extends StatelessWidget {
                 side(right),
               ],
             ),
-            if (manage && primary != null) ...[
-              const SizedBox(height: 10),
-              FilledButton.icon(
-                key: const Key('live-primary'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: colors.primary,
-                  minimumSize: const Size(170, 44),
-                  shape: const StadiumBorder(),
-                ),
-                onPressed: busy ? null : onPrimary,
-                icon: busy
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(primary.$1),
-                label: Text(primary.$2),
-              ),
-            ],
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Start, pause, resume or the next period: beside the menu between the
+/// scores, an icon alone while the match runs.
+class _LivePrimaryButton extends StatelessWidget {
+  const _LivePrimaryButton({
+    required this.icon,
+    required this.label,
+    required this.compact,
+    required this.busy,
+    required this.onPressed,
+  });
+  final IconData icon;
+  final String label;
+  final bool compact, busy;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final style = FilledButton.styleFrom(
+      backgroundColor: Colors.white,
+      foregroundColor: colors.primary,
+      shape: const StadiumBorder(),
+      padding: compact ? const EdgeInsets.all(8) : null,
+      minimumSize: compact ? const Size(40, 40) : const Size(0, 40),
+    );
+    final glyph = busy
+        ? const SizedBox.square(
+            dimension: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : Icon(icon);
+    return Tooltip(
+      message: label,
+      child: compact
+          ? FilledButton(
+              key: const Key('live-primary'),
+              style: style,
+              onPressed: busy ? null : onPressed,
+              child: glyph,
+            )
+          : FilledButton.icon(
+              key: const Key('live-primary'),
+              style: style,
+              onPressed: busy ? null : onPressed,
+              icon: glyph,
+              label: Text(label),
+            ),
     );
   }
 }
@@ -520,4 +566,45 @@ class _LiveTimeline extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Beside the buttons on a wide screen: the shot map or the events, one at
+/// a time, a tap apart.
+class _LiveSidePanel extends StatefulWidget {
+  const _LiveSidePanel({required this.shotMap, required this.timeline});
+  final Widget shotMap, timeline;
+
+  @override
+  State<_LiveSidePanel> createState() => _LiveSidePanelState();
+}
+
+class _LiveSidePanelState extends State<_LiveSidePanel> {
+  bool _events = false;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      SegmentedButton<bool>(
+        key: const Key('live-side-panel'),
+        showSelectedIcon: false,
+        segments: const [
+          ButtonSegment(
+            value: false,
+            icon: Icon(Icons.gps_fixed, size: 18),
+            label: Text('Skottkarta'),
+          ),
+          ButtonSegment(
+            value: true,
+            icon: Icon(Icons.list_alt, size: 18),
+            label: Text('Händelser'),
+          ),
+        ],
+        selected: {_events},
+        onSelectionChanged: (value) => setState(() => _events = value.first),
+      ),
+      const SizedBox(height: 8),
+      _events ? widget.timeline : widget.shotMap,
+    ],
+  );
 }
