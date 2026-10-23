@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { passwordSignInOutcome } from "../_shared/password_sign_in_outcome.ts";
 import {
   correlationId,
   recordCriticalFlowOutcome,
@@ -14,7 +15,9 @@ import {
 
 // Local development origins come from TEAMZONE_EXTRA_WEB_ORIGINS, set only
 // on the test project.
-const allowedWebOrigins = webOrigins(Deno.env.get("TEAMZONE_EXTRA_WEB_ORIGINS"));
+const allowedWebOrigins = webOrigins(
+  Deno.env.get("TEAMZONE_EXTRA_WEB_ORIGINS"),
+);
 
 function corsHeaders(origin: string | null): Record<string, string> {
   const headers: Record<string, string> = {
@@ -38,13 +41,14 @@ Deno.serve(async (request) => {
     body: unknown,
     status: number,
     extra: Record<string, string> = {},
-  ) => withCorrelation(
-    new Response(JSON.stringify(body), {
-      status,
-      headers: { ...headers, ...extra, "content-type": "application/json" },
-    }),
-    requestId,
-  );
+  ) =>
+    withCorrelation(
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { ...headers, ...extra, "content-type": "application/json" },
+      }),
+      requestId,
+    );
 
   if (origin && !allowedWebOrigins.has(origin)) {
     return respond({ error: "request_rejected" }, 403);
@@ -124,11 +128,39 @@ Deno.serve(async (request) => {
     // honours Sb-Forwarded-For.
     global: { headers: { "Sb-Forwarded-For": address } },
   });
-  const { data, error } = await authClient.auth.signInWithPassword({
-    email,
-    password,
-  });
-  const succeeded = !error && !!data.session;
+  let authResult;
+  try {
+    authResult = await authClient.auth.signInWithPassword({ email, password });
+  } catch (_) {
+    // SDK exceptions (including transport failures) must also reach the
+    // operational counter, without logging credentials or error messages.
+    await recordCriticalFlowOutcome(serviceClient, "auth", "failed", requestId);
+    sanitizedLog("auth.sign_in.unavailable", "error", requestId, {
+      component: "auth_password_sign_in",
+      error_type: "request_failed",
+    });
+    return respond({ error: "sign_in_unavailable" }, 503);
+  }
+  const { data, error } = authResult;
+  const outcome = passwordSignInOutcome(error, !!data.session);
+  if (outcome === "failed") {
+    await recordCriticalFlowOutcome(serviceClient, "auth", "failed", requestId);
+    sanitizedLog("auth.sign_in.unavailable", "error", requestId, {
+      component: "auth_password_sign_in",
+      error_type: error?.code ?? "authentication",
+    });
+    return respond({ error: "sign_in_unavailable" }, 503);
+  }
+  if (outcome === "limited") {
+    sanitizedLog("auth.sign_in.limited", "warning", requestId, {
+      component: "auth_password_sign_in",
+      result: "limited",
+    });
+    return respond({ error: "too_many_attempts" }, 429, {
+      "retry-after": "900",
+    });
+  }
+  const succeeded = outcome === "succeeded";
   const { error: recordError } = await limits.rpc("record_sign_in_result", {
     email_hash: emailHash,
     ip_hash: addressHash,
@@ -140,12 +172,16 @@ Deno.serve(async (request) => {
       error_type: "limit_store",
     });
   }
-  await recordCriticalFlowOutcome(
-    serviceClient,
-    "auth",
-    succeeded ? "succeeded" : "failed",
-    requestId,
-  );
+  // Expected rejections stay in the abuse-prevention counters and warning
+  // logs, but are excluded from both sides of the availability ratio.
+  if (succeeded) {
+    await recordCriticalFlowOutcome(
+      serviceClient,
+      "auth",
+      "succeeded",
+      requestId,
+    );
+  }
   if (!succeeded || !data.session) {
     sanitizedLog("auth.sign_in.failed", "warning", requestId, {
       component: "auth_password_sign_in",
