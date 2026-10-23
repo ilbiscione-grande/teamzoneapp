@@ -765,6 +765,7 @@ class _ContextBootstrapState extends State<_ContextBootstrap> {
           match: widget.services.match,
           development: widget.services.development,
           billing: widget.services.billing,
+          modules: widget.services.modules,
           economy: widget.services.economy,
           board: widget.services.board,
           editorial: widget.services.editorial,
@@ -1601,9 +1602,11 @@ class _ContextSelector extends StatefulWidget {
     required this.assistantPresentation,
     required this.matchSpaceV2,
     this.push = const UnconfiguredPushServices(),
+    this.modules = const UnconfiguredModuleServices(),
     super.key,
   });
 
+  final ModuleServices modules;
   final TeamZoneProfile profile;
   final List<TeamZoneContext> contexts;
   final IdentityServices identity;
@@ -1746,6 +1749,7 @@ class _ContextSelectorState extends State<_ContextSelector> {
       assistantPresentation: widget.assistantPresentation,
       matchSpaceV2: widget.matchSpaceV2,
       push: widget.push,
+      modules: widget.modules,
     );
   }
 }

@@ -55,6 +55,7 @@ import 'package:teamzone_app/src/features/board/board_models.dart';
 import 'package:teamzone_app/src/features/board/board_services.dart';
 import 'package:teamzone_app/src/features/development/development_models.dart';
 import 'package:teamzone_app/src/features/development/development_services.dart';
+import 'package:teamzone_app/src/features/workspaces/module_services.dart';
 import 'package:teamzone_app/src/features/economy/economy_models.dart';
 import 'package:teamzone_app/src/features/economy/economy_services.dart';
 import 'package:teamzone_app/src/features/overview/overview_models.dart';

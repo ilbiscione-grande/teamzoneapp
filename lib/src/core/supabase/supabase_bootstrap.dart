@@ -28,6 +28,7 @@ import 'package:teamzone_app/src/features/membership/membership_services.dart';
 import 'package:teamzone_app/src/features/legal/legal_services.dart';
 import 'package:teamzone_app/src/features/account/profile_services.dart';
 import 'package:teamzone_app/src/features/roster/roster_services.dart';
+import 'package:teamzone_app/src/features/workspaces/module_services.dart';
 import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 class AppServices {
@@ -50,6 +51,7 @@ class AppServices {
     this.match = const UnconfiguredMatchServices(),
     this.development = const UnconfiguredDevelopmentServices(),
     this.billing = const UnconfiguredBillingServices(),
+    this.modules = const UnconfiguredModuleServices(),
     this.economy = const UnconfiguredEconomyServices(),
     this.board = const UnconfiguredBoardServices(),
     this.editorial = const UnconfiguredEditorialServices(),
@@ -75,6 +77,7 @@ class AppServices {
   final MatchServices match;
   final DevelopmentServices development;
   final BillingServices billing;
+  final ModuleServices modules;
   final EconomyServices economy;
   final BoardServices board;
   final EditorialServices editorial;
@@ -138,6 +141,7 @@ class SupabaseBootstrap {
       match: SupabaseMatchServices(Supabase.instance.client),
       development: SupabaseDevelopmentServices(Supabase.instance.client),
       billing: SupabaseBillingServices(Supabase.instance.client),
+      modules: SupabaseModuleServices(Supabase.instance.client),
       economy: SupabaseEconomyServices(Supabase.instance.client),
       board: SupabaseBoardServices(Supabase.instance.client),
       editorial: SupabaseEditorialServices(Supabase.instance.client),

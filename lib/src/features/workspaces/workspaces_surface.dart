@@ -1,36 +1,60 @@
 part of '../../app/teamzone_app.dart';
 
-/// Arbetsytor: the leaders' hub for the coming modules (Träning, Match,
-/// Utveckling, Planering …). A placeholder for now: it opens what already
-/// exists and names what is planned, without pretending the rest works.
-class _WorkspacesSurface extends StatelessWidget {
+/// Arbetsytor: the leaders' hub for the modules (decision package 11):
+/// Match, Team Development Plan, Träning and IDP. It opens what already
+/// exists and lists the modules with the club's access to them, from the
+/// server; a module still being built says so rather than pretending.
+class _WorkspacesSurface extends StatefulWidget {
   const _WorkspacesSurface({
     required this.contextValue,
+    required this.modules,
     required this.onNavigate,
   });
   final TeamZoneContext contextValue;
+  final ModuleServices modules;
   final ValueChanged<String> onNavigate;
 
-  static const _planned = [
-    (
-      Icons.fitness_center_outlined,
-      'Träning',
-      'Träningsplanering och övningsbank',
-    ),
-    (
-      Icons.sports_soccer_outlined,
-      'Match',
-      'Matchförberedelser, statistik och analys',
-    ),
-    (
-      Icons.event_note_outlined,
-      'Planering',
-      'Säsong, perioder och fokusområden',
-    ),
-  ];
+  @override
+  State<_WorkspacesSurface> createState() => _WorkspacesSurfaceState();
+}
+
+class _WorkspacesSurfaceState extends State<_WorkspacesSurface> {
+  late Future<TeamModules> _modules = _load();
+
+  Future<TeamModules> _load() {
+    final teamId = widget.contextValue.teamId;
+    return teamId == null
+        ? Future.value(const TeamModules())
+        : widget.modules.getTeamModules(teamId: teamId);
+  }
+
+  @override
+  void didUpdateWidget(covariant _WorkspacesSurface oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.contextValue.teamId != widget.contextValue.teamId) {
+      _modules = _load();
+    }
+  }
+
+  static const _icons = {
+    'module.match_workspace': Icons.sports_soccer_outlined,
+    'module.team_development': Icons.event_note_outlined,
+    'module.training': Icons.fitness_center_outlined,
+    'module.player_development': Icons.trending_up_outlined,
+  };
+
+  /// The club's access in words: open in beta, bought, read-only once
+  /// ended, or not included.
+  static String _status(ModuleInfo module) => switch (module.access) {
+    'write' when module.beta => 'Beta',
+    'write' => 'Ingår',
+    'read_only' => 'Skrivskyddad',
+    _ => 'Ingår inte',
+  };
 
   @override
   Widget build(BuildContext context) {
+    final contextValue = widget.contextValue;
     final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     return ListView(
@@ -54,7 +78,7 @@ class _WorkspacesSurface extends StatelessWidget {
             title: Text(strings.destination(ProductRouteContract.development)),
             subtitle: Text(strings.feature('Spelarnas utveckling och mål')),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => onNavigate(ProductRouteContract.development),
+            onTap: () => widget.onNavigate(ProductRouteContract.development),
           ),
         ),
         if (contextValue.can('event.manage') ||
@@ -68,25 +92,45 @@ class _WorkspacesSurface extends StatelessWidget {
                 strings.feature('Närvaro, svar och aktiviteter över tid'),
               ),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => onNavigate(ProductRouteContract.teamStatistics),
+              onTap: () =>
+                  widget.onNavigate(ProductRouteContract.teamStatistics),
             ),
           ),
         const SizedBox(height: 24),
-        Text(
-          strings.feature('Planerade arbetsytor'),
-          style: theme.textTheme.titleMedium,
+        Text(strings.feature('Moduler'), style: theme.textTheme.titleMedium),
+        const SizedBox(height: 4),
+        FutureBuilder<TeamModules>(
+          future: _modules,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Text(strings.feature('Modulerna kunde inte hämtas.'));
+            }
+            if (!snapshot.hasData) return const LinearProgressIndicator();
+            // The app's own modules; a web tool's link shows where it is used.
+            final modules = [
+              for (final module in snapshot.data!.modules)
+                if (module.key.startsWith('module.')) module,
+            ];
+            return Column(
+              children: [
+                for (final module in modules)
+                  ListTile(
+                    key: Key('workspace-module-${module.key}'),
+                    enabled: false,
+                    leading: Icon(_icons[module.key] ?? Icons.widgets_outlined),
+                    title: Text(module.title),
+                    subtitle: Text(
+                      '${module.description}. ${strings.feature('Byggs nu.')}',
+                    ),
+                    trailing: Chip(
+                      label: Text(strings.feature(_status(module))),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
-        for (final (icon, title, subtitle) in _planned)
-          ListTile(
-            enabled: false,
-            leading: Icon(icon),
-            title: Text(strings.feature(title)),
-            subtitle: Text(strings.feature(subtitle)),
-            trailing: Text(
-              strings.feature('Kommer'),
-              style: theme.textTheme.labelSmall,
-            ),
-          ),
       ],
     );
   }

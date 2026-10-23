@@ -27,6 +27,7 @@ class _ProductShell extends StatefulWidget {
     required this.assistantPresentation,
     required this.matchSpaceV2,
     this.push = const UnconfiguredPushServices(),
+    this.modules = const UnconfiguredModuleServices(),
     super.key,
   });
 
@@ -55,6 +56,7 @@ class _ProductShell extends StatefulWidget {
   final AssistantPresentationServices assistantPresentation;
   final bool matchSpaceV2;
   final PushServices push;
+  final ModuleServices modules;
 
   @override
   State<_ProductShell> createState() => _ProductShellState();
@@ -660,6 +662,7 @@ class _ProductShellState extends State<_ProductShell> {
               : destination.path == ProductRouteContract.workspaces
               ? _WorkspacesSurface(
                   contextValue: widget.contextValue,
+                  modules: widget.modules,
                   onNavigate: _router.go,
                 )
               : destination.path == '/development'

@@ -238,7 +238,7 @@ void main() {
       expect(more, containsAll(['Arbetsytor', 'Lagstatistik']));
       await tester.tap(find.text('Arbetsytor'));
       await tester.pumpAndSettle();
-      expect(find.text('Planerade arbetsytor'), findsOneWidget);
+      expect(find.text('Moduler'), findsOneWidget);
       expect(find.byKey(const Key('workspace-development')), findsOneWidget);
       expect(find.byKey(const Key('workspace-statistics')), findsOneWidget);
       expect(labels(tester).last, 'Mer');
