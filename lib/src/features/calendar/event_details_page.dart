@@ -515,6 +515,8 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                           eventId: event.id,
                           title: event.title,
                           calendar: widget.calendar,
+                          match: widget.match,
+                          sides: _matchSides,
                         )
                       : null,
                 ),
@@ -1153,7 +1155,41 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     }
   }
 
+  _MatchSides get _matchSides => (
+    team:
+        event.teams
+            .where((team) => team['relation'] == 'primary')
+            .map((team) => team['name'])
+            .whereType<String>()
+            .firstOrNull ??
+        'Vårt lag',
+    opponent: event.opponentName,
+    homeAway: event.homeAway,
+  );
+
+  /// Matchläge: with the club's Match module, the module's Live; otherwise
+  /// the built-in match mode.
   Future<void> _showMatchSpace() async {
+    final hasModule =
+        widget.matchSpaceV2 &&
+        _contextCanCoManage &&
+        await widget.calendar.matchPlans
+            .getPlan(event.id)
+            .then((_) => true, onError: (_) => false);
+    if (!mounted) return;
+    if (hasModule) {
+      await _MatchModule.openMatch(
+        context,
+        eventId: event.id,
+        title: event.title,
+        calendar: widget.calendar,
+        match: widget.match,
+        sides: _matchSides,
+        live: true,
+      );
+      if (mounted) await _refresh();
+      return;
+    }
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => _MatchModePage(

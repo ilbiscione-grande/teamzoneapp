@@ -10,12 +10,14 @@ class _WorkspacesSurface extends StatefulWidget {
     required this.modules,
     required this.calendar,
     required this.roster,
+    required this.match,
     required this.onNavigate,
   });
   final TeamZoneContext contextValue;
   final ModuleServices modules;
   final CalendarServices calendar;
   final RosterServices roster;
+  final MatchServices match;
   final ValueChanged<String> onNavigate;
 
   @override
@@ -57,6 +59,7 @@ class _WorkspacesSurfaceState extends State<_WorkspacesSurface> {
         team: widget.contextValue,
         calendar: widget.calendar,
         roster: widget.roster,
+        match: widget.match,
       ),
       _ => null,
     };

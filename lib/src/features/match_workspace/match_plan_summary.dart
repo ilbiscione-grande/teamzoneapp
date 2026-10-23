@@ -10,9 +10,13 @@ class _MatchPlanSection extends StatefulWidget {
     required this.eventId,
     required this.title,
     required this.calendar,
+    required this.match,
+    required this.sides,
   });
   final String eventId, title;
   final CalendarServices calendar;
+  final MatchServices match;
+  final _MatchSides sides;
 
   @override
   State<_MatchPlanSection> createState() => _MatchPlanSectionState();
@@ -31,6 +35,8 @@ class _MatchPlanSectionState extends State<_MatchPlanSection> {
       eventId: widget.eventId,
       title: widget.title,
       calendar: widget.calendar,
+      match: widget.match,
+      sides: widget.sides,
     );
     if (mounted) setState(() => _plan = _load());
   }

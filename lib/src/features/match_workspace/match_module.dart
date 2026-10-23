@@ -11,6 +11,7 @@ abstract final class _MatchModule {
     required TeamZoneContext team,
     required CalendarServices calendar,
     required RosterServices roster,
+    required MatchServices match,
   }) => _ModuleShell.open(
     context,
     _ModuleShell(
@@ -23,8 +24,12 @@ abstract final class _MatchModule {
           label: 'Översikt',
           icon: Icons.dashboard_outlined,
           selectedIcon: Icons.dashboard,
-          builder: (_) =>
-              _MatchOverview(teamId: team.teamId!, calendar: calendar),
+          builder: (_) => _MatchOverview(
+            teamId: team.teamId!,
+            teamName: team.teamName ?? 'Vårt lag',
+            calendar: calendar,
+            match: match,
+          ),
         ),
         _ModuleSection(
           label: 'Truppen',
@@ -48,14 +53,20 @@ abstract final class _MatchModule {
     required String eventId,
     required String title,
     required CalendarServices calendar,
+    required MatchServices match,
+    required _MatchSides sides,
     List<ModuleMatch> matches = const [],
+    bool live = false,
   }) => _ModuleScope.push<void>(
     context,
     (_) => _MatchPage(
       eventId: eventId,
       title: title,
       calendar: calendar,
+      match: match,
+      sides: sides,
       matches: matches,
+      live: live,
     ),
     seed: _ModuleShell.seeds[_key],
   );
@@ -102,9 +113,15 @@ abstract final class _MatchModule {
 
 /// Översikt: the next match up front, then the coming or played matches.
 class _MatchOverview extends StatefulWidget {
-  const _MatchOverview({required this.teamId, required this.calendar});
-  final String teamId;
+  const _MatchOverview({
+    required this.teamId,
+    required this.teamName,
+    required this.calendar,
+    required this.match,
+  });
+  final String teamId, teamName;
   final CalendarServices calendar;
+  final MatchServices match;
 
   @override
   State<_MatchOverview> createState() => _MatchOverviewState();
@@ -134,6 +151,12 @@ class _MatchOverviewState extends State<_MatchOverview> {
           ? '${AppStrings.of(context).feature('Mot')} ${match.opponentName}'
           : match.title,
       calendar: widget.calendar,
+      match: widget.match,
+      sides: (
+        team: widget.teamName,
+        opponent: match.opponentName,
+        homeAway: match.homeAway,
+      ),
       matches: among,
     );
     if (mounted) _reload();

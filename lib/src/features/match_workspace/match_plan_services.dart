@@ -4,6 +4,7 @@ import 'package:teamzone_app/src/features/match_workspace/match_plan_models.dart
 
 export 'package:teamzone_app/src/features/match_workspace/match_formations.dart';
 export 'package:teamzone_app/src/features/match_workspace/match_lineup_models.dart';
+export 'package:teamzone_app/src/features/match_workspace/match_live_models.dart';
 export 'package:teamzone_app/src/features/match_workspace/match_plan_models.dart';
 
 /// The plan changed elsewhere since it was read.

@@ -56,6 +56,31 @@ abstract interface class MatchServices {
     String? text,
   });
   Future<void> voidEvent(String commandId, String factId);
+
+  /// A match event other than a goal or note (substitution, card, shot,
+  /// save, corner, free kick, penalty, injury), its result and comment in
+  /// [detail].
+  Future<void> recordEvent(
+    String commandId,
+    String eventId, {
+    required String type,
+    required int minute,
+    String? side,
+    String? playerId,
+    String? secondaryId,
+    Map<String, Object?> detail = const {},
+  });
+
+  /// Changes such an event; goals and notes go through [correctEvent].
+  Future<void> updateEvent(
+    String commandId,
+    String factId, {
+    required int minute,
+    String? side,
+    String? playerId,
+    String? secondaryId,
+    Map<String, Object?> detail = const {},
+  });
   Future<void> adjustScore(
     String commandId,
     String eventId,
@@ -133,6 +158,27 @@ class UnconfiguredMatchServices implements MatchServices {
   }) => _fail();
   @override
   Future<void> voidEvent(String a, String b) => _fail();
+  @override
+  Future<void> recordEvent(
+    String a,
+    String b, {
+    required String type,
+    required int minute,
+    String? side,
+    String? playerId,
+    String? secondaryId,
+    Map<String, Object?> detail = const {},
+  }) => _fail();
+  @override
+  Future<void> updateEvent(
+    String a,
+    String b, {
+    required int minute,
+    String? side,
+    String? playerId,
+    String? secondaryId,
+    Map<String, Object?> detail = const {},
+  }) => _fail();
   @override
   Future<void> adjustScore(String a, String b, String c, int d, int e) =>
       _fail();
@@ -306,6 +352,44 @@ class SupabaseMatchServices implements MatchServices {
     'void_match_event_v2',
     {'p_command_id': id, 'p_match_event_id': factId},
   );
+  @override
+  Future<void> recordEvent(
+    String id,
+    String eventId, {
+    required String type,
+    required int minute,
+    String? side,
+    String? playerId,
+    String? secondaryId,
+    Map<String, Object?> detail = const {},
+  }) => _command('record_match_event_v2', {
+    'p_command_id': id,
+    'p_event_id': eventId,
+    'p_minute': minute,
+    'p_type': type,
+    'p_side': side,
+    'p_player_id': playerId,
+    'p_secondary_player_id': secondaryId,
+    'p_detail': detail,
+  });
+  @override
+  Future<void> updateEvent(
+    String id,
+    String factId, {
+    required int minute,
+    String? side,
+    String? playerId,
+    String? secondaryId,
+    Map<String, Object?> detail = const {},
+  }) => _command('update_match_event_v2', {
+    'p_command_id': id,
+    'p_match_event_id': factId,
+    'p_minute': minute,
+    'p_side': side,
+    'p_player_id': playerId,
+    'p_secondary_player_id': secondaryId,
+    'p_detail': detail,
+  });
   @override
   Future<void> adjustScore(
     String id,

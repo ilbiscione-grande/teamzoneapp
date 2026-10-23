@@ -1,0 +1,523 @@
+part of '../../app/teamzone_app.dart';
+
+/// The score, the clock and its controls, and a goal button per side: the
+/// old app's clock card in the module's colours.
+class _LiveScoreboard extends StatelessWidget {
+  const _LiveScoreboard({
+    required this.snapshot,
+    required this.sides,
+    required this.opponentName,
+    required this.busy,
+    required this.manage,
+    required this.onPrimary,
+    required this.onEndPeriod,
+    required this.onFinish,
+    this.onGoal,
+  });
+  final MatchSnapshot? snapshot;
+  final _MatchSides sides;
+  final String opponentName;
+  final bool busy, manage;
+  final VoidCallback onPrimary, onEndPeriod, onFinish;
+  final ValueChanged<String>? onGoal;
+
+  static String _period(int period, int count) => count == 2
+      ? '$period:a halvlek'
+      : count == 1
+      ? 'Matchen'
+      : 'Period $period';
+
+  String get _caption {
+    final value = snapshot;
+    if (value == null || value.state == 'planning') return 'Ej startad';
+    if (value.state == 'completed') return 'Slutresultat';
+    final count = value.periodMinutes.length;
+    if (value.currentPeriodEnded) {
+      return count == 2 && value.currentPeriod == 1
+          ? 'Halvtid'
+          : 'Paus efter period ${value.currentPeriod}';
+    }
+    final name = _period(value.currentPeriod, count);
+    return value.isPaused ? '$name · pausad' : name;
+  }
+
+  String get _clock {
+    final value = snapshot;
+    if (value == null || value.state == 'planning') return '00:00';
+    final elapsed = value.elapsedNow();
+    return '${elapsed.inMinutes.toString().padLeft(2, '0')}:'
+        '${(elapsed.inSeconds % 60).toString().padLeft(2, '0')}';
+  }
+
+  (IconData, String)? get _primary => switch (snapshot) {
+    null ||
+    MatchSnapshot(state: 'planning') => (Icons.play_arrow, 'Starta match'),
+    MatchSnapshot(state: 'live', isPaused: false) => (Icons.pause, 'Pausa'),
+    MatchSnapshot(
+      state: 'live',
+      currentPeriodEnded: true,
+      :final currentPeriod,
+      :final periodMinutes,
+    ) =>
+      (
+        Icons.play_arrow,
+        'Starta ${_period(currentPeriod + 1, periodMinutes.length).toLowerCase()}',
+      ),
+    MatchSnapshot(state: 'live') => (Icons.play_arrow, 'Fortsätt'),
+    _ => null,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final value = snapshot;
+    final weLeft = sides.homeAway != 'away';
+    final us = (sides.team, value?.scoreUs ?? 0, 'us');
+    final them = (opponentName, value?.scoreOpponent ?? 0, 'opponent');
+    final left = weLeft ? us : them, right = weLeft ? them : us;
+    const white = TextStyle(color: Colors.white);
+    Widget side((String, int, String) team) => Expanded(
+      child: Column(
+        children: [
+          Text(
+            team.$1,
+            maxLines: 2,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            style: white.copyWith(fontWeight: FontWeight.w700),
+          ),
+          Text(
+            '${team.$2}',
+            style: white.copyWith(
+              fontSize: 46,
+              fontWeight: FontWeight.w800,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+          if (onGoal != null)
+            FilledButton.tonalIcon(
+              key: Key('live-goal-${team.$3}'),
+              onPressed: busy ? null : () => onGoal!(team.$3),
+              icon: const Icon(Icons.sports_soccer, size: 18),
+              label: const Text('Mål'),
+            ),
+        ],
+      ),
+    );
+    final primary = _primary;
+    final live = value?.state == 'live';
+    return DecoratedBox(
+      key: const Key('live-scoreboard'),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colors.primary,
+            Color.lerp(colors.primary, Colors.black, 0.5)!,
+          ],
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
+        child: Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                side(left),
+                Column(
+                  children: [
+                    Text(
+                      _caption,
+                      style: white.copyWith(
+                        fontSize: 12,
+                        color: Colors.white70,
+                      ),
+                    ),
+                    Text(
+                      _clock,
+                      style: white.copyWith(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    if (manage && live)
+                      PopupMenuButton<VoidCallback>(
+                        tooltip: 'Period och slutsignal',
+                        iconColor: Colors.white,
+                        onSelected: (action) => action(),
+                        itemBuilder: (_) => [
+                          if (!value!.isPaused &&
+                              value.currentPeriod < value.periodMinutes.length)
+                            PopupMenuItem(
+                              value: onEndPeriod,
+                              child: Text(
+                                'Avsluta ${_period(value.currentPeriod, value.periodMinutes.length).toLowerCase()}',
+                              ),
+                            ),
+                          PopupMenuItem(
+                            value: onFinish,
+                            child: const Text('Slutsignal'),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+                side(right),
+              ],
+            ),
+            if (manage && primary != null) ...[
+              const SizedBox(height: 10),
+              FilledButton.icon(
+                key: const Key('live-primary'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: colors.primary,
+                  minimumSize: const Size(170, 44),
+                  shape: const StadiumBorder(),
+                ),
+                onPressed: busy ? null : onPrimary,
+                icon: busy
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(primary.$1),
+                label: Text(primary.$2),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+IconData _liveIcon(String? type) => switch (type) {
+  'substitution' => Icons.swap_horiz_rounded,
+  'goal' => Icons.sports_soccer,
+  'card' => Icons.style_outlined,
+  'injury' => Icons.healing_outlined,
+  'corner' => Icons.flag_outlined,
+  'free_kick' => Icons.sports_outlined,
+  'penalty' => Icons.adjust_outlined,
+  'save' => Icons.pan_tool_outlined,
+  'shot' => Icons.gps_fixed,
+  'note' => Icons.notes,
+  'kpi' => Icons.bolt_rounded,
+  _ => Icons.timer_outlined,
+};
+
+/// The old app's quick-action grid: one button per kind of event with how
+/// many we have so far, and a note.
+class _LiveActionGrid extends StatelessWidget {
+  const _LiveActionGrid({
+    required this.tally,
+    required this.onKind,
+    required this.onNote,
+  });
+  final Map<String, int> tally;
+  final ValueChanged<LiveEventKind> onKind;
+  final VoidCallback onNote;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    Widget button(
+      String key,
+      IconData icon,
+      String label,
+      VoidCallback tap,
+      int? count,
+    ) => Material(
+      color: colors.secondaryContainer,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        key: Key('live-action-$key'),
+        borderRadius: BorderRadius.circular(14),
+        onTap: tap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: colors.onSecondaryContainer),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: colors.onSecondaryContainer,
+                ),
+              ),
+              if (count != null && count > 0)
+                Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colors.onSecondaryContainer.withValues(alpha: 0.7),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return LayoutBuilder(
+      builder: (context, box) {
+        final columns = box.maxWidth >= 560 ? 5 : 3;
+        final buttons = [
+          for (final kind in liveEventKinds)
+            button(
+              kind.type,
+              _liveIcon(kind.type),
+              kind.label,
+              () => onKind(kind),
+              tally[kind.type],
+            ),
+          button('note', _liveIcon('note'), 'Anteckning', onNote, null),
+        ];
+        return GridView.count(
+          crossAxisCount: columns,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          childAspectRatio: 1.35,
+          children: buttons,
+        );
+      },
+    );
+  }
+}
+
+/// Who is on the pitch now and who is on the bench.
+class _OnPitchCard extends StatelessWidget {
+  const _OnPitchCard({
+    required this.onPitch,
+    required this.bench,
+    required this.name,
+    required this.numbers,
+  });
+  final List<String> onPitch, bench;
+  final String Function(String?) name;
+  final Map<String, int> numbers;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    Widget chip(String id, {required bool playing}) => Chip(
+      visualDensity: VisualDensity.compact,
+      avatar: CircleAvatar(
+        backgroundColor: playing
+            ? theme.colorScheme.primary
+            : theme.colorScheme.surfaceContainerHighest,
+        foregroundColor: playing
+            ? theme.colorScheme.onPrimary
+            : theme.colorScheme.onSurface,
+        child: Text(
+          '${numbers[id] ?? '–'}',
+          style: const TextStyle(fontSize: 11),
+        ),
+      ),
+      label: Text(name(id).split(' ').first),
+    );
+    return Card(
+      key: const Key('live-on-pitch'),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'På planen (${onPitch.length})',
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [for (final id in onPitch) chip(id, playing: true)],
+            ),
+            if (bench.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Bänken (${bench.length})',
+                style: theme.textTheme.titleSmall,
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [for (final id in bench) chip(id, playing: false)],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The substitution plan from Förberedelse, ticked off as the substitutions
+/// are made.
+class _LivePlanCard extends StatelessWidget {
+  const _LivePlanCard({
+    required this.plan,
+    required this.done,
+    required this.name,
+    this.onMake,
+  });
+  final List<PlannedSubstitution> plan;
+  final Set<String> done;
+  final String Function(String?) name;
+  final ValueChanged<PlannedSubstitution>? onMake;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      key: const Key('live-plan'),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Bytesplan (${done.length}/${plan.length})',
+              style: theme.textTheme.titleSmall,
+            ),
+            for (final sub in plan)
+              CheckboxListTile(
+                key: Key('live-plan-${sub.id}'),
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                value: done.contains(sub.id),
+                onChanged: done.contains(sub.id) || onMake == null
+                    ? null
+                    : (_) => onMake!(sub),
+                title: Text(
+                  '${sub.minute == null ? '' : "${sub.minute}′ "}'
+                  '${name(sub.outId)} ut · ${name(sub.inId)} in',
+                  style: done.contains(sub.id)
+                      ? const TextStyle(decoration: TextDecoration.lineThrough)
+                      : null,
+                ),
+                subtitle: sub.note.isEmpty ? null : Text(sub.note),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Everything registered, latest first; tap to correct or remove it.
+class _LiveTimeline extends StatelessWidget {
+  const _LiveTimeline({
+    required this.facts,
+    required this.name,
+    required this.opponentName,
+    this.onTap,
+  });
+  final List<Map<String, dynamic>> facts;
+  final String Function(String?) name;
+  final String opponentName;
+  final ValueChanged<Map<String, dynamic>>? onTap;
+
+  String _text(Map<String, dynamic> fact) {
+    final type = fact['fact_type'] as String?;
+    final detail = (fact['detail'] as Map?) ?? const {};
+    final player = fact['club_person_id'] as String?;
+    final second = fact['secondary_club_person_id'] as String?;
+    final them = fact['side'] == 'opponent';
+    final kind = liveEventKind(type);
+    String? result() {
+      final value = detail[kind?.resultKey ?? 'result'];
+      return kind?.results
+          .where((r) => r.$1 == value)
+          .map((r) => r.$2)
+          .firstOrNull;
+    }
+
+    final who = them ? opponentName : (player == null ? null : name(player));
+    return switch (type) {
+      'goal' =>
+        them
+            ? 'Mål $opponentName'
+            : 'Mål ${player == null ? '' : name(player)}'
+                  '${second == null ? '' : ' (assist ${name(second)})'}',
+      'substitution' => '${name(player)} ut · ${name(second)} in',
+      'note' => detail['text'] as String? ?? 'Anteckning',
+      'period_end' => 'Periodslut',
+      'half_time' => 'Halvtid',
+      'full_time' => 'Slutsignal',
+      'score_adjustment' => 'Ställningen ändrad',
+      'kpi' => detail['label'] as String? ?? 'KPI',
+      _ => [
+        kind?.label ?? type ?? '',
+        ?who,
+        ?result(),
+        if (detail['comment'] case final String comment when comment.isNotEmpty)
+          comment,
+      ].join(' · '),
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final shown = activeFacts(facts).toList().reversed.toList();
+    return Card(
+      key: const Key('live-timeline'),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(4, 12, 4, 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text('Händelser', style: theme.textTheme.titleSmall),
+            ),
+            if (shown.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: Text('Inget registrerat än.'),
+              ),
+            for (final fact in shown)
+              ListTile(
+                key: Key('live-fact-${fact['id']}'),
+                dense: true,
+                leading: CircleAvatar(
+                  radius: 16,
+                  backgroundColor: fact['side'] == 'opponent'
+                      ? theme.colorScheme.surfaceContainerHighest
+                      : theme.colorScheme.primaryContainer,
+                  child: Icon(
+                    _liveIcon(fact['fact_type'] as String?),
+                    size: 16,
+                  ),
+                ),
+                title: Text(_text(fact)),
+                trailing: Text("${(fact['minute'] as num?)?.toInt() ?? 0}′"),
+                onTap:
+                    onTap == null ||
+                        const [
+                          'period_end',
+                          'half_time',
+                          'full_time',
+                          'score_adjustment',
+                        ].contains(fact['fact_type'])
+                    ? null
+                    : () => onTap!(fact),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}

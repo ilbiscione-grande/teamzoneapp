@@ -12,10 +12,20 @@ class _MatchPage extends StatefulWidget {
     required this.eventId,
     required this.title,
     required this.calendar,
+    required this.match,
+    required this.sides,
     this.matches = const [],
+    this.live = false,
   });
   final String eventId, title;
   final CalendarServices calendar;
+  final MatchServices match;
+
+  /// Who plays the match opened; a stepped-to match brings its own opponent.
+  final _MatchSides sides;
+
+  /// Opens in Live, as from the event's Matchläge.
+  final bool live;
 
   /// The matches to step between, in date order; empty for one match.
   final List<ModuleMatch> matches;
@@ -28,17 +38,23 @@ class _MatchPageState extends State<_MatchPage> {
   late int _index = widget.matches.indexWhere(
     (match) => match.eventId == widget.eventId,
   );
-  late _MatchPhase _phase = _phaseFor(_match);
+  late _MatchPhase _phase = widget.live ? _MatchPhase.live : _phaseFor(_match);
 
   ModuleMatch? get _match => _index < 0 ? null : widget.matches[_index];
 
-  static _MatchPhase _phaseFor(ModuleMatch? match) =>
-      match != null &&
-          match.startsAt.isBefore(
-            DateTime.now().subtract(const Duration(hours: 3)),
-          )
-      ? _MatchPhase.analysis
-      : _MatchPhase.preparation;
+  /// Played: Efteranalys; about to start or under way: Live; else
+  /// Förberedelse.
+  static _MatchPhase _phaseFor(ModuleMatch? match) {
+    if (match == null) return _MatchPhase.preparation;
+    final now = DateTime.now();
+    if (match.startsAt.isBefore(now.subtract(const Duration(hours: 3)))) {
+      return _MatchPhase.analysis;
+    }
+    if (match.startsAt.isBefore(now.add(const Duration(minutes: 30)))) {
+      return _MatchPhase.live;
+    }
+    return _MatchPhase.preparation;
+  }
 
   void _step(int delta) {
     final next = _index + delta;
@@ -85,9 +101,18 @@ class _MatchPageState extends State<_MatchPage> {
                 eventId: eventId,
                 calendar: widget.calendar,
               ),
-              _MatchPhase.live => later(
-                'Live i Matchmodulen kommer i nästa steg. Tills dess loggar du '
-                'matchen i Matchläge under aktiviteten.',
+              _MatchPhase.live => _MatchLiveView(
+                key: ValueKey('match-live-$eventId'),
+                eventId: eventId,
+                calendar: widget.calendar,
+                match: widget.match,
+                sides: match == null
+                    ? widget.sides
+                    : (
+                        team: widget.sides.team,
+                        opponent: match.opponentName,
+                        homeAway: match.homeAway,
+                      ),
               ),
               _MatchPhase.analysis => later(
                 'Efteranalysen med speltid, statistik och händelser på planen '
