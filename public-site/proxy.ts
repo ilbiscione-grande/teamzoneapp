@@ -4,6 +4,7 @@ import { canonicalOriginRedirect, safeDomainDecision, requestHostname, validRout
 import { publicRpc } from "./lib/public-rpc";
 import { createServerSupabase } from "./lib/supabase-admin";
 import { isLocalPublicView } from "./lib/local-public-view";
+import { invalidServerActionResponse } from "./lib/server-action-request";
 
 // Public media tokens are already tenant-independent, opaque and resolved by a
 // service-only lookup. They must retain the route's immutable image cache and
@@ -20,6 +21,8 @@ const bypassPrefixes = [
 const pageCache = "public, max-age=0, s-maxage=60, must-revalidate";
 
 export async function proxy(request: NextRequest) {
+  const invalidAction = invalidServerActionResponse(request);
+  if (invalidAction) return invalidAction;
   const path = request.nextUrl.pathname;
   if (isLocalPublicView(request.headers.get("host"))) {
     const response = NextResponse.next();
