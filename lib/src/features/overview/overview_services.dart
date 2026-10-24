@@ -20,6 +20,35 @@ abstract interface class ClubHomeServices {
   Future<ClubHome> loadClubHome(String contextId);
 }
 
+/// Kontrollfrågor om domaren: the matches you manage whose referee
+/// coordinator asks whether the referee refereed, one per match.
+abstract interface class RefereeControlServices {
+  Future<List<RefereeControlQuestion>> listMyRefereeControlQuestions();
+}
+
+class RefereeControlQuestion {
+  const RefereeControlQuestion({
+    required this.eventId,
+    required this.clubId,
+    required this.teamId,
+    required this.title,
+    required this.count,
+    required this.name,
+  });
+  factory RefereeControlQuestion.fromJson(Map<String, dynamic> json) =>
+      RefereeControlQuestion(
+        eventId: json['event_id'] as String,
+        clubId: json['club_id'] as String,
+        teamId: json['team_id'] as String?,
+        title: json['title'] as String? ?? '',
+        count: (json['count'] as num?)?.toInt() ?? 1,
+        name: json['name'] as String? ?? '',
+      );
+  final String eventId, clubId, title, name;
+  final String? teamId;
+  final int count;
+}
+
 /// Ansökningar om lagsida: pending requests per club where you decide them,
 /// keyed by club id.
 abstract interface class TeamPageRequestServices {
@@ -83,6 +112,7 @@ class SupabaseOverviewServices
         BookingApprovalServices,
         BookingDecisionServices,
         TeamPageRequestServices,
+        RefereeControlServices,
         FreshLeaderOverviewServices,
         PersonalCalendarConflictServices,
         AssistantTaskPreferencesServices,
@@ -291,6 +321,21 @@ class SupabaseOverviewServices
     return value
         .whereType<Map<String, dynamic>>()
         .map(BookingApproval.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<List<RefereeControlQuestion>> listMyRefereeControlQuestions() async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>('list_my_referee_control_questions')
+        .timeout(const Duration(seconds: 15));
+    if (value is! List) {
+      throw const FormatException('Invalid referee control questions.');
+    }
+    return value
+        .whereType<Map<String, dynamic>>()
+        .map(RefereeControlQuestion.fromJson)
         .toList(growable: false);
   }
 

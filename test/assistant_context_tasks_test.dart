@@ -775,6 +775,70 @@ void main() {
       );
     },
   );
+  test(
+    'a referee control question opens the match in the team it is for',
+    () async {
+      final other = team('x');
+      final lead = TeamZoneContext(
+        id: 'lead',
+        clubId: 'club-a',
+        clubName: 'Klubb A',
+        teamId: 'p2012',
+        teamName: 'P2012',
+        rolePackage: 'leader',
+        capabilities: const {},
+      );
+      final snapshot = await loadAssistantTasks(
+        contexts: [other, lead],
+        activeContext: other,
+        overview: _RefereeOverview(),
+        loadEvent: event,
+      );
+      final tasks = snapshot.tasks;
+      expect(tasks, hasLength(2), reason: 'one per match');
+      expect(tasks.map((t) => t.task.kind).toSet(), {'club_referee_control'});
+      final first = tasks.firstWhere((t) => t.eventId == 'm1');
+      expect(first.context.id, 'lead');
+      expect(first.eventTitle, 'P2012 – Aneby SK');
+      expect(first.explanation, contains('Rasmus Jansson'));
+      expect(Uri.parse(first.route).queryParameters, {
+        'context': 'lead',
+        'tab': 'info',
+      });
+    },
+  );
+}
+
+class _RefereeOverview extends Overview implements RefereeControlServices {
+  @override
+  Future<List<RefereeControlQuestion>> listMyRefereeControlQuestions() async =>
+      const [
+        RefereeControlQuestion(
+          eventId: 'm1',
+          clubId: 'club-a',
+          teamId: 'p2012',
+          title: 'P2012 – Aneby SK',
+          count: 1,
+          name: 'Rasmus Jansson',
+        ),
+        RefereeControlQuestion(
+          eventId: 'm2',
+          clubId: 'club-a',
+          teamId: 'p2012',
+          title: 'P2012 – Tranås',
+          count: 2,
+          name: 'Lisa Berg',
+        ),
+        // A team without any of your contexts in a club you are not in.
+        RefereeControlQuestion(
+          eventId: 'm3',
+          clubId: 'club-z',
+          teamId: 'z',
+          title: 'Okänd',
+          count: 1,
+          name: 'Ingen',
+        ),
+      ];
 }
 
 class _TeamPageOverview extends Overview implements TeamPageRequestServices {

@@ -156,8 +156,9 @@ class AssistantTask {
     return '${value.clubName} · ${value.teamName}';
   }
 
+  // A duty about one match (a referee control question) is one per match.
   String get key => isClubDuty
-      ? '${context.clubId}:${task.kind}'
+      ? '${context.clubId}:${eventId.isEmpty ? '' : '$eventId:'}${task.kind}'
       : '${context.clubId}:$eventId:${task.kind}'
             '${overlappingEvent == null ? '' : ':${overlappingEvent!.id}'}';
   String get route => isClubDuty
@@ -183,6 +184,7 @@ class AssistantTask {
     'club_team_requests' => 'Granska förfrågningar',
     'club_team_page_requests' => 'Granska ansökningar om lagsida',
     'club_booking_requests' => 'Granska bokningar',
+    'club_referee_control' => 'Svara på kontrollfrågan',
     'personal_calendar_conflict' => 'Öppna aktivitet och hantera krock',
     'calendar_conflict' => 'Välj aktivitet och ändra tid',
     'unfinished_preparation' => 'Öppna förberedelser',
@@ -204,6 +206,8 @@ class AssistantTask {
       '${task.count} lag vill ha en publik sida och väntar på klubbens beslut.',
     'club_booking_requests' =>
       '${task.count} bokningar väntar på ditt godkännande i Bokningshanteraren.',
+    'club_referee_control' =>
+      'Domaransvarig undrar om ${task.title} dömde matchen. Svara Ja eller Nej under Domare på matchens Info-flik.',
     'personal_calendar_conflict' =>
       'Dina egna kallelser i olika lag överlappar under kommande sju dagar. '
           'Två ja-svar innebär dubbelbokning; ett obesvarat svar innebär en möjlig krock. '
@@ -562,6 +566,57 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
       }
     } catch (error) {
       AppErrors.caught('assistant_tasks.loadAssistantTasks.teamPages', error);
+    }
+  }
+  // Control questions about a referee, for the matches you manage: under
+  // the team's context, the active one first, opening the match's Info tab.
+  if (overview is RefereeControlServices &&
+      preferences.shows('club_referee_control')) {
+    try {
+      final questions = await (overview as RefereeControlServices)
+          .listMyRefereeControlQuestions()
+          .timeout(const Duration(seconds: 15));
+      for (final question in questions) {
+        bool inTeam(TeamZoneContext item) =>
+            item.clubId == question.clubId && item.teamId == question.teamId;
+        if (preferences.currentTeamOnly &&
+            (activeContext == null || !inTeam(activeContext))) {
+          continue;
+        }
+        final context = activeContext != null && inTeam(activeContext)
+            ? activeContext
+            : contexts
+                  .where((item) => inTeam(item) && item.rolePackage == 'leader')
+                  .followedBy(contexts.where(inTeam))
+                  .followedBy(
+                    contexts.where((item) => item.clubId == question.clubId),
+                  )
+                  .firstOrNull;
+        if (context == null) continue;
+        final item = AssistantTask(
+          context: context,
+          task: LeaderHomeTask(
+            kind: 'club_referee_control',
+            title: question.name,
+            count: question.count,
+            route: Uri(
+              path: ProductRouteContract.calendarEvent(question.eventId),
+              queryParameters: {'context': context.id, 'tab': 'info'},
+            ).toString(),
+            priority: 30,
+          ),
+          eventId: question.eventId,
+          generatedAt: DateTime.now(),
+          stale: false,
+          eventTitle: question.title,
+        );
+        tasks[item.key] = item;
+      }
+    } catch (error) {
+      AppErrors.caught(
+        'assistant_tasks.loadAssistantTasks.refereeControl',
+        error,
+      );
     }
   }
   if (overview is PersonalCalendarConflictServices &&
