@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:teamzone_app/src/features/team_development/team_development_services.dart';
 import 'package:teamzone_app/src/features/match_workspace/match_lineup_models.dart';
 import 'package:teamzone_app/src/features/match_workspace/match_live_models.dart';
 import 'package:teamzone_app/src/features/match_workspace/match_plan_models.dart';
@@ -170,9 +171,14 @@ class UnconfiguredMatchPlanServices implements MatchPlanServices {
       Future.error(_error);
 }
 
-class SupabaseMatchPlanServices implements MatchPlanServices {
+class SupabaseMatchPlanServices
+    implements MatchPlanServices, TeamPlanSuggestionServices {
   SupabaseMatchPlanServices(this._client);
   final SupabaseClient _client;
+
+  @override
+  Future<TeamPlanSuggestion?> teamPlanSuggestion(String eventId) =>
+      loadTeamPlanSuggestion(_client, eventId);
 
   Future<Object?> _rpc(String name, Map<String, Object?> params) =>
       _client.schema('api').rpc<Object?>(name, params: params);

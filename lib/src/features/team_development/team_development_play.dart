@@ -11,10 +11,6 @@ class _TdpPlay extends StatelessWidget {
     controller: controller,
     builder: (plan) {
       final theme = Theme.of(context);
-      final areas = [
-        for (final area in PrincipleArea.values)
-          if (plan.principles.any((p) => p.area == area)) area,
-      ];
       return [
         Row(
           children: [
@@ -31,45 +27,20 @@ class _TdpPlay extends StatelessWidget {
               ),
           ],
         ),
-        if (areas.isEmpty)
-          const _TdpHint(
-            icon: Icons.lightbulb_outline,
-            text:
-                'Beskriv hur laget vill spela, till exempel i försvar: '
-                '"Vinn tillbaka bollen inom fem sekunder".',
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            'Spelets fyra skeden, som fotbollsförbundet beskriver dem: med '
+            'boll och motsatsen utan boll.',
+            style: theme.textTheme.bodySmall,
           ),
-        for (final area in areas)
-          Card(
-            key: ValueKey('tdp-area-${area.key}'),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                    child: Text(area.label, style: theme.textTheme.titleMedium),
-                  ),
-                  for (final principle in plan.principles)
-                    if (principle.area == area)
-                      ListTile(
-                        key: ValueKey('tdp-principle-${principle.id}'),
-                        title: Text(principle.title),
-                        subtitle: principle.description.trim().isEmpty
-                            ? null
-                            : Text(principle.description),
-                        onTap: controller.canEdit
-                            ? () => _TdpPrincipleDialog.edit(
-                                context,
-                                controller,
-                                plan,
-                                principle: principle,
-                              )
-                            : null,
-                      ),
-                ],
-              ),
-            ),
+        ),
+        for (final (withBall, without) in PrincipleArea.pairs)
+          _TdpPhasePair(
+            controller: controller,
+            plan: plan,
+            withBall: withBall,
+            without: without,
           ),
         const SizedBox(height: 24),
         Row(
@@ -98,6 +69,125 @@ class _TdpPlay extends StatelessWidget {
           _TdpKpiCard(controller: controller, plan: plan, kpi: kpi),
       ];
     },
+  );
+}
+
+/// One phase of the game: its principles with the ball and, beside or
+/// below, the opposite without it.
+class _TdpPhasePair extends StatelessWidget {
+  const _TdpPhasePair({
+    required this.controller,
+    required this.plan,
+    required this.withBall,
+    required this.without,
+  });
+  final _TdpController controller;
+  final SeasonPlan plan;
+  final PrincipleArea withBall, without;
+
+  Widget _side(BuildContext context, PrincipleArea area) {
+    final theme = Theme.of(context);
+    final principles = [
+      for (final principle in plan.principles)
+        if (principle.area == area) principle,
+    ];
+    return Column(
+      key: ValueKey('tdp-area-${area.key}'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 4, 0),
+          child: Row(
+            children: [
+              Icon(
+                area.withBall ? Icons.sports_soccer : Icons.shield_outlined,
+                size: 18,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(area.label, style: theme.textTheme.titleSmall),
+                    Text(
+                      area.withBall ? 'Med boll' : 'Utan boll',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              if (controller.canEdit)
+                IconButton(
+                  tooltip: 'Lägg till princip',
+                  icon: const Icon(Icons.add),
+                  onPressed: () => _TdpPrincipleDialog.edit(
+                    context,
+                    controller,
+                    plan,
+                    area: area,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (principles.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+            child: Text(
+              'Inga principer än.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        for (final principle in principles)
+          ListTile(
+            key: ValueKey('tdp-principle-${principle.id}'),
+            dense: true,
+            title: Text(principle.title),
+            subtitle: principle.description.trim().isEmpty
+                ? null
+                : Text(principle.description),
+            onTap: controller.canEdit
+                ? () => _TdpPrincipleDialog.edit(
+                    context,
+                    controller,
+                    plan,
+                    principle: principle,
+                  )
+                : null,
+          ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: LayoutBuilder(
+        builder: (context, constraints) => constraints.maxWidth >= 640
+            ? IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: _side(context, withBall)),
+                    const VerticalDivider(width: 1),
+                    Expanded(child: _side(context, without)),
+                  ],
+                ),
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _side(context, withBall),
+                  const Divider(indent: 16, endIndent: 16),
+                  _side(context, without),
+                ],
+              ),
+      ),
+    ),
   );
 }
 
@@ -331,8 +421,9 @@ abstract final class _TdpPrincipleDialog {
     _TdpController controller,
     SeasonPlan plan, {
     TeamPrinciple? principle,
+    PrincipleArea? area,
   }) async {
-    var area = principle?.area ?? PrincipleArea.attack;
+    var chosen = principle?.area ?? area ?? PrincipleArea.scoring;
     final result = await showDialog<(String, String, String)>(
       context: context,
       builder: (context) => _TdpTexts(
@@ -349,16 +440,19 @@ abstract final class _TdpPrincipleDialog {
                   DropdownButtonFormField<PrincipleArea>(
                     isExpanded: true,
                     key: const Key('tdp-principle-area'),
-                    initialValue: area,
-                    decoration: const InputDecoration(labelText: 'Område'),
+                    initialValue: chosen,
+                    decoration: const InputDecoration(labelText: 'Skede'),
                     items: [
                       for (final value in PrincipleArea.values)
                         DropdownMenuItem(
                           value: value,
-                          child: Text(value.label),
+                          child: Text(
+                            '${value.label} (${value.withBall ? 'med boll' : 'utan boll'})',
+                          ),
                         ),
                     ],
-                    onChanged: (value) => setState(() => area = value ?? area),
+                    onChanged: (value) =>
+                        setState(() => chosen = value ?? chosen),
                   ),
                   TextField(
                     key: const Key('tdp-principle-title'),
@@ -427,7 +521,7 @@ abstract final class _TdpPrincipleDialog {
         () => controller.services.savePrinciple(
           plan,
           principleId: principle?.id,
-          area: area,
+          area: chosen,
           title: result.$2,
           description: result.$3,
         ),

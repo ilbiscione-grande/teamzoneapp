@@ -637,6 +637,7 @@ class _ProductShellState extends State<_ProductShell> {
                   clubHome: widget.overview is ClubHomeServices
                       ? widget.overview as ClubHomeServices
                       : null,
+                  teamDevelopment: widget.modules.teamDevelopment,
                 )
               : destination.path == '/calendar'
               ? _CalendarSurface(

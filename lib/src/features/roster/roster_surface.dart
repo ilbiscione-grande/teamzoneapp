@@ -11,6 +11,7 @@ class _RosterSurface extends StatefulWidget {
     this.initialAction,
     this.profileServices = const UnconfiguredProfileServices(),
     this.clubHome,
+    this.teamDevelopment = const UnconfiguredTeamDevelopmentServices(),
   });
 
   final TeamZoneContext contextValue;
@@ -22,6 +23,9 @@ class _RosterSurface extends StatefulWidget {
 
   /// Lists the club's teams in a club context without a team.
   final ClubHomeServices? clubHome;
+
+  /// Lagets plan on Översikt: what the Team Development Plan shares.
+  final TeamDevelopmentServices teamDevelopment;
   final String? initialTab;
   // Set by the swipe-up quick actions sheet's "Bjud in spelare" shortcut
   // (ProductRouteContract.teamInvite) to open the invitations/team-codes
@@ -405,6 +409,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                   onOpenApplications: _showMembershipReviews,
                   onOpenInvitations: _showInvitations,
                   calendar: widget.calendar,
+                  teamDevelopment: widget.teamDevelopment,
                 ),
                 _buildRoster(context),
                 _TeamEventList(
@@ -5068,10 +5073,12 @@ class _TeamOverviewSurface extends StatefulWidget {
     required this.onNavigate,
     required this.onOpenApplications,
     required this.onOpenInvitations,
+    this.teamDevelopment = const UnconfiguredTeamDevelopmentServices(),
   });
   final TeamZoneContext contextValue;
   final RosterServices roster;
   final CalendarServices calendar;
+  final TeamDevelopmentServices teamDevelopment;
   final ValueChanged<String> onNavigate;
   final Future<void> Function() onOpenApplications;
   final Future<void> Function() onOpenInvitations;
@@ -5222,6 +5229,8 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
                 onOpenCalendar: () => widget.onNavigate('/team?tab=calendar'),
               ),
             ),
+            if (widget.contextValue.teamId case final teamId?)
+              _TeamPlanCard(teamId: teamId, services: widget.teamDevelopment),
             _sectionTitle(context, strings.feature('Om laget')),
             Text(
               value.summary ??

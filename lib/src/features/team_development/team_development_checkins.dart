@@ -129,6 +129,8 @@ abstract final class _TdpGoalSheet {
                 ),
               ],
               const SizedBox(height: 20),
+              _TdpGoalLinks(controller: controller, plan: plan, goal: goal),
+              const SizedBox(height: 20),
               Text('Avstämningar', style: theme.textTheme.titleMedium),
               if (history.isEmpty)
                 Padding(

@@ -101,6 +101,8 @@ class _TdpSeason extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
+        _TdpSharingCard(controller: controller, plan: plan),
+        const SizedBox(height: 16),
         if (plan.periods.isEmpty)
           const _TdpHint(
             icon: Icons.view_timeline_outlined,

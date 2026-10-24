@@ -56,6 +56,56 @@ void main() {
     expect(plan.goalsOf(GoalHorizon.short).single.state, GoalState.achieved);
   });
 
+  test('the players see only what is shared, and the suggestion reads', () {
+    final shared = SharedTeamPlan.fromJson(const {
+      'title': 'Säsong 2026',
+      'starts_on': '2026-01-01',
+      'ends_on': '2026-12-31',
+      'vision': null,
+      'periods': null,
+      'principles': [
+        {'id': 'p', 'area': 'regaining', 'title': 'Fem sekunder'},
+      ],
+      'goals': [
+        {
+          'id': 'g',
+          'horizon': 'season',
+          'title': 'Alla spelar',
+          'links': [
+            {
+              'id': 'l',
+              'title': 'Film',
+              'url': 'https://x.se',
+              'visible': true,
+            },
+          ],
+        },
+      ],
+    });
+    expect(shared.periods, isNull, reason: 'not shared');
+    expect(shared.principles!.single.area, PrincipleArea.regaining);
+    expect(PrincipleArea.regaining.withBall, isFalse);
+    expect(PrincipleArea.regaining.opposite, PrincipleArea.counter);
+    expect(shared.goals!.single.links.single.title, 'Film');
+    final suggestion = TeamPlanSuggestion.fromJson(const {
+      'plan_title': 'Säsong 2026',
+      'period': {'name': 'Vår', 'phase': 'competition', 'focus': 'Press'},
+      'principles': [
+        {'area': 'build_up', 'title': 'Via backlinjen'},
+      ],
+      'goals': [
+        {'horizon': 'period', 'title': 'Vinn bollen högt'},
+      ],
+    });
+    expect([suggestion.periodName, suggestion.periodFocus], ['Vår', 'Press']);
+    expect(suggestion.principles.single.area, PrincipleArea.buildUp);
+    expect(suggestion.goals, ['Vinn bollen högt']);
+    expect(
+      TeamPlanSuggestion.fromJson(const {'plan_title': 'x'}).isEmpty,
+      isTrue,
+    );
+  });
+
   testWidgets('a leader plans the season in the module', (tester) async {
     tester.view.physicalSize = const Size(390, 1400);
     tester.view.devicePixelRatio = 1;
@@ -172,6 +222,38 @@ void main() {
     await tester.tap(find.byKey(const Key('tdp-checkin-save')));
     await tester.pumpAndSettle();
     expect(services.plan!.checkinsOfKpi(kpi.id).single.value, 14.5);
+    await tester.tapAt(const Offset(195, 40));
+    await tester.pumpAndSettle();
+
+    // Sharing with the players, per part, under Säsongen.
+    await tester.tap(find.text('Säsongen'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('tdp-share-goals')));
+    await tester.tap(find.byKey(const Key('tdp-share-goals')));
+    await tester.pumpAndSettle();
+    expect(services.plan!.sharing.goals, isTrue);
+    expect(services.plan!.sharing.vision, isFalse);
+
+    // A link on the goal, shown to the players.
+    await tester.tap(find.text('Mål'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Alla spelar mycket'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('tdp-goal-add-link')));
+    await tester.tap(find.byKey(const Key('tdp-goal-add-link')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('tdp-link-title')), 'Film');
+    await tester.enterText(
+      find.byKey(const Key('tdp-link-url')),
+      'https://example.com/film',
+    );
+    await tester.pump();
+    await tester.tap(find.text('Visa för spelarna'));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tdp-link-save')));
+    await tester.pumpAndSettle();
+    final link = services.plan!.goals.single.links.single;
+    expect([link.title, link.visible], ['Film', true]);
     expect(tester.takeException(), isNull);
   });
 }
@@ -187,6 +269,7 @@ class _Plans implements TeamDevelopmentServices {
     List<TeamPrinciple>? principles,
     List<TeamKpi>? kpis,
     List<TeamCheckin>? checkins,
+    PlanSharing? sharing,
     bool revise = true,
   }) => plan = SeasonPlan(
     id: plan!.id,
@@ -196,6 +279,7 @@ class _Plans implements TeamDevelopmentServices {
     endsOn: plan!.endsOn,
     revision: plan!.revision + (revise ? 1 : 0),
     checkinEveryDays: plan!.checkinEveryDays,
+    sharing: sharing ?? plan!.sharing,
     periods: periods ?? plan!.periods,
     goals: goals ?? plan!.goals,
     principles: principles ?? plan!.principles,
@@ -390,6 +474,53 @@ class _Plans implements TeamDevelopmentServices {
     revise: false,
     checkins: [...plan.checkins.where((c) => c.id != id)],
   );
+
+  @override
+  Future<SeasonPlan> setSharing(SeasonPlan plan, PlanSharing sharing) async =>
+      _with(sharing: sharing);
+
+  @override
+  Future<SeasonPlan> addGoalLink(
+    SeasonPlan plan, {
+    required String goalId,
+    required String title,
+    required String url,
+    required bool visible,
+  }) async => _with(
+    revise: false,
+    goals: [
+      for (final goal in plan.goals)
+        goal.id != goalId
+            ? goal
+            : TeamGoal(
+                id: goal.id,
+                horizon: goal.horizon,
+                periodId: goal.periodId,
+                title: goal.title,
+                description: goal.description,
+                state: goal.state,
+                links: [
+                  ...goal.links,
+                  GoalLink(
+                    id: 'link-${_ids++}',
+                    title: title,
+                    url: url,
+                    visible: visible,
+                  ),
+                ],
+              ),
+    ],
+  );
+
+  @override
+  Future<SeasonPlan> changeGoalLink(
+    SeasonPlan plan,
+    String linkId, {
+    required bool? visible,
+  }) async => _with(revise: false);
+
+  @override
+  Future<SharedTeamPlan?> getShared(String teamId) async => null;
 }
 
 class _Modules implements ModuleServices {

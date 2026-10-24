@@ -66,6 +66,20 @@ class _PreparationTabState extends State<_PreparationTab> {
   // Checkbox state shown before the server confirms; reverted on failure.
   final Map<String, bool> _optimisticDone = {};
 
+  // MFD-12: what the team's plan says for a training's day, to pick focus
+  // from. Read once; a suggestion only.
+  late final Future<TeamPlanSuggestion?> _planSuggestion =
+      widget.event.type == 'training' &&
+          widget.allowEdit &&
+          _services is TeamPlanSuggestionServices
+      ? (_services as TeamPlanSuggestionServices)
+            .teamPlanSuggestion(widget.event.id)
+            .catchError((Object error) {
+              AppErrors.caught('event_preparation._planSuggestion', error);
+              return null;
+            })
+      : Future.value(null);
+
   EventPreparationServices get _services => widget.services;
   // Each area follows its own capability (logistics, training, match);
   // the active team context must also allow editing.
@@ -554,6 +568,26 @@ class _PreparationTabState extends State<_PreparationTab> {
             ],
           ),
         ),
+        if (_canTraining)
+          FutureBuilder<TeamPlanSuggestion?>(
+            future: _planSuggestion,
+            builder: (context, snapshot) => switch (snapshot.data) {
+              final suggestion? => _PlanSuggestionBox(
+                suggestion: suggestion,
+                taken: {for (final item in items) item.label.toLowerCase()},
+                onTake: (label) => _write(
+                  () => _services.saveItem(
+                    eventId: data.eventId,
+                    itemId: _newUuid(),
+                    kind: PreparationKind.focus,
+                    label: label,
+                    expectedRevision: 0,
+                  ),
+                ),
+              ),
+              null => const SizedBox.shrink(),
+            },
+          ),
       ],
     );
   }

@@ -23,6 +23,25 @@ class _MatchPlanEditorState extends State<_MatchPlanEditor> {
   Object? _error;
   late final Future<EventFollowup?> _goals = _loadGoals();
 
+  // MFD-12: the period's focus and the team's principles, as support when
+  // writing the tactics. A suggestion only.
+  late final Future<TeamPlanSuggestion?> _planSuggestion =
+      widget.calendar.matchPlans is TeamPlanSuggestionServices
+      ? (widget.calendar.matchPlans as TeamPlanSuggestionServices)
+            .teamPlanSuggestion(widget.eventId)
+            .catchError((Object error) {
+              AppErrors.caught('match_plan_editor._planSuggestion', error);
+              return null;
+            })
+      : Future.value(null);
+
+  /// A principle or goal into the tactics, on a line of its own.
+  Future<void> _takeIntoTactics(String label) async {
+    final text = _tactics.text.trimRight();
+    _tactics.text = text.isEmpty ? '• $label' : '$text\n• $label';
+    _changed();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -131,6 +150,28 @@ class _MatchPlanEditorState extends State<_MatchPlanEditor> {
       children: [
         _MatchPlanHeader(plan: plan),
         const SizedBox(height: 12),
+        if (edit)
+          FutureBuilder<TeamPlanSuggestion?>(
+            future: _planSuggestion,
+            builder: (context, snapshot) => switch (snapshot.data) {
+              final suggestion? => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _PlanSuggestionBox(
+                  suggestion: suggestion,
+                  taken: {
+                    for (final line in _tactics.text.split('\n'))
+                      line
+                          .replaceFirst(RegExp(r'^•\s*'), '')
+                          .trim()
+                          .toLowerCase(),
+                  },
+                  onTake: _takeIntoTactics,
+                  takeHint: 'Ett tryck lägger in den under Taktik.',
+                ),
+              ),
+              null => const SizedBox.shrink(),
+            },
+          ),
         _PlanSectionCard(
           area: 'tactics',
           title: 'Taktik',

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:teamzone_app/src/features/team_development/team_development_services.dart';
 import 'package:teamzone_app/src/features/calendar/followup_models.dart';
 import 'package:teamzone_app/src/features/calendar/preparation_models.dart';
 import 'package:teamzone_app/src/core/observability/app_errors.dart';
@@ -183,9 +184,14 @@ class UnconfiguredEventPreparationServices implements EventPreparationServices {
   Future<EventFollowup> getFollowup(String eventId) => _fail();
 }
 
-class SupabaseEventPreparationServices implements EventPreparationServices {
+class SupabaseEventPreparationServices
+    implements EventPreparationServices, TeamPlanSuggestionServices {
   SupabaseEventPreparationServices(this._client);
   final SupabaseClient _client;
+
+  @override
+  Future<TeamPlanSuggestion?> teamPlanSuggestion(String eventId) =>
+      loadTeamPlanSuggestion(_client, eventId);
 
   Future<Object?> _rpc(String name, Map<String, Object?> params) async {
     try {

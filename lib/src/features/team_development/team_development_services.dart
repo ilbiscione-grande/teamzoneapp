@@ -112,6 +112,27 @@ abstract interface class TeamDevelopmentServices {
     required String note,
   });
   Future<SeasonPlan> deleteCheckin(SeasonPlan plan, String checkinId);
+
+  /// What the players and guardians see.
+  Future<SeasonPlan> setSharing(SeasonPlan plan, PlanSharing sharing);
+  Future<SeasonPlan> addGoalLink(
+    SeasonPlan plan, {
+    required String goalId,
+    required String title,
+    required String url,
+    required bool visible,
+  });
+
+  /// Shown to the players or not; `visible: null` removes the link.
+  Future<SeasonPlan> changeGoalLink(
+    SeasonPlan plan,
+    String linkId, {
+    required bool? visible,
+  });
+
+  /// The shared parts of today's season (else the next) for the team's
+  /// players and guardians; null when nothing is shared.
+  Future<SharedTeamPlan?> getShared(String teamId);
 }
 
 class UnconfiguredTeamDevelopmentServices implements TeamDevelopmentServices {
@@ -200,6 +221,25 @@ class UnconfiguredTeamDevelopmentServices implements TeamDevelopmentServices {
   @override
   Future<SeasonPlan> deleteCheckin(SeasonPlan plan, String checkinId) =>
       Future.error(_error);
+  @override
+  Future<SeasonPlan> setSharing(SeasonPlan plan, PlanSharing sharing) =>
+      Future.error(_error);
+  @override
+  Future<SeasonPlan> addGoalLink(
+    SeasonPlan plan, {
+    required String goalId,
+    required String title,
+    required String url,
+    required bool visible,
+  }) => Future.error(_error);
+  @override
+  Future<SeasonPlan> changeGoalLink(
+    SeasonPlan plan,
+    String linkId, {
+    required bool? visible,
+  }) => Future.error(_error);
+  @override
+  Future<SharedTeamPlan?> getShared(String teamId) => Future.error(_error);
 }
 
 class SupabaseTeamDevelopmentServices implements TeamDevelopmentServices {
@@ -434,4 +474,79 @@ class SupabaseTeamDevelopmentServices implements TeamDevelopmentServices {
           'target_checkin_id': checkinId,
         }),
       );
+
+  @override
+  Future<SeasonPlan> setSharing(SeasonPlan plan, PlanSharing sharing) async =>
+      SeasonPlan.fromJson(
+        await _rpc('set_team_development_sharing', {
+          'target_plan_id': plan.id,
+          'expected_revision': plan.revision,
+          'vision': sharing.vision,
+          'periods': sharing.periods,
+          'principles': sharing.principles,
+          'goals': sharing.goals,
+        }),
+      );
+
+  @override
+  Future<SeasonPlan> addGoalLink(
+    SeasonPlan plan, {
+    required String goalId,
+    required String title,
+    required String url,
+    required bool visible,
+  }) async => SeasonPlan.fromJson(
+    await _rpc('add_team_development_goal_link', {
+      'target_plan_id': plan.id,
+      'target_goal_id': goalId,
+      'link_title': title,
+      'link_url': url,
+      'show_players': visible,
+    }),
+  );
+
+  @override
+  Future<SeasonPlan> changeGoalLink(
+    SeasonPlan plan,
+    String linkId, {
+    required bool? visible,
+  }) async => SeasonPlan.fromJson(
+    await _rpc('change_team_development_goal_link', {
+      'target_plan_id': plan.id,
+      'target_link_id': linkId,
+      'show_players': visible,
+    }),
+  );
+
+  @override
+  Future<SharedTeamPlan?> getShared(String teamId) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'get_shared_team_development',
+          params: {'target_team_id': teamId},
+        )
+        .timeout(const Duration(seconds: 15));
+    return value is Map<String, dynamic>
+        ? SharedTeamPlan.fromJson(value)
+        : null;
+  }
+}
+
+/// The suggestion from the team's plan for an event's preparation, for the
+/// services that prepare events; null when there is none to give.
+Future<TeamPlanSuggestion?> loadTeamPlanSuggestion(
+  SupabaseClient client,
+  String eventId,
+) async {
+  final value = await client
+      .schema('api')
+      .rpc<Object?>(
+        'get_team_plan_suggestion',
+        params: {'target_event_id': eventId},
+      )
+      .timeout(const Duration(seconds: 15));
+  if (value is! Map<String, dynamic>) return null;
+  final suggestion = TeamPlanSuggestion.fromJson(value);
+  return suggestion.isEmpty ? null : suggestion;
 }
