@@ -39,6 +39,14 @@ abstract interface class EditorialServices {
     required String teamId,
     required bool enabled,
   });
+
+  /// Decision package 12: whether the team's published matches are reported
+  /// live on its public page; throws for those who may not manage it.
+  Future<({bool enabled, bool published})> getTeamLiveReporting(String teamId);
+  Future<void> setTeamLiveReporting({
+    required String teamId,
+    required bool enabled,
+  });
   Future<void> decideTeamPublication({
     required String requestId,
     required bool approve,
@@ -156,6 +164,17 @@ class UnconfiguredEditorialServices implements EditorialServices {
   }) => _fail();
   @override
   Future<void> setTeamContactEnabled({
+    required String teamId,
+    required bool enabled,
+  }) => _fail();
+
+  @override
+  Future<({bool enabled, bool published})> getTeamLiveReporting(
+    String teamId,
+  ) => _fail();
+
+  @override
+  Future<void> setTeamLiveReporting({
     required String teamId,
     required bool enabled,
   }) => _fail();
@@ -355,6 +374,34 @@ class SupabaseEditorialServices implements EditorialServices {
       params: {'target_team_id': teamId, 'enabled': enabled},
     );
   }
+
+  @override
+  Future<({bool enabled, bool published})> getTeamLiveReporting(
+    String teamId,
+  ) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'get_team_live_reporting',
+          params: {'target_team_id': teamId},
+        );
+    final map = Map<String, dynamic>.from(value as Map);
+    return (
+      enabled: map['enabled'] == true,
+      published: map['published'] == true,
+    );
+  }
+
+  @override
+  Future<void> setTeamLiveReporting({
+    required String teamId,
+    required bool enabled,
+  }) => _client
+      .schema('api')
+      .rpc<Object?>(
+        'set_team_live_reporting',
+        params: {'target_team_id': teamId, 'enabled': enabled},
+      );
 
   @override
   Future<void> decideTeamPublication({

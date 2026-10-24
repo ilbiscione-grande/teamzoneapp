@@ -35,7 +35,7 @@ class _MatchLiveView extends StatefulWidget {
 }
 
 class _MatchLiveViewState extends State<_MatchLiveView>
-    with _LiveCounterState, WidgetsBindingObserver {
+    with _LiveCounterState, _LivePublicState, WidgetsBindingObserver {
   MatchSnapshot? _snapshot;
   MatchLineup? _lineup;
   final _roles = <String, String>{};
@@ -69,6 +69,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
       _liveDebounce = Timer(const Duration(milliseconds: 300), () {
         unawaited(_refresh());
         unawaited(_loadCounters());
+        unawaited(_loadPublicLive());
       });
     });
     unawaited(_loadLineup());
@@ -770,6 +771,8 @@ class _MatchLiveViewState extends State<_MatchLiveView>
           onEndPeriod: _endPeriod,
           onFinish: _finish,
           onPhase: widget.onPhase,
+          publicLabel: _publicLiveLabel,
+          onPublicLive: manage ? _choosePublicLive : null,
         ),
         Expanded(
           child: Padding(
@@ -874,6 +877,8 @@ class _MatchLiveViewState extends State<_MatchLiveView>
         ..._banners(manage),
         if (manage)
           _LiveToolbar(
+            publicLabel: _publicLiveLabel,
+            onPublicLive: _choosePublicLive,
             onMyView: _openMyView,
             onOwnButtons: (_buttons?.canEdit ?? false) ? _editButtons : null,
             onPitchMode: buttons
@@ -1016,6 +1021,8 @@ class _MatchLiveViewState extends State<_MatchLiveView>
           onEndPeriod: _endPeriod,
           onFinish: _finish,
           onPhase: widget.onPhase,
+          publicLabel: _publicLiveLabel,
+          onPublicLive: manage ? _choosePublicLive : null,
           onGoal: _goal,
         ),
         Expanded(child: list),

@@ -806,3 +806,47 @@ class IntakeSubmission {
         teamName: json['team_name'] as String?,
       );
 }
+
+/// The club's areas given to its functionaries: publication, members and
+/// teams, announcements and referee assignment. [grantable] is what the
+/// viewer holds and can therefore give or take back.
+class ClubPermissions {
+  const ClubPermissions({required this.grantable, required this.people});
+  factory ClubPermissions.fromJson(Map<String, dynamic> json) =>
+      ClubPermissions(
+        grantable: _strings(json['grantable']).toSet(),
+        people: [
+          for (final row
+              in (json['people'] as List? ?? const []).whereType<Map>())
+            ClubPermissionPerson.fromJson(Map<String, dynamic>.from(row)),
+        ],
+      );
+  final Set<String> grantable;
+  final List<ClubPermissionPerson> people;
+
+  static const areas = [
+    'publication.manage',
+    'club.memberships.manage',
+    'club.messaging.manage',
+    'club.referees.manage',
+  ];
+}
+
+class ClubPermissionPerson {
+  const ClubPermissionPerson({
+    required this.personId,
+    required this.name,
+    required this.capabilities,
+    this.isSelf = false,
+  });
+  factory ClubPermissionPerson.fromJson(Map<String, dynamic> json) =>
+      ClubPermissionPerson(
+        personId: json['person_id'] as String,
+        name: json['name'] as String? ?? '',
+        capabilities: _strings(json['capabilities']).toSet(),
+        isSelf: json['is_self'] == true,
+      );
+  final String personId, name;
+  final Set<String> capabilities;
+  final bool isSelf;
+}

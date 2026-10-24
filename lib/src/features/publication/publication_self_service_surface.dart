@@ -614,6 +614,14 @@ class _PublicationSelfServiceSurfaceState
                   value: team['contact_enabled'] != false,
                   onChanged: _busy ? null : (value) => _setContact(team, value),
                 ),
+            for (final team in teams)
+              if (team['mode'] == 'published' && club['mode'] == 'published')
+                _TeamLiveReportingTile(
+                  key: ValueKey('team-live-${team['id']}'),
+                  teamId: '${team['id']}',
+                  teamName: '${team['name']}',
+                  editorial: widget.editorial,
+                ),
             if (canManage && requests.isNotEmpty) ...[
               const Divider(),
               const Padding(

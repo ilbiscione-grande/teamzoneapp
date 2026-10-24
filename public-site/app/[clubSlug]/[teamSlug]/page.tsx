@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { WrittenMatchReport } from "../../../components/written-match-report";
+import { LiveMatches, MatchCourse } from "../../../components/live-match";
+import type { LiveMatch } from "../../../lib/match-live";
 import { notFound } from "next/navigation";
 import { InactiveState } from "../../../components/inactive-state";
 import { FollowButton } from "../../../components/follow-button";
 import { AdminEntry } from "../../../components/admin/admin-entry";
 import { ContactForm } from "../../../components/contact-form";
 import { ClubFooter, ClubHeader, Crest, Empty, EventCard, NewsGrid, ResultCard, SectionHead, clubSiteClass, ClubTheme, initials, type CalendarEvent, type NewsItem, type ResultItem } from "../../../components/club-site";
-import { canonicalUrl, getClubPage, getPublications, getTeamEvents, getTeamResults, getTeamPage } from "../../../lib/page-data";
+import { canonicalUrl, getClubPage, getPublications, getTeamEvents, getTeamLiveMatches, getTeamResults, getTeamPage } from "../../../lib/page-data";
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ clubSlug: string; teamSlug: string }> };
@@ -32,7 +34,11 @@ export default async function TeamPage({ params }: Props) {
     const club = await getClubPage(clubSlug);
     if (club?.not_found) notFound();
     if (club?.available === false) return <InactiveState kind="lag" />;
-    const [publicationResult, eventResult, resultData] = await Promise.all([getPublications(club.id, team.id), getTeamEvents(team.id), getTeamResults(team.id)]);
+    // The live matches are an addition: the page stands without them.
+    const [publicationResult, eventResult, resultData, liveData] = await Promise.all([getPublications(club.id, team.id), getTeamEvents(team.id), getTeamResults(team.id), getTeamLiveMatches(team.id).catch(() => null)]);
+    const liveMatches = (liveData?.items ?? []) as LiveMatch[];
+    const serverNow = (liveData?.server_now as string | undefined) ?? new Date().toISOString();
+    const courses = new Map(liveMatches.map(match => [match.id, match]));
     const results = (resultData?.items ?? []) as ResultItem[];
     const news = (publicationResult?.items ?? []).filter((item: NewsItem & { content_type?: string }) => item.content_type === "news") as NewsItem[];
     const events = (eventResult?.items ?? []) as CalendarEvent[];
@@ -61,6 +67,8 @@ export default async function TeamPage({ params }: Props) {
             </div>
           </div>
         </section>
+
+        <LiveMatches teamId={team.id} teamName={team.name} initial={liveMatches} serverNow={serverNow} />
 
         {/* News lead the page. From tablet width the next match, latest
             result and the coming events sit in a narrower right column;
@@ -98,7 +106,7 @@ export default async function TeamPage({ params }: Props) {
           <section id="resultat" className="cs-section">
             <div className="cs-wrap">
               <SectionHead kicker="Färdigspelat" title="Senaste slutresultaten" />
-              <div className="cs-results">{results.map(result => <ResultCard key={result.id} result={result} teamName={team.name}><WrittenMatchReport text={result.report_text} /></ResultCard>)}</div>
+              <div className="cs-results">{results.map(result => <ResultCard key={result.id} result={result} teamName={team.name}><MatchCourse match={courses.get(result.id)} teamName={team.name} /><WrittenMatchReport text={result.report_text} /></ResultCard>)}</div>
             </div>
           </section>
         )}

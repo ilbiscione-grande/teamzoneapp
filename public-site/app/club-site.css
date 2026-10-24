@@ -277,3 +277,21 @@ img.cs-crest { border-radius: 0; filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
   .cs-team-grid { grid-template-columns: 1fr; }
   .cs-team-side { padding-top: 0; }
 }
+
+/* Decision package 12: the match under way, and a played match's course. */
+.cs-live-section { padding: clamp(24px, 4vw, 40px) 0; background: var(--cs-ink); color: white; }
+.cs-live { display: grid; gap: 10px; max-width: 760px; margin: 0 auto; padding: 22px 24px; border-radius: 8px; background: var(--cs-ink-3); border: 1px solid rgba(255,255,255,.08); }
+.cs-live + .cs-live { margin-top: 16px; }
+.cs-live-top { display: flex; align-items: center; gap: 12px; color: #a5afc0; font-size: .85rem; }
+.cs-live-badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: var(--cs-red); color: white; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: .72rem; }
+.cs-live-badge i { width: 7px; height: 7px; border-radius: 50%; background: white; animation: cs-live-pulse 1.4s ease-in-out infinite; }
+@keyframes cs-live-pulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .cs-live-badge i { animation: none; } }
+.cs-live-score span { color: #d7dce5; }
+.cs-live-clock { margin: 0; text-align: center; color: #a5afc0; font-variant-numeric: tabular-nums; }
+.cs-live-clock strong { color: var(--cs-accent-text); font-size: 1.2rem; }
+.cs-live-feed { display: grid; gap: 10px; margin: 6px 0 0; padding: 14px 0 0; list-style: none; border-top: 1px solid rgba(255,255,255,.08); line-height: 1.45; }
+.cs-live-feed li:first-child { color: white; font-weight: 600; }
+.cs-live-feed li { color: #c9d0db; }
+.cs-live-empty { margin: 0; color: #a5afc0; text-align: center; }
+.cs .match-course ol { display: grid; gap: 6px; margin: 8px 0 0; padding-left: 18px; line-height: 1.45; }

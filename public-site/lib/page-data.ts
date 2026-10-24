@@ -59,6 +59,13 @@ export const getTeamResults = cache(async (teamId: string) => {
   return publicRpc(client, "public_list_team_results", { team_id: teamId, ip_hash: ipHash });
 });
 
+// Decision package 12: the team's matches reported live, the one under way
+// and the played ones' course.
+export const getTeamLiveMatches = cache(async (teamId: string) => {
+  const { client, ipHash } = await context();
+  return publicRpc(client, "public_team_live_matches", { team_id: teamId, ip_hash: ipHash });
+});
+
 export const getClubEvents = cache(async (clubId: string) => {
   const { client, ipHash } = await context();
   return publicRpc(client, "public_list_club_events", {

@@ -698,9 +698,14 @@ class _LiveToolbar extends StatelessWidget {
     this.onPitchMode,
     this.error,
     this.trailing,
+    this.publicLabel,
+    this.onPublicLive,
   });
   final VoidCallback onMyView;
-  final VoidCallback? onOwnButtons, onPitchMode;
+  final VoidCallback? onOwnButtons, onPitchMode, onPublicLive;
+
+  /// Whether the match is reported live on the team's page, to change it.
+  final String? publicLabel;
   final String? error;
 
   /// At the row's end, as the shot map's choices beside the buttons.
@@ -740,6 +745,13 @@ class _LiveToolbar extends StatelessWidget {
           onPressed: onPitchMode,
           icon: const Icon(Icons.sports_soccer, size: 18),
           label: const Text('Planläge'),
+        ),
+      if (onPublicLive != null)
+        TextButton.icon(
+          key: const Key('live-public'),
+          onPressed: onPublicLive,
+          icon: const Icon(Icons.podcasts, size: 18),
+          label: Text(publicLabel ?? 'Publikt'),
         ),
       if (error != null)
         Text(

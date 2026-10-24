@@ -20,6 +20,9 @@ class ProductRouteContract {
   static const board = '/board';
   static const editorial = '/editorial';
   static const publication = '/publication';
+
+  /// The club's areas given to its functionaries.
+  static const clubPermissions = '/club-permissions';
   static const settings = '/settings';
   static const support = '/support';
 
@@ -40,6 +43,7 @@ class ProductRouteContract {
     assistant,
     editorial,
     publication,
+    clubPermissions,
     settings,
     support,
   };

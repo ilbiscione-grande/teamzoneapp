@@ -487,6 +487,13 @@ class _ProductShellState extends State<_ProductShell> {
         ),
       ),
       GoRoute(
+        path: ProductRouteContract.clubPermissions,
+        builder: (_, _) => _ClubPermissionsSurface(
+          clubId: widget.contextValue.clubId,
+          roster: widget.roster,
+        ),
+      ),
+      GoRoute(
         path: ProductRouteContract.publication,
         builder: (_, _) => _PublicationSelfServiceSurface(
           clubId: widget.contextValue.clubId,

@@ -20,6 +20,17 @@ abstract interface class RosterServices {
     required String idempotencyKey,
   });
 
+  /// The club's areas per functionary, for those who hold members and
+  /// teams; [setClubPermissions] gives or takes back only what they hold.
+  Future<ClubPermissions> getClubPermissions(String clubId);
+  Future<void> setClubPermissions({
+    required String clubId,
+    required String personId,
+    required List<String> capabilities,
+    required List<String> expected,
+    required String idempotencyKey,
+  });
+
   /// The team's match format (11v11 until set) and whether the viewer may
   /// change it.
   Future<TeamMatchFormat> getTeamMatchFormat(String teamId);
@@ -362,6 +373,19 @@ class UnconfiguredRosterServices implements RosterServices {
     required List<String> capabilities,
     required List<String> expected,
     String? template,
+    required String idempotencyKey,
+  }) => Future.error(StateError('Supabase is not configured.'));
+
+  @override
+  Future<ClubPermissions> getClubPermissions(String clubId) =>
+      Future.error(StateError('Supabase is not configured.'));
+
+  @override
+  Future<void> setClubPermissions({
+    required String clubId,
+    required String personId,
+    required List<String> capabilities,
+    required List<String> expected,
     required String idempotencyKey,
   }) => Future.error(StateError('Supabase is not configured.'));
 
@@ -839,6 +863,51 @@ class SupabaseRosterServices implements RosterServices {
         'not_grantable',
         'stale_permissions',
         'last_leaders_manager',
+      };
+      if (known.contains(error.message)) {
+        throw TeamRoleException(error.message);
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<ClubPermissions> getClubPermissions(String clubId) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'get_club_permissions',
+          params: {'target_club_id': clubId},
+        );
+    return ClubPermissions.fromJson(Map<String, dynamic>.from(value as Map));
+  }
+
+  @override
+  Future<void> setClubPermissions({
+    required String clubId,
+    required String personId,
+    required List<String> capabilities,
+    required List<String> expected,
+    required String idempotencyKey,
+  }) async {
+    try {
+      await _client
+          .schema('api')
+          .rpc<Object?>(
+            'set_club_permissions',
+            params: {
+              'target_club_id': clubId,
+              'target_person_id': personId,
+              'new_capabilities': capabilities,
+              'expected_capabilities': expected,
+              'idempotency_key': idempotencyKey,
+            },
+          );
+    } on PostgrestException catch (error) {
+      const known = {
+        'not_grantable',
+        'stale_permissions',
+        'last_memberships_manager',
       };
       if (known.contains(error.message)) {
         throw TeamRoleException(error.message);

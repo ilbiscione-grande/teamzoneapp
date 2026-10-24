@@ -77,6 +77,34 @@ abstract interface class MatchPlanServices {
     int delta,
     int minute,
   );
+
+  /// Decision package 12: whether the match is reported live on the team's
+  /// public page, and the match's own choice (null follows the team).
+  Future<LiveReporting> getLiveReporting(String eventId);
+  Future<LiveReporting> setLiveReporting(String eventId, bool? choice);
+}
+
+/// The match's public live reporting: the team's default, the match's own
+/// choice (null follows the team), whether the match and team are published,
+/// and whether it is reported live now.
+class LiveReporting {
+  const LiveReporting({
+    required this.teamDefault,
+    required this.published,
+    required this.live,
+    this.matchChoice,
+  });
+  factory LiveReporting.fromJson(Map<String, dynamic> json) => LiveReporting(
+    teamDefault: json['team_default'] == true,
+    published: json['published'] == true,
+    live: json['live'] == true,
+    matchChoice: json['match_choice'] as bool?,
+  );
+  final bool teamDefault, published, live;
+  final bool? matchChoice;
+
+  /// Reported live once the match is under way.
+  bool get chosen => matchChoice ?? teamDefault;
 }
 
 class UnconfiguredMatchPlanServices implements MatchPlanServices {
@@ -133,6 +161,12 @@ class UnconfiguredMatchPlanServices implements MatchPlanServices {
   Future<void> saveMyView(String a, Set<String>? b) => Future.error(_error);
   @override
   Future<void> recordButton(String a, String b, String c, int d, int e) =>
+      Future.error(_error);
+  @override
+  Future<LiveReporting> getLiveReporting(String eventId) =>
+      Future.error(_error);
+  @override
+  Future<LiveReporting> setLiveReporting(String eventId, bool? choice) =>
       Future.error(_error);
 }
 
@@ -314,4 +348,21 @@ class SupabaseMatchPlanServices implements MatchPlanServices {
     'p_delta': delta,
     'p_minute': minute,
   });
+
+  @override
+  Future<LiveReporting> getLiveReporting(String eventId) async {
+    final value = await _rpc('get_match_live_reporting', {
+      'target_event_id': eventId,
+    });
+    return LiveReporting.fromJson(Map<String, dynamic>.from(value as Map));
+  }
+
+  @override
+  Future<LiveReporting> setLiveReporting(String eventId, bool? choice) async {
+    final value = await _rpc('set_match_live_reporting', {
+      'target_event_id': eventId,
+      'choice': choice,
+    });
+    return LiveReporting.fromJson(Map<String, dynamic>.from(value as Map));
+  }
 }

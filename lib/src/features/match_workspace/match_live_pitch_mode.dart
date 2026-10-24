@@ -584,6 +584,8 @@ class _LiveHeaderBar extends StatelessWidget {
     required this.onFinish,
     this.onPhase,
     this.onGoal,
+    this.publicLabel,
+    this.onPublicLive,
   });
   final MatchSnapshot? snapshot;
   final _MatchSides sides;
@@ -591,6 +593,10 @@ class _LiveHeaderBar extends StatelessWidget {
   final bool busy;
   final VoidCallback onPrimary, onEndPeriod, onFinish;
   final ValueChanged<_MatchPhase>? onPhase;
+
+  /// Live on the team's page: its state, and the way to change it.
+  final String? publicLabel;
+  final VoidCallback? onPublicLive;
 
   /// A goal for a side ('us' or 'opponent'), as on a lying tablet where the
   /// bar replaces the scoreboard.
@@ -689,6 +695,15 @@ class _LiveHeaderBar extends StatelessWidget {
                         PopupMenuItem(
                           value: onFinish,
                           child: const Text('Slutsignal'),
+                        ),
+                      ],
+                      if (live && onPublicLive != null) ...[
+                        const PopupMenuDivider(),
+                        const _MenuHeading('Lagsidan'),
+                        PopupMenuItem(
+                          key: const Key('live-header-public'),
+                          value: onPublicLive,
+                          child: Text(publicLabel ?? 'Live på lagsidan'),
                         ),
                       ],
                       if (live && onPhase != null) const PopupMenuDivider(),

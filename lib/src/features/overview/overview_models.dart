@@ -562,6 +562,7 @@ class ClubHome {
     required this.board,
     required this.economy,
     required this.members,
+    this.publication,
     required this.canAnnounce,
     required this.teams,
   });
@@ -573,6 +574,10 @@ class ClubHome {
   final ({int activeMandates, int pendingChanges})? board;
   final ({int accounts, int pendingEntries})? economy;
   final ({int pendingApplications, int pendingTeamRequests})? members;
+
+  /// Requests for a public team page waiting for the club's decision, for
+  /// those who manage the club's publication.
+  final ({int pendingTeamPages})? publication;
   final bool canAnnounce;
   final List<ClubHomeTeam> teams;
 
@@ -582,6 +587,7 @@ class ClubHome {
     final board = json['board'] as Map<String, dynamic>?;
     final economy = json['economy'] as Map<String, dynamic>?;
     final members = json['members'] as Map<String, dynamic>?;
+    final publication = json['publication'] as Map<String, dynamic>?;
     return ClubHome(
       clubId: json['club_id'] as String,
       ownName: json['own_name'] as String?,
@@ -606,6 +612,9 @@ class ClubHome {
               pendingApplications: count(members, 'pending_applications'),
               pendingTeamRequests: count(members, 'pending_team_requests'),
             ),
+      publication: publication == null
+          ? null
+          : (pendingTeamPages: count(publication, 'pending_team_pages')),
       canAnnounce: json['can_announce'] as bool? ?? false,
       teams: _maps(
         json['teams'],

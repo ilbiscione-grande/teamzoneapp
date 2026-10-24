@@ -181,6 +181,7 @@ class AssistantTask {
     'club_economy_entries' => 'Öppna Ekonomi',
     'club_applications' => 'Granska ansökningar',
     'club_team_requests' => 'Granska förfrågningar',
+    'club_team_page_requests' => 'Granska ansökningar om lagsida',
     'club_booking_requests' => 'Granska bokningar',
     'personal_calendar_conflict' => 'Öppna aktivitet och hantera krock',
     'calendar_conflict' => 'Välj aktivitet och ändra tid',
@@ -199,6 +200,8 @@ class AssistantTask {
     'club_applications' => '${task.count} medlemsansökningar väntar på beslut.',
     'club_team_requests' =>
       '${task.count} förfrågningar om nya lag väntar på beslut.',
+    'club_team_page_requests' =>
+      '${task.count} lag vill ha en publik sida och väntar på klubbens beslut.',
     'club_booking_requests' =>
       '${task.count} bokningar väntar på ditt godkännande i Bokningshanteraren.',
     'personal_calendar_conflict' =>
@@ -439,6 +442,14 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
               'Förfrågningar om nya lag',
               members.pendingTeamRequests,
               route('/team?action=team-requests', clubOnly: true),
+            ),
+          if (home.publication case final publication?
+              when publication.pendingTeamPages > 0)
+            (
+              'club_team_page_requests',
+              'Ansökningar om lagsida',
+              publication.pendingTeamPages,
+              route(ProductRouteContract.publication, clubOnly: true),
             ),
         ];
         for (final (kind, title, count, path) in duties) {

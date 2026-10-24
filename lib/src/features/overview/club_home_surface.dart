@@ -144,6 +144,29 @@ class _ClubHomeContent extends StatelessWidget {
           route: _clubTeamRequestsRoute,
         ),
       ],
+      if (contextValue.can('club.memberships.manage'))
+        _task(
+          context,
+          key: const ValueKey('club-home-permissions'),
+          icon: Icons.admin_panel_settings_outlined,
+          title: strings.feature('Klubbens behörigheter'),
+          subtitle: strings.feature(
+            'Vem som sköter publicering, medlemmar, anslag och domare',
+          ),
+          route: ProductRouteContract.clubPermissions,
+        ),
+      if (home.publication case final publication?)
+        _task(
+          context,
+          key: const ValueKey('club-home-team-pages'),
+          icon: Icons.public_outlined,
+          title: strings.feature('Ansökningar om lagsida'),
+          subtitle: publication.pendingTeamPages > 0
+              ? '${publication.pendingTeamPages} ${strings.feature('väntar på beslut')}'
+              : strings.feature('Inga väntande'),
+          badge: publication.pendingTeamPages,
+          route: ProductRouteContract.publication,
+        ),
       if (contextValue.can('club.referees.manage'))
         _task(
           context,
