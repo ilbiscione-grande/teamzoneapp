@@ -59,3 +59,9 @@ env:
     secret: teamzoneapp-turnstile-secret-key
     availability:
       - RUNTIME
+  # The publication worker's token, the same as Vault's public_site_worker_token;
+  # the database calls the worker with it every minute.
+  - variable: CACHE_INVALIDATION_SECRET
+    secret: teamzoneapp-cache-invalidation-secret
+    availability:
+      - RUNTIME

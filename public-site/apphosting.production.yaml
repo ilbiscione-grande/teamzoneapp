@@ -42,3 +42,7 @@ env:
     secret: teamzoneapp-production-turnstile-secret-key
     availability:
       - RUNTIME
+  - variable: CACHE_INVALIDATION_SECRET
+    secret: teamzoneapp-production-cache-invalidation-secret
+    availability:
+      - RUNTIME

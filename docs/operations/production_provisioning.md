@@ -108,6 +108,10 @@ except the Vault secrets listed below.
    select vault.create_secret('https://<prod ref>.supabase.co', 'project_url');
    select vault.create_secret('<random>', 'support_email_worker_token');
    select vault.create_secret('<random>', 'notification_worker_token');
+   -- The public site's publication worker; the token is also the site's
+   -- teamzoneapp-production-cache-invalidation-secret (phase 4).
+   select vault.create_secret('https://teamzoneapp.se', 'public_site_worker_url');
+   select vault.create_secret('<random>', 'public_site_worker_token');
    ```
    `push_token_key` is created by its migration.
 5. **Edge secrets** (`npx supabase secrets set … --project-ref <prod ref>`),
@@ -131,7 +135,7 @@ except the Vault secrets listed below.
    `teamzoneapp-production`. DNS records in Netlify DNS.
 3. App Hosting: create backend `teamzoneapp-public-production` (same region
    as the test backend, root `/public-site`) with environment name
-   `production`, and its three `teamzoneapp-production-*` secrets
+   `production`, and its four `teamzoneapp-production-*` secrets
    (`npx firebase-tools apphosting:secrets:set <name>`). Connect
    `teamzoneapp.se` (and `www`) and `public.teamzoneapp.se` to it, and
    `test-public.teamzoneapp.se` to the test backend; then set `PUBLIC_ORIGIN`
