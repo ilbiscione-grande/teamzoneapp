@@ -210,7 +210,9 @@ class _ModuleScope extends InheritedWidget {
     final theme =
         scope?.theme ??
         (seed == null ? null : _ModuleShell.themeFor(context, seed));
-    return Navigator.of(context).push(
+    // Over the whole app, as the module itself, also when opened from an
+    // event inside TeamZone's shell.
+    return Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute<T>(
         builder: (routeContext) => theme == null
             ? builder(routeContext)

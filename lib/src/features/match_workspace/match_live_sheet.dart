@@ -67,6 +67,10 @@ class _LiveEventSheetState extends State<_LiveEventSheet> {
   bool get _substitution => widget.kind.type == 'substitution';
   bool get _editing => widget.fact != null;
 
+  /// Placed already (as Planläge places every kind it registers).
+  late final bool _placed =
+      widget.fact != null && factLocation(widget.fact!) != null;
+
   @override
   void dispose() {
     _comment.dispose();
@@ -139,7 +143,10 @@ class _LiveEventSheetState extends State<_LiveEventSheet> {
           if (_result != null && widget.kind.results.isNotEmpty)
             widget.kind.resultKey: _result,
           if (comment.isNotEmpty) 'comment': comment,
-          if (_location case (final x, final y) when widget.kind.locatable)
+          if (_location case (
+            final x,
+            final y,
+          ) when widget.kind.locatable || _placed)
             'location': locationDetail(x, y),
           if (_substitution && (keepsPlan || _detail['plan_id'] != null))
             'plan_id': keepsPlan ? planned.id : _detail['plan_id'],
@@ -263,7 +270,7 @@ class _LiveEventSheetState extends State<_LiveEventSheet> {
                   widget.players,
                   (id) => setState(() => _player = id),
                 ),
-              if (kind.locatable) ...[
+              if (kind.locatable || _placed) ...[
                 const SizedBox(height: 10),
                 _LocationField(
                   value: _location,

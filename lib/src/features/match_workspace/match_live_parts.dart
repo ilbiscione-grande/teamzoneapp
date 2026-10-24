@@ -27,8 +27,11 @@ class _LiveScoreboard extends StatelessWidget {
       ? 'Matchen'
       : 'Period $period';
 
-  String get _caption {
-    final value = snapshot;
+  String get _caption => captionOf(snapshot);
+  String get _clock => clockOf(snapshot);
+  (IconData, String)? get _primary => primaryOf(snapshot);
+
+  static String captionOf(MatchSnapshot? value) {
     if (value == null || value.state == 'planning') return 'Ej startad';
     if (value.state == 'completed') return 'Slutresultat';
     final count = value.periodMinutes.length;
@@ -41,15 +44,14 @@ class _LiveScoreboard extends StatelessWidget {
     return value.isPaused ? '$name · pausad' : name;
   }
 
-  String get _clock {
-    final value = snapshot;
+  static String clockOf(MatchSnapshot? value) {
     if (value == null || value.state == 'planning') return '00:00';
     final elapsed = value.elapsedNow();
     return '${elapsed.inMinutes.toString().padLeft(2, '0')}:'
         '${(elapsed.inSeconds % 60).toString().padLeft(2, '0')}';
   }
 
-  (IconData, String)? get _primary => switch (snapshot) {
+  static (IconData, String)? primaryOf(MatchSnapshot? value) => switch (value) {
     null ||
     MatchSnapshot(state: 'planning') => (Icons.play_arrow, 'Starta match'),
     MatchSnapshot(state: 'live', isPaused: false) => (Icons.pause, 'Pausa'),
@@ -475,11 +477,16 @@ class _LiveTimeline extends StatelessWidget {
     required this.name,
     required this.opponentName,
     this.onTap,
+    this.onMove,
+    this.title = 'Händelser',
   });
   final List<Map<String, dynamic>> facts;
   final String Function(String?) name;
-  final String opponentName;
+  final String opponentName, title;
   final ValueChanged<Map<String, dynamic>>? onTap;
+
+  /// Moves a placed event on the pitch.
+  final ValueChanged<Map<String, dynamic>>? onMove;
 
   String _text(Map<String, dynamic> fact) {
     final type = fact['fact_type'] as String?;
@@ -533,7 +540,7 @@ class _LiveTimeline extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text('Händelser', style: theme.textTheme.titleSmall),
+              child: Text(title, style: theme.textTheme.titleSmall),
             ),
             if (shown.isEmpty)
               const Padding(
@@ -555,7 +562,19 @@ class _LiveTimeline extends StatelessWidget {
                   ),
                 ),
                 title: Text(_text(fact)),
-                trailing: Text("${(fact['minute'] as num?)?.toInt() ?? 0}′"),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text("${(fact['minute'] as num?)?.toInt() ?? 0}′"),
+                    if (onMove != null && factLocation(fact) != null)
+                      IconButton(
+                        key: Key('live-fact-move-${fact['id']}'),
+                        tooltip: 'Flytta på planen',
+                        onPressed: () => onMove!(fact),
+                        icon: const Icon(Icons.open_with),
+                      ),
+                  ],
+                ),
                 onTap:
                     onTap == null ||
                         const [
@@ -618,9 +637,14 @@ class _LiveSidePanelState extends State<_LiveSidePanel> {
 /// Above the buttons: Min vy, and the team's own buttons for those who
 /// prepare the match.
 class _LiveToolbar extends StatelessWidget {
-  const _LiveToolbar({required this.onMyView, this.onOwnButtons, this.error});
+  const _LiveToolbar({
+    required this.onMyView,
+    this.onOwnButtons,
+    this.onPitchMode,
+    this.error,
+  });
   final VoidCallback onMyView;
-  final VoidCallback? onOwnButtons;
+  final VoidCallback? onOwnButtons, onPitchMode;
   final String? error;
 
   @override
@@ -642,6 +666,13 @@ class _LiveToolbar extends StatelessWidget {
             onPressed: onOwnButtons,
             icon: const Icon(Icons.add_box_outlined, size: 18),
             label: const Text('Egna knappar'),
+          ),
+        if (onPitchMode != null)
+          TextButton.icon(
+            key: const Key('live-layout-pitch'),
+            onPressed: onPitchMode,
+            icon: const Icon(Icons.sports_soccer, size: 18),
+            label: const Text('Planläge'),
           ),
         if (error != null)
           Text(

@@ -15,11 +15,20 @@ class _MatchLiveView extends StatefulWidget {
     required this.calendar,
     required this.match,
     required this.sides,
+    this.onPhase,
+    this.onCompact,
   });
   final String eventId;
   final CalendarServices calendar;
   final MatchServices match;
   final _MatchSides sides;
+
+  /// From Planläge's header: change to another phase.
+  final ValueChanged<_MatchPhase>? onPhase;
+
+  /// Whether Live shows Planläge, which draws its own header, so the page
+  /// can leave out its app bar.
+  final ValueChanged<bool>? onCompact;
 
   @override
   State<_MatchLiveView> createState() => _MatchLiveViewState();
@@ -521,6 +530,270 @@ class _MatchLiveViewState extends State<_MatchLiveView>
     }
   }
 
+  List<Widget> _banners(bool manage) => [
+    if (_error != null)
+      Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: MaterialBanner(
+          content: Text(_error!),
+          actions: [
+            if (_retry != null)
+              TextButton(
+                onPressed: () => _retry!(),
+                child: const Text('Försök igen'),
+              ),
+            TextButton(
+              onPressed: () => setState(() => _error = null),
+              child: const Text('Stäng'),
+            ),
+          ],
+        ),
+      ),
+    if (manage && _missingFromSquad.isNotEmpty)
+      Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: MaterialBanner(
+          key: const Key('live-squad-outdated'),
+          leading: const Icon(Icons.group_add_outlined),
+          content: Text(
+            '${_missingFromSquad.length} spelare i uppställningen finns inte '
+            'i matchtruppen och kan inte väljas.',
+          ),
+          actions: [
+            TextButton(
+              key: const Key('live-squad-update'),
+              onPressed: _busy ? null : _updateSquad,
+              child: const Text('Uppdatera matchtruppen'),
+            ),
+          ],
+        ),
+      ),
+  ];
+
+  /// Planläge or the event buttons; a phone starts in Planläge.
+  bool? _pitchChoice;
+  bool? _reportedCompact;
+  bool _pitchMode(BuildContext context) =>
+      _pitchChoice ?? MediaQuery.sizeOf(context).width < 600;
+
+  /// A tap on the pitch in Planläge: the event at that place.
+  Future<void> _logAt((double, double) place) async {
+    if (_state != 'live') return;
+    final result = await showModalBottomSheet<_PitchEventResult>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _PitchEventSheet(
+        place: place,
+        players: _players,
+        onPitch: _onPitch,
+        minute: _minuteNow,
+        opponentName: _opponentName,
+      ),
+    );
+    if (result == null || !mounted) return;
+    final key = _newUuid();
+    final ok = await _run(
+      () => widget.match.recordEvent(
+        key,
+        _eventId,
+        type: result.type,
+        minute: result.minute,
+        side: result.side,
+        playerId: result.playerId,
+        secondaryId: result.secondaryId,
+        detail: result.detail,
+      ),
+    );
+    if (ok && mounted) {
+      final label = result.type == 'goal'
+          ? 'Mål'
+          : liveEventKind(result.type)?.label ?? 'Händelse';
+      _undoSnack('$label ${result.minute}′', key);
+    }
+  }
+
+  Future<void> _showCounters() => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => StatefulBuilder(
+      builder: (sheet, setSheet) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          child: _LiveCounters(
+            counters: _counters,
+            onDelta: (key, delta) async {
+              final sent = _count(key, delta);
+              setSheet(() {});
+              await sent;
+              if (sheet.mounted) setSheet(() {});
+            },
+            onEnter: (key) async {
+              await _enter(key);
+              if (sheet.mounted) setSheet(() {});
+            },
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Future<void> _showEvents() => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (sheet) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.7,
+      builder: (_, controller) => SingleChildScrollView(
+        controller: controller,
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: _LiveTimeline(
+          facts: _snapshot?.facts ?? const [],
+          name: _name,
+          opponentName: _opponentName,
+          onTap: _canManage
+              ? (fact) {
+                  Navigator.pop(sheet);
+                  unawaited(_openFact(fact));
+                }
+              : null,
+        ),
+      ),
+    ),
+  );
+
+  /// A long press on the pitch: the event there, or a choice of those
+  /// sharing the place.
+  Future<void> _openPlaced(List<Map<String, dynamic>> facts) async {
+    if (facts.isEmpty) return;
+    final chosen = await showModalBottomSheet<(Map<String, dynamic>, bool)>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          child: _LiveTimeline(
+            facts: facts,
+            name: _name,
+            opponentName: _opponentName,
+            title: facts.length == 1
+                ? 'Händelsen här'
+                : '${facts.length} händelser här',
+            onTap: (fact) => Navigator.pop(sheet, (fact, false)),
+            onMove: (fact) => Navigator.pop(sheet, (fact, true)),
+          ),
+        ),
+      ),
+    );
+    if (chosen == null || !mounted) return;
+    if (chosen.$2) {
+      setState(() => _moving = chosen.$1);
+    } else {
+      await _openFact(chosen.$1);
+    }
+  }
+
+  /// The event being moved in Planläge, placed by the next tap.
+  Map<String, dynamic>? _moving;
+
+  Future<void> _moveTo((double, double) place) async {
+    final fact = _moving;
+    setState(() => _moving = null);
+    if (fact == null) return;
+    final key = _newUuid();
+    await _run(
+      () => widget.match.updateEvent(
+        key,
+        fact['id'] as String,
+        minute: (fact['minute'] as num? ?? 0).toInt(),
+        side: fact['side'] as String?,
+        playerId: fact['club_person_id'] as String?,
+        secondaryId: fact['secondary_club_person_id'] as String?,
+        detail: {
+          for (final entry in ((fact['detail'] as Map?) ?? const {}).entries)
+            '${entry.key}': entry.value,
+          'location': locationDetail(place.$1, place.$2),
+        },
+      ),
+    );
+  }
+
+  /// Planläge: the score and clock, then the pitch over the rest of the
+  /// screen, with substitutions, notes, counters and events below it.
+  Widget _pitchLayout(MatchSnapshot? snapshot, bool manage) {
+    final facts = snapshot?.facts ?? const <Map<String, dynamic>>[];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _LiveHeaderBar(
+          snapshot: snapshot,
+          sides: widget.sides,
+          opponentName: _opponentName,
+          busy: _busy,
+          onPrimary: _primaryAction,
+          onEndPeriod: _endPeriod,
+          onFinish: _finish,
+          onPhase: widget.onPhase,
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ..._banners(manage),
+                Expanded(
+                  child: _LivePitchMode(
+                    facts: facts,
+                    onTapPitch: _logAt,
+                    onPressFacts: _openPlaced,
+                    onMoveTo: _moving == null ? null : _moveTo,
+                    onCancelMove: () => setState(() => _moving = null),
+                    actions: [
+                      _PitchAction(
+                        key: const Key('live-pitch-substitution'),
+                        icon: _liveIcon('substitution'),
+                        label: 'Byte',
+                        onTap: () => _log(liveEventKinds.first),
+                      ),
+                      _PitchAction(
+                        key: const Key('live-pitch-note'),
+                        icon: _liveIcon('note'),
+                        label: 'Anteckning',
+                        onTap: _note,
+                      ),
+                      if (_counters.isNotEmpty)
+                        _PitchAction(
+                          key: const Key('live-pitch-counters'),
+                          icon: Icons.exposure_plus_1,
+                          label: 'Räknare',
+                          onTap: _showCounters,
+                        ),
+                      _PitchAction(
+                        key: const Key('live-pitch-events'),
+                        icon: Icons.list_alt,
+                        label: 'Händelser',
+                        onTap: _showEvents,
+                      ),
+                      _PitchAction(
+                        key: const Key('live-layout-buttons'),
+                        icon: Icons.grid_view,
+                        label: 'Knappar',
+                        onTap: () => setState(() => _pitchChoice = false),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_loaded) return const Center(child: CircularProgressIndicator());
@@ -531,6 +804,14 @@ class _MatchLiveViewState extends State<_MatchLiveView>
     // On a wide screen the shot map stands beside the event buttons.
     final wide = MediaQuery.sizeOf(context).width >= 900;
     final buttons = manage && live;
+    final compact = buttons && _pitchMode(context);
+    if (compact != _reportedCompact) {
+      _reportedCompact = compact;
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => widget.onCompact?.call(compact),
+      );
+    }
+    if (compact) return _pitchLayout(snapshot, manage);
     return ListView(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
       children: [
@@ -545,47 +826,14 @@ class _MatchLiveViewState extends State<_MatchLiveView>
           onFinish: _finish,
           onGoal: live && manage ? _goal : null,
         ),
-        if (_error != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: MaterialBanner(
-              content: Text(_error!),
-              actions: [
-                if (_retry != null)
-                  TextButton(
-                    onPressed: () => _retry!(),
-                    child: const Text('Försök igen'),
-                  ),
-                TextButton(
-                  onPressed: () => setState(() => _error = null),
-                  child: const Text('Stäng'),
-                ),
-              ],
-            ),
-          ),
-        if (manage && _missingFromSquad.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: MaterialBanner(
-              key: const Key('live-squad-outdated'),
-              leading: const Icon(Icons.group_add_outlined),
-              content: Text(
-                '${_missingFromSquad.length} spelare i uppställningen finns inte '
-                'i matchtruppen och kan inte väljas.',
-              ),
-              actions: [
-                TextButton(
-                  key: const Key('live-squad-update'),
-                  onPressed: _busy ? null : _updateSquad,
-                  child: const Text('Uppdatera matchtruppen'),
-                ),
-              ],
-            ),
-          ),
+        ..._banners(manage),
         if (manage)
           _LiveToolbar(
             onMyView: _openMyView,
             onOwnButtons: (_buttons?.canEdit ?? false) ? _editButtons : null,
+            onPitchMode: buttons
+                ? () => setState(() => _pitchChoice = true)
+                : null,
             error: _counterError,
           ),
         if (buttons) ...[

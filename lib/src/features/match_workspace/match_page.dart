@@ -38,6 +38,10 @@ class _MatchPageState extends State<_MatchPage> {
   late int _index = widget.matches.indexWhere(
     (match) => match.eventId == widget.eventId,
   );
+
+  /// Live in Planläge draws its own single header bar.
+  bool _compactLive = false;
+
   late _MatchPhase _phase = widget.live ? _MatchPhase.live : _phaseFor(_match);
 
   ModuleMatch? get _match => _index < 0 ? null : widget.matches[_index];
@@ -55,6 +59,11 @@ class _MatchPageState extends State<_MatchPage> {
     }
     return _MatchPhase.preparation;
   }
+
+  void _setPhase(_MatchPhase phase) => setState(() {
+    _phase = phase;
+    _compactLive = false;
+  });
 
   void _step(int delta) {
     final next = _index + delta;
@@ -76,18 +85,21 @@ class _MatchPageState extends State<_MatchPage> {
         child: Text(strings.feature(text), textAlign: TextAlign.center),
       ),
     );
+    final compact = _phase == _MatchPhase.live && _compactLive;
     return Scaffold(
-      appBar: _MatchAppBar(
-        match: match,
-        title: widget.title,
-        sides: widget.sides,
-        phase: _phase,
-        onPhase: (phase) => setState(() => _phase = phase),
-        onPrevious: _index > 0 ? () => _step(-1) : null,
-        onNext: _index >= 0 && _index < widget.matches.length - 1
-            ? () => _step(1)
-            : null,
-      ),
+      appBar: compact
+          ? null
+          : _MatchAppBar(
+              match: match,
+              title: widget.title,
+              sides: widget.sides,
+              phase: _phase,
+              onPhase: _setPhase,
+              onPrevious: _index > 0 ? () => _step(-1) : null,
+              onNext: _index >= 0 && _index < widget.matches.length - 1
+                  ? () => _step(1)
+                  : null,
+            ),
       body: switch (_phase) {
         _MatchPhase.preparation => _MatchPreparation(
           key: ValueKey('match-preparation-$eventId'),
@@ -99,6 +111,10 @@ class _MatchPageState extends State<_MatchPage> {
           eventId: eventId,
           calendar: widget.calendar,
           match: widget.match,
+          onPhase: _setPhase,
+          onCompact: (value) {
+            if (value != _compactLive) setState(() => _compactLive = value);
+          },
           sides: match == null
               ? widget.sides
               : (
