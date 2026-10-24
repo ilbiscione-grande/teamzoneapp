@@ -58,6 +58,7 @@ import 'package:teamzone_app/src/features/development/development_services.dart'
 import 'package:teamzone_app/src/features/workspaces/module_services.dart';
 import 'package:teamzone_app/src/features/team_development/team_development_services.dart';
 import 'package:teamzone_app/src/features/match_workspace/match_plan_services.dart';
+import 'package:teamzone_app/src/features/training/training_services.dart';
 import 'package:teamzone_app/src/features/economy/economy_models.dart';
 import 'package:teamzone_app/src/features/economy/economy_services.dart';
 import 'package:teamzone_app/src/features/overview/overview_models.dart';
@@ -143,6 +144,10 @@ part '../features/team_development/team_development_checkins.dart';
 part '../features/team_development/team_development_play.dart';
 part '../features/team_development/team_development_sharing.dart';
 part '../features/team_development/team_development_shared_view.dart';
+part '../features/training/training_module.dart';
+part '../features/training/training_session_page.dart';
+part '../features/training/training_block_dialog.dart';
+part '../features/training/training_summary.dart';
 part '../features/match_workspace/match_squad.dart';
 part '../features/match_workspace/match_page.dart';
 part '../features/match_workspace/match_lineup_editor.dart';
