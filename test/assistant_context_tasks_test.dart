@@ -655,6 +655,27 @@ void main() {
     expect(duty.route, ProductRouteContract.economy);
     expect(overview.clubCalls, ['club-ctx']);
 
+    final player = TeamZoneContext(
+      id: 'player',
+      clubId: 'club-a',
+      clubName: 'Klubb A',
+      teamId: 'p2012',
+      teamName: 'P2012',
+      rolePackage: 'player',
+      capabilities: const {},
+    );
+    final withoutRight = await loadAssistantTasks(
+      contexts: [player, club],
+      activeContext: player,
+      overview: overview,
+      loadEvent: event,
+    );
+    expect(
+      Uri.parse(withoutRight.tasks.single.route).queryParameters['context'],
+      'club-ctx',
+      reason: 'a team without economy opens it in the club context',
+    );
+
     final elsewhere = await loadAssistantTasks(
       contexts: [team('x'), club],
       activeContext: team('x'),

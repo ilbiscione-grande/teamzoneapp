@@ -1662,9 +1662,13 @@ class _ContextSelectorState extends State<_ContextSelector> {
     }
   }
 
-  Future<void> _changeContext(TeamZoneContext value) async {
+  // [openAfterSwitch] is set with the context, so the new shell gets it.
+  Future<void> _changeContext(
+    TeamZoneContext value, {
+    String? openAfterSwitch,
+  }) async {
     setState(() {
-      _openAfterSwitch = null;
+      _openAfterSwitch = openAfterSwitch;
       _activeContext = value;
     });
     await widget.contextPersistence.writeActiveContextId(
@@ -1733,10 +1737,8 @@ class _ContextSelectorState extends State<_ContextSelector> {
       contextValue: activeContext,
       contexts: _contexts,
       onContextChanged: _changeContext,
-      onOpenInContext: (value, location) async {
-        await _changeContext(value);
-        if (mounted) setState(() => _openAfterSwitch = location);
-      },
+      onOpenInContext: (value, location) =>
+          _changeContext(value, openAfterSwitch: location),
       openAfterSwitch: _openAfterSwitch,
       onContextsChanged: _reloadContexts,
       onTeamCreated: _selectCreatedTeam,

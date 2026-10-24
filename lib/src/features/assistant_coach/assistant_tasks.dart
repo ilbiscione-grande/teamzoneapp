@@ -398,11 +398,11 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
             .loadClubHome(club.id)
             .timeout(const Duration(seconds: 15));
         // Board and economy open in the active context when it is the same
-        // club (its team context carries the duties); the queues need the
+        // club and holds the capability; otherwise, like the queues, in the
         // club context.
         final sameClub = activeContext?.clubId == club.clubId;
-        String route(String path, {bool clubOnly = false}) =>
-            sameClub && !clubOnly
+        String route(String path, {String? capability}) =>
+            sameClub && capability != null && activeContext!.can(capability)
             ? path
             : Uri.parse(path)
                   .replace(
@@ -418,14 +418,14 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
               'club_board_changes',
               'Mandatändringar väntar',
               board.pendingChanges,
-              route(ProductRouteContract.board),
+              route(ProductRouteContract.board, capability: 'board.read'),
             ),
           if (home.economy case final economy? when economy.pendingEntries > 0)
             (
               'club_economy_entries',
               'Poster väntar på attest',
               economy.pendingEntries,
-              route(ProductRouteContract.economy),
+              route(ProductRouteContract.economy, capability: 'economy.read'),
             ),
           if (home.members case final members?
               when members.pendingApplications > 0)
@@ -433,7 +433,7 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
               'club_applications',
               'Medlemsansökningar',
               members.pendingApplications,
-              route(ProductRouteContract.teamApplications(), clubOnly: true),
+              route(ProductRouteContract.teamApplications()),
             ),
           if (home.members case final members?
               when members.pendingTeamRequests > 0)
@@ -441,7 +441,7 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
               'club_team_requests',
               'Förfrågningar om nya lag',
               members.pendingTeamRequests,
-              route('/team?action=team-requests', clubOnly: true),
+              route('/team?action=team-requests'),
             ),
         ];
         for (final (kind, title, count, path) in duties) {
