@@ -112,9 +112,9 @@ void main() {
         ),
       ];
       expect(shotPoints(facts), [
-        (x: 0.8, y: 0.4, side: 'us', outcome: 'on_target'),
-        (x: 0.9, y: 1.0, side: 'us', outcome: 'goal'),
-        (x: 0.2, y: 0.5, side: 'opponent', outcome: 'missed'),
+        (x: 0.8, y: 0.4, side: 'us', outcome: 'on_target', id: ''),
+        (x: 0.9, y: 1.0, side: 'us', outcome: 'goal', id: ''),
+        (x: 0.2, y: 0.5, side: 'opponent', outcome: 'missed', id: ''),
       ]);
       expect(locationDetail(0.12345, 1.2), {'x': 0.123, 'y': 1.0});
       expect(factLocation(facts[3]), isNull);

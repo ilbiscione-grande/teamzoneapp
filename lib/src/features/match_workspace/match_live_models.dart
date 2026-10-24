@@ -165,7 +165,13 @@ Map<String, double> locationDetail(double x, double y) => {
 };
 
 /// A shot on the shot map: where, whose, and how it ended.
-typedef ShotPoint = ({double x, double y, String side, String outcome});
+typedef ShotPoint = ({
+  double x,
+  double y,
+  String side,
+  String outcome,
+  String id,
+});
 
 /// Every located shot and goal, for the shot map: outcome is goal,
 /// on_target, missed, blocked or woodwork.
@@ -180,6 +186,7 @@ List<ShotPoint> shotPoints(List<Map<String, dynamic>> facts) => [
           outcome: fact['fact_type'] == 'goal'
               ? 'goal'
               : (fact['detail'] as Map?)?['result'] as String? ?? 'missed',
+          id: fact['id'] as String? ?? '',
         ),
 ];
 

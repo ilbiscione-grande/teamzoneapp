@@ -570,11 +570,44 @@ class _MatchLiveViewState extends State<_MatchLiveView>
       ),
   ];
 
-  /// Planläge or the event buttons; a phone starts in Planläge.
+  /// Planläge or the event buttons; a phone starts in Planläge, upright or
+  /// lying, a tablet or desktop with the buttons.
   bool? _pitchChoice;
+
+  /// Beside the buttons: the events instead of the shot map, and whose
+  /// shots the map shows.
+  bool _sideEvents = false;
+  String _shotSide = 'us';
+
+  /// The event whose tooltip shows on the pitch, and the one the event
+  /// list shows highlighted after a tap on a tooltip.
+  String? _tipId, _highlightId;
+
+  Widget? _tooltipFor(String id) {
+    final fact = activeFacts(
+      _snapshot?.facts ?? const [],
+    ).where((f) => f['id'] == id).firstOrNull;
+    if (fact == null) return null;
+    return _FactTooltip(
+      fact: fact,
+      text: _factText(fact, _name, _opponentName),
+      onTap: () => _showInList(id),
+    );
+  }
+
+  /// From a tooltip: the event in the list, highlighted.
+  void _showInList(String id) {
+    setState(() {
+      _tipId = null;
+      _highlightId = id;
+      _sideEvents = true;
+    });
+    if (_pitchMode(context)) unawaited(_showEvents());
+  }
+
   bool? _reportedCompact;
   bool _pitchMode(BuildContext context) =>
-      _pitchChoice ?? MediaQuery.sizeOf(context).width < 600;
+      _pitchChoice ?? MediaQuery.sizeOf(context).shortestSide < 600;
 
   /// A tap on the pitch in Planläge: the event at that place.
   Future<void> _logAt((double, double) place) async {
@@ -653,6 +686,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
           facts: _snapshot?.facts ?? const [],
           name: _name,
           opponentName: _opponentName,
+          highlightId: _highlightId,
           onTap: _canManage
               ? (fact) {
                   Navigator.pop(sheet);
@@ -749,6 +783,10 @@ class _MatchLiveViewState extends State<_MatchLiveView>
                     facts: facts,
                     onTapPitch: _logAt,
                     onPressFacts: _openPlaced,
+                    selectedId: _tipId,
+                    onTapMark: (fact) =>
+                        setState(() => _tipId = fact?['id'] as String?),
+                    tooltip: _tipId == null ? null : _tooltipFor(_tipId!),
                     onMoveTo: _moving == null ? null : _moveTo,
                     onCancelMove: () => setState(() => _moving = null),
                     actions: [
@@ -801,31 +839,38 @@ class _MatchLiveViewState extends State<_MatchLiveView>
     final facts = snapshot?.facts ?? const <Map<String, dynamic>>[];
     final live = _state == 'live';
     final manage = _canManage;
-    // On a wide screen the shot map stands beside the event buttons.
-    final wide = MediaQuery.sizeOf(context).width >= 900;
+    // On a tablet or desktop the shot map stands beside the event buttons.
+    final wide = MediaQuery.sizeOf(context).width >= 720;
     final buttons = manage && live;
-    final compact = buttons && _pitchMode(context);
+    // On a lying tablet the score moves up into one header bar, as in
+    // Planläge, to give the buttons and the shot map the height.
+    final size = MediaQuery.sizeOf(context);
+    final headerBar = buttons && wide && size.width > size.height;
+    final pitchMode = buttons && _pitchMode(context);
+    final compact = pitchMode || headerBar;
     if (compact != _reportedCompact) {
       _reportedCompact = compact;
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => widget.onCompact?.call(compact),
       );
     }
-    if (compact) return _pitchLayout(snapshot, manage);
-    return ListView(
+    if (pitchMode) return _pitchLayout(snapshot, manage);
+    final list = ListView(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
       children: [
-        _LiveScoreboard(
-          snapshot: snapshot,
-          sides: widget.sides,
-          opponentName: _opponentName,
-          busy: _busy,
-          manage: manage,
-          onPrimary: _primaryAction,
-          onEndPeriod: _endPeriod,
-          onFinish: _finish,
-          onGoal: live && manage ? _goal : null,
-        ),
+        if (!headerBar)
+          _LiveScoreboard(
+            snapshot: snapshot,
+            sides: widget.sides,
+            opponentName: _opponentName,
+            busy: _busy,
+            manage: manage,
+            onPrimary: _primaryAction,
+            onEndPeriod: _endPeriod,
+            onFinish: _finish,
+            onGoal: live && manage ? _goal : null,
+            inline: wide,
+          ),
         ..._banners(manage),
         if (manage)
           _LiveToolbar(
@@ -835,6 +880,15 @@ class _MatchLiveViewState extends State<_MatchLiveView>
                 ? () => setState(() => _pitchChoice = true)
                 : null,
             error: _counterError,
+            trailing: wide && buttons
+                ? _LiveSideControls(
+                    events: _sideEvents,
+                    side: _shotSide,
+                    opponentName: _opponentName,
+                    onEvents: (value) => setState(() => _sideEvents = value),
+                    onSide: (value) => setState(() => _shotSide = value),
+                  )
+                : null,
           ),
         if (buttons) ...[
           const SizedBox(height: 4),
@@ -843,30 +897,49 @@ class _MatchLiveViewState extends State<_MatchLiveView>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  flex: 3,
-                  child: _LiveActionGrid(
-                    view: _view,
-                    tally: eventTally(facts, 'us'),
-                    onKind: (kind) => _log(kind),
-                    onNote: _note,
+                  flex: 2,
+                  // The counters under the buttons, beside the shot map.
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _LiveActionGrid(
+                        columns: 3,
+                        view: _view,
+                        tally: eventTally(facts, 'us'),
+                        onKind: (kind) => _log(kind),
+                        onNote: _note,
+                      ),
+                      if (_counters.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _LiveCounters(
+                          counters: _counters,
+                          onDelta: _count,
+                          onEnter: _enter,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  flex: 2,
-                  child: _LiveSidePanel(
-                    shotMap: _ShotMapCard(
-                      facts: facts,
-                      opponentName: _opponentName,
-                      showEmpty: true,
-                    ),
-                    timeline: _LiveTimeline(
-                      facts: facts,
-                      name: _name,
-                      opponentName: _opponentName,
-                      onTap: manage ? _openFact : null,
-                    ),
-                  ),
+                  flex: 3,
+                  child: _sideEvents
+                      ? _LiveTimeline(
+                          facts: facts,
+                          name: _name,
+                          opponentName: _opponentName,
+                          highlightId: _highlightId,
+                          onTap: manage ? _openFact : null,
+                        )
+                      : _ShotMapCard(
+                          facts: facts,
+                          opponentName: _opponentName,
+                          showEmpty: true,
+                          side: _shotSide,
+                          selectedId: _tipId,
+                          onTapMark: (id) => setState(() => _tipId = id),
+                          tooltipFor: _tooltipFor,
+                        ),
                 ),
               ],
             )
@@ -878,7 +951,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
               onNote: _note,
             ),
         ],
-        if (buttons && _counters.isNotEmpty) ...[
+        if (buttons && !wide && _counters.isNotEmpty) ...[
           const SizedBox(height: 12),
           _LiveCounters(counters: _counters, onDelta: _count, onEnter: _enter),
         ],
@@ -910,7 +983,13 @@ class _MatchLiveViewState extends State<_MatchLiveView>
         ],
         if (shotPoints(facts).isNotEmpty && !(wide && buttons)) ...[
           const SizedBox(height: 12),
-          _ShotMapCard(facts: facts, opponentName: _opponentName),
+          _ShotMapCard(
+            facts: facts,
+            opponentName: _opponentName,
+            selectedId: _tipId,
+            onTapMark: (id) => setState(() => _tipId = id),
+            tooltipFor: _tooltipFor,
+          ),
         ],
         if (!(wide && buttons)) ...[
           const SizedBox(height: 12),
@@ -918,9 +997,28 @@ class _MatchLiveViewState extends State<_MatchLiveView>
             facts: facts,
             name: _name,
             opponentName: _opponentName,
+            highlightId: _highlightId,
             onTap: manage ? _openFact : null,
           ),
         ],
+      ],
+    );
+    if (!headerBar) return list;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _LiveHeaderBar(
+          snapshot: snapshot,
+          sides: widget.sides,
+          opponentName: _opponentName,
+          busy: _busy,
+          onPrimary: _primaryAction,
+          onEndPeriod: _endPeriod,
+          onFinish: _finish,
+          onPhase: widget.onPhase,
+          onGoal: _goal,
+        ),
+        Expanded(child: list),
       ],
     );
   }

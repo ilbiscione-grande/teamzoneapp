@@ -14,6 +14,9 @@ class _LivePitchMode extends StatelessWidget {
     required this.actions,
     this.onMoveTo,
     this.onCancelMove,
+    this.selectedId,
+    this.onTapMark,
+    this.tooltip,
   });
   final List<Map<String, dynamic>> facts;
   final ValueChanged<(double, double)>? onTapPitch;
@@ -26,67 +29,86 @@ class _LivePitchMode extends StatelessWidget {
   final ValueChanged<(double, double)>? onMoveTo;
   final VoidCallback? onCancelMove;
 
+  /// A single tap on a mark shows [tooltip] for it; a tap elsewhere on the
+  /// pitch closes it (null).
+  final String? selectedId;
+  final ValueChanged<Map<String, dynamic>?>? onTapMark;
+  final Widget? tooltip;
+
   @override
   Widget build(BuildContext context) {
     final placed = [
       for (final fact in activeFacts(facts))
         if (factLocation(fact) case (final x, final y)) (fact, x, y),
     ];
+    final label = TextStyle(
+      color: Colors.white.withValues(alpha: 0.85),
+      fontSize: 11,
+    );
     return Column(
       children: [
         Expanded(
-          child: Center(
-            child: AspectRatio(
-              aspectRatio: 68 / 105,
-              child: LayoutBuilder(
-                builder: (context, box) {
-                  final w = box.maxWidth, h = box.maxHeight;
-                  const mark = 26.0;
-                  return ClipRRect(
+          // The pitch lies along the screen's long side: standing up on an
+          // upright screen, turned with our goal to the left on a lying one.
+          // Its marks and texts stay upright.
+          child: LayoutBuilder(
+            builder: (context, area) {
+              final lying = area.maxWidth > area.maxHeight;
+              final field = _field(placed, lying);
+              return Center(
+                child: AspectRatio(
+                  aspectRatio: lying ? 105 / 68 : 68 / 105,
+                  child: ClipRRect(
                     borderRadius: BorderRadius.circular(14),
-                    child: GestureDetector(
-                      key: const Key('live-pitch'),
-                      behavior: HitTestBehavior.opaque,
-                      onTapUp: onMoveTo == null
-                          ? null
-                          : (details) => onMoveTo!((
-                              (1 - details.localPosition.dy / h).clamp(
-                                0.0,
-                                1.0,
-                              ),
-                              (details.localPosition.dx / w).clamp(0.0, 1.0),
-                            )),
-                      // A double tap adds, so a stray touch does not.
-                      onDoubleTapDown: onTapPitch == null || onMoveTo != null
-                          ? null
-                          : (details) => onTapPitch!((
-                              (1 - details.localPosition.dy / h).clamp(
-                                0.0,
-                                1.0,
-                              ),
-                              (details.localPosition.dx / w).clamp(0.0, 1.0),
-                            )),
-                      child: Stack(
+                    child: LayoutBuilder(
+                      builder: (context, outer) => Stack(
                         children: [
-                          const Positioned.fill(
-                            child: CustomPaint(painter: _PitchPainter()),
+                          Positioned.fill(
+                            child: lying
+                                ? RotatedBox(quarterTurns: 1, child: field)
+                                : field,
                           ),
-                          Positioned(
-                            top: 6,
-                            left: 0,
-                            right: 0,
-                            child: Text(
-                              'Anfall ↑',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.8),
-                                fontSize: 11,
+                          if (lying)
+                            Positioned(
+                              right: 8,
+                              top: 0,
+                              bottom: 0,
+                              child: IgnorePointer(
+                                child: Center(
+                                  child: Text('Anfall →', style: label),
+                                ),
+                              ),
+                            )
+                          else
+                            Positioned(
+                              top: 6,
+                              left: 0,
+                              right: 0,
+                              child: IgnorePointer(
+                                child: Text(
+                                  'Anfall ↑',
+                                  textAlign: TextAlign.center,
+                                  style: label,
+                                ),
                               ),
                             ),
-                          ),
+                          if (onTapPitch != null &&
+                              placed.isEmpty &&
+                              onMoveTo == null)
+                            Center(
+                              child: IgnorePointer(
+                                child: Text(
+                                  'Dubbeltryck där det händer',
+                                  style: label.copyWith(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
                           if (onMoveTo != null)
                             Positioned(
-                              top: 24,
+                              top: 12,
                               left: 12,
                               right: 12,
                               child: Material(
@@ -115,44 +137,31 @@ class _LivePitchMode extends StatelessWidget {
                                 ),
                               ),
                             ),
-                          if (onTapPitch != null && placed.isEmpty)
-                            Center(
-                              child: Text(
-                                'Dubbeltryck där det händer',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.85),
-                                  fontWeight: FontWeight.w600,
-                                ),
+                          if (tooltip != null)
+                            if (placed
+                                    .where((p) => p.$1['id'] == selectedId)
+                                    .firstOrNull
+                                case (_, final x, final y))
+                              _tooltipAt(
+                                outer.biggest,
+                                lying
+                                    ? Offset(
+                                        x * outer.maxWidth,
+                                        y * outer.maxHeight,
+                                      )
+                                    : Offset(
+                                        y * outer.maxWidth,
+                                        (1 - x) * outer.maxHeight,
+                                      ),
+                                tooltip!,
                               ),
-                            ),
-                          for (final (fact, x, y) in placed)
-                            Positioned(
-                              left: y * w - mark / 2,
-                              top: (1 - x) * h - mark / 2,
-                              width: mark,
-                              height: mark,
-                              // Only a long press: a double tap goes to the
-                              // pitch and adds another event at the place.
-                              child: GestureDetector(
-                                key: Key('live-pitch-fact-${fact['id']}'),
-                                onLongPress: onPressFacts == null
-                                    ? null
-                                    : () => onPressFacts!([
-                                        for (final (other, ox, oy) in placed)
-                                          if ((ox - x).abs() < 0.03 &&
-                                              (oy - y).abs() < 0.04)
-                                            other,
-                                      ]),
-                                child: _FactMark(fact: fact),
-                              ),
-                            ),
                         ],
                       ),
                     ),
-                  );
-                },
-              ),
-            ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
         const SizedBox(height: 4),
@@ -160,6 +169,66 @@ class _LivePitchMode extends StatelessWidget {
       ],
     );
   }
+
+  /// The standing pitch with its marks and taps; turned as a whole when
+  /// the screen lies, so places keep their meaning.
+  Widget _field(
+    List<(Map<String, dynamic>, double, double)> placed,
+    bool lying,
+  ) => LayoutBuilder(
+    builder: (context, box) {
+      final w = box.maxWidth, h = box.maxHeight;
+      const mark = 26.0;
+      (double, double) place(Offset local) =>
+          ((1 - local.dy / h).clamp(0.0, 1.0), (local.dx / w).clamp(0.0, 1.0));
+      return GestureDetector(
+        key: const Key('live-pitch'),
+        behavior: HitTestBehavior.opaque,
+        onTapUp: onMoveTo != null
+            ? (details) => onMoveTo!(place(details.localPosition))
+            : onTapMark == null
+            ? null
+            : (_) => onTapMark!(null),
+        // A double tap adds, so a stray touch does not.
+        onDoubleTapDown: onTapPitch == null || onMoveTo != null
+            ? null
+            : (details) => onTapPitch!(place(details.localPosition)),
+        child: Stack(
+          children: [
+            const Positioned.fill(child: CustomPaint(painter: _PitchPainter())),
+            for (final (fact, x, y) in placed)
+              Positioned(
+                left: y * w - mark / 2,
+                top: (1 - x) * h - mark / 2,
+                width: mark,
+                height: mark,
+                // Only a long press: a double tap goes to the pitch and
+                // adds another event at the place.
+                child: GestureDetector(
+                  key: Key('live-pitch-fact-${fact['id']}'),
+                  onTap: onTapMark == null || onMoveTo != null
+                      ? null
+                      : () => onTapMark!(fact),
+                  onLongPress: onPressFacts == null
+                      ? null
+                      : () => onPressFacts!([
+                          for (final (other, ox, oy) in placed)
+                            if ((ox - x).abs() < 0.03 && (oy - y).abs() < 0.04)
+                              other,
+                        ]),
+                  child: lying
+                      ? RotatedBox(
+                          quarterTurns: 3,
+                          child: _FactMark(fact: fact),
+                        )
+                      : _FactMark(fact: fact),
+                ),
+              ),
+          ],
+        ),
+      );
+    },
+  );
 }
 
 /// A placed event on the pitch: its icon, ours in the module's colour,
@@ -514,6 +583,7 @@ class _LiveHeaderBar extends StatelessWidget {
     required this.onEndPeriod,
     required this.onFinish,
     this.onPhase,
+    this.onGoal,
   });
   final MatchSnapshot? snapshot;
   final _MatchSides sides;
@@ -521,6 +591,10 @@ class _LiveHeaderBar extends StatelessWidget {
   final bool busy;
   final VoidCallback onPrimary, onEndPeriod, onFinish;
   final ValueChanged<_MatchPhase>? onPhase;
+
+  /// A goal for a side ('us' or 'opponent'), as on a lying tablet where the
+  /// bar replaces the scoreboard.
+  final ValueChanged<String>? onGoal;
 
   @override
   Widget build(BuildContext context) {
@@ -574,6 +648,20 @@ class _LiveHeaderBar extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (onGoal != null && live)
+                  for (final (side, name) in [
+                    ('us', sides.team),
+                    ('opponent', opponentName),
+                  ])
+                    TextButton.icon(
+                      key: Key('live-goal-$side'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: busy ? null : () => onGoal!(side),
+                      icon: const Icon(Icons.sports_soccer, size: 18),
+                      label: Text('Mål $name', overflow: TextOverflow.ellipsis),
+                    ),
                 if (primary != null)
                   IconButton(
                     key: const Key('live-primary'),
