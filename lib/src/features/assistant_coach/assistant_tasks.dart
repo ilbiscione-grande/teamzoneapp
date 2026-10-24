@@ -397,21 +397,32 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
         final home = await (overview as ClubHomeServices)
             .loadClubHome(club.id)
             .timeout(const Duration(seconds: 15));
-        // Board and economy open in the active context when it is the same
-        // club and holds the capability; otherwise, like the queues, in the
-        // club context.
-        final sameClub = activeContext?.clubId == club.clubId;
-        String route(String path, {String? capability}) =>
-            sameClub && capability != null && activeContext!.can(capability)
-            ? path
-            : Uri.parse(path)
-                  .replace(
-                    queryParameters: {
-                      ...Uri.parse(path).queryParameters,
-                      'context': club.id,
-                    },
-                  )
-                  .toString();
+        // Board and economy open in a context of the club that holds the
+        // capability, the active one first: a club-wide right can sit on a
+        // team role. The queues open in the club context.
+        String route(String path, {String? capability}) {
+          final target = capability == null
+              ? club
+              : [?activeContext, ...contexts]
+                        .where(
+                          (item) =>
+                              item.clubId == club.clubId &&
+                              item.can(capability),
+                        )
+                        .firstOrNull ??
+                    club;
+          return target.id == activeContext?.id
+              ? path
+              : Uri.parse(path)
+                    .replace(
+                      queryParameters: {
+                        ...Uri.parse(path).queryParameters,
+                        'context': target.id,
+                      },
+                    )
+                    .toString();
+        }
+
         final duties = <(String, String, int, String)>[
           if (home.board case final board? when board.pendingChanges > 0)
             (

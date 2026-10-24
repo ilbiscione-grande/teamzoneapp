@@ -16,6 +16,7 @@ Behörigheterna har vuxit fram område för område: ledarbehörigheter per lag 
 - **Engångsutdelning:** publicering gavs 2026-08 till alla som då hade `club.memberships.manage`. Nya klubbar får behörigheterna genom sina mallar, men det har inte gåtts igenom samlat.
 - **Styrelseposter ger inte behörighet:** en ordförande får inte rätt att besluta om lagsidor eller medlemmar av sin post. Det måste delas ut i Klubbens behörigheter.
 - **Domartillsättning** (`club.referees.manage`) används i appen, men ingen hade tilldelningen när klubbens behörigheter byggdes.
+- **Klubbbehörigheter på lagroller:** en klubbomfattande tilldelning (t.ex. `economy.read`) kan sitta på en lagroll. Servern räknar ihop alla ens roller i klubben, men sidorna läser bara den öppnade kontextens behörigheter. Därför kan ens kontext på klubbnivå sakna klubbens ekonomi, trots att man har den. Assistenten öppnar därför styrelse och ekonomi i den kontext som har behörigheten (2026-10-24).
 - **Klienten** visar och döljer funktioner med `contextValue.can(...)`, som läses från kontexten. Servern avgör alltid, men det som visas kan avvika från det som går att göra tills kontexten laddas om.
 
 ## Det översynen ska ge

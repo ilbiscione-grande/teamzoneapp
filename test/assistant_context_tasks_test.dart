@@ -676,6 +676,35 @@ void main() {
       reason: 'a team without economy opens it in the club context',
     );
 
+    // The club-wide right sits on another team role in the club, not on the
+    // club-level one.
+    final bareClub = TeamZoneContext(
+      id: 'club-ctx',
+      clubId: 'club-a',
+      clubName: 'Klubb A',
+      rolePackage: 'club_functionary',
+      capabilities: const {},
+    );
+    final treasurer = TeamZoneContext(
+      id: 'treasurer',
+      clubId: 'club-a',
+      clubName: 'Klubb A',
+      teamId: 'f2014',
+      teamName: 'F2014',
+      rolePackage: 'club_functionary',
+      capabilities: const {'economy.read'},
+    );
+    final onTeamRole = await loadAssistantTasks(
+      contexts: [player, bareClub, treasurer],
+      activeContext: player,
+      overview: overview,
+      loadEvent: event,
+    );
+    expect(
+      Uri.parse(onTeamRole.tasks.single.route).queryParameters['context'],
+      'treasurer',
+    );
+
     final elsewhere = await loadAssistantTasks(
       contexts: [team('x'), club],
       activeContext: team('x'),
