@@ -168,3 +168,34 @@ test("a player holding the ball: attached and at the player's feet", () => {
   assert.equal(ballHolders([player, { ...ball, x: 70 }]).size, 0, "on its way in a pass");
   assert.equal(ballHolders([player, { ...ball, attachedTo: null }]).size, 0);
 });
+
+test("a board saved in the library: no ties to players, its details beside it", async () => {
+  const { boardsFromLibrary, exerciseItem, exerciseJson, lessonItem, libraryKindsFor, planItem } = await import("../lib/tactics/library.ts");
+  const board = { ...newBoard("Rondo"), description: "Fem mot två i 10x10 m",
+    exercise: { part: "warmup" as const, minutes: 12, players: 7, area: "10x10 m", coachingPoints: "Kroppsställning",
+      phase: "regaining" as const, ageClasses: ["10-12" as const], gameForms: ["5v5" as const] } };
+  const player = { ...createPlayer({ x: 10, y: 10 }, "home", []), personId: "p1", name: "Anna" };
+  const withPlayer = { ...board, frames: [{ ...board.frames[0], objects: [player] }] };
+
+  const exercise = exerciseItem(withPlayer, "Rondo 5 mot 2");
+  assert.equal(exercise.kind, "exercise");
+  assert.deepEqual(exercise.details, { part: "warmup", minutes: 12, players: 7, area: "10x10 m", organisation: "Fem mot två i 10x10 m",
+    coaching_points: "Kroppsställning", phase: "regaining", age_classes: ["10-12"], game_forms: ["5v5"] });
+  const saved = exercise.document.boards[0].frames[0].objects[0] as typeof player;
+  assert.deepEqual([saved.personId, saved.name, exercise.document.boards[0].exercise], [null, null, undefined]);
+
+  // A pass keeps each board's details in order; back on boards they return.
+  const second = { ...newBoard("Press"), exercise: { ...board.exercise, part: "main" as const, minutes: 20 } };
+  const pass = planItem([withPlayer, second], "Press", "Återerövring", "Vinna bollen högt");
+  assert.deepEqual(pass.details, { theme: "Återerövring", goal: "Vinna bollen högt", exercises: [exerciseJson(withPlayer), exerciseJson(second)] });
+  const back = boardsFromLibrary({ kind: "plan", details: pass.details } as never, pass.document.boards);
+  assert.deepEqual(back.map(item => [item.exercise?.part, item.exercise?.minutes]), [["warmup", 12], ["main", 20]]);
+  assert.equal(lessonItem([board], "Spelidén").kind, "lesson");
+
+  // A board without details is a main-part exercise of 15 minutes; minutes stay within bounds.
+  assert.deepEqual([exerciseJson(newBoard("X")).part, exerciseJson(newBoard("X")).minutes], ["main", 15]);
+  assert.equal(exerciseJson({ ...board, exercise: { ...board.exercise, minutes: 999 } }).minutes, 240);
+  // TBL-17: a match's boards are not saved in the library.
+  assert.deepEqual(libraryKindsFor.match, []);
+  assert.deepEqual(libraryKindsFor.training, ["exercise", "plan"]);
+});

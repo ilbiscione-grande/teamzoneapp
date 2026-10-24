@@ -134,6 +134,27 @@ export type PitchOverlay = "none" | "corridors" | "thirds" | "zones";
 
 export type TeamStyle = { name: string; color: string; numberColor: string };
 
+/** The part of a training session an exercise is in. */
+export type ExercisePart = "warmup" | "main" | "finish";
+
+/** The Swedish FA's phases of the game, with the ball and without it. */
+export type GamePhase = "scoring" | "preventing_scoring" | "build_up" | "preventing_build_up" | "counter" | "regaining" | "attacking_play" | "defending";
+
+export type AgeClass = "7-9" | "10-12" | "13-15" | "16+";
+export type GameForm = "3v3" | "5v5" | "7v7" | "9v9" | "11v11";
+
+/** A board as an exercise: what the library keeps beside it. */
+export type ExerciseDetails = {
+  part: ExercisePart;
+  minutes: number;
+  players: number | null;
+  area: string;
+  coachingPoints: string;
+  phase: GamePhase | null;
+  ageClasses: AgeClass[];
+  gameForms: GameForm[];
+};
+
 export type Board = {
   id: string;
   name: string;
@@ -145,6 +166,8 @@ export type Board = {
   description?: string;
   /** Positions above the players; missing on boards made before it. */
   showPositions?: boolean;
+  /** In a training project: the board as an exercise (decision package 13); its organisation is the description. */
+  exercise?: ExerciseDetails;
   frames: Frame[];
 };
 

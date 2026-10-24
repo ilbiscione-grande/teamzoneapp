@@ -10,6 +10,9 @@ import { useState } from "react";
 import { ProjectFields } from "../TopBar.tsx";
 import { TemplateDialog } from "../TemplateDialog.tsx";
 import { HostNotes } from "../live/HostNotes.tsx";
+import { LibraryDialog } from "../LibraryDialog.tsx";
+import { ExerciseFields } from "./ExerciseFields.tsx";
+import { libraryKindsFor } from "../../../lib/tactics/library.ts";
 
 const views: Record<PitchView, string> = { full: "Hel plan", attack: "Anfallshalva", defend: "Försvarshalva", empty: "Tom yta" };
 const overlays: Record<PitchOverlay, string> = { none: "Inget rutnät", corridors: "Korridorer", thirds: "Tredjedelar", zones: "18 zoner" };
@@ -19,6 +22,8 @@ export function BoardSettings({ board }: { board: Board }) {
   const attachBall = useEditor(state => state.attachBall);
   const setAttachBall = useEditor(state => state.setAttachBall);
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [savingLibrary, setSavingLibrary] = useState(false);
+  const kind = useEditor(state => state.meta?.kind);
   const team = (side: Side, changes: Partial<Board["teams"][Side]>) =>
     change(current => ({ ...current, teams: { ...current.teams, [side]: { ...current.teams[side], ...changes } } }));
   return (
@@ -28,6 +33,10 @@ export function BoardSettings({ board }: { board: Board }) {
         <ProjectFields className="tb-panel-select" />
         <button type="button" className="wt-button secondary small" onClick={() => setSavingTemplate(true)}>Spara som mall…</button>
         {savingTemplate && <TemplateDialog onClose={() => setSavingTemplate(false)} />}
+        {kind && libraryKindsFor[kind].length > 0 && (
+          <button type="button" className="wt-button secondary small" onClick={() => setSavingLibrary(true)}>Spara i biblioteket…</button>
+        )}
+        {savingLibrary && <LibraryDialog onClose={() => setSavingLibrary(false)} />}
       </div>
       <h3>Tavlan</h3>
       <label className="tb-field">Namn<input value={board.name} maxLength={60} onChange={event => change(current => ({ ...current, name: event.target.value }))} /></label>
@@ -48,6 +57,7 @@ export function BoardSettings({ board }: { board: Board }) {
           onChange={event => change(current => ({ ...current, description: event.target.value }))} />
       </label>
       <p className="tb-hint">Anteckningar för varje frame skriver du under Frames.</p>
+      {kind === "training" && <ExerciseFields board={board} />}
       <HostNotes compact />
       <label className="tb-check"><input type="checkbox" checked={board.showNames} onChange={event => change(current => ({ ...current, showNames: event.target.checked }))} />Visa spelarnas namn</label>
       <label className="tb-check"><input type="checkbox" checked={board.showPositions ?? false} onChange={event => change(current => ({ ...current, showPositions: event.target.checked }))} />Visa spelarnas positioner</label>

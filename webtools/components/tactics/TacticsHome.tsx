@@ -13,6 +13,8 @@ import type { LeaderTeam } from "../../lib/tournament";
 import { useAccount } from "../account";
 import { kindLabels } from "./TopBar.tsx";
 import { useTemplates } from "./use-templates.ts";
+import { useLibrary } from "./use-library.ts";
+import { boardsFromLibrary, libraryKindLabels, librarySummaryLine, projectKindOf } from "../../lib/tactics/library.ts";
 import "./tactics.css";
 
 export function TacticsHome() {
@@ -25,6 +27,7 @@ export function TacticsHome() {
   const [start, setStart] = useState("ready");
   const [picked, setPicked] = useState<string[]>(defaultStarterKeys.match);
   const { templates, error: templateError, boardsOf, remove: removeTemplate } = useTemplates();
+  const { items: library, error: libraryError, boardsOf: libraryBoardsOf, remove: removeLibraryItem } = useLibrary();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -48,6 +51,10 @@ export function TacticsHome() {
     if (start === "ready") {
       const chosen = starterSets[form.kind].filter(item => picked.includes(item.key));
       boards = chosen.length > 0 ? chosen.map(item => starterBoard(item, team?.team_name)) : newDocument("Tavla 1", team?.team_name).boards;
+    } else if (start.startsWith("library:")) {
+      const item = library?.find(entry => entry.id === start.slice(8));
+      const found = item ? await libraryBoardsOf(item.id) : null;
+      boards = item && found ? boardsFromTemplate(boardsFromLibrary(item, found), team?.team_name) : null;
     } else {
       const found = await boardsOf(start);
       boards = found && boardsFromTemplate(found, team?.team_name);
@@ -100,9 +107,12 @@ export function TacticsHome() {
               setStart(event.target.value);
               const template = templates?.find(item => item.id === event.target.value);
               if (template) setForm({ ...form, kind: template.kind });
+              const item = library?.find(entry => `library:${entry.id}` === event.target.value);
+              if (item) setForm({ ...form, kind: projectKindOf[item.kind], name: form.name || item.title });
             }}>
               <option value="ready">Färdiga tavlor för {kindLabels[form.kind].toLowerCase()}</option>
               {(templates ?? []).map(template => <option key={template.id} value={template.id}>Mall: {template.name}</option>)}
+              {(library ?? []).map(item => <option key={item.id} value={`library:${item.id}`}>{libraryKindLabels[item.kind]}: {item.title}</option>)}
             </select>
           </label>
           {start === "ready" ? (
@@ -117,7 +127,9 @@ export function TacticsHome() {
               ))}
             </fieldset>
           ) : (
-            <p className="wt-small">{templates?.find(item => item.id === start)?.boards.map(board => board.name).join(", ")}</p>
+            <p className="wt-small">{start.startsWith("library:")
+              ? library?.find(item => `library:${item.id}` === start)?.boards.map(board => board.name).join(", ")
+              : templates?.find(item => item.id === start)?.boards.map(board => board.name).join(", ")}</p>
           )}
           <button type="submit" className="wt-button" disabled={busy}>Skapa och öppna</button>
           {teams.length > 0 && <p className="wt-small">Med ett lag hämtar du truppen till tavlan. Senare kan tavlan länkas till lagets aktiviteter i appen.</p>}
@@ -137,6 +149,27 @@ export function TacticsHome() {
                 <div className="wt-actions">
                   <button type="button" className="wt-button secondary small"
                     onClick={() => { if (window.confirm(`Ta bort mallen ${template.name}?`)) { if (start === template.id) setStart("ready"); void removeTemplate(template.id); } }}>Ta bort</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {library && library.length > 0 && (
+        <section className="wt-panel" aria-label="Ditt bibliotek">
+          <h2>Ditt bibliotek</h2>
+          <p className="wt-small">Övningar, pass och sessioner du har sparat. Börja ett nytt projekt från dem ovan.</p>
+          {libraryError && <p role="alert" className="wt-error">{libraryError}</p>}
+          <ul className="bk-resource-list">
+            {library.map(item => (
+              <li key={item.id}>
+                <div>
+                  <strong>{item.title}</strong>
+                  <span>{[libraryKindLabels[item.kind], librarySummaryLine(item), item.version > 1 && `version ${item.version}`].filter(Boolean).join(" · ")}</span>
+                </div>
+                <div className="wt-actions">
+                  <button type="button" className="wt-button secondary small"
+                    onClick={() => { if (window.confirm(`Ta bort ${item.title} ur biblioteket?`)) { if (start === `library:${item.id}`) setStart("ready"); void removeLibraryItem(item.id); } }}>Ta bort</button>
                 </div>
               </li>
             ))}

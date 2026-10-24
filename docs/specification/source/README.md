@@ -40,6 +40,7 @@ Auditdokumenten beskriver **vad som finns och har verifierats**. Denna katalog b
 - `24_implementation_slice_plan.md` – taskindelad plan för S01–S11, parameterberoenden, auditgrindar och separata livegodkännanden.
 - `26_module_foundations_decision.md` – elfte beslutspaketet om grunderna i Match, Träning, IDP och Team Development Plan före Tacticsboard-kopplingen.
 - `27_public_live_match_decision.md` – tolfte beslutspaketet om matchen live på lagets publika sida, med namn bara enligt publiceringssamtycke.
+- `28_tacticsboard_library_decision.md` – trettonde beslutspaketet om Tacticsboard som ursprung för biblioteket av övningar, pass och sessioner, och kopplingen till appens träningspass.
 - `25_greenfield_bootstrap_plan.md` – S00 för ny kodbas i `C:\Dev\TeamzoneApp`, toolchain, Fluttergrund, secrets och evidens.
 
 ## Nästa grind

@@ -191,6 +191,9 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
 .tb-starters label { display: flex; align-items: center; gap: 8px; font-weight: 400; }
 .tb-starters input { width: 18px; height: 18px; accent-color: var(--wt-brand); }
 
+/* A board as an exercise: the age classes and game forms as boxes in rows. */
+.tb-chips { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; font-weight: 400; }
+
 /* On a phone some top bar buttons move into the "more" menu. */
 .tb-narrow-only { display: none; }
 .tb-more-menu { width: 220px; }
