@@ -21,8 +21,12 @@ class _WrittenReportDialogState extends State<_WrittenReportDialog> {
   late bool _publish = widget.report.published;
   bool _busy = false;
   String? _error, _payload, _command;
-  Future<void> _save() async {
-    if (_busy || !_form.currentState!.validate()) return;
+
+  /// Saves as a draft, or published when [publish].
+  Future<void> _save({required bool publish}) async {
+    if (_busy) return;
+    setState(() => _publish = publish);
+    if (!_form.currentState!.validate()) return;
     final payload = '$_publish/$_body';
     if (_payload != payload) {
       _payload = payload;
@@ -88,18 +92,11 @@ class _WrittenReportDialogState extends State<_WrittenReportDialog> {
                       : null,
                 ),
                 if (widget.report.canPublish)
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Publicera matchrapport'),
-                    subtitle: const Text(
-                      'Visas för alla när slutresultatet är synligt på den publika lagsidan. Avstängt sparar ett internt utkast.',
-                    ),
-                    value: _publish,
-                    onChanged: _busy
-                        ? null
-                        : (value) => setState(() {
-                            _publish = value;
-                          }),
+                  Text(
+                    widget.report.published
+                        ? 'Rapporten är publicerad och visas på den publika lagsidan när slutresultatet syns där.'
+                        : 'Publicera visar rapporten på den publika lagsidan när slutresultatet syns där. Ett utkast ser bara ledarna.',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 if (_error != null)
                   Text(
@@ -118,16 +115,31 @@ class _WrittenReportDialogState extends State<_WrittenReportDialog> {
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
           child: const Text('Avbryt'),
         ),
-        FilledButton(
-          onPressed: _busy ? null : _save,
-          child: Text(
-            _busy
-                ? 'Sparar…'
-                : _publish
-                ? 'Spara och publicera'
-                : 'Spara utkast',
+        if (widget.report.canPublish) ...[
+          OutlinedButton(
+            key: const Key('written-report-draft'),
+            onPressed: _busy ? null : () => _save(publish: false),
+            child: Text(
+              widget.report.published ? 'Avpublicera' : 'Spara utkast',
+            ),
           ),
-        ),
+          FilledButton(
+            key: const Key('written-report-publish'),
+            onPressed: _busy ? null : () => _save(publish: true),
+            child: Text(
+              _busy
+                  ? 'Sparar…'
+                  : widget.report.published
+                  ? 'Spara'
+                  : 'Publicera',
+            ),
+          ),
+        ] else
+          FilledButton(
+            key: const Key('written-report-draft'),
+            onPressed: _busy ? null : () => _save(publish: false),
+            child: Text(_busy ? 'Sparar…' : 'Spara utkast'),
+          ),
       ],
     ),
   );

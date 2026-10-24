@@ -259,10 +259,7 @@ void main() {
       await tester.ensureVisible(find.byTooltip('Skriv matchrapport'));
       await tester.tap(find.byTooltip('Skriv matchrapport'));
       await tester.pumpAndSettle();
-      expect(
-        tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
-        isFalse,
-      );
+      expect(find.byKey(const Key('written-report-publish')), findsOneWidget);
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Matchrapport'),
         'En bra laginsats.',
@@ -505,14 +502,7 @@ void main() {
       await _openEventMenu(tester);
       await tester.tap(find.text('Redigera matchrapport'));
       await tester.pumpAndSettle();
-      await tester.tap(
-        find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.byType(SwitchListTile),
-        ),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Spara och publicera'));
+      await tester.tap(find.byKey(const Key('written-report-publish')));
       await tester.pumpAndSettle();
       expect(match.report.published, isTrue);
       expect(match.report.revision, 2);
@@ -526,14 +516,7 @@ void main() {
     await _openEventMenu(tester);
     await tester.tap(find.text('Skriv matchrapport'));
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.byType(SwitchListTile),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Spara och publicera'));
+    await tester.tap(find.byKey(const Key('written-report-publish')));
     await tester.pumpAndSettle();
     expect(find.text('Skriv en rapport innan publicering'), findsOneWidget);
     expect(match.report.revision, 0);
