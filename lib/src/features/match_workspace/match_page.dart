@@ -76,15 +76,8 @@ class _MatchPageState extends State<_MatchPage> {
 
   @override
   Widget build(BuildContext context) {
-    final strings = AppStrings.of(context);
     final match = _match;
     final eventId = match?.eventId ?? widget.eventId;
-    Widget later(String text) => Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Text(strings.feature(text), textAlign: TextAlign.center),
-      ),
-    );
     final compact = _phase == _MatchPhase.live && _compactLive;
     return Scaffold(
       appBar: compact
@@ -123,9 +116,18 @@ class _MatchPageState extends State<_MatchPage> {
                   homeAway: match.homeAway,
                 ),
         ),
-        _MatchPhase.analysis => later(
-          'Efteranalysen med speltid, statistik och händelser på planen '
-          'kommer när livedelen är klar.',
+        _MatchPhase.analysis => _MatchAnalysisView(
+          key: ValueKey('match-analysis-$eventId'),
+          eventId: eventId,
+          calendar: widget.calendar,
+          match: widget.match,
+          sides: match == null
+              ? widget.sides
+              : (
+                  team: widget.sides.team,
+                  opponent: match.opponentName,
+                  homeAway: match.homeAway,
+                ),
         ),
       },
     );

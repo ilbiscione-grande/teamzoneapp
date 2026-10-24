@@ -146,6 +146,8 @@ part '../features/match_workspace/match_location_pitch.dart';
 part '../features/match_workspace/match_live_counters.dart';
 part '../features/match_workspace/match_live_counter_state.dart';
 part '../features/match_workspace/match_live_pitch_mode.dart';
+part '../features/match_workspace/match_analysis_view.dart';
+part '../features/match_workspace/match_analysis_parts.dart';
 part '../features/match_workspace/match_workspace_page.dart';
 part '../features/match_workspace/match_plan_editor.dart';
 part '../features/match_workspace/match_plan_summary.dart';

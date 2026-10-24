@@ -1,0 +1,240 @@
+/// The wordings of a match report from its events, as a reporter would
+/// put them: several for each kind of event, each telling only what was
+/// registered. Placeholders: {min} the minute as an ordinal ("20:e"), {n}
+/// the minute as a number, {p} the player, {t} our team, {tg} our team as
+/// owner ("hemmalagets"), {o} the opponent, {od} the opponent as a side
+/// ("gästerna"), {og} the opponent as owner ("gästernas"), {s} the score,
+/// {a} an assist, {in}/{out} a substitution, {home} where it was played.
+library;
+
+const reportIntros = {
+  'win': [
+    '{t} mötte {o}{home} och vann med {s}.',
+    'Det blev seger för {t} mot {o}{home}, {s}.',
+    '{t} gick segrande ur mötet med {o}{home} och vann med {s}.',
+  ],
+  'loss': [
+    '{t} mötte {o}{home} och förlorade med {s}.',
+    'Det blev förlust för {t} mot {o}{home}, {s}.',
+    '{t} fick se sig besegrade av {o}{home} med {s}.',
+  ],
+  'draw': [
+    '{t} och {o} delade på poängen{home} efter {s}.',
+    'Mötet mellan {t} och {o}{home} slutade oavgjort, {s}.',
+    'Det blev oavgjort, {s}, när {t} mötte {o}{home}.',
+  ],
+};
+
+const reportAssists = [
+  ' efter en fin passning från {a}',
+  ' sedan {a} spelat fram',
+  ' på framspelning av {a}',
+  ' efter ett snyggt förarbete av {a}',
+  ' med {a} som framspelare',
+];
+
+const reportGoalsUs = {
+  'lead': [
+    'I matchens {min} spelminut slog {tg} {p} till{a} och gav {t} ledningen med {s}.',
+    'Jublet var stort i {min} minuten när {p} hittade nätet för {t}{a}. Det stod nu {s}.',
+    'Efter {n} minuters spel var det {p} som stod för ledningsmålet{a}, och {t} gick upp i {s}.',
+    'I {min} minuten fick {tg} {p} till det{a} och sköt {t} i ledning, {s}.',
+    'Ledningsmålet kom i {min} minuten. {tg} {p} var den som tog chansen{a}, och det stod {s}.',
+  ],
+  'extend': [
+    '{t} fortsatte att trycka på, och i {min} minuten utökade {p} ledningen{a}. Nu stod det {s}.',
+    'I matchens {min} spelminut kom ännu ett mål för {t} när {p} hittade rätt{a}, {s}.',
+    '{tg} {p} var på rätt plats i {min} minuten och ökade på ledningen till {s}{a}.',
+    'Efter {n} minuters spel drog {t} ifrån ytterligare. {p} gjorde målet{a}, och ställningen blev {s}.',
+    'Det blev {s} i {min} minuten när {p} utökade för {t}{a}.',
+  ],
+  'equalise': [
+    '{t} gav inte upp, och i {min} minuten kom kvitteringen genom {p}{a}. Därmed stod det {s}.',
+    'I matchens {min} spelminut kvitterade {tg} {p}{a}. Med {s} var matchen helt öppen igen.',
+    'Efter {n} minuters spel var matchen i balans igen när {p} kvitterade till {s}{a}.',
+    '{p} tog chansen i {min} minuten och kvitterade för {t}{a}. Det stod nu {s}.',
+    'Jublet var stort i {min} minuten när {tg} {p} kvitterade till {s}{a}.',
+  ],
+  'reduce': [
+    '{t} fick nytt hopp i {min} minuten när {p} reducerade till {s}{a}.',
+    'I matchens {min} spelminut lyckades {tg} {p} reducera{a}. Ställningen var nu {s}.',
+    'Efter {n} minuters spel kom ett reduceringsmål för {t} genom {p}{a}, {s}.',
+    '{p} vägrade ge upp och reducerade i {min} minuten till {s}{a}.',
+    'Det blev {s} i {min} minuten när {tg} {p} reducerade för {t}{a}.',
+  ],
+};
+
+const reportGoalsThem = {
+  'lead': [
+    'I matchens {min} spelminut tog {o} ledningen, och {od} gick upp i {s}.',
+    '{o} slog till i {min} minuten och tog ledningen. Det stod nu {s}.',
+    'Efter {n} minuters spel kom ledningsmålet för {od}, {s}.',
+    'I {min} minuten fick {t} se {o} göra mål och gå upp i ledning med {s}.',
+    '{od} tog ledningen i {min} minuten när {o} lyckades göra mål, {s}.',
+  ],
+  'extend': [
+    '{o} utökade sin ledning i {min} minuten. Ställningen blev {s}.',
+    'I matchens {min} spelminut drog {od} ifrån ytterligare, {s}.',
+    'Efter {n} minuters spel gjorde {o} ännu ett mål och ledde med {s}.',
+    '{t} fick det tyngre när {o} utökade i {min} minuten till {s}.',
+    'Det blev {s} i {min} minuten när {od} ökade på sin ledning.',
+  ],
+  'equalise': [
+    '{o} kvitterade i {min} minuten, och det stod {s}.',
+    'I matchens {min} spelminut kom {od} ikapp, {s}.',
+    'Efter {n} minuters spel var det jämnt igen när {o} kvitterade till {s}.',
+    '{t} fick se ledningen försvinna i {min} minuten när {o} kvitterade, {s}.',
+    'Kvitteringen för {od} kom i {min} minuten, {s}.',
+  ],
+  'reduce': [
+    '{o} reducerade i {min} minuten till {s}.',
+    'I matchens {min} spelminut fick {od} in ett reduceringsmål, {s}.',
+    'Efter {n} minuters spel knappade {o} in, och det stod {s}.',
+    '{t} släppte in ett reduceringsmål i {min} minuten, {s}.',
+    'Det blev {s} i {min} minuten när {od} reducerade.',
+  ],
+};
+
+const reportShotsUs = {
+  'missed': [
+    'I matchens {min} spelminut lyckades {tg} {p} få iväg ett avslut mot mål. Tyvärr gick skottet utanför den här gången.',
+    '{p} fick ett läge i {min} minuten och tvekade inte att skjuta, men bollen gick utanför målet.',
+    'Efter {n} minuters spel provade {tg} {p} lyckan med ett skott. Bollen gick dock utanför.',
+    'I {min} minuten kom {p} till avslut för {t}, men siktet var inte riktigt inställt och skottet missade målet.',
+    '{t} skapade ett läge i {min} minuten där {p} sköt, men bollen gick tyvärr förbi målet.',
+  ],
+  'on_target': [
+    'I matchens {min} spelminut fick {tg} {p} iväg ett skott på mål, men {og} målvakt var med och räddade.',
+    '{p} prövade {og} målvakt med ett avslut i {min} minuten, men det blev ingen utdelning den här gången.',
+    'Efter {n} minuters spel kom ett farligt avslut från {tg} {p}. Skottet gick på mål men räddades.',
+    'I {min} minuten var {p} nära att göra mål för {t}, men målvakten stod i vägen.',
+    '{t} pressade på, och i {min} minuten tvingade {p} målvakten till en räddning.',
+  ],
+  'blocked': [
+    'I matchens {min} spelminut försökte {tg} {p} skjuta, men en försvarare hann emellan och blockerade.',
+    '{p} fick till ett avslut i {min} minuten, men skottet täcktes av {og} försvar.',
+    'Efter {n} minuters spel sköt {tg} {p}, men bollen fastnade i en motståndare.',
+    'I {min} minuten fick {p} chansen att skjuta för {t}, men skottet blockerades.',
+    'Ett skott från {p} i {min} minuten stoppades av en försvarare innan det nådde fram till mål.',
+  ],
+  'woodwork': [
+    'Det var nära i matchens {min} spelminut när {tg} {p} sköt i ramen. Där saknades bara några centimeter.',
+    '{p} fick {t} att hålla andan i {min} minuten när skottet tog i stolpe eller ribba.',
+    'Efter {n} minuters spel small det i ramen efter ett avslut från {tg} {p}.',
+    'I {min} minuten var {p} millimeter från mål, men skottet studsade ut från ramen.',
+    'Otur för {t} i {min} minuten när {p} träffade målramen.',
+  ],
+};
+
+const reportShotsThem = {
+  'missed': [
+    'I matchens {min} spelminut fick {od} iväg ett avslut, men skottet gick utanför.',
+    '{o} provade att skjuta i {min} minuten, men bollen missade målet.',
+    'Efter {n} minuters spel kom ett avslut från {od} som gick utanför.',
+    'I {min} minuten sköt {o}, men {t} kunde andas ut när bollen gick förbi.',
+    '{od} skapade ett läge i {min} minuten, men avslutet gick utanför.',
+  ],
+  'on_target': [
+    'I matchens {min} spelminut sköt {o} på mål, men {tg} målvakt var med och räddade.',
+    '{od} prövade målvakten i {min} minuten, men skottet räddades.',
+    'Efter {n} minuters spel kom ett skott på mål från {o}, som {t} lyckades hålla undan.',
+    'I {min} minuten fick {t} se ett farligt avslut från {o}, men målvakten stod rätt.',
+    '{o} sköt på mål i {min} minuten utan att lyckas göra mål.',
+  ],
+  'blocked': [
+    'I matchens {min} spelminut sköt {o}, men {tg} försvar blockerade.',
+    'Ett avslut från {od} i {min} minuten täcktes av {t}.',
+    'Efter {n} minuters spel försökte {o} skjuta, men en försvarare från {t} kom emellan.',
+    'I {min} minuten blockerade {t} ett skott från {o}.',
+    '{o} fick iväg ett skott i {min} minuten som fastnade i försvaret.',
+  ],
+  'woodwork': [
+    'Det var nära för {od} i matchens {min} spelminut när skottet tog i ramen.',
+    '{t} hade turen på sin sida i {min} minuten när {o} sköt i stolpe eller ribba.',
+    'Efter {n} minuters spel small det i ramen efter ett skott från {o}.',
+    'I {min} minuten studsade ett avslut från {o} ut från ramen.',
+    '{o} träffade målramen i {min} minuten, men bollen ville inte in.',
+  ],
+};
+
+const reportSaves = [
+  'I matchens {min} spelminut gjorde {tg} målvakt {p} en viktig räddning.',
+  '{p} stod i vägen i {min} minuten och räddade ett skott från {o}.',
+  'Efter {n} minuters spel fick {p} i målet jobba, och räddningen satt där.',
+  'I {min} minuten var {p} på rätt plats och höll undan för {t}.',
+  'En fin räddning av {p} i {min} minuten höll {o} borta från målet.',
+];
+
+const reportPenaltiesUs = {
+  'scored': [
+    'I matchens {min} spelminut fick {t} en straff, och {p} klev fram och satte den säkert.',
+    '{p} gjorde inga misstag från straffpunkten i {min} minuten.',
+    'Straffen i {min} minuten förvaltades väl av {tg} {p}.',
+  ],
+  'saved': [
+    '{t} fick straff i {min} minuten, men målvakten räddade skottet från {p}.',
+    '{p} klev fram till straffen i {min} minuten men fick se den räddas.',
+    'I {min} minuten räddades en straff från {tg} {p}.',
+  ],
+  'missed': [
+    '{p} fick chansen från straffpunkten i {min} minuten, men skottet gick utanför.',
+    'I matchens {min} spelminut missade {tg} {p} en straff.',
+    'Straffen i {min} minuten gick tyvärr inte in för {t}.',
+  ],
+};
+
+const reportPenaltiesThem = {
+  'scored': [
+    '{o} fick en straff i {min} minuten och satte den.',
+    'I matchens {min} spelminut slog {od} in en straff.',
+  ],
+  'saved': [
+    '{o} fick straff i {min} minuten, men {tg} målvakt räddade.',
+    'I {min} minuten räddade {t} en straff från {o}.',
+  ],
+  'missed': [
+    '{o} missade en straff i {min} minuten.',
+    'I matchens {min} spelminut gick en straff från {od} utanför.',
+  ],
+};
+
+const reportCardsUs = {
+  'yellow': [
+    'I matchens {min} spelminut fick {tg} {p} ett gult kort av domaren.',
+    '{p} varnades med gult kort i {min} minuten.',
+    'Efter {n} minuters spel visade domaren upp det gula kortet för {p}.',
+    'I {min} minuten blev det gult kort för {tg} {p}.',
+    '{p} fick se det gula kortet i {min} minuten.',
+  ],
+  'red': [
+    'I matchens {min} spelminut fick {tg} {p} rött kort och fick lämna planen.',
+    '{t} fick spela med en spelare mindre efter att {p} visats ut med rött kort i {min} minuten.',
+    'Domaren visade rött kort för {p} i {min} minuten.',
+  ],
+};
+
+const reportCardsThem = {
+  'yellow': [
+    'I matchens {min} spelminut fick {od} ett gult kort.',
+    '{o} varnades med gult kort i {min} minuten.',
+    'Domaren visade gult kort för en spelare i {o} i {min} minuten.',
+  ],
+  'red': [
+    'I matchens {min} spelminut fick {od} ett rött kort och fick spela vidare med en spelare mindre.',
+    '{o} fick rött kort i {min} minuten.',
+  ],
+};
+
+const reportSubstitutions = [
+  'I matchens {min} spelminut gjorde {t} ett byte: {in} kom in och ersatte {out}.',
+  '{out} lämnade planen i {min} minuten och ersattes av {in}.',
+  'Efter {n} minuters spel fick {in} chansen när {out} byttes ut.',
+  '{t} bytte i {min} minuten, och {in} tog platsen efter {out}.',
+  'I {min} minuten var det dags för {in} att komma in, och {out} gick av.',
+];
+
+const reportInjuries = [
+  'I matchens {min} spelminut skadade sig {tg} {p} och behövde vård.',
+  '{p} fick ont i {min} minuten, vilket var tråkigt för {t}.',
+  'Efter {n} minuters spel drabbades {p} av en skada.',
+];
