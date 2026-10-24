@@ -1,0 +1,274 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:teamzone_app/src/features/team_development/team_development_models.dart';
+
+export 'package:teamzone_app/src/features/team_development/team_development_models.dart';
+
+/// A change the server refused: `stale_revision` (changed elsewhere since it
+/// was read), `overlapping_season`, `overlapping_period`, `outside_season`,
+/// `too_many`, `invalid_input` or `not_allowed`.
+class TeamDevelopmentException implements Exception {
+  const TeamDevelopmentException(this.code);
+  final String code;
+
+  static const codes = [
+    'stale_revision',
+    'overlapping_season',
+    'overlapping_period',
+    'outside_season',
+    'too_many',
+    'invalid_input',
+    'not_allowed',
+  ];
+
+  /// What to tell the leader.
+  String get message => switch (code) {
+    'stale_revision' =>
+      'Planen har ändrats av någon annan. Den senaste visas nu.',
+    'overlapping_season' => 'Datumen krockar med en annan säsong.',
+    'overlapping_period' => 'Datumen krockar med en annan period.',
+    'outside_season' =>
+      'Datumen måste ligga inom säsongen, och säsongen måste rymma sina perioder och mål.',
+    'too_many' => 'Planen har redan så många som får plats.',
+    'not_allowed' => 'Planen kan inte ändras här.',
+    _ => 'Kontrollera uppgifterna och försök igen.',
+  };
+}
+
+/// The team's plan. Every change is made on the revision read and returns
+/// the plan as it is after the change.
+abstract interface class TeamDevelopmentServices {
+  /// The team's seasons and one plan: [planId], else today's season.
+  Future<TeamDevelopment> get(String teamId, {String? planId});
+  Future<SeasonPlan> createPlan({
+    required String teamId,
+    required String title,
+    required DateTime startsOn,
+    required DateTime endsOn,
+    required String vision,
+  });
+  Future<SeasonPlan> savePlan(
+    SeasonPlan plan, {
+    required String title,
+    required DateTime startsOn,
+    required DateTime endsOn,
+    required String vision,
+  });
+
+  /// A new period when [periodId] is null.
+  Future<SeasonPlan> savePeriod(
+    SeasonPlan plan, {
+    String? periodId,
+    required String name,
+    required PeriodPhase phase,
+    required DateTime startsOn,
+    required DateTime endsOn,
+    required String focus,
+  });
+  Future<SeasonPlan> deletePeriod(SeasonPlan plan, String periodId);
+
+  /// A new goal when [goalId] is null.
+  Future<SeasonPlan> saveGoal(
+    SeasonPlan plan, {
+    String? goalId,
+    required GoalHorizon horizon,
+    String? periodId,
+    required String title,
+    required String description,
+    DateTime? targetOn,
+    required GoalState state,
+  });
+  Future<SeasonPlan> deleteGoal(SeasonPlan plan, String goalId);
+}
+
+class UnconfiguredTeamDevelopmentServices implements TeamDevelopmentServices {
+  const UnconfiguredTeamDevelopmentServices();
+  StateError get _error => StateError('Supabase is not configured.');
+  @override
+  Future<TeamDevelopment> get(String teamId, {String? planId}) =>
+      Future.error(_error);
+  @override
+  Future<SeasonPlan> createPlan({
+    required String teamId,
+    required String title,
+    required DateTime startsOn,
+    required DateTime endsOn,
+    required String vision,
+  }) => Future.error(_error);
+  @override
+  Future<SeasonPlan> savePlan(
+    SeasonPlan plan, {
+    required String title,
+    required DateTime startsOn,
+    required DateTime endsOn,
+    required String vision,
+  }) => Future.error(_error);
+  @override
+  Future<SeasonPlan> savePeriod(
+    SeasonPlan plan, {
+    String? periodId,
+    required String name,
+    required PeriodPhase phase,
+    required DateTime startsOn,
+    required DateTime endsOn,
+    required String focus,
+  }) => Future.error(_error);
+  @override
+  Future<SeasonPlan> deletePeriod(SeasonPlan plan, String periodId) =>
+      Future.error(_error);
+  @override
+  Future<SeasonPlan> saveGoal(
+    SeasonPlan plan, {
+    String? goalId,
+    required GoalHorizon horizon,
+    String? periodId,
+    required String title,
+    required String description,
+    DateTime? targetOn,
+    required GoalState state,
+  }) => Future.error(_error);
+  @override
+  Future<SeasonPlan> deleteGoal(SeasonPlan plan, String goalId) =>
+      Future.error(_error);
+}
+
+class SupabaseTeamDevelopmentServices implements TeamDevelopmentServices {
+  SupabaseTeamDevelopmentServices(this._client);
+  final SupabaseClient _client;
+
+  static String _day(DateTime value) =>
+      '${value.year.toString().padLeft(4, '0')}-'
+      '${value.month.toString().padLeft(2, '0')}-'
+      '${value.day.toString().padLeft(2, '0')}';
+
+  Future<Map<String, dynamic>> _rpc(
+    String name,
+    Map<String, Object?> params,
+  ) async {
+    try {
+      final value = await _client
+          .schema('api')
+          .rpc<Object?>(name, params: params)
+          .timeout(const Duration(seconds: 15));
+      if (value is! Map<String, dynamic>) {
+        throw const FormatException('Invalid team development response.');
+      }
+      return value;
+    } on PostgrestException catch (error) {
+      final code = TeamDevelopmentException.codes
+          .where(error.message.contains)
+          .firstOrNull;
+      if (code != null) throw TeamDevelopmentException(code);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<TeamDevelopment> get(String teamId, {String? planId}) async =>
+      TeamDevelopment.fromJson(
+        await _rpc('get_team_development', {
+          'target_team_id': teamId,
+          'target_plan_id': planId,
+        }),
+      );
+
+  @override
+  Future<SeasonPlan> createPlan({
+    required String teamId,
+    required String title,
+    required DateTime startsOn,
+    required DateTime endsOn,
+    required String vision,
+  }) async => SeasonPlan.fromJson(
+    await _rpc('create_team_development_plan', {
+      'target_team_id': teamId,
+      'plan_title': title,
+      'starts': _day(startsOn),
+      'ends': _day(endsOn),
+      'vision': vision,
+    }),
+  );
+
+  @override
+  Future<SeasonPlan> savePlan(
+    SeasonPlan plan, {
+    required String title,
+    required DateTime startsOn,
+    required DateTime endsOn,
+    required String vision,
+  }) async => SeasonPlan.fromJson(
+    await _rpc('save_team_development_plan', {
+      'target_plan_id': plan.id,
+      'expected_revision': plan.revision,
+      'plan_title': title,
+      'starts': _day(startsOn),
+      'ends': _day(endsOn),
+      'vision': vision,
+    }),
+  );
+
+  @override
+  Future<SeasonPlan> savePeriod(
+    SeasonPlan plan, {
+    String? periodId,
+    required String name,
+    required PeriodPhase phase,
+    required DateTime startsOn,
+    required DateTime endsOn,
+    required String focus,
+  }) async => SeasonPlan.fromJson(
+    await _rpc('save_team_development_period', {
+      'target_plan_id': plan.id,
+      'expected_revision': plan.revision,
+      'target_period_id': periodId,
+      'period_name': name,
+      'period_phase': phase.key,
+      'starts': _day(startsOn),
+      'ends': _day(endsOn),
+      'period_focus': focus,
+    }),
+  );
+
+  @override
+  Future<SeasonPlan> deletePeriod(SeasonPlan plan, String periodId) async =>
+      SeasonPlan.fromJson(
+        await _rpc('delete_team_development_period', {
+          'target_plan_id': plan.id,
+          'expected_revision': plan.revision,
+          'target_period_id': periodId,
+        }),
+      );
+
+  @override
+  Future<SeasonPlan> saveGoal(
+    SeasonPlan plan, {
+    String? goalId,
+    required GoalHorizon horizon,
+    String? periodId,
+    required String title,
+    required String description,
+    DateTime? targetOn,
+    required GoalState state,
+  }) async => SeasonPlan.fromJson(
+    await _rpc('save_team_development_goal', {
+      'target_plan_id': plan.id,
+      'expected_revision': plan.revision,
+      'target_goal_id': goalId,
+      'goal_horizon': horizon.name,
+      'target_period_id': periodId,
+      'goal_title': title,
+      'goal_description': description,
+      'goal_target_on': targetOn == null ? null : _day(targetOn),
+      'goal_state': state.name,
+    }),
+  );
+
+  @override
+  Future<SeasonPlan> deleteGoal(SeasonPlan plan, String goalId) async =>
+      SeasonPlan.fromJson(
+        await _rpc('delete_team_development_goal', {
+          'target_plan_id': plan.id,
+          'expected_revision': plan.revision,
+          'target_goal_id': goalId,
+        }),
+      );
+}

@@ -61,6 +61,11 @@ class _WorkspacesSurfaceState extends State<_WorkspacesSurface> {
         roster: widget.roster,
         match: widget.match,
       ),
+      'module.team_development' => () => _TeamDevelopmentModule.open(
+        context,
+        team: widget.contextValue,
+        services: widget.modules.teamDevelopment,
+      ),
       _ => null,
     };
   }

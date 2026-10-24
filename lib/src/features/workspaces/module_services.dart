@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:teamzone_app/src/features/team_development/team_development_services.dart';
 
 /// One of the app's modules (or the Tacticsboard link) and the club's
 /// access to it: `write`, `read_only` after a purchase ended, or `none`.
@@ -61,6 +62,9 @@ class TeamModules {
 
 abstract interface class ModuleServices {
   Future<TeamModules> getTeamModules({required String teamId});
+
+  /// The Team Development Plan module.
+  TeamDevelopmentServices get teamDevelopment;
 }
 
 /// Without a backend every area is the built-in version.
@@ -69,11 +73,17 @@ class UnconfiguredModuleServices implements ModuleServices {
   @override
   Future<TeamModules> getTeamModules({required String teamId}) =>
       Future.value(const TeamModules());
+  @override
+  TeamDevelopmentServices get teamDevelopment =>
+      const UnconfiguredTeamDevelopmentServices();
 }
 
 class SupabaseModuleServices implements ModuleServices {
-  SupabaseModuleServices(this._client);
+  SupabaseModuleServices(this._client)
+    : teamDevelopment = SupabaseTeamDevelopmentServices(_client);
   final SupabaseClient _client;
+  @override
+  final TeamDevelopmentServices teamDevelopment;
 
   @override
   Future<TeamModules> getTeamModules({required String teamId}) async {
