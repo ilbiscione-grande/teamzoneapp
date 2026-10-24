@@ -139,6 +139,8 @@ part '../features/team_development/team_development_module.dart';
 part '../features/team_development/team_development_season.dart';
 part '../features/team_development/team_development_goals.dart';
 part '../features/team_development/team_development_editors.dart';
+part '../features/team_development/team_development_checkins.dart';
+part '../features/team_development/team_development_play.dart';
 part '../features/match_workspace/match_squad.dart';
 part '../features/match_workspace/match_page.dart';
 part '../features/match_workspace/match_lineup_editor.dart';

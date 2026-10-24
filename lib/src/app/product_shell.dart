@@ -676,6 +676,7 @@ class _ProductShellState extends State<_ProductShell> {
                 )
               : destination.path == ProductRouteContract.workspaces
               ? _WorkspacesSurface(
+                  openModule: state.uri.queryParameters['module'],
                   contextValue: widget.contextValue,
                   modules: widget.modules,
                   calendar: widget.calendar,

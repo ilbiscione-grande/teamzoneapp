@@ -12,6 +12,7 @@ class _WorkspacesSurface extends StatefulWidget {
     required this.roster,
     required this.match,
     required this.onNavigate,
+    this.openModule,
   });
   final TeamZoneContext contextValue;
   final ModuleServices modules;
@@ -20,12 +21,33 @@ class _WorkspacesSurface extends StatefulWidget {
   final MatchServices match;
   final ValueChanged<String> onNavigate;
 
+  /// A module to open at once (`team_development`), as from the assistant.
+  final String? openModule;
+
   @override
   State<_WorkspacesSurface> createState() => _WorkspacesSurfaceState();
 }
 
 class _WorkspacesSurfaceState extends State<_WorkspacesSurface> {
   late Future<TeamModules> _modules = _load();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.openModule == 'team_development' &&
+        widget.contextValue.teamId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        unawaited(
+          _TeamDevelopmentModule.open(
+            context,
+            team: widget.contextValue,
+            services: widget.modules.teamDevelopment,
+          ),
+        );
+      });
+    }
+  }
 
   Future<TeamModules> _load() {
     final teamId = widget.contextValue.teamId;

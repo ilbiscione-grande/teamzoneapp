@@ -125,6 +125,7 @@ class _TdpSeason extends StatelessWidget {
         startsOn: draft.startsOn,
         endsOn: draft.endsOn,
         vision: draft.vision,
+        checkinEveryDays: draft.checkinEveryDays,
       ),
       done: 'Säsongen är sparad.',
     );

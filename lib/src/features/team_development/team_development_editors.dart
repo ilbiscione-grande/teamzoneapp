@@ -5,6 +5,7 @@ typedef _SeasonDraft = ({
   DateTime startsOn,
   DateTime endsOn,
   String vision,
+  int? checkinEveryDays,
 });
 
 /// A focus to start from for each phase, as the old app's period templates.
@@ -133,6 +134,8 @@ abstract final class _SeasonDialog {
     var ends =
         plan?.endsOn ?? DateTime(starts.year + 1, starts.month, starts.day - 1);
     final initialTitle = plan?.title ?? 'Säsong ${starts.year}';
+    // A new season checks its goals every other week.
+    var every = plan == null ? 14 : plan.checkinEveryDays;
     final first = DateTime(year - 2), last = DateTime(year + 3, 12, 31);
     return showDialog<_SeasonDraft>(
       context: context,
@@ -203,6 +206,33 @@ abstract final class _SeasonDialog {
                         border: OutlineInputBorder(),
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<int?>(
+                      isExpanded: true,
+                      key: const Key('tdp-season-checkins'),
+                      initialValue: every,
+                      decoration: const InputDecoration(
+                        labelText: 'Stäm av målen',
+                        helperText: 'Assistenten påminner när det är dags.',
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 7, child: Text('Varje vecka')),
+                        DropdownMenuItem(
+                          value: 14,
+                          child: Text('Varannan vecka'),
+                        ),
+                        DropdownMenuItem(
+                          value: 21,
+                          child: Text('Var tredje vecka'),
+                        ),
+                        DropdownMenuItem(
+                          value: 28,
+                          child: Text('Var fjärde vecka'),
+                        ),
+                        DropdownMenuItem(value: null, child: Text('Aldrig')),
+                      ],
+                      onChanged: (value) => setState(() => every = value),
+                    ),
                   ],
                 ),
               ),
@@ -219,6 +249,7 @@ abstract final class _SeasonDialog {
                           startsOn: starts,
                           endsOn: ends,
                           vision: vision.text.trim(),
+                          checkinEveryDays: every,
                         ))
                       : null,
                   child: Text(plan == null ? 'Skapa' : 'Spara'),
@@ -268,6 +299,7 @@ abstract final class _TdpPeriodDialog {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     DropdownButtonFormField<PeriodPhase>(
+                      isExpanded: true,
                       key: const Key('tdp-period-phase'),
                       initialValue: phase,
                       decoration: const InputDecoration(labelText: 'Fas'),
@@ -464,6 +496,7 @@ abstract final class _TdpGoalDialog {
                               'Lägg till en period under Säsongen först.',
                             )
                           : DropdownButtonFormField<String>(
+                              isExpanded: true,
                               key: const Key('tdp-goal-period'),
                               initialValue: period,
                               decoration: const InputDecoration(

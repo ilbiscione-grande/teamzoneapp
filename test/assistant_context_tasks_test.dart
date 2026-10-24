@@ -807,6 +807,48 @@ void main() {
       });
     },
   );
+
+  test(
+    'goals due for a check-in open the Team Development Plan in the team',
+    () async {
+      final lead = TeamZoneContext(
+        id: 'lead',
+        clubId: 'club-a',
+        clubName: 'Klubb A',
+        teamId: 'p2012',
+        teamName: 'P2012',
+        rolePackage: 'leader',
+        capabilities: const {'development.manage'},
+      );
+      final snapshot = await loadAssistantTasks(
+        contexts: [team('x'), lead],
+        activeContext: team('x'),
+        overview: _DueOverview(),
+        loadEvent: event,
+      );
+      final task = snapshot.tasks.single;
+      expect(task.task.kind, 'module_tdp_checkins');
+      expect(task.isClubDuty, isTrue, reason: 'no snooze or archive');
+      expect(task.context.id, 'lead');
+      expect(task.explanation, startsWith('3 av lagets mål'));
+      final route = Uri.parse(task.route);
+      expect(route.path, ProductRouteContract.workspaces);
+      expect(route.queryParameters, {
+        'module': 'team_development',
+        'context': 'lead',
+      });
+    },
+  );
+}
+
+class _DueOverview extends Overview implements TeamDevelopmentDueServices {
+  @override
+  Future<List<({String clubId, String teamId, int due})>>
+  listMyTeamDevelopmentCheckinsDue() async => const [
+    (clubId: 'club-a', teamId: 'p2012', due: 3),
+    // A team without your context.
+    (clubId: 'club-z', teamId: 'z', due: 1),
+  ];
 }
 
 class _RefereeOverview extends Overview implements RefereeControlServices {

@@ -52,6 +52,7 @@ abstract interface class TeamDevelopmentServices {
     required DateTime startsOn,
     required DateTime endsOn,
     required String vision,
+    int? checkinEveryDays,
   });
 
   /// A new period when [periodId] is null.
@@ -78,6 +79,39 @@ abstract interface class TeamDevelopmentServices {
     required GoalState state,
   });
   Future<SeasonPlan> deleteGoal(SeasonPlan plan, String goalId);
+
+  /// A new principle when [principleId] is null.
+  Future<SeasonPlan> savePrinciple(
+    SeasonPlan plan, {
+    String? principleId,
+    required PrincipleArea area,
+    required String title,
+    required String description,
+  });
+  Future<SeasonPlan> deletePrinciple(SeasonPlan plan, String principleId);
+
+  /// A new key figure when [kpiId] is null.
+  Future<SeasonPlan> saveKpi(
+    SeasonPlan plan, {
+    String? kpiId,
+    required String title,
+    required String unit,
+    double? target,
+    required bool higherIsBetter,
+  });
+  Future<SeasonPlan> deleteKpi(SeasonPlan plan, String kpiId);
+
+  /// A check-in on a goal ([status]) or a key figure ([value]).
+  Future<SeasonPlan> addCheckin(
+    SeasonPlan plan, {
+    String? goalId,
+    String? kpiId,
+    required DateTime checkedOn,
+    CheckinStatus? status,
+    double? value,
+    required String note,
+  });
+  Future<SeasonPlan> deleteCheckin(SeasonPlan plan, String checkinId);
 }
 
 class UnconfiguredTeamDevelopmentServices implements TeamDevelopmentServices {
@@ -101,6 +135,7 @@ class UnconfiguredTeamDevelopmentServices implements TeamDevelopmentServices {
     required DateTime startsOn,
     required DateTime endsOn,
     required String vision,
+    int? checkinEveryDays,
   }) => Future.error(_error);
   @override
   Future<SeasonPlan> savePeriod(
@@ -128,6 +163,42 @@ class UnconfiguredTeamDevelopmentServices implements TeamDevelopmentServices {
   }) => Future.error(_error);
   @override
   Future<SeasonPlan> deleteGoal(SeasonPlan plan, String goalId) =>
+      Future.error(_error);
+  @override
+  Future<SeasonPlan> savePrinciple(
+    SeasonPlan plan, {
+    String? principleId,
+    required PrincipleArea area,
+    required String title,
+    required String description,
+  }) => Future.error(_error);
+  @override
+  Future<SeasonPlan> deletePrinciple(SeasonPlan plan, String principleId) =>
+      Future.error(_error);
+  @override
+  Future<SeasonPlan> saveKpi(
+    SeasonPlan plan, {
+    String? kpiId,
+    required String title,
+    required String unit,
+    double? target,
+    required bool higherIsBetter,
+  }) => Future.error(_error);
+  @override
+  Future<SeasonPlan> deleteKpi(SeasonPlan plan, String kpiId) =>
+      Future.error(_error);
+  @override
+  Future<SeasonPlan> addCheckin(
+    SeasonPlan plan, {
+    String? goalId,
+    String? kpiId,
+    required DateTime checkedOn,
+    CheckinStatus? status,
+    double? value,
+    required String note,
+  }) => Future.error(_error);
+  @override
+  Future<SeasonPlan> deleteCheckin(SeasonPlan plan, String checkinId) =>
       Future.error(_error);
 }
 
@@ -195,6 +266,7 @@ class SupabaseTeamDevelopmentServices implements TeamDevelopmentServices {
     required DateTime startsOn,
     required DateTime endsOn,
     required String vision,
+    int? checkinEveryDays,
   }) async => SeasonPlan.fromJson(
     await _rpc('save_team_development_plan', {
       'target_plan_id': plan.id,
@@ -203,6 +275,7 @@ class SupabaseTeamDevelopmentServices implements TeamDevelopmentServices {
       'starts': _day(startsOn),
       'ends': _day(endsOn),
       'vision': vision,
+      'checkin_days': checkinEveryDays,
     }),
   );
 
@@ -269,6 +342,96 @@ class SupabaseTeamDevelopmentServices implements TeamDevelopmentServices {
           'target_plan_id': plan.id,
           'expected_revision': plan.revision,
           'target_goal_id': goalId,
+        }),
+      );
+
+  @override
+  Future<SeasonPlan> savePrinciple(
+    SeasonPlan plan, {
+    String? principleId,
+    required PrincipleArea area,
+    required String title,
+    required String description,
+  }) async => SeasonPlan.fromJson(
+    await _rpc('save_team_development_principle', {
+      'target_plan_id': plan.id,
+      'expected_revision': plan.revision,
+      'target_principle_id': principleId,
+      'principle_area': area.key,
+      'principle_title': title,
+      'principle_description': description,
+    }),
+  );
+
+  @override
+  Future<SeasonPlan> deletePrinciple(
+    SeasonPlan plan,
+    String principleId,
+  ) async => SeasonPlan.fromJson(
+    await _rpc('delete_team_development_principle', {
+      'target_plan_id': plan.id,
+      'expected_revision': plan.revision,
+      'target_principle_id': principleId,
+    }),
+  );
+
+  @override
+  Future<SeasonPlan> saveKpi(
+    SeasonPlan plan, {
+    String? kpiId,
+    required String title,
+    required String unit,
+    double? target,
+    required bool higherIsBetter,
+  }) async => SeasonPlan.fromJson(
+    await _rpc('save_team_development_kpi', {
+      'target_plan_id': plan.id,
+      'expected_revision': plan.revision,
+      'target_kpi_id': kpiId,
+      'kpi_title': title,
+      'kpi_unit': unit,
+      'kpi_target': target,
+      'higher_better': higherIsBetter,
+    }),
+  );
+
+  @override
+  Future<SeasonPlan> deleteKpi(SeasonPlan plan, String kpiId) async =>
+      SeasonPlan.fromJson(
+        await _rpc('delete_team_development_kpi', {
+          'target_plan_id': plan.id,
+          'expected_revision': plan.revision,
+          'target_kpi_id': kpiId,
+        }),
+      );
+
+  @override
+  Future<SeasonPlan> addCheckin(
+    SeasonPlan plan, {
+    String? goalId,
+    String? kpiId,
+    required DateTime checkedOn,
+    CheckinStatus? status,
+    double? value,
+    required String note,
+  }) async => SeasonPlan.fromJson(
+    await _rpc('add_team_development_checkin', {
+      'target_plan_id': plan.id,
+      'target_goal_id': goalId,
+      'target_kpi_id': kpiId,
+      'checked': _day(checkedOn),
+      'checkin_status': status?.key,
+      'checkin_value': value,
+      'checkin_note': note,
+    }),
+  );
+
+  @override
+  Future<SeasonPlan> deleteCheckin(SeasonPlan plan, String checkinId) async =>
+      SeasonPlan.fromJson(
+        await _rpc('delete_team_development_checkin', {
+          'target_plan_id': plan.id,
+          'target_checkin_id': checkinId,
         }),
       );
 }

@@ -124,6 +124,55 @@ void main() {
     await tester.tap(find.byTooltip('Markera som uppnått'));
     await tester.pumpAndSettle();
     expect(services.plan!.goals.single.state, GoalState.achieved);
+
+    // Checking the goal from its sheet.
+    await tester.tap(find.text('Alla spelar mycket'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-goal-checkin')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('I farozonen'));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tdp-checkin-save')));
+    await tester.pumpAndSettle();
+    final checkin = services.plan!.checkins.single;
+    expect(checkin.status, CheckinStatus.atRisk);
+    expect(checkin.goalId, services.plan!.goals.single.id);
+    expect(find.byKey(ValueKey('tdp-checkin-${checkin.id}')), findsOneWidget);
+    await tester.tapAt(const Offset(195, 40));
+    await tester.pumpAndSettle();
+
+    // Spelidé: a principle and a key figure with a value.
+    await tester.tap(find.text('Spelidé'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-new-principle')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('tdp-principle-title')),
+      'Spela framåt när det går',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tdp-principle-save')));
+    await tester.pumpAndSettle();
+    expect(find.text('Spela framåt när det går'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('tdp-new-kpi')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('tdp-kpi-title')), 'Avslut');
+    await tester.enterText(find.byKey(const Key('tdp-kpi-target')), '12');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tdp-kpi-save')));
+    await tester.pumpAndSettle();
+    final kpi = services.plan!.kpis.single;
+    expect([kpi.title, kpi.target], ['Avslut', 12]);
+    await tester.tap(find.byKey(ValueKey('tdp-kpi-${kpi.id}')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-kpi-value')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('tdp-checkin-value')), '14,5');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tdp-checkin-save')));
+    await tester.pumpAndSettle();
+    expect(services.plan!.checkinsOfKpi(kpi.id).single.value, 14.5);
+    expect(tester.takeException(), isNull);
   });
 }
 
@@ -132,17 +181,27 @@ class _Plans implements TeamDevelopmentServices {
   SeasonPlan? created;
   var _ids = 0;
 
-  SeasonPlan _with({List<DevelopmentPeriod>? periods, List<TeamGoal>? goals}) =>
-      plan = SeasonPlan(
-        id: plan!.id,
-        title: plan!.title,
-        vision: plan!.vision,
-        startsOn: plan!.startsOn,
-        endsOn: plan!.endsOn,
-        revision: plan!.revision + 1,
-        periods: periods ?? plan!.periods,
-        goals: goals ?? plan!.goals,
-      );
+  SeasonPlan _with({
+    List<DevelopmentPeriod>? periods,
+    List<TeamGoal>? goals,
+    List<TeamPrinciple>? principles,
+    List<TeamKpi>? kpis,
+    List<TeamCheckin>? checkins,
+    bool revise = true,
+  }) => plan = SeasonPlan(
+    id: plan!.id,
+    title: plan!.title,
+    vision: plan!.vision,
+    startsOn: plan!.startsOn,
+    endsOn: plan!.endsOn,
+    revision: plan!.revision + (revise ? 1 : 0),
+    checkinEveryDays: plan!.checkinEveryDays,
+    periods: periods ?? plan!.periods,
+    goals: goals ?? plan!.goals,
+    principles: principles ?? plan!.principles,
+    kpis: kpis ?? plan!.kpis,
+    checkins: checkins ?? plan!.checkins,
+  );
 
   @override
   Future<TeamDevelopment> get(String teamId, {String? planId}) async =>
@@ -183,7 +242,18 @@ class _Plans implements TeamDevelopmentServices {
     required DateTime startsOn,
     required DateTime endsOn,
     required String vision,
-  }) async => _with();
+    int? checkinEveryDays,
+  }) async => this.plan = SeasonPlan(
+    id: plan.id,
+    title: title,
+    vision: vision,
+    startsOn: startsOn,
+    endsOn: endsOn,
+    revision: plan.revision + 1,
+    checkinEveryDays: checkinEveryDays,
+    periods: plan.periods,
+    goals: plan.goals,
+  );
 
   @override
   Future<SeasonPlan> savePeriod(
@@ -241,6 +311,85 @@ class _Plans implements TeamDevelopmentServices {
   @override
   Future<SeasonPlan> deleteGoal(SeasonPlan plan, String goalId) async =>
       _with(goals: [...plan.goals.where((g) => g.id != goalId)]);
+
+  @override
+  Future<SeasonPlan> savePrinciple(
+    SeasonPlan plan, {
+    String? principleId,
+    required PrincipleArea area,
+    required String title,
+    required String description,
+  }) async => _with(
+    principles: [
+      ...plan.principles.where((p) => p.id != principleId),
+      TeamPrinciple(
+        id: principleId ?? 'principle-${_ids++}',
+        area: area,
+        title: title,
+        description: description,
+      ),
+    ],
+  );
+
+  @override
+  Future<SeasonPlan> deletePrinciple(SeasonPlan plan, String id) async =>
+      _with(principles: [...plan.principles.where((p) => p.id != id)]);
+
+  @override
+  Future<SeasonPlan> saveKpi(
+    SeasonPlan plan, {
+    String? kpiId,
+    required String title,
+    required String unit,
+    double? target,
+    required bool higherIsBetter,
+  }) async => _with(
+    kpis: [
+      ...plan.kpis.where((k) => k.id != kpiId),
+      TeamKpi(
+        id: kpiId ?? 'kpi-${_ids++}',
+        title: title,
+        unit: unit,
+        target: target,
+        higherIsBetter: higherIsBetter,
+      ),
+    ],
+  );
+
+  @override
+  Future<SeasonPlan> deleteKpi(SeasonPlan plan, String id) async =>
+      _with(kpis: [...plan.kpis.where((k) => k.id != id)]);
+
+  @override
+  Future<SeasonPlan> addCheckin(
+    SeasonPlan plan, {
+    String? goalId,
+    String? kpiId,
+    required DateTime checkedOn,
+    CheckinStatus? status,
+    double? value,
+    required String note,
+  }) async => _with(
+    revise: false,
+    checkins: [
+      TeamCheckin(
+        id: 'checkin-${_ids++}',
+        goalId: goalId,
+        kpiId: kpiId,
+        checkedOn: checkedOn,
+        status: status,
+        value: value,
+        note: note,
+      ),
+      ...plan.checkins,
+    ],
+  );
+
+  @override
+  Future<SeasonPlan> deleteCheckin(SeasonPlan plan, String id) async => _with(
+    revise: false,
+    checkins: [...plan.checkins.where((c) => c.id != id)],
+  );
 }
 
 class _Modules implements ModuleServices {

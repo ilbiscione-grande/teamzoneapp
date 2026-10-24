@@ -159,6 +159,8 @@ class _TdpGoalTile extends StatelessWidget {
     final details = [
       if (goal.targetOn != null) 'Senast ${_tdpDate(context, goal.targetOn!)}',
       if (goal.state != GoalState.open) goal.state.label,
+      if (plan.checkinsOfGoal(goal.id).firstOrNull?.status case final status?)
+        status.label,
       if (goal.description.trim().isNotEmpty) goal.description.trim(),
     ];
     return ListTile(
@@ -203,9 +205,7 @@ class _TdpGoalTile extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-      onTap: controller.canEdit
-          ? () => _TdpGoalDialog.edit(context, controller, plan, goal: goal)
-          : null,
+      onTap: () => _TdpGoalSheet.show(context, controller, goal.id),
     );
   }
 }

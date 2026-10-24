@@ -33,6 +33,12 @@ abstract final class _TeamDevelopmentModule {
             builder: (_) => _TdpSeason(controller: controller),
           ),
           _ModuleSection(
+            label: 'Spelidé',
+            icon: Icons.lightbulb_outline,
+            selectedIcon: Icons.lightbulb,
+            builder: (_) => _TdpPlay(controller: controller),
+          ),
+          _ModuleSection(
             label: 'Mål',
             icon: Icons.flag_outlined,
             selectedIcon: Icons.flag,
@@ -119,13 +125,23 @@ class _TdpController extends ChangeNotifier {
     if (draft == null || !context.mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final created = await services.createPlan(
+      var created = await services.createPlan(
         teamId: teamId,
         title: draft.title,
         startsOn: draft.startsOn,
         endsOn: draft.endsOn,
         vision: draft.vision,
       );
+      if (draft.checkinEveryDays != null) {
+        created = await services.savePlan(
+          created,
+          title: draft.title,
+          startsOn: draft.startsOn,
+          endsOn: draft.endsOn,
+          vision: draft.vision,
+          checkinEveryDays: draft.checkinEveryDays,
+        );
+      }
       await reload(planId: created.id);
       messenger.showSnackBar(
         SnackBar(content: Text('${created.title} är skapad.')),
@@ -286,6 +302,7 @@ class _TdpOverview extends StatelessWidget {
       ]..sort((a, b) => a.targetOn!.compareTo(b.targetOn!));
       return [
         _TdpSeasonCard(controller: controller, plan: plan),
+        _TdpDue(controller: controller, plan: plan),
         const SizedBox(height: 16),
         if (period != null)
           _TdpPeriodNow(controller: controller, plan: plan, period: period)

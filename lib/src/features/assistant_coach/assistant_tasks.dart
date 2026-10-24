@@ -116,7 +116,9 @@ class AssistantTask {
 
   /// DR-01: a task of your club role (board, economy, applications), not
   /// of an activity. It opens its page; it has no snooze or archive.
-  bool get isClubDuty => task.kind.startsWith('club_');
+  // A module's reminders are duties too: no snooze or archive.
+  bool get isClubDuty =>
+      task.kind.startsWith('club_') || task.kind.startsWith('module_');
   bool get isImportant {
     if (task.kind == 'calendar_conflict' || isPersonalConflict) return true;
     if (!{
@@ -185,6 +187,7 @@ class AssistantTask {
     'club_team_page_requests' => 'Granska ansökningar om lagsida',
     'club_booking_requests' => 'Granska bokningar',
     'club_referee_control' => 'Svara på kontrollfrågan',
+    'module_tdp_checkins' => 'Stäm av lagets mål',
     'personal_calendar_conflict' => 'Öppna aktivitet och hantera krock',
     'calendar_conflict' => 'Välj aktivitet och ändra tid',
     'unfinished_preparation' => 'Öppna förberedelser',
@@ -206,6 +209,10 @@ class AssistantTask {
       '${task.count} lag vill ha en publik sida och väntar på klubbens beslut.',
     'club_booking_requests' =>
       '${task.count} bokningar väntar på ditt godkännande i Bokningshanteraren.',
+    'module_tdp_checkins' =>
+      task.count == 1
+          ? 'Ett av lagets mål i Team Development Plan väntar på avstämning.'
+          : '${task.count} av lagets mål i Team Development Plan väntar på avstämning.',
     'club_referee_control' =>
       'Domaransvarig undrar om ${task.title} dömde matchen. Svara Ja eller Nej under Domare på matchens Info-flik.',
     'personal_calendar_conflict' =>
@@ -566,6 +573,57 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
       }
     } catch (error) {
       AppErrors.caught('assistant_tasks.loadAssistantTasks.teamPages', error);
+    }
+  }
+  // Team Development Plan: the team's goals due for a check-in, under the
+  // team's context (the active one first), opening the module.
+  if (overview is TeamDevelopmentDueServices &&
+      preferences.shows('module_tdp_checkins')) {
+    try {
+      final dues = await (overview as TeamDevelopmentDueServices)
+          .listMyTeamDevelopmentCheckinsDue()
+          .timeout(const Duration(seconds: 15));
+      for (final due in dues) {
+        if (due.due <= 0) continue;
+        bool inTeam(TeamZoneContext item) =>
+            item.clubId == due.clubId && item.teamId == due.teamId;
+        if (preferences.currentTeamOnly &&
+            (activeContext == null || !inTeam(activeContext))) {
+          continue;
+        }
+        final context = activeContext != null && inTeam(activeContext)
+            ? activeContext
+            : contexts
+                  .where(
+                    (item) => inTeam(item) && item.can('development.manage'),
+                  )
+                  .followedBy(contexts.where(inTeam))
+                  .firstOrNull;
+        if (context == null) continue;
+        final item = AssistantTask(
+          context: context,
+          task: LeaderHomeTask(
+            kind: 'module_tdp_checkins',
+            title: 'Avstämning av lagets mål',
+            count: due.due,
+            route: Uri(
+              path: ProductRouteContract.workspaces,
+              queryParameters: {
+                'module': 'team_development',
+                'context': context.id,
+              },
+            ).toString(),
+            priority: 60,
+          ),
+          eventId: due.teamId,
+          generatedAt: DateTime.now(),
+          stale: false,
+          eventTitle: context.teamName ?? context.clubName,
+        );
+        tasks[item.key] = item;
+      }
+    } catch (error) {
+      AppErrors.caught('assistant_tasks.loadAssistantTasks.tdpCheckins', error);
     }
   }
   // Control questions about a referee, for the matches you manage: under

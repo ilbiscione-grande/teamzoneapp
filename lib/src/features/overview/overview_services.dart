@@ -20,6 +20,12 @@ abstract interface class ClubHomeServices {
   Future<ClubHome> loadClubHome(String contextId);
 }
 
+/// Team Development Plan: the teams whose goals are due for a check-in.
+abstract interface class TeamDevelopmentDueServices {
+  Future<List<({String clubId, String teamId, int due})>>
+  listMyTeamDevelopmentCheckinsDue();
+}
+
 /// Kontrollfrågor om domaren: the matches you manage whose referee
 /// coordinator asks whether the referee refereed, one per match.
 abstract interface class RefereeControlServices {
@@ -113,6 +119,7 @@ class SupabaseOverviewServices
         BookingDecisionServices,
         TeamPageRequestServices,
         RefereeControlServices,
+        TeamDevelopmentDueServices,
         FreshLeaderOverviewServices,
         PersonalCalendarConflictServices,
         AssistantTaskPreferencesServices,
@@ -322,6 +329,26 @@ class SupabaseOverviewServices
         .whereType<Map<String, dynamic>>()
         .map(BookingApproval.fromJson)
         .toList(growable: false);
+  }
+
+  @override
+  Future<List<({String clubId, String teamId, int due})>>
+  listMyTeamDevelopmentCheckinsDue() async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>('list_my_team_development_checkins_due')
+        .timeout(const Duration(seconds: 15));
+    if (value is! List) {
+      throw const FormatException('Invalid team development check-ins.');
+    }
+    return [
+      for (final row in value.whereType<Map<String, dynamic>>())
+        (
+          clubId: row['club_id'] as String,
+          teamId: row['team_id'] as String,
+          due: (row['due'] as num?)?.toInt() ?? 0,
+        ),
+    ];
   }
 
   @override

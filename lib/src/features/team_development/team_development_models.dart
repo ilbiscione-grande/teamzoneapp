@@ -125,6 +125,10 @@ class SeasonPlan {
     this.vision = '',
     this.periods = const [],
     this.goals = const [],
+    this.principles = const [],
+    this.kpis = const [],
+    this.checkins = const [],
+    this.checkinEveryDays,
     this.updatedAt,
     this.updatedBy,
   });
@@ -145,6 +149,21 @@ class SeasonPlan {
       for (final row in (json['goals'] as List? ?? const []).whereType<Map>())
         TeamGoal.fromJson(Map<String, dynamic>.from(row)),
     ],
+    principles: [
+      for (final row
+          in (json['principles'] as List? ?? const []).whereType<Map>())
+        TeamPrinciple.fromJson(Map<String, dynamic>.from(row)),
+    ],
+    kpis: [
+      for (final row in (json['kpis'] as List? ?? const []).whereType<Map>())
+        TeamKpi.fromJson(Map<String, dynamic>.from(row)),
+    ],
+    checkins: [
+      for (final row
+          in (json['checkins'] as List? ?? const []).whereType<Map>())
+        TeamCheckin.fromJson(Map<String, dynamic>.from(row)),
+    ],
+    checkinEveryDays: (json['checkin_every_days'] as num?)?.toInt(),
   );
   final String id, title, vision;
   final DateTime startsOn, endsOn;
@@ -153,6 +172,48 @@ class SeasonPlan {
   final String? updatedBy;
   final List<DevelopmentPeriod> periods;
   final List<TeamGoal> goals;
+  final List<TeamPrinciple> principles;
+  final List<TeamKpi> kpis;
+
+  /// Newest first.
+  final List<TeamCheckin> checkins;
+
+  /// How often the goals are checked; null: never.
+  final int? checkinEveryDays;
+
+  List<TeamCheckin> checkinsOfGoal(String goalId) => [
+    for (final checkin in checkins)
+      if (checkin.goalId == goalId) checkin,
+  ];
+
+  List<TeamCheckin> checkinsOfKpi(String kpiId) => [
+    for (final checkin in checkins)
+      if (checkin.kpiId == kpiId) checkin,
+  ];
+
+  /// The goals to check now, as the assistant counts them: open, of the
+  /// season, today's period or the short term ahead, last checked (or
+  /// changed) an interval ago.
+  List<TeamGoal> goalsDue(DateTime day) {
+    final every = checkinEveryDays;
+    if (every == null) return const [];
+    final today = DateTime(day.year, day.month, day.day);
+    final period = periodOn(today);
+    return [
+      for (final goal in goals)
+        if (goal.state == GoalState.open &&
+            switch (goal.horizon) {
+              GoalHorizon.season => true,
+              GoalHorizon.period => goal.periodId == period?.id,
+              GoalHorizon.short => !goal.targetOn!.isBefore(today),
+            } &&
+            !(checkinsOfGoal(goal.id).firstOrNull?.checkedOn ??
+                    goal.updatedAt ??
+                    today)
+                .isAfter(today.subtract(Duration(days: every))))
+          goal,
+    ];
+  }
 
   DevelopmentPeriod? periodOn(DateTime day) =>
       periods.where((period) => period.contains(day)).firstOrNull;
@@ -210,4 +271,120 @@ class TeamDevelopment {
   final bool canEdit;
   final List<SeasonSummary> seasons;
   final SeasonPlan? plan;
+}
+
+/// The area of the game a principle is about.
+enum PrincipleArea {
+  attack('Anfall'),
+  defence('Försvar'),
+  transitionAttack('Omställning till anfall'),
+  transitionDefence('Omställning till försvar'),
+  setPieces('Fasta situationer'),
+  general('Allmänt');
+
+  const PrincipleArea(this.label);
+  final String label;
+
+  String get key => switch (this) {
+    transitionAttack => 'transition_attack',
+    transitionDefence => 'transition_defence',
+    setPieces => 'set_pieces',
+    _ => name,
+  };
+
+  static PrincipleArea from(Object? value) =>
+      values.where((area) => area.key == value).firstOrNull ?? general;
+}
+
+class TeamPrinciple {
+  const TeamPrinciple({
+    required this.id,
+    required this.area,
+    required this.title,
+    this.description = '',
+  });
+  factory TeamPrinciple.fromJson(Map<String, dynamic> json) => TeamPrinciple(
+    id: json['id'] as String,
+    area: PrincipleArea.from(json['area']),
+    title: json['title'] as String? ?? '',
+    description: json['description'] as String? ?? '',
+  );
+  final String id, title, description;
+  final PrincipleArea area;
+}
+
+/// A key figure of the team, as shots per match, with its target.
+class TeamKpi {
+  const TeamKpi({
+    required this.id,
+    required this.title,
+    this.unit = '',
+    this.target,
+    this.higherIsBetter = true,
+  });
+  factory TeamKpi.fromJson(Map<String, dynamic> json) => TeamKpi(
+    id: json['id'] as String,
+    title: json['title'] as String? ?? '',
+    unit: json['unit'] as String? ?? '',
+    target: (json['target'] as num?)?.toDouble(),
+    higherIsBetter: json['higher_is_better'] != false,
+  );
+  final String id, title, unit;
+  final double? target;
+  final bool higherIsBetter;
+
+  /// Whether [value] reaches the target; null without a target.
+  bool? reaches(double value) => target == null
+      ? null
+      : higherIsBetter
+      ? value >= target!
+      : value <= target!;
+}
+
+/// How a goal is going at a check-in.
+enum CheckinStatus {
+  onTrack('På väg'),
+  atRisk('I farozonen'),
+  offTrack('Inte på väg');
+
+  const CheckinStatus(this.label);
+  final String label;
+
+  String get key => switch (this) {
+    onTrack => 'on_track',
+    atRisk => 'at_risk',
+    offTrack => 'off_track',
+  };
+
+  static CheckinStatus? from(Object? value) =>
+      values.where((status) => status.key == value).firstOrNull;
+}
+
+/// A check-in on a goal (its status) or a key figure (its value).
+class TeamCheckin {
+  const TeamCheckin({
+    required this.id,
+    required this.checkedOn,
+    this.goalId,
+    this.kpiId,
+    this.status,
+    this.value,
+    this.note = '',
+    this.createdBy,
+  });
+  factory TeamCheckin.fromJson(Map<String, dynamic> json) => TeamCheckin(
+    id: json['id'] as String,
+    goalId: json['goal_id'] as String?,
+    kpiId: json['kpi_id'] as String?,
+    checkedOn: _date(json['checked_on']),
+    status: CheckinStatus.from(json['status']),
+    value: (json['value'] as num?)?.toDouble(),
+    note: json['note'] as String? ?? '',
+    createdBy: json['created_by'] as String?,
+  );
+  final String id, note;
+  final String? goalId, kpiId, createdBy;
+  final DateTime checkedOn;
+  final CheckinStatus? status;
+  final double? value;
 }
