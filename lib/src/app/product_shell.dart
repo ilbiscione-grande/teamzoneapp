@@ -28,6 +28,8 @@ class _ProductShell extends StatefulWidget {
     required this.matchSpaceV2,
     this.push = const UnconfiguredPushServices(),
     this.modules = const UnconfiguredModuleServices(),
+    this.onOpenInContext,
+    this.openAfterSwitch,
     super.key,
   });
 
@@ -57,6 +59,12 @@ class _ProductShell extends StatefulWidget {
   final bool matchSpaceV2;
   final PushServices push;
   final ModuleServices modules;
+
+  /// Opens a page in another of your contexts: the shell is rebuilt there
+  /// and opens [openAfterSwitch] on top of Home.
+  final void Function(TeamZoneContext context, String location)?
+  onOpenInContext;
+  final String? openAfterSwitch;
 
   @override
   State<_ProductShell> createState() => _ProductShellState();
@@ -781,6 +789,14 @@ class _ProductShellState extends State<_ProductShell> {
       return;
     }
     if (!task.isMatchFollowup) {
+      // Another team's or club's task opens in that context, so the page
+      // and the menus are that team's.
+      final target = _contextForLocation(task.route);
+      if (target.id != widget.contextValue.id &&
+          widget.onOpenInContext != null) {
+        widget.onOpenInContext!(target, task.route);
+        return;
+      }
       await _router.push(task.route);
       return;
     }
@@ -1084,6 +1100,18 @@ class _ProductShellState extends State<_ProductShell> {
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => unawaited(_startPush()),
     );
+    if (widget.openAfterSwitch case final location?) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final value = widget.contextValue;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Du är nu i ${value.teamName ?? value.clubName}.'),
+          ),
+        );
+        unawaited(_router.push(location));
+      });
+    }
     unawaited(_loadPublicPage());
     // All imperative pages in this shell have standalone GoRoutes. Reflect
     // their top-most URI on web so pushed event/member pages can be copied

@@ -20,6 +20,12 @@ abstract interface class ClubHomeServices {
   Future<ClubHome> loadClubHome(String contextId);
 }
 
+/// Ansökningar om lagsida: pending requests per club where you decide them,
+/// keyed by club id.
+abstract interface class TeamPageRequestServices {
+  Future<Map<String, int>> listMyTeamPageRequests();
+}
+
 /// Webtools Bokningshanterare: the bookings waiting for your approval.
 abstract interface class BookingApprovalServices {
   Future<List<BookingApproval>> listMyBookingApprovals();
@@ -76,6 +82,7 @@ class SupabaseOverviewServices
         ClubHomeServices,
         BookingApprovalServices,
         BookingDecisionServices,
+        TeamPageRequestServices,
         FreshLeaderOverviewServices,
         PersonalCalendarConflictServices,
         AssistantTaskPreferencesServices,
@@ -285,6 +292,21 @@ class SupabaseOverviewServices
         .whereType<Map<String, dynamic>>()
         .map(BookingApproval.fromJson)
         .toList(growable: false);
+  }
+
+  @override
+  Future<Map<String, int>> listMyTeamPageRequests() async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>('list_my_team_page_requests')
+        .timeout(const Duration(seconds: 15));
+    if (value is! List) {
+      throw const FormatException('Invalid team page requests.');
+    }
+    return {
+      for (final row in value.whereType<Map<String, dynamic>>())
+        row['club_id'] as String: (row['pending'] as num?)?.toInt() ?? 0,
+    };
   }
 
   @override

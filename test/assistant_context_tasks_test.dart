@@ -694,6 +694,46 @@ void main() {
       expect(task.route, '$webtoolsOrigin/bokningar/org-1');
     },
   );
+
+  test(
+    'team page requests show without a club context, and open in that club',
+    () async {
+      final other = team('x');
+      final lead = TeamZoneContext(
+        id: 'lead',
+        clubId: 'club-a',
+        clubName: 'Klubb A',
+        teamId: 'p2012',
+        teamName: 'P2012',
+        rolePackage: 'leader',
+        capabilities: const {},
+      );
+      final snapshot = await loadAssistantTasks(
+        contexts: [other, lead],
+        activeContext: other,
+        overview: _TeamPageOverview(),
+        loadEvent: event,
+      );
+      final task = snapshot.tasks.single;
+      expect(task.task.kind, 'club_team_page_requests');
+      expect(task.task.count, 1);
+      expect(task.context.id, 'lead');
+      expect(
+        task.route,
+        '${ProductRouteContract.publication}?context=lead',
+        reason: 'opens in a context of that club',
+      );
+    },
+  );
+}
+
+class _TeamPageOverview extends Overview implements TeamPageRequestServices {
+  @override
+  Future<Map<String, int>> listMyTeamPageRequests() async => const {
+    'club-a': 1,
+    // A club without any of your contexts.
+    'club-z': 2,
+  };
 }
 
 class _BookingOverview extends Overview implements BookingApprovalServices {

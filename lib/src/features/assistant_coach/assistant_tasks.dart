@@ -443,14 +443,6 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
               members.pendingTeamRequests,
               route('/team?action=team-requests', clubOnly: true),
             ),
-          if (home.publication case final publication?
-              when publication.pendingTeamPages > 0)
-            (
-              'club_team_page_requests',
-              'Ansökningar om lagsida',
-              publication.pendingTeamPages,
-              route(ProductRouteContract.publication, clubOnly: true),
-            ),
         ];
         for (final (kind, title, count, path) in duties) {
           if (!preferences.shows(kind)) continue;
@@ -515,6 +507,50 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
       }
     } catch (error) {
       AppErrors.caught('assistant_tasks.loadAssistantTasks.bookings', error);
+    }
+  }
+  // Team page requests, for each club where you decide them: the decider is
+  // often a leader without a club-level context there. Shown under a context
+  // in that club, the active one first, and opened in it.
+  if (overview is TeamPageRequestServices &&
+      preferences.shows('club_team_page_requests')) {
+    try {
+      final requests = await (overview as TeamPageRequestServices)
+          .listMyTeamPageRequests()
+          .timeout(const Duration(seconds: 15));
+      for (final MapEntry(key: clubId, value: pending) in requests.entries) {
+        if (pending <= 0) continue;
+        if (preferences.currentTeamOnly && activeContext?.clubId != clubId) {
+          continue;
+        }
+        final context = activeContext?.clubId == clubId
+            ? activeContext!
+            : contexts
+                  .where((item) => item.clubId == clubId && item.teamId == null)
+                  .followedBy(contexts.where((item) => item.clubId == clubId))
+                  .firstOrNull;
+        if (context == null) continue;
+        final item = AssistantTask(
+          context: context,
+          task: LeaderHomeTask(
+            kind: 'club_team_page_requests',
+            title: 'Ansökningar om lagsida',
+            count: pending,
+            route: Uri(
+              path: ProductRouteContract.publication,
+              queryParameters: {'context': context.id},
+            ).toString(),
+            priority: 50,
+          ),
+          eventId: '',
+          generatedAt: DateTime.now(),
+          stale: false,
+          eventTitle: context.clubName,
+        );
+        tasks[item.key] = item;
+      }
+    } catch (error) {
+      AppErrors.caught('assistant_tasks.loadAssistantTasks.teamPages', error);
     }
   }
   if (overview is PersonalCalendarConflictServices &&

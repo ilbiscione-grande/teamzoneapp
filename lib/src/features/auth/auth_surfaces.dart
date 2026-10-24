@@ -1637,6 +1637,8 @@ class _ContextSelector extends StatefulWidget {
 
 class _ContextSelectorState extends State<_ContextSelector> {
   TeamZoneContext? _activeContext;
+  // An assistant task from another context, opened after the switch to it.
+  String? _openAfterSwitch;
   late List<TeamZoneContext> _contexts = widget.contexts;
 
   @override
@@ -1661,7 +1663,10 @@ class _ContextSelectorState extends State<_ContextSelector> {
   }
 
   Future<void> _changeContext(TeamZoneContext value) async {
-    setState(() => _activeContext = value);
+    setState(() {
+      _openAfterSwitch = null;
+      _activeContext = value;
+    });
     await widget.contextPersistence.writeActiveContextId(
       widget.profile.id,
       value.id,
@@ -1728,6 +1733,11 @@ class _ContextSelectorState extends State<_ContextSelector> {
       contextValue: activeContext,
       contexts: _contexts,
       onContextChanged: _changeContext,
+      onOpenInContext: (value, location) async {
+        await _changeContext(value);
+        if (mounted) setState(() => _openAfterSwitch = location);
+      },
+      openAfterSwitch: _openAfterSwitch,
       onContextsChanged: _reloadContexts,
       onTeamCreated: _selectCreatedTeam,
       onSignOut: _signOut,
