@@ -1370,9 +1370,10 @@ class _ProductShellState extends State<_ProductShell> {
                         SizedBox(
                           key: const Key('permanent-navigation-sidebar'),
                           width: 280,
-                          child: Drawer(
-                            backgroundColor: Colors.transparent,
-                            shape: const RoundedRectangleBorder(),
+                          // A permanent sidebar shares the active page's
+                          // semantics; Drawer would create a second route.
+                          child: Material(
+                            color: Colors.transparent,
                             child: navigationPanel,
                           ),
                         ),
@@ -1397,14 +1398,20 @@ class _ProductShellState extends State<_ProductShell> {
                                       ).dispatch(context);
                                       return true;
                                     },
-                                    child: Router(
-                                      routerDelegate: _router.routerDelegate,
-                                      routeInformationParser:
-                                          _router.routeInformationParser,
-                                      routeInformationProvider:
-                                          _router.routeInformationProvider,
-                                      backButtonDispatcher:
-                                          _backButtonDispatcher,
+                                    // Keep the nested route's modal semantics
+                                    // from hiding the persistent navigation.
+                                    child: Semantics(
+                                      container: true,
+                                      explicitChildNodes: true,
+                                      child: Router(
+                                        routerDelegate: _router.routerDelegate,
+                                        routeInformationParser:
+                                            _router.routeInformationParser,
+                                        routeInformationProvider:
+                                            _router.routeInformationProvider,
+                                        backButtonDispatcher:
+                                            _backButtonDispatcher,
+                                      ),
                                     ),
                                   ),
                             ),
@@ -2865,21 +2872,18 @@ class _AppNavigationPanel extends StatelessWidget {
           const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.all(8),
-            child: Row(
+            child: Wrap(
+              alignment: WrapAlignment.spaceEvenly,
               children: [
-                Expanded(
-                  child: TextButton.icon(
-                    onPressed: () => _go(ProductRouteContract.settings),
-                    icon: const Icon(Icons.settings_outlined),
-                    label: Text(strings.feature('Inställningar')),
-                  ),
+                TextButton.icon(
+                  onPressed: () => _go(ProductRouteContract.settings),
+                  icon: const Icon(Icons.settings_outlined),
+                  label: Text(strings.feature('Inställningar')),
                 ),
-                Expanded(
-                  child: TextButton.icon(
-                    onPressed: onSignOut,
-                    icon: const Icon(Icons.logout),
-                    label: Text(strings.signOut),
-                  ),
+                TextButton.icon(
+                  onPressed: onSignOut,
+                  icon: const Icon(Icons.logout),
+                  label: Text(strings.signOut),
                 ),
               ],
             ),

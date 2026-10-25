@@ -33,7 +33,7 @@ export default async function AppPage({ params }: Props) {
       <section className="wt-wrap wt-section wt-app-body">
         <div>
           <p>{app.description}</p>
-          <h2>Det här kommer appen att kunna</h2>
+          <h2>{app.status === "planned" ? "Det här kommer appen att kunna" : "Det här finns i betan"}</h2>
           <ul className="wt-features">{app.features.map(feature => <li key={feature}>{feature}</li>)}</ul>
         </div>
         <RequireAccount returnTo={`/appar/${app.slug}`}>

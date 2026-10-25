@@ -24,9 +24,9 @@ for the critical finding that prompted the version update and the
 | Turneringsplanerare | `/turneringar`, registration, classes, organisers, groups, schedule, playoff/result contracts, TeamZone links and public `/turnering/[id]`. | Code presence and page delivery do not establish full tournament acceptance. |
 | Video Analyzer | Catalog entry only. | Planned; no corresponding tool implementation identified. |
 
-The catalog in `lib/apps.ts` still calls some implemented Tacticsboard and
-tournament features upcoming. Its user-facing copy has not been changed as
-part of the documentation sync; reconcile it with verified deployed behavior.
+The catalog now describes implemented Tacticsboard and tournament features
+as beta functionality. Video Analyzer remains planned. This copy correction
+does not replace signed-in role/device acceptance.
 
 Tacticsboard has one library with community/club visibility, a curated club
 list, own projects and favorites. See approved

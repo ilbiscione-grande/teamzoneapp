@@ -71,7 +71,7 @@ abstract final class _MatchModule {
     seed: _ModuleShell.seeds[_key],
   );
 
-  /// The team's matches from yesterday on; [played] the past half year;
+  /// The team's matches from today on; [played] the past half year;
   /// both in date order.
   static Future<List<ModuleMatch>> upcoming(
     CalendarServices calendar,
@@ -81,7 +81,7 @@ abstract final class _MatchModule {
     final midnight = DateTime(now.year, now.month, now.day);
     return calendar.matchPlans.listMatches(
       teamId: teamId,
-      from: midnight.subtract(const Duration(days: 1)),
+      from: midnight,
       to: midnight.add(const Duration(days: 120)),
     );
   }

@@ -635,6 +635,59 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
       ),
       const SizedBox(height: 24),
     ],
+    Builder(
+      builder: (context) {
+        final scope = LanguagePreferenceScope.of(context);
+        return InputDecorator(
+          decoration: InputDecoration(
+            labelText: strings.feature('Språk'),
+            helperText: strings.feature(
+              'Språkvalet sparas på den här enheten.',
+            ),
+            helperMaxLines: 2,
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<AppLanguage>(
+              key: const ValueKey('setting-language'),
+              value: scope.language,
+              isExpanded: true,
+              items: [
+                DropdownMenuItem(
+                  value: AppLanguage.system,
+                  child: Text(strings.feature('Enhetens språk')),
+                ),
+                const DropdownMenuItem(
+                  value: AppLanguage.sv,
+                  child: Text('Svenska'),
+                ),
+                const DropdownMenuItem(
+                  value: AppLanguage.en,
+                  child: Text('English'),
+                ),
+              ],
+              onChanged: scope.saving
+                  ? null
+                  : (language) async {
+                      if (language == null) return;
+                      final saved = await scope.onChanged(language);
+                      if (!saved && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              AppStrings.of(context).feature(
+                                'Språkvalet kunde inte sparas på enheten.',
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                    },
+            ),
+          ),
+        );
+      },
+    ),
+    const SizedBox(height: 24),
     Text(
       strings.feature('Ljust eller mörkt'),
       style: Theme.of(context).textTheme.titleMedium,

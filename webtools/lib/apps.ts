@@ -24,7 +24,7 @@ export const webtoolApps: WebtoolApp[] = [
     mark: "TB",
     tagline: "Rita, animera och presentera taktik.",
     description: "En taktiktavla för träning, genomgångar och matchförberedelser. Rita upp spelsystem och övningar, animera förlopp och visa dem för laget.",
-    features: ["Spelare, boll, utrustning, pilar och ytor", "Formationer och truppen från TeamZone", "Objektlista med lås och dölj", "Animationer, delning och export kommer härnäst"],
+    features: ["Spelare, boll, utrustning, pilar och ytor", "Formationer och truppen från TeamZone", "Objektlista med lås och dölj", "Animationer, delning och export", "Bibliotek och livegenomgångar"],
     status: "beta",
   },
   {
@@ -52,7 +52,7 @@ export const webtoolApps: WebtoolApp[] = [
     name: "Turneringsplanerare",
     mark: "TP",
     tagline: "Planera cuper och turneringar.",
-    description: "Skapa turneringen och dess klasser, öppna anmälan och dela länken. Lag anmäler sig och du godkänner dem och bockar av avgifterna. Fungerar med eller utan TeamZone. Grupper, spelschema, resultat och slutspel kommer härnäst.",
+    description: "Skapa turneringen och dess klasser, öppna anmälan och dela länken. Lag anmäler sig och du godkänner dem och bockar av avgifterna. Hantera grupper, spelschema, resultat och slutspel. Fungerar med eller utan TeamZone.",
     features: ["Klasser med gruppspel och slutspel eller poolspel", "Anmälan via länk med godkännande", "Avgifter och betalningar", "Arrangörer och funktionärer"],
     status: "beta",
   },

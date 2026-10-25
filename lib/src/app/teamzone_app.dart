@@ -23,6 +23,7 @@ import 'package:teamzone_app/src/core/localization/app_strings.dart';
 import 'package:teamzone_app/src/core/localization/board_strings.dart';
 import 'package:teamzone_app/src/core/localization/economy_strings.dart';
 import 'package:teamzone_app/src/core/preferences/calendar_preferences.dart';
+import 'package:teamzone_app/src/core/preferences/language_preferences.dart';
 import 'package:teamzone_app/src/core/preferences/navigation_preferences.dart';
 import 'package:teamzone_app/src/core/supabase/measured_rpc.dart';
 import 'package:teamzone_app/src/core/push/push_services.dart';
@@ -203,6 +204,9 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
   AppColorTheme _colorTheme = AppColorTheme.green;
   ThemeMode _themeMode = ThemeMode.system;
   FifthSlot? _fifthSlot;
+  AppLanguage _language = AppLanguage.system;
+  bool _languageChosen = false;
+  bool _savingLanguage = false;
 
   // Web: the root navigator keeps its key while the app key is the same, so
   // a theme or preference change does not rebuild the signed-in app from
@@ -217,6 +221,7 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
     _sessionStatus = widget.services.identity.sessionStatus;
     unawaited(_loadColorTheme());
     unawaited(_loadFifthSlot());
+    unawaited(_loadLanguage());
     _pendingInvitationToken = invitationTokenFromUri(
       Uri.tryParse(WidgetsBinding.instance.platformDispatcher.defaultRouteName),
     );
@@ -285,6 +290,33 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
   Future<void> _setThemeMode(ThemeMode mode) async {
     setState(() => _themeMode = mode);
     await widget.services.themePersistence.writeBrightnessMode(mode.name);
+  }
+
+  Future<void> _loadLanguage() async {
+    try {
+      final language = await widget.services.languagePreferences.readLanguage();
+      if (mounted && !_languageChosen) setState(() => _language = language);
+    } catch (error) {
+      AppErrors.caught('teamzone_app.loadLanguage', error);
+    }
+  }
+
+  Future<bool> _setLanguage(AppLanguage language) async {
+    if (_savingLanguage) return true;
+    setState(() {
+      _languageChosen = true;
+      _language = language;
+      _savingLanguage = true;
+    });
+    try {
+      await widget.services.languagePreferences.writeLanguage(language);
+      return true;
+    } catch (error) {
+      AppErrors.caught('teamzone_app.saveLanguage', error);
+      return false;
+    } finally {
+      if (mounted) setState(() => _savingLanguage = false);
+    }
   }
 
   Future<void> _setColorTheme(AppColorTheme colorTheme) async {
@@ -359,7 +391,7 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
             themeMode: _themeMode,
             supportedLocales: const [Locale('sv'), Locale('en')],
             localizationsDelegates: GlobalMaterialLocalizations.delegates,
-            locale: widget.locale,
+            locale: _language.locale ?? widget.locale,
             scrollBehavior: const _TeamZoneScrollBehavior(),
           )
         : MaterialApp(
@@ -371,7 +403,7 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
             themeMode: _themeMode,
             supportedLocales: const [Locale('sv'), Locale('en')],
             localizationsDelegates: GlobalMaterialLocalizations.delegates,
-            locale: widget.locale,
+            locale: _language.locale ?? widget.locale,
             scrollBehavior: const _TeamZoneScrollBehavior(),
             onGenerateRoute: (_) =>
                 MaterialPageRoute<void>(builder: (_) => root),
@@ -384,7 +416,12 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
       child: NavigationPreferenceScope(
         fifthSlot: _fifthSlot,
         onFifthSlotChanged: _setFifthSlot,
-        child: materialApp,
+        child: LanguagePreferenceScope(
+          language: _language,
+          saving: _savingLanguage,
+          onChanged: _setLanguage,
+          child: materialApp,
+        ),
       ),
     );
   }

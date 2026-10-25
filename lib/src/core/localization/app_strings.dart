@@ -228,14 +228,17 @@ class AppStrings {
   }
 
   String moduleDescription(String key, String fallback) {
+    if (key == 'module.training') {
+      return isSwedish
+          ? 'Träningspass med övningar och utvärdering'
+          : 'Training sessions with exercises and evaluation';
+    }
     if (isSwedish) return fallback;
     return switch (key) {
       'module.match_workspace' =>
         'Match plan, pitch line-up, key metrics and match review',
       'module.team_development' =>
         'Season goals, periods with development goals and team playing principles',
-      'module.training' =>
-        'Training sessions with exercises, exercise library and evaluation',
       'module.player_development' =>
         'Player development plans with goals, activities and check-ins',
       _ => fallback,
@@ -253,6 +256,12 @@ class AppStrings {
   }
 
   static const Map<String, String> _featureEnglish = {
+    'Språk': 'Language',
+    'Enhetens språk': 'Device language',
+    'Språkvalet sparas på den här enheten.':
+        'The language choice is saved on this device.',
+    'Språkvalet kunde inte sparas på enheten.':
+        'The language choice could not be saved on this device.',
     // Module and training copy (2026-10-25 localization review).
     'Beta': 'Beta',
     'Ingår': 'Included',

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:teamzone_app/src/core/preferences/language_preferences.dart';
 import 'package:teamzone_app/src/app/teamzone_app.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
@@ -66,6 +68,53 @@ void main() {
   });
 
   group('FND-03 responsive product shell', () {
+    testWidgets(
+      'personal language changes immediately, survives restart and resets to device',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        tester.view.physicalSize = const Size(1280, 900);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        const preferences = SharedPreferencesLanguagePreferences();
+        await tester.pumpWidget(_verifiedApp(languagePreferences: preferences));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Inställningar').first);
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('setting-language')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('English').last);
+        await tester.pumpAndSettle();
+        expect(find.text('Language'), findsOneWidget);
+        expect(find.text('Settings'), findsWidgets);
+        expect(await preferences.readLanguage(), AppLanguage.en);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+        await tester.pumpWidget(_verifiedApp(languagePreferences: preferences));
+        await tester.pumpAndSettle();
+        expect(
+          Localizations.localeOf(
+            tester.element(find.byType(Scaffold).first),
+          ).languageCode,
+          'en',
+        );
+        await tester.tap(find.text('Settings').first);
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('setting-language')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Device language').last);
+        await tester.pumpAndSettle();
+        expect(find.text('Språk'), findsOneWidget);
+        expect(await preferences.readLanguage(), AppLanguage.system);
+        expect(
+          (await SharedPreferences.getInstance()).containsKey(
+            SharedPreferencesLanguagePreferences.key,
+          ),
+          isFalse,
+        );
+      },
+    );
+
     for (final window in const [
       (name: 'phone', size: Size(390, 844), usesRail: false),
       (name: 'tablet', size: Size(800, 1100), usesRail: true),
@@ -94,6 +143,32 @@ void main() {
         expect(tester.takeException(), isNull);
       });
     }
+
+    testWidgets('desktop sidebar remains accessible beside the active route', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1280, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final semantics = tester.ensureSemantics();
+
+      await tester.pumpWidget(_verifiedApp());
+      await tester.pumpAndSettle();
+
+      final tree = tester
+          .binding
+          .renderViews
+          .single
+          .owner!
+          .semanticsOwner!
+          .rootSemanticsNode!
+          .toStringDeep();
+      semantics.dispose();
+      expect(tree, contains('Kalender'));
+      expect(tree, contains('Inställningar'));
+      expect(tree, contains('Logga ut'));
+    });
 
     testWidgets('cold link and app rebuild retain a canonical destination', (
       tester,
@@ -476,10 +551,17 @@ void main() {
   );
 }
 
-Widget _verifiedApp() => TeamZoneApp(
+Widget _verifiedApp({
+  LanguagePreferences languagePreferences =
+      const StatelessLanguagePreferences(),
+}) => TeamZoneApp(
   environment: const AppEnvironment(name: 'verification'),
   locale: const Locale('sv'),
-  services: AppServices(identity: _VerificationIdentity(), isConfigured: true),
+  services: AppServices(
+    identity: _VerificationIdentity(),
+    isConfigured: true,
+    languagePreferences: languagePreferences,
+  ),
 );
 
 class _VerificationIdentity implements IdentityServices {

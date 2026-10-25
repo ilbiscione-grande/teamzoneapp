@@ -12,6 +12,15 @@ driftsatta till audit efter användarens godkännande; se
 Detta är den gemensamma ingången till aktuell status. Daterade rapporter och
 äldre testantal är historisk evidens, inte ett löfte om dagens releasekvalitet.
 
+Senare manuell uppföljning: [acceptansgenomgång 25 oktober](../evidence/manual_acceptance_2026-10-25.md).
+Fem avvikelser är rättade lokalt. Svenska ledarvyer har granskats läsande
+i P2012. Engelskt manuellt språkpass, app i 390-pixels bredd och skriv-/rollacceptans
+återstår; genomgången stänger inte dessa grindar.
+
+Efterföljande lokal ändring: [språkval under Personligt](../evidence/language_setting_2026-10-25.md).
+Svenska, engelska eller enhetens språk kan väljas och sparas på enheten.
+Funktionen behöver driftsättas innan det manuella engelska språkpasset.
+
 ## Statusregler
 
 - **Byggt:** implementation finns i repot.

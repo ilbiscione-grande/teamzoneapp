@@ -8,6 +8,7 @@ import 'package:teamzone_app/src/core/identity/identity_services.dart';
 import 'package:teamzone_app/src/core/identity/auth_entry_services.dart';
 import 'package:teamzone_app/src/core/identity/session_persistence.dart';
 import 'package:teamzone_app/src/core/preferences/calendar_preferences.dart';
+import 'package:teamzone_app/src/core/preferences/language_preferences.dart';
 import 'package:teamzone_app/src/core/push/push_services.dart';
 import 'package:teamzone_app/src/core/preferences/navigation_preferences.dart';
 import 'package:teamzone_app/src/core/preferences/theme_persistence.dart';
@@ -40,6 +41,7 @@ class AppServices {
     this.themePersistence = const StatelessThemePersistence(),
     this.calendarPreferences = const StatelessCalendarPreferences(),
     this.navigationPreferences = const StatelessNavigationPreferences(),
+    this.languagePreferences = const StatelessLanguagePreferences(),
     this.roster = const UnconfiguredRosterServices(),
     this.membership = const UnconfiguredMembershipServices(),
     this.legal = const UnconfiguredLegalServices(),
@@ -66,6 +68,7 @@ class AppServices {
   final ThemePersistence themePersistence;
   final CalendarPreferences calendarPreferences;
   final NavigationPreferences navigationPreferences;
+  final LanguagePreferences languagePreferences;
   final RosterServices roster;
   final MembershipServices membership;
   final LegalServices legal;
@@ -100,6 +103,7 @@ class SupabaseBootstrap {
         themePersistence: SharedPreferencesThemePersistence(),
         calendarPreferences: SharedPreferencesCalendarPreferences(),
         navigationPreferences: SharedPreferencesNavigationPreferences(),
+        languagePreferences: SharedPreferencesLanguagePreferences(),
         isConfigured: false,
       );
     }
@@ -130,6 +134,7 @@ class SupabaseBootstrap {
       themePersistence: const SharedPreferencesThemePersistence(),
       calendarPreferences: const SharedPreferencesCalendarPreferences(),
       navigationPreferences: const SharedPreferencesNavigationPreferences(),
+      languagePreferences: const SharedPreferencesLanguagePreferences(),
       roster: SupabaseRosterServices(Supabase.instance.client),
       membership: SupabaseMembershipServices(Supabase.instance.client),
       legal: SupabaseLegalServices(Supabase.instance.client),
