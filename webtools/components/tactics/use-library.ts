@@ -5,7 +5,7 @@
 // again updates its entry.
 import { useCallback, useEffect, useState } from "react";
 import type { Board } from "../../lib/tactics/model.ts";
-import type { LibraryItemSummary, LibrarySave } from "../../lib/tactics/library.ts";
+import { LIBRARY_CHANGED, type LibraryItemSummary, type LibrarySave } from "../../lib/tactics/library.ts";
 import { useAccount } from "../account";
 
 export function useLibrary(enabled = true) {
@@ -21,7 +21,13 @@ export function useLibrary(enabled = true) {
     setError("");
     setItems(data as LibraryItemSummary[]);
   }, [client, session]);
-  useEffect(() => { if (enabled) void reload(); }, [enabled, reload]);
+  useEffect(() => {
+    if (!enabled) return;
+    void reload();
+    const again = () => void reload();
+    window.addEventListener(LIBRARY_CHANGED, again);
+    return () => window.removeEventListener(LIBRARY_CHANGED, again);
+  }, [enabled, reload]);
 
   /** An item's boards, or null when it could not be fetched. */
   const boardsOf = async (id: string): Promise<Board[] | null> => {

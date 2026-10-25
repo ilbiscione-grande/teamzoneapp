@@ -206,3 +206,12 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
 
 /* TeamZone's library: its five filters in as many columns as fit. */
 .tb-filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 12px; }
+
+/* Published: a small icon after a name, and the list of what a project has published. */
+.tb-published-icon { display: inline-flex; vertical-align: -3px; margin-left: 6px; color: var(--wt-brand); }
+.tb-published-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.tb-published-line .tb-published-icon { margin-left: 0; }
+.tb-inline-button { border: 0; background: none; padding: 0 0 0 6px; cursor: pointer; font: inherit; text-decoration: underline; }
+.tb-published { margin: 0 0 8px; padding: 0; list-style: none; display: grid; gap: 4px; }
+.tb-published li { display: flex; align-items: center; gap: 4px; }
+.tb-published .tb-published-icon { margin-left: 0; }

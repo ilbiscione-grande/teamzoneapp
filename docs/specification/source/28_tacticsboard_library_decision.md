@@ -1,6 +1,6 @@
 # Beslutspaket 13 – Tacticsboards bibliotek och kopplingen till appen
 
-**Status: godkänt av produktägaren 2026-10-24. TBL-01–TBL-18 är beslutade.**
+**Status: godkänt av produktägaren 2026-10-24. TBL-01–TBL-19 är beslutade.**
 
 ## Mål
 
@@ -16,7 +16,7 @@ Paketet bygger på beslutspaket 11 (MFD-04 bilagor, MFD-08 träningspasset med k
 
 | Del | Vem lägger till | Vem ser och använder | Exempel |
 |---|---|---|---|
-| Mitt bibliotek | Jag | Jag | Bara det jag själv skapat, publicerat eller inte |
+| Mitt bibliotek | Jag | Jag | Alla mina projekt, match, träning och utbildning, publicerade eller inte |
 | Mina favoriter | Jag markerar | Jag | Övningar ur biblioteket som tillägg till mitt eget |
 | Delat med hela communityn | Alla som har Tacticsboard | Alla som har Tacticsboard | Övningar som tränare delar med varandra, TeamZones startövningar |
 | Delat bara med klubben | Klubbens ledare | Klubbens ledare | Klubbens spelidé i övningar, en gemensam uppvärmning |
@@ -50,6 +50,7 @@ Paketet bygger på beslutspaket 11 (MFD-04 bilagor, MFD-08 träningspasset med k
 | TBL-16 | En övning anges med både åldersklass (till exempel 7–9, 10–12, 13–15, 16+) och förbundets spelform (3 mot 3 till 11 mot 11), och kan filtreras på båda. | Beslutad av produktägaren 2026-10-24 |
 | TBL-17 | Bara träningens innehåll (övningar, pass och sessioner) delas i klubbens och TeamZones bibliotek. Matchens tavlor, som matchplan och genomgång, är bundna till laget och stannar i mitt bibliotek och lagets projekt i Tacticsboard. | Beslutad av produktägaren 2026-10-24 |
 | TBL-18 | Mitt bibliotek är bara det jag själv skapat, publicerat eller inte. Varje användare kan favoritmarkera övningar, pass och sessioner i biblioteket; favoriterna visas som tillägg till det egna biblioteket och kan användas som utgångspunkt för nya projekt. | Beslutad av produktägaren 2026-10-25 |
+| TBL-19 | Mitt bibliotek är alla mina projekt i en lista, oavsett typ, och kan filtreras som TeamZones bibliotek (ord, typ, del av passet, skede, åldersklass och spelform). Det finns inget separat steg att spara i biblioteket: en tavla publiceras som övning, eller ett projekt som pass eller session, direkt från projektet till klubben eller hela communityn. En ikon visar på projektet och på tavlans flik om något är publicerat och för vem. | Beslutad av produktägaren 2026-10-25 |
 
 ## Ordning
 
@@ -73,3 +74,4 @@ Inga. Alias, ålder och nivå samt matchens tavlor är besvarade (TBL-15–TBL-1
 | 2026-10-24 | Hela paketet godkänt, TBL-01–TBL-17. | Produktägaren |
 | 2026-10-25 | Ett bibliotek i stället för tre: den som delar väljer hela communityn eller bara klubben, och klubben erbjuder sina lag en kurerad lista ur hela biblioteket (TBL-03, TBL-08 och TBL-09 ändrade). | Produktägaren |
 | 2026-10-25 | Mitt bibliotek är bara egna tavlor; favoriter ur biblioteket som tillägg (TBL-18). | Produktägaren |
+| 2026-10-25 | Mitt bibliotek är alla mina projekt med samma filter som biblioteket; publicering direkt från projektet, med ikon för vad som är publicerat (TBL-19). | Produktägaren |

@@ -16,6 +16,8 @@ import { BoardMenu } from "./BoardMenu.tsx";
 import { LiveButton } from "./live/LiveButton.tsx";
 import { LiveDialog } from "./live/LiveDialog.tsx";
 import { TopBarMore } from "./TopBarMore.tsx";
+import { useLibrary } from "./use-library.ts";
+import { PublishedIcon } from "./PublishedIcon.tsx";
 
 const saveLabels: Record<SaveState, string> = {
   saved: "Sparat", dirty: "Ändrat", saving: "Sparar…", error: "Kunde inte spara", conflict: "Ändrat på annat håll",
@@ -27,6 +29,11 @@ function Boards() {
   const boards = useEditor(state => state.document?.boards ?? NONE);
   const boardId = useEditor(state => state.boardId);
   const { setBoard, change } = useEditor.getState();
+  const projectId = useEditor(state => state.meta?.id);
+  const { items } = useLibrary();
+  const publishedFor = (boardId: string) => [...new Set((items ?? [])
+    .filter(item => item.shared && item.source_project_id === projectId && (item.kind !== "exercise" || item.source_board_id === boardId))
+    .map(item => item.shared!.club_name ?? ""))];
   const remove = (id: string, name: string) => {
     if (boards.length < 2 || !window.confirm(`Ta bort ${name}?`)) return;
     const next = boards.find(board => board.id !== id)!;
@@ -37,7 +44,10 @@ function Boards() {
     <div className="tb-boards" role="tablist" aria-label="Tavlor">
       {boards.map(board => (
         <span key={board.id} className="tb-board-tab" data-active={board.id === boardId}>
-          <button type="button" role="tab" aria-selected={board.id === boardId} onClick={() => setBoard(board.id)}>{board.name || "Tavla"}</button>
+          <button type="button" role="tab" aria-selected={board.id === boardId} onClick={() => setBoard(board.id)}>
+            {board.name || "Tavla"}
+            {publishedFor(board.id).map(club => <PublishedIcon key={club} clubName={club || null} />)}
+          </button>
           {board.id === boardId && boards.length > 1 && (
             <button type="button" className="tb-tab-close" aria-label={`Ta bort ${board.name}`} onClick={() => remove(board.id, board.name)}>×</button>
           )}

@@ -6,7 +6,7 @@
 // items for a club's list.
 import { useCallback, useEffect, useState } from "react";
 import type { Board } from "../../lib/tactics/model.ts";
-import type { SharedFilters, SharedItemSummary, TacticsClub } from "../../lib/tactics/library.ts";
+import { LIBRARY_CHANGED, type LibrarySave, type SharedFilters, type SharedItemSummary, type TacticsClub } from "../../lib/tactics/library.ts";
 import { useAccount } from "../account";
 
 export function useSharedLibrary() {
@@ -65,6 +65,7 @@ export function useSharedLibrary() {
     const { error: removeError } = await client.schema("api").rpc("unshare_tactics_item", { target_shared_id: sharedId });
     if (removeError) { setError("Det kunde inte tas bort ur TeamZones bibliotek."); return false; }
     setError("");
+    window.dispatchEvent(new Event(LIBRARY_CHANGED));
     return true;
   };
 
@@ -76,6 +77,26 @@ export function useSharedLibrary() {
     if (reportError) { setError("Rapporten kunde inte skickas."); return false; }
     setError("");
     return true;
+  };
+
+  /** Publishes a board or project with the community (null) or one club; the item as shared, or null. */
+  const publish = async (item: LibrarySave, projectId: string, boardId: string | null, clubId: string | null) => {
+    if (!client) return null;
+    const { data, error: publishError } = await client.schema("api").rpc("publish_tactics_item", {
+      item_kind: item.kind, item_title: item.title, item_details: item.details, item_document: item.document,
+      from_project_id: projectId, from_board_id: boardId, target_club_id: clubId,
+    });
+    if (publishError) {
+      setError(publishError.message.includes("hidden_by_support")
+        ? "TeamZones support har tagit bort den ur biblioteket, så den kan inte publiceras igen."
+        : publishError.message.includes("too_many")
+        ? "Du har redan publicerat så många som får plats."
+        : "Det kunde inte publiceras.");
+      return null;
+    }
+    setError("");
+    window.dispatchEvent(new Event(LIBRARY_CHANGED));
+    return data as SharedItemSummary;
   };
 
   /** Puts an item in a club's list, or takes it out; for those who keep the list. */
@@ -101,5 +122,5 @@ export function useSharedLibrary() {
     return true;
   };
 
-  return { items, error, clubs, search, boardsOf, share, unshare, report, pick, favorite };
+  return { items, error, clubs, search, boardsOf, share, unshare, report, pick, favorite, publish };
 }

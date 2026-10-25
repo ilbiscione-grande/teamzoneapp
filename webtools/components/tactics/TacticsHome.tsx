@@ -1,11 +1,12 @@
 "use client";
 
-// Your Tacticsboard projects, and a new one: a match, a training or teaching
-// material, for one of your TeamZone teams or none, started from ready
-// boards for its kind or from one of your templates. Your templates too.
+// Tacticsboard's start: TeamZone's library, a new project (a match, a
+// training or teaching material, for one of your TeamZone teams or none,
+// started from ready boards, a template or a favourite), your templates and
+// favourites, and your library: all of your projects.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { newDocument } from "../../lib/tactics/document.ts";
 import type { Board, ProjectKind, ProjectSummary } from "../../lib/tactics/model.ts";
 import { boardsFromTemplate, defaultStarterKeys, starterBoard, starterSets } from "../../lib/tactics/templates.ts";
@@ -13,43 +14,27 @@ import type { LeaderTeam } from "../../lib/tournament";
 import { useAccount } from "../account";
 import { kindLabels } from "./TopBar.tsx";
 import { useTemplates } from "./use-templates.ts";
-import { useLibrary } from "./use-library.ts";
 import { useSharedLibrary } from "./use-shared-library.ts";
-import { LibraryShareDialog } from "./LibraryShareDialog.tsx";
-import type { LibraryItemSummary } from "../../lib/tactics/library.ts";
+import { MyLibrary } from "./MyLibrary.tsx";
 import { boardsFromLibrary, libraryKindLabels, librarySummaryLine, noFilters, projectKindOf } from "../../lib/tactics/library.ts";
 import "./tactics.css";
 
 export function TacticsHome() {
   const { client } = useAccount();
   const router = useRouter();
-  const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [teams, setTeams] = useState<LeaderTeam[]>([]);
   const [form, setForm] = useState({ name: "", kind: "match" as ProjectKind, teamId: "" });
   // "ready" for the ready boards picked below, else a template's id.
   const [start, setStart] = useState("ready");
   const [picked, setPicked] = useState<string[]>(defaultStarterKeys.match);
   const { templates, error: templateError, boardsOf, remove: removeTemplate } = useTemplates();
-  const { items: library, error: libraryError, boardsOf: libraryBoardsOf, remove: removeLibraryItem, reload: reloadLibrary } = useLibrary();
   // The library's items you marked: additions to your own library.
-  const { items: favorites, error: shareError, clubs, search, boardsOf: sharedBoardsOf, share, unshare, favorite } = useSharedLibrary();
+  const { items: favorites, clubs, search, boardsOf: sharedBoardsOf, favorite } = useSharedLibrary();
   useEffect(() => { void search(noFilters, null, true); }, [search]);
   const unmark = async (id: string) => { if (await favorite(id, false)) void search(noFilters, null, true); };
-  const [sharing, setSharing] = useState<LibraryItemSummary | null>(null);
-  const unshareItem = async (sharedId: string, title: string) => {
-    if (!window.confirm(`Sluta dela ${title}? Den tas bort ur biblioteket för dem du delat den med men finns kvar i ditt. De som redan använt den behåller sina kopior.`)) return;
-    if (await unshare(sharedId)) void reloadLibrary();
-  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
-    if (!client) return;
-    const { data, error: loadError } = await client.schema("api").rpc("list_my_tactics_projects");
-    if (loadError) { setError("Projekten kunde inte hämtas."); return; }
-    setProjects(data as ProjectSummary[]);
-  }, [client]);
-  useEffect(() => { void load(); }, [load]);
   useEffect(() => {
     client?.schema("api").rpc("list_tournament_leader_teams").then(({ data }) => setTeams((data as LeaderTeam[] | null) ?? []));
   }, [client]);
@@ -67,10 +52,6 @@ export function TacticsHome() {
       const item = favorites?.find(entry => entry.id === start.slice(9));
       const found = item ? await sharedBoardsOf(item.id) : null;
       boards = item && found ? boardsFromTemplate(boardsFromLibrary(item, found), team?.team_name) : null;
-    } else if (start.startsWith("library:")) {
-      const item = library?.find(entry => entry.id === start.slice(8));
-      const found = item ? await libraryBoardsOf(item.id) : null;
-      boards = item && found ? boardsFromTemplate(boardsFromLibrary(item, found), team?.team_name) : null;
     } else {
       const found = await boardsOf(start);
       boards = found && boardsFromTemplate(found, team?.team_name);
@@ -83,13 +64,6 @@ export function TacticsHome() {
     setBusy(false);
     if (createError) { setError("Projektet kunde inte skapas. Försök igen."); return; }
     router.push(`/tacticsboard/${(data as ProjectSummary).id}`);
-  };
-
-  const remove = async (project: ProjectSummary) => {
-    if (!client || !window.confirm(`Ta bort ${project.name}? Det går inte att ångra.`)) return;
-    const { error: removeError } = await client.schema("api").rpc("delete_tactics_project", { target_project_id: project.id });
-    if (removeError) { setError("Projektet kunde inte tas bort."); return; }
-    void load();
   };
 
   return (
@@ -128,14 +102,11 @@ export function TacticsHome() {
               setStart(event.target.value);
               const template = templates?.find(item => item.id === event.target.value);
               if (template) setForm({ ...form, kind: template.kind });
-              const item = library?.find(entry => `library:${entry.id}` === event.target.value);
-              if (item) setForm({ ...form, kind: projectKindOf[item.kind], name: form.name || item.title });
               const marked = favorites?.find(entry => `favorite:${entry.id}` === event.target.value);
               if (marked) setForm({ ...form, kind: projectKindOf[marked.kind], name: form.name || marked.title });
             }}>
               <option value="ready">Färdiga tavlor för {kindLabels[form.kind].toLowerCase()}</option>
               {(templates ?? []).map(template => <option key={template.id} value={template.id}>Mall: {template.name}</option>)}
-              {(library ?? []).map(item => <option key={item.id} value={`library:${item.id}`}>{libraryKindLabels[item.kind]}: {item.title}</option>)}
               {(favorites ?? []).map(item => <option key={item.id} value={`favorite:${item.id}`}>Favorit: {item.title}</option>)}
             </select>
           </label>
@@ -153,18 +124,12 @@ export function TacticsHome() {
           ) : (
             <p className="wt-small">{start.startsWith("favorite:")
               ? favorites?.find(item => `favorite:${item.id}` === start)?.boards.map(board => board.name).join(", ")
-              : start.startsWith("library:")
-              ? library?.find(item => `library:${item.id}` === start)?.boards.map(board => board.name).join(", ")
               : templates?.find(item => item.id === start)?.boards.map(board => board.name).join(", ")}</p>
           )}
           <button type="submit" className="wt-button" disabled={busy}>Skapa och öppna</button>
           {teams.length > 0 && <p className="wt-small">Med ett lag hämtar du truppen till tavlan. Senare kan tavlan länkas till lagets aktiviteter i appen.</p>}
         </form>
       </section>
-      {sharing && (
-        <LibraryShareDialog item={sharing} clubs={clubs} onClose={() => setSharing(null)}
-          onShare={async clubId => { const done = await share(sharing.id, clubId); if (done) void reloadLibrary(); return done; }} />
-      )}
       {templates && templates.length > 0 && (
         <section className="wt-panel">
           <h2>Dina mallar</h2>
@@ -179,44 +144,6 @@ export function TacticsHome() {
                 <div className="wt-actions">
                   <button type="button" className="wt-button secondary small"
                     onClick={() => { if (window.confirm(`Ta bort mallen ${template.name}?`)) { if (start === template.id) setStart("ready"); void removeTemplate(template.id); } }}>Ta bort</button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-      {library && library.length > 0 && (
-        <section className="wt-panel" aria-label="Ditt bibliotek">
-          <h2>Ditt bibliotek</h2>
-          <p className="wt-small">Övningar, pass och sessioner du har sparat. Börja ett nytt projekt från dem ovan.</p>
-          {(libraryError || shareError) && <p role="alert" className="wt-error">{libraryError || shareError}</p>}
-          <ul className="bk-resource-list">
-            {library.map(item => (
-              <li key={item.id}>
-                <div>
-                  <strong>{item.title}</strong>
-                  <span>{[libraryKindLabels[item.kind], librarySummaryLine(item), item.version > 1 && `version ${item.version}`].filter(Boolean).join(" · ")}</span>
-                  {item.shared && (
-                    <span>{[item.shared.club_name ? `Delad med ${item.shared.club_name}` : "Delad med hela communityn",
-                      item.shared.hidden ? "dold efter rapporter"
-                        : item.shared.current ? `version ${item.shared.version}` : "du har ändrat den sedan"].join(" · ")}</span>
-                  )}
-                </div>
-                <div className="wt-actions">
-                  {!item.shared ? (
-                    <button type="button" className="wt-button secondary small" onClick={() => setSharing(item)}>Dela…</button>
-                  ) : (
-                    <>
-                      {!item.shared.hidden && (
-                        <button type="button" className="wt-button secondary small" onClick={() => setSharing(item)}>
-                          {item.shared.current ? "Ändra delning…" : "Dela nya versionen…"}
-                        </button>
-                      )}
-                      <button type="button" className="wt-button secondary small" onClick={() => void unshareItem(item.shared!.id, item.title)}>Sluta dela</button>
-                    </>
-                  )}
-                  <button type="button" className="wt-button secondary small"
-                    onClick={() => { if (window.confirm(`Ta bort ${item.title} ur biblioteket?`)) { if (start === `library:${item.id}`) setStart("ready"); void removeLibraryItem(item.id); } }}>Ta bort</button>
                 </div>
               </li>
             ))}
@@ -242,26 +169,7 @@ export function TacticsHome() {
           </ul>
         </section>
       )}
-      <section className="wt-panel">
-        <h2>Dina projekt</h2>
-        {projects === null ? <p className="wt-status">Laddar…</p> : projects.length === 0 ? <p>Inga projekt än.</p> : (
-          <ul className="bk-resource-list">
-            {projects.map(project => (
-              <li key={project.id}>
-                <div>
-                  <strong><Link className="wt-link" href={`/tacticsboard/${project.id}`}>{project.name}</Link></strong>
-                  <span>{[kindLabels[project.kind], project.team_name, `${project.board_count} ${project.board_count === 1 ? "tavla" : "tavlor"}`,
-                    `ändrat ${new Date(project.updated_at).toLocaleDateString("sv-SE", { day: "numeric", month: "short" })}`].filter(Boolean).join(" · ")}</span>
-                </div>
-                <div className="wt-actions">
-                  <Link className="wt-button small" href={`/tacticsboard/${project.id}`}>Öppna</Link>
-                  <button type="button" className="wt-button secondary small" onClick={() => void remove(project)}>Ta bort</button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <MyLibrary />
     </div>
   );
 }

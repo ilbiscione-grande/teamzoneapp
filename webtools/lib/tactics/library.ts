@@ -9,6 +9,9 @@ import type { AgeClass, Board, ExerciseDetails, ExercisePart, GameForm, GamePhas
 
 export type LibraryKind = "exercise" | "plan" | "lesson";
 
+/** Sent on window when something is published or taken back. */
+export const LIBRARY_CHANGED = "tactics-library-changed";
+
 export const libraryKindLabels: Record<LibraryKind, string> = { exercise: "Övning", plan: "Pass", lesson: "Session" };
 
 export const partLabels: Record<ExercisePart, string> = { warmup: "Uppvärmning", main: "Huvuddel", finish: "Avslutning" };
