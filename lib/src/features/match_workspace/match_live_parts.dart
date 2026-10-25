@@ -461,7 +461,9 @@ class _OnPitchCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'På planen (${onPitch.length})',
+              AppStrings.of(
+                context,
+              ).formatFeature('På planen ({count})', {'count': onPitch.length}),
               style: theme.textTheme.titleSmall,
             ),
             const SizedBox(height: 6),
@@ -473,7 +475,9 @@ class _OnPitchCard extends StatelessWidget {
             if (bench.isNotEmpty) ...[
               const SizedBox(height: 10),
               Text(
-                'Bänken (${bench.length})',
+                AppStrings.of(
+                  context,
+                ).formatFeature('Bänken ({count})', {'count': bench.length}),
                 style: theme.textTheme.titleSmall,
               ),
               const SizedBox(height: 6),

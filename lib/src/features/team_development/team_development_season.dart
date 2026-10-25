@@ -186,7 +186,9 @@ class _TdpTimeline extends StatelessWidget {
                             flex: days,
                             child: Tooltip(
                               message: period == null
-                                  ? 'Ingen period'
+                                  ? AppStrings.of(
+                                      context,
+                                    ).feature('Ingen period')
                                   : '${period.name} · ${_tdpRange(context, period.startsOn, period.endsOn)}',
                               child: Container(
                                 margin: const EdgeInsets.symmetric(

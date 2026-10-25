@@ -85,6 +85,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Unanswered invitations (2)'), findsOneWidget);
       expect(find.text('Träning one'), findsOneWidget);
+      expect(find.text('Archive'), findsOneWidget);
       expect(find.text('Show in my assistant'), findsOneWidget);
       expect(find.text('My personal calendar conflicts'), findsOneWidget);
       expect(find.text('Save display settings'), findsOneWidget);

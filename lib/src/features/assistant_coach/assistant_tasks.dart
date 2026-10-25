@@ -2035,7 +2035,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                                 ? AppStrings.of(
                                     context,
                                   ).feature('Avsiktlig\növerlappning')
-                                : 'Arkivera',
+                                : AppStrings.of(context).feature('Arkivera'),
                             textAlign: TextAlign.center,
                             style: const TextStyle(fontSize: 12),
                           ),

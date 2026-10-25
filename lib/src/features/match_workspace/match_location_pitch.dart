@@ -400,10 +400,19 @@ class _ShotMapCardState extends State<_ShotMapCard> {
             const SizedBox(height: 6),
             Text(
               points.isEmpty
-                  ? 'Markera avslut och mål på planen så syns de här.'
-                  : '${shown.length} avslut · ${count('goal')} mål · '
-                        '${count('on_target')} på mål · ${count('missed') + count('woodwork')} utanför · '
-                        '${count('blocked')} blockerade',
+                  ? AppStrings.of(context).feature(
+                      'Markera avslut och mål på planen så syns de här.',
+                    )
+                  : AppStrings.of(context).formatFeature(
+                      '{shots} avslut · {goals} mål · {target} på mål · {missed} utanför · {blocked} blockerade',
+                      {
+                        'shots': shown.length,
+                        'goals': count('goal'),
+                        'target': count('on_target'),
+                        'missed': count('missed') + count('woodwork'),
+                        'blocked': count('blocked'),
+                      },
+                    ),
               style: theme.textTheme.bodySmall,
             ),
           ],

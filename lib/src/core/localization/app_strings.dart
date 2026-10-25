@@ -265,6 +265,16 @@ class AppStrings {
   }
 
   static const Map<String, String> _featureEnglish = {
+    '{shots} avslut · {goals} mål · {target} på mål · {missed} utanför · {blocked} blockerade':
+        '{shots} shots · {goals} goals · {target} on target · {missed} off target · {blocked} blocked',
+    'Markera avslut och mål på planen så syns de här.':
+        'Mark shots and goals on the pitch to show them here.',
+    '{minutes} av {end} min · inbytt':
+        '{minutes} of {end} min · substituted on',
+    '{minutes} av {end} min': '{minutes} of {end} min',
+    'Avslut ({count} på mål)': 'Shots ({count} on target)',
+    'Bänken ({count})': 'Bench ({count})',
+    'På planen ({count})': 'On the pitch ({count})',
     'Spara matchplanen': 'Save match plan',
     'Skapa matchplan': 'Create match plan',
     'Öppna matchplanen': 'Open match plan',

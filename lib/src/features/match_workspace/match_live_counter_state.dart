@@ -140,15 +140,15 @@ mixin _LiveCounterState on State<_MatchLiveView> {
         initial: _view,
         options: [
           (
-            'Händelser',
+            AppStrings.of(context).feature('Händelser'),
             [
               for (final kind in liveEventKinds)
                 (kind.type, AppStrings.of(context).feature(kind.label)),
-              (noteKey, 'Anteckning'),
+              (noteKey, AppStrings.of(context).feature('Anteckning')),
             ],
           ),
           (
-            'Matchmål',
+            AppStrings.of(context).feature('Matchmål'),
             [
               for (final kpi in _kpis)
                 (
@@ -158,7 +158,7 @@ mixin _LiveCounterState on State<_MatchLiveView> {
             ],
           ),
           (
-            'Egna knappar',
+            AppStrings.of(context).feature('Egna knappar'),
             [
               for (final button in _buttons?.buttons ?? const <MatchButton>[])
                 (buttonKey(button.id), button.label),

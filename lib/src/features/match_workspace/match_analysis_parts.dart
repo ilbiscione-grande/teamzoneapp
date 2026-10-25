@@ -353,42 +353,62 @@ class _AnalysisPlayers extends StatelessWidget {
                 ),
                 title: Text(name(stat.personId)),
                 subtitle: Text(
-                  '${stat.minutes} av $end min${stat.started ? '' : ' · inbytt'}',
+                  AppStrings.of(context).formatFeature(
+                    stat.started
+                        ? '{minutes} av {end} min'
+                        : '{minutes} av {end} min · inbytt',
+                    {'minutes': stat.minutes, 'end': end},
+                  ),
                 ),
                 trailing: Wrap(
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     if (stat.goals > 0)
-                      chip(Icons.sports_soccer, stat.goals, 'Mål'),
+                      chip(
+                        Icons.sports_soccer,
+                        stat.goals,
+                        AppStrings.of(context).feature('Mål'),
+                      ),
                     if (stat.assists > 0)
-                      chip(Icons.assistant_outlined, stat.assists, 'Assist'),
+                      chip(
+                        Icons.assistant_outlined,
+                        stat.assists,
+                        AppStrings.of(context).feature('Assist'),
+                      ),
                     if (stat.shots > 0)
                       chip(
                         Icons.gps_fixed,
                         stat.shots,
-                        'Avslut (${stat.onTarget} på mål)',
+                        AppStrings.of(context).formatFeature(
+                          'Avslut ({count} på mål)',
+                          {'count': stat.onTarget},
+                        ),
                       ),
                     if (stat.saves > 0)
-                      chip(Icons.pan_tool_outlined, stat.saves, 'Räddningar'),
+                      chip(
+                        Icons.pan_tool_outlined,
+                        stat.saves,
+                        AppStrings.of(context).feature('Räddningar'),
+                      ),
                     if (stat.fouls > 0)
                       chip(
                         Icons.style_outlined,
                         stat.fouls,
-                        'Fouls',
+                        AppStrings.of(context).feature('Fouls'),
                         theme.colorScheme.outline,
                       ),
                     if (stat.yellow > 0)
                       chip(
                         Icons.square_rounded,
                         stat.yellow,
-                        'Gula kort',
+                        AppStrings.of(context).feature('Gula kort'),
                         Colors.amber.shade700,
                       ),
                     if (stat.red > 0)
                       chip(
                         Icons.square_rounded,
                         stat.red,
-                        'Röda kort',
+                        AppStrings.of(context).feature('Röda kort'),
                         Colors.red,
                       ),
                   ],
