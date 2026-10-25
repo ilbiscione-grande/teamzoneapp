@@ -3,11 +3,12 @@
 ## Bedömning
 
 Efterföljande [översättningsrättning i koden](english_translation_fix_2026-10-25.md)
-adresserar EN-01–EN-04 med engelska regressionstester. Den är ännu inte
-publicerad eller manuellt omprovad. Fynden nedan beskriver den granskade
-publicerade versionen.
+adresserar EN-01–EN-04 med engelska regressionstester. Den har därefter
+publicerats och granskats läsande på engelska; se
+[release och omprov](english_release_2026-10-25.md). Fynden nedan beskriver
+den äldre granskade versionen och behålls som historisk evidens.
 
-**Engelsk acceptans är inte godkänd.** Språkvalet och delar av gränssnittet
+**Ursprunglig bedömning: engelsk acceptans var inte godkänd.** Språkvalet och delar av gränssnittet
 fungerar, men flera viktiga komponenter visar fortfarande svenska systemtexter.
 Gröna automatiska språkprov innebär därför inte att hela appen är översatt.
 

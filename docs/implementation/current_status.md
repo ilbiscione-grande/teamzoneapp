@@ -22,15 +22,18 @@ Svenska, engelska eller enhetens språk kan väljas och sparas på enheten.
 Språkbyte och sparat val har provats i audit. Fullt engelskt språkpass återstår.
 Se [releasekvittot](../evidence/language_release_2026-10-25.md).
 
-Senare manuellt [engelskt språkpass](../evidence/english_acceptance_2026-10-25.md)
-är **inte godkänt**: assistenten, gemensamma förberedelser, TDP och Matchs
+Det ursprungliga manuella [engelska språkpasset](../evidence/english_acceptance_2026-10-25.md)
+var **inte godkänt**: assistenten, gemensamma förberedelser, TDP och Matchs
 detaljvyer innehåller kvarvarande svenska systemtexter. Språkvalets funktion
 är verifierad, men hela appens engelska lokalisering är inte färdig.
 
 Efter språkpasset har [översättningsrättningar för de fyra komponentgrupperna](../evidence/english_translation_fix_2026-10-25.md)
 genomförts lokalt, med engelska widgetprov och bevarat användarinnehåll.
-De är ännu inte publicerade; manuell engelsk acceptans av den nya versionen
-återstår efter publicering.
+Rättningarna är nu publicerade till audit och granskade läsande i den engelska
+ledarsessionen. Omprovets mindre rester är rättade i en komplettering. Se
+[engelsk release och omprov](../evidence/english_release_2026-10-25.md) för
+revisioner och avgränsning. Skriv-/rollacceptans och manuell mobilgranskning
+återstår, liksom mindre språkputs av singularformer och hörnresultatet Short.
 
 ## Statusregler
 

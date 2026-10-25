@@ -54,8 +54,7 @@ efter den sista komponenträttningen. Statisk analys: **inga fynd**.
 
 ## Avgränsning
 
-Detta är en lokal kodrättning. Den är ännu inte publicerad och har inte
-manuellt återprovats i audit. Den historiska engelska acceptansen är därför
-fortfarande underkänd för den publicerade versionen. Inga lagdata eller
-kontoinställningar ändrades under rättningen. Ett manuellt omprov efter
-publicering behövs för att stänga EN-01–EN-04.
+Rättningen är publicerad till audit och har granskats manuellt i den befintliga
+engelska ledarsessionen. Omprovet hittade ytterligare mindre systemtexter som
+rättats i en komplettering. Revisioner, kontroller och återstående acceptans
+finns i [release och omprov](english_release_2026-10-25.md).
