@@ -60,7 +60,7 @@ class _TeamPlanCardState extends State<_TeamPlanCard> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Lagets plan',
+                          AppStrings.of(context).feature('Lagets plan'),
                           style: theme.textTheme.titleMedium,
                         ),
                       ),
@@ -119,7 +119,9 @@ class _SharedTeamPlanPage extends StatelessWidget {
       child: Text(text, style: theme.textTheme.titleLarge),
     );
     return Scaffold(
-      appBar: AppBar(title: const Text('Lagets plan')),
+      appBar: AppBar(
+        title: Text(AppStrings.of(context).feature('Lagets plan')),
+      ),
       body: ListView(
         key: const Key('shared-team-plan'),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -155,7 +157,7 @@ class _SharedTeamPlanPage extends StatelessWidget {
                     ),
                     subtitle: Text(
                       [
-                        '${period.phase.label}, ${_tdpRange(context, period.startsOn, period.endsOn)}',
+                        '${AppStrings.of(context).feature(period.phase.label)}, ${_tdpRange(context, period.startsOn, period.endsOn)}',
                         if (period.focus.trim().isNotEmpty) period.focus,
                       ].join('\n'),
                     ),
@@ -184,7 +186,7 @@ class _SharedTeamPlanPage extends StatelessWidget {
                                   0,
                                 ),
                                 child: Text(
-                                  '${area.label} (${area.withBall ? 'med boll' : 'utan boll'})',
+                                  '${AppStrings.of(context).feature(area.label)} (${AppStrings.of(context).feature(area.withBall ? 'Med boll' : 'Utan boll').toLowerCase()})',
                                   style: theme.textTheme.titleSmall,
                                 ),
                               ),

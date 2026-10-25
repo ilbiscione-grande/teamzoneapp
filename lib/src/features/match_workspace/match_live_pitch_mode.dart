@@ -75,7 +75,10 @@ class _LivePitchMode extends StatelessWidget {
                               bottom: 0,
                               child: IgnorePointer(
                                 child: Center(
-                                  child: Text('Anfall →', style: label),
+                                  child: Text(
+                                    AppStrings.of(context).feature('Anfall →'),
+                                    style: label,
+                                  ),
                                 ),
                               ),
                             )
@@ -86,7 +89,7 @@ class _LivePitchMode extends StatelessWidget {
                               right: 0,
                               child: IgnorePointer(
                                 child: Text(
-                                  'Anfall ↑',
+                                  AppStrings.of(context).feature('Anfall ↑'),
                                   textAlign: TextAlign.center,
                                   style: label,
                                 ),
@@ -98,7 +101,9 @@ class _LivePitchMode extends StatelessWidget {
                             Center(
                               child: IgnorePointer(
                                 child: Text(
-                                  'Dubbeltryck där det händer',
+                                  AppStrings.of(
+                                    context,
+                                  ).feature('Dubbeltryck där det händer'),
                                   style: label.copyWith(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
@@ -116,11 +121,13 @@ class _LivePitchMode extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(10),
                                 child: Row(
                                   children: [
-                                    const Expanded(
+                                    Expanded(
                                       child: Padding(
                                         padding: EdgeInsets.all(10),
                                         child: Text(
-                                          'Tryck där händelsen ska ligga',
+                                          AppStrings.of(context).feature(
+                                            'Tryck där händelsen ska ligga',
+                                          ),
                                           style: TextStyle(color: Colors.white),
                                         ),
                                       ),
@@ -128,8 +135,10 @@ class _LivePitchMode extends StatelessWidget {
                                     TextButton(
                                       key: const Key('live-move-cancel'),
                                       onPressed: onCancelMove,
-                                      child: const Text(
-                                        'Avbryt',
+                                      child: Text(
+                                        AppStrings.of(
+                                          context,
+                                        ).feature('Avbryt'),
                                         style: TextStyle(color: Colors.white),
                                       ),
                                     ),
@@ -347,9 +356,15 @@ class _PitchEventSheetState extends State<_PitchEventSheet> {
     key: Key('pitch-sheet-$label'),
     initialValue: value,
     isExpanded: true,
-    decoration: InputDecoration(labelText: label, isDense: true),
+    decoration: InputDecoration(
+      labelText: AppStrings.of(context).feature(label),
+      isDense: true,
+    ),
     items: [
-      const DropdownMenuItem<String?>(value: null, child: Text('Ingen vald')),
+      DropdownMenuItem<String?>(
+        value: null,
+        child: Text(AppStrings.of(context).feature('Ingen vald')),
+      ),
       for (final player in _players)
         DropdownMenuItem<String?>(
           value: player.personId,
@@ -401,12 +416,14 @@ class _PitchEventSheetState extends State<_PitchEventSheet> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Ny händelse',
+                      AppStrings.of(context).feature('Ny händelse'),
                       style: theme.textTheme.titleMedium,
                     ),
                   ),
                   IconButton(
-                    tooltip: 'En minut tidigare',
+                    tooltip: AppStrings.of(
+                      context,
+                    ).feature('En minut tidigare'),
                     onPressed: _minute > 0
                         ? () => setState(() => _minute--)
                         : null,
@@ -414,7 +431,7 @@ class _PitchEventSheetState extends State<_PitchEventSheet> {
                   ),
                   Text("$_minute′", style: theme.textTheme.titleMedium),
                   IconButton(
-                    tooltip: 'En minut senare',
+                    tooltip: AppStrings.of(context).feature('En minut senare'),
                     onPressed: () => setState(() => _minute++),
                     icon: const Icon(Icons.add),
                   ),
@@ -428,7 +445,7 @@ class _PitchEventSheetState extends State<_PitchEventSheet> {
                     ChoiceChip(
                       key: Key('pitch-sheet-kind-${kind.type}'),
                       avatar: Icon(_liveIcon(kind.type), size: 16),
-                      label: Text(kind.label),
+                      label: Text(AppStrings.of(context).feature(kind.label)),
                       selected: _kind.type == kind.type,
                       onSelected: (_) => setState(() {
                         _kind = kind;
@@ -441,7 +458,10 @@ class _PitchEventSheetState extends State<_PitchEventSheet> {
               SegmentedButton<String>(
                 key: const Key('pitch-sheet-side'),
                 segments: [
-                  const ButtonSegment(value: 'us', label: Text('Vi')),
+                  ButtonSegment(
+                    value: 'us',
+                    label: Text(AppStrings.of(context).feature('Vi')),
+                  ),
                   ButtonSegment(
                     value: 'opponent',
                     label: Text(
@@ -463,7 +483,7 @@ class _PitchEventSheetState extends State<_PitchEventSheet> {
                     for (final (value, label) in _kind.results)
                       ChoiceChip(
                         key: Key('pitch-sheet-result-$value'),
-                        label: Text(label),
+                        label: Text(AppStrings.of(context).feature(label)),
                         selected: _result == value,
                         onSelected: (_) => setState(() => _result = value),
                       ),
@@ -495,8 +515,10 @@ class _PitchEventSheetState extends State<_PitchEventSheet> {
                 key: const Key('pitch-sheet-comment'),
                 controller: _comment,
                 maxLength: 200,
-                decoration: const InputDecoration(
-                  labelText: 'Anteckning (frivilligt)',
+                decoration: InputDecoration(
+                  labelText: AppStrings.of(
+                    context,
+                  ).feature('Anteckning (frivilligt)'),
                   isDense: true,
                 ),
               ),
@@ -505,7 +527,7 @@ class _PitchEventSheetState extends State<_PitchEventSheet> {
                   const Spacer(),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Avbryt'),
+                    child: Text(AppStrings.of(context).feature('Avbryt')),
                   ),
                   const SizedBox(width: 8),
                   FilledButton(
@@ -517,7 +539,7 @@ class _PitchEventSheetState extends State<_PitchEventSheet> {
                             _player == _secondary
                         ? null
                         : _save,
-                    child: const Text('Registrera'),
+                    child: Text(AppStrings.of(context).feature('Registrera')),
                   ),
                 ],
               ),
@@ -611,7 +633,7 @@ class _LiveHeaderBar extends StatelessWidget {
     final score = sides.homeAway == 'away'
         ? '$opponentName ${value?.scoreOpponent ?? 0}–${value?.scoreUs ?? 0} ${sides.team}'
         : '$us–$them';
-    final primary = _LiveScoreboard.primaryOf(value);
+    final primary = _LiveScoreboard.primaryOf(value, AppStrings.of(context));
     final live = value?.state == 'live';
     return Material(
       key: const Key('live-header'),
@@ -643,7 +665,7 @@ class _LiveHeaderBar extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '${_LiveScoreboard.clockOf(value)} · ${_LiveScoreboard.captionOf(value)}',
+                        '${_LiveScoreboard.clockOf(value)} · ${_LiveScoreboard.captionOf(value, AppStrings.of(context))}',
                         maxLines: 1,
                         style: const TextStyle(
                           color: Colors.white70,
@@ -678,7 +700,7 @@ class _LiveHeaderBar extends StatelessWidget {
                 if (live || onPhase != null)
                   PopupMenuButton<VoidCallback>(
                     key: const Key('live-header-menu'),
-                    tooltip: 'Matchen och vyer',
+                    tooltip: AppStrings.of(context).feature('Matchen och vyer'),
                     iconColor: Colors.white,
                     onSelected: (action) => action(),
                     itemBuilder: (_) => [
@@ -689,12 +711,14 @@ class _LiveHeaderBar extends StatelessWidget {
                           PopupMenuItem(
                             value: onEndPeriod,
                             child: Text(
-                              'Avsluta ${_LiveScoreboard._period(value.currentPeriod, value.periodMinutes.length).toLowerCase()}',
+                              '${AppStrings.of(context).isSwedish ? 'Avsluta' : 'End'} ${_LiveScoreboard._period(value.currentPeriod, value.periodMinutes.length, AppStrings.of(context)).toLowerCase()}',
                             ),
                           ),
                         PopupMenuItem(
                           value: onFinish,
-                          child: const Text('Slutsignal'),
+                          child: Text(
+                            AppStrings.of(context).feature('Slutsignal'),
+                          ),
                         ),
                       ],
                       if (live && onPublicLive != null) ...[
@@ -712,12 +736,16 @@ class _LiveHeaderBar extends StatelessWidget {
                         PopupMenuItem(
                           key: const Key('live-header-preparation'),
                           value: () => onPhase!(_MatchPhase.preparation),
-                          child: const Text('Förberedelse'),
+                          child: Text(
+                            AppStrings.of(context).feature('Förberedelse'),
+                          ),
                         ),
                         PopupMenuItem(
                           key: const Key('live-header-analysis'),
                           value: () => onPhase!(_MatchPhase.analysis),
-                          child: const Text('Efteranalys'),
+                          child: Text(
+                            AppStrings.of(context).feature('Efteranalys'),
+                          ),
                         ),
                       ],
                     ],

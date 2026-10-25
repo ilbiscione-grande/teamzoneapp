@@ -26,7 +26,7 @@ class _TdpStatusChip extends StatelessWidget {
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 4),
           Text(
-            status.label,
+            AppStrings.of(context).feature(status.label),
             style: TextStyle(
               color: color,
               fontSize: 12,
@@ -71,7 +71,7 @@ abstract final class _TdpGoalSheet {
             children: [
               Text(
                 [
-                  goal.horizon.label,
+                  AppStrings.of(context).feature(goal.horizon.label),
                   if (period != null) period.name,
                   if (goal.targetOn != null)
                     'senast ${_tdpDate(sheetContext, goal.targetOn!)}',
@@ -93,7 +93,10 @@ abstract final class _TdpGoalSheet {
               ],
               if (goal.state != GoalState.open) ...[
                 const SizedBox(height: 8),
-                Text(goal.state.label, style: theme.textTheme.labelLarge),
+                Text(
+                  AppStrings.of(context).feature(goal.state.label),
+                  style: theme.textTheme.labelLarge,
+                ),
               ],
               if (controller.canEdit) ...[
                 const SizedBox(height: 16),
@@ -109,7 +112,7 @@ abstract final class _TdpGoalSheet {
                         goal,
                       ),
                       icon: const Icon(Icons.fact_check_outlined),
-                      label: const Text('Stäm av'),
+                      label: Text(AppStrings.of(context).feature('Stäm av')),
                     ),
                     OutlinedButton.icon(
                       key: const Key('tdp-goal-edit'),
@@ -123,7 +126,9 @@ abstract final class _TdpGoalSheet {
                         );
                       },
                       icon: const Icon(Icons.edit_outlined),
-                      label: const Text('Ändra målet'),
+                      label: Text(
+                        AppStrings.of(context).feature('Ändra målet'),
+                      ),
                     ),
                   ],
                 ),
@@ -131,15 +136,21 @@ abstract final class _TdpGoalSheet {
               const SizedBox(height: 20),
               _TdpGoalLinks(controller: controller, plan: plan, goal: goal),
               const SizedBox(height: 20),
-              Text('Avstämningar', style: theme.textTheme.titleMedium),
+              Text(
+                AppStrings.of(context).feature('Avstämningar'),
+                style: theme.textTheme.titleMedium,
+              ),
               if (history.isEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
                     plan.checkinEveryDays == null
-                        ? 'Inga avstämningar än.'
-                        : 'Inga avstämningar än. Målen stäms av var '
-                              '${plan.checkinEveryDays! ~/ 7}:e vecka.',
+                        ? AppStrings.of(
+                            context,
+                          ).feature('Inga avstämningar än.')
+                        : (AppStrings.of(context).isSwedish
+                              ? 'Inga avstämningar än. Målen stäms av var ${plan.checkinEveryDays! ~/ 7}:e vecka.'
+                              : 'No check-ins yet. Goals are reviewed every ${plan.checkinEveryDays! ~/ 7} weeks.'),
                   ),
                 ),
               for (final checkin in history)
@@ -181,7 +192,7 @@ class _TdpCheckinTile extends StatelessWidget {
       title: Text(
         [
           _tdpDate(context, checkin.checkedOn),
-          if (status != null) status.label,
+          if (status != null) AppStrings.of(context).feature(status.label),
           if (value != null) '${_tdpNumber(value)} $unit'.trim(),
         ].join(' · '),
       ),
@@ -194,13 +205,15 @@ class _TdpCheckinTile extends StatelessWidget {
       isThreeLine: checkin.note.trim().isNotEmpty && checkin.createdBy != null,
       trailing: controller.canEdit
           ? IconButton(
-              tooltip: 'Ta bort avstämningen',
+              tooltip: AppStrings.of(context).feature('Ta bort avstämningen'),
               icon: const Icon(Icons.delete_outline),
               onPressed: () async {
                 final sure = await _tdpConfirm(
                   context,
-                  'Ta bort avstämningen?',
-                  'Avstämningen från ${_tdpDate(context, checkin.checkedOn)} tas bort ur historiken.',
+                  AppStrings.of(context).feature('Ta bort avstämningen?'),
+                  (AppStrings.of(context).isSwedish
+                      ? 'Avstämningen från ${_tdpDate(context, checkin.checkedOn)} tas bort ur historiken.'
+                      : 'The check-in from ${_tdpDate(context, checkin.checkedOn)} is deleted from history.'),
                 );
                 if (sure && context.mounted) {
                   await controller.change(
@@ -264,7 +277,11 @@ abstract final class _TdpCheckinDialog {
             );
             final valid = goal != null || number != null;
             return AlertDialog(
-              title: Text(goal != null ? 'Stäm av målet' : kpi!.title),
+              title: Text(
+                goal != null
+                    ? AppStrings.of(context).feature('Stäm av målet')
+                    : kpi!.title,
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -277,7 +294,7 @@ abstract final class _TdpCheckinDialog {
                         key: const Key('tdp-checkin-status'),
                         values: {
                           for (final value in CheckinStatus.values)
-                            value: value.label,
+                            value: AppStrings.of(context).feature(value.label),
                         },
                         selected: status,
                         onSelected: (value) => setState(() => status = value),
@@ -292,12 +309,11 @@ abstract final class _TdpCheckinDialog {
                           signed: true,
                         ),
                         decoration: InputDecoration(
-                          labelText: 'Värde',
+                          labelText: AppStrings.of(context).feature('Värde'),
                           suffixText: kpi!.unit.isEmpty ? null : kpi.unit,
                           helperText: kpi.target == null
                               ? null
-                              : 'Mål: ${kpi.higherIsBetter ? 'minst' : 'högst'} '
-                                    '${_tdpNumber(kpi.target!)} ${kpi.unit}',
+                              : _tdpKpiTarget(context, kpi),
                         ),
                         onChanged: (_) => setState(() {}),
                       ),
@@ -322,10 +338,14 @@ abstract final class _TdpCheckinDialog {
                       minLines: 2,
                       maxLines: 5,
                       decoration: InputDecoration(
-                        labelText: 'Anteckning',
+                        labelText: AppStrings.of(context).feature('Anteckning'),
                         hintText: goal != null
-                            ? 'Vad ser ni, och vad gör ni härnäst?'
-                            : 'Till exempel vilken match',
+                            ? AppStrings.of(
+                                context,
+                              ).feature('Vad ser ni, och vad gör ni härnäst?')
+                            : AppStrings.of(
+                                context,
+                              ).feature('Till exempel vilken match'),
                         border: const OutlineInputBorder(),
                       ),
                     ),
@@ -335,7 +355,7 @@ abstract final class _TdpCheckinDialog {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Avbryt'),
+                  child: Text(AppStrings.of(context).feature('Avbryt')),
                 ),
                 FilledButton(
                   key: const Key('tdp-checkin-save'),
@@ -345,7 +365,7 @@ abstract final class _TdpCheckinDialog {
                           note.text.trim(),
                         ))
                       : null,
-                  child: const Text('Spara'),
+                  child: Text(AppStrings.of(context).feature('Spara')),
                 ),
               ],
             );
@@ -395,11 +415,17 @@ class _TdpDue extends StatelessWidget {
               leading: const Icon(Icons.fact_check_outlined),
               title: Text(
                 due.length == 1
-                    ? 'Dags att stämma av ett mål'
-                    : 'Dags att stämma av ${due.length} mål',
+                    ? (AppStrings.of(context).isSwedish
+                          ? 'Dags att stämma av ett mål'
+                          : 'Time to review a goal')
+                    : (AppStrings.of(context).isSwedish
+                          ? 'Dags att stämma av ${due.length} mål'
+                          : 'Time to review ${due.length} goals'),
               ),
               subtitle: Text(
-                'Ni stämmer av målen var ${plan.checkinEveryDays! ~/ 7}:e vecka.',
+                (AppStrings.of(context).isSwedish
+                    ? 'Ni stämmer av målen var ${plan.checkinEveryDays! ~/ 7}:e vecka.'
+                    : 'You review goals every ${plan.checkinEveryDays! ~/ 7} weeks.'),
               ),
             ),
             for (final goal in due)
@@ -412,13 +438,13 @@ class _TdpDue extends StatelessWidget {
                     .firstOrNull) {
                   final last? =>
                     'Senast ${_tdpDate(context, last.checkedOn)}: ${last.status?.label ?? ''}',
-                  null => 'Inte avstämt än',
+                  null => AppStrings.of(context).feature('Inte avstämt än'),
                 }),
                 trailing: controller.canEdit
                     ? TextButton(
                         onPressed: () =>
                             _TdpCheckinDialog.goal(context, controller, goal),
-                        child: const Text('Stäm av'),
+                        child: Text(AppStrings.of(context).feature('Stäm av')),
                       )
                     : null,
                 onTap: () => _TdpGoalSheet.show(context, controller, goal.id),

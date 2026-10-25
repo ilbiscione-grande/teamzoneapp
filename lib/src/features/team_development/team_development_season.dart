@@ -22,7 +22,7 @@ class _TdpPhaseChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        phase.label,
+        AppStrings.of(context).feature(phase.label),
         style: TextStyle(
           color: color,
           fontSize: 12,
@@ -46,7 +46,7 @@ class _TdpSeason extends StatelessWidget {
       key: const Key('tdp-new-period'),
       onPressed: () => _TdpPeriodDialog.edit(context, controller, plan),
       icon: const Icon(Icons.add),
-      label: const Text('Ny period'),
+      label: Text(AppStrings.of(context).feature('Ny period')),
     ),
     builder: (plan) {
       final theme = Theme.of(context);
@@ -68,7 +68,9 @@ class _TdpSeason extends StatelessWidget {
                     if (controller.canEdit)
                       IconButton(
                         key: const Key('tdp-edit-season'),
-                        tooltip: 'Ändra säsongen',
+                        tooltip: AppStrings.of(
+                          context,
+                        ).feature('Ändra säsongen'),
                         icon: const Icon(Icons.edit_outlined),
                         onPressed: () => _editSeason(context, plan),
                       ),
@@ -82,7 +84,10 @@ class _TdpSeason extends StatelessWidget {
                 ),
                 if (plan.vision.trim().isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  Text('Inriktning', style: theme.textTheme.labelLarge),
+                  Text(
+                    AppStrings.of(context).feature('Inriktning'),
+                    style: theme.textTheme.labelLarge,
+                  ),
                   const SizedBox(height: 2),
                   Padding(
                     padding: const EdgeInsets.only(right: 12),
@@ -92,7 +97,9 @@ class _TdpSeason extends StatelessWidget {
                 if (plan.updatedBy != null) ...[
                   const SizedBox(height: 12),
                   Text(
-                    'Senast ändrad av ${plan.updatedBy}',
+                    (AppStrings.of(context).isSwedish
+                        ? 'Senast ändrad av ${plan.updatedBy}'
+                        : 'Last changed by ${plan.updatedBy}'),
                     style: theme.textTheme.bodySmall,
                   ),
                 ],
@@ -129,7 +136,7 @@ class _TdpSeason extends StatelessWidget {
         vision: draft.vision,
         checkinEveryDays: draft.checkinEveryDays,
       ),
-      done: 'Säsongen är sparad.',
+      done: AppStrings.of(context).feature('Säsongen är sparad.'),
     );
   }
 }
@@ -228,7 +235,10 @@ class _TdpTimeline extends StatelessWidget {
             ),
             const Spacer(),
             if (todayAt != null)
-              Text('Idag', style: Theme.of(context).textTheme.bodySmall),
+              Text(
+                AppStrings.of(context).feature('Idag'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             const Spacer(),
             Text(
               _tdpDate(context, plan.endsOn),
@@ -307,8 +317,10 @@ class _TdpPeriodCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 goals.isEmpty
-                    ? 'Inga mål'
-                    : '$achieved av ${goals.length} mål uppnådda',
+                    ? AppStrings.of(context).feature('Inga mål')
+                    : (AppStrings.of(context).isSwedish
+                          ? '$achieved av ${goals.length} mål uppnådda'
+                          : '$achieved of ${goals.length} goals achieved'),
                 style: theme.textTheme.bodySmall,
               ),
             ],

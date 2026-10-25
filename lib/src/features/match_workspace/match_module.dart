@@ -307,9 +307,9 @@ class _NextMatchCard extends StatelessWidget {
     final today = DateUtils.dateOnly(DateTime.now());
     final days = DateUtils.dateOnly(match.startsAt).difference(today).inDays;
     final when = switch (days) {
-      <= 0 => 'Idag',
-      1 => 'Imorgon',
-      _ => 'Om $days dagar',
+      <= 0 => strings.feature('Idag'),
+      1 => strings.feature('Imorgon'),
+      _ => strings.isSwedish ? 'Om $days dagar' : 'In $days days',
     };
     final place = switch (match.homeAway) {
       'home' => 'Hemma',
@@ -336,7 +336,7 @@ class _NextMatchCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${strings.feature('Nästa match')} · ${strings.feature(when)}',
+              '${strings.feature('Nästa match')} · $when',
               style: white.copyWith(fontSize: 13, color: Colors.white70),
             ),
             const SizedBox(height: 6),

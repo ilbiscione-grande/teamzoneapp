@@ -1,3 +1,4 @@
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -68,7 +69,16 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: AssistantDigitalFunctionNotice())),
+      MaterialApp(
+        locale: const Locale('sv'),
+        supportedLocales: const [Locale('sv')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: Scaffold(body: AssistantDigitalFunctionNotice()),
+      ),
     );
     expect(
       find.byKey(const Key('assistant-digital-function-notice')),
@@ -104,6 +114,13 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('sv'),
+        supportedLocales: const [Locale('sv')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         home: Scaffold(
           body: AssistantQueuePostCard(
             post: post,

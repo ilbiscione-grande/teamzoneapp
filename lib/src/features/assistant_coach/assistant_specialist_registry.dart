@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import 'package:flutter/material.dart';
 
 enum AssistantAreaGateState { pendingVerification, blocked }
@@ -159,10 +160,11 @@ class AssistantAreaBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = _areaColors(context, area.designToken);
     return Semantics(
-      label: 'Område: ${area.label}',
+      label:
+          '${AppStrings.of(context).isSwedish ? 'Område' : 'Area'}: ${AppStrings.of(context).feature(area.label)}',
       child: Chip(
         avatar: Icon(_areaIcon(area.iconToken), size: 18, color: colors.$2),
-        label: Text(area.label),
+        label: Text(AppStrings.of(context).feature(area.label)),
         backgroundColor: colors.$1,
         labelStyle: TextStyle(color: colors.$2),
         side: BorderSide(color: colors.$2.withValues(alpha: 0.35)),

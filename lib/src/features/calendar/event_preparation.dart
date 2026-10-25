@@ -261,9 +261,11 @@ class _PreparationTabState extends State<_PreparationTab> {
         children: [
           ...sections,
           if (empty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(16),
-              child: Text('Inga förberedelser ännu.'),
+              child: Text(
+                AppStrings.of(context).feature('Inga förberedelser ännu.'),
+              ),
             ),
         ],
       ),
@@ -349,7 +351,7 @@ class _PreparationTabState extends State<_PreparationTab> {
                     children: [
                       Expanded(
                         child: Text(
-                          title.toUpperCase(),
+                          AppStrings.of(context).feature(title).toUpperCase(),
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
@@ -398,7 +400,7 @@ class _PreparationTabState extends State<_PreparationTab> {
     ),
     onPressed: onPressed,
     icon: Icon(icon, size: 18),
-    label: Text(label),
+    label: Text(AppStrings.of(context).feature(label)),
   );
 
   Widget _addRow(String label, VoidCallback onPressed) {
@@ -421,7 +423,7 @@ class _PreparationTabState extends State<_PreparationTab> {
                   const SizedBox(width: 10),
                   Flexible(
                     child: Text(
-                      label,
+                      AppStrings.of(context).feature(label),
                       style: TextStyle(fontSize: 14, color: colors.primary),
                     ),
                   ),
@@ -474,7 +476,7 @@ class _PreparationTabState extends State<_PreparationTab> {
 
   Widget _moreMenu(List<(String, IconData, VoidCallback)> actions) =>
       PopupMenuButton<VoidCallback>(
-        tooltip: 'Fler val',
+        tooltip: AppStrings.of(context).feature('Fler val'),
         padding: EdgeInsets.zero,
         iconSize: 20,
         constraints: const BoxConstraints(minWidth: 160),
@@ -493,7 +495,7 @@ class _PreparationTabState extends State<_PreparationTab> {
                 children: [
                   Icon(icon, size: 20),
                   const SizedBox(width: 12),
-                  Text(label),
+                  Text(AppStrings.of(context).feature(label)),
                 ],
               ),
             ),
@@ -534,15 +536,17 @@ class _PreparationTabState extends State<_PreparationTab> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Öppna matchläge',
+                          AppStrings.of(context).feature('Öppna matchläge'),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: colors.primary,
                           ),
                         ),
-                        const Text(
-                          'Resultat, tidtagning och målhändelser',
+                        Text(
+                          AppStrings.of(
+                            context,
+                          ).feature('Resultat, tidtagning och målhändelser'),
                           style: TextStyle(fontSize: 13),
                         ),
                       ],
@@ -584,12 +588,14 @@ class _PreparationTabState extends State<_PreparationTab> {
                           () => _services.deleteItem(data.eventId, item.id),
                         )
                       : null,
-                  deleteButtonTooltipMessage: 'Ta bort ${item.label}',
+                  deleteButtonTooltipMessage: AppStrings.of(
+                    context,
+                  ).formatFeature('Ta bort {name}', {'name': item.label}),
                 ),
               if (_canTraining)
                 ActionChip(
                   avatar: const Icon(Icons.add, size: 18),
-                  label: const Text('Lägg till'),
+                  label: Text(AppStrings.of(context).feature('Lägg till')),
                   visualDensity: VisualDensity.compact,
                   onPressed: () => _addLabels(PreparationKind.focus),
                 ),
@@ -629,14 +635,28 @@ class _PreparationTabState extends State<_PreparationTab> {
       showDragHandle: true,
       builder: (sheetContext) => _AddLabelsSheet(
         title: switch (kind) {
-          PreparationKind.focus => 'Lägg till träningsfokus',
-          PreparationKind.material => 'Lägg till material',
-          _ => 'Lägg till punkt',
+          PreparationKind.focus =>
+            AppStrings.of(context).isSwedish
+                ? 'Lägg till träningsfokus'
+                : 'Add training focus',
+          PreparationKind.material => AppStrings.of(
+            context,
+          ).feature('Lägg till material'),
+          _ => AppStrings.of(context).feature('Lägg till punkt'),
         },
         customHint: switch (kind) {
-          PreparationKind.focus => 'Skapa eget fokus',
-          PreparationKind.material => 'Skapa eget',
-          _ => 'Ny agendapunkt',
+          PreparationKind.focus =>
+            AppStrings.of(context).isSwedish
+                ? 'Skapa eget fokus'
+                : 'Create custom focus',
+          PreparationKind.material =>
+            AppStrings.of(context).isSwedish
+                ? 'Skapa eget'
+                : 'Create custom item',
+          _ =>
+            AppStrings.of(context).isSwedish
+                ? 'Ny agendapunkt'
+                : 'New agenda item',
         },
         existing: data
             .itemsOf(kind)
@@ -692,7 +712,9 @@ class _PreparationTabState extends State<_PreparationTab> {
                 ),
                 if (_canNote)
                   IconButton(
-                    tooltip: 'Redigera ${title.toLowerCase()}',
+                    tooltip: AppStrings.of(context).isSwedish
+                        ? 'Redigera ${title.toLowerCase()}'
+                        : 'Edit ${AppStrings.of(context).feature(title).toLowerCase()}',
                     style: IconButton.styleFrom(
                       backgroundColor: colors.primary.withValues(alpha: .08),
                       minimumSize: const Size(40, 40),
@@ -740,7 +762,7 @@ class _PreparationTabState extends State<_PreparationTab> {
       isScrollControlled: true,
       showDragHandle: true,
       builder: (_) => _NoteEditorSheet(
-        title: title,
+        title: AppStrings.of(context).feature(title),
         initial: draft ?? data.note.body,
         conflictNotice: draft != null,
       ),
@@ -847,12 +869,12 @@ class _PreparationTabState extends State<_PreparationTab> {
             if (allowRename)
               ListTile(
                 leading: const Icon(Icons.edit_outlined),
-                title: const Text('Byt namn'),
+                title: Text(AppStrings.of(context).feature('Byt namn')),
                 onTap: () => Navigator.pop(context, 'rename'),
               ),
             ListTile(
               leading: const Icon(Icons.delete_outline),
-              title: const Text('Ta bort'),
+              title: Text(AppStrings.of(context).feature('Ta bort')),
               onTap: () => Navigator.pop(context, 'delete'),
             ),
           ],
@@ -902,11 +924,11 @@ class _PreparationTabState extends State<_PreparationTab> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Avbryt'),
+            child: Text(AppStrings.of(context).feature('Avbryt')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Spara'),
+            child: Text(AppStrings.of(context).feature('Spara')),
           ),
         ],
       ),
@@ -1202,15 +1224,24 @@ class _PreparationTabState extends State<_PreparationTab> {
       switch (file.visibility) {
         FileVisibility.leaders => (
           Icons.lock_outline,
-          'Ledare',
-          'Endast ledare',
+          AppStrings.of(context).feature('Ledare'),
+          AppStrings.of(context).feature('Endast ledare'),
         ),
         FileVisibility.selected => (
           Icons.person_outline,
-          '${file.viewerCount} pers.',
-          'Synlig för ${file.viewerCount} valda personer',
+          AppStrings.of(
+            context,
+          ).formatFeature('{count} pers.', {'count': file.viewerCount}),
+          AppStrings.of(context).formatFeature(
+            'Synlig för {count} valda personer',
+            {'count': file.viewerCount},
+          ),
         ),
-        _ => (Icons.groups_outlined, 'Alla', 'Synlig för alla deltagare'),
+        _ => (
+          Icons.groups_outlined,
+          AppStrings.of(context).feature('Alla'),
+          AppStrings.of(context).feature('Synlig för alla deltagare'),
+        ),
       };
 
   String _sizeLabel(int bytes) {
@@ -1312,12 +1343,12 @@ class _PreparationTabState extends State<_PreparationTab> {
             ),
             if (upload.failed) ...[
               IconButton(
-                tooltip: 'Försök igen',
+                tooltip: AppStrings.of(context).feature('Försök igen'),
                 onPressed: () => _upload(upload),
                 icon: const Icon(Icons.refresh, size: 20),
               ),
               IconButton(
-                tooltip: 'Avbryt',
+                tooltip: AppStrings.of(context).feature('Avbryt'),
                 onPressed: () => setState(() => _uploads.remove(upload)),
                 icon: const Icon(Icons.close, size: 20),
               ),
@@ -1370,7 +1401,9 @@ class _PreparationTabState extends State<_PreparationTab> {
       return;
     }
     final visibility = await _chooseVisibility(
-      title: 'Vem ska se ${file.name}?',
+      title: AppStrings.of(
+        context,
+      ).formatFeature('Vem ska se {name}?', {'name': file.name}),
       initial: FileVisibility.participants,
       initialIds: const [],
     );
@@ -1427,7 +1460,9 @@ class _PreparationTabState extends State<_PreparationTab> {
 
   Future<void> _changeVisibility(EventFile file) async {
     final choice = await _chooseVisibility(
-      title: 'Vem ska se ${file.name}?',
+      title: AppStrings.of(
+        context,
+      ).formatFeature('Vem ska se {name}?', {'name': file.name}),
       initial: file.visibility,
       initialIds: file.viewerIds,
     );
@@ -1446,16 +1481,16 @@ class _PreparationTabState extends State<_PreparationTab> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Ta bort fil?'),
+        title: Text(AppStrings.of(context).feature('Ta bort fil?')),
         content: Text('${file.name} tas bort för alla.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Avbryt'),
+            child: Text(AppStrings.of(context).feature('Avbryt')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Ta bort'),
+            child: Text(AppStrings.of(context).feature('Ta bort')),
           ),
         ],
       ),
@@ -1554,7 +1589,7 @@ class _AddLabelsSheetState extends State<_AddLabelsSheet> {
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Klar'),
+                  child: Text(AppStrings.of(context).feature('Klar')),
                 ),
               ],
             ),
@@ -1571,7 +1606,7 @@ class _AddLabelsSheetState extends State<_AddLabelsSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Tidigare använda',
+                        AppStrings.of(context).feature('Tidigare använda'),
                         style: Theme.of(context).textTheme.labelMedium,
                       ),
                       const SizedBox(height: 6),
@@ -1605,7 +1640,7 @@ class _AddLabelsSheetState extends State<_AddLabelsSheet> {
                 isDense: true,
                 counterText: '',
                 suffixIcon: IconButton(
-                  tooltip: 'Lägg till',
+                  tooltip: AppStrings.of(context).feature('Lägg till'),
                   onPressed: _saving ? null : () => _add(_controller.text),
                   icon: _saving
                       ? const SizedBox.square(
@@ -1660,7 +1695,9 @@ class _NoteEditorSheetState extends State<_NoteEditorSheet> {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  'Din text finns kvar. Den sparade versionen har ändrats.',
+                  AppStrings.of(context).feature(
+                    'Din text finns kvar. Den sparade versionen har ändrats.',
+                  ),
                   style: TextStyle(
                     fontSize: 12,
                     color: Theme.of(context).colorScheme.error,
@@ -1686,12 +1723,12 @@ class _NoteEditorSheetState extends State<_NoteEditorSheet> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Avbryt'),
+                  child: Text(AppStrings.of(context).feature('Avbryt')),
                 ),
                 const SizedBox(width: 8),
                 FilledButton(
                   onPressed: () => Navigator.pop(context, _controller.text),
-                  child: const Text('Spara'),
+                  child: Text(AppStrings.of(context).feature('Spara')),
                 ),
               ],
             ),
@@ -1795,20 +1832,23 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
                   autofocus: widget.item == null,
                   maxLength: 200,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
-                    labelText: 'Uppgift',
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(context).feature('Uppgift'),
                     isDense: true,
                     counterText: '',
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text('Ansvarig', style: Theme.of(context).textTheme.labelLarge),
+                Text(
+                  AppStrings.of(context).feature('Ansvarig'),
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
                 if (widget.people.length > 8)
                   TextField(
                     onChanged: (value) => setState(() => _query = value),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       prefixIcon: Icon(Icons.search, size: 20),
-                      hintText: 'Sök person',
+                      hintText: AppStrings.of(context).feature('Sök person'),
                       isDense: true,
                     ),
                   ),
@@ -1850,13 +1890,16 @@ class _TaskEditorSheetState extends State<_TaskEditorSheet> {
                           const _TaskEdit(label: '', delete: true),
                         ),
                         icon: const Icon(Icons.delete_outline),
-                        label: const Text('Ta bort'),
+                        label: Text(AppStrings.of(context).feature('Ta bort')),
                       ),
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Avbryt'),
+                      child: Text(AppStrings.of(context).feature('Avbryt')),
                     ),
-                    FilledButton(onPressed: _save, child: const Text('Spara')),
+                    FilledButton(
+                      onPressed: _save,
+                      child: Text(AppStrings.of(context).feature('Spara')),
+                    ),
                   ],
                 ),
               ],
@@ -1900,8 +1943,8 @@ class _FileVisibilitySheetState extends State<_FileVisibilitySheet> {
           contentPadding: EdgeInsets.zero,
           value: value,
           secondary: Icon(icon),
-          title: Text(title),
-          subtitle: Text(subtitle),
+          title: Text(AppStrings.of(context).feature(title)),
+          subtitle: Text(AppStrings.of(context).feature(subtitle)),
         );
     return SafeArea(
       child: ConstrainedBox(
@@ -1939,8 +1982,13 @@ class _FileVisibilitySheetState extends State<_FileVisibilitySheet> {
                   Icons.person_outline,
                   'Valda personer',
                   _selected.isEmpty
-                      ? 'Välj vilka som får se filen'
-                      : '${_selected.length} valda · ledare ser alltid filen',
+                      ? AppStrings.of(
+                          context,
+                        ).feature('Välj vilka som får se filen')
+                      : AppStrings.of(context).formatFeature(
+                          '{count} valda · ledare ser alltid filen',
+                          {'count': _selected.length},
+                        ),
                 ),
                 if (_visibility == FileVisibility.selected)
                   Flexible(
@@ -1982,7 +2030,7 @@ class _FileVisibilitySheetState extends State<_FileVisibilitySheet> {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Avbryt'),
+                      child: Text(AppStrings.of(context).feature('Avbryt')),
                     ),
                     const SizedBox(width: 8),
                     FilledButton(
@@ -1994,7 +2042,7 @@ class _FileVisibilitySheetState extends State<_FileVisibilitySheet> {
                                   : <String>[],
                             ))
                           : null,
-                      child: const Text('Spara'),
+                      child: Text(AppStrings.of(context).feature('Spara')),
                     ),
                   ],
                 ),

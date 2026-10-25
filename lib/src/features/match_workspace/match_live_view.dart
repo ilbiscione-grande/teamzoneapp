@@ -255,7 +255,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Slutsignal?'),
+        title: Text(AppStrings.of(context).feature('Slutsignal?')),
         content: Text(
           'Matchen avslutas ${snapshot.scoreUs}–${snapshot.scoreOpponent}. '
           'Händelser kan fortfarande rättas efteråt.',
@@ -263,11 +263,11 @@ class _MatchLiveViewState extends State<_MatchLiveView>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Avbryt'),
+            child: Text(AppStrings.of(context).feature('Avbryt')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Avsluta match'),
+            child: Text(AppStrings.of(context).feature('Avsluta match')),
           ),
         ],
       ),
@@ -479,7 +479,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
               ListTile(
                 key: const Key('live-goal-correct'),
                 leading: const Icon(Icons.edit_outlined),
-                title: const Text('Rätta målet'),
+                title: Text(AppStrings.of(context).feature('Rätta målet')),
                 onTap: () => Navigator.pop(sheet, 'correct'),
               ),
               ListTile(
@@ -541,11 +541,11 @@ class _MatchLiveViewState extends State<_MatchLiveView>
             if (_retry != null)
               TextButton(
                 onPressed: () => _retry!(),
-                child: const Text('Försök igen'),
+                child: Text(AppStrings.of(context).feature('Försök igen')),
               ),
             TextButton(
               onPressed: () => setState(() => _error = null),
-              child: const Text('Stäng'),
+              child: Text(AppStrings.of(context).feature('Stäng')),
             ),
           ],
         ),
@@ -564,7 +564,9 @@ class _MatchLiveViewState extends State<_MatchLiveView>
             TextButton(
               key: const Key('live-squad-update'),
               onPressed: _busy ? null : _updateSquad,
-              child: const Text('Uppdatera matchtruppen'),
+              child: Text(
+                AppStrings.of(context).feature('Uppdatera matchtruppen'),
+              ),
             ),
           ],
         ),
@@ -591,7 +593,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
     if (fact == null) return null;
     return _FactTooltip(
       fact: fact,
-      text: _factText(fact, _name, _opponentName),
+      text: _factText(context, fact, _name, _opponentName),
       onTap: () => _showInList(id),
     );
   }
@@ -714,8 +716,12 @@ class _MatchLiveViewState extends State<_MatchLiveView>
             name: _name,
             opponentName: _opponentName,
             title: facts.length == 1
-                ? 'Händelsen här'
-                : '${facts.length} händelser här',
+                ? (AppStrings.of(context).isSwedish
+                      ? 'Händelsen här'
+                      : 'Event here')
+                : (AppStrings.of(context).isSwedish
+                      ? '${facts.length} händelser här'
+                      : '${facts.length} events here'),
             onTap: (fact) => Navigator.pop(sheet, (fact, false)),
             onMove: (fact) => Navigator.pop(sheet, (fact, true)),
           ),

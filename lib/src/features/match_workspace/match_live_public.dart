@@ -21,9 +21,15 @@ mixin _LivePublicState on State<_MatchLiveView> {
   /// "Live publikt", "Inte publikt" or why it cannot be.
   String get _publicLiveLabel {
     final value = _publicLive;
-    if (value == null) return 'Publikt';
-    if (!value.published) return 'Inte publicerad';
-    return value.chosen ? 'Live publikt' : 'Inte publikt';
+    if (value == null) {
+      return AppStrings.of(context).feature('Publikt');
+    }
+    if (!value.published) {
+      return AppStrings.of(context).feature('Inte publicerad');
+    }
+    return AppStrings.of(
+      context,
+    ).feature(value.chosen ? 'Live publikt' : 'Inte publikt');
   }
 
   Future<void> _choosePublicLive() async {
@@ -35,6 +41,7 @@ mixin _LivePublicState on State<_MatchLiveView> {
     );
     if (chosen == null || !mounted) return;
     final messenger = ScaffoldMessenger.of(context);
+    final strings = AppStrings.of(context);
     try {
       final saved = await widget.calendar.matchPlans.setLiveReporting(
         _eventId,
@@ -44,7 +51,7 @@ mixin _LivePublicState on State<_MatchLiveView> {
     } catch (error) {
       AppErrors.caught('match_live_public._choosePublicLive', error);
       messenger.showSnackBar(
-        const SnackBar(content: Text('Valet kunde inte sparas.')),
+        SnackBar(content: Text(strings.feature('Valet kunde inte sparas.'))),
       );
     }
   }
@@ -66,16 +73,18 @@ class _PublicLiveDialogState extends State<_PublicLiveDialog> {
     final reporting = widget.reporting;
     if (!reporting.published) {
       return AlertDialog(
-        title: const Text('Live på lagsidan'),
-        content: const Text(
-          'Matchen eller laget är inte publicerat. Publicera laget under '
-          'Publika sidor och matchen under Publicering för att kunna '
-          'rapportera den live.',
+        title: Text(AppStrings.of(context).feature('Live på lagsidan')),
+        content: Text(
+          AppStrings.of(context).feature(
+            'Matchen eller laget är inte publicerat. Publicera laget under '
+            'Publika sidor och matchen under Publicering för att kunna '
+            'rapportera den live.',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Stäng'),
+            child: Text(AppStrings.of(context).feature('Stäng')),
           ),
         ],
       );
@@ -89,7 +98,7 @@ class _PublicLiveDialogState extends State<_PublicLiveDialog> {
           subtitle: Text(subtitle),
         );
     return AlertDialog(
-      title: const Text('Live på lagsidan'),
+      title: Text(AppStrings.of(context).feature('Live på lagsidan')),
       content: SizedBox(
         width: 380,
         child: RadioGroup<bool?>(
@@ -117,12 +126,12 @@ class _PublicLiveDialogState extends State<_PublicLiveDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Avbryt'),
+          child: Text(AppStrings.of(context).feature('Avbryt')),
         ),
         FilledButton(
           key: const Key('public-live-save'),
           onPressed: () => Navigator.pop(context, (_choice,)),
-          child: const Text('Spara'),
+          child: Text(AppStrings.of(context).feature('Spara')),
         ),
       ],
     );

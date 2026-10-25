@@ -1,3 +1,4 @@
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teamzone_app/src/features/assistant_coach/assistant_task_preferences.dart';
@@ -42,6 +43,60 @@ class ScopedPersonal extends Preferences
 }
 
 void main() {
+  testWidgets(
+    'English assistant translates task cards and settings and reacts to locale changes',
+    (tester) async {
+      final locale = ValueNotifier(const Locale('en'));
+      addTearDown(locale.dispose);
+      final service = Preferences()
+        ..homes['a'] = fixtures.home([fixtures.task('one')]);
+      final team = fixtures.team('a');
+      await tester.pumpWidget(
+        ValueListenableBuilder<Locale>(
+          valueListenable: locale,
+          builder: (_, language, child) => MaterialApp(
+            locale: language,
+            supportedLocales: const [Locale('sv'), Locale('en')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    AssistantTaskSections(
+                      contexts: [team],
+                      activeContext: team,
+                      page: const AssistantPageContext('/home'),
+                      overview: service,
+                      loadEvent: fixtures.event,
+                      onOpen: (_) async {},
+                    ),
+                    AssistantTaskVisibilitySettings(services: service),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Unanswered invitations (2)'), findsOneWidget);
+      expect(find.text('Träning one'), findsOneWidget);
+      expect(find.text('Show in my assistant'), findsOneWidget);
+      expect(find.text('My personal calendar conflicts'), findsOneWidget);
+      expect(find.text('Save display settings'), findsOneWidget);
+      locale.value = const Locale('sv');
+      await tester.pumpAndSettle();
+      expect(find.text('Obesvarade kallelser (2)'), findsOneWidget);
+      expect(find.text('Visa i min assistent'), findsOneWidget);
+      expect(find.text('Träning one'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   test(
     'current team scope filters teams before reads and follows either side of personal conflicts',
     () async {
@@ -102,6 +157,13 @@ void main() {
       );
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('sv'),
+          supportedLocales: const [Locale('sv')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           home: Scaffold(
             body: SingleChildScrollView(
               child: AssistantTaskSections(
@@ -171,6 +233,13 @@ void main() {
       final service = Preferences()..failSave = true;
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('sv'),
+          supportedLocales: const [Locale('sv')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           home: Scaffold(
             body: SingleChildScrollView(
               child: AssistantTaskVisibilitySettings(services: service),
@@ -212,6 +281,13 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('sv'),
+          supportedLocales: const [Locale('sv')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           home: Scaffold(
             body: SingleChildScrollView(
               child: AssistantTaskSections(
@@ -238,6 +314,13 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('sv'),
+          supportedLocales: const [Locale('sv')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           home: Scaffold(
             body: SingleChildScrollView(
               child: AssistantTaskVisibilitySettings(services: service),
@@ -258,6 +341,13 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('sv'),
+          supportedLocales: const [Locale('sv')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           home: Scaffold(
             body: SingleChildScrollView(
               child: AssistantTaskSections(

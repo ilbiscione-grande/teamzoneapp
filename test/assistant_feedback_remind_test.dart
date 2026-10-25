@@ -1,3 +1,4 @@
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
@@ -173,6 +174,13 @@ Widget _app(
   CalendarServices? calendar,
   List<AssistantTask>? opened,
 }) => MaterialApp(
+  locale: const Locale('sv'),
+  supportedLocales: const [Locale('sv')],
+  localizationsDelegates: const [
+    GlobalMaterialLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+  ],
   home: Scaffold(
     body: SingleChildScrollView(
       child: AssistantTaskSections(
@@ -293,6 +301,13 @@ void main() {
     final support = _Support();
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('sv'),
+        supportedLocales: const [Locale('sv')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         home: Scaffold(body: AssistantTaskKindSwitches(services: support)),
       ),
     );

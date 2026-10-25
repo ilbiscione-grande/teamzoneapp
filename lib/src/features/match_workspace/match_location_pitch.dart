@@ -228,7 +228,7 @@ class _LocationField extends StatelessWidget {
               TextButton(
                 key: const Key('location-clear'),
                 onPressed: () => onChanged(null),
-                child: const Text('Rensa'),
+                child: Text(AppStrings.of(context).feature('Rensa')),
               ),
           ],
         ),
@@ -249,9 +249,15 @@ class _LocationField extends StatelessWidget {
           padding: const EdgeInsets.only(top: 2),
           child: Row(
             children: [
-              Text('Vårt mål', style: Theme.of(context).textTheme.labelSmall),
+              Text(
+                AppStrings.of(context).feature('Vårt mål'),
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
               const Spacer(),
-              Text('Anfall →', style: Theme.of(context).textTheme.labelSmall),
+              Text(
+                AppStrings.of(context).feature('Anfall →'),
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
             ],
           ),
         ),
@@ -274,7 +280,7 @@ class _GoalLocationDialogState extends State<_GoalLocationDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Var avslutades det?'),
+    title: Text(AppStrings.of(context).feature('Var avslutades det?')),
     content: SizedBox(
       width: 420,
       child: _LocationField(
@@ -286,14 +292,14 @@ class _GoalLocationDialogState extends State<_GoalLocationDialog> {
       TextButton(
         key: const Key('goal-location-skip'),
         onPressed: () => Navigator.pop(context, (null, true)),
-        child: const Text('Hoppa över'),
+        child: Text(AppStrings.of(context).feature('Hoppa över')),
       ),
       FilledButton(
         key: const Key('goal-location-save'),
         onPressed: _place == null
             ? null
             : () => Navigator.pop(context, (_place, true)),
-        child: const Text('Spara'),
+        child: Text(AppStrings.of(context).feature('Spara')),
       ),
     ],
   );
@@ -361,7 +367,7 @@ class _ShotMapCardState extends State<_ShotMapCard> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Skottkarta',
+                      AppStrings.of(context).feature('Skottkarta'),
                       style: theme.textTheme.titleSmall,
                     ),
                   ),
@@ -418,21 +424,31 @@ class _ShotSideDropdown extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   @override
-  Widget build(BuildContext context) => DropdownButton<String>(
-    key: const Key('shot-map-side'),
-    value: value,
-    isDense: true,
-    underline: const SizedBox.shrink(),
-    items: [
-      const DropdownMenuItem(value: 'us', child: Text('Vi')),
-      DropdownMenuItem(
-        value: 'opponent',
-        child: Text(opponentName, overflow: TextOverflow.ellipsis),
-      ),
-      const DropdownMenuItem(value: 'all', child: Text('Alla')),
-    ],
-    onChanged: (value) {
-      if (value != null) onChanged(value);
-    },
+  Widget build(BuildContext context) => SizedBox(
+    width: 160,
+    child: DropdownButton<String>(
+      isExpanded: true,
+      key: const Key('shot-map-side'),
+      value: value,
+      isDense: true,
+      underline: const SizedBox.shrink(),
+      items: [
+        DropdownMenuItem(
+          value: 'us',
+          child: Text(AppStrings.of(context).feature('Vi')),
+        ),
+        DropdownMenuItem(
+          value: 'opponent',
+          child: Text(opponentName, overflow: TextOverflow.ellipsis),
+        ),
+        DropdownMenuItem(
+          value: 'all',
+          child: Text(AppStrings.of(context).feature('Alla')),
+        ),
+      ],
+      onChanged: (value) {
+        if (value != null) onChanged(value);
+      },
+    ),
   );
 }

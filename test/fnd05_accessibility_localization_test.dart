@@ -1,3 +1,8 @@
+import 'package:teamzone_app/src/features/match_workspace/match_live_models.dart';
+import 'package:teamzone_app/src/features/team_development/team_development_models.dart';
+import 'package:teamzone_app/src/features/assistant_coach/assistant_task_preferences.dart';
+import 'package:teamzone_app/src/features/assistant_coach/assistant_task_feedback.dart';
+import 'package:teamzone_app/src/features/assistant_coach/assistant_specialist_registry.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -176,6 +181,7 @@ void main() {
       final source = file.readAsStringSync();
       final callers = [
         r'\.feature',
+        r'\.formatFeature',
         for (final match in helper.allMatches(source))
           if (RegExp(r'\.feature\(\w+\)').hasMatch(match.group(2)!))
             match.group(1)!,
@@ -256,6 +262,32 @@ void main() {
         ),
       ),
     );
+    expect(
+      strings.formatFeature('Dag {day} av {total}', {
+        'day': '{total}',
+        'total': 365,
+      }),
+      'Day {total} of 365',
+      reason: 'user values are interpolated once and retained verbatim',
+    );
+    // These values reach feature() dynamically and are invisible to the literal gate.
+    for (final label in <String>[
+      ...PeriodPhase.values.map((value) => value.label),
+      ...GoalHorizon.values.map((value) => value.label),
+      ...GoalState.values.map((value) => value.label),
+      ...PrincipleArea.values.map((value) => value.label),
+      ...CheckinStatus.values.map((value) => value.label),
+      ...assistantTaskTypes.values,
+      ...assistantFeedbackReasons.values,
+      ...AssistantSpecialistRegistry.areas.map((area) => area.label),
+      for (final kind in liveEventKinds) ...[
+        kind.label,
+        if (kind.secondaryLabel != null) kind.secondaryLabel!,
+        ...kind.results.map((result) => result.$2),
+      ],
+    ]) {
+      expect(strings.feature(label), isNotEmpty, reason: label);
+    }
     expect(strings.feature('Återaktivera i laget'), 'Reactivate in team');
     expect(strings.inboxGroupTitle('F2014'), 'F2014');
     expect(strings.inboxGroupTitle('Flera lag'), 'Multiple teams');

@@ -71,7 +71,8 @@ class _PlanSectionCard extends StatelessWidget {
                   for (final opening in _openings[area] ?? const <String>[])
                     ActionChip(
                       label: Text(strings.feature(opening.trim())),
-                      onPressed: () => _open(opening),
+                      onPressed: () =>
+                          _open('${strings.feature(opening.trim())} '),
                     ),
                 ],
               ),

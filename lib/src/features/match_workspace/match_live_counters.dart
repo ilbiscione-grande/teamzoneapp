@@ -36,7 +36,10 @@ class _LiveCounters extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Räknare', style: theme.textTheme.titleSmall),
+            Text(
+              AppStrings.of(context).feature('Räknare'),
+              style: theme.textTheme.titleSmall,
+            ),
             for (final counter in counters)
               ListTile(
                 key: Key('live-counter-${counter.key}'),
@@ -52,7 +55,10 @@ class _LiveCounters extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            tooltip: 'Minska ${counter.label}',
+                            tooltip: AppStrings.of(context).formatFeature(
+                              'Minska {name}',
+                              {'name': counter.label},
+                            ),
                             onPressed:
                                 onDelta == null ||
                                     (counter.value ?? 0) + counter.pending <= 0
@@ -73,7 +79,10 @@ class _LiveCounters extends StatelessWidget {
                             ),
                           ),
                           IconButton(
-                            tooltip: 'Öka ${counter.label}',
+                            tooltip: AppStrings.of(context).formatFeature(
+                              'Öka {name}',
+                              {'name': counter.label},
+                            ),
                             onPressed: onDelta == null
                                 ? null
                                 : () => onDelta!(counter.key, 1),
@@ -118,14 +127,16 @@ class _MyViewDialogState extends State<_MyViewDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Min vy'),
+    title: Text(AppStrings.of(context).feature('Min vy')),
     content: SizedBox(
       width: 380,
       child: ListView(
         shrinkWrap: true,
         children: [
-          const Text(
-            'Välj vilka knappar du vill se under matchen. Valet gäller bara dig.',
+          Text(
+            AppStrings.of(context).feature(
+              'Välj vilka knappar du vill se under matchen. Valet gäller bara dig.',
+            ),
           ),
           for (final (heading, items) in widget.options)
             if (items.isNotEmpty) ...[
@@ -155,12 +166,12 @@ class _MyViewDialogState extends State<_MyViewDialog> {
       TextButton(
         key: const Key('my-view-all'),
         onPressed: () => Navigator.pop(context, (null,)),
-        child: const Text('Visa alla'),
+        child: Text(AppStrings.of(context).feature('Visa alla')),
       ),
       FilledButton(
         key: const Key('my-view-save'),
         onPressed: () => Navigator.pop(context, (_shown,)),
-        child: const Text('Spara'),
+        child: Text(AppStrings.of(context).feature('Spara')),
       ),
     ],
   );
@@ -195,15 +206,17 @@ class _OwnButtonsDialogState extends State<_OwnButtonsDialog> {
       (row) => row.$2.text.trim().isNotEmpty && row.$2.text.trim().length <= 30,
     );
     return AlertDialog(
-      title: const Text('Egna knappar'),
+      title: Text(AppStrings.of(context).feature('Egna knappar')),
       content: SizedBox(
         width: 380,
         child: ListView(
           shrinkWrap: true,
           children: [
-            const Text(
-              'Räknare för det ni vill följa i varje match, t.ex. brytningar '
-              'eller inlägg. De gäller hela laget.',
+            Text(
+              AppStrings.of(context).feature(
+                'Räknare för det ni vill följa i varje match, t.ex. brytningar '
+                'eller inlägg. De gäller hela laget.',
+              ),
             ),
             const SizedBox(height: 8),
             for (final (index, (id, controller)) in _rows.indexed)
@@ -215,15 +228,17 @@ class _OwnButtonsDialogState extends State<_OwnButtonsDialog> {
                       controller: controller,
                       maxLength: 30,
                       onChanged: (_) => setState(() {}),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         isDense: true,
                         counterText: '',
-                        hintText: 'Namn på knappen',
+                        hintText: AppStrings.of(
+                          context,
+                        ).feature('Namn på knappen'),
                       ),
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Ta bort',
+                    tooltip: AppStrings.of(context).feature('Ta bort'),
                     onPressed: () => setState(() {
                       _rows.removeAt(index).$2.dispose();
                     }),
@@ -240,7 +255,9 @@ class _OwnButtonsDialogState extends State<_OwnButtonsDialog> {
                     () => _rows.add((_newUuid(), TextEditingController())),
                   ),
                   icon: const Icon(Icons.add),
-                  label: const Text('Lägg till knapp'),
+                  label: Text(
+                    AppStrings.of(context).feature('Lägg till knapp'),
+                  ),
                 ),
               ),
           ],
@@ -249,7 +266,7 @@ class _OwnButtonsDialogState extends State<_OwnButtonsDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Avbryt'),
+          child: Text(AppStrings.of(context).feature('Avbryt')),
         ),
         FilledButton(
           key: const Key('own-buttons-save'),
@@ -259,7 +276,7 @@ class _OwnButtonsDialogState extends State<_OwnButtonsDialog> {
                     MatchButton(id: id, label: controller.text.trim()),
                 ])
               : null,
-          child: const Text('Spara'),
+          child: Text(AppStrings.of(context).feature('Spara')),
         ),
       ],
     );

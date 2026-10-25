@@ -56,7 +56,9 @@ class _MatchGoalsCard extends StatelessWidget {
                   )
                 else ...[
                   for (final kpi in kpis)
-                    Text('• ${kpi.label}: ${_kpiGoalText(kpi)}'),
+                    Text(
+                      '• ${_localizedKpiLabel(context, kpi.kpiKey, kpi.label)}: ${_kpiGoalText(context, kpi)}',
+                    ),
                   const SizedBox(height: 4),
                   Text(
                     strings.feature(

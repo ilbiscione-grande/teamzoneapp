@@ -27,4 +27,6 @@ Enhetens språk återgår till enhetens locale och tar bort det sparade valet.
 Språk-, roll-, tränings- och inställningsregressioner: **45 tester godkända**.
 Statisk analys av samtliga sex berörda Dart-filer: **inga fynd**.
 Manuellt språkbyte och återläsning efter omladdning har verifierats i audit.
-Full engelsk roll-/modulacceptans återstår.
+Ett senare [manuellt engelskt språkpass](english_acceptance_2026-10-25.md)
+fann svenska systemtexter i fyra komponentgrupper. Full engelsk
+roll-/modulacceptans är inte godkänd.

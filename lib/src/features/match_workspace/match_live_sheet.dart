@@ -97,12 +97,15 @@ class _LiveEventSheetState extends State<_LiveEventSheet> {
       key: Key('live-sheet-$label'),
       initialValue: ids.contains(value) ? value : null,
       isExpanded: true,
-      decoration: InputDecoration(labelText: label, isDense: true),
+      decoration: InputDecoration(
+        labelText: AppStrings.of(context).feature(label),
+        isDense: true,
+      ),
       items: [
         if (optional)
-          const DropdownMenuItem<String?>(
+          DropdownMenuItem<String?>(
             value: null,
-            child: Text('Ingen vald'),
+            child: Text(AppStrings.of(context).feature('Ingen vald')),
           ),
         for (final player in choices)
           DropdownMenuItem<String?>(
@@ -181,12 +184,14 @@ class _LiveEventSheetState extends State<_LiveEventSheet> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '${_editing ? 'Rätta' : 'Registrera'} ${kind.label.toLowerCase()}',
+                      '${AppStrings.of(context).isSwedish ? (_editing ? 'Rätta' : 'Registrera') : (_editing ? 'Correct' : 'Record')} ${AppStrings.of(context).feature(kind.label).toLowerCase()}',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
                   IconButton(
-                    tooltip: 'En minut tidigare',
+                    tooltip: AppStrings.of(
+                      context,
+                    ).feature('En minut tidigare'),
                     onPressed: _minute > 0
                         ? () => setState(() => _minute--)
                         : null,
@@ -197,7 +202,7 @@ class _LiveEventSheetState extends State<_LiveEventSheet> {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   IconButton(
-                    tooltip: 'En minut senare',
+                    tooltip: AppStrings.of(context).feature('En minut senare'),
                     onPressed: () => setState(() => _minute++),
                     icon: const Icon(Icons.add),
                   ),
@@ -216,7 +221,10 @@ class _LiveEventSheetState extends State<_LiveEventSheet> {
                 SegmentedButton<String>(
                   key: const Key('live-sheet-side'),
                   segments: [
-                    const ButtonSegment(value: 'us', label: Text('Vi')),
+                    ButtonSegment(
+                      value: 'us',
+                      label: Text(AppStrings.of(context).feature('Vi')),
+                    ),
                     ButtonSegment(
                       value: 'opponent',
                       label: Text(
@@ -239,7 +247,7 @@ class _LiveEventSheetState extends State<_LiveEventSheet> {
                     for (final (value, label) in kind.results)
                       ChoiceChip(
                         key: Key('live-sheet-result-$value'),
-                        label: Text(label),
+                        label: Text(AppStrings.of(context).feature(label)),
                         selected: _result == value,
                         onSelected: (_) => setState(() => _result = value),
                       ),
@@ -282,8 +290,10 @@ class _LiveEventSheetState extends State<_LiveEventSheet> {
                 key: const Key('live-sheet-comment'),
                 controller: _comment,
                 maxLength: 200,
-                decoration: const InputDecoration(
-                  labelText: 'Kommentar (frivilligt)',
+                decoration: InputDecoration(
+                  labelText: AppStrings.of(
+                    context,
+                  ).feature('Kommentar (frivilligt)'),
                   isDense: true,
                 ),
               ),
@@ -297,12 +307,12 @@ class _LiveEventSheetState extends State<_LiveEventSheet> {
                         _LiveEventResult(minute: _minute, delete: true),
                       ),
                       icon: const Icon(Icons.delete_outline),
-                      label: const Text('Ta bort'),
+                      label: Text(AppStrings.of(context).feature('Ta bort')),
                     ),
                   const Spacer(),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Avbryt'),
+                    child: Text(AppStrings.of(context).feature('Avbryt')),
                   ),
                   const SizedBox(width: 8),
                   FilledButton(

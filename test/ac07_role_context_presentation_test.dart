@@ -1,3 +1,4 @@
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -56,7 +57,14 @@ void main() {
       actingAsName: 'Kim',
     );
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
+        locale: const Locale('sv'),
+        supportedLocales: const [Locale('sv')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         home: Scaffold(body: AssistantContextBanner(value: value)),
       ),
     );
@@ -95,6 +103,13 @@ void main() {
       );
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('sv'),
+          supportedLocales: const [Locale('sv')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           home: Scaffold(
             body: AssistantQueuePostCard(
               post: post,

@@ -1,3 +1,4 @@
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,6 +10,13 @@ void main() {
   Future<void> mount(WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('sv'),
+        supportedLocales: const [Locale('sv')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         home: Scaffold(
           body: SizedBox(
             height: 600,

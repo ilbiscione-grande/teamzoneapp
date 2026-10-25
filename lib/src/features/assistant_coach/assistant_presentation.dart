@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
@@ -173,8 +174,8 @@ class AssistantContextBanner extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     container: true,
     label:
-        'Aktiv kontext: ${value.clubName}, '
-        '${value.teamName ?? 'hela klubben'}, ${value.roleLabel}',
+        '${AppStrings.of(context).isSwedish ? 'Aktiv kontext' : 'Active context'}: ${value.clubName}, '
+        '${value.teamName ?? (AppStrings.of(context).isSwedish ? 'hela klubben' : 'whole club')}, ${AppStrings.of(context).feature(value.roleLabel)}',
     child: Card(
       child: ListTile(
         key: const Key('assistant-context-banner'),
@@ -183,8 +184,9 @@ class AssistantContextBanner extends StatelessWidget {
         subtitle: Text(
           [
             if (value.teamName != null) value.clubName,
-            value.roleLabel,
-            if (value.actingAsName != null) 'Agerar för ${value.actingAsName}',
+            AppStrings.of(context).feature(value.roleLabel),
+            if (value.actingAsName != null)
+              '${AppStrings.of(context).isSwedish ? 'Agerar för' : 'Acting for'} ${value.actingAsName}',
           ].join(' • '),
         ),
       ),
@@ -230,7 +232,11 @@ class AssistantQueuePostCard extends StatelessWidget {
                     stale ? Icons.sync_problem_outlined : Icons.schedule,
                     size: 18,
                   ),
-                  label: Text(stale ? 'Inaktuell' : 'Aktuell'),
+                  label: Text(
+                    AppStrings.of(
+                      context,
+                    ).feature(stale ? 'Inaktuell' : 'Aktuell'),
+                  ),
                 ),
               ],
             ),
@@ -244,14 +250,20 @@ class AssistantQueuePostCard extends StatelessWidget {
               ),
             ],
             if (area.key == 'rehab_support')
-              const ListTile(
+              ListTile(
                 key: Key('assistant-rehab-boundary'),
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(Icons.health_and_safety_outlined),
-                title: Text('Rehabstöd följer bara en beslutad plan'),
+                title: Text(
+                  AppStrings.of(
+                    context,
+                  ).feature('Rehabstöd följer bara en beslutad plan'),
+                ),
                 subtitle: Text(
-                  'Det diagnostiserar, ordinerar, riskrangordnar eller beslutar '
-                  'aldrig om återgång till spel.',
+                  AppStrings.of(context).feature(
+                    'Det diagnostiserar, ordinerar, riskrangordnar eller beslutar '
+                    'aldrig om återgång till spel.',
+                  ),
                 ),
               ),
             const SizedBox(height: 8),
@@ -262,7 +274,7 @@ class AssistantQueuePostCard extends StatelessWidget {
             Text(
               'Kontext: ${presentationContext.clubName} • '
               '${presentationContext.teamName ?? 'hela klubben'} • '
-              '${presentationContext.roleLabel}',
+              '${AppStrings.of(context).feature(presentationContext.roleLabel)}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             if (presentationContext.actingAsName != null)

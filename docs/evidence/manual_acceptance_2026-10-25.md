@@ -67,14 +67,14 @@ användning från flera konton. Dessa åtgärder utfördes inte mot lagets data.
 
 - **Ledaråtkomst löst:** användaren öppnade Hugo Olofsson i Demoklubben
   IF/P2012. Läsande ledargranskning är genomförd enligt tabellen ovan.
-- **Engelska – automatiskt verifierad inom testernas omfattning:** språkgrinden
-  och det engelska träningsflödet passerar. Användaren beslutade 25 oktober
-  att tills vidare redovisa denna automatiska verifiering. Manuell engelsk
-  acceptans kvarstår som öppen; ingen manuell engelsk session har genomförts.
-  Därefter beställde användaren ett eget språkval under Personligt.
-  Det är [publicerat och provat i audit](language_setting_2026-10-25.md).
-  Byte till English, omladdning och återgång till enhetens språk passerar;
-  detta stänger inte full engelsk roll-/modulacceptans.
+- **Engelska – manuellt granskad, inte godkänd:** språkgrinden och det engelska
+  träningsflödet passerar automatiskt. Användarens senare beställda språkval
+  är [publicerat och provat i audit](language_setting_2026-10-25.md).
+  Byte, omladdning och återgång till enhetens språk passerar. När användaren
+  därefter öppnade appen på engelska genomfördes ett
+  [manuellt språkpass](english_acceptance_2026-10-25.md).
+  Svenska systemtexter kvarstår i assistenten, gemensamma förberedelser,
+  TDP och Matchs detaljvyer. Engelsk acceptans är därför inte godkänd.
 - **Mobil app:** inledande storleksändring slog inte igenom på Flutterfliken.
   Efter användarens byte till ledarsession var den faktiska appvyn
   522 × 874 och provades visuellt. 390-pixels appbredd täcks automatiskt,

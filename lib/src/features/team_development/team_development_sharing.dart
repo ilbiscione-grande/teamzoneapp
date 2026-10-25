@@ -74,7 +74,7 @@ class _TdpSharingCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
               child: Text(
-                'Delas med spelarna',
+                AppStrings.of(context).feature('Delas med spelarna'),
                 style: theme.textTheme.titleMedium,
               ),
             ),
@@ -82,18 +82,20 @@ class _TdpSharingCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 2, 16, 4),
               child: Text(
                 sharing.any
-                    ? 'Spelarna och vårdnadshavarna ser det delade under Laget. '
-                          'Avstämningar, anteckningar och nyckeltal är ledarnas.'
-                    : 'Inget delas än. Spelarna och vårdnadshavarna ser det '
-                          'ni delar under Laget.',
+                    ? (AppStrings.of(context).isSwedish
+                          ? 'Spelarna och vårdnadshavarna ser det delade under Laget. Avstämningar, anteckningar och nyckeltal är ledarnas.'
+                          : 'Players and guardians see shared content under Team. Check-ins, notes and metrics are for coaches.')
+                    : (AppStrings.of(context).isSwedish
+                          ? 'Inget delas än. Spelarna och vårdnadshavarna ser det ni delar under Laget.'
+                          : 'Nothing is shared yet. Players and guardians see what you share under Team.'),
                 style: theme.textTheme.bodySmall,
               ),
             ),
             for (final (key, title, subtitle, on, next) in parts)
               SwitchListTile(
                 key: ValueKey('tdp-share-$key'),
-                title: Text(title),
-                subtitle: Text(subtitle),
+                title: Text(AppStrings.of(context).feature(title)),
+                subtitle: Text(AppStrings.of(context).feature(subtitle)),
                 value: on,
                 onChanged: controller.canEdit
                     ? (value) => _set(context, next(value))
@@ -131,7 +133,7 @@ class _TdpGoalLinks extends StatelessWidget {
                 title.text.trim().isNotEmpty &&
                 RegExp(r'^https://\S{3,}$').hasMatch(url.text.trim());
             return AlertDialog(
-              title: const Text('Ny länk'),
+              title: Text(AppStrings.of(context).feature('Ny länk')),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -141,9 +143,11 @@ class _TdpGoalLinks extends StatelessWidget {
                       key: const Key('tdp-link-title'),
                       controller: title,
                       maxLength: 120,
-                      decoration: const InputDecoration(
-                        labelText: 'Namn',
-                        hintText: 'Till exempel en film eller en övning',
+                      decoration: InputDecoration(
+                        labelText: AppStrings.of(context).feature('Namn'),
+                        hintText: AppStrings.of(
+                          context,
+                        ).feature('Till exempel en film eller en övning'),
                       ),
                       onChanged: (_) => setState(() {}),
                     ),
@@ -151,17 +155,21 @@ class _TdpGoalLinks extends StatelessWidget {
                       key: const Key('tdp-link-url'),
                       controller: url,
                       keyboardType: TextInputType.url,
-                      decoration: const InputDecoration(
-                        labelText: 'Adress',
+                      decoration: InputDecoration(
+                        labelText: AppStrings.of(context).feature('Adress'),
                         hintText: 'https://…',
                       ),
                       onChanged: (_) => setState(() {}),
                     ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Visa för spelarna'),
-                      subtitle: const Text(
-                        'Syns när målen delas med spelarna.',
+                      title: Text(
+                        AppStrings.of(context).feature('Visa för spelarna'),
+                      ),
+                      subtitle: Text(
+                        AppStrings.of(
+                          context,
+                        ).feature('Syns när målen delas med spelarna.'),
                       ),
                       value: visible,
                       onChanged: (value) => setState(() => visible = value),
@@ -172,7 +180,7 @@ class _TdpGoalLinks extends StatelessWidget {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Avbryt'),
+                  child: Text(AppStrings.of(context).feature('Avbryt')),
                 ),
                 FilledButton(
                   key: const Key('tdp-link-save'),
@@ -183,7 +191,7 @@ class _TdpGoalLinks extends StatelessWidget {
                           visible,
                         ))
                       : null,
-                  child: const Text('Lägg till'),
+                  child: Text(AppStrings.of(context).feature('Lägg till')),
                 ),
               ],
             );
@@ -201,7 +209,7 @@ class _TdpGoalLinks extends StatelessWidget {
         url: result.$2,
         visible: result.$3,
       ),
-      done: 'Länken är tillagd.',
+      done: AppStrings.of(context).feature('Länken är tillagd.'),
     );
   }
 
@@ -217,18 +225,27 @@ class _TdpGoalLinks extends StatelessWidget {
         const SizedBox(height: 20),
         Row(
           children: [
-            Expanded(child: Text('Länkar', style: theme.textTheme.titleMedium)),
+            Expanded(
+              child: Text(
+                AppStrings.of(context).feature('Länkar'),
+                style: theme.textTheme.titleMedium,
+              ),
+            ),
             if (controller.canEdit && goal.links.length < 10)
               TextButton.icon(
                 key: const Key('tdp-goal-add-link'),
                 onPressed: () => _add(context),
                 icon: const Icon(Icons.add_link),
-                label: const Text('Lägg till'),
+                label: Text(AppStrings.of(context).feature('Lägg till')),
               ),
           ],
         ),
         if (goal.links.isEmpty)
-          const Text('Filmer, övningar eller dokument som hör till målet.'),
+          Text(
+            AppStrings.of(
+              context,
+            ).feature('Filmer, övningar eller dokument som hör till målet.'),
+          ),
         for (final link in goal.links)
           ListTile(
             key: ValueKey('tdp-link-${link.id}'),
@@ -236,7 +253,9 @@ class _TdpGoalLinks extends StatelessWidget {
             leading: const Icon(Icons.link),
             title: Text(link.title),
             subtitle: Text(
-              link.visible ? 'Visas för spelarna' : 'Bara ledarna',
+              AppStrings.of(
+                context,
+              ).feature(link.visible ? 'Visas för spelarna' : 'Bara ledarna'),
             ),
             onTap: () => launchUrl(
               Uri.parse(link.url),
@@ -248,8 +267,12 @@ class _TdpGoalLinks extends StatelessWidget {
                     children: [
                       IconButton(
                         tooltip: link.visible
-                            ? 'Dölj för spelarna'
-                            : 'Visa för spelarna',
+                            ? AppStrings.of(
+                                context,
+                              ).feature('Dölj för spelarna')
+                            : AppStrings.of(
+                                context,
+                              ).feature('Visa för spelarna'),
                         icon: Icon(
                           link.visible
                               ? Icons.visibility_outlined
@@ -265,7 +288,9 @@ class _TdpGoalLinks extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        tooltip: 'Ta bort länken',
+                        tooltip: AppStrings.of(
+                          context,
+                        ).feature('Ta bort länken'),
                         icon: const Icon(Icons.delete_outline),
                         onPressed: () => controller.change(
                           context,
@@ -274,7 +299,9 @@ class _TdpGoalLinks extends StatelessWidget {
                             link.id,
                             visible: null,
                           ),
-                          done: 'Länken är borttagen.',
+                          done: AppStrings.of(
+                            context,
+                          ).feature('Länken är borttagen.'),
                         ),
                       ),
                     ],

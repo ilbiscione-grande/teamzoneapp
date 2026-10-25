@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import 'package:flutter/material.dart';
 
 enum AssistantActionKind { navigate, domainMutation }
@@ -124,12 +125,13 @@ class AssistantDigitalFunctionNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     container: true,
-    label:
-        'Min assistent är en digital funktion, inte en människa eller legitimerad expert.',
+    label: AppStrings.of(context).isSwedish
+        ? 'Min assistent är en digital funktion, inte en människa eller legitimerad expert.'
+        : 'My assistant is a digital feature, not a person or licensed expert.',
     child: Card(
       key: const Key('assistant-digital-function-notice'),
       color: Theme.of(context).colorScheme.secondaryContainer,
-      child: const Padding(
+      child: Padding(
         padding: EdgeInsets.all(12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,9 +140,11 @@ class AssistantDigitalFunctionNotice extends StatelessWidget {
             SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Min assistent är en digital funktion – inte en människa, '
-                'vårdprofession eller legitimerad expert. Förslag bygger på '
-                'verifierade TeamZone-data och kräver ditt beslut.',
+                AppStrings.of(context).feature(
+                  'Min assistent är en digital funktion – inte en människa, '
+                  'vårdprofession eller legitimerad expert. Förslag bygger på '
+                  'verifierade TeamZone-data och kräver ditt beslut.',
+                ),
               ),
             ),
           ],

@@ -1,3 +1,4 @@
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -29,6 +30,13 @@ void main() {
   }) async {
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('sv'),
+        supportedLocales: const [Locale('sv')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         home: Scaffold(
           body: AssistantTaskBadge(
             load: load,
@@ -154,6 +162,13 @@ void main() {
     var token = 0;
     Future<void> show() => tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('sv'),
+        supportedLocales: const [Locale('sv')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         home: Scaffold(
           body: AssistantTaskBadge(
             load: () => answer(),

@@ -106,13 +106,13 @@ class _TdpDateField extends StatelessWidget {
             : value,
         firstDate: first,
         lastDate: last,
-        helpText: label,
+        helpText: AppStrings.of(context).feature(label),
       );
       if (picked != null) onChanged(picked);
     },
     icon: const Icon(Icons.calendar_today_outlined, size: 18),
     label: Text(
-      '$label ${MaterialLocalizations.of(context).formatMediumDate(value)}',
+      '${AppStrings.of(context).feature(label)} ${MaterialLocalizations.of(context).formatMediumDate(value)}',
     ),
   );
 }
@@ -133,7 +133,9 @@ abstract final class _SeasonDialog {
             : after.add(const Duration(days: 1)));
     var ends =
         plan?.endsOn ?? DateTime(starts.year + 1, starts.month, starts.day - 1);
-    final initialTitle = plan?.title ?? 'Säsong ${starts.year}';
+    final initialTitle =
+        plan?.title ??
+        '${AppStrings.of(context).isSwedish ? 'Säsong' : 'Season'} ${starts.year}';
     // A new season checks its goals every other week.
     var every = plan == null ? 14 : plan.checkinEveryDays;
     final first = DateTime(year - 2), last = DateTime(year + 3, 12, 31);
@@ -148,7 +150,11 @@ abstract final class _SeasonDialog {
             final valid =
                 title.text.trim().length >= 2 && days >= 28 && days <= 550;
             return AlertDialog(
-              title: Text(plan == null ? 'Ny säsong' : 'Ändra säsongen'),
+              title: Text(
+                plan == null
+                    ? AppStrings.of(context).feature('Ny säsong')
+                    : AppStrings.of(context).feature('Ändra säsongen'),
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -158,7 +164,9 @@ abstract final class _SeasonDialog {
                       key: const Key('tdp-season-title'),
                       controller: title,
                       maxLength: 120,
-                      decoration: const InputDecoration(labelText: 'Namn'),
+                      decoration: InputDecoration(
+                        labelText: AppStrings.of(context).feature('Namn'),
+                      ),
                       onChanged: (_) => setState(() {}),
                     ),
                     const SizedBox(height: 8),
@@ -186,7 +194,9 @@ abstract final class _SeasonDialog {
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
-                          'En säsong är mellan fyra veckor och arton månader.',
+                          AppStrings.of(context).feature(
+                            'En säsong är mellan fyra veckor och arton månader.',
+                          ),
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.error,
                           ),
@@ -199,10 +209,11 @@ abstract final class _SeasonDialog {
                       maxLength: 4000,
                       minLines: 3,
                       maxLines: 8,
-                      decoration: const InputDecoration(
-                        labelText: 'Inriktning',
-                        hintText:
-                            'Vilket lag vill ni vara när säsongen är slut?',
+                      decoration: InputDecoration(
+                        labelText: AppStrings.of(context).feature('Inriktning'),
+                        hintText: AppStrings.of(context).feature(
+                          'Vilket lag vill ni vara när säsongen är slut?',
+                        ),
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -211,25 +222,43 @@ abstract final class _SeasonDialog {
                       isExpanded: true,
                       key: const Key('tdp-season-checkins'),
                       initialValue: every,
-                      decoration: const InputDecoration(
-                        labelText: 'Stäm av målen',
-                        helperText: 'Assistenten påminner när det är dags.',
+                      decoration: InputDecoration(
+                        labelText: AppStrings.of(
+                          context,
+                        ).feature('Stäm av målen'),
+                        helperText: AppStrings.of(
+                          context,
+                        ).feature('Assistenten påminner när det är dags.'),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: 7, child: Text('Varje vecka')),
+                      items: [
+                        DropdownMenuItem(
+                          value: 7,
+                          child: Text(
+                            AppStrings.of(context).feature('Varje vecka'),
+                          ),
+                        ),
                         DropdownMenuItem(
                           value: 14,
-                          child: Text('Varannan vecka'),
+                          child: Text(
+                            AppStrings.of(context).feature('Varannan vecka'),
+                          ),
                         ),
                         DropdownMenuItem(
                           value: 21,
-                          child: Text('Var tredje vecka'),
+                          child: Text(
+                            AppStrings.of(context).feature('Var tredje vecka'),
+                          ),
                         ),
                         DropdownMenuItem(
                           value: 28,
-                          child: Text('Var fjärde vecka'),
+                          child: Text(
+                            AppStrings.of(context).feature('Var fjärde vecka'),
+                          ),
                         ),
-                        DropdownMenuItem(value: null, child: Text('Aldrig')),
+                        DropdownMenuItem(
+                          value: null,
+                          child: Text(AppStrings.of(context).feature('Aldrig')),
+                        ),
                       ],
                       onChanged: (value) => setState(() => every = value),
                     ),
@@ -239,7 +268,7 @@ abstract final class _SeasonDialog {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Avbryt'),
+                  child: Text(AppStrings.of(context).feature('Avbryt')),
                 ),
                 FilledButton(
                   key: const Key('tdp-season-save'),
@@ -252,7 +281,11 @@ abstract final class _SeasonDialog {
                           checkinEveryDays: every,
                         ))
                       : null,
-                  child: Text(plan == null ? 'Skapa' : 'Spara'),
+                  child: Text(
+                    plan == null
+                        ? AppStrings.of(context).feature('Skapa')
+                        : AppStrings.of(context).feature('Spara'),
+                  ),
                 ),
               ],
             );
@@ -285,14 +318,18 @@ abstract final class _TdpPeriodDialog {
     final result = await showDialog<(String, String, String)>(
       context: context,
       builder: (context) => _TdpTexts(
-        first: period?.name ?? phase.label,
+        first: period?.name ?? AppStrings.of(context).feature(phase.label),
         second: period?.focus ?? '',
         builder: (context, name, focus) => StatefulBuilder(
           builder: (context, setState) {
             final suggestion = _tdpPhaseFocus[phase]!;
             final valid = name.text.trim().isNotEmpty && !ends.isBefore(starts);
             return AlertDialog(
-              title: Text(period == null ? 'Ny period' : 'Ändra perioden'),
+              title: Text(
+                period == null
+                    ? AppStrings.of(context).feature('Ny period')
+                    : AppStrings.of(context).feature('Ändra perioden'),
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -302,19 +339,26 @@ abstract final class _TdpPeriodDialog {
                       isExpanded: true,
                       key: const Key('tdp-period-phase'),
                       initialValue: phase,
-                      decoration: const InputDecoration(labelText: 'Fas'),
+                      decoration: InputDecoration(
+                        labelText: AppStrings.of(context).feature('Fas'),
+                      ),
                       items: [
                         for (final value in PeriodPhase.values)
                           DropdownMenuItem(
                             value: value,
-                            child: Text(value.label),
+                            child: Text(
+                              AppStrings.of(context).feature(value.label),
+                            ),
                           ),
                       ],
                       onChanged: (value) => setState(() {
                         if (value == null) return;
                         // The name follows the phase until it is written.
-                        if (name.text.trim() == phase.label) {
-                          name.text = value.label;
+                        if (name.text.trim() ==
+                            AppStrings.of(context).feature(phase.label)) {
+                          name.text = AppStrings.of(
+                            context,
+                          ).feature(value.label);
                         }
                         phase = value;
                       }),
@@ -323,7 +367,9 @@ abstract final class _TdpPeriodDialog {
                       key: const Key('tdp-period-name'),
                       controller: name,
                       maxLength: 60,
-                      decoration: const InputDecoration(labelText: 'Namn'),
+                      decoration: InputDecoration(
+                        labelText: AppStrings.of(context).feature('Namn'),
+                      ),
                       onChanged: (_) => setState(() {}),
                     ),
                     Wrap(
@@ -353,9 +399,11 @@ abstract final class _TdpPeriodDialog {
                       maxLength: 2000,
                       minLines: 2,
                       maxLines: 6,
-                      decoration: const InputDecoration(
-                        labelText: 'Fokus',
-                        hintText: 'Vad laget arbetar med under perioden',
+                      decoration: InputDecoration(
+                        labelText: AppStrings.of(context).feature('Fokus'),
+                        hintText: AppStrings.of(
+                          context,
+                        ).feature('Vad laget arbetar med under perioden'),
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -364,7 +412,9 @@ abstract final class _TdpPeriodDialog {
                         alignment: Alignment.centerLeft,
                         child: ActionChip(
                           avatar: const Icon(Icons.lightbulb_outline, size: 18),
-                          label: const Text('Använd förslag'),
+                          label: Text(
+                            AppStrings.of(context).feature('Använd förslag'),
+                          ),
                           tooltip: suggestion,
                           onPressed: () =>
                               setState(() => focus.text = suggestion),
@@ -378,11 +428,11 @@ abstract final class _TdpPeriodDialog {
                   TextButton(
                     key: const Key('tdp-period-delete'),
                     onPressed: () => Navigator.pop(context, ('delete', '', '')),
-                    child: const Text('Ta bort'),
+                    child: Text(AppStrings.of(context).feature('Ta bort')),
                   ),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Avbryt'),
+                  child: Text(AppStrings.of(context).feature('Avbryt')),
                 ),
                 FilledButton(
                   key: const Key('tdp-period-save'),
@@ -393,7 +443,7 @@ abstract final class _TdpPeriodDialog {
                           focus.text.trim(),
                         ))
                       : null,
-                  child: const Text('Spara'),
+                  child: Text(AppStrings.of(context).feature('Spara')),
                 ),
               ],
             );
@@ -406,16 +456,24 @@ abstract final class _TdpPeriodDialog {
     if (result?.$1 == 'delete' && period != null) {
       final sure = await _tdpConfirm(
         context,
-        'Ta bort ${period.name}?',
+        (AppStrings.of(context).isSwedish
+            ? 'Ta bort ${period.name}?'
+            : 'Delete ${period.name}?'),
         goals == 0
-            ? 'Perioden tas bort ur säsongen.'
-            : 'Perioden och dess $goals mål tas bort ur säsongen.',
+            ? (AppStrings.of(context).isSwedish
+                  ? 'Perioden tas bort ur säsongen.'
+                  : 'The period is deleted from the season.')
+            : (AppStrings.of(context).isSwedish
+                  ? 'Perioden och dess $goals mål tas bort ur säsongen.'
+                  : 'The period and its $goals goals are deleted from the season.'),
       );
       if (sure && context.mounted) {
         await controller.change(
           context,
           () => controller.services.deletePeriod(plan, period.id),
-          done: '${period.name} är borttagen.',
+          done: AppStrings.of(context).isSwedish
+              ? '${period.name} är borttagen.'
+              : '${period.name} deleted.',
         );
       }
     } else if (result?.$1 == 'save') {
@@ -430,7 +488,9 @@ abstract final class _TdpPeriodDialog {
           endsOn: ends,
           focus: draft.focus,
         ),
-        done: '${draft.name} är sparad.',
+        done: AppStrings.of(context).isSwedish
+            ? '${draft.name} är sparad.'
+            : '${draft.name} saved.',
       );
     }
   }
@@ -473,7 +533,11 @@ abstract final class _TdpGoalDialog {
                 title.text.trim().length >= 2 &&
                 (chosen != GoalHorizon.period || period != null);
             return AlertDialog(
-              title: Text(goal == null ? 'Nytt mål' : 'Ändra målet'),
+              title: Text(
+                goal == null
+                    ? AppStrings.of(context).feature('Nytt mål')
+                    : AppStrings.of(context).feature('Ändra målet'),
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -481,10 +545,16 @@ abstract final class _TdpGoalDialog {
                   children: [
                     _TdpChoices<GoalHorizon>(
                       key: const Key('tdp-goal-horizon'),
-                      values: const {
-                        GoalHorizon.season: 'Säsong',
-                        GoalHorizon.period: 'Period',
-                        GoalHorizon.short: 'Kortsiktigt',
+                      values: {
+                        GoalHorizon.season: AppStrings.of(
+                          context,
+                        ).feature('Säsong'),
+                        GoalHorizon.period: AppStrings.of(
+                          context,
+                        ).feature('Period'),
+                        GoalHorizon.short: AppStrings.of(
+                          context,
+                        ).feature('Kortsiktigt'),
                       },
                       selected: chosen,
                       onSelected: (value) => setState(() => chosen = value),
@@ -492,15 +562,19 @@ abstract final class _TdpGoalDialog {
                     const SizedBox(height: 12),
                     if (chosen == GoalHorizon.period)
                       plan.periods.isEmpty
-                          ? const Text(
-                              'Lägg till en period under Säsongen först.',
+                          ? Text(
+                              AppStrings.of(context).feature(
+                                'Lägg till en period under Säsongen först.',
+                              ),
                             )
                           : DropdownButtonFormField<String>(
                               isExpanded: true,
                               key: const Key('tdp-goal-period'),
                               initialValue: period,
-                              decoration: const InputDecoration(
-                                labelText: 'Period',
+                              decoration: InputDecoration(
+                                labelText: AppStrings.of(
+                                  context,
+                                ).feature('Period'),
                               ),
                               items: [
                                 for (final item in plan.periods)
@@ -527,7 +601,9 @@ abstract final class _TdpGoalDialog {
                       key: const Key('tdp-goal-title'),
                       controller: title,
                       maxLength: 160,
-                      decoration: const InputDecoration(labelText: 'Mål'),
+                      decoration: InputDecoration(
+                        labelText: AppStrings.of(context).goalLabel,
+                      ),
                       onChanged: (_) => setState(() {}),
                     ),
                     TextField(
@@ -536,9 +612,13 @@ abstract final class _TdpGoalDialog {
                       maxLength: 2000,
                       minLines: 2,
                       maxLines: 5,
-                      decoration: const InputDecoration(
-                        labelText: 'Beskrivning',
-                        hintText: 'Hur ni vet att målet är nått',
+                      decoration: InputDecoration(
+                        labelText: AppStrings.of(
+                          context,
+                        ).feature('Beskrivning'),
+                        hintText: AppStrings.of(
+                          context,
+                        ).feature('Hur ni vet att målet är nått'),
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -548,7 +628,7 @@ abstract final class _TdpGoalDialog {
                         key: const Key('tdp-goal-state'),
                         values: {
                           for (final value in GoalState.values)
-                            value: value.label,
+                            value: AppStrings.of(context).feature(value.label),
                         },
                         selected: state,
                         onSelected: (value) => setState(() => state = value),
@@ -557,7 +637,9 @@ abstract final class _TdpGoalDialog {
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
-                            'Senast ändrat av ${goal.updatedBy}',
+                            (AppStrings.of(context).isSwedish
+                                ? 'Senast ändrat av ${goal.updatedBy}'
+                                : 'Last changed by ${goal.updatedBy}'),
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ),
@@ -570,11 +652,11 @@ abstract final class _TdpGoalDialog {
                   TextButton(
                     key: const Key('tdp-goal-delete'),
                     onPressed: () => Navigator.pop(context, ('delete', '', '')),
-                    child: const Text('Ta bort'),
+                    child: Text(AppStrings.of(context).feature('Ta bort')),
                   ),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Avbryt'),
+                  child: Text(AppStrings.of(context).feature('Avbryt')),
                 ),
                 FilledButton(
                   key: const Key('tdp-goal-save'),
@@ -585,7 +667,7 @@ abstract final class _TdpGoalDialog {
                           description.text.trim(),
                         ))
                       : null,
-                  child: const Text('Spara'),
+                  child: Text(AppStrings.of(context).feature('Spara')),
                 ),
               ],
             );
@@ -598,14 +680,16 @@ abstract final class _TdpGoalDialog {
     if (result?.$1 == 'delete' && goal != null) {
       final sure = await _tdpConfirm(
         context,
-        'Ta bort målet?',
-        '"${goal.title}" tas bort ur planen.',
+        AppStrings.of(context).feature('Ta bort målet?'),
+        (AppStrings.of(context).isSwedish
+            ? '"${goal.title}" tas bort ur planen.'
+            : '"${goal.title}" is deleted from the plan.'),
       );
       if (sure && context.mounted) {
         await controller.change(
           context,
           () => controller.services.deleteGoal(plan, goal.id),
-          done: 'Målet är borttaget.',
+          done: AppStrings.of(context).feature('Målet är borttaget.'),
         );
       }
     } else if (result?.$1 == 'save') {
@@ -621,7 +705,7 @@ abstract final class _TdpGoalDialog {
           targetOn: chosen == GoalHorizon.short ? target : null,
           state: state,
         ),
-        done: 'Målet är sparat.',
+        done: AppStrings.of(context).feature('Målet är sparat.'),
       );
     }
   }
@@ -640,11 +724,11 @@ Future<bool> _tdpConfirm(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Avbryt'),
+            child: Text(AppStrings.of(context).feature('Avbryt')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Ta bort'),
+            child: Text(AppStrings.of(context).feature('Ta bort')),
           ),
         ],
       ),

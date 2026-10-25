@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -22,6 +23,56 @@ const webtoolsOrigin = String.fromEnvironment(
 
 /// Page context is presentation only. Every read and action is authorized by
 /// the existing domain endpoints, independently of the assistant signal gate.
+String _localizedAssistantTitle(BuildContext context, AssistantTask item) {
+  final title = switch (item.task.kind) {
+    'unfinished_preparation' => 'Förberedelser återstår',
+    'missing_attendance' => 'Närvaro saknas',
+    'pending_callups' => 'Obesvarade kallelser',
+    _ => null,
+  };
+  return title == null
+      ? item.task.title
+      : AppStrings.of(context).feature(title);
+}
+
+String _localizedAssistantExplanation(
+  BuildContext context,
+  AssistantTask item,
+) {
+  if (AppStrings.of(context).isSwedish) return item.explanation;
+  final count = item.task.count;
+  return switch (item.task.kind) {
+    'club_board_changes' => '$count board mandate changes await approval.',
+    'club_economy_entries' => '$count financial entries await approval.',
+    'club_applications' => '$count membership applications await a decision.',
+    'club_team_requests' => '$count requests for new teams await a decision.',
+    'club_team_page_requests' =>
+      '$count teams are waiting for the club to approve a public page.',
+    'club_booking_requests' =>
+      '$count bookings await your approval in the Booking manager.',
+    'module_tdp_checkins' =>
+      '$count team goals in Team Development Plan await a check-in.',
+    'club_referee_control' =>
+      'The referee assigner asks whether ${item.task.title} refereed the match. Answer Yes or No under Referees on the match Info tab.',
+    'personal_calendar_conflict' =>
+      'Your invitations across teams overlap within the next seven days. Two accepted invitations mean a double booking; an unanswered invitation means a possible conflict. This comparison is private and is not shared with team coaches.',
+    'calendar_conflict' =>
+      'Two visible team events overlap within the next seven days. This may be intentional. Check the times; no events are changed automatically.',
+    'unfinished_preparation' =>
+      '$count equipment or task items have not been marked complete for an event within 48 hours. Invitations are shown separately. An empty list does not mean all preparations are complete.',
+    'missing_match_result' =>
+      'The match ended within the last seven days, but no final score is recorded. First check that the match was played.',
+    'missing_match_report' =>
+      'The match has a final score but no written report. Applies to matches ending within the last seven days. The report can be saved as a draft.',
+    'missing_attendance' =>
+      '$count accepted participants have no attendance record. Applies to events ending within the last seven days.',
+    'missing_callups' =>
+      'The event starts within 48 hours, requires invitations and none have been sent. The task disappears when invitations are sent or the requirement is disabled on the Info tab.',
+    _ =>
+      '$count invitations are unanswered for an upcoming event. Review recipients before sending. Expired invitations and people outside your permissions are excluded.',
+  };
+}
+
 class AssistantPageContext {
   const AssistantPageContext(this.location);
   final String location;
@@ -901,16 +952,22 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
           content: Text(
             status == 'archived'
                 ? item.task.kind == 'calendar_conflict'
-                      ? 'Överlappningen är avfärdad i din lista. Aktiviteterna är oförändrade.'
-                      : 'Arkiverad i din lista. Aktiviteten är oförändrad.'
+                      ? AppStrings.of(context).feature(
+                          'Överlappningen är avfärdad i din lista. Aktiviteterna är oförändrade.',
+                        )
+                      : AppStrings.of(context).feature(
+                          'Arkiverad i din lista. Aktiviteten är oförändrad.',
+                        )
                 : status == 'snoozed'
-                ? 'Uppgiften har skjutits upp i din lista.'
-                : 'Uppgiften är återställd.',
+                ? AppStrings.of(
+                    context,
+                  ).feature('Uppgiften har skjutits upp i din lista.')
+                : AppStrings.of(context).feature('Uppgiften är återställd.'),
           ),
           action: status == 'active'
               ? null
               : SnackBarAction(
-                  label: 'Ångra',
+                  label: AppStrings.of(context).feature('Ångra'),
                   onPressed: () => _setDisposition(item, 'active'),
                 ),
         ),
@@ -921,9 +978,11 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Valet kunde inte sparas. Uppdatera och försök igen.',
+              AppStrings.of(
+                context,
+              ).feature('Valet kunde inte sparas. Uppdatera och försök igen.'),
             ),
           ),
         );
@@ -961,9 +1020,13 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Tack! Kortet är arkiverat i din lista.'),
+          content: Text(
+            AppStrings.of(
+              context,
+            ).feature('Tack! Kortet är arkiverat i din lista.'),
+          ),
           action: SnackBarAction(
-            label: 'Ångra',
+            label: AppStrings.of(context).feature('Ångra'),
             onPressed: () => _setDisposition(item, 'active'),
           ),
         ),
@@ -972,8 +1035,12 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
       AppErrors.caught('assistant_tasks._giveFeedback', error);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Svaret kunde inte sparas. Försök igen.'),
+          SnackBar(
+            content: Text(
+              AppStrings.of(
+                context,
+              ).feature('Svaret kunde inte sparas. Försök igen.'),
+            ),
           ),
         );
       }
@@ -995,7 +1062,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
     final hide = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Dölja den här typen?'),
+        title: Text(AppStrings.of(context).feature('Dölja den här typen?')),
         content: Text(
           'Du har sagt att "$label" visas för ofta. Vill du dölja typen i '
           'Min assistent? Du kan visa den igen i inställningarna.',
@@ -1003,12 +1070,12 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Behåll'),
+            child: Text(AppStrings.of(context).feature('Behåll')),
           ),
           FilledButton(
             key: const ValueKey('assistant-hide-kind'),
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Dölj typen'),
+            child: Text(AppStrings.of(context).feature('Dölj typen')),
           ),
         ],
       ),
@@ -1026,9 +1093,11 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
       if (!mounted) return;
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Typen är dold. Du kan visa den igen i inställningarna.',
+            AppStrings.of(
+              context,
+            ).feature('Typen är dold. Du kan visa den igen i inställningarna.'),
           ),
         ),
       );
@@ -1040,8 +1109,12 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
       AppErrors.caught('assistant_tasks._offerHide', error);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Inställningen kunde inte sparas. Försök igen.'),
+          SnackBar(
+            content: Text(
+              AppStrings.of(
+                context,
+              ).feature('Inställningen kunde inte sparas. Försök igen.'),
+            ),
           ),
         );
       }
@@ -1069,10 +1142,12 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
           : const <ReminderCandidate>[];
       if (eligible.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Det finns ingen kallelse att påminna just nu. En ny påminnelse '
-              'kan skickas sex timmar efter den förra.',
+              AppStrings.of(context).feature(
+                'Det finns ingen kallelse att påminna just nu. En ny påminnelse '
+                'kan skickas sex timmar efter den förra.',
+              ),
             ),
           ),
         );
@@ -1099,8 +1174,12 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
       AppErrors.caught('assistant_tasks._remind', error);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Kallelserna kunde inte hämtas. Försök igen.'),
+          SnackBar(
+            content: Text(
+              AppStrings.of(
+                context,
+              ).feature('Kallelserna kunde inte hämtas. Försök igen.'),
+            ),
           ),
         );
       }
@@ -1123,8 +1202,12 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Aktiviteten kunde inte öppnas. Försök igen.'),
+          SnackBar(
+            content: Text(
+              AppStrings.of(
+                context,
+              ).feature('Aktiviteten kunde inte öppnas. Försök igen.'),
+            ),
           ),
         );
       }
@@ -1160,8 +1243,12 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
       if (!mounted) return;
       setState(() => _welcomeDismissed = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Välkomstmeddelandet kunde inte döljas. Försök igen.'),
+        SnackBar(
+          content: Text(
+            AppStrings.of(
+              context,
+            ).feature('Välkomstmeddelandet kunde inte döljas. Försök igen.'),
+          ),
         ),
       );
     }
@@ -1181,8 +1268,10 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
             );
           }
           if (snapshot.hasError) {
-            return const Text(
-              'Uppgifterna kunde inte hämtas. Försök uppdatera.',
+            return Text(
+              AppStrings.of(
+                context,
+              ).feature('Uppgifterna kunde inte hämtas. Försök uppdatera.'),
             );
           }
           final data = snapshot.requireData;
@@ -1246,20 +1335,26 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Hej! Jag är din assistent.',
+                              AppStrings.of(
+                                context,
+                              ).feature('Hej! Jag är din assistent.'),
                               style: Theme.of(context).textTheme.titleSmall
                                   ?.copyWith(fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 4),
-                            const Text(
-                              'Jag hjälper dig att hitta det som behöver göras och komma vidare.',
+                            Text(
+                              AppStrings.of(context).feature(
+                                'Jag hjälper dig att hitta det som behöver göras och komma vidare.',
+                              ),
                             ),
                           ],
                         ),
                       ),
                       IconButton(
                         key: const Key('assistant-dismiss-welcome'),
-                        tooltip: 'Dölj välkomstmeddelandet',
+                        tooltip: AppStrings.of(
+                          context,
+                        ).feature('Dölj välkomstmeddelandet'),
                         visualDensity: VisualDensity.compact,
                         onPressed: () => _dismissWelcome(data.preferences),
                         icon: const Icon(Icons.close, size: 20),
@@ -1286,7 +1381,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                             IconButton.filledTonal(
                               key: ValueKey('assistant-filter-${entry.key}'),
                               tooltip:
-                                  '${entry.value.$1} (${data.tasks.where((t) => t.task.assistantStatus == entry.key).length})',
+                                  '${AppStrings.of(context).feature(entry.value.$1)} (${data.tasks.where((t) => t.task.assistantStatus == entry.key).length})',
                               style: IconButton.styleFrom(
                                 fixedSize: const Size(52, 44),
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -1306,7 +1401,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                             const SizedBox(height: 4),
                             ExcludeSemantics(
                               child: Text(
-                                entry.value.$2,
+                                AppStrings.of(context).feature(entry.value.$2),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.labelSmall
@@ -1344,7 +1439,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                                   'assistant-category-${category.key}',
                                 ),
                                 label: Text(
-                                  '${category.value} (${counts[category.key]})',
+                                  '${AppStrings.of(context).feature(category.value)} (${counts[category.key]})',
                                 ),
                                 selected: selectedCategory == category.key,
                                 onSelected: (_) => setState(() {
@@ -1362,25 +1457,33 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
               if (data.currentTeamOnly) ...[
                 Text(
                   widget.activeContext.teamId == null
-                      ? 'Välj ett lag i appen för att se dess uppgifter.'
-                      : 'Visar: ${widget.activeContext.clubName} · ${widget.activeContext.teamName}',
+                      ? AppStrings.of(context).feature(
+                          'Välj ett lag i appen för att se dess uppgifter.',
+                        )
+                      : '${AppStrings.of(context).isSwedish ? 'Visar' : 'Showing'}: ${widget.activeContext.clubName} · ${widget.activeContext.teamName}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 16),
               ],
               if (selectedCategory == 'important') ...[
-                const Text(
-                  'Kalenderkrockar och uppgifter inför aktiviteter som börjar inom ett dygn.',
+                Text(
+                  AppStrings.of(context).feature(
+                    'Kalenderkrockar och uppgifter inför aktiviteter som börjar inom ett dygn.',
+                  ),
                 ),
                 const SizedBox(height: 16),
               ],
               if (data.settingsFailed)
-                const Text(
-                  'Dina visningsinställningar kunde inte hämtas. Försök uppdatera.',
+                Text(
+                  AppStrings.of(context).feature(
+                    'Dina visningsinställningar kunde inte hämtas. Försök uppdatera.',
+                  ),
                 ),
               if (data.personalFailed)
-                const Text(
-                  'Dina personliga kalenderkrockar kunde inte kontrolleras. Försök uppdatera.',
+                Text(
+                  AppStrings.of(context).feature(
+                    'Dina personliga kalenderkrockar kunde inte kontrolleras. Försök uppdatera.',
+                  ),
                 ),
               if (data.failedContexts.isNotEmpty)
                 Text(
@@ -1391,11 +1494,11 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                 ),
               if (here.isNotEmpty) ...[
                 Text(
-                  'Här och nu',
+                  AppStrings.of(context).feature('Här och nu'),
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 Text(
-                  '${widget.page.label} · ${widget.activeContext.teamName ?? widget.activeContext.clubName}',
+                  '${AppStrings.of(context).feature(widget.page.label)} · ${widget.activeContext.teamName ?? widget.activeContext.clubName}',
                 ),
                 const SizedBox(height: 12),
                 ..._cards(context, here),
@@ -1404,26 +1507,42 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
               if (_bucket != 'active' && (remaining.isNotEmpty || here.isEmpty))
                 Text(
                   _bucket == 'snoozed'
-                      ? 'Uppskjutna uppgifter'
-                      : 'Arkiverade uppgifter',
+                      ? (AppStrings.of(context).isSwedish
+                            ? 'Uppskjutna uppgifter'
+                            : 'Snoozed tasks')
+                      : (AppStrings.of(context).isSwedish
+                            ? 'Arkiverade uppgifter'
+                            : 'Archived tasks'),
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               if (_bucket != 'active') const SizedBox(height: 12),
               if (_bucket != 'active')
-                const Text(
-                  'Visar uppgifter som fortfarande är relevanta och som du har behörighet att se.',
+                Text(
+                  AppStrings.of(context).feature(
+                    'Visar uppgifter som fortfarande är relevanta och som du har behörighet att se.',
+                  ),
                 ),
               if (remaining.isEmpty && here.isEmpty)
                 Text(
                   data.settingsFailed
-                      ? 'Uppgifterna visas när dina inställningar har hämtats.'
+                      ? AppStrings.of(context).feature(
+                          'Uppgifterna visas när dina inställningar har hämtats.',
+                        )
                       : data.failedContexts.isNotEmpty || data.personalFailed
-                      ? 'Alla lag kunde inte kontrolleras.'
+                      ? AppStrings.of(
+                          context,
+                        ).feature('Alla lag kunde inte kontrolleras.')
                       : data.filtersActive
-                      ? 'Inga fler uppgifter att visa med dina inställningar.'
+                      ? AppStrings.of(context).feature(
+                          'Inga fler uppgifter att visa med dina inställningar.',
+                        )
                       : here.isNotEmpty
-                      ? 'Övriga uppgifter är klara.'
-                      : 'Inga aktuella uppgifter att visa.',
+                      ? AppStrings.of(
+                          context,
+                        ).feature('Övriga uppgifter är klara.')
+                      : AppStrings.of(
+                          context,
+                        ).feature('Inga aktuella uppgifter att visa.'),
                 ),
               ..._cards(context, remaining),
             ],
@@ -1470,7 +1589,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
         ),
         const SizedBox(width: 4),
         Text(
-          'Viktigt',
+          AppStrings.of(context).feature('Viktigt'),
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
             color: Theme.of(context).colorScheme.error,
             fontWeight: FontWeight.w600,
@@ -1570,7 +1689,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
             item.isMatchFollowup ||
             item.overlappingEvent != null
         ? item.task.title
-        : '${item.task.title} (${item.task.count})';
+        : '${_localizedAssistantTitle(context, item)} (${item.task.count})';
     return Card(
       margin: grouped ? EdgeInsets.zero : const EdgeInsets.only(bottom: 16),
       elevation: 0,
@@ -1662,16 +1781,20 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                 setState(() => _expandedKey = expanded ? null : item.key),
           ),
           if (item.stale)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 12),
-              child: Text('Sparade uppgifter – uppdatera före åtgärd.'),
+              child: Text(
+                AppStrings.of(
+                  context,
+                ).feature('Sparade uppgifter – uppdatera före åtgärd.'),
+              ),
             ),
           if (item.task.assistantStatus == 'snoozed' &&
               item.task.snoozedUntil != null)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Text(
-                'Uppskjutet till ${material.formatShortDate(item.task.snoozedUntil!.toLocal())} '
+                '${AppStrings.of(context).isSwedish ? 'Uppskjutet till' : 'Snoozed until'} ${material.formatShortDate(item.task.snoozedUntil!.toLocal())} '
                 '${material.formatTimeOfDay(TimeOfDay.fromDateTime(item.task.snoozedUntil!.toLocal()))}',
               ),
             ),
@@ -1694,8 +1817,8 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                           item.context.can('event.logistics'),
                       onChanged: _refresh,
                     ),
-                  const Text('Varför visas detta?'),
-                  Text(item.explanation),
+                  Text(AppStrings.of(context).feature('Varför visas detta?')),
+                  Text(_localizedAssistantExplanation(context, item)),
                   if (item.overlappingEvent == null &&
                       item.startsAt != null &&
                       item.endsAt != null)
@@ -1746,8 +1869,10 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                           ],
                         ),
                       ),
-                    const Text(
-                      'Avsiktlig överlappning avfärdar bara detta aktivitetspar i din egen lista. Du kan återställa det under Arkiverat.',
+                    Text(
+                      AppStrings.of(context).feature(
+                        'Avsiktlig överlappning avfärdar bara detta aktivitetspar i din egen lista. Du kan återställa det under Arkiverat.',
+                      ),
                     ),
                   ],
                   if (_remindsHere(item) ||
@@ -1761,7 +1886,11 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                             onPressed: item.stale || _opening
                                 ? null
                                 : () => _open(item),
-                            child: const Text('Öppna aktiviteten'),
+                            child: Text(
+                              AppStrings.of(
+                                context,
+                              ).feature('Öppna aktiviteten'),
+                            ),
                           ),
                         if (item.task.assistantStatus == 'active' &&
                             !item.isClubDuty &&
@@ -1771,18 +1900,20 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                             onPressed: canOrganize
                                 ? () => _giveFeedback(item)
                                 : null,
-                            child: const Text('Inte till hjälp'),
+                            child: Text(
+                              AppStrings.of(context).feature('Inte till hjälp'),
+                            ),
                           ),
                       ],
                     ),
                   const SizedBox(height: 8),
                   Text(
                     item.isClubDuty
-                        ? 'Källa: klubbens styrelse, ekonomi och ansökningar. '
-                              'Hämtat ${material.formatShortDate(observed)} '
+                        ? '${AppStrings.of(context).isSwedish ? 'Källa: klubbens styrelse, ekonomi och ansökningar.' : 'Source: club board, finances and applications.'} '
+                              '${AppStrings.of(context).isSwedish ? 'Hämtat' : 'Retrieved'} ${material.formatShortDate(observed)} '
                               '${material.formatTimeOfDay(TimeOfDay.fromDateTime(observed))}.'
-                        : 'Källa: lagets kalender, kallelser, förberedelselistor och uppföljning. '
-                              'Hämtat ${material.formatShortDate(observed)} '
+                        : '${AppStrings.of(context).isSwedish ? 'Källa: lagets kalender, kallelser, förberedelselistor och uppföljning.' : 'Source: team calendar, invitations, preparation lists and follow-up.'} '
+                              '${AppStrings.of(context).isSwedish ? 'Hämtat' : 'Retrieved'} ${material.formatShortDate(observed)} '
                               '${material.formatTimeOfDay(TimeOfDay.fromDateTime(observed))}.',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
@@ -1796,7 +1927,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
               children: [
                 Expanded(
                   child: Tooltip(
-                    message: item.actionLabel,
+                    message: AppStrings.of(context).feature(item.actionLabel),
                     child: FilledButton.tonal(
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -1820,12 +1951,12 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                         fit: BoxFit.scaleDown,
                         child: Text(
                           item.isPersonalConflict
-                              ? 'Hantera'
+                              ? AppStrings.of(context).feature('Hantera')
                               : item.overlappingEvent != null
-                              ? 'Ändra tid'
+                              ? AppStrings.of(context).feature('Ändra tid')
                               : _remindsHere(item)
-                              ? 'Påminn…'
-                              : 'Åtgärda',
+                              ? AppStrings.of(context).feature('Påminn…')
+                              : AppStrings.of(context).feature('Åtgärda'),
                           style: const TextStyle(fontSize: 12),
                         ),
                       ),
@@ -1837,7 +1968,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                   const SizedBox(width: 8),
                   Expanded(
                     child: PopupMenuButton<int>(
-                      tooltip: 'Skjut upp',
+                      tooltip: AppStrings.of(context).feature('Skjut upp'),
                       enabled: canOrganize,
                       child: SizedBox(
                         height: 44,
@@ -1845,7 +1976,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Text(
-                              'Skjut upp',
+                              AppStrings.of(context).feature('Skjut upp'),
                               style: TextStyle(
                                 fontSize: 12,
                                 color: canOrganize
@@ -1858,10 +1989,25 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                       ),
                       onSelected: (minutes) =>
                           _setDisposition(item, 'snoozed', minutes: minutes),
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(value: 60, child: Text('Om en timme')),
-                        PopupMenuItem(value: 1440, child: Text('Om ett dygn')),
-                        PopupMenuItem(value: 10080, child: Text('Om en vecka')),
+                      itemBuilder: (_) => [
+                        PopupMenuItem(
+                          value: 60,
+                          child: Text(
+                            AppStrings.of(context).feature('Om en timme'),
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 1440,
+                          child: Text(
+                            AppStrings.of(context).feature('Om ett dygn'),
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 10080,
+                          child: Text(
+                            AppStrings.of(context).feature('Om en vecka'),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1869,8 +2015,10 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                   Expanded(
                     child: Tooltip(
                       message: item.overlappingEvent != null
-                          ? 'Avsiktlig överlappning'
-                          : 'Arkivera',
+                          ? AppStrings.of(
+                              context,
+                            ).feature('Avsiktlig överlappning')
+                          : AppStrings.of(context).feature('Arkivera'),
                       child: TextButton(
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -1884,7 +2032,9 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                           fit: BoxFit.scaleDown,
                           child: Text(
                             item.overlappingEvent != null
-                                ? 'Avsiktlig\növerlappning'
+                                ? AppStrings.of(
+                                    context,
+                                  ).feature('Avsiktlig\növerlappning')
                                 : 'Arkivera',
                             textAlign: TextAlign.center,
                             style: const TextStyle(fontSize: 12),
@@ -1900,7 +2050,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                       onPressed: canOrganize
                           ? () => _setDisposition(item, 'active')
                           : null,
-                      child: const Text('Återställ'),
+                      child: Text(AppStrings.of(context).feature('Återställ')),
                     ),
                   ),
                 ],

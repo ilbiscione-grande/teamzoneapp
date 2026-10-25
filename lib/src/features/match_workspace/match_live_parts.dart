@@ -26,17 +26,43 @@ class _LiveScoreboard extends StatelessWidget {
   /// desktop) rather than under it.
   final bool inline;
 
-  static String _period(int period, int count) => count == 2
+  static String _period(int period, int count, AppStrings strings) =>
+      !strings.isSwedish
+      ? (count == 2
+            ? (period == 1 ? 'First half' : 'Second half')
+            : count == 1
+            ? 'Match'
+            : 'Period $period')
+      : count == 2
       ? '$period:a halvlek'
       : count == 1
       ? 'Matchen'
       : 'Period $period';
 
-  String get _caption => captionOf(snapshot);
+  String _caption(BuildContext context) =>
+      captionOf(snapshot, AppStrings.of(context));
   String get _clock => clockOf(snapshot);
-  (IconData, String)? get _primary => primaryOf(snapshot);
+  (IconData, String)? _primary(BuildContext context) =>
+      primaryOf(snapshot, AppStrings.of(context));
 
-  static String captionOf(MatchSnapshot? value) {
+  static String captionOf(MatchSnapshot? value, AppStrings strings) {
+    if (!strings.isSwedish) {
+      if (value == null || value.state == 'planning') {
+        return 'Not started';
+      }
+      if (value.state == 'completed') return 'Final score';
+      if (value.currentPeriodEnded) {
+        return value.periodMinutes.length == 2 && value.currentPeriod == 1
+            ? 'Half-time'
+            : 'Break after period ${value.currentPeriod}';
+      }
+      final name = _period(
+        value.currentPeriod,
+        value.periodMinutes.length,
+        strings,
+      );
+      return value.isPaused ? '$name · paused' : name;
+    }
     if (value == null || value.state == 'planning') return 'Ej startad';
     if (value.state == 'completed') return 'Slutresultat';
     final count = value.periodMinutes.length;
@@ -45,7 +71,7 @@ class _LiveScoreboard extends StatelessWidget {
           ? 'Halvtid'
           : 'Paus efter period ${value.currentPeriod}';
     }
-    final name = _period(value.currentPeriod, count);
+    final name = _period(value.currentPeriod, count, strings);
     return value.isPaused ? '$name · pausad' : name;
   }
 
@@ -56,10 +82,18 @@ class _LiveScoreboard extends StatelessWidget {
         '${(elapsed.inSeconds % 60).toString().padLeft(2, '0')}';
   }
 
-  static (IconData, String)? primaryOf(MatchSnapshot? value) => switch (value) {
-    null ||
-    MatchSnapshot(state: 'planning') => (Icons.play_arrow, 'Starta match'),
-    MatchSnapshot(state: 'live', isPaused: false) => (Icons.pause, 'Pausa'),
+  static (IconData, String)? primaryOf(
+    MatchSnapshot? value,
+    AppStrings strings,
+  ) => switch (value) {
+    null || MatchSnapshot(state: 'planning') => (
+      Icons.play_arrow,
+      strings.isSwedish ? 'Starta match' : 'Start match',
+    ),
+    MatchSnapshot(state: 'live', isPaused: false) => (
+      Icons.pause,
+      strings.isSwedish ? 'Pausa' : 'Pause',
+    ),
     MatchSnapshot(
       state: 'live',
       currentPeriodEnded: true,
@@ -68,9 +102,12 @@ class _LiveScoreboard extends StatelessWidget {
     ) =>
       (
         Icons.play_arrow,
-        'Starta ${_period(currentPeriod + 1, periodMinutes.length).toLowerCase()}',
+        '${strings.isSwedish ? 'Starta' : 'Start'} ${_period(currentPeriod + 1, periodMinutes.length, strings).toLowerCase()}',
       ),
-    MatchSnapshot(state: 'live') => (Icons.play_arrow, 'Fortsätt'),
+    MatchSnapshot(state: 'live') => (
+      Icons.play_arrow,
+      strings.isSwedish ? 'Fortsätt' : 'Resume',
+    ),
     _ => null,
   };
 
@@ -119,7 +156,7 @@ class _LiveScoreboard extends StatelessWidget {
         ],
       ),
     );
-    final primary = _primary;
+    final primary = _primary(context);
     final live = value?.state == 'live';
     final clock = Text(
       _clock,
@@ -145,7 +182,9 @@ class _LiveScoreboard extends StatelessWidget {
                 PopupMenuButton<VoidCallback>(
                   key: const Key('live-period-menu'),
                   icon: const Icon(Icons.sports),
-                  tooltip: 'Period och slutsignal',
+                  tooltip: AppStrings.of(
+                    context,
+                  ).feature('Period och slutsignal'),
                   iconColor: Colors.white,
                   onSelected: (action) => action(),
                   itemBuilder: (_) => [
@@ -154,12 +193,12 @@ class _LiveScoreboard extends StatelessWidget {
                       PopupMenuItem(
                         value: onEndPeriod,
                         child: Text(
-                          'Avsluta ${_period(value.currentPeriod, value.periodMinutes.length).toLowerCase()}',
+                          '${AppStrings.of(context).isSwedish ? 'Avsluta' : 'End'} ${_period(value.currentPeriod, value.periodMinutes.length, AppStrings.of(context)).toLowerCase()}',
                         ),
                       ),
                     PopupMenuItem(
                       value: onFinish,
-                      child: const Text('Slutsignal'),
+                      child: Text(AppStrings.of(context).feature('Slutsignal')),
                     ),
                   ],
                 ),
@@ -190,7 +229,7 @@ class _LiveScoreboard extends StatelessWidget {
                 Column(
                   children: [
                     Text(
-                      _caption,
+                      _caption(context),
                       style: white.copyWith(
                         fontSize: 12,
                         color: Colors.white70,
@@ -333,7 +372,7 @@ class _LiveActionGrid extends StatelessWidget {
               Icon(icon, color: colors.onSecondaryContainer),
               const SizedBox(height: 4),
               Text(
-                label,
+                AppStrings.of(context).feature(label),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -512,12 +551,13 @@ class _LiveTimeline extends StatelessWidget {
     required this.opponentName,
     this.onTap,
     this.onMove,
-    this.title = 'Händelser',
+    this.title,
     this.highlightId,
   });
   final List<Map<String, dynamic>> facts;
   final String Function(String?) name;
-  final String opponentName, title;
+  final String opponentName;
+  final String? title;
   final ValueChanged<Map<String, dynamic>>? onTap;
 
   /// Moves a placed event on the pitch.
@@ -526,8 +566,8 @@ class _LiveTimeline extends StatelessWidget {
   /// The event to show and scroll to, as from its tooltip on the pitch.
   final String? highlightId;
 
-  String _text(Map<String, dynamic> fact) =>
-      _factText(fact, name, opponentName);
+  String _text(BuildContext context, Map<String, dynamic> fact) =>
+      _factText(context, fact, name, opponentName);
 
   @override
   Widget build(BuildContext context) {
@@ -542,12 +582,17 @@ class _LiveTimeline extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(title, style: theme.textTheme.titleSmall),
+              child: Text(
+                title ?? AppStrings.of(context).feature('Händelser'),
+                style: theme.textTheme.titleSmall,
+              ),
             ),
             if (shown.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.all(12),
-                child: Text('Inget registrerat än.'),
+                child: Text(
+                  AppStrings.of(context).feature('Inget registrerat än.'),
+                ),
               ),
             for (final fact in shown)
               _RevealIf(
@@ -567,7 +612,7 @@ class _LiveTimeline extends StatelessWidget {
                       size: 16,
                     ),
                   ),
-                  title: Text(_text(fact)),
+                  title: Text(_text(context, fact)),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -575,7 +620,9 @@ class _LiveTimeline extends StatelessWidget {
                       if (onMove != null && factLocation(fact) != null)
                         IconButton(
                           key: Key('live-fact-move-${fact['id']}'),
-                          tooltip: 'Flytta på planen',
+                          tooltip: AppStrings.of(
+                            context,
+                          ).feature('Flytta på planen'),
                           onPressed: () => onMove!(fact),
                           icon: const Icon(Icons.open_with),
                         ),
@@ -662,16 +709,16 @@ class _LiveSideControls extends StatelessWidget {
         key: const Key('live-side-panel'),
         showSelectedIcon: false,
         style: const ButtonStyle(visualDensity: VisualDensity.compact),
-        segments: const [
+        segments: [
           ButtonSegment(
             value: false,
             icon: Icon(Icons.gps_fixed, size: 18),
-            label: Text('Skottkarta'),
+            label: Text(AppStrings.of(context).feature('Skottkarta')),
           ),
           ButtonSegment(
             value: true,
             icon: Icon(Icons.list_alt, size: 18),
-            label: Text('Händelser'),
+            label: Text(AppStrings.of(context).feature('Händelser')),
           ),
         ],
         selected: {events},
@@ -730,21 +777,21 @@ class _LiveToolbar extends StatelessWidget {
         key: const Key('live-my-view'),
         onPressed: onMyView,
         icon: const Icon(Icons.tune, size: 18),
-        label: const Text('Min vy'),
+        label: Text(AppStrings.of(context).feature('Min vy')),
       ),
       if (onOwnButtons != null)
         TextButton.icon(
           key: const Key('live-own-buttons'),
           onPressed: onOwnButtons,
           icon: const Icon(Icons.add_box_outlined, size: 18),
-          label: const Text('Egna knappar'),
+          label: Text(AppStrings.of(context).feature('Egna knappar')),
         ),
       if (onPitchMode != null)
         TextButton.icon(
           key: const Key('live-layout-pitch'),
           onPressed: onPitchMode,
           icon: const Icon(Icons.sports_soccer, size: 18),
-          label: const Text('Planläge'),
+          label: Text(AppStrings.of(context).feature('Planläge')),
         ),
       if (onPublicLive != null)
         TextButton.icon(
@@ -764,10 +811,12 @@ class _LiveToolbar extends StatelessWidget {
 
 /// What an event was, in words, as the list and the pitch's tooltip say it.
 String _factText(
+  BuildContext context,
   Map<String, dynamic> fact,
   String Function(String?) name,
   String opponentName,
 ) {
+  final strings = AppStrings.of(context);
   final type = fact['fact_type'] as String?;
   final detail = (fact['detail'] as Map?) ?? const {};
   final player = fact['club_person_id'] as String?;
@@ -778,7 +827,7 @@ String _factText(
     final value = detail[kind?.resultKey ?? 'result'];
     return kind?.results
         .where((r) => r.$1 == value)
-        .map((r) => r.$2)
+        .map((r) => strings.feature(r.$2))
         .firstOrNull;
   }
 
@@ -786,18 +835,20 @@ String _factText(
   return switch (type) {
     'goal' =>
       them
-          ? 'Mål $opponentName'
-          : 'Mål ${player == null ? '' : name(player)}'
+          ? '${strings.isSwedish ? 'Mål' : 'Goal'} $opponentName'
+          : '${strings.isSwedish ? 'Mål' : 'Goal'} ${player == null ? '' : name(player)}'
                 '${second == null ? '' : ' (assist ${name(second)})'}',
-    'substitution' => '${name(player)} ut · ${name(second)} in',
-    'note' => detail['text'] as String? ?? 'Anteckning',
-    'period_end' => 'Periodslut',
-    'half_time' => 'Halvtid',
-    'full_time' => 'Slutsignal',
-    'score_adjustment' => 'Ställningen ändrad',
-    'kpi' => detail['label'] as String? ?? 'Räknare (matchmål)',
+    'substitution' =>
+      '${name(player)} ${strings.isSwedish ? 'ut' : 'off'} · ${name(second)} ${strings.isSwedish ? 'in' : 'on'}',
+    'note' => detail['text'] as String? ?? strings.feature('Anteckning'),
+    'period_end' => strings.feature('Periodslut'),
+    'half_time' => strings.feature('Halvtid'),
+    'full_time' => strings.feature('Slutsignal'),
+    'score_adjustment' => strings.feature('Ställningen ändrad'),
+    'kpi' =>
+      detail['label'] as String? ?? strings.feature('Räknare (matchmål)'),
     _ => [
-      kind?.label ?? type ?? '',
+      kind == null ? type ?? '' : strings.feature(kind.label),
       ?who,
       ?result(),
       if (detail['comment'] case final String comment when comment.isNotEmpty)

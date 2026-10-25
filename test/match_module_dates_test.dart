@@ -1,3 +1,5 @@
+import 'package:teamzone_app/src/features/match/match_models.dart';
+import 'package:teamzone_app/src/features/match/match_services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teamzone_app/src/app/teamzone_app.dart';
@@ -11,6 +13,54 @@ import 'package:teamzone_app/src/features/team_development/team_development_serv
 import 'package:teamzone_app/src/features/workspaces/module_services.dart';
 
 void main() {
+  testWidgets(
+    'English match analysis translates statistics and keeps names and notes',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 1100);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        TeamZoneApp(
+          environment: const AppEnvironment(name: 'verification'),
+          locale: const Locale('en'),
+          services: AppServices(
+            identity: _Identity(),
+            modules: _Modules(),
+            calendar: _Calendar(),
+            match: _EnglishMatch(),
+            isConfigured: true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('bottom-nav-more')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Workspaces'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('workspace-module-module.match_workspace')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Next match · Tomorrow'), findsOneWidget);
+      await tester.tap(find.text('Played'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('Yesterday United'));
+      await tester.pumpAndSettle();
+      expect(find.text('Final score'), findsOneWidget);
+      expect(find.text('Shots'), findsOneWidget);
+      expect(find.text('On target'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('live-timeline')),
+        250,
+        scrollable: find.byType(Scrollable).last,
+      );
+      expect(find.textContaining('Hugo Olofsson'), findsWidgets);
+      expect(find.text('Svensk matchanteckning'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
   testWidgets('yesterday belongs to played matches, not upcoming matches', (
     tester,
   ) async {
@@ -133,4 +183,35 @@ class _Identity implements IdentityServices {
   }) async {}
   @override
   Future<void> signOut() async {}
+}
+
+class _EnglishMatch extends UnconfiguredMatchServices {
+  @override
+  Future<MatchSnapshot> getSnapshot(String eventId) async => MatchSnapshot(
+    eventId: eventId,
+    state: 'completed',
+    revision: 1,
+    rosterRevision: 1,
+    scoreUs: 1,
+    scoreOpponent: 0,
+    cursor: '',
+    clock: const {},
+    people: const {'hugo': 'Hugo Olofsson'},
+    facts: const [
+      {
+        'id': 'shot',
+        'fact_type': 'shot',
+        'minute': 10,
+        'club_person_id': 'hugo',
+        'side': 'us',
+        'detail': {'result': 'on_target'},
+      },
+      {
+        'id': 'note',
+        'fact_type': 'note',
+        'minute': 11,
+        'detail': {'text': 'Svensk matchanteckning'},
+      },
+    ],
+  );
 }

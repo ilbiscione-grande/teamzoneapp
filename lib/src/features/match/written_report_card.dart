@@ -62,7 +62,7 @@ class _WrittenReportDialogState extends State<_WrittenReportDialog> {
   Widget build(BuildContext context) => PopScope(
     canPop: !_busy,
     child: AlertDialog(
-      title: const Text('Skriv matchrapport'),
+      title: Text(AppStrings.of(context).feature('Skriv matchrapport')),
       content: SizedBox(
         width: 540,
         child: SingleChildScrollView(
@@ -81,9 +81,11 @@ class _WrittenReportDialogState extends State<_WrittenReportDialog> {
                   minLines: 5,
                   maxLines: 12,
                   maxLength: 10000,
-                  decoration: const InputDecoration(
-                    labelText: 'Matchrapport',
-                    hintText: 'Berätta kort om matchen…',
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(context).feature('Matchrapport'),
+                    hintText: AppStrings.of(
+                      context,
+                    ).feature('Berätta kort om matchen…'),
                   ),
                   onChanged: (value) => _body = value,
                   validator: (value) =>
@@ -113,7 +115,7 @@ class _WrittenReportDialogState extends State<_WrittenReportDialog> {
       actions: [
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: const Text('Avbryt'),
+          child: Text(AppStrings.of(context).feature('Avbryt')),
         ),
         if (widget.report.canPublish) ...[
           OutlinedButton(

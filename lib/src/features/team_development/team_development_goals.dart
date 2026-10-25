@@ -15,7 +15,7 @@ class _TdpGoals extends StatelessWidget {
       key: const Key('tdp-new-goal'),
       onPressed: () => _TdpGoalDialog.edit(context, controller, plan),
       icon: const Icon(Icons.add),
-      label: const Text('Nytt mål'),
+      label: Text(AppStrings.of(context).feature('Nytt mål')),
     ),
     builder: (plan) {
       final short = plan.goalsOf(GoalHorizon.short)
@@ -24,9 +24,11 @@ class _TdpGoals extends StatelessWidget {
         _TdpGoalGroup(
           controller: controller,
           plan: plan,
-          title: 'Säsongsmål',
+          title: AppStrings.of(context).feature('Säsongsmål'),
           goals: plan.goalsOf(GoalHorizon.season),
-          empty: 'Långsiktiga mål för hela säsongen.',
+          empty: AppStrings.of(
+            context,
+          ).feature('Långsiktiga mål för hela säsongen.'),
           newGoal: (horizon: GoalHorizon.season, periodId: null),
         ),
         for (final period in plan.periods) ...[
@@ -37,7 +39,9 @@ class _TdpGoals extends StatelessWidget {
             title: period.name,
             subtitle: _tdpRange(context, period.startsOn, period.endsOn),
             goals: plan.goalsOf(GoalHorizon.period, periodId: period.id),
-            empty: 'Tillfälliga mål för perioden.',
+            empty: AppStrings.of(
+              context,
+            ).feature('Tillfälliga mål för perioden.'),
             newGoal: (horizon: GoalHorizon.period, periodId: period.id),
           ),
         ],
@@ -45,9 +49,11 @@ class _TdpGoals extends StatelessWidget {
         _TdpGoalGroup(
           controller: controller,
           plan: plan,
-          title: 'Kortsiktiga mål',
+          title: AppStrings.of(context).feature('Kortsiktiga mål'),
           goals: short,
-          empty: 'Mål inför en viss match eller ett block av träningar.',
+          empty: AppStrings.of(
+            context,
+          ).feature('Mål inför en viss match eller ett block av träningar.'),
           newGoal: (horizon: GoalHorizon.short, periodId: null),
         ),
       ];
@@ -99,7 +105,7 @@ class _TdpGoalGroup extends StatelessWidget {
               ),
               if (controller.canEdit)
                 IconButton(
-                  tooltip: 'Lägg till mål',
+                  tooltip: AppStrings.of(context).feature('Lägg till mål'),
                   icon: const Icon(Icons.add),
                   onPressed: () => _TdpGoalDialog.edit(
                     context,
@@ -157,10 +163,14 @@ class _TdpGoalTile extends StatelessWidget {
       GoalState.open => (Icons.radio_button_unchecked, colors.primary),
     };
     final details = [
-      if (goal.targetOn != null) 'Senast ${_tdpDate(context, goal.targetOn!)}',
-      if (goal.state != GoalState.open) goal.state.label,
+      if (goal.targetOn != null)
+        (AppStrings.of(context).isSwedish
+            ? 'Senast ${_tdpDate(context, goal.targetOn!)}'
+            : 'Due by ${_tdpDate(context, goal.targetOn!)}'),
+      if (goal.state != GoalState.open)
+        AppStrings.of(context).feature(goal.state.label),
       if (plan.checkinsOfGoal(goal.id).firstOrNull?.status case final status?)
-        status.label,
+        AppStrings.of(context).feature(status.label),
       if (goal.description.trim().isNotEmpty) goal.description.trim(),
     ];
     return ListTile(
@@ -169,8 +179,8 @@ class _TdpGoalTile extends StatelessWidget {
       leading: controller.canEdit
           ? IconButton(
               tooltip: goal.state == GoalState.achieved
-                  ? 'Markera som pågående'
-                  : 'Markera som uppnått',
+                  ? AppStrings.of(context).feature('Markera som pågående')
+                  : AppStrings.of(context).feature('Markera som uppnått'),
               icon: Icon(icon, color: color),
               onPressed: () => controller.change(
                 context,

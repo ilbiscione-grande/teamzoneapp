@@ -104,7 +104,7 @@ class _AssistantEventTimeDialogState extends State<_AssistantEventTimeDialog> {
     return PopScope(
       canPop: !_busy,
       child: AlertDialog(
-        title: const Text('Ändra tid'),
+        title: Text(AppStrings.of(context).feature('Ändra tid')),
         content: SizedBox(
           width: 420,
           child: SingleChildScrollView(
@@ -118,12 +118,14 @@ class _AssistantEventTimeDialogState extends State<_AssistantEventTimeDialog> {
                 ),
                 Text(widget.teamLabel),
                 const SizedBox(height: 12),
-                const Text(
-                  'Tiderna visas i din lokala tidszon. Ändringen gäller bara detta tillfälle.',
+                Text(
+                  AppStrings.of(context).feature(
+                    'Tiderna visas i din lokala tidszon. Ändringen gäller bara detta tillfälle.',
+                  ),
                 ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Start'),
+                  title: Text(AppStrings.of(context).feature('Start')),
                   subtitle: Text(stamp(_start)),
                   trailing: const Icon(Icons.edit_calendar),
                   onTap: _busy ? null : () => _pick(true),
@@ -153,7 +155,7 @@ class _AssistantEventTimeDialogState extends State<_AssistantEventTimeDialog> {
         actions: [
           TextButton(
             onPressed: _busy ? null : () => Navigator.of(context).pop(),
-            child: const Text('Avbryt'),
+            child: Text(AppStrings.of(context).feature('Avbryt')),
           ),
           FilledButton(
             onPressed: _busy ? null : _save,

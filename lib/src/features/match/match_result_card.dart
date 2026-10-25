@@ -97,7 +97,9 @@ class _RegisterResultDialogState extends State<_RegisterResultDialog> {
                   initialValue: _us,
                   enabled: !_busy,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Vårt lag'),
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(context).feature('Vårt lag'),
+                  ),
                   validator: _validateScore,
                   onChanged: (v) => _us = v,
                 ),
@@ -115,8 +117,10 @@ class _RegisterResultDialogState extends State<_RegisterResultDialog> {
                   TextFormField(
                     enabled: !_busy,
                     maxLength: 500,
-                    decoration: const InputDecoration(
-                      labelText: 'Anledning till rättelsen',
+                    decoration: InputDecoration(
+                      labelText: AppStrings.of(
+                        context,
+                      ).feature('Anledning till rättelsen'),
                     ),
                     onChanged: (v) => _reason = v,
                     validator: (v) => (v?.trim().length ?? 0) < 3
@@ -124,8 +128,10 @@ class _RegisterResultDialogState extends State<_RegisterResultDialog> {
                         : null,
                   ),
                 const SizedBox(height: 12),
-                const Text(
-                  'Matchen markeras som avslutad. Tidigare matchhändelser behålls.',
+                Text(
+                  AppStrings.of(context).feature(
+                    'Matchen markeras som avslutad. Tidigare matchhändelser behålls.',
+                  ),
                 ),
                 if (_error != null)
                   Padding(
@@ -145,7 +151,7 @@ class _RegisterResultDialogState extends State<_RegisterResultDialog> {
       actions: [
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: const Text('Avbryt'),
+          child: Text(AppStrings.of(context).feature('Avbryt')),
         ),
         FilledButton(
           onPressed: _busy ? null : _save,

@@ -42,9 +42,11 @@ mixin _LiveCounterState on State<_MatchLiveView> {
         if (shownInView(_view, kpiKey(kpi.id)))
           (
             key: kpiKey(kpi.id),
-            label: kpi.label,
+            label: _localizedKpiLabel(context, kpi.kpiKey, kpi.label),
             value: kpi.actual,
-            goal: 'Mål: ${_kpiGoalText(kpi)}',
+            goal: AppStrings.of(context).formatFeature('Mål: {value}', {
+              'value': _kpiGoalText(context, kpi),
+            }),
             pending: _pending[kpiKey(kpi.id)] ?? 0,
             counted: kpi.valueType == 'count',
           ),
@@ -140,11 +142,21 @@ mixin _LiveCounterState on State<_MatchLiveView> {
           (
             'Händelser',
             [
-              for (final kind in liveEventKinds) (kind.type, kind.label),
+              for (final kind in liveEventKinds)
+                (kind.type, AppStrings.of(context).feature(kind.label)),
               (noteKey, 'Anteckning'),
             ],
           ),
-          ('Matchmål', [for (final kpi in _kpis) (kpiKey(kpi.id), kpi.label)]),
+          (
+            'Matchmål',
+            [
+              for (final kpi in _kpis)
+                (
+                  kpiKey(kpi.id),
+                  _localizedKpiLabel(context, kpi.kpiKey, kpi.label),
+                ),
+            ],
+          ),
           (
             'Egna knappar',
             [

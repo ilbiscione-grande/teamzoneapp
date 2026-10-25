@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'assistant_tasks.dart';
@@ -119,8 +120,14 @@ class _AssistantTaskBadgeState extends State<AssistantTaskBadge>
           label: _count == null
               ? null
               : _important > 0
-              ? '$_count aktuella uppgifter i assistenten, $_important viktiga'
-              : '$_count aktuella uppgifter i assistenten',
+              ? AppStrings.of(context).formatFeature(
+                  '{count} aktuella uppgifter i assistenten, {important} viktiga',
+                  {'count': _count!, 'important': _important},
+                )
+              : AppStrings.of(context).formatFeature(
+                  '{count} aktuella uppgifter i assistenten',
+                  {'count': _count!},
+                ),
           // Important tasks add a yellow "!" on the other corner, so the
           // closed assistant shows that something needs doing.
           child: Badge(

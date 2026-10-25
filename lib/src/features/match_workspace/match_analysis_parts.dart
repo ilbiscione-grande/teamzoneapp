@@ -39,7 +39,9 @@ class _AnalysisSummary extends StatelessWidget {
         child: Column(
           children: [
             Text(
-              completed ? 'Slutresultat' : 'Ställning just nu',
+              AppStrings.of(
+                context,
+              ).feature(completed ? 'Slutresultat' : 'Ställning just nu'),
               style: theme.textTheme.labelMedium,
             ),
             const SizedBox(height: 4),
@@ -67,9 +69,13 @@ class _AnalysisSummary extends StatelessWidget {
               ],
             ),
             if (rows.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 12),
-                child: Text('Inga händelser registrerade i Live.'),
+                child: Text(
+                  AppStrings.of(
+                    context,
+                  ).feature('Inga händelser registrerade i Live.'),
+                ),
               ),
             for (final (label, ours, theirs) in rows)
               Padding(
@@ -81,7 +87,7 @@ class _AnalysisSummary extends StatelessWidget {
                         SizedBox(width: 32, child: Text('$ours')),
                         Expanded(
                           child: Text(
-                            label,
+                            AppStrings.of(context).feature(label),
                             textAlign: TextAlign.center,
                             style: theme.textTheme.bodySmall,
                           ),
@@ -183,35 +189,41 @@ class _AnalysisPitch extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
+            Text(
+              AppStrings.of(context).feature('Händelser på planen'),
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Expanded(
-                  child: Text(
-                    'Händelser på planen',
-                    style: theme.textTheme.titleSmall,
-                  ),
-                ),
                 _ShotSideDropdown(
                   value: side,
                   opponentName: opponentName,
                   onChanged: onSide,
                 ),
                 if (periodMinutes.length > 1) ...[
-                  const SizedBox(width: 12),
                   DropdownButton<int>(
                     key: const Key('analysis-period'),
                     value: period,
                     isDense: true,
                     underline: const SizedBox.shrink(),
                     items: [
-                      const DropdownMenuItem(value: 0, child: Text('Hela')),
+                      DropdownMenuItem(
+                        value: 0,
+                        child: Text(AppStrings.of(context).feature('Hela')),
+                      ),
                       for (var i = 1; i <= periodMinutes.length; i++)
                         DropdownMenuItem(
                           value: i,
                           child: Text(
-                            periodMinutes.length == 2
-                                ? '$i:a halvlek'
-                                : 'Period $i',
+                            _LiveScoreboard._period(
+                              i,
+                              periodMinutes.length,
+                              AppStrings.of(context),
+                            ),
                           ),
                         ),
                     ],
@@ -230,7 +242,7 @@ class _AnalysisPitch extends StatelessWidget {
                     FilterChip(
                       key: Key('analysis-kind-$kind'),
                       avatar: Icon(_liveIcon(kind), size: 16),
-                      label: Text(_label(kind)),
+                      label: Text(AppStrings.of(context).feature(_label(kind))),
                       selected: types == null || types!.contains(kind),
                       onSelected: (on) {
                         final next = {...(types ?? kinds)};
@@ -260,8 +272,13 @@ class _AnalysisPitch extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               placed.isEmpty
-                  ? 'Inga händelser markerades på planen.'
-                  : '${shown.length} av ${placed.length} händelser · tryck på en för att se den',
+                  ? AppStrings.of(
+                      context,
+                    ).feature('Inga händelser markerades på planen.')
+                  : AppStrings.of(context).formatFeature(
+                      '{shown} av {total} händelser · tryck på en för att se den',
+                      {'shown': shown.length, 'total': placed.length},
+                    ),
               style: theme.textTheme.bodySmall,
             ),
           ],
@@ -309,12 +326,17 @@ class _AnalysisPlayers extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Speltid och statistik', style: theme.textTheme.titleSmall),
+            Text(
+              AppStrings.of(context).feature('Speltid och statistik'),
+              style: theme.textTheme.titleSmall,
+            ),
             if (stats.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
                 child: Text(
-                  'Ingen speltid än. Den räknas fram ur startelvan och bytena i Live.',
+                  AppStrings.of(context).feature(
+                    'Ingen speltid än. Den räknas fram ur startelvan och bytena i Live.',
+                  ),
                 ),
               ),
             for (final stat in stats)
@@ -430,12 +452,16 @@ class _AnalysisKpis extends StatelessWidget {
                     color: colors.outline,
                   ),
                 },
-                title: Text(kpi.label),
-                subtitle: Text('Mål: ${_kpiGoalText(kpi)}'),
+                title: Text(_localizedKpiLabel(context, kpi.kpiKey, kpi.label)),
+                subtitle: Text(
+                  AppStrings.of(context).formatFeature('Mål: {value}', {
+                    'value': _kpiGoalText(context, kpi),
+                  }),
+                ),
                 trailing: Text(
                   kpi.actual == null
                       ? 'Ej ifyllt'
-                      : _kpiValueText(kpi.valueType, kpi.actual),
+                      : _kpiValueText(context, kpi.valueType, kpi.actual),
                   style: theme.textTheme.titleMedium,
                 ),
               ),
@@ -484,7 +510,7 @@ class _AnalysisReport extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Matchrapport',
+                    AppStrings.of(context).feature('Matchrapport'),
                     style: theme.textTheme.titleSmall,
                   ),
                 ),
@@ -517,7 +543,11 @@ class _AnalysisReport extends StatelessWidget {
                       key: const Key('analysis-report-generate'),
                       onPressed: onGenerate,
                       icon: const Icon(Icons.auto_awesome_outlined, size: 18),
-                      label: const Text('Skapa från händelserna'),
+                      label: Text(
+                        AppStrings.of(
+                          context,
+                        ).feature('Skapa från händelserna'),
+                      ),
                     ),
                 ],
               ),

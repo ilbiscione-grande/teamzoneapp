@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
@@ -115,7 +116,13 @@ class _AssistantTaskVisibilitySettingsState
         _welcomeMessageVisible = value.welcomeMessageVisible;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Dina visningsinställningar är sparade.')),
+        SnackBar(
+          content: Text(
+            AppStrings.of(
+              context,
+            ).feature('Dina visningsinställningar är sparade.'),
+          ),
+        ),
       );
     } catch (error) {
       AppErrors.caught('assistant_task_preferences._save', error);
@@ -143,21 +150,27 @@ class _AssistantTaskVisibilitySettingsState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Visa i min assistent',
+          AppStrings.of(context).feature('Visa i min assistent'),
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 8),
-        const Text(
-          'Dina val följer kontot mellan enheter och gäller även räknaren på assistentknappen. Du ser bara uppgifter du har behörighet till.',
+        Text(
+          AppStrings.of(context).feature(
+            'Dina val följer kontot mellan enheter och gäller även räknaren på assistentknappen. Du ser bara uppgifter du har behörighet till.',
+          ),
         ),
         if (_saved != null) ...[
           const SizedBox(height: 16),
           SwitchListTile(
             key: const Key('assistant-welcome-message-setting'),
             contentPadding: EdgeInsets.zero,
-            title: const Text('Visa välkomstmeddelande'),
-            subtitle: const Text(
-              'Visar en kort introduktion ovanför assistentens statusknappar.',
+            title: Text(
+              AppStrings.of(context).feature('Visa välkomstmeddelande'),
+            ),
+            subtitle: Text(
+              AppStrings.of(context).feature(
+                'Visar en kort introduktion ovanför assistentens statusknappar.',
+              ),
             ),
             value: _welcomeMessageVisible,
             onChanged: _saving
@@ -166,14 +179,20 @@ class _AssistantTaskVisibilitySettingsState
           ),
           const SizedBox(height: 24),
           Text(
-            'Visa uppgifter från',
+            AppStrings.of(context).feature('Visa uppgifter från'),
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 12),
           SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(value: false, label: Text('Alla mina lag')),
-              ButtonSegment(value: true, label: Text('Aktuellt lag')),
+            segments: [
+              ButtonSegment(
+                value: false,
+                label: Text(AppStrings.of(context).feature('Alla mina lag')),
+              ),
+              ButtonSegment(
+                value: true,
+                label: Text(AppStrings.of(context).feature('Aktuellt lag')),
+              ),
             ],
             selected: {_currentTeamOnly},
             onSelectionChanged: _saving
@@ -182,15 +201,17 @@ class _AssistantTaskVisibilitySettingsState
                       setState(() => _currentTeamOnly = selection.single),
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Aktuellt lag följer ditt lagval i appen. Personliga kalenderkrockar visas när det valda laget ingår.',
+          Text(
+            AppStrings.of(context).feature(
+              'Aktuellt lag följer ditt lagval i appen. Personliga kalenderkrockar visas när det valda laget ingår.',
+            ),
           ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
             child: Divider(),
           ),
           Text(
-            'Typer av uppgifter',
+            AppStrings.of(context).feature('Typer av uppgifter'),
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
@@ -198,7 +219,7 @@ class _AssistantTaskVisibilitySettingsState
             SwitchListTile(
               key: ValueKey('assistant-visible-${entry.key}'),
               contentPadding: EdgeInsets.zero,
-              title: Text(entry.value),
+              title: Text(AppStrings.of(context).feature(entry.value)),
               value: !_hidden.contains(entry.key),
               onChanged: _saving
                   ? null
@@ -211,12 +232,18 @@ class _AssistantTaskVisibilitySettingsState
                     }),
             ),
           if (_hidden.length == assistantTaskTypes.length)
-            const Text(
-              'Alla uppgiftstyper är avstängda. Assistentknappen finns kvar så att du kan aktivera dem igen.',
+            Text(
+              AppStrings.of(context).feature(
+                'Alla uppgiftstyper är avstängda. Assistentknappen finns kvar så att du kan aktivera dem igen.',
+              ),
             ),
           FilledButton(
             onPressed: _saving ? null : _save,
-            child: Text(_saving ? 'Sparar…' : 'Spara visningsinställningar'),
+            child: Text(
+              AppStrings.of(
+                context,
+              ).feature(_saving ? 'Sparar…' : 'Spara visningsinställningar'),
+            ),
           ),
         ],
         if (_error != null) ...[
@@ -226,7 +253,9 @@ class _AssistantTaskVisibilitySettingsState
           ),
           TextButton(
             onPressed: _saving ? null : _load,
-            child: const Text('Hämta inställningarna igen'),
+            child: Text(
+              AppStrings.of(context).feature('Hämta inställningarna igen'),
+            ),
           ),
         ],
       ],

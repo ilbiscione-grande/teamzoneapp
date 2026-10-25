@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import 'package:flutter/material.dart';
 import '../calendar/calendar_models.dart';
 import '../calendar/preparation_models.dart';
@@ -88,10 +89,14 @@ class _AssistantPreparationChecklistState
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Förberedelserna kunde inte hämtas.'),
+                Text(
+                  AppStrings.of(
+                    context,
+                  ).feature('Förberedelserna kunde inte hämtas.'),
+                ),
                 TextButton(
                   onPressed: () => setState(() => _data = _load()),
-                  child: const Text('Försök igen'),
+                  child: Text(AppStrings.of(context).feature('Försök igen')),
                 ),
               ],
             );
@@ -111,13 +116,22 @@ class _AssistantPreparationChecklistState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Återstående punkter',
+                AppStrings.of(context).feature('Återstående punkter'),
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               if (_error != null) Text(_error!),
-              if (!editable) const Text('Förberedelserna är skrivskyddade.'),
+              if (!editable)
+                Text(
+                  AppStrings.of(
+                    context,
+                  ).feature('Förberedelserna är skrivskyddade.'),
+                ),
               if (items.isEmpty)
-                const Text('Inga återstående punkter i checklistan.'),
+                Text(
+                  AppStrings.of(
+                    context,
+                  ).feature('Inga återstående punkter i checklistan.'),
+                ),
               for (final item in items)
                 CheckboxListTile(
                   key: ValueKey('assistant-preparation-${item.id}'),

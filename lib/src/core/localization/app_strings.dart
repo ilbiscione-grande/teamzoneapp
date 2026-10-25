@@ -245,9 +245,18 @@ class AppStrings {
     };
   }
 
-  /// English copy for [swedish]. A missing entry fails tests and debug
-  /// builds (and test/fnd05 scans all of lib/ for it); a release build shows
-  /// the Swedish text rather than throwing in front of the user.
+  String get goalLabel => isSwedish ? 'Mål' : 'Goal';
+
+  /// Inserts values once, without interpreting placeholders inside user text.
+  String formatFeature(String template, Map<String, Object> values) {
+    return feature(template).replaceAllMapped(
+      RegExp(r'\{(\w+)\}'),
+      (match) => values[match[1]]?.toString() ?? match[0]!,
+    );
+  }
+
+  /// English copy for [swedish]. Missing entries fail tests and debug builds.
+  /// Release builds fall back to Swedish so a missing label cannot crash a view.
   String feature(String swedish) {
     if (isSwedish) return swedish;
     final english = _featureEnglish[swedish];
@@ -256,6 +265,597 @@ class AppStrings {
   }
 
   static const Map<String, String> _featureEnglish = {
+    'Foul': 'Foul',
+    'Välj ett lag i appen för att se dess uppgifter.':
+        'Choose a team in the app to see its tasks.',
+    'Uppgifterna visas när dina inställningar har hämtats.':
+        'Tasks are shown once your settings have loaded.',
+    'Alla lag kunde inte kontrolleras.': 'Not all teams could be checked.',
+    'Inga fler uppgifter att visa med dina inställningar.':
+        'No more tasks to show with your settings.',
+    'Övriga uppgifter är klara.': 'The other tasks are complete.',
+    'Inga aktuella uppgifter att visa.': 'No current tasks to show.',
+    'Den här aktiviteten': 'This event',
+    'Överblick': 'Overview',
+    'Kalendern': 'Calendar',
+    'Utveckling': 'Development',
+    'Inkorgen': 'Inbox',
+    'Stämmer inte': 'Incorrect',
+    'Redan hanterat': 'Already handled',
+    'Inte mitt ansvar': 'Not my responsibility',
+    'Visas för ofta': 'Shown too often',
+    'Överlappningen är avfärdad i din lista. Aktiviteterna är oförändrade.':
+        'The overlap is dismissed in your list. The events are unchanged.',
+    'Arkiverad i din lista. Aktiviteten är oförändrad.':
+        'Archived in your list. The event is unchanged.',
+    'Uppgiften har skjutits upp i din lista.':
+        'The task is snoozed in your list.',
+    'Uppgiften är återställd.': 'The task has been restored.',
+    'Standard': 'Default',
+    'Kommunikation': 'Communication',
+    'Inga fler kommande matcher.': 'No more upcoming matches.',
+    'Inga spelade matcher.': 'No played matches.',
+    'Inget mål satt': 'No target set',
+    'Högre är bättre': 'Higher is better',
+    'Lägre är bättre': 'Lower is better',
+    'Markera som pågående': 'Mark as in progress',
+    'Markera som uppnått': 'Mark as achieved',
+    'Visas för spelarna': 'Shown to players',
+    'Bara ledarna': 'Coaches only',
+    'Dölj för spelarna': 'Hide from players',
+    'Säsongen är sparad.': 'Season saved.',
+    'Länken är tillagd.': 'Link added.',
+    'Länken är borttagen.': 'Link deleted.',
+    'Målet är borttaget.': 'Goal deleted.',
+    'Målet är sparat.': 'Goal saved.',
+    'Principen är borttagen.': 'Principle deleted.',
+    'Principen är sparad.': 'Principle saved.',
+    'Nyckeltalet är borttaget.': 'Metric deleted.',
+    'Nyckeltalet är sparat.': 'Metric saved.',
+    'Avstämningen är sparad.': 'Check-in saved.',
+    'Värdet är sparat.': 'Value saved.',
+    'Inga avstämningar än.': 'No check-ins yet.',
+    'Inga mål': 'No goals',
+    'Inte avstämt än': 'No check-in yet',
+    'Ta bort målet?': 'Delete goal?',
+    'Ta bort perioden?': 'Delete period?',
+    'Ta bort principen?': 'Delete principle?',
+    'Ta bort nyckeltalet?': 'Delete metric?',
+    'Ta bort avstämningen?': 'Delete check-in?',
+    'Vad ser ni, och vad gör ni härnäst?':
+        'What do you see, and what will you do next?',
+    'Till exempel vilken match': 'For example, which match',
+    'Följ upp det laget arbetar med i siffror, till exempel avslut per match eller insläppta mål, och registrera värdena över säsongen.':
+        'Track the team’s progress in numbers, such as shots per match or goals conceded, and record values throughout the season.',
+    'Lägg till perioder, till exempel försäsong, tävling del 1, uppehåll och tävling del 2.':
+        'Add periods, such as pre-season, competition part 1, a break and competition part 2.',
+    'Grundspel och lagets spelidé, fysisk bas och att lära känna varandra.':
+        'Basic play and team playing philosophy, physical foundations and getting to know one another.',
+    'Spelprinciperna i match, matchförberedelse och återhämtning mellan matcherna.':
+        'Playing principles in matches, match preparation and recovery between matches.',
+    'Vila och lek, egen träning och en uppföljning av första delen.':
+        'Rest and play, individual training and a review of the first part.',
+    'Ändra mål': 'Edit goal',
+    'Säsong': 'Season',
+    'Team Development Plan': 'Team Development Plan',
+    'Period': 'Period',
+    'Lagplanering': 'Team planning',
+    'Träningsstöd': 'Training support',
+    'Individuell utveckling': 'Individual development',
+    'Rehabstöd': 'Rehabilitation support',
+    'Klubbadministration': 'Club administration',
+    'Aktuell': 'Current',
+    'Inaktuell': 'Outdated',
+    'Användare': 'User',
+    'Avsiktlig\növerlappning': 'Intentional\noverlap',
+    // English acceptance follow-up: assistant, preparation, TDP and match.
+    'Inställningarna styr presentation och önskat leveransläge. De kan aldrig aktivera ett blockerat område.':
+        'The settings control presentation and preferred delivery mode. They can never enable a blocked area.',
+    'Min assistent är en digital funktion – inte en människa, vårdprofession eller legitimerad expert. Förslag bygger på verifierade TeamZone-data och kräver ditt beslut.':
+        'My assistant is a digital feature, not a person, healthcare professional or licensed expert. Suggestions are based on verified TeamZone data and require your decision.',
+    'Det diagnostiserar, ordinerar, riskrangordnar eller beslutar aldrig om återgång till spel.':
+        'It never diagnoses, prescribes, ranks risks or decides on returning to play.',
+    'Det finns ingen kallelse att påminna just nu. En ny påminnelse kan skickas sex timmar efter den förra.':
+        'There is no invitation to send a reminder for right now. A new reminder can be sent six hours after the previous one.',
+    'Kortet arkiveras i din lista. Svaret sparas utan namn och hjälper TeamZone att rätta regler som visar fel.':
+        'The card is archived in your list. The response is saved without a name and helps TeamZone correct faulty rules.',
+    'Stäng av en typ för alla om regeln visar fel. Feedback gäller de senaste 30 dagarna och visas utan namn.':
+        'Disable a type for everyone if its rule is incorrect. Feedback covers the last 30 days and is shown without names.',
+    'Planen kunde inte hämtas. Lagets plan sköts av ledare med behörighet för lagets utveckling.':
+        'Could not load the plan. The team plan is managed by coaches with permission for team development.',
+    'Sätt lagets långsiktiga mål för säsongen, dela upp den i perioder med ett eget fokus och tillfälliga mål, och lägg in kortsiktiga mål inför matcher eller träningsblock.':
+        'Set long-term goals for the season, divide it into periods with a focus and temporary goals, and add short-term goals for matches or training blocks.',
+    'Spelets fyra skeden, som fotbollsförbundet beskriver dem: med boll och motsatsen utan boll.':
+        'The four stages of the game as described by the football association: in possession and the opposite out of possession.',
+    'Räknare för det ni vill följa i varje match, t.ex. brytningar eller inlägg. De gäller hela laget.':
+        'Counters for what you want to track in each match, such as interceptions or crosses. They apply to the whole team.',
+    'Matchen eller laget är inte publicerat. Publicera laget under Publika sidor och matchen under Publicering för att kunna rapportera den live.':
+        'The match or team is not published. Publish the team under Public pages and the match under Publishing to enable live reporting.',
+    'Fler typer av förslag förbereds. Kallelser och närvarouppgifter visas redan från lagets översikt.':
+        'More types of suggestions are being prepared. Invitations and attendance tasks are already shown from the team overview.',
+    'Visar alltid vilken källa och tidpunkt ett förslag bygger på.':
+        'Always shows the source and time a suggestion is based on.',
+    'Öppnar rätt TeamZone-vy; ändringar kräver att du själv bekräftar dem.':
+        'Opens the right TeamZone view; you must confirm changes yourself.',
+    'Använder inga dolda riskpoäng, medicinska slutsatser eller personjämförelser.':
+        'Uses no hidden risk scores, medical conclusions or comparisons between people.',
+    'Avfärdade förslag kan visas och återställas utan att Inbox-historik ändras.':
+        'Dismissed suggestions can be viewed and restored without changing Inbox history.',
+    'Alla områden delar en kö och notifieringsbudget enligt dina kontoinställningar.':
+        'All areas share a queue and notification budget according to your account settings.',
+    // English acceptance follow-up: assistant, preparation, TDP and match.
+    'Vi': 'Us',
+    'Utanför': 'Off target',
+    'Blockerat': 'Blocked',
+    'Ribba/stolpe': 'Woodwork',
+    'Inget kort': 'No card',
+    'Gult': 'Yellow',
+    'Rött': 'Red',
+    'Fällde': 'Committed foul',
+    'Hörna': 'Corner',
+    'Inlägg': 'Cross',
+    'Rensad': 'Cleared',
+    'Frispark': 'Free kick',
+    'Straff': 'Penalty',
+    'Räddad': 'Saved',
+    'Miss': 'Missed',
+    'Räddning': 'Save',
+    'Periodslut': 'End of period',
+    'Ställningen ändrad': 'Score adjusted',
+    'Räknare (matchmål)': 'Counter (match goal)',
+    'Publikt': 'Public',
+    'Inte publicerad': 'Not published',
+    'Live publikt': 'Public live reporting',
+    'Inte publikt': 'Not public',
+    'Mål: {value}': 'Target: {value}',
+    'Minska {name}': 'Decrease {name}',
+    'Öka {name}': 'Increase {name}',
+    'Inga händelser markerades på planen.':
+        'No events were marked on the pitch.',
+    '{shown} av {total} händelser · tryck på en för att se den':
+        '{shown} of {total} events · tap one to view it',
+    // English acceptance follow-up: assistant, preparation, TDP and match.
+    'Förberedelser återstår': 'Preparations remaining',
+    'Närvaro saknas': 'Attendance missing',
+    'Obesvarade kallelser': 'Unanswered invitations',
+    'Spara visningsinställningar': 'Save display settings',
+    'Påminn…': 'Remind…',
+    'Åtgärda': 'Take action',
+    'Avsiktlig överlappning': 'Intentional overlap',
+    'Öppna Styrelse': 'Open Board',
+    'Öppna Ekonomi': 'Open Finance',
+    'Granska ansökningar': 'Review applications',
+    'Granska förfrågningar': 'Review requests',
+    'Granska ansökningar om lagsida': 'Review team page applications',
+    'Granska bokningar': 'Review bookings',
+    'Svara på kontrollfrågan': 'Answer verification question',
+    'Stäm av lagets mål': 'Review team goals',
+    'Öppna aktivitet och hantera krock': 'Open event and manage conflict',
+    'Välj aktivitet och ändra tid': 'Choose event and change time',
+    'Öppna förberedelser': 'Open preparations',
+    'Registrera resultat': 'Record result',
+    'Granska och påminn': 'Review and remind',
+    'Förbered kallelser': 'Prepare invitations',
+    'Öppna kallelser': 'Open invitations',
+    '{count} aktuella uppgifter i assistenten':
+        '{count} current assistant tasks',
+    '{count} aktuella uppgifter i assistenten, {important} viktiga':
+        '{count} current assistant tasks, {important} important',
+    // English acceptance follow-up: assistant, preparation, TDP and match.
+    'Börjar om {days} dagar': 'Starts in {days} days',
+    'Dag {day} av {total}': 'Day {day} of {total}',
+    '{days} dagar kvar': '{days} days left',
+    'Börjar {date}': 'Starts {date}',
+    'minst {value}': 'at least {value}',
+    'högst {value}': 'at most {value}',
+    '{count} pers.': '{count} people',
+    'Synlig för {count} valda personer': 'Visible to {count} selected people',
+    'Vem ska se {name}?': 'Who should see {name}?',
+    '{count} valda · ledare ser alltid filen':
+        '{count} selected · coaches can always see the file',
+    'Välj vilka som får se filen': 'Choose who can see the file',
+    'Alla deltagare': 'All participants',
+    'Alla som kan se eventet': 'Everyone who can see the event',
+    'Endast ledare': 'Coaches only',
+    'Ledare för eventets lag': 'Coaches of the event team',
+    'Valda personer': 'Selected people',
+    'Svar på kallelsen': 'Invitation responses',
+    'Gjorda mål': 'Goals scored',
+    'Insläppta mål': 'Goals conceded',
+    'Hålla nollan': 'Clean sheet',
+    'Skott': 'Shots',
+    'Skott på mål': 'Shots on target',
+    'Bollvinster på offensiv planhalva': 'Possession won in the attacking half',
+    'Räddningsprocent': 'Save percentage',
+    'Tekniska fel': 'Technical faults',
+    'Alla spelade minst halva matchen':
+        'Everyone played at least half the match',
+    'Vågade spela ut från målvakten': 'Played out from the goalkeeper',
+    'Träningens fokus uppnått': 'Training focus achieved',
+    'Intensitet': 'Intensity',
+    'Förberedelser kunde inte laddas': 'Could not load preparations',
+    'Lägg till punkt': 'Add item',
+    // English acceptance follow-up: assistant, preparation, TDP and match.
+    'Försäsong': 'Pre-season',
+    'Tävling': 'Competition',
+    'Uppehåll': 'Break',
+    'Annan': 'Other',
+    'Säsongsmål': 'Season goals',
+    'Periodens mål': 'Period goals',
+    'Kortsiktigt mål': 'Short-term goal',
+    'Uppnått': 'Achieved',
+    'Släppt': 'Dropped',
+    'På väg': 'On track',
+    'I farozonen': 'At risk',
+    'Inte på väg': 'Off track',
+    'Kortsiktigt': 'Short term',
+    'Med boll': 'In possession',
+    'Utan boll': 'Out of possession',
+    'Ingen period': 'No period',
+    'Nu': 'Now',
+    'Säsongen är slut': 'The season has ended',
+    'Sista dagen': 'Last day',
+    'Dela upp säsongen i perioder under Säsongen.':
+        'Divide the season into periods under Season.',
+    'Säsongens perioder är avslutade.': 'The season periods have ended.',
+    'Inga säsongsmål än.': 'No season goals yet.',
+    'Kommande kortsiktiga mål': 'Upcoming short-term goals',
+    'Inga kortsiktiga mål framåt.': 'No upcoming short-term goals.',
+    'Inga mål för perioden än.': 'No goals for this period yet.',
+    'Långsiktiga mål för hela säsongen.':
+        'Long-term goals for the whole season.',
+    'Tillfälliga mål för perioden.': 'Temporary goals for the period.',
+    'Kortsiktiga mål': 'Short-term goals',
+    'Mål inför en viss match eller ett block av träningar.':
+        'Goals for a specific match or a block of training sessions.',
+    'Vilket lag ni vill vara': 'What kind of team you want to be',
+    'Perioder och fokus': 'Periods and focus',
+    'Vad laget arbetar med just nu': 'What the team is working on now',
+    'Spelidén i spelets fyra skeden':
+        'The playing philosophy across the four stages of the game',
+    'Säsongs- och periodmål': 'Season and period goals',
+    'Med de länkar ni visar för spelarna':
+        'With the links you share with players',
+    'Stäm av målet': 'Review goal',
+    'Ändra perioden': 'Edit period',
+    'Ändra principen': 'Edit principle',
+    'Senast': 'Due by',
+    'Mål för träningen': 'Training goals',
+    'Mål för matchen': 'Match goals',
+    'Anteckningar': 'Notes',
+    'Material': 'Equipment',
+    'Uppgifter': 'Tasks',
+    'Filer': 'Files',
+    'Lägg till material': 'Add equipment',
+    'Lägg till uppgift': 'Add task',
+    'Lägg till fil': 'Add file',
+    'Redigera anteckningar': 'Edit notes',
+    'Synlig för alla deltagare': 'Visible to all participants',
+    'Syns för spelarna': 'Visible to players',
+    'Fylls i efteråt': 'Entered afterwards',
+    'Räknas automatiskt': 'Calculated automatically',
+    'Min assistent': 'My assistant',
+    'Öppna Min assistent': 'Open My assistant',
+    'Uppskjutet': 'Snoozed',
+    'Uppskjutna': 'Snoozed',
+    'Arkiverat': 'Archived',
+    'Mina personliga kalenderkrockar': 'My personal calendar conflicts',
+    'Kalenderkrockar inom laget': 'Calendar conflicts within the team',
+    'Obesvarade kallelser och påminnelser':
+        'Unanswered invitations and reminders',
+    'Kallelser som behöver skickas': 'Invitations to send',
+    'Närvaro som behöver registreras': 'Attendance to record',
+    'Matchresultat som saknas': 'Missing match results',
+    'Matchrapporter som saknas': 'Missing match reports',
+    'Återstående förberedelser': 'Remaining preparations',
+    'Kvinna 1': 'Woman 1',
+    'Kvinna 2': 'Woman 2',
+    'Kvinna 3': 'Woman 3',
+    'Man 1': 'Man 1',
+    'Man 2': 'Man 2',
+    'Man 3': 'Man 3',
+    'Slutresultat': 'Final score',
+    'Ställning just nu': 'Current score',
+    'Avslut': 'Shots',
+    'På mål': 'On target',
+    'Hörnor': 'Corners',
+    'Frisparkar': 'Free kicks',
+    'Straffar': 'Penalties',
+    'Fouls': 'Fouls',
+    'Gula kort': 'Yellow cards',
+    'Röda kort': 'Red cards',
+    'Räddningar': 'Saves',
+    'Målvakter': 'Goalkeepers',
+    // English acceptance follow-up: assistant, preparation, TDP and match.
+    'Viktigt': 'Important',
+    'Värde': 'Value',
+    'Anteckning': 'Note',
+    'Lägg till mål': 'Add goal',
+    'Minut': 'Minute',
+    'Text': 'Text',
+    'Inga händelser registrerade i Live.': 'No events recorded in Live.',
+    'Händelser på planen': 'Events on the pitch',
+    'Hela': 'Full match',
+    'Speltid och statistik': 'Playing time and statistics',
+    'Ingen speltid än. Den räknas fram ur startelvan och bytena i Live.':
+        'No playing time yet. It is calculated from the starting line-up and substitutions in Live.',
+    'Skapa från händelserna': 'Generate from events',
+    'Efteranalysen fylls i när matchen har spelats i Live.':
+        'Post-match analysis is completed after the match has been played in Live.',
+    'Räknare': 'Counters',
+    'Min vy': 'My view',
+    'Välj vilka knappar du vill se under matchen. Valet gäller bara dig.':
+        'Choose which buttons you want to see during the match. The choice applies only to you.',
+    'Visa alla': 'Show all',
+    'Egna knappar': 'Custom buttons',
+    'Namn på knappen': 'Button name',
+    'Lägg till knapp': 'Add button',
+    'Period och slutsignal': 'Period and final whistle',
+    'Inget registrerat än.': 'Nothing recorded yet.',
+    'Flytta på planen': 'Move on pitch',
+    'Skottkarta': 'Shot map',
+    'Händelser': 'Events',
+    'Planläge': 'Pitch mode',
+    'Anfall →': 'Attack →',
+    'Anfall ↑': 'Attack ↑',
+    'Dubbeltryck där det händer': 'Double-tap where it happens',
+    'Tryck där händelsen ska ligga': 'Tap where the event should be placed',
+    'Ingen vald': 'None selected',
+    'Ny händelse': 'New event',
+    'En minut tidigare': 'One minute earlier',
+    'En minut senare': 'One minute later',
+    'Matchen och vyer': 'Match and views',
+    'Valet kunde inte sparas.': 'Could not save your choice.',
+    'Live på lagsidan': 'Live on the team page',
+    'Kommentar (frivilligt)': 'Comment (optional)',
+    'Rätta målet': 'Correct goal',
+    'Uppdatera matchtruppen': 'Update match squad',
+    'Rensa': 'Clear',
+    'Vårt mål': 'Our goal',
+    'Var avslutades det?': 'Where was the shot taken?',
+    'Hoppa över': 'Skip',
+    'Uppgift': 'Task',
+    'Ansvarig': 'Assigned to',
+    'Procent': 'Percent',
+    // English acceptance follow-up: assistant, preparation, TDP and match.
+    'Uppdatera uppgifter': 'Refresh tasks',
+    'Assistentinställningar': 'Assistant settings',
+    'Öppna mina uppgifter': 'Open my tasks',
+    'Områdesinställningarna har sparats.': 'Area settings saved.',
+    'Inställningarna kunde inte sparas. Försök igen.':
+        'Could not save settings. Please try again.',
+    'Assistentens namn har sparats.': 'Assistant name saved.',
+    'Namnet kunde inte sparas. Försök igen.':
+        'Could not save the name. Please try again.',
+    'Assistentens profilbild har sparats.': 'Assistant profile picture saved.',
+    'Profilbilden kunde inte sparas. Försök igen.':
+        'Could not save the profile picture. Please try again.',
+    'Visningsinställningar är inte tillgängliga just nu.':
+        'Display settings are currently unavailable.',
+    'Utseende och namn': 'Appearance and name',
+    'Välj profilbild för din assistent. Valet följer ditt konto mellan enheter.':
+        'Choose a profile picture for your assistant. Your choice follows your account across devices.',
+    'Namnge min assistent': 'Name my assistant',
+    'Om assistenten': 'About the assistant',
+    'Ingen analys körs med AI och inga automatiska åtgärder utförs.':
+        'No AI analysis is performed and no automatic actions are taken.',
+    'Min kö': 'My queue',
+    'Aktuellt': 'Current',
+    'Historik': 'History',
+    'Områdesinställningar': 'Area settings',
+    'Visa i filter och historik': 'Show in filters and history',
+    'Önskat leveransläge': 'Preferred delivery mode',
+    'Sammanfattning': 'Summary',
+    'Endast i Min assistent': 'Only in My assistant',
+    'Namnet är personligt, synkas med ditt konto och visas bara för dig.':
+        'The name is personal, synced with your account and visible only to you.',
+    'Personligt namn': 'Personal name',
+    'Undvik namn som kan förväxlas med TeamZone, support eller legitimerad vårdpersonal.':
+        'Avoid names that could be confused with TeamZone, support or licensed healthcare professionals.',
+    'Lämna fältet tomt för att återställa till Min assistent.':
+        'Leave the field empty to restore My assistant.',
+    'Tiderna visas i din lokala tidszon. Ändringen gäller bara detta tillfälle.':
+        'Times are shown in your local time zone. The change applies only to this occurrence.',
+    'Förberedelserna kunde inte hämtas.': 'Could not load preparations.',
+    'Återstående punkter': 'Remaining items',
+    'Förberedelserna är skrivskyddade.': 'Preparations are read-only.',
+    'Inga återstående punkter i checklistan.': 'No remaining checklist items.',
+    'Rehabstöd följer bara en beslutad plan':
+        'Rehabilitation support follows an agreed plan only',
+    'Valet kunde inte sparas. Uppdatera och försök igen.':
+        'Could not save your choice. Refresh and try again.',
+    'Tack! Kortet är arkiverat i din lista.':
+        'Thank you! The card has been archived in your list.',
+    'Svaret kunde inte sparas. Försök igen.':
+        'Could not save your response. Please try again.',
+    'Dölja den här typen?': 'Hide this type?',
+    'Behåll': 'Keep',
+    'Dölj typen': 'Hide type',
+    'Typen är dold. Du kan visa den igen i inställningarna.':
+        'This type is hidden. You can show it again in settings.',
+    'Kallelserna kunde inte hämtas. Försök igen.':
+        'Could not load invitations. Please try again.',
+    'Aktiviteten kunde inte öppnas. Försök igen.':
+        'Could not open the event. Please try again.',
+    'Välkomstmeddelandet kunde inte döljas. Försök igen.':
+        'Could not hide the welcome message. Please try again.',
+    'Uppgifterna kunde inte hämtas. Försök uppdatera.':
+        'Could not load tasks. Please refresh.',
+    'Hej! Jag är din assistent.': 'Hi! I am your assistant.',
+    'Jag hjälper dig att hitta det som behöver göras och komma vidare.':
+        'I help you find what needs doing and take the next step.',
+    'Dölj välkomstmeddelandet': 'Hide welcome message',
+    'Kalenderkrockar och uppgifter inför aktiviteter som börjar inom ett dygn.':
+        'Calendar conflicts and tasks for events starting within a day.',
+    'Dina visningsinställningar kunde inte hämtas. Försök uppdatera.':
+        'Could not load your display settings. Please refresh.',
+    'Dina personliga kalenderkrockar kunde inte kontrolleras. Försök uppdatera.':
+        'Could not check your personal calendar conflicts. Please refresh.',
+    'Här och nu': 'Here and now',
+    'Visar uppgifter som fortfarande är relevanta och som du har behörighet att se.':
+        'Shows tasks that are still relevant and that you have permission to view.',
+    'Sparade uppgifter – uppdatera före åtgärd.':
+        'Saved tasks – refresh before taking action.',
+    'Varför visas detta?': 'Why is this shown?',
+    'Avsiktlig överlappning avfärdar bara detta aktivitetspar i din egen lista. Du kan återställa det under Arkiverat.':
+        'Intentional overlap dismisses only this pair of events in your own list. You can restore it under Archived.',
+    'Öppna aktiviteten': 'Open event',
+    'Inte till hjälp': 'Not helpful',
+    'Skjut upp': 'Snooze',
+    'Om en timme': 'In one hour',
+    'Om ett dygn': 'In one day',
+    'Om en vecka': 'In one week',
+    'Varför var detta inte till hjälp?': 'Why was this unhelpful?',
+    'Skäl': 'Reason',
+    'Ändringen kunde inte sparas. Försök igen.':
+        'Could not save the change. Please try again.',
+    'Uppgiftstyperna kunde inte hämtas.': 'Could not load task types.',
+    'Dina visningsinställningar är sparade.':
+        'Your display settings have been saved.',
+    'Visa i min assistent': 'Show in my assistant',
+    'Dina val följer kontot mellan enheter och gäller även räknaren på assistentknappen. Du ser bara uppgifter du har behörighet till.':
+        'Your choices follow your account across devices and also apply to the assistant button count. You only see tasks you have permission to view.',
+    'Visa välkomstmeddelande': 'Show welcome message',
+    'Visar en kort introduktion ovanför assistentens statusknappar.':
+        'Shows a short introduction above the assistant status buttons.',
+    'Visa uppgifter från': 'Show tasks from',
+    'Alla mina lag': 'All my teams',
+    'Aktuellt lag': 'Current team',
+    'Aktuellt lag följer ditt lagval i appen. Personliga kalenderkrockar visas när det valda laget ingår.':
+        'The current team follows your team selection in the app. Personal calendar conflicts are shown when the selected team is involved.',
+    'Typer av uppgifter': 'Task types',
+    'Alla uppgiftstyper är avstängda. Assistentknappen finns kvar så att du kan aktivera dem igen.':
+        'All task types are disabled. The assistant button remains available so you can enable them again.',
+    'Hämta inställningarna igen': 'Reload settings',
+    'Stäm av': 'Check in',
+    'Ändra målet': 'Edit goal',
+    'Avstämningar': 'Check-ins',
+    'Ta bort avstämningen': 'Delete check-in',
+    'En säsong är mellan fyra veckor och arton månader.':
+        'A season lasts between four weeks and eighteen months.',
+    'Inriktning': 'Vision',
+    'Vilket lag vill ni vara när säsongen är slut?':
+        'What kind of team do you want to be by the end of the season?',
+    'Stäm av målen': 'Review goals',
+    'Assistenten påminner när det är dags.':
+        'The assistant reminds you when it is time.',
+    'Var tredje vecka': 'Every three weeks',
+    'Var fjärde vecka': 'Every four weeks',
+    'Aldrig': 'Never',
+    'Fas': 'Phase',
+    'Vad laget arbetar med under perioden':
+        'What the team works on during the period',
+    'Använd förslag': 'Use suggestion',
+    'Lägg till en period under Säsongen först.':
+        'First add a period under Season.',
+    'Hur ni vet att målet är nått': 'How you know the goal has been achieved',
+    'Nytt mål': 'New goal',
+    'Planen kunde inte sparas.': 'Could not save the plan.',
+    'Säsongen kunde inte skapas.': 'Could not create the season.',
+    'Planera säsongen': 'Plan the season',
+    'Skapa säsongsplan': 'Create season plan',
+    'Klubben kan inte ändra planer i modulen just nu.':
+        'The club cannot edit plans in this module right now.',
+    'Säsonger': 'Seasons',
+    'Ny säsong': 'New season',
+    'Ny princip': 'New principle',
+    'Nyckeltal': 'Metrics',
+    'Nytt nyckeltal': 'New metric',
+    'Lägg till princip': 'Add principle',
+    'Inga principer än.': 'No principles yet.',
+    'Inga värden än': 'No values yet',
+    'Registrera värde': 'Record value',
+    'Ändra nyckeltalet': 'Edit metric',
+    'Värden': 'Values',
+    'Inga värden än.': 'No values yet.',
+    'Skede': 'Stage',
+    'Princip': 'Principle',
+    'Hur det ser ut på planen': 'What it looks like on the pitch',
+    'Till exempel avslut per match': 'For example, shots per match',
+    'Mål (valfritt)': 'Target (optional)',
+    'Enhet': 'Unit',
+    'Ny period': 'New period',
+    'Ändra säsongen': 'Edit season',
+    'Lagets plan': 'Team plan',
+    'Delas med spelarna': 'Shared with players',
+    'Ny länk': 'New link',
+    'Till exempel en film eller en övning':
+        'For example, a video or an exercise',
+    'Syns när målen delas med spelarna.':
+        'Visible when goals are shared with players.',
+    'Filmer, övningar eller dokument som hör till målet.':
+        'Videos, exercises or documents related to the goal.',
+    'Ta bort länken': 'Delete link',
+    'Ta bort mål?': 'Delete goal?',
+    'Lägg till händelse': 'Add event',
+    'Slutsignal?': 'Final whistle?',
+    'Avsluta match': 'End match',
+    'Matchläge': 'Match mode',
+    'Matchinställningar': 'Match settings',
+    'Korrigera tid': 'Correct time',
+    'Uppdatera trupp från Deltagare': 'Update squad from Participants',
+    'Matchen har inte startats.': 'The match has not started.',
+    'Period och tid': 'Period and time',
+    'Slutsignal': 'Final whistle',
+    'Inga händelser ännu.': 'No events yet.',
+    'Redigera händelse': 'Edit event',
+    'Från Deltagare. Truppen låses när matchen startar.':
+        'From Participants. The squad is locked when the match starts.',
+    'Ingen har tackat ja eller registrerats som närvarande. Mål kan ändå registreras med okänd målskytt.':
+        'No one has accepted or been marked present. Goals can still be recorded with an unknown scorer.',
+    'Deltagare har ändrats – uppdatera trupp':
+        'Participants have changed – update squad',
+    'Sök spelare…': 'Search players…',
+    'Matchtruppen saknar spelare.': 'The match squad has no players.',
+    'Målskytt': 'Scorer',
+    'Matchminut': 'Match minute',
+    'Ange rätt matchtid just nu. Redan registrerade händelser behåller sina minuter.':
+        'Enter the current match time. Events already recorded keep their minutes.',
+    'Minuter per period': 'Minutes per period',
+    'Vårt lag': 'Our team',
+    'Anledning till rättelsen': 'Reason for correction',
+    'Matchen markeras som avslutad. Tidigare matchhändelser behålls.':
+        'The match is marked as completed. Previous match events are retained.',
+    'Skriv matchrapport': 'Write match report',
+    'Matchrapport': 'Match report',
+    'Berätta kort om matchen…': 'Briefly describe the match…',
+    'Inga förberedelser ännu.': 'No preparations yet.',
+    'Fler val': 'More options',
+    'Öppna matchläge': 'Open match mode',
+    'Resultat, tidtagning och målhändelser': 'Score, timer and goal events',
+    'Byt namn': 'Rename',
+    'Ta bort fil?': 'Delete file?',
+    'Tidigare använda': 'Previously used',
+    'Din text finns kvar. Den sparade versionen har ändrats.':
+        'Your text is retained. The saved version has changed.',
+    'Målet kunde inte tas bort.': 'Could not delete the goal.',
+    'Sätt mål som ni följer upp efteråt, till exempel närvaro eller skott på mål.':
+        'Set goals to follow up afterwards, such as attendance or shots on target.',
+    'Åtgärder för målet': 'Goal actions',
+    'Eget nyckeltal': 'Custom metric',
+    'Ja/nej': 'Yes/no',
+    'Skala 1–5': 'Scale 1–5',
+    'Räknas automatiskt av TeamZone.': 'Calculated automatically by TeamZone.',
+    'Mål: ja': 'Target: yes',
+    'Mål: nej': 'Target: no',
+    'Minst': 'At least',
+    'Högst': 'At most',
+    'Visa målet för spelarna': 'Show goal to players',
+    'Blir ett gemensamt lagmål på eventet.':
+        'Becomes a shared team goal for the event.',
+    'Spara mål': 'Save goal',
+    'Värdet kunde inte sparas.': 'Could not save the value.',
+    'Uppföljningen är klar': 'Follow-up complete',
+    'Att göra': 'To do',
+    'Registrera': 'Record',
+    'Öppna matchläget': 'Open match mode',
+    'Visa deltagare': 'Show participants',
+    'Inga mål är satta. Lägg till mål under Förberedelser.':
+        'No goals have been set. Add goals under Preparations.',
+    'Utfall': 'Outcome',
+    'Truppen': 'Squad',
+    'Säsongen': 'Season',
+    'Spelidé': 'Playing philosophy',
     'Språk': 'Language',
     'Enhetens språk': 'Device language',
     'Språkvalet sparas på den här enheten.':

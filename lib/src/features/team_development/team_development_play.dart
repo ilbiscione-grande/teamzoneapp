@@ -1,5 +1,14 @@
 part of '../../app/teamzone_app.dart';
 
+String _tdpKpiTarget(BuildContext context, TeamKpi kpi) {
+  final strings = AppStrings.of(context);
+  if (kpi.target == null) return strings.feature('Inget mål satt');
+  final comparator = strings.isSwedish
+      ? (kpi.higherIsBetter ? 'minst' : 'högst')
+      : (kpi.higherIsBetter ? 'at least' : 'at most');
+  return '${strings.isSwedish ? 'Mål' : 'Target'}: $comparator ${_tdpNumber(kpi.target!)} ${kpi.unit}';
+}
+
 /// Spelidé: the team's principles per area of the game, and its key figures
 /// with their targets and the values recorded over the season.
 class _TdpPlay extends StatelessWidget {
@@ -15,7 +24,10 @@ class _TdpPlay extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text('Spelprinciper', style: theme.textTheme.titleLarge),
+              child: Text(
+                AppStrings.of(context).feature('Spelprinciper'),
+                style: theme.textTheme.titleLarge,
+              ),
             ),
             if (controller.canEdit)
               TextButton.icon(
@@ -23,15 +35,17 @@ class _TdpPlay extends StatelessWidget {
                 onPressed: () =>
                     _TdpPrincipleDialog.edit(context, controller, plan),
                 icon: const Icon(Icons.add),
-                label: const Text('Ny princip'),
+                label: Text(AppStrings.of(context).feature('Ny princip')),
               ),
           ],
         ),
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: Text(
-            'Spelets fyra skeden, som fotbollsförbundet beskriver dem: med '
-            'boll och motsatsen utan boll.',
+            AppStrings.of(context).feature(
+              'Spelets fyra skeden, som fotbollsförbundet beskriver dem: med '
+              'boll och motsatsen utan boll.',
+            ),
             style: theme.textTheme.bodySmall,
           ),
         ),
@@ -46,14 +60,17 @@ class _TdpPlay extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text('Nyckeltal', style: theme.textTheme.titleLarge),
+              child: Text(
+                AppStrings.of(context).feature('Nyckeltal'),
+                style: theme.textTheme.titleLarge,
+              ),
             ),
             if (controller.canEdit)
               TextButton.icon(
                 key: const Key('tdp-new-kpi'),
                 onPressed: () => _TdpKpiDialog.edit(context, controller, plan),
                 icon: const Icon(Icons.add),
-                label: const Text('Nytt nyckeltal'),
+                label: Text(AppStrings.of(context).feature('Nytt nyckeltal')),
               ),
           ],
         ),
@@ -109,9 +126,14 @@ class _TdpPhasePair extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(area.label, style: theme.textTheme.titleSmall),
                     Text(
-                      area.withBall ? 'Med boll' : 'Utan boll',
+                      AppStrings.of(context).feature(area.label),
+                      style: theme.textTheme.titleSmall,
+                    ),
+                    Text(
+                      AppStrings.of(
+                        context,
+                      ).feature(area.withBall ? 'Med boll' : 'Utan boll'),
                       style: theme.textTheme.bodySmall,
                     ),
                   ],
@@ -119,7 +141,7 @@ class _TdpPhasePair extends StatelessWidget {
               ),
               if (controller.canEdit)
                 IconButton(
-                  tooltip: 'Lägg till princip',
+                  tooltip: AppStrings.of(context).feature('Lägg till princip'),
                   icon: const Icon(Icons.add),
                   onPressed: () => _TdpPrincipleDialog.edit(
                     context,
@@ -135,7 +157,7 @@ class _TdpPhasePair extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
             child: Text(
-              'Inga principer än.',
+              AppStrings.of(context).feature('Inga principer än.'),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -223,10 +245,7 @@ class _TdpKpiCard extends StatelessWidget {
                   children: [
                     Text(kpi.title, style: theme.textTheme.titleMedium),
                     Text(
-                      kpi.target == null
-                          ? 'Inget mål satt'
-                          : 'Mål: ${kpi.higherIsBetter ? 'minst' : 'högst'} '
-                                '${_tdpNumber(kpi.target!)} ${kpi.unit}',
+                      _tdpKpiTarget(context, kpi),
                       style: theme.textTheme.bodySmall,
                     ),
                     const SizedBox(height: 8),
@@ -274,7 +293,7 @@ class _TdpBars extends StatelessWidget {
     final shown = values.take(12).toList().reversed.toList();
     if (shown.isEmpty) {
       return Text(
-        'Inga värden än',
+        AppStrings.of(context).feature('Inga värden än'),
         style: Theme.of(context).textTheme.bodySmall,
       );
     }
@@ -355,12 +374,7 @@ abstract final class _TdpKpiSheet {
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
             children: [
               Text(kpi.title, style: theme.textTheme.titleLarge),
-              Text(
-                kpi.target == null
-                    ? 'Inget mål satt'
-                    : 'Mål: ${kpi.higherIsBetter ? 'minst' : 'högst'} '
-                          '${_tdpNumber(kpi.target!)} ${kpi.unit}',
-              ),
+              Text(_tdpKpiTarget(context, kpi)),
               const SizedBox(height: 12),
               _TdpBars(kpi: kpi, values: values),
               if (controller.canEdit) ...[
@@ -374,7 +388,9 @@ abstract final class _TdpKpiSheet {
                       onPressed: () =>
                           _TdpCheckinDialog.kpi(sheetContext, controller, kpi),
                       icon: const Icon(Icons.add_chart),
-                      label: const Text('Registrera värde'),
+                      label: Text(
+                        AppStrings.of(context).feature('Registrera värde'),
+                      ),
                     ),
                     OutlinedButton.icon(
                       onPressed: () async {
@@ -387,17 +403,24 @@ abstract final class _TdpKpiSheet {
                         );
                       },
                       icon: const Icon(Icons.edit_outlined),
-                      label: const Text('Ändra nyckeltalet'),
+                      label: Text(
+                        AppStrings.of(context).feature('Ändra nyckeltalet'),
+                      ),
                     ),
                   ],
                 ),
               ],
               const SizedBox(height: 20),
-              Text('Värden', style: theme.textTheme.titleMedium),
+              Text(
+                AppStrings.of(context).feature('Värden'),
+                style: theme.textTheme.titleMedium,
+              ),
               if (values.isEmpty)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(top: 4),
-                  child: Text('Inga värden än.'),
+                  child: Text(
+                    AppStrings.of(context).feature('Inga värden än.'),
+                  ),
                 ),
               for (final checkin in values)
                 _TdpCheckinTile(
@@ -431,7 +454,11 @@ abstract final class _TdpPrincipleDialog {
         second: principle?.description ?? '',
         builder: (context, title, description) => StatefulBuilder(
           builder: (context, setState) => AlertDialog(
-            title: Text(principle == null ? 'Ny princip' : 'Ändra principen'),
+            title: Text(
+              principle == null
+                  ? AppStrings.of(context).feature('Ny princip')
+                  : AppStrings.of(context).feature('Ändra principen'),
+            ),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -441,13 +468,15 @@ abstract final class _TdpPrincipleDialog {
                     isExpanded: true,
                     key: const Key('tdp-principle-area'),
                     initialValue: chosen,
-                    decoration: const InputDecoration(labelText: 'Skede'),
+                    decoration: InputDecoration(
+                      labelText: AppStrings.of(context).feature('Skede'),
+                    ),
                     items: [
                       for (final value in PrincipleArea.values)
                         DropdownMenuItem(
                           value: value,
                           child: Text(
-                            '${value.label} (${value.withBall ? 'med boll' : 'utan boll'})',
+                            '${AppStrings.of(context).feature(value.label)} (${value.withBall ? 'med boll' : 'utan boll'})',
                           ),
                         ),
                     ],
@@ -458,7 +487,9 @@ abstract final class _TdpPrincipleDialog {
                     key: const Key('tdp-principle-title'),
                     controller: title,
                     maxLength: 120,
-                    decoration: const InputDecoration(labelText: 'Princip'),
+                    decoration: InputDecoration(
+                      labelText: AppStrings.of(context).feature('Princip'),
+                    ),
                     onChanged: (_) => setState(() {}),
                   ),
                   TextField(
@@ -467,9 +498,11 @@ abstract final class _TdpPrincipleDialog {
                     maxLength: 2000,
                     minLines: 2,
                     maxLines: 6,
-                    decoration: const InputDecoration(
-                      labelText: 'Beskrivning',
-                      hintText: 'Hur det ser ut på planen',
+                    decoration: InputDecoration(
+                      labelText: AppStrings.of(context).feature('Beskrivning'),
+                      hintText: AppStrings.of(
+                        context,
+                      ).feature('Hur det ser ut på planen'),
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -480,11 +513,11 @@ abstract final class _TdpPrincipleDialog {
               if (principle != null)
                 TextButton(
                   onPressed: () => Navigator.pop(context, ('delete', '', '')),
-                  child: const Text('Ta bort'),
+                  child: Text(AppStrings.of(context).feature('Ta bort')),
                 ),
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Avbryt'),
+                child: Text(AppStrings.of(context).feature('Avbryt')),
               ),
               FilledButton(
                 key: const Key('tdp-principle-save'),
@@ -495,7 +528,7 @@ abstract final class _TdpPrincipleDialog {
                         description.text.trim(),
                       ))
                     : null,
-                child: const Text('Spara'),
+                child: Text(AppStrings.of(context).feature('Spara')),
               ),
             ],
           ),
@@ -506,14 +539,16 @@ abstract final class _TdpPrincipleDialog {
     if (result.$1 == 'delete' && principle != null) {
       final sure = await _tdpConfirm(
         context,
-        'Ta bort principen?',
-        '"${principle.title}" tas bort ur lagets spelidé.',
+        AppStrings.of(context).feature('Ta bort principen?'),
+        (AppStrings.of(context).isSwedish
+            ? '"${principle.title}" tas bort ur lagets spelidé.'
+            : '"${principle.title}" is deleted from the team playing philosophy.'),
       );
       if (!sure || !context.mounted) return;
       await controller.change(
         context,
         () => controller.services.deletePrinciple(plan, principle.id),
-        done: 'Principen är borttagen.',
+        done: AppStrings.of(context).feature('Principen är borttagen.'),
       );
     } else if (result.$1 == 'save') {
       await controller.change(
@@ -525,7 +560,7 @@ abstract final class _TdpPrincipleDialog {
           title: result.$2,
           description: result.$3,
         ),
-        done: 'Principen är sparad.',
+        done: AppStrings.of(context).feature('Principen är sparad.'),
       );
     }
   }
@@ -553,7 +588,11 @@ abstract final class _TdpKpiDialog {
                 title.text.trim().length >= 2 &&
                 (targetText.isEmpty || double.tryParse(targetText) != null);
             return AlertDialog(
-              title: Text(kpi == null ? 'Nytt nyckeltal' : 'Ändra nyckeltalet'),
+              title: Text(
+                kpi == null
+                    ? AppStrings.of(context).feature('Nytt nyckeltal')
+                    : AppStrings.of(context).feature('Ändra nyckeltalet'),
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -563,9 +602,11 @@ abstract final class _TdpKpiDialog {
                       key: const Key('tdp-kpi-title'),
                       controller: title,
                       maxLength: 80,
-                      decoration: const InputDecoration(
-                        labelText: 'Nyckeltal',
-                        hintText: 'Till exempel avslut per match',
+                      decoration: InputDecoration(
+                        labelText: AppStrings.of(context).feature('Nyckeltal'),
+                        hintText: AppStrings.of(
+                          context,
+                        ).feature('Till exempel avslut per match'),
                       ),
                       onChanged: (_) => setState(() {}),
                     ),
@@ -579,8 +620,10 @@ abstract final class _TdpKpiDialog {
                               decimal: true,
                               signed: true,
                             ),
-                            decoration: const InputDecoration(
-                              labelText: 'Mål (valfritt)',
+                            decoration: InputDecoration(
+                              labelText: AppStrings.of(
+                                context,
+                              ).feature('Mål (valfritt)'),
                             ),
                             onChanged: (_) => setState(() {}),
                           ),
@@ -593,8 +636,10 @@ abstract final class _TdpKpiDialog {
                             initialValue: unitText,
                             onChanged: (value) => unitText = value,
                             maxLength: 20,
-                            decoration: const InputDecoration(
-                              labelText: 'Enhet',
+                            decoration: InputDecoration(
+                              labelText: AppStrings.of(
+                                context,
+                              ).feature('Enhet'),
                               hintText: 'st, %',
                               counterText: '',
                             ),
@@ -605,9 +650,11 @@ abstract final class _TdpKpiDialog {
                     const SizedBox(height: 12),
                     _TdpChoices<bool>(
                       key: const Key('tdp-kpi-direction'),
-                      values: const {
-                        true: 'Högre är bättre',
-                        false: 'Lägre är bättre',
+                      values: {
+                        true: AppStrings.of(context).feature('Högre är bättre'),
+                        false: AppStrings.of(
+                          context,
+                        ).feature('Lägre är bättre'),
                       },
                       selected: higher,
                       onSelected: (value) => setState(() => higher = value),
@@ -619,11 +666,11 @@ abstract final class _TdpKpiDialog {
                 if (kpi != null)
                   TextButton(
                     onPressed: () => Navigator.pop(context, ('delete', '', '')),
-                    child: const Text('Ta bort'),
+                    child: Text(AppStrings.of(context).feature('Ta bort')),
                   ),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Avbryt'),
+                  child: Text(AppStrings.of(context).feature('Avbryt')),
                 ),
                 FilledButton(
                   key: const Key('tdp-kpi-save'),
@@ -634,7 +681,7 @@ abstract final class _TdpKpiDialog {
                           targetText,
                         ))
                       : null,
-                  child: const Text('Spara'),
+                  child: Text(AppStrings.of(context).feature('Spara')),
                 ),
               ],
             );
@@ -646,14 +693,16 @@ abstract final class _TdpKpiDialog {
     if (result.$1 == 'delete' && kpi != null) {
       final sure = await _tdpConfirm(
         context,
-        'Ta bort nyckeltalet?',
-        '"${kpi.title}" och alla dess värden tas bort.',
+        AppStrings.of(context).feature('Ta bort nyckeltalet?'),
+        (AppStrings.of(context).isSwedish
+            ? '"${kpi.title}" och alla dess värden tas bort.'
+            : '"${kpi.title}" and all its values are deleted.'),
       );
       if (!sure || !context.mounted) return;
       await controller.change(
         context,
         () => controller.services.deleteKpi(plan, kpi.id),
-        done: 'Nyckeltalet är borttaget.',
+        done: AppStrings.of(context).feature('Nyckeltalet är borttaget.'),
       );
     } else if (result.$1 == 'save') {
       await controller.change(
@@ -666,7 +715,7 @@ abstract final class _TdpKpiDialog {
           target: result.$3.isEmpty ? null : double.parse(result.$3),
           higherIsBetter: higher,
         ),
-        done: 'Nyckeltalet är sparat.',
+        done: AppStrings.of(context).feature('Nyckeltalet är sparat.'),
       );
     }
   }

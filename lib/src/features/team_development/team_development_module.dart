@@ -85,6 +85,7 @@ class _TdpController extends ChangeNotifier {
     String? done,
   }) async {
     final messenger = ScaffoldMessenger.of(context);
+    final strings = AppStrings.of(context);
     try {
       final saved = await run();
       final current = data;
@@ -113,7 +114,7 @@ class _TdpController extends ChangeNotifier {
     } catch (caught) {
       AppErrors.caught('team_development.change', caught);
       messenger.showSnackBar(
-        const SnackBar(content: Text('Planen kunde inte sparas.')),
+        SnackBar(content: Text(strings.feature('Planen kunde inte sparas.'))),
       );
       return false;
     }
@@ -124,6 +125,7 @@ class _TdpController extends ChangeNotifier {
     final draft = await _SeasonDialog.show(context, after: last?.endsOn);
     if (draft == null || !context.mounted) return;
     final messenger = ScaffoldMessenger.of(context);
+    final strings = AppStrings.of(context);
     try {
       var created = await services.createPlan(
         teamId: teamId,
@@ -144,14 +146,20 @@ class _TdpController extends ChangeNotifier {
       }
       await reload(planId: created.id);
       messenger.showSnackBar(
-        SnackBar(content: Text('${created.title} är skapad.')),
+        SnackBar(
+          content: Text(
+            strings.isSwedish
+                ? '${created.title} är skapad.'
+                : '${created.title} created.',
+          ),
+        ),
       );
     } on TeamDevelopmentException catch (refused) {
       messenger.showSnackBar(SnackBar(content: Text(refused.message)));
     } catch (caught) {
       AppErrors.caught('team_development.createSeason', caught);
       messenger.showSnackBar(
-        const SnackBar(content: Text('Säsongen kunde inte skapas.')),
+        SnackBar(content: Text(strings.feature('Säsongen kunde inte skapas.'))),
       );
     }
   }
@@ -192,15 +200,19 @@ class _TdpFrame extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        'Planen kunde inte hämtas. Lagets plan sköts av '
-                        'ledare med behörighet för lagets utveckling.',
+                      Text(
+                        AppStrings.of(context).feature(
+                          'Planen kunde inte hämtas. Lagets plan sköts av '
+                          'ledare med behörighet för lagets utveckling.',
+                        ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 12),
                       TextButton(
                         onPressed: controller.reload,
-                        child: const Text('Försök igen'),
+                        child: Text(
+                          AppStrings.of(context).feature('Försök igen'),
+                        ),
                       ),
                     ],
                   ),
@@ -253,12 +265,17 @@ class _TdpFirstSeason extends StatelessWidget {
           children: [
             Icon(Icons.event_note, size: 40, color: theme.colorScheme.primary),
             const SizedBox(height: 12),
-            Text('Planera säsongen', style: theme.textTheme.titleLarge),
+            Text(
+              AppStrings.of(context).feature('Planera säsongen'),
+              style: theme.textTheme.titleLarge,
+            ),
             const SizedBox(height: 8),
-            const Text(
-              'Sätt lagets långsiktiga mål för säsongen, dela upp den i '
-              'perioder med ett eget fokus och tillfälliga mål, och lägg in '
-              'kortsiktiga mål inför matcher eller träningsblock.',
+            Text(
+              AppStrings.of(context).feature(
+                'Sätt lagets långsiktiga mål för säsongen, dela upp den i '
+                'perioder med ett eget fokus och tillfälliga mål, och lägg in '
+                'kortsiktiga mål inför matcher eller träningsblock.',
+              ),
             ),
             const SizedBox(height: 16),
             if (controller.canEdit)
@@ -266,10 +283,16 @@ class _TdpFirstSeason extends StatelessWidget {
                 key: const Key('tdp-create-season'),
                 onPressed: () => controller.createSeason(context),
                 icon: const Icon(Icons.add),
-                label: const Text('Skapa säsongsplan'),
+                label: Text(
+                  AppStrings.of(context).feature('Skapa säsongsplan'),
+                ),
               )
             else
-              const Text('Klubben kan inte ändra planer i modulen just nu.'),
+              Text(
+                AppStrings.of(
+                  context,
+                ).feature('Klubben kan inte ändra planer i modulen just nu.'),
+              ),
           ],
         ),
       ),
@@ -317,18 +340,18 @@ class _TdpOverview extends StatelessWidget {
         _TdpGoalGroup(
           controller: controller,
           plan: plan,
-          title: 'Säsongsmål',
+          title: AppStrings.of(context).feature('Säsongsmål'),
           goals: plan.goalsOf(GoalHorizon.season),
-          empty: 'Inga säsongsmål än.',
+          empty: AppStrings.of(context).feature('Inga säsongsmål än.'),
           newGoal: (horizon: GoalHorizon.season, periodId: null),
         ),
         const SizedBox(height: 16),
         _TdpGoalGroup(
           controller: controller,
           plan: plan,
-          title: 'Kommande kortsiktiga mål',
+          title: AppStrings.of(context).feature('Kommande kortsiktiga mål'),
           goals: short.take(3).toList(),
-          empty: 'Inga kortsiktiga mål framåt.',
+          empty: AppStrings.of(context).feature('Inga kortsiktiga mål framåt.'),
           newGoal: (horizon: GoalHorizon.short, periodId: null),
         ),
       ];
@@ -382,7 +405,7 @@ class _TdpSeasonCard extends StatelessWidget {
                 PopupMenuButton<String>(
                   key: const Key('tdp-season-menu'),
                   iconColor: Colors.white,
-                  tooltip: 'Säsonger',
+                  tooltip: AppStrings.of(context).feature('Säsonger'),
                   onSelected: (value) => switch (value) {
                     '_new' => controller.createSeason(context),
                     _ => controller.reload(planId: value),
@@ -396,9 +419,11 @@ class _TdpSeasonCard extends StatelessWidget {
                       ),
                     if (controller.canEdit) ...[
                       const PopupMenuDivider(),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: '_new',
-                        child: Text('Ny säsong'),
+                        child: Text(
+                          AppStrings.of(context).feature('Ny säsong'),
+                        ),
                       ),
                     ],
                   ],
@@ -425,10 +450,16 @@ class _TdpSeasonCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               today.isBefore(plan.startsOn)
-                  ? 'Börjar om ${plan.startsOn.difference(today).inDays} dagar'
+                  ? AppStrings.of(context).formatFeature(
+                      'Börjar om {days} dagar',
+                      {'days': plan.startsOn.difference(today).inDays},
+                    )
                   : today.isAfter(plan.endsOn)
-                  ? 'Säsongen är slut'
-                  : 'Dag $gone av $total',
+                  ? AppStrings.of(context).feature('Säsongen är slut')
+                  : AppStrings.of(context).formatFeature(
+                      'Dag {day} av {total}',
+                      {'day': gone, 'total': total},
+                    ),
               style: white.copyWith(fontSize: 12, color: Colors.white70),
             ),
             if (plan.vision.trim().isNotEmpty) ...[
@@ -481,8 +512,16 @@ class _TdpPeriodNow extends StatelessWidget {
                 Expanded(
                   child: Text(
                     now
-                        ? (left == 0 ? 'Sista dagen' : '$left dagar kvar')
-                        : 'Börjar ${_tdpDate(context, period.startsOn)}',
+                        ? (left == 0
+                              ? AppStrings.of(context).feature('Sista dagen')
+                              : AppStrings.of(context).formatFeature(
+                                  '{days} dagar kvar',
+                                  {'days': left},
+                                ))
+                        : AppStrings.of(context).formatFeature(
+                            'Börjar {date}',
+                            {'date': _tdpDate(context, period.startsOn)},
+                          ),
                     style: theme.textTheme.labelMedium,
                   ),
                 ),
@@ -490,13 +529,16 @@ class _TdpPeriodNow extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '${now ? 'Nu' : 'Nästa'}: ${period.name}',
+              '${AppStrings.of(context).feature(now ? 'Nu' : 'Nästa')}: ${period.name}',
               style: theme.textTheme.titleLarge,
             ),
             Text(_tdpRange(context, period.startsOn, period.endsOn)),
             if (period.focus.trim().isNotEmpty) ...[
               const SizedBox(height: 12),
-              Text('Fokus', style: theme.textTheme.labelLarge),
+              Text(
+                AppStrings.of(context).feature('Fokus'),
+                style: theme.textTheme.labelLarge,
+              ),
               const SizedBox(height: 2),
               Text(period.focus),
             ],
@@ -504,9 +546,11 @@ class _TdpPeriodNow extends StatelessWidget {
             _TdpGoalGroup(
               controller: controller,
               plan: plan,
-              title: 'Periodens mål',
+              title: AppStrings.of(context).feature('Periodens mål'),
               goals: plan.goalsOf(GoalHorizon.period, periodId: period.id),
-              empty: 'Inga mål för perioden än.',
+              empty: AppStrings.of(
+                context,
+              ).feature('Inga mål för perioden än.'),
               newGoal: (horizon: GoalHorizon.period, periodId: period.id),
               flat: true,
             ),
@@ -524,6 +568,9 @@ class _TdpHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-    child: ListTile(leading: Icon(icon), title: Text(text)),
+    child: ListTile(
+      leading: Icon(icon),
+      title: Text(AppStrings.of(context).feature(text)),
+    ),
   );
 }

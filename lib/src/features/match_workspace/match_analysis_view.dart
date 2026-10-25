@@ -109,7 +109,7 @@ class _MatchAnalysisViewState extends State<_MatchAnalysisView> {
     if (fact == null) return null;
     return _FactTooltip(
       fact: fact,
-      text: _factText(fact, _name, _opponentName),
+      text: _factText(context, fact, _name, _opponentName),
       onTap: () => setState(() {
         _tipId = null;
         _highlightId = id;
@@ -149,11 +149,13 @@ class _MatchAnalysisViewState extends State<_MatchAnalysisView> {
     if (!_loaded) return const Center(child: CircularProgressIndicator());
     final snapshot = _snapshot;
     if (snapshot == null || snapshot.state == 'planning') {
-      return const Center(
+      return Center(
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            'Efteranalysen fylls i när matchen har spelats i Live.',
+            AppStrings.of(
+              context,
+            ).feature('Efteranalysen fylls i när matchen har spelats i Live.'),
             textAlign: TextAlign.center,
           ),
         ),
@@ -226,8 +228,8 @@ class _MatchAnalysisViewState extends State<_MatchAnalysisView> {
                       label: kpi.label,
                       value: kpi.actual == null
                           ? 'ej ifyllt'
-                          : _kpiValueText(kpi.valueType, kpi.actual),
-                      goal: _kpiGoalText(kpi),
+                          : _kpiValueText(context, kpi.valueType, kpi.actual),
+                      goal: _kpiGoalText(context, kpi),
                       achieved: switch (kpi.status) {
                         'achieved' => true,
                         'missed' => false,

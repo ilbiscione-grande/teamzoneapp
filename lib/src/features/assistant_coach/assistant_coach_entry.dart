@@ -43,10 +43,10 @@ class _AssistantCoachMobileFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     button: true,
-    label: 'Öppna Min assistent',
+    label: AppStrings.of(context).feature('Öppna Min assistent'),
     child: FloatingActionButton(
       key: const Key('assistant-coach-mobile-fab'),
-      tooltip: assistantBaseName,
+      tooltip: AppStrings.of(context).feature(assistantBaseName),
       onPressed: onPressed,
       child: FutureBuilder<AssistantIdentityPreference>(
         future: preference,
@@ -101,19 +101,25 @@ class _AssistantCoachSidePanel extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        snapshot.data?.displayName ?? assistantBaseName,
+                        snapshot.data?.customName?.isNotEmpty == true
+                            ? snapshot.data!.customName!
+                            : AppStrings.of(context).feature('Min assistent'),
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ),
                     IconButton(
                       key: const Key('assistant-panel-refresh'),
-                      tooltip: 'Uppdatera uppgifter',
+                      tooltip: AppStrings.of(
+                        context,
+                      ).feature('Uppdatera uppgifter'),
                       onPressed: onRefresh,
                       icon: const Icon(Icons.refresh),
                     ),
                     IconButton(
                       key: const Key('assistant-panel-settings'),
-                      tooltip: 'Assistentinställningar',
+                      tooltip: AppStrings.of(
+                        context,
+                      ).feature('Assistentinställningar'),
                       onPressed: onSettings,
                       icon: const Icon(Icons.settings_outlined),
                     ),
@@ -125,7 +131,7 @@ class _AssistantCoachSidePanel extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 '${contextValue.teamName ?? contextValue.clubName} • '
-                '${AssistantPresentationContext.fromTeamZoneContext(contextValue).roleLabel}',
+                '${AppStrings.of(context).feature(AssistantPresentationContext.fromTeamZoneContext(contextValue).roleLabel)}',
                 key: const Key('assistant-side-panel-context'),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
@@ -134,7 +140,9 @@ class _AssistantCoachSidePanel extends StatelessWidget {
                 key: const Key('assistant-coach-panel-open'),
                 onPressed: onOpen,
                 icon: const Icon(Icons.open_in_new),
-                label: const Text('Öppna mina uppgifter'),
+                label: Text(
+                  AppStrings.of(context).feature('Öppna mina uppgifter'),
+                ),
               ),
             ],
           ),
@@ -233,15 +241,25 @@ class _AssistantCoachHoldingSurfaceState
       if (!mounted) return;
       setState(() => _areaPreferences = Future.value(saved));
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Områdesinställningarna har sparats.')),
+        SnackBar(
+          content: Text(
+            AppStrings.of(
+              context,
+            ).feature('Områdesinställningarna har sparats.'),
+          ),
+        ),
       );
     } catch (error) {
       AppErrors.caught('assistant_coach_entry._editAreaPreferences', error);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Inställningarna kunde inte sparas. Försök igen.'),
+        SnackBar(
+          content: Text(
+            AppStrings.of(
+              context,
+            ).feature('Inställningarna kunde inte sparas. Försök igen.'),
+          ),
         ),
       );
     }
@@ -264,14 +282,24 @@ class _AssistantCoachHoldingSurfaceState
         _preference = Future.value(saved);
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Assistentens namn har sparats.')),
+        SnackBar(
+          content: Text(
+            AppStrings.of(context).feature('Assistentens namn har sparats.'),
+          ),
+        ),
       );
     } catch (error) {
       AppErrors.caught('assistant_coach_entry._editName', error);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Namnet kunde inte sparas. Försök igen.')),
+        SnackBar(
+          content: Text(
+            AppStrings.of(
+              context,
+            ).feature('Namnet kunde inte sparas. Försök igen.'),
+          ),
+        ),
       );
     }
   }
@@ -291,7 +319,13 @@ class _AssistantCoachHoldingSurfaceState
       if (!mounted) return;
       setState(() => _preference = Future.value(saved));
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Assistentens profilbild har sparats.')),
+        SnackBar(
+          content: Text(
+            AppStrings.of(
+              context,
+            ).feature('Assistentens profilbild har sparats.'),
+          ),
+        ),
       );
     } catch (error) {
       AppErrors.caught('assistant_coach_entry._setAvatar', error);
@@ -301,8 +335,12 @@ class _AssistantCoachHoldingSurfaceState
         _preference = widget.assistantIdentity.getPreference();
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profilbilden kunde inte sparas. Försök igen.'),
+        SnackBar(
+          content: Text(
+            AppStrings.of(
+              context,
+            ).feature('Profilbilden kunde inte sparas. Försök igen.'),
+          ),
         ),
       );
     } finally {
@@ -335,8 +373,10 @@ class _AssistantCoachHoldingSurfaceState
               Expanded(
                 child: Text(
                   widget.settingsOnly
-                      ? 'Assistentinställningar'
-                      : snapshot.data?.displayName ?? assistantBaseName,
+                      ? AppStrings.of(context).feature('Assistentinställningar')
+                      : snapshot.data?.customName?.isNotEmpty == true
+                      ? snapshot.data!.customName!
+                      : AppStrings.of(context).feature('Min assistent'),
                   key: const Key('assistant-display-name'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -349,13 +389,13 @@ class _AssistantCoachHoldingSurfaceState
           if (!widget.settingsOnly) ...[
             IconButton(
               key: const Key('assistant-refresh-button'),
-              tooltip: 'Uppdatera uppgifter',
+              tooltip: AppStrings.of(context).feature('Uppdatera uppgifter'),
               onPressed: () => setState(() => _taskRevision++),
               icon: const Icon(Icons.refresh),
             ),
             IconButton(
               key: const Key('assistant-settings-button'),
-              tooltip: 'Assistentinställningar',
+              tooltip: AppStrings.of(context).feature('Assistentinställningar'),
               onPressed: _openSettings,
               icon: const Icon(Icons.settings_outlined),
             ),
@@ -413,20 +453,26 @@ class _AssistantCoachHoldingSurfaceState
                                               as AssistantTaskPreferencesServices,
                                     )
                                   else
-                                    const Text(
-                                      'Visningsinställningar är inte tillgängliga just nu.',
+                                    Text(
+                                      AppStrings.of(context).feature(
+                                        'Visningsinställningar är inte tillgängliga just nu.',
+                                      ),
                                     ),
                                   const SizedBox(height: 24),
                                   const Divider(),
                                   Text(
-                                    'Utseende och namn',
+                                    AppStrings.of(
+                                      context,
+                                    ).feature('Utseende och namn'),
                                     style: Theme.of(
                                       context,
                                     ).textTheme.titleLarge,
                                   ),
                                   const SizedBox(height: 8),
-                                  const Text(
-                                    'Välj profilbild för din assistent. Valet följer ditt konto mellan enheter.',
+                                  Text(
+                                    AppStrings.of(context).feature(
+                                      'Välj profilbild för din assistent. Valet följer ditt konto mellan enheter.',
+                                    ),
                                   ),
                                   const SizedBox(height: 16),
                                   Wrap(
@@ -452,7 +498,11 @@ class _AssistantCoachHoldingSurfaceState
                                             avatarKey: option.$1,
                                             size: 40,
                                           ),
-                                          label: Text(option.$2),
+                                          label: Text(
+                                            AppStrings.of(
+                                              context,
+                                            ).feature(option.$2),
+                                          ),
                                           selected:
                                               preference.avatarKey == option.$1,
                                           onSelected:
@@ -476,24 +526,34 @@ class _AssistantCoachHoldingSurfaceState
                                         ? null
                                         : () => _editName(preference),
                                     icon: const Icon(Icons.edit_outlined),
-                                    label: const Text('Namnge min assistent'),
+                                    label: Text(
+                                      AppStrings.of(
+                                        context,
+                                      ).feature('Namnge min assistent'),
+                                    ),
                                   ),
                                   const SizedBox(height: 24),
                                   const Divider(),
                                   Text(
-                                    'Om assistenten',
+                                    AppStrings.of(
+                                      context,
+                                    ).feature('Om assistenten'),
                                     style: Theme.of(
                                       context,
                                     ).textTheme.titleLarge,
                                   ),
                                   const AssistantDigitalFunctionNotice(),
-                                  const Text(
-                                    _assistantHoldingMessage,
+                                  Text(
+                                    AppStrings.of(
+                                      context,
+                                    ).feature(_assistantHoldingMessage),
                                     textAlign: TextAlign.center,
                                   ),
                                   const SizedBox(height: 12),
-                                  const Text(
-                                    'Ingen analys körs med AI och inga automatiska åtgärder utförs.',
+                                  Text(
+                                    AppStrings.of(context).feature(
+                                      'Ingen analys körs med AI och inga automatiska åtgärder utförs.',
+                                    ),
                                     textAlign: TextAlign.center,
                                   ),
                                   const SizedBox(height: 20),
@@ -502,7 +562,7 @@ class _AssistantCoachHoldingSurfaceState
                                   const Divider(),
                                   const SizedBox(height: 12),
                                   Text(
-                                    'Min kö',
+                                    AppStrings.of(context).feature('Min kö'),
                                     style: Theme.of(
                                       context,
                                     ).textTheme.titleMedium,
@@ -510,14 +570,22 @@ class _AssistantCoachHoldingSurfaceState
                                   const SizedBox(height: 8),
                                   SegmentedButton<bool>(
                                     key: const Key('assistant-history-switch'),
-                                    segments: const [
+                                    segments: [
                                       ButtonSegment(
                                         value: false,
-                                        label: Text('Aktuellt'),
+                                        label: Text(
+                                          AppStrings.of(
+                                            context,
+                                          ).feature('Aktuellt'),
+                                        ),
                                       ),
                                       ButtonSegment(
                                         value: true,
-                                        label: Text('Historik'),
+                                        label: Text(
+                                          AppStrings.of(
+                                            context,
+                                          ).feature('Historik'),
+                                        ),
                                       ),
                                     ],
                                     selected: {_showHistory},
@@ -538,7 +606,11 @@ class _AssistantCoachHoldingSurfaceState
                                             Icons.filter_alt_outlined,
                                             size: 16,
                                           ),
-                                          label: Text(area.label),
+                                          label: Text(
+                                            AppStrings.of(
+                                              context,
+                                            ).feature(area.label),
+                                          ),
                                           selected: _selectedAreaKeys.contains(
                                             area.key,
                                           ),
@@ -565,15 +637,25 @@ class _AssistantCoachHoldingSurfaceState
                                       Expanded(
                                         child: Text(
                                           _showHistory
-                                              ? 'Ingen verifierad historik ännu'
-                                              : 'Inga områden är aktiverade ännu',
+                                              ? (AppStrings.of(
+                                                      context,
+                                                    ).isSwedish
+                                                    ? 'Ingen verifierad historik ännu'
+                                                    : 'No verified history yet')
+                                              : (AppStrings.of(
+                                                      context,
+                                                    ).isSwedish
+                                                    ? 'Inga områden är aktiverade ännu'
+                                                    : 'No areas enabled yet'),
                                         ),
                                       ),
                                       IconButton(
                                         key: const Key(
                                           'assistant-area-preferences',
                                         ),
-                                        tooltip: 'Områdesinställningar',
+                                        tooltip: AppStrings.of(
+                                          context,
+                                        ).feature('Områdesinställningar'),
                                         onPressed:
                                             areaSnapshot.connectionState ==
                                                 ConnectionState.waiting
@@ -598,7 +680,7 @@ class _AssistantCoachHoldingSurfaceState
                                       ).colorScheme.surfaceContainerLow,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
-                                    child: const Row(
+                                    child: Row(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
@@ -606,10 +688,9 @@ class _AssistantCoachHoldingSurfaceState
                                         SizedBox(width: 10),
                                         Expanded(
                                           child: Text(
-                                            'Alla områden delar en kö och notifieringsbudget '
-                                            '($assistantDirectLimitPer24Hours direkta och '
-                                            '$assistantDigestLimitPer24Hours sammanfattning per dygn). '
-                                            'Systemmeddelanden påverkas inte.',
+                                            AppStrings.of(context).isSwedish
+                                                ? 'Alla områden delar en kö och notifieringsbudget ($assistantDirectLimitPer24Hours direkta och $assistantDigestLimitPer24Hours sammanfattning per dygn). Systemmeddelanden påverkas inte.'
+                                                : 'All areas share a queue and notification budget ($assistantDirectLimitPer24Hours direct and $assistantDigestLimitPer24Hours digest per day). System messages are unaffected.',
                                           ),
                                         ),
                                       ],
@@ -664,15 +745,17 @@ class _AssistantAreaPreferencesDialogState
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Områdesinställningar'),
+    title: Text(AppStrings.of(context).feature('Områdesinställningar')),
     content: SizedBox(
       width: 520,
       child: ListView(
         shrinkWrap: true,
         children: [
-          const Text(
-            'Inställningarna styr presentation och önskat leveransläge. '
-            'De kan aldrig aktivera ett blockerat område.',
+          Text(
+            AppStrings.of(context).feature(
+              'Inställningarna styr presentation och önskat leveransläge. '
+              'De kan aldrig aktivera ett blockerat område.',
+            ),
           ),
           const SizedBox(height: 12),
           for (final area in widget.areas)
@@ -687,13 +770,13 @@ class _AssistantAreaPreferencesDialogState
     actions: [
       TextButton(
         onPressed: () => Navigator.of(context).pop(),
-        child: const Text('Avbryt'),
+        child: Text(AppStrings.of(context).feature('Avbryt')),
       ),
       FilledButton(
         onPressed: () => Navigator.of(
           context,
         ).pop<List<AssistantAreaPreference>>(_values.values.toList()),
-        child: const Text('Spara'),
+        child: Text(AppStrings.of(context).feature('Spara')),
       ),
     ],
   );
@@ -716,7 +799,9 @@ class _AssistantAreaPreferenceRow extends StatelessWidget {
       SwitchListTile(
         contentPadding: EdgeInsets.zero,
         title: AssistantAreaBadge(area: area),
-        subtitle: const Text('Visa i filter och historik'),
+        subtitle: Text(
+          AppStrings.of(context).feature('Visa i filter och historik'),
+        ),
         value: value.visible,
         onChanged: (visible) => onChanged(
           AssistantAreaPreference(
@@ -729,21 +814,28 @@ class _AssistantAreaPreferenceRow extends StatelessWidget {
       ),
       DropdownButtonFormField<AssistantDeliveryMode>(
         initialValue: value.deliveryMode,
-        decoration: const InputDecoration(labelText: 'Önskat leveransläge'),
-        items: const [
+        decoration: InputDecoration(
+          labelText: AppStrings.of(context).feature('Önskat leveransläge'),
+        ),
+        items: [
           DropdownMenuItem(
             value: AssistantDeliveryMode.direct,
-            child: Text('Direkt'),
+            child: Text(AppStrings.of(context).feature('Direkt')),
           ),
           DropdownMenuItem(
             value: AssistantDeliveryMode.digest,
-            child: Text('Sammanfattning'),
+            child: Text(AppStrings.of(context).feature('Sammanfattning')),
           ),
           DropdownMenuItem(
             value: AssistantDeliveryMode.inAssistant,
-            child: Text('Endast i Min assistent'),
+            child: Text(
+              AppStrings.of(context).feature('Endast i Min assistent'),
+            ),
           ),
-          DropdownMenuItem(value: AssistantDeliveryMode.off, child: Text('Av')),
+          DropdownMenuItem(
+            value: AssistantDeliveryMode.off,
+            child: Text(AppStrings.of(context).isSwedish ? 'Av' : 'Off'),
+          ),
         ],
         onChanged: (mode) {
           if (mode == null) return;
@@ -797,15 +889,17 @@ class _AssistantNameDialogState extends State<_AssistantNameDialog> {
   Widget build(BuildContext context) {
     final warning = assistantNameNeedsIdentityWarning(_controller.text);
     return AlertDialog(
-      title: const Text('Namnge min assistent'),
+      title: Text(AppStrings.of(context).feature('Namnge min assistent')),
       content: SizedBox(
         width: 420,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Namnet är personligt, synkas med ditt konto och visas bara för dig.',
+            Text(
+              AppStrings.of(context).feature(
+                'Namnet är personligt, synkas med ditt konto och visas bara för dig.',
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -814,8 +908,8 @@ class _AssistantNameDialogState extends State<_AssistantNameDialog> {
               autofocus: true,
               maxLength: assistantNameMaxLength,
               decoration: InputDecoration(
-                labelText: 'Personligt namn',
-                hintText: assistantBaseName,
+                labelText: AppStrings.of(context).feature('Personligt namn'),
+                hintText: AppStrings.of(context).feature(assistantBaseName),
                 errorText: _error,
               ),
               onChanged: (_) => setState(() => _error = null),
@@ -823,13 +917,17 @@ class _AssistantNameDialogState extends State<_AssistantNameDialog> {
             ),
             if (warning)
               Text(
-                'Undvik namn som kan förväxlas med TeamZone, support eller legitimerad vårdpersonal.',
+                AppStrings.of(context).feature(
+                  'Undvik namn som kan förväxlas med TeamZone, support eller legitimerad vårdpersonal.',
+                ),
                 key: const Key('assistant-name-warning'),
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             const SizedBox(height: 8),
-            const Text(
-              'Lämna fältet tomt för att återställa till Min assistent.',
+            Text(
+              AppStrings.of(context).feature(
+                'Lämna fältet tomt för att återställa till Min assistent.',
+              ),
             ),
           ],
         ),
@@ -837,9 +935,12 @@ class _AssistantNameDialogState extends State<_AssistantNameDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Avbryt'),
+          child: Text(AppStrings.of(context).feature('Avbryt')),
         ),
-        FilledButton(onPressed: _submit, child: const Text('Spara')),
+        FilledButton(
+          onPressed: _submit,
+          child: Text(AppStrings.of(context).feature('Spara')),
+        ),
       ],
     );
   }
@@ -864,7 +965,7 @@ class _AssistantTransparencyList extends StatelessWidget {
                 child: Icon(Icons.check_circle_outline, size: 18),
               ),
               const SizedBox(width: 10),
-              Expanded(child: Text(point)),
+              Expanded(child: Text(AppStrings.of(context).feature(point))),
             ],
           ),
         ),

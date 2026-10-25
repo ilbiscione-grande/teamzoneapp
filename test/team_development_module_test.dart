@@ -106,6 +106,76 @@ void main() {
     );
   });
 
+  testWidgets(
+    'English TDP keeps team content and translates views and goal choices',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final services = _Plans();
+      await tester.pumpWidget(
+        TeamZoneApp(
+          environment: const AppEnvironment(name: 'tdp'),
+          locale: const Locale('en'),
+          services: AppServices(
+            identity: _Identity(),
+            modules: _Modules(services),
+            isConfigured: true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('bottom-nav-more')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Workspaces'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('workspace-module-module.team_development')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('tdp-create-season')));
+      await tester.pumpAndSettle();
+      expect(find.text('New season'), findsOneWidget);
+      await tester.enterText(
+        find.byKey(const Key('tdp-season-title')),
+        'Säsong 2026',
+      );
+      await tester.enterText(
+        find.byKey(const Key('tdp-season-vision')),
+        'Ett modigt lag',
+      );
+      await tester.tap(find.byKey(const Key('tdp-season-save')));
+      await tester.pumpAndSettle();
+      expect(find.text('Säsong 2026'), findsOneWidget);
+      expect(find.text('Ett modigt lag'), findsOneWidget);
+      expect(find.text('Season goals'), findsOneWidget);
+      expect(find.textContaining('Day '), findsOneWidget);
+      await tester.tap(find.text('Season'));
+      await tester.pumpAndSettle();
+      expect(find.text('Shared with players'), findsOneWidget);
+      expect(find.textContaining('Nothing is shared yet.'), findsOneWidget);
+      await tester.tap(find.text('Playing philosophy'));
+      await tester.pumpAndSettle();
+      expect(find.text('Playing principles'), findsOneWidget);
+      expect(find.text('New principle'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('tdp-new-principle')));
+      await tester.pumpAndSettle();
+      expect(find.text('Stage'), findsOneWidget);
+      expect(find.text('Creating chances and scoring'), findsWidgets);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Goals'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('tdp-new-goal')));
+      await tester.pumpAndSettle();
+      expect(find.text('New goal'), findsWidgets);
+      expect(find.text('Short term'), findsOneWidget);
+      expect(find.text('Goal'), findsOneWidget);
+      expect(find.text('Description'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('a leader plans the season in the module', (tester) async {
     tester.view.physicalSize = const Size(390, 1400);
     tester.view.devicePixelRatio = 1;

@@ -14,6 +14,29 @@ import 'package:teamzone_app/src/shared/async/async_data_controller.dart';
 import 'package:teamzone_app/src/shared/forms/app_form_controller.dart';
 
 void main() {
+  testWidgets(
+    'English assistant default name and personal settings use the selected language',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 1100);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(_verifiedApp(locale: const Locale('en')));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('My assistant'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('assistant-coach-mobile-fab')));
+      await tester.pumpAndSettle();
+      expect(find.text('My assistant'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('assistant-settings-button')));
+      await tester.pumpAndSettle();
+      expect(find.text('Assistant settings'), findsOneWidget);
+      expect(find.text('Appearance and name'), findsOneWidget);
+      expect(find.text('Name my assistant'), findsOneWidget);
+      expect(find.text('My queue'), findsOneWidget);
+      expect(find.textContaining('All areas share a queue'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   group('FND-02 shared state widget contract', () {
     testWidgets('renders loading, empty, ready, stale and safe failure', (
       tester,
@@ -552,11 +575,12 @@ void main() {
 }
 
 Widget _verifiedApp({
+  Locale locale = const Locale('sv'),
   LanguagePreferences languagePreferences =
       const StatelessLanguagePreferences(),
 }) => TeamZoneApp(
   environment: const AppEnvironment(name: 'verification'),
-  locale: const Locale('sv'),
+  locale: locale,
   services: AppServices(
     identity: _VerificationIdentity(),
     isConfigured: true,

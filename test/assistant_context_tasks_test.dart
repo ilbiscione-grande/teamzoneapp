@@ -1,3 +1,4 @@
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teamzone_app/src/app/product_route_contract.dart';
@@ -172,6 +173,13 @@ void main() {
     AssistantTask? opened;
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('sv'),
+        supportedLocales: const [Locale('sv')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         home: Scaffold(
           body: SingleChildScrollView(
             child: AssistantTaskSections(
@@ -378,6 +386,13 @@ void main() {
     String location = '/calendar/event/one',
     Future<void> Function(AssistantTask)? onOpen,
   }) => MaterialApp(
+    locale: const Locale('sv'),
+    supportedLocales: const [Locale('sv')],
+    localizationsDelegates: const [
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
     home: Scaffold(
       body: SingleChildScrollView(
         child: AssistantTaskSections(

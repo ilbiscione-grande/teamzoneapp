@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:teamzone_app/src/core/observability/app_errors.dart';
 import 'package:teamzone_app/src/features/assistant_coach/assistant_task_preferences.dart';
@@ -78,21 +79,25 @@ Future<String?> showAssistantFeedbackReasons(BuildContext context) =>
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
                 child: Text(
-                  'Varför var detta inte till hjälp?',
+                  AppStrings.of(
+                    context,
+                  ).feature('Varför var detta inte till hjälp?'),
                   style: Theme.of(sheetContext).textTheme.titleMedium,
                 ),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.fromLTRB(24, 0, 24, 8),
                 child: Text(
-                  'Kortet arkiveras i din lista. Svaret sparas utan namn och '
-                  'hjälper TeamZone att rätta regler som visar fel.',
+                  AppStrings.of(context).feature(
+                    'Kortet arkiveras i din lista. Svaret sparas utan namn och '
+                    'hjälper TeamZone att rätta regler som visar fel.',
+                  ),
                 ),
               ),
               for (final entry in assistantFeedbackReasons.entries)
                 ListTile(
                   key: ValueKey('assistant-feedback-${entry.key}'),
-                  title: Text(entry.value),
+                  title: Text(AppStrings.of(context).feature(entry.value)),
                   onTap: () => Navigator.pop(sheetContext, entry.key),
                 ),
               const SizedBox(height: 8),
@@ -144,7 +149,9 @@ class _AssistantTaskKindSwitchesState extends State<AssistantTaskKindSwitches> {
               TextField(
                 key: const ValueKey('assistant-switch-reason'),
                 maxLength: 300,
-                decoration: const InputDecoration(labelText: 'Skäl'),
+                decoration: InputDecoration(
+                  labelText: AppStrings.of(context).feature('Skäl'),
+                ),
                 onChanged: (value) => update(() => typed = value),
               ),
             ],
@@ -152,7 +159,7 @@ class _AssistantTaskKindSwitchesState extends State<AssistantTaskKindSwitches> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Avbryt'),
+              child: Text(AppStrings.of(context).feature('Avbryt')),
             ),
             FilledButton(
               onPressed: typed.trim().length < 3
@@ -176,8 +183,12 @@ class _AssistantTaskKindSwitchesState extends State<AssistantTaskKindSwitches> {
       AppErrors.caught('assistant_task_feedback._toggle', error);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ändringen kunde inte sparas. Försök igen.'),
+          SnackBar(
+            content: Text(
+              AppStrings.of(
+                context,
+              ).feature('Ändringen kunde inte sparas. Försök igen.'),
+            ),
           ),
         );
       }
@@ -209,12 +220,16 @@ class _AssistantTaskKindSwitchesState extends State<AssistantTaskKindSwitches> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Uppgiftstyperna kunde inte hämtas.'),
+                Text(
+                  AppStrings.of(
+                    context,
+                  ).feature('Uppgiftstyperna kunde inte hämtas.'),
+                ),
                 TextButton(
                   onPressed: () => setState(
                     () => _kinds = widget.services.listAssistantTaskKinds(),
                   ),
-                  child: const Text('Försök igen'),
+                  child: Text(AppStrings.of(context).feature('Försök igen')),
                 ),
               ],
             ),
@@ -225,14 +240,16 @@ class _AssistantTaskKindSwitchesState extends State<AssistantTaskKindSwitches> {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
           children: [
             Text(
-              'Min assistents uppgiftstyper',
+              AppStrings.of(context).feature('Min assistents uppgiftstyper'),
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 8),
               child: Text(
-                'Stäng av en typ för alla om regeln visar fel. Feedback gäller '
-                'de senaste 30 dagarna och visas utan namn.',
+                AppStrings.of(context).feature(
+                  'Stäng av en typ för alla om regeln visar fel. Feedback gäller '
+                  'de senaste 30 dagarna och visas utan namn.',
+                ),
               ),
             ),
             for (final kind in snapshot.requireData)

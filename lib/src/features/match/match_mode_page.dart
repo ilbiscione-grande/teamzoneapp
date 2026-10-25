@@ -445,16 +445,16 @@ class _MatchModePageState extends State<_MatchModePage>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Ta bort mål?'),
+        title: Text(AppStrings.of(context).feature('Ta bort mål?')),
         content: Text(description),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Avbryt'),
+            child: Text(AppStrings.of(context).feature('Avbryt')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Ta bort'),
+            child: Text(AppStrings.of(context).feature('Ta bort')),
           ),
         ],
       ),
@@ -476,9 +476,9 @@ class _MatchModePageState extends State<_MatchModePage>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const ListTile(
+            ListTile(
               title: Text(
-                'Lägg till händelse',
+                AppStrings.of(context).feature('Lägg till händelse'),
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
             ),
@@ -558,7 +558,7 @@ class _MatchModePageState extends State<_MatchModePage>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Slutsignal?'),
+        title: Text(AppStrings.of(context).feature('Slutsignal?')),
         content: Text(
           'Matchen avslutas med $_ourName ${snapshot.scoreUs}–${snapshot.scoreOpponent} $_opponentName. '
           'Målskyttar och minuter kan fortfarande rättas efteråt.',
@@ -566,11 +566,11 @@ class _MatchModePageState extends State<_MatchModePage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Avbryt'),
+            child: Text(AppStrings.of(context).feature('Avbryt')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Avsluta match'),
+            child: Text(AppStrings.of(context).feature('Avsluta match')),
           ),
         ],
       ),
@@ -639,7 +639,7 @@ class _MatchModePageState extends State<_MatchModePage>
         centerTitle: true,
         title: Column(
           children: [
-            const Text('Matchläge'),
+            Text(AppStrings.of(context).feature('Matchläge')),
             Text(
               subtitle,
               style: Theme.of(context).textTheme.bodySmall,
@@ -650,32 +650,38 @@ class _MatchModePageState extends State<_MatchModePage>
         actions: [
           if (_canManage && _state != 'completed')
             PopupMenuButton<VoidCallback>(
-              tooltip: 'Matchinställningar',
+              tooltip: AppStrings.of(context).feature('Matchinställningar'),
               icon: const Icon(Icons.settings_outlined),
               onSelected: (action) => action(),
               itemBuilder: (_) => [
                 PopupMenuItem(
                   value: _changeFormat,
-                  child: const Text('Matchformat'),
+                  child: Text(AppStrings.of(context).feature('Matchformat')),
                 ),
                 if (_state == 'live')
                   PopupMenuItem(
                     value: _correctClock,
-                    child: const Text('Korrigera tid'),
+                    child: Text(
+                      AppStrings.of(context).feature('Korrigera tid'),
+                    ),
                   ),
                 PopupMenuItem(
                   value: _updateSquad,
-                  child: const Text('Uppdatera trupp från Deltagare'),
+                  child: Text(
+                    AppStrings.of(
+                      context,
+                    ).feature('Uppdatera trupp från Deltagare'),
+                  ),
                 ),
                 PopupMenuItem(
                   value: _refresh,
-                  child: const Text('Synkronisera'),
+                  child: Text(AppStrings.of(context).feature('Synkronisera')),
                 ),
               ],
             )
           else
             IconButton(
-              tooltip: 'Synkronisera',
+              tooltip: AppStrings.of(context).feature('Synkronisera'),
               onPressed: _refresh,
               icon: const Icon(Icons.sync),
             ),
@@ -709,10 +715,12 @@ class _MatchModePageState extends State<_MatchModePage>
                       if (_canManage && _state == 'live') _scoreButtons(),
                       if (_error != null) _errorBanner(),
                       if (!_canManage && _snapshot == null)
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.all(16),
                           child: Text(
-                            'Matchen har inte startats.',
+                            AppStrings.of(
+                              context,
+                            ).feature('Matchen har inte startats.'),
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -831,7 +839,7 @@ class _MatchModePageState extends State<_MatchModePage>
           children: [
             if (menu)
               PopupMenuButton<VoidCallback>(
-                tooltip: 'Period och tid',
+                tooltip: AppStrings.of(context).feature('Period och tid'),
                 onSelected: (action) => action(),
                 itemBuilder: (_) => [
                   if (!snapshot!.isPaused &&
@@ -844,15 +852,17 @@ class _MatchModePageState extends State<_MatchModePage>
                     ),
                   PopupMenuItem(
                     value: _finish,
-                    child: const Text('Slutsignal'),
+                    child: Text(AppStrings.of(context).feature('Slutsignal')),
                   ),
                   PopupMenuItem(
                     value: _correctClock,
-                    child: const Text('Korrigera tid'),
+                    child: Text(
+                      AppStrings.of(context).feature('Korrigera tid'),
+                    ),
                   ),
                   PopupMenuItem(
                     value: _changeFormat,
-                    child: const Text('Matchformat'),
+                    child: Text(AppStrings.of(context).feature('Matchformat')),
                   ),
                 ],
                 child: Padding(
@@ -1021,10 +1031,10 @@ class _MatchModePageState extends State<_MatchModePage>
                 if (_retry != null)
                   TextButton(
                     onPressed: _busy ? null : _retry,
-                    child: const Text('Försök igen'),
+                    child: Text(AppStrings.of(context).feature('Försök igen')),
                   ),
                 IconButton(
-                  tooltip: 'Stäng',
+                  tooltip: AppStrings.of(context).feature('Stäng'),
                   onPressed: () => setState(() {
                     _error = null;
                     _retry = null;
@@ -1085,7 +1095,7 @@ class _MatchModePageState extends State<_MatchModePage>
               dense: true,
               title: Text(kpi.label),
               subtitle: Text(
-                'Mål: ${_kpiGoalText(kpi)}'
+                'Mål: ${_kpiGoalText(context, kpi)}'
                 '${!counter && kpi.actual == null && _state != 'completed' ? ' · fylls i efteråt' : ''}',
               ),
               onTap: canEnter ? () => _enterKpiValue(kpi) : null,
@@ -1103,7 +1113,7 @@ class _MatchModePageState extends State<_MatchModePage>
                     child: Text(
                       counter
                           ? (value ?? 0).toInt().toString()
-                          : _kpiValueText(kpi.valueType, value),
+                          : _kpiValueText(context, kpi.valueType, value),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 20,
@@ -1156,7 +1166,7 @@ class _MatchModePageState extends State<_MatchModePage>
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Text(
-              'Inga händelser ännu.',
+              AppStrings.of(context).feature('Inga händelser ännu.'),
               style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant),
             ),
           ),
@@ -1178,7 +1188,7 @@ class _MatchModePageState extends State<_MatchModePage>
                       Icon(Icons.add, size: 18, color: colors.primary),
                       const SizedBox(width: 10),
                       Text(
-                        'Lägg till händelse',
+                        AppStrings.of(context).feature('Lägg till händelse'),
                         style: TextStyle(color: colors.primary, fontSize: 14),
                       ),
                     ],
@@ -1297,7 +1307,9 @@ class _MatchModePageState extends State<_MatchModePage>
                 ),
                 if (editable)
                   IconButton(
-                    tooltip: 'Redigera händelse',
+                    tooltip: AppStrings.of(
+                      context,
+                    ).feature('Redigera händelse'),
                     onPressed: _busy ? null : () => _editFact(fact),
                     icon: const Icon(Icons.more_vert, size: 20),
                   ),
@@ -1358,7 +1370,9 @@ class _MatchModePageState extends State<_MatchModePage>
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
             child: Text(
-              'Från Deltagare. Truppen låses när matchen startar.',
+              AppStrings.of(
+                context,
+              ).feature('Från Deltagare. Truppen låses när matchen startar.'),
               style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
             ),
           ),
@@ -1366,7 +1380,9 @@ class _MatchModePageState extends State<_MatchModePage>
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
             child: Text(
-              'Ingen har tackat ja eller registrerats som närvarande. Mål kan ändå registreras med okänd målskytt.',
+              AppStrings.of(context).feature(
+                'Ingen har tackat ja eller registrerats som närvarande. Mål kan ändå registreras med okänd målskytt.',
+              ),
               style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
             ),
           ),
@@ -1378,7 +1394,11 @@ class _MatchModePageState extends State<_MatchModePage>
               child: TextButton.icon(
                 onPressed: _busy ? null : _updateSquad,
                 icon: const Icon(Icons.sync, size: 18),
-                label: const Text('Deltagare har ändrats – uppdatera trupp'),
+                label: Text(
+                  AppStrings.of(
+                    context,
+                  ).feature('Deltagare har ändrats – uppdatera trupp'),
+                ),
               ),
             ),
           ),
@@ -1408,7 +1428,7 @@ class _MatchModePageState extends State<_MatchModePage>
                     ),
                     if (_isLeader(id))
                       Text(
-                        'Ledare',
+                        AppStrings.of(context).feature('Ledare'),
                         style: TextStyle(
                           fontSize: 12,
                           color: colors.onSurfaceVariant,
@@ -1521,7 +1541,7 @@ class _GoalSheetState extends State<_GoalSheet> {
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Stäng',
+                      tooltip: AppStrings.of(context).feature('Stäng'),
                       onPressed: () => Navigator.pop(context),
                       icon: const Icon(Icons.close),
                     ),
@@ -1542,9 +1562,9 @@ class _GoalSheetState extends State<_GoalSheet> {
                   child: TextField(
                     key: ValueKey(_choosingAssist),
                     onChanged: (value) => setState(() => _query = value),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       prefixIcon: Icon(Icons.search, size: 20),
-                      hintText: 'Sök spelare…',
+                      hintText: AppStrings.of(context).feature('Sök spelare…'),
                       isDense: true,
                       border: OutlineInputBorder(),
                     ),
@@ -1578,9 +1598,13 @@ class _GoalSheetState extends State<_GoalSheet> {
                         onTap: () => _pick(player.personId),
                       ),
                     if (people.isEmpty && widget.players.isEmpty)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.all(16),
-                        child: Text('Matchtruppen saknar spelare.'),
+                        child: Text(
+                          AppStrings.of(
+                            context,
+                          ).feature('Matchtruppen saknar spelare.'),
+                        ),
                       ),
                   ],
                 ),
@@ -1702,8 +1726,8 @@ class _FactEditSheetState extends State<_FactEditSheet> {
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Minut',
+                decoration: InputDecoration(
+                  labelText: AppStrings.of(context).feature('Minut'),
                   suffixText: '′',
                   isDense: true,
                 ),
@@ -1713,8 +1737,8 @@ class _FactEditSheetState extends State<_FactEditSheet> {
                 DropdownButtonFormField<String?>(
                   initialValue: _scorer,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Målskytt',
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(context).feature('Målskytt'),
                     isDense: true,
                   ),
                   items: _options('Okänd målskytt', _scorer),
@@ -1724,8 +1748,8 @@ class _FactEditSheetState extends State<_FactEditSheet> {
                 DropdownButtonFormField<String?>(
                   initialValue: _assist,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Assist',
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(context).feature('Assist'),
                     isDense: true,
                   ),
                   items: _options('Ingen assist', _assist),
@@ -1740,8 +1764,8 @@ class _FactEditSheetState extends State<_FactEditSheet> {
                   minLines: 2,
                   maxLines: 5,
                   onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Anteckning',
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(context).feature('Anteckning'),
                     isDense: true,
                   ),
                 ),
@@ -1758,11 +1782,11 @@ class _FactEditSheetState extends State<_FactEditSheet> {
                       onPressed: () =>
                           Navigator.pop(context, const _FactEdit(delete: true)),
                       icon: const Icon(Icons.delete_outline),
-                      label: const Text('Ta bort'),
+                      label: Text(AppStrings.of(context).feature('Ta bort')),
                     ),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Avbryt'),
+                    child: Text(AppStrings.of(context).feature('Avbryt')),
                   ),
                   FilledButton(
                     onPressed: valid
@@ -1776,7 +1800,7 @@ class _FactEditSheetState extends State<_FactEditSheet> {
                             ),
                           )
                         : null,
-                    child: const Text('Spara'),
+                    child: Text(AppStrings.of(context).feature('Spara')),
                   ),
                 ],
               ),
@@ -1810,7 +1834,7 @@ class _MinuteDialogState extends State<_MinuteDialog> {
     final value = int.tryParse(_controller.text.trim());
     final valid = value != null && value >= 0 && value <= 300;
     return AlertDialog(
-      title: const Text('Matchminut'),
+      title: Text(AppStrings.of(context).feature('Matchminut')),
       content: TextField(
         controller: _controller,
         autofocus: true,
@@ -1822,7 +1846,7 @@ class _MinuteDialogState extends State<_MinuteDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Avbryt'),
+          child: Text(AppStrings.of(context).feature('Avbryt')),
         ),
         FilledButton(
           onPressed: valid ? () => Navigator.pop(context, value) : null,
@@ -1861,7 +1885,7 @@ class _MatchNoteDialogState extends State<_MatchNoteDialog> {
         minute <= 300 &&
         _text.text.trim().isNotEmpty;
     return AlertDialog(
-      title: const Text('Anteckning'),
+      title: Text(AppStrings.of(context).feature('Anteckning')),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1870,8 +1894,8 @@ class _MatchNoteDialogState extends State<_MatchNoteDialog> {
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              labelText: 'Minut',
+            decoration: InputDecoration(
+              labelText: AppStrings.of(context).feature('Minut'),
               suffixText: '′',
             ),
           ),
@@ -1883,20 +1907,22 @@ class _MatchNoteDialogState extends State<_MatchNoteDialog> {
             maxLines: 4,
             textCapitalization: TextCapitalization.sentences,
             onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(labelText: 'Text'),
+            decoration: InputDecoration(
+              labelText: AppStrings.of(context).feature('Text'),
+            ),
           ),
         ],
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Avbryt'),
+          child: Text(AppStrings.of(context).feature('Avbryt')),
         ),
         FilledButton(
           onPressed: valid
               ? () => Navigator.pop(context, (minute, _text.text.trim()))
               : null,
-          child: const Text('Spara'),
+          child: Text(AppStrings.of(context).feature('Spara')),
         ),
       ],
     );
@@ -1945,13 +1971,15 @@ class _ClockCorrectionDialogState extends State<_ClockCorrectionDialog> {
       ),
     );
     return AlertDialog(
-      title: const Text('Korrigera tid'),
+      title: Text(AppStrings.of(context).feature('Korrigera tid')),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Ange rätt matchtid just nu. Redan registrerade händelser behåller sina minuter.',
+          Text(
+            AppStrings.of(context).feature(
+              'Ange rätt matchtid just nu. Redan registrerade händelser behåller sina minuter.',
+            ),
           ),
           const SizedBox(height: 8),
           Row(
@@ -1966,13 +1994,13 @@ class _ClockCorrectionDialogState extends State<_ClockCorrectionDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Avbryt'),
+          child: Text(AppStrings.of(context).feature('Avbryt')),
         ),
         FilledButton(
           onPressed: valid
               ? () => Navigator.pop(context, minutes * 60 + seconds)
               : null,
-          child: const Text('Spara'),
+          child: Text(AppStrings.of(context).feature('Spara')),
         ),
       ],
     );
@@ -2025,7 +2053,7 @@ class _MatchFormatDialogState extends State<_MatchFormatDialog> {
         minutes <= 120 &&
         _periods >= widget.minimumPeriods;
     return AlertDialog(
-      title: const Text('Matchformat'),
+      title: Text(AppStrings.of(context).feature('Matchformat')),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -2053,7 +2081,9 @@ class _MatchFormatDialogState extends State<_MatchFormatDialog> {
                 Expanded(
                   child: DropdownButtonFormField<int>(
                     initialValue: _periods,
-                    decoration: const InputDecoration(labelText: 'Perioder'),
+                    decoration: InputDecoration(
+                      labelText: AppStrings.of(context).feature('Perioder'),
+                    ),
                     items: [
                       for (var n = widget.minimumPeriods; n <= 8; n++)
                         DropdownMenuItem(value: n, child: Text('$n')),
@@ -2069,8 +2099,10 @@ class _MatchFormatDialogState extends State<_MatchFormatDialog> {
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
-                      labelText: 'Minuter per period',
+                    decoration: InputDecoration(
+                      labelText: AppStrings.of(
+                        context,
+                      ).feature('Minuter per period'),
                     ),
                   ),
                 ),
@@ -2082,14 +2114,14 @@ class _MatchFormatDialogState extends State<_MatchFormatDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Avbryt'),
+          child: Text(AppStrings.of(context).feature('Avbryt')),
         ),
         FilledButton(
           onPressed: valid
               ? () =>
                     Navigator.pop(context, List<int>.filled(_periods, minutes))
               : null,
-          child: const Text('Spara'),
+          child: Text(AppStrings.of(context).feature('Spara')),
         ),
       ],
     );

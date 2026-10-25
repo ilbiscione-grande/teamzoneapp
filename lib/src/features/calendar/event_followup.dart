@@ -4,31 +4,63 @@ part of '../../app/teamzone_app.dart';
 // before an event and followed up after it; attendance, answers and the match
 // result are counted by TeamZone, other values are entered afterwards.
 
-String _kpiValueText(String valueType, double? value) {
+// Only catalog metrics have system labels. Custom labels are team content.
+String _localizedKpiLabel(BuildContext context, String key, String label) {
+  final systemLabel = const <String, String>{
+    'attendance_rate': 'Närvaro',
+    'response_rate': 'Svar på kallelsen',
+    'late_count': 'Sena ankomster',
+    'goals_for': 'Gjorda mål',
+    'goals_against': 'Insläppta mål',
+    'clean_sheet': 'Hålla nollan',
+    'shots': 'Skott',
+    'shots_on_target': 'Skott på mål',
+    'corners': 'Hörnor',
+    'ball_wins_offensive': 'Bollvinster på offensiv planhalva',
+    'save_rate': 'Räddningsprocent',
+    'technical_faults': 'Tekniska fel',
+    'everyone_played_half': 'Alla spelade minst halva matchen',
+    'build_up_from_keeper': 'Vågade spela ut från målvakten',
+    'focus_achieved': 'Träningens fokus uppnått',
+    'intensity': 'Intensitet',
+  }[key];
+  return systemLabel == null
+      ? label
+      : AppStrings.of(context).feature(systemLabel);
+}
+
+String _kpiValueText(BuildContext context, String valueType, double? value) {
   if (value == null) return '–';
   String number(double v) =>
       v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(1);
   return switch (valueType) {
     'percent' => '${number(value)} %',
-    'boolean' => value >= 1 ? 'Ja' : 'Nej',
+    'boolean' => AppStrings.of(context).feature(value >= 1 ? 'Ja' : 'Nej'),
     'scale' => '${number(value)}/5',
     'minutes' => '${number(value)} min',
     _ => number(value),
   };
 }
 
-String _kpiGoalText(EventKpi kpi) {
-  if (kpi.valueType == 'boolean') return kpi.target >= 1 ? 'Ja' : 'Nej';
-  final value = _kpiValueText(kpi.valueType, kpi.target);
+String _kpiGoalText(BuildContext context, EventKpi kpi) {
+  if (kpi.valueType == 'boolean') {
+    return AppStrings.of(context).feature(kpi.target >= 1 ? 'Ja' : 'Nej');
+  }
+  final value = _kpiValueText(context, kpi.valueType, kpi.target);
   return switch (kpi.comparator) {
-    'gte' => 'minst $value',
-    'lte' => 'högst $value',
+    'gte' => AppStrings.of(
+      context,
+    ).formatFeature('minst {value}', {'value': value}),
+    'lte' => AppStrings.of(
+      context,
+    ).formatFeature('högst {value}', {'value': value}),
     _ => value,
   };
 }
 
-String _kpiSourceText(EventKpi kpi) =>
-    kpi.isManual ? 'Fylls i efteråt' : 'Räknas automatiskt';
+String _kpiSourceText(BuildContext context, EventKpi kpi) => AppStrings.of(
+  context,
+).feature(kpi.isManual ? 'Fylls i efteråt' : 'Räknas automatiskt');
 
 String _declineReasonLabel(String code) => switch (code) {
   'illness' => 'Sjukdom',
@@ -112,7 +144,11 @@ class _KpiGoalsSectionState extends State<_KpiGoalsSection> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Målet kunde inte tas bort.')),
+          SnackBar(
+            content: Text(
+              AppStrings.of(context).feature('Målet kunde inte tas bort.'),
+            ),
+          ),
         );
       }
     }
@@ -150,7 +186,7 @@ class _KpiGoalsSectionState extends State<_KpiGoalsSection> {
                     child: Semantics(
                       header: true,
                       child: Text(
-                        title.toUpperCase(),
+                        AppStrings.of(context).feature(title).toUpperCase(),
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
@@ -164,43 +200,56 @@ class _KpiGoalsSectionState extends State<_KpiGoalsSection> {
                       key: const ValueKey('kpi-add-goal'),
                       onPressed: () => _edit(),
                       icon: const Icon(Icons.add, size: 18),
-                      label: const Text('Lägg till mål'),
+                      label: Text(
+                        AppStrings.of(context).feature('Lägg till mål'),
+                      ),
                     ),
                 ],
               ),
             ),
             if (data.kpis.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: Text(
-                  'Sätt mål som ni följer upp efteråt, till exempel närvaro eller skott på mål.',
+                  AppStrings.of(context).feature(
+                    'Sätt mål som ni följer upp efteråt, till exempel närvaro eller skott på mål.',
+                  ),
                   style: TextStyle(fontSize: 13),
                 ),
               ),
             for (final kpi in data.kpis)
               ListTile(
                 dense: true,
-                title: Text(kpi.label),
+                title: Text(_localizedKpiLabel(context, kpi.kpiKey, kpi.label)),
                 subtitle: Text(
-                  '${_kpiSourceText(kpi)}${kpi.visibleToPlayers ? ' · Syns för spelarna' : ''}',
+                  '${_kpiSourceText(context, kpi)}${kpi.visibleToPlayers ? ' · ${AppStrings.of(context).feature('Syns för spelarna')}' : ''}',
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      _kpiGoalText(kpi),
+                      _kpiGoalText(context, kpi),
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     if (_canEdit)
                       PopupMenuButton<String>(
-                        tooltip: 'Åtgärder för målet',
+                        tooltip: AppStrings.of(
+                          context,
+                        ).feature('Åtgärder för målet'),
                         onSelected: (value) =>
                             value == 'edit' ? _edit(kpi) : _delete(kpi),
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(value: 'edit', child: Text('Ändra')),
+                        itemBuilder: (_) => [
+                          PopupMenuItem(
+                            value: 'edit',
+                            child: Text(
+                              AppStrings.of(context).feature('Ändra'),
+                            ),
+                          ),
                           PopupMenuItem(
                             value: 'delete',
-                            child: Text('Ta bort'),
+                            child: Text(
+                              AppStrings.of(context).feature('Ta bort'),
+                            ),
                           ),
                         ],
                       ),
@@ -244,6 +293,7 @@ class _KpiGoalSheetState extends State<_KpiGoalSheet> {
     text: widget.existing == null
         ? ''
         : _kpiValueText(
+            context,
             widget.existing!.valueType,
             widget.existing!.target,
           ).replaceAll(RegExp(r'[^0-9.,]'), ''),
@@ -379,7 +429,9 @@ class _KpiGoalSheetState extends State<_KpiGoalSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              widget.existing == null ? 'Nytt mål' : 'Ändra mål',
+              AppStrings.of(
+                context,
+              ).feature(widget.existing == null ? 'Nytt mål' : 'Ändra mål'),
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
@@ -393,13 +445,17 @@ class _KpiGoalSheetState extends State<_KpiGoalSheet> {
                 children: [
                   for (final entry in catalog)
                     ChoiceChip(
-                      label: Text(entry.label),
+                      label: Text(
+                        _localizedKpiLabel(context, entry.key, entry.label),
+                      ),
                       selected: _key == entry.key,
                       onSelected: (_) => _select(entry.key),
                     ),
                   ChoiceChip(
                     key: const ValueKey('kpi-custom'),
-                    label: const Text('Eget nyckeltal'),
+                    label: Text(
+                      AppStrings.of(context).feature('Eget nyckeltal'),
+                    ),
                     selected: _key == 'custom',
                     onSelected: (_) => _select('custom'),
                   ),
@@ -410,17 +466,36 @@ class _KpiGoalSheetState extends State<_KpiGoalSheet> {
               TextField(
                 controller: _label,
                 maxLength: 80,
-                decoration: const InputDecoration(labelText: 'Namn'),
+                decoration: InputDecoration(
+                  labelText: AppStrings.of(context).feature('Namn'),
+                ),
               ),
               DropdownButtonFormField<String>(
                 initialValue: _customType,
-                decoration: const InputDecoration(labelText: 'Typ'),
-                items: const [
-                  DropdownMenuItem(value: 'count', child: Text('Antal')),
-                  DropdownMenuItem(value: 'percent', child: Text('Procent')),
-                  DropdownMenuItem(value: 'boolean', child: Text('Ja/nej')),
-                  DropdownMenuItem(value: 'scale', child: Text('Skala 1–5')),
-                  DropdownMenuItem(value: 'minutes', child: Text('Minuter')),
+                decoration: InputDecoration(
+                  labelText: AppStrings.of(context).feature('Typ'),
+                ),
+                items: [
+                  DropdownMenuItem(
+                    value: 'count',
+                    child: Text(AppStrings.of(context).feature('Antal')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'percent',
+                    child: Text(AppStrings.of(context).feature('Procent')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'boolean',
+                    child: Text(AppStrings.of(context).feature('Ja/nej')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'scale',
+                    child: Text(AppStrings.of(context).feature('Skala 1–5')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'minutes',
+                    child: Text(AppStrings.of(context).feature('Minuter')),
+                  ),
                 ],
                 onChanged: (value) =>
                     setState(() => _customType = value ?? 'count'),
@@ -429,18 +504,26 @@ class _KpiGoalSheetState extends State<_KpiGoalSheet> {
             if (_key.isNotEmpty) ...[
               const SizedBox(height: 12),
               if (_entry?.isAutomatic ?? false)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(bottom: 8),
                   child: Text(
-                    'Räknas automatiskt av TeamZone.',
+                    AppStrings.of(
+                      context,
+                    ).feature('Räknas automatiskt av TeamZone.'),
                     style: TextStyle(fontSize: 13),
                   ),
                 ),
               if (type == 'boolean')
                 SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(value: true, label: Text('Mål: ja')),
-                    ButtonSegment(value: false, label: Text('Mål: nej')),
+                  segments: [
+                    ButtonSegment(
+                      value: true,
+                      label: Text(AppStrings.of(context).feature('Mål: ja')),
+                    ),
+                    ButtonSegment(
+                      value: false,
+                      label: Text(AppStrings.of(context).feature('Mål: nej')),
+                    ),
                   ],
                   selected: {_boolTarget},
                   onSelectionChanged: (value) =>
@@ -450,9 +533,15 @@ class _KpiGoalSheetState extends State<_KpiGoalSheet> {
                 Row(
                   children: [
                     SegmentedButton<String>(
-                      segments: const [
-                        ButtonSegment(value: 'gte', label: Text('Minst')),
-                        ButtonSegment(value: 'lte', label: Text('Högst')),
+                      segments: [
+                        ButtonSegment(
+                          value: 'gte',
+                          label: Text(AppStrings.of(context).feature('Minst')),
+                        ),
+                        ButtonSegment(
+                          value: 'lte',
+                          label: Text(AppStrings.of(context).feature('Högst')),
+                        ),
                       ],
                       selected: {_comparator == 'lte' ? 'lte' : 'gte'},
                       onSelectionChanged: (value) =>
@@ -467,7 +556,7 @@ class _KpiGoalSheetState extends State<_KpiGoalSheet> {
                           decimal: true,
                         ),
                         decoration: InputDecoration(
-                          labelText: 'Mål',
+                          labelText: AppStrings.of(context).feature('Mål'),
                           suffixText: switch (type) {
                             'percent' => '%',
                             'minutes' => 'min',
@@ -483,8 +572,14 @@ class _KpiGoalSheetState extends State<_KpiGoalSheet> {
                 contentPadding: EdgeInsets.zero,
                 value: _visible,
                 onChanged: (value) => setState(() => _visible = value),
-                title: const Text('Visa målet för spelarna'),
-                subtitle: const Text('Blir ett gemensamt lagmål på eventet.'),
+                title: Text(
+                  AppStrings.of(context).feature('Visa målet för spelarna'),
+                ),
+                subtitle: Text(
+                  AppStrings.of(
+                    context,
+                  ).feature('Blir ett gemensamt lagmål på eventet.'),
+                ),
               ),
             ],
             if (_error != null)
@@ -496,7 +591,7 @@ class _KpiGoalSheetState extends State<_KpiGoalSheet> {
             FilledButton(
               key: const ValueKey('kpi-save-goal'),
               onPressed: _saving ? null : _save,
-              child: const Text('Spara mål'),
+              child: Text(AppStrings.of(context).feature('Spara mål')),
             ),
           ],
         ),
@@ -566,7 +661,11 @@ class _FollowupTabState extends State<_FollowupTab> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Värdet kunde inte sparas.')),
+          SnackBar(
+            content: Text(
+              AppStrings.of(context).feature('Värdet kunde inte sparas.'),
+            ),
+          ),
         );
       }
     }
@@ -676,9 +775,9 @@ class _FollowupTabState extends State<_FollowupTab> {
       return Card(
         key: const ValueKey('followup-done'),
         color: colors.secondaryContainer,
-        child: const ListTile(
+        child: ListTile(
           leading: Icon(Icons.task_alt),
-          title: Text('Uppföljningen är klar'),
+          title: Text(AppStrings.of(context).feature('Uppföljningen är klar')),
         ),
       );
     }
@@ -688,9 +787,9 @@ class _FollowupTabState extends State<_FollowupTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const ListTile(
+          ListTile(
             leading: Icon(Icons.checklist),
-            title: Text('Att göra'),
+            title: Text(AppStrings.of(context).feature('Att göra')),
           ),
           for (final todo in data.todos)
             ListTile(
@@ -705,18 +804,20 @@ class _FollowupTabState extends State<_FollowupTab> {
               trailing: switch (todo.kind) {
                 'attendance' => TextButton(
                   onPressed: widget.onOpenParticipants,
-                  child: const Text('Registrera'),
+                  child: Text(AppStrings.of(context).feature('Registrera')),
                 ),
                 'kpi_values' when widget.allowRecord && data.canRecordValues =>
                   TextButton(
                     key: const ValueKey('followup-fill-kpis'),
                     onPressed: () => _recordMissing(data),
-                    child: const Text('Fyll i'),
+                    child: Text(AppStrings.of(context).feature('Fyll i')),
                   ),
                 'match_result' when widget.onOpenMatchMode != null =>
                   TextButton(
                     onPressed: widget.onOpenMatchMode,
-                    child: const Text('Öppna matchläget'),
+                    child: Text(
+                      AppStrings.of(context).feature('Öppna matchläget'),
+                    ),
                   ),
                 _ => null,
               },
@@ -736,7 +837,7 @@ class _FollowupTabState extends State<_FollowupTab> {
     final cards = <(String, String, String?, Color?)>[
       (
         'Närvaro',
-        _kpiValueText('percent', rate),
+        _kpiValueText(context, 'percent', rate),
         delta == null ? null : '${delta >= 0 ? '+' : ''}$delta mot snitt',
         delta == null
             ? null
@@ -829,7 +930,7 @@ class _FollowupTabState extends State<_FollowupTab> {
           'Närvaro',
           trailing: TextButton(
             onPressed: widget.onOpenParticipants,
-            child: const Text('Visa deltagare'),
+            child: Text(AppStrings.of(context).feature('Visa deltagare')),
           ),
         ),
         if (total > 0)
@@ -897,8 +998,10 @@ class _FollowupTabState extends State<_FollowupTab> {
                 ),
         ),
         if (data.kpis.isEmpty)
-          const Text(
-            'Inga mål är satta. Lägg till mål under Förberedelser.',
+          Text(
+            AppStrings.of(
+              context,
+            ).feature('Inga mål är satta. Lägg till mål under Förberedelser.'),
             style: TextStyle(fontSize: 13),
           ),
         for (final kpi in data.kpis) _goalRow(context, data, kpi),
@@ -934,18 +1037,20 @@ class _FollowupTabState extends State<_FollowupTab> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          kpi.label,
+                          _localizedKpiLabel(context, kpi.kpiKey, kpi.label),
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
                         Text(
-                          'Mål: ${_kpiGoalText(kpi)}',
+                          AppStrings.of(context).formatFeature('Mål: {value}', {
+                            'value': _kpiGoalText(context, kpi),
+                          }),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
                     ),
                   ),
                   Text(
-                    _kpiValueText(kpi.valueType, kpi.actual),
+                    _kpiValueText(context, kpi.valueType, kpi.actual),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(width: 8),
@@ -1074,6 +1179,7 @@ class _KpiValueDialogState extends State<_KpiValueDialog> {
     text: widget.kpi.actual == null || widget.kpi.valueType == 'boolean'
         ? ''
         : _kpiValueText(
+            context,
             widget.kpi.valueType,
             widget.kpi.actual,
           ).replaceAll(RegExp(r'[^0-9.,]'), ''),
@@ -1116,19 +1222,25 @@ class _KpiValueDialogState extends State<_KpiValueDialog> {
   Widget build(BuildContext context) {
     final kpi = widget.kpi;
     return AlertDialog(
-      title: Text(kpi.label),
+      title: Text(_localizedKpiLabel(context, kpi.kpiKey, kpi.label)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Mål: ${_kpiGoalText(kpi)}'),
+          Text('Mål: ${_kpiGoalText(context, kpi)}'),
           const SizedBox(height: 12),
           if (kpi.valueType == 'boolean')
             SegmentedButton<bool>(
               emptySelectionAllowed: true,
-              segments: const [
-                ButtonSegment(value: true, label: Text('Ja')),
-                ButtonSegment(value: false, label: Text('Nej')),
+              segments: [
+                ButtonSegment(
+                  value: true,
+                  label: Text(AppStrings.of(context).feature('Ja')),
+                ),
+                ButtonSegment(
+                  value: false,
+                  label: Text(AppStrings.of(context).feature('Nej')),
+                ),
               ],
               selected: {?_bool},
               onSelectionChanged: (value) =>
@@ -1143,7 +1255,7 @@ class _KpiValueDialogState extends State<_KpiValueDialog> {
                 decimal: true,
               ),
               decoration: InputDecoration(
-                labelText: 'Utfall',
+                labelText: AppStrings.of(context).feature('Utfall'),
                 errorText: _error,
                 suffixText: switch (kpi.valueType) {
                   'percent' => '%',
@@ -1159,12 +1271,12 @@ class _KpiValueDialogState extends State<_KpiValueDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Avbryt'),
+          child: Text(AppStrings.of(context).feature('Avbryt')),
         ),
         FilledButton(
           key: const ValueKey('kpi-save-value'),
           onPressed: _save,
-          child: const Text('Spara'),
+          child: Text(AppStrings.of(context).feature('Spara')),
         ),
       ],
     );

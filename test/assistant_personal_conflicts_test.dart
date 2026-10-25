@@ -1,3 +1,4 @@
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teamzone_app/src/features/assistant_coach/assistant_tasks.dart';
@@ -77,6 +78,13 @@ void main() {
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('sv'),
+          supportedLocales: const [Locale('sv')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           home: Scaffold(
             body: SingleChildScrollView(
               child: AssistantTaskSections(

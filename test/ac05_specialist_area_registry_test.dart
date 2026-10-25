@@ -1,3 +1,4 @@
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -61,6 +62,13 @@ void main() {
     final area = AssistantSpecialistRegistry.byKey('rehab_support')!;
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('sv'),
+        supportedLocales: const [Locale('sv')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         theme: ThemeData.light(),
         darkTheme: ThemeData.dark(),
         home: Scaffold(body: AssistantAreaBadge(area: area)),
@@ -79,6 +87,13 @@ void main() {
       for (final area in AssistantSpecialistRegistry.areas) {
         await tester.pumpWidget(
           MaterialApp(
+            locale: const Locale('sv'),
+            supportedLocales: const [Locale('sv')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
             theme: ThemeData(brightness: brightness),
             home: Scaffold(body: AssistantAreaBadge(area: area)),
           ),

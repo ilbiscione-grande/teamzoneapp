@@ -17,6 +17,56 @@ import 'package:teamzone_app/src/features/overview/overview_models.dart';
 import 'package:teamzone_app/src/features/overview/overview_services.dart';
 
 void main() {
+  testWidgets(
+    'English preparations translate catalog goals and retain custom content',
+    (tester) async {
+      final prep = _Prep()
+        ..items = [
+          const PreparationItem(id: 'ball', kind: 'material', label: 'Bollar'),
+        ];
+      await prep.saveKpiTarget(
+        eventId: 'e',
+        kpiKey: 'shots_on_target',
+        comparator: 'gte',
+        target: 10,
+        visibleToPlayers: true,
+      );
+      await prep.saveKpiTarget(
+        eventId: 'e',
+        kpiKey: 'custom',
+        label: 'Hörnor',
+        valueType: 'boolean',
+        comparator: 'eq',
+        target: 1,
+        visibleToPlayers: false,
+      );
+      await _openPreparation(
+        tester,
+        _Calendar('training', prep),
+        locale: const Locale('en'),
+      );
+      expect(find.text('TRAINING GOALS'), findsOneWidget);
+      expect(find.text('Shots on target'), findsOneWidget);
+      expect(
+        find.text('Hörnor'),
+        findsOneWidget,
+        reason: 'a custom metric is team content',
+      );
+      expect(find.text('at least 10'), findsOneWidget);
+      expect(find.text('Yes'), findsOneWidget);
+      expect(find.textContaining('Entered afterwards'), findsWidgets);
+      await tester.scrollUntilVisible(
+        find.text('Bollar'),
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      expect(find.text('Bollar'), findsOneWidget);
+      expect(find.text('EQUIPMENT'), findsOneWidget);
+      expect(find.text('Add equipment'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('assistant opens inline preparation and completion clears task', (
     tester,
   ) async {
@@ -892,6 +942,7 @@ Future<void> _openPreparation(
   MatchServices match = const UnconfiguredMatchServices(),
   IdentityServices identity = const _Identity(),
   bool fromAssistant = false,
+  Locale locale = const Locale('sv'),
 }) async {
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1;
@@ -900,7 +951,7 @@ Future<void> _openPreparation(
   await tester.pumpWidget(
     TeamZoneApp(
       environment: const AppEnvironment(name: 'prep01', matchSpaceV2: true),
-      locale: const Locale('sv'),
+      locale: locale,
       services: AppServices(
         identity: identity,
         calendar: calendar,
@@ -919,15 +970,23 @@ Future<void> _openPreparation(
     await tester.pumpAndSettle();
     return;
   }
-  await tester.tap(find.text('Kalender'));
+  await tester.tap(
+    find.text(locale.languageCode == 'en' ? 'Calendar' : 'Kalender'),
+  );
   await tester.pumpAndSettle();
-  await tester.tap(find.byTooltip('Vy och filter'));
+  await tester.tap(
+    find.byTooltip(
+      locale.languageCode == 'en' ? 'View and filters' : 'Vy och filter',
+    ),
+  );
   await tester.pumpAndSettle();
   await tester.tap(find.text('Agenda').last);
   await tester.pumpAndSettle();
   await tester.tap(find.text(calendar.title));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Förberedelser'));
+  await tester.tap(
+    find.text(locale.languageCode == 'en' ? 'Preparation' : 'Förberedelser'),
+  );
   await tester.pumpAndSettle();
 }
 
