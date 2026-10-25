@@ -265,6 +265,29 @@ class AppStrings {
   }
 
   static const Map<String, String> _featureEnglish = {
+    'Spara matchplanen': 'Save match plan',
+    'Skapa matchplan': 'Create match plan',
+    'Öppna matchplanen': 'Open match plan',
+    'Spara uppställningen': 'Save line-up',
+    'Inga planerade byten.': 'No planned substitutions.',
+    'Välj startspelare och avbytare för att planera byten.':
+        'Choose starters and substitutes to plan substitutions.',
+    'Taktik': 'Tactics',
+    'Standardsituationer': 'Set pieces',
+    'Motståndaren och nyckelspelare': 'Opponent and key players',
+    'Försvar:': 'Defence:',
+    'Anfall:': 'Attack:',
+    'Omställning:': 'Transition:',
+    'Press:': 'Pressing:',
+    'Hörnor för:': 'Corners for:',
+    'Hörnor mot:': 'Corners against:',
+    'Frisparkar:': 'Free kicks:',
+    'Inkast:': 'Throw-ins:',
+    'Straffar:': 'Penalties:',
+    'Formation:': 'Formation:',
+    'Styrkor:': 'Strengths:',
+    'Svagheter:': 'Weaknesses:',
+    'Nyckelspelare:': 'Key players:',
     'Foul': 'Foul',
     'Välj ett lag i appen för att se dess uppgifter.':
         'Choose a team in the app to see its tasks.',

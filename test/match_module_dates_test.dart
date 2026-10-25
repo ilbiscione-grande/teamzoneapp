@@ -14,7 +14,7 @@ import 'package:teamzone_app/src/features/workspaces/module_services.dart';
 
 void main() {
   testWidgets(
-    'English match analysis translates statistics and keeps names and notes',
+    'English match planning and analysis translate system labels and keep team content',
     (tester) async {
       tester.view.physicalSize = const Size(390, 1100);
       tester.view.devicePixelRatio = 1;
@@ -42,6 +42,38 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Next match · Tomorrow'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('module-open-next-match')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const Key('match-preparation-part')),
+          matching: find.text('Match plan'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final planScroll = find
+          .ancestor(
+            of: find.byKey(const Key('match-plan-tactics')),
+            matching: find.byType(Scrollable),
+          )
+          .first;
+      expect(find.text('Tactics'), findsOneWidget);
+      expect(find.text('Defence:'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Svensk taktik'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Set pieces'),
+        200,
+        scrollable: planScroll,
+      );
+      expect(find.text('Corners for:'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Opponent and key players'),
+        200,
+        scrollable: planScroll,
+      );
+      expect(find.text('Strengths:'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Played'));
       await tester.pumpAndSettle();
       await tester.tap(find.textContaining('Yesterday United'));
@@ -98,6 +130,17 @@ void main() {
 }
 
 class _Plans extends UnconfiguredMatchPlanServices {
+  @override
+  Future<MatchPlan?> getPlan(String eventId) async => MatchPlan(
+    eventId: eventId,
+    canEdit: true,
+    published: false,
+    revision: 1,
+    tactics: const MatchPlanSection(text: 'Svensk taktik'),
+    setPieces: const MatchPlanSection(),
+    opponent: const MatchPlanSection(),
+  );
+
   @override
   Future<List<ModuleMatch>> listMatches({
     required String teamId,
