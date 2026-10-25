@@ -5,6 +5,13 @@
 **Omfattning:** Inloggning/Skapa konto, Hem, Laget, Kalender/EventDetails, Inbox/notiser och publik klubbsajt  
 **Styrande plan:** `docs/implementation/core_app_workplan.md`
 
+**Läsanvisning 2026-10-25:** detta är grundappens fastställda paritetsunderlag.
+Kolumnen Rebuildläge beskriver ursprunglig kartläggning och ska inte läsas som
+dagens leveransstatus. Aktuella resultat och öppna grindar finns i
+[leveranskorten](core_app_delivery_cards.md) och
+[gemensam nulägesstatus](current_status.md). Senare modul- och biblioteksbeslut
+följs separat i paket 11–13.
+
 ## 1. Syfte och arbetssätt
 
 Det här dokumentet märker först upp den tidigare appens användarsynliga funktioner innan ny implementation fortsätter. Varje rad ska gås igenom och godkännas tillsammans med produktägaren.

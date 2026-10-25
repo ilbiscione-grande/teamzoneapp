@@ -53,7 +53,9 @@ class _TrainingSeasonPlan extends StatelessWidget {
             onTake: onTake,
             takeHint: onTake == null
                 ? null
-                : 'Ett tryck gör den till passets träningsfokus.',
+                : AppStrings.of(
+                    context,
+                  ).feature('Ett tryck gör den till passets träningsfokus.'),
           ),
           if (tips.isNotEmpty)
             Card(
@@ -65,7 +67,7 @@ class _TrainingSeasonPlan extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: Text(
-                      'Tips för perioden',
+                      AppStrings.of(context).feature('Tips för perioden'),
                       style: theme.textTheme.titleSmall,
                     ),
                   ),

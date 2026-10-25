@@ -1,9 +1,21 @@
 # TeamZone grundapp – implementerbara arbetskort
 
-**Status:** AKTIVT ARBETSDOKUMENT (senast uppdaterat 2026-10-15)  
+**Status:** AKTIVT ARBETSDOKUMENT (senast statussynkat 2026-10-25)
 **Upprättat:** 2026-08-23  
 **Källa:** fastställd paritetsmatris och fastställd arbetsplan  
 **Livegräns:** inga Supabase-liveändringar utan separat uttryckligt godkännande
+
+## Aktuell avstämning 2026-10-25
+
+[Gemensam nulägesstatus](current_status.md) kompletterar grundappskorten med
+moduler, Webtools, drift och öppna releasepunkter. Senare modulbeslut finns i
+paket 11–13; de innebär inte att alla grundappskort eller hela S11 är stängda.
+Språkfynden från granskningen har senare rättats lokalt:
+[810/810 Flutter-tester, analys och format passerar](../evidence/localization_modules_2026-10-25.md).
+De 64 saknade engelska texterna är tillagda och träningsvyerna lokaliserade. Publika sajten och
+Webtools har godkända byggen och 94 respektive 54 tester. Juridiskt godkännande,
+fysisk roll-/enhetsacceptans och produktionsprovisionering klarmarkeras inte av
+denna dokumentationsavstämning. Befintliga historiska verifieringsdatum bevaras.
 
 ## 1. Så används dokumentet
 
@@ -27,7 +39,8 @@ Ett kort får inte markeras `[x]` enbart för att en teknisk grund redan finns. 
 ## 2. Fasta genomföranderegler
 
 - Gamla `C:/Dev/TeamZone` används endast som skrivskyddad referens.
-- Paketidentiteten förblir `com.teamzone.teamzone`.
+- Produktionsidentiteten förblir `com.teamzone.teamzone`; local/audit använder
+  `com.teamzone.teamzone.test`.
 - Befintliga lokala ändringar bevaras och återställs inte.
 - Ingen import eller kompatibilitetskoppling mot gamla databaser byggs.
 - Supabase-live, produktionsprovisionering, webtools och workspaces ligger utanför kortens automatiska behörighet.
@@ -681,7 +694,7 @@ Supabase-testprojektet; runtime förblir avstängd tills flödet är verifierat.
 - [x] Publik HTML har högst 60 sekunders CDN-cache med `must-revalidate`; API/kontakt förblir `no-store` och köad path-invalidation har autentiserad worker, retry och timeoutåtertagning.
 - [x] Security headers, canonical SEO, dynamisk sitemap, robots och repeterbart synthetic smoke-script ingår i grinden.
 - [x] Opaque publik media passerar aldrig HTML-/tenant-rewrite och behåller sin egen immutable bildcache även på egna klubbdomäner.
-- [x] Live matchrapportering ligger endast i LATER-03 och kontraktstest blockerar live-/matchklocka-/realtimebegrepp i PUB-06-leveransen.
+- [x] PUB-06 verifierades ursprungligen utan live-/matchklocka-/realtimeflöde. Senare beslutspaket 12 öppnar publikt match-live, som nu har separat implementation; den ursprungliga scopegrinden är inte ett fortsatt förbud mot den godkända utbyggnaden.
 
 **Återstår:** hosted synthetic smoke, cache-hit/invalidation-SLA med publicerad fixture, workerhemlighet/schemaläggning och separat driftgodkännande.
 
@@ -1054,29 +1067,29 @@ kontosynk-verifiering återstår.
 
 ### LATER-01 – Lagets fas 2
 
-**Status:** `[ ]`  
+**Status:** `[~]` – historik och profilstatistik delvis levererade genom TEAM-07 och PROF-04; övriga delar kvarstår. Avstämt 2026-10-25.
 **Paritet:** TEAM-13–TEAM-16
 
 - [ ] Import med preview/dubblettskydd/återställningsbar batch.
-- [ ] Historik och totalstatistik ovanpå temporal representation.
+- [~] Historik och profilstatistik finns genom TEAM-07/PROF-04; hela den senare fasens totalstatistik är inte därmed slutverifierad.
 - [ ] Återanvändbara grupper som endast fyller deltagardraft.
 - [ ] Skada/avstängning först efter separat policy-/integritetsgrind.
 
 ### LATER-02 – Kalenderns senare fas
 
-**Status:** `[ ]`  
+**Status:** `[~]` – match-/träningsmodulerna finns; import, anteckningar, appens biblioteksimport och full slutacceptans kvarstår. Avstämt 2026-10-25.
 **Paritet:** CAL-19–CAL-22
 
 - [ ] Eventimport, personliga/delade anteckningar och taktiska bilagor.
-- [ ] Full match-/träningsplanering efter stabila grundflöden.
+- [~] Match- och träningsplanering finns i egna moduler enligt paket 11; Tacticsboard-kopplingen följer paket 13 och är inte levererad i appen.
 
 ### LATER-03 – Premiumadresser och liverapportering
 
-**Status:** `[ ]`  
+**Status:** `[~]` – publikt match-live är beslutat och byggt; premiumdomän-/wildcardgrinden och full slutacceptans är inte stängda. Avstämt 2026-10-25.
 **Paritet:** PUB-12–PUB-14
 
 - [ ] Egen domän och senare wildcard-subdomän enligt PUB-05.
-- [ ] Live matchrapportering får separat state-, realtime-, moderation- och publiceringsspecifikation.
+- [~] Live matchrapportering har separat godkänt beslutspaket 12 samt databas-, app- och webbimplementation. Full fysisk publicerings-/samtyckesacceptans klarmarkeras inte av kodinventeringen.
 
 ### LATER-04 – Utökad safeguarding och hälsosignaler
 
@@ -1088,9 +1101,15 @@ kontosynk-verifiering återstår.
 
 ## 13. Våg 9 – samlad releasegrind
 
+Verifieringslistorna nedan bevarar baslinjeevidensen från augusti, länkad i
+REL-01–03:s evidensdokument. De är inte nya körningar av alla senare funktioner.
+Nya moduler och tillägg behöver egen slutacceptans. Språkregressionen är nu
+rättad med gröna tester och analys; hela den aktuella REL-01-bygggrinden har
+inte omkörts. REL-02/03:s ursprungliga scope behålls.
+
 ### REL-01 – Automatiserad kvalitetsgrind
 
-**Status:** `[x]`  
+**Status:** `[~]` – baslinjen passerade; efter språkfixen 2026-10-25 passerar alla 810 tester, analys och format. Ny APK/AAB och release-webb har inte byggts i denna rättning, så hela den aktuella bygggrinden klarmarkeras inte. Listan nedan är historisk verifiering.
 **Beroenden:** Våg 0–6
 
 - [x] Dart-formatkontrollen passerar för samtliga 150 filer under `lib` och `test`.
@@ -1118,9 +1137,9 @@ kontosynk-verifiering återstår.
 
 - [x] Gamla `C:\Dev\TeamZone` är git-ren och ingen produktkod refererar till dess sökväg eller en gammal databas; read-only scopegrind passerar.
 - [x] Dokumenterade Supabase-liveändringar ligger i tidigare separat godkända rolloutbevis; aktuellt arbete är lokalt och releaseverktygen innehåller inga push/deploykommandon.
-- [x] Produktion är fortsatt `not_provisioned` utan Supabase-/Firebaseprojekt; inga `webtools`- eller `workspaces`-kataloger finns eller har startats.
-- [x] Android namespace/applicationId och iOS bundle identifier är fortsatt `com.teamzone.teamzone`.
-- [x] Alla implementerade arbetskort har evidence, REL-01 och REL-02 är gröna och första återställningspunkten `bef10fb` finns.
+- [x] Den ursprungliga scopegrinden passerade innan webtools/workspaces startades. Nu finns dessa genom senare beslut; separat produktion är fortfarande `not_provisioned`, medan Firebase-projektet delas med audit enligt miljöplanen.
+- [x] Produktionsidentiteten är `com.teamzone.teamzone`. Senare miljöseparering använder `com.teamzone.teamzone.test` för Android local/audit.
+- [x] Vid den ursprungliga scopegrinden hade de då implementerade korten evidens, REL-01/02 var gröna och återställningspunkten `bef10fb` fanns. Aktuell REL-01 är åter öppen enligt statusen ovan.
 
 ## 14. Våg 10 – utbyggnad efter grundappen
 
@@ -1400,7 +1419,7 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 
 ### POOL-04 – Matchpoolen: karta och supportvy för rapporter
 
-**Status:** `[~]` – byggd 2026-10-17 (migration `20261106090000`); väntar på migration, driftsättning och skarp provning
+**Status:** `[~]` – byggd 2026-10-17. Migration `20261106090000` finns i audit-projektets migreringslogg vid avstämning 2026-10-25 och `/matchpool` svarar 200. Exakt driftsatt frontendversion och den manuella karta-/modereringsgrinden nedan är inte därmed slutverifierade; de kvarstår.
 
 - [x] Karta på webben (Leaflet med OpenStreetMaps kartbilder): fliken Hitta match kan visas som lista eller karta. Annonser på samma ort delar en markering med antal, grön när alla klubbar där är verifierade och gul annars. Lagets utgångsort och avståndsgränsen visas som en cirkel. En vald markering visar annonserna som kort under kartan. Positionen är orten, avrundad till ungefär en kilometer, aldrig planen.
 - [x] Supportvy i appen (Supportärenden → flaggikonen): rapporterade annonser med alla rapporter (klubb, anledning, datum). Support döljer annonsen eller avfärdar rapporterna, alltid med motivering. Lag som väntar på svar får besked när en annons döljs, och en annons som dolts automatiskt blir synlig igen när rapporterna avfärdas. Varje beslut loggas i revisionsloggen, och behandlade rapporter räknas inte igen.
@@ -1418,7 +1437,7 @@ Migrationen `20261001090000_club_brand_colors.sql` har kommentaren "PUB-08" men 
 
 ### REF-01 – Domare och domartillsättare
 
-**Status:** `[~]` – byggd 2026-10-18 (migration `20261108090000`); väntar på migration, driftsättning och skarp provning
+**Status:** `[~]` – byggd 2026-10-18. Migration `20261108090000` finns i audit-projektets migreringslogg vid avstämning 2026-10-25. Ny inloggad verifiering av klientdeployment och hela tillsättningsflödet är inte genomförd; den manuella grinden kvarstår.
 
 **Beslut (produktägaren 2026-10-17):**
 
@@ -1537,6 +1556,12 @@ Grundappens ursprungliga ordning:
 56. [~] **AC-08** policy och fail-closed-grind lokalt implementerade och Flutter-verifierade; flerrollsmatris och fysisk enhetsgrind återstår.
 
 ## 16. Ändringslogg
+
+Dokumentationsavstämning 2026-10-25: gemensam nulägesstatus tillagd;
+POOL-04/REF-01:s migreringsstatus rättad mot audit-loggen; LATER-01–03
+förtydligade som delvis genomförda; historiska releasekontroller avgränsade
+från nya testresultat. Inga ytterligare fysiska eller juridiska grindar har
+klarmarkerats. Underlag: [nulägesrapporten](../evidence/app_status_review_2026-10-25.md).
 
 | Datum | Ändring | Status |
 |---|---|---|

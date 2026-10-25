@@ -84,6 +84,26 @@ jobs:
       - run: npm run build
       - run: npm audit --omit=dev --audit-level=high
 
+  webtools:
+    name: Webtools typecheck, tests, build and audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: webtools
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: webtools/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
+
   firebase-functions:
     name: Firebase functions tests and audit
     runs-on: ubuntu-latest

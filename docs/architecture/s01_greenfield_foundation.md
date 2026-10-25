@@ -1,5 +1,13 @@
 # S01 greenfield foundation
 
+This document records the original S01 foundation and verification scope.
+For the current route/navigation, module, environment and release state, use
+[current status](../implementation/current_status.md). In particular,
+`/statistics` is now a compatibility redirect to `/team?tab=statistics`,
+Workspaces opens three modules, and the localization regression found in the
+review has since been fixed locally (810 tests pass).
+The historical S01 verification below is not a new full-app certification.
+
 ## Decision boundary
 
 S01 starts both the application and database from scratch. Teamzone6 is a
@@ -61,7 +69,8 @@ The expected ACL surface is machine-readable in
 - Leaked-password protection and future step-up/MFA operations decisions.
 - Production domains and release/canary decisions.
 
-S01 is hosted-audit verified but remains in progress and is not
-production-release-approved. See
+S01 was subsequently closed within its approved scope in the slice tracker;
+that closure is not production-release approval. The remaining-gates list
+above records the original foundation checkpoint, not a new audit. See
 [`../implementation/slice_status.md`](../implementation/slice_status.md) for the
 authoritative mutable execution status.

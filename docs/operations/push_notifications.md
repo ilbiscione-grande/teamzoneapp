@@ -1,5 +1,10 @@
 # Push notifications (Firebase Cloud Messaging)
 
+Status checked 2026-10-25: push is implemented and has delivery records in
+audit (latest observed 24 October); Android callup/reply actions have physical
+evidence from 13–15 October below. This is not a new device test. iOS setup and
+device verification remain open. See [current status](../implementation/current_status.md).
+
 Decided 2026-10-13: push through FCM (Android now, iOS via APNs once the iOS
 app exists), lock-screen text **type + activity** without names or free text,
 and the app asks for permission the first time there is something unread.
@@ -86,8 +91,12 @@ While the app is open, pushes are shown by the app (FCM shows nothing then).
 
 ## Activation (product owner)
 
-Nothing is sent until steps 2–4 are done; until then every notification is
-recorded as `suppressed / provider_not_configured`, as before.
+The following is the activation procedure for an unconfigured environment,
+not a claim that audit is still inactive. Nothing is sent there until steps
+2–4 are done; before configuration notifications are recorded as
+`suppressed / provider_not_configured`. In an existing environment, inspect
+migration/object and secret configuration before applying any step; do not
+rerun migrations or overwrite secrets merely to follow this historical checklist.
 
 1. Run `supabase/migrations/20261023090000_push_delivery.sql` and record it:
    ```sql

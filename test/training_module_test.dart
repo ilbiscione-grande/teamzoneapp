@@ -174,6 +174,90 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+  testWidgets(
+    'English training planning and evaluation preserve user content',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 1800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final sessions = _Sessions(started: true);
+      await tester.pumpWidget(
+        TeamZoneApp(
+          environment: const AppEnvironment(name: 'training'),
+          locale: const Locale('en'),
+          services: AppServices(
+            identity: _Identity(),
+            modules: const _Modules(),
+            calendar: _Calendar(sessions),
+            isConfigured: true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('bottom-nav-more')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Workspaces'));
+      await tester.pumpAndSettle();
+      expect(find.text('Training'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const Key('workspace-module-module.training')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Upcoming'), findsOneWidget);
+      expect(find.text('Previous'), findsOneWidget);
+      expect(find.textContaining('No session planned yet'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('module-next-training-open')));
+      await tester.pumpAndSettle();
+      expect(find.text('Training session'), findsOneWidget);
+      expect(find.text('Warm-up'), findsOneWidget);
+      expect(find.text('Press'), findsOneWidget);
+      expect(find.text('12 of 90 min planned'), findsOneWidget);
+
+      await tester.ensureVisible(find.byKey(const Key('training-add-main')));
+      await tester.tap(find.byKey(const Key('training-add-main')));
+      await tester.pumpAndSettle();
+      expect(find.text('New exercise'), findsOneWidget);
+      expect(find.text('Minutes'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('training-block-phase')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.text('Regaining possession (without the ball)').last,
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('training-block-title')),
+        'Återerövring',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('training-block-save')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('training-session-save')));
+      await tester.pumpAndSettle();
+      expect(sessions.saved!.blocks.last.title, 'Återerövring');
+      expect(sessions.saved!.blocks.last.phase, PrincipleArea.regaining);
+
+      await tester.ensureVisible(find.byKey(const Key('training-evaluation')));
+      expect(
+        find.text('7 attended · 10 called up, 8 accepted'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('training-evaluation-open')));
+      await tester.pumpAndSettle();
+      expect(find.text('Did you reach the training goals?'), findsOneWidget);
+      await tester.tap(find.byTooltip('4 out of 5'));
+      await tester.tap(find.text('Yes'));
+      await tester.tap(find.text('Good').first);
+      await tester.enterText(
+        find.byKey(const Key('training-evaluation-next')),
+        'Följ upp pressen',
+      );
+      await tester.tap(find.byKey(const Key('training-evaluation-save')));
+      await tester.pumpAndSettle();
+      expect(sessions.evaluation!.nextTime, 'Följ upp pressen');
+      expect(sessions.evaluation!.goalReached, GoalReached.yes);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 class _Sessions implements TrainingServices {

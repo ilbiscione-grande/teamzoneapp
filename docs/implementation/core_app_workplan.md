@@ -2,13 +2,21 @@
 
 Status: **FASTSTÄLLD – uppdateras och klarmarkeras löpande**  
 Skapad: 2026-08-23  
-Senast statussynkad: 2026-10-15 mot `core_app_delivery_cards.md`  
+Senast statussynkad: 2026-10-25 mot nulägesrapporten och `core_app_delivery_cards.md`
 Omfattning: Inloggning/Skapa konto, Hem, Laget, Kalender, Inbox och publik klubbsajt med lagkanaler
 
 ## 1. Så använder vi dokumentet
 
 Det här är det levande arbetsdokumentet för nästa fas av TeamZone-rebuilden.
 Vi uppdaterar status direkt här när en punkt har verifierats.
+
+Samlad status för hela produkten, senare moduler, sajter och releasegrindar
+finns i [current_status.md](current_status.md). Denna plan gäller grundappens
+acceptans. Modul- och webtoolsarbetet har senare påbörjats genom egna beslut;
+avgränsningen nedan betyder inte att dessa produkter fortfarande saknas.
+Senaste körning efter språkfixen: Flutter-analys godkänd och **810/810 tester
+godkända**, inklusive språkgrinden. Se [rättningens evidens](../evidence/localization_modules_2026-10-25.md).
+Äldre testantal är daterad evidens, inte aktuell totalstatus.
 
 - `[ ]` Inte påbörjad.
 - `[~]` Pågår eller finns delvis men är inte paritetsgranskad/verifierad.
@@ -43,7 +51,8 @@ datamodell, capabilitystyrning och säkra API-gräns.
   ingår i definitionen av färdig.
 - Supabase live ändras endast efter separat uttryckligt godkännande.
 - Webtools, workspaces och separat produktionsprovisionering ingår inte här.
-- Appidentiteten `com.teamzone.teamzone` behålls.
+- Produktionsidentiteten `com.teamzone.teamzone` behålls; local/audit använder
+  `com.teamzone.teamzone.test` enligt miljösepareringen 13 oktober.
 
 ### Roll- och situationsanpassad produktdesign
 
@@ -376,7 +385,7 @@ hjälp på Hem utan att Watchpoints gamla semantik eller autonoma actions återi
 
 ### Steg 5 – Laget
 
-Status 2026-10-15: fas 1 klar – TEAM-01–TEAM-08 `[x]`. Utbyggnad TEAM-09–TEAM-16 `[~]`. Fas 2 (LATER-01) `[ ]`, delvis levererad genom TEAM-07 (historik) och PROF-04 (profilflikar/statistik).
+Status 2026-10-25: fas 1 klar – TEAM-01–TEAM-08 `[x]` inom sina acceptanskriterier. Utbyggnad TEAM-09–TEAM-16 `[~]`. Fas 2 (LATER-01) `[~]`, delvis levererad genom TEAM-07 (historik) och PROF-04 (profilflikar/statistik); import, grupper och policygrindade delar kvarstår.
 
 #### 5A. Lagets grundsida och navigation
 
@@ -445,7 +454,7 @@ andra klubbars representation eller historiska facts.
 
 ### Steg 6 – Kalender och allt kring EventDetails
 
-Status 2026-10-15: CAL-01–CAL-11 `[x]`; CAL-12–CAL-14 `[~]`; senare fas (LATER-02) `[ ]`. Svar på kallelse direkt i notisen (Android) levererat i MSG-10.
+Status 2026-10-25: CAL-01–CAL-11 `[x]` inom sina ursprungliga grindar; CAL-12–CAL-14 `[~]`. LATER-02 är delvis byggd genom match-/träningsmodulerna, men import, anteckningar och Tacticsboard-koppling är inte slutlevererade. Svar på kallelse direkt i notisen (Android) har fysisk evidens i MSG-10; iOS kvarstår.
 
 #### 6A. Kalenderyta
 
@@ -501,7 +510,7 @@ fungerar utan parallella källor eller otydlig status.
 
 ### Steg 7 – Publik klubbsajt och lagens officiella kanaler
 
-Status 2026-10-15: PUB-01–PUB-06 och PUB-10–PUB-13 `[~]`; publicering är fortfarande strukturellt avstängd tills separat godkänd aktivering. Premiumsubdomäner och liverapportering (LATER-03) `[ ]`.
+Status 2026-10-25: PUB-01–PUB-06 och PUB-10–PUB-13 `[~]` för sina kvarstående grindar. Publiceringens runtime är aktiverad i audit. Publikt match-live är beslutat i paket 12 och byggt; LATER-03 är därmed delvis genomförd. Premiumdomän-/wildcardaktivering och separat produktion är inte klarmarkerade.
 
 Den publika produkten ska fungera som klubbens professionella officiella ansikte
 utåt och kunna ersätta behovet av en separat klubbhemsida. Klubben är sajtens
@@ -524,8 +533,8 @@ inloggade Flutterappen men hör till samma produkt- och redaktionsflöde.
   enbart rollnamn eller officiell klubbstatus.
 - [~] Avpublicering ska ta bort projektion/media och invalidatera cache inom en
   dokumenterad och testad tidsgräns.
-- [ ] Den strukturellt avstängda publiceringsruntime aktiveras endast genom en
-  separat uttryckligt godkänd releaseåtgärd.
+- [~] Publiceringsruntime är aktiverad i audit (läskontroll 2026-10-25).
+  Separat produktionsaktivering kräver fortfarande sin releasegrind.
 
 #### 7B. Professionell klubbstruktur och navigation
 
@@ -539,7 +548,7 @@ inloggade Flutterappen men hör till samma produkt- och redaktionsflöde.
 - [~] Skapa tydlig global klubbnavigation, breadcrumbs och vägar mellan klubb,
   nyhetsartikel och lagkanal på mobil och desktop.
 - [x] Skalbar standardadress är `teamzoneapp.se/{klubbslug}` med lagkanaler
-  under `teamzoneapp.se/{klubbslug}/lag/{lagslug}`.
+  under `teamzoneapp.se/{klubbslug}/{lagslug}` (nuvarande Next.js-route).
 - [x] Egen klubbdomän, exempelvis `www.klubbnamn.se`, är det första
   premiumalternativet och kräver verifierat domänägarskap.
 - [x] `{klubbslug}.teamzoneapp.se` är ett senare premiumalternativ och får inte
@@ -595,21 +604,16 @@ inloggade Flutterappen men hör till samma produkt- och redaktionsflöde.
   media, wildcard enumeration, scrapinggränser och okänd slug.
 - [~] Verifiera publika lagsidor på mobil och desktop/web före separat aktivering.
 
-#### 7E. Senare publik fas – liverapportering från match
+#### 7E. Publikt match-live – senare godkänd utbyggnad
 
-- [x] Publik liverapportering ska i en senare fas kunna öppnas från respektive
-  lagkanal och från klubbens match-/Kalender/Händelser-ingång.
-- [ ] Skapa en separat, dataminimerad och read-only publik matchprojektion;
-  den interna Match Space-kommandoytan eller dess privata data exponeras aldrig.
-- [ ] Definiera vilka matchfakta som får visas live: status, klocka/period,
-  ställning, publika händelser, laguppställning och spelarnamn kräver separata
-  publicerings-/samtyckesbeslut där det är relevant.
-- [ ] Definiera fördröjning, rättelser/void, reconnect, stale-indikering,
-  avslutad match, cache/invalidation och trafik-/scrapingskydd.
-- [ ] Ge publicist/matchledare en explicit kill switch som omedelbart stoppar
-  publik livefeed utan att påverka den interna matchrapporteringen.
-- [ ] Testa minderårigdata, återkallat samtycke, felaktig händelse, hög trafik,
-  tappad anslutning och avpublicerad match.
+- [x] Separat produktbeslut finns i [paket 12](../specification/source/27_public_live_match_decision.md), godkänt 2026-10-24. Det styr vilka fakta och namn som får publiceras; den äldre önskelistan ger ingen extra publiceringsrätt.
+- [~] Dataminimerad publik matchprojektion, appens liveval och publik webbvy
+  finns. Den interna kommandoytan och privata data ska fortsatt hållas utanför.
+- [~] Kontrakt för publicering, samtycken, matchens gång och avslutad match
+  är byggda och har lokal SQL-verifiering; det är inte en full fysisk slutacceptans.
+- [ ] Slutför manuell samtyckes-/skydds-, återanslutnings-, avpublicerings-
+  och belastningsverifiering för aktuell driftsatt version. Saknad evidens
+  klarmarkeras inte genom dokumentationssynken.
 
 Godkänd när: en klubb kan använda TeamZone som sin professionella officiella
 webbplats, publicera nyheter enkelt och ge varje lag en tydlig officiell kanal,
@@ -671,7 +675,10 @@ godtycklig profilidentifierare eller stale klient ger utökad access.
 
 ### Steg 9 – Samlad kvalitets- och releasegrind för grundappen
 
-Status 2026-10-15: REL-01–REL-03 `[x]` (2026-09). Produktägarens godkännande per huvudsteg återstår.
+Status 2026-10-25 efter språkfixen: 810/810 tester och analys gröna. REL-01 `[~]` tills hela den aktuella bygggrinden är omkörd; ny APK/AAB eller release-webb har inte byggts i denna rättning. REL-02/03 har historiskt stängd grundscope, men nya moduler omfattas inte automatiskt av den acceptansen. Produktägarens godkännande per huvudsteg återstår.
+
+Kryssen nedan bevarar de tidigare genomförda baslinjekontrollerna. De är inte
+ny verifiering av samtliga senare ändringar; aktuella resultat styr statusen ovan.
 
 - [x] Kör formattering, statisk analys och full Fluttertestsuite.
 - [x] Kör kontrakt för localization, a11y, navigation, privacy och capabilities.

@@ -1,4 +1,8 @@
-# S00 command matrix
+# Development and verification command matrix
+
+Updated 2026-10-25. Commands are checks to run, not claims that the current
+branch is green. For the latest results and open gates see
+[current status](../implementation/current_status.md).
 
 | Check | Command | Required on this host |
 |---|---|---|
@@ -12,7 +16,21 @@
 | Public site types | `npx tsc --noEmit` (in `public-site/`) | Yes |
 | Public site tests | `npm test` (in `public-site/`) | Yes |
 | Public site build | `npm run build` (in `public-site/`) | Before deploy |
+| Webtools types | `npm run lint` (in `webtools/`) | Yes; included in the `webtools` CI job |
+| Webtools tests | `npm test` (in `webtools/`) | Yes |
+| Webtools build | `npm run build` (in `webtools/`) | Before deploy |
+| Web dependency audit | `npm audit` (in each site) | Check current advisories |
 | Isolated SQL test | `node supabase/tests/<name>.local.mjs` (PGlite, no database needed) | For new or patched migrations |
+
+CI is defined in `.github/workflows/ci.yml`: Flutter, isolated SQL, Edge/Deno,
+public-site, Webtools and Firebase Functions. The Webtools job uses Node 24,
+its own lockfile cache and `npm ci`, lint, test, build and
+`npm audit --omit=dev --audit-level=high`. Jobs run on PRs, main pushes and
+manual dispatch, without service secrets or deployment steps. A configured
+job and local verification do not prove a completed GitHub runner execution.
+The SQL job also runs
+`node supabase/tests/pub07_personal_home.local.mjs --direct-result --written-reports --team-notifications`.
+PGlite tests do not replace the empty-database replay required before production.
 
 All Flutter commands need write access to the shared Flutter SDK cache. CI must pin a compatible Flutter release and commit `pubspec.lock`.
 

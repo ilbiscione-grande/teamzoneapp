@@ -356,8 +356,8 @@ class _PlanSuggestionBox extends StatelessWidget {
               Expanded(
                 child: Text(
                   suggestion.periodName == null
-                      ? 'Från lagets plan'
-                      : 'Från lagets plan · ${suggestion.periodName}',
+                      ? AppStrings.of(context).feature('Från lagets plan')
+                      : '${AppStrings.of(context).feature('Från lagets plan')} · ${suggestion.periodName}',
                   style: theme.textTheme.titleSmall,
                 ),
               ),
@@ -368,9 +368,12 @@ class _PlanSuggestionBox extends StatelessWidget {
             Text(suggestion.periodFocus.trim()),
           ],
           if (suggestion.goals.isNotEmpty)
-            chips('Mål framåt', suggestion.goals),
+            chips(
+              AppStrings.of(context).feature('Mål framåt'),
+              suggestion.goals,
+            ),
           if (suggestion.principles.isNotEmpty)
-            chips('Spelprinciper', [
+            chips(AppStrings.of(context).feature('Spelprinciper'), [
               for (final principle in suggestion.principles) principle.title,
             ]),
           if (onTake != null && takeHint != null) ...[

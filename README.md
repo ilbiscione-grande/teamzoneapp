@@ -8,15 +8,31 @@ S00 through S10 are implemented and verified within their approved greenfield
 scope. This includes the platform, roster, calendar, squad/callups, main
 surfaces, messaging, Match Space, development, publication, billing
 entitlements, Economy and Board. Fee/payment settlement remains closed by
-PAR-FIN-03, and S11 workspaces/webtools are explicitly deferred while the core
-application is stabilized.
+PAR-FIN-03. Later decisions have opened module and webtool development:
+Workspaces now opens Match, Team Development Plan and Training; Webtools has
+Tacticsboard, Booking Manager and Tournament Planner betas. The complete S11
+target is not closed, and the new full IDP module is not delivered.
+
+**Current status (2026-10-25):**
+[`docs/implementation/current_status.md`](docs/implementation/current_status.md)
+is the consolidated delivery, environment and release-gate overview, backed by
+the [25 October review](docs/evidence/app_status_review_2026-10-25.md).
+Production is not provisioned. After the local
+[localization fix](docs/evidence/localization_modules_2026-10-25.md), Flutter
+analysis is clean and all 810 tests pass. Webtools now has its own CI job for
+typecheck, tests, build and production-dependency audit. A fresh verification
+found critical Next.js advisories, so both sites are locally pinned to 16.4.3;
+clean installations, all 148 web tests, both builds and audits now pass.
+See [CI/security evidence](docs/evidence/webtools_ci_2026-10-25.md).
+The security update has not been deployed in this work. Manual and production
+release gates remain open; GitHub runner execution is not yet verified.
 
 Since 2026-09-27 the core app has been extended with team roles and permissions,
 event preparations and match mode, member profiles, follower accounts on the
 public site, a club-site design with club colours, club settings, main positions
 and titles, and temporary contact pages with QR codes (wave 10 in
 [`docs/implementation/core_app_delivery_cards.md`](docs/implementation/core_app_delivery_cards.md)).
-The latest consolidated delta covers the deterministic personal assistant,
+The earlier consolidated delta covers the deterministic personal assistant,
 account/contact privacy and the official-club support operation through 2026-10-04:
 [`docs/evidence/core_app_iteration_2026-10-02_10-04.md`](docs/evidence/core_app_iteration_2026-10-02_10-04.md).
 The 2026-10-05 worklist (leaner navigation menu, calendar navigation, theme
@@ -43,19 +59,22 @@ snapshot rather than a mutable progress tracker.
 
 ## Applications
 
-- `lib/` – the Flutter app (Android, iOS, web at `app.teamzoneapp.se`).
-- `public-site/` – the Next.js public site (`public.teamzoneapp.se`): club and
+- `lib/` – the Flutter app (Android, prepared iOS project, web at `app.teamzoneapp.se`).
+- `public-site/` – the Next.js public site (`teamzoneapp.se`, alias `public.teamzoneapp.se`): club and
   team pages, TeamZone's start page, sign-in and follower sign-up, search and
-  temporary contact pages (`/anmalan/<token>`).
+  temporary contact pages (`/anmalan/<token>`), matchpool and public match live.
+- `webtools/` – standalone Next.js beta tools; see its [README](webtools/README.md)
+  for the current Firebase URL. `webtools.teamzoneapp.se` still serves the older site.
 - `supabase/` – migrations, Edge Functions and isolated SQL tests.
 
 ## Targets
 
-- Android: `com.teamzone.teamzone`
+- Android production: `com.teamzone.teamzone`; local/audit: `com.teamzone.teamzone.test`
 - iOS: `com.teamzone.teamzone`
 - Flutter web
 
-Native desktop is not a v1 target. iOS build/signing requires a later macOS or CI environment.
+Native desktop is not a v1 target. iOS has not yet been built or verified;
+build/signing and device testing require macOS/Xcode and Apple configuration.
 
 ## Local checks
 
@@ -89,6 +108,12 @@ npm run build
 
 Server configuration lives in `public-site/apphosting.yaml` and secrets in
 Firebase App Hosting; see [`docs/development/environment.md`](docs/development/environment.md).
+
+### Webtools (`webtools/`)
+
+Webtools uses the same local checks (`npm ci`, `npm run lint`, `npm test`,
+`npm run build`) in `webtools/`. The full check inventory and current CI
+coverage are in [command_matrix.md](docs/development/command_matrix.md).
 
 ### External services and support email
 

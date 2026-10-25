@@ -173,11 +173,14 @@ class _WorkspacesSurfaceState extends State<_WorkspacesSurface> {
                     enabled: _opener(module) != null,
                     onTap: _opener(module),
                     leading: Icon(_icons[module.key] ?? Icons.widgets_outlined),
-                    title: Text(module.title),
+                    title: Text(strings.moduleTitle(module.key, module.title)),
                     subtitle: Text(
                       _opener(module) != null
-                          ? module.description
-                          : '${module.description}. ${strings.feature('Byggs nu.')}',
+                          ? strings.moduleDescription(
+                              module.key,
+                              module.description,
+                            )
+                          : '${strings.moduleDescription(module.key, module.description)}. ${strings.feature('Byggs nu.')}',
                     ),
                     trailing: Chip(
                       label: Text(strings.feature(_status(module))),

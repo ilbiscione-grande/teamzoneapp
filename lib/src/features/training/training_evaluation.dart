@@ -66,32 +66,43 @@ class _TrainingEvaluationSectionState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Utvärdering', style: theme.textTheme.titleMedium),
+              Text(
+                AppStrings.of(context).feature('Utvärdering'),
+                style: theme.textTheme.titleMedium,
+              ),
               const SizedBox(height: 6),
-              Text(_attendanceLine(evaluation)),
+              Text(_attendanceLine(context, evaluation)),
               if (evaluation.written) ...[
                 const SizedBox(height: 6),
-                Row(
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     _Stars(value: evaluation.rating),
                     if (evaluation.goalReached case final reached?) ...[
-                      const SizedBox(width: 12),
-                      Text('Målet nått: ${reached.label.toLowerCase()}'),
+                      Text(
+                        '${AppStrings.of(context).feature('Målet nått')}: ${AppStrings.of(context).feature(reached.label).toLowerCase()}',
+                      ),
                     ],
                   ],
                 ),
                 if (evaluation.nextTime.trim().isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Text(
-                    'Till nästa pass: ${evaluation.nextTime.trim()}',
+                    '${AppStrings.of(context).feature('Till nästa pass')}: ${evaluation.nextTime.trim()}',
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ] else
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(top: 6),
-                  child: Text('Passet är inte utvärderat än.'),
+                  child: Text(
+                    AppStrings.of(
+                      context,
+                    ).feature('Passet är inte utvärderat än.'),
+                  ),
                 ),
               if (evaluation.canEdit) ...[
                 const SizedBox(height: 12),
@@ -101,8 +112,8 @@ class _TrainingEvaluationSectionState
                   icon: const Icon(Icons.rate_review_outlined),
                   label: Text(
                     evaluation.written
-                        ? 'Ändra utvärderingen'
-                        : 'Utvärdera passet',
+                        ? AppStrings.of(context).feature('Ändra utvärderingen')
+                        : AppStrings.of(context).feature('Utvärdera passet'),
                   ),
                 ),
               ],
@@ -114,15 +125,21 @@ class _TrainingEvaluationSectionState
   );
 }
 
-String _attendanceLine(TrainingEvaluation evaluation) {
+String _attendanceLine(BuildContext context, TrainingEvaluation evaluation) {
   if (evaluation.recorded == 0 && evaluation.called == 0) {
-    return 'Ingen kallelse eller närvaro registrerad.';
+    return AppStrings.of(
+      context,
+    ).feature('Ingen kallelse eller närvaro registrerad.');
   }
   return [
-    if (evaluation.recorded > 0) '${evaluation.attended} närvarade',
+    if (evaluation.recorded > 0)
+      AppStrings.of(context).trainingAttendance(evaluation.attended),
     if (evaluation.called > 0)
-      '${evaluation.called} kallade, ${evaluation.accepted} tackade ja',
-    if (evaluation.recorded == 0) 'närvaron är inte registrerad',
+      AppStrings.of(
+        context,
+      ).trainingCallupSummary(evaluation.called, evaluation.accepted),
+    if (evaluation.recorded == 0)
+      AppStrings.of(context).feature('närvaron är inte registrerad'),
   ].join(' · ');
 }
 
@@ -147,7 +164,7 @@ class _Stars extends StatelessWidget {
                 )
               : IconButton(
                   key: ValueKey('training-evaluation-star-$star'),
-                  tooltip: '$star av 5',
+                  tooltip: AppStrings.of(context).trainingStarRating(star),
                   visualDensity: VisualDensity.compact,
                   onPressed: () => onChanged!(star),
                   icon: Icon(
@@ -209,6 +226,7 @@ class _TrainingEvaluationPageState extends State<_TrainingEvaluationPage> {
   }
 
   Future<void> _save() async {
+    final strings = AppStrings.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     setState(() => _busy = true);
@@ -227,21 +245,25 @@ class _TrainingEvaluationPageState extends State<_TrainingEvaluationPage> {
         ],
       );
       messenger.showSnackBar(
-        const SnackBar(content: Text('Utvärderingen är sparad.')),
+        SnackBar(content: Text(strings.feature('Utvärderingen är sparad.'))),
       );
       navigator.pop();
     } on TrainingSessionConflict {
       messenger.showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Utvärderingen har ändrats av någon annan. Stäng och öppna den igen.',
+            strings.feature(
+              'Utvärderingen har ändrats av någon annan. Stäng och öppna den igen.',
+            ),
           ),
         ),
       );
     } catch (error) {
       AppErrors.caught('training_evaluation._save', error);
       messenger.showSnackBar(
-        const SnackBar(content: Text('Utvärderingen kunde inte sparas.')),
+        SnackBar(
+          content: Text(strings.feature('Utvärderingen kunde inte sparas.')),
+        ),
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -257,25 +279,37 @@ class _TrainingEvaluationPageState extends State<_TrainingEvaluationPage> {
       border: const OutlineInputBorder(),
     );
     final children = <Widget>[
-      Text(_attendanceLine(_evaluation)),
+      Text(_attendanceLine(context, _evaluation)),
       const SizedBox(height: 16),
-      Text('Hur gick passet?', style: theme.textTheme.titleMedium),
+      Text(
+        AppStrings.of(context).feature('Hur gick passet?'),
+        style: theme.textTheme.titleMedium,
+      ),
       _Stars(
         value: _rating,
         onChanged: (value) => setState(() => _rating = value),
       ),
       const SizedBox(height: 12),
-      Text('Nådde ni målen för träningen?', style: theme.textTheme.titleMedium),
+      Text(
+        AppStrings.of(context).feature('Nådde ni målen för träningen?'),
+        style: theme.textTheme.titleMedium,
+      ),
       const SizedBox(height: 4),
       _TdpChoices<GoalReached?>(
         key: const Key('training-evaluation-goal'),
-        values: {for (final value in GoalReached.values) value: value.label},
+        values: {
+          for (final value in GoalReached.values)
+            value: AppStrings.of(context).feature(value.label),
+        },
         selected: _reached,
         onSelected: (value) => setState(() => _reached = value),
       ),
       if (_blocks.isNotEmpty) ...[
         const SizedBox(height: 16),
-        Text('Övningarna', style: theme.textTheme.titleMedium),
+        Text(
+          AppStrings.of(context).feature('Övningarna'),
+          style: theme.textTheme.titleMedium,
+        ),
         for (final title in _blocks.keys)
           Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -287,7 +321,8 @@ class _TrainingEvaluationPageState extends State<_TrainingEvaluationPage> {
                 _TdpChoices<BlockRating?>(
                   key: ValueKey('training-evaluation-block-$title'),
                   values: {
-                    for (final value in BlockRating.values) value: value.label,
+                    for (final value in BlockRating.values)
+                      value: AppStrings.of(context).feature(value.label),
                   },
                   selected: _blocks[title],
                   onSelected: (value) => setState(() => _blocks[title] = value),
@@ -303,7 +338,10 @@ class _TrainingEvaluationPageState extends State<_TrainingEvaluationPage> {
         maxLength: 2000,
         minLines: 2,
         maxLines: 5,
-        decoration: field('Vad fungerade?', 'Det ni vill behålla'),
+        decoration: field(
+          AppStrings.of(context).feature('Vad fungerade?'),
+          AppStrings.of(context).feature('Det ni vill behålla'),
+        ),
       ),
       const SizedBox(height: 8),
       TextField(
@@ -312,7 +350,10 @@ class _TrainingEvaluationPageState extends State<_TrainingEvaluationPage> {
         maxLength: 2000,
         minLines: 2,
         maxLines: 5,
-        decoration: field('Vad gör ni annorlunda?', 'Det som inte fungerade'),
+        decoration: field(
+          AppStrings.of(context).feature('Vad gör ni annorlunda?'),
+          AppStrings.of(context).feature('Det som inte fungerade'),
+        ),
       ),
       const SizedBox(height: 8),
       TextField(
@@ -321,24 +362,31 @@ class _TrainingEvaluationPageState extends State<_TrainingEvaluationPage> {
         maxLength: 2000,
         minLines: 2,
         maxLines: 5,
-        decoration: field('Till nästa pass', 'Det ni tar med er'),
+        decoration: field(
+          AppStrings.of(context).feature('Till nästa pass'),
+          AppStrings.of(context).feature('Det ni tar med er'),
+        ),
       ),
       if (_evaluation.updatedBy != null)
         Text(
-          'Senast ändrad av ${_evaluation.updatedBy}',
+          '${AppStrings.of(context).feature('Senast ändrad av')} ${_evaluation.updatedBy}',
           style: theme.textTheme.bodySmall,
         ),
     ];
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Utvärdera passet'),
+        title: Text(AppStrings.of(context).feature('Utvärdera passet')),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: FilledButton(
               key: const Key('training-evaluation-save'),
               onPressed: _busy ? null : _save,
-              child: Text(_busy ? 'Sparar…' : 'Spara'),
+              child: Text(
+                _busy
+                    ? AppStrings.of(context).feature('Sparar…')
+                    : AppStrings.of(context).feature('Spara'),
+              ),
             ),
           ),
         ],

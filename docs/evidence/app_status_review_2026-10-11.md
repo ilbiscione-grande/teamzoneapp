@@ -1,5 +1,11 @@
 # Statusrapport för TeamZone, 11 oktober 2026
 
+> Historisk rapport, med rättelser till 12 oktober. Den beskriver inte dagens
+> samlade läge. Se [rapporten 25 oktober](app_status_review_2026-10-25.md) och
+> [aktuell leveransstatus](../implementation/current_status.md). Bland annat
+> har CI, push, webbfelrapportering, releaseförberedelser och moduler tillkommit;
+> npm-fynden nedan är inte aktuella i de senare kontrollerade låsfilerna.
+
 En genomgång av hela appen den 11 oktober 2026, efter commit `a7d9a63`. Ingen
 kod ändrades under genomgången. Underlaget är läsning av kod och
 dokumentation, läsfrågor mot testprojektets databas, `npm audit`,

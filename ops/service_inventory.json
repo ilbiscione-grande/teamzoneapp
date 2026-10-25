@@ -11,7 +11,19 @@
     {
       "name": "Firebase",
       "project": "teamzoneapp-b02a2",
-      "purpose": ["flutter-web-hosting", "public-site-app-hosting", "crash-reporting", "operations-functions"]
+      "purpose": ["flutter-web-hosting", "public-site-app-hosting", "webtools-app-hosting", "push-fcm", "crash-reporting", "operations-functions"],
+      "notes": "As checked 2026-10-25, app.teamzoneapp.se, teamzoneapp.se/public.teamzoneapp.se and the new Webtools hosted.app origin use audit. Separate production is not provisioned; see docs/implementation/current_status.md.",
+      "deployments": [
+        {"backend": "teamzoneapp-b02a2", "kind": "hosting", "origin": "https://app.teamzoneapp.se", "environment": "audit"},
+        {"backend": "teamzoneapp-public", "kind": "app-hosting", "origin": "https://teamzoneapp.se", "aliases": ["https://public.teamzoneapp.se"], "environment": "audit"},
+        {"backend": "teamzoneapp-webtools", "kind": "app-hosting", "origin": "https://teamzoneapp-webtools--teamzoneapp-b02a2.europe-west4.hosted.app", "environment": "audit"}
+      ]
+    },
+    {
+      "name": "Vercel (legacy Webtools)",
+      "domain": "webtools.teamzoneapp.se",
+      "purpose": ["legacy-webtools-hosting"],
+      "notes": "The old domain still serves a different site as checked 2026-10-25. The new Firebase deployment has not taken over this domain; legacy Vercel hosting is documented in webtools/README.md."
     },
     {
       "name": "Resend",

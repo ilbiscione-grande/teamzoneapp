@@ -1,5 +1,29 @@
 # Production provisioning (X-OPS-01)
 
+## Current checkpoint – 2026-10-25
+
+Separate production is **not provisioned**: `ops/environments.json` still has
+`status: not_provisioned` and no production project ref, and the reviewed
+Supabase project list contains no TeamzoneApp Production. The public site
+currently serves `teamzoneapp.se` (canonical) and `public.teamzoneapp.se`
+(alias) against audit. Flutter audit still uses `app.teamzoneapp.se`. New
+Webtools uses its Firebase hosted.app URL; the `webtools.` domain still serves
+the older site. The address table below is the planned target, not current topology.
+
+Code separation work and the 13 October replay are historical completed
+steps. The replay covered **320**, not the current **389**, local migrations.
+Repeat it against the current chain before phase 3. The audit log has 387
+versions: reconcile missing `20261022090000` and `20261128090000` only after
+checking exact object/function/grant equivalence; central objects already exist.
+Push is now deployed and has audit delivery records, so historical wording
+below about it not yet running must not be treated as the current state.
+
+Additional current gates: localization test failure, uncompleted
+[permissions review](../implementation/permissions-review.md), full physical
+rollout acceptance, leaked-password protection, verified message-retention
+scheduling, iOS configuration/build and timed rollback exercise. Current
+evidence and scope are in [current status](../implementation/current_status.md).
+
 Decisions by the product owner, 2026-10-13:
 
 | Decision | Choice |
@@ -46,8 +70,12 @@ need explicit approval (`xops_release_runbook.md`).
   ("TeamZone Test"), and Firebase on Android reads `google-services.json` for
   the built id. A Play bundle refuses to build for any other environment.
 
-Product owner, before the next Android test build:
-- Register the Android app `com.teamzone.teamzone.test` ("TeamZone Test") in
+Before an Android test build, verify registration of
+`com.teamzone.teamzone.test` ("TeamZone Test") in
+Firebase and a matching client in `android/app/google-services.json`.
+If missing, the product owner must:
+
+- Register the Android app in
   Firebase (project settings → Your apps → Add app), then download the
   project's `google-services.json` again (it then lists both apps) to
   `android/app/google-services.json`. Until then an audit Android build stops
@@ -57,7 +85,8 @@ Product owner, before the next Android test build:
 
 ## Phase 2 — prove the migrations on an empty database
 
-**Done 2026-10-13.** All 320 migrations replay on an empty local database
+**Historical verification: 2026-10-13, 320 migrations. Current chain replay pending.**
+All 320 migrations then present replayed on an empty local database
 (`npx supabase start`, Docker). Twelve migrations were test-project data —
 Stripe sandbox prices and pilots for the Thomas club, MSG/TEAM walkthrough
 fixtures bound to fixed test accounts. They are now marked `audit-only:` and
@@ -67,9 +96,9 @@ production skip them. One mixed migration
 function fix and skips only its fixture. The test project, where they already
 ran, is unaffected.
 
-Compared with the test project, the replayed schema has the same functions,
+At that verification date, compared with the test project, the replayed schema had the same functions,
 tables, columns, policies, grants, indexes, buckets and triggers, except:
-- the push migration (`20261023090000`), not yet run in the test project;
+- the push migration (`20261023090000`), not yet run in the test project at that date (now recorded and deployed);
 - four functions differ only in a trailing semicolon, and one calls
   `extensions.digest` instead of `digest` (the same function);
 - `publication_runtime_state_enabled_check` exists on a new database (the

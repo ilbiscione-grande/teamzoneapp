@@ -1,5 +1,13 @@
 # Nyckeltal och uppföljning (steg 1–2)
 
+**Läsanvisning 2026-10-25:** dokumentet beskriver eventgrundens införande och
+dess ursprungliga modulgränser. Matchmodulen och Träningsmodulen är nu byggda,
+inklusive matchens Live/analysytor och träningens ledarutvärdering. Formuleringar
+nedan om "när modulen byggs" beskriver den då beslutade riktningen, inte en
+aktuell uppgift att modulerna saknas. Se [aktuellt leveransläge](current_status.md)
+och beslutspaket 11–13 för senare scope. Alla äldre eventfält behöver inte
+vara avvecklade bara för att en modul finns.
+
 Mål (KPI:er) sätts under Förberedelser och följs upp under Uppföljning.
 Migrationer: `20261008090000_event_kpis_followup.sql` (katalog, mål,
 uppföljning) och `20261009090000_match_kpi_counters.sql` (live-räknare i

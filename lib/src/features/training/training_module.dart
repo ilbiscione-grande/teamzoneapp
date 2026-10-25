@@ -112,14 +112,15 @@ class _TrainingOverviewState extends State<_TrainingOverview> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Träningarna kunde inte hämtas. Passen planeras av ledare '
-                  'med behörighet för träningsupplägg.',
+                Text(
+                  AppStrings.of(context).feature(
+                    'Träningarna kunde inte hämtas. Passen planeras av ledare med behörighet för träningsupplägg.',
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 TextButton(
                   onPressed: _reload,
-                  child: const Text('Försök igen'),
+                  child: Text(AppStrings.of(context).feature('Försök igen')),
                 ),
               ],
             ),
@@ -127,7 +128,7 @@ class _TrainingOverviewState extends State<_TrainingOverview> {
         );
       }
       if (!upcoming.hasData) {
-        return const Center(child: CircularProgressIndicator());
+        return Center(child: CircularProgressIndicator());
       }
       final trainings = [
         for (final training in upcoming.data!)
@@ -141,12 +142,16 @@ class _TrainingOverviewState extends State<_TrainingOverview> {
           children: [
             for (final child in [
               if (next == null)
-                const Card(
+                Card(
                   child: ListTile(
                     leading: Icon(Icons.event_busy),
-                    title: Text('Inga kommande träningar'),
+                    title: Text(
+                      AppStrings.of(context).feature('Inga kommande träningar'),
+                    ),
                     subtitle: Text(
-                      'Lägg in träningar i kalendern, så planerar du passen här.',
+                      AppStrings.of(context).feature(
+                        'Lägg in träningar i kalendern, så planerar du passen här.',
+                      ),
                     ),
                   ),
                 )
@@ -155,9 +160,15 @@ class _TrainingOverviewState extends State<_TrainingOverview> {
               const SizedBox(height: 20),
               SegmentedButton<bool>(
                 key: const Key('training-module-period'),
-                segments: const [
-                  ButtonSegment(value: false, label: Text('Kommande')),
-                  ButtonSegment(value: true, label: Text('Tidigare')),
+                segments: [
+                  ButtonSegment(
+                    value: false,
+                    label: Text(AppStrings.of(context).feature('Kommande')),
+                  ),
+                  ButtonSegment(
+                    value: true,
+                    label: Text(AppStrings.of(context).feature('Tidigare')),
+                  ),
                 ],
                 selected: {_past},
                 onSelectionChanged: (value) => setState(() {
@@ -169,7 +180,9 @@ class _TrainingOverviewState extends State<_TrainingOverview> {
               if (!_past)
                 ..._rows(
                   trainings.where((t) => t.eventId != next?.eventId),
-                  'Inga fler kommande träningar.',
+                  AppStrings.of(
+                    context,
+                  ).feature('Inga fler kommande träningar.'),
                 )
               else
                 FutureBuilder<List<ModuleTraining>>(
@@ -178,14 +191,20 @@ class _TrainingOverviewState extends State<_TrainingOverview> {
                       ? Column(
                           children: _rows(
                             past.data!.reversed,
-                            'Inga tidigare träningar.',
+                            AppStrings.of(
+                              context,
+                            ).feature('Inga tidigare träningar.'),
                           ),
                         )
                       : Padding(
                           padding: const EdgeInsets.all(24),
                           child: Center(
                             child: past.hasError
-                                ? const Text('Träningarna kunde inte hämtas.')
+                                ? Text(
+                                    AppStrings.of(
+                                      context,
+                                    ).feature('Träningarna kunde inte hämtas.'),
+                                  )
                                 : const CircularProgressIndicator(),
                           ),
                         ),
@@ -221,15 +240,18 @@ class _TrainingOverviewState extends State<_TrainingOverview> {
             subtitle: Text(
               [
                 _trainingDay(context, training.startsAt),
-                _sessionStatus(training.session).$1,
+                AppStrings.of(
+                  context,
+                ).feature(_sessionStatus(training.session).$1),
                 if (training.blocks > 0)
-                  '${training.blocks} övningar · ${training.minutes} min',
+                  '${AppStrings.of(context).trainingExerciseCount(training.blocks)} · ${training.minutes} min',
                 if (!training.startsAt.isAfter(DateTime.now()) &&
                     training.state != 'cancelled')
                   training.evaluated
-                      ? 'Utvärderad${training.rating == null ? '' : ' ${'★' * training.rating!}'}'
-                      : 'Ej utvärderad',
-                if (training.state == 'cancelled') 'Inställd',
+                      ? '${AppStrings.of(context).feature('Utvärderad')}${training.rating == null ? '' : ' ${'★' * training.rating!}'}'
+                      : AppStrings.of(context).feature('Ej utvärderad'),
+                if (training.state == 'cancelled')
+                  AppStrings.of(context).feature('Inställd'),
               ].join(' · '),
             ),
             trailing: const Icon(Icons.chevron_right),
@@ -251,9 +273,9 @@ class _NextTrainingCard extends StatelessWidget {
     final today = DateUtils.dateOnly(DateTime.now());
     final days = DateUtils.dateOnly(training.startsAt).difference(today).inDays;
     final when = switch (days) {
-      <= 0 => 'Idag',
-      1 => 'Imorgon',
-      _ => 'Om $days dagar',
+      <= 0 => AppStrings.of(context).feature('Idag'),
+      1 => AppStrings.of(context).feature('Imorgon'),
+      _ => AppStrings.of(context).trainingDaysAway(days),
     };
     final length = training.endsAt.difference(training.startsAt).inMinutes;
     const white = TextStyle(color: Colors.white);
@@ -292,9 +314,9 @@ class _NextTrainingCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               training.blocks == 0
-                  ? 'Inget pass planerat än · $length min'
-                  : '${training.blocks} övningar · ${training.minutes} av $length min · '
-                        '${_sessionStatus(training.session).$1}',
+                  ? '${AppStrings.of(context).feature('Inget pass planerat än')} · $length min'
+                  : '${AppStrings.of(context).trainingExerciseCount(training.blocks)} · ${AppStrings.of(context).trainingMinutes(training.minutes, length)} · '
+                        '${AppStrings.of(context).feature(_sessionStatus(training.session).$1)}',
               style: white,
             ),
             const SizedBox(height: 16),
@@ -303,7 +325,9 @@ class _NextTrainingCard extends StatelessWidget {
               onPressed: onOpen,
               icon: Icon(training.blocks == 0 ? Icons.add : Icons.edit_note),
               label: Text(
-                training.blocks == 0 ? 'Planera passet' : 'Öppna passet',
+                training.blocks == 0
+                    ? AppStrings.of(context).feature('Planera passet')
+                    : AppStrings.of(context).feature('Öppna passet'),
               ),
             ),
           ],

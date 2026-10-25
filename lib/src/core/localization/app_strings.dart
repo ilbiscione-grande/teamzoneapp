@@ -192,6 +192,56 @@ class AppStrings {
     _ => value.replaceAll('_', ' '),
   };
 
+  String trainingExerciseCount(int count) => isSwedish
+      ? '$count övningar'
+      : '$count ${count == 1 ? 'exercise' : 'exercises'}';
+
+  String trainingMinutes(int minutes, int length, {bool planned = false}) {
+    if (length <= 0) return '$minutes min';
+    return isSwedish
+        ? '$minutes av $length min${planned ? ' planerade' : ''}'
+        : '$minutes of $length min${planned ? ' planned' : ''}';
+  }
+
+  String trainingDaysAway(int days) =>
+      isSwedish ? 'Om $days dagar' : 'In $days ${days == 1 ? 'day' : 'days'}';
+
+  String trainingAttendance(int attended) =>
+      isSwedish ? '$attended närvarade' : '$attended attended';
+
+  String trainingCallupSummary(int called, int accepted) => isSwedish
+      ? '$called kallade, $accepted tackade ja'
+      : '$called called up, $accepted accepted';
+
+  String trainingStarRating(int stars) =>
+      isSwedish ? '$stars av 5' : '$stars out of 5';
+
+  String moduleTitle(String key, String fallback) {
+    if (isSwedish) return fallback;
+    return switch (key) {
+      'module.match_workspace' => 'Match',
+      'module.team_development' => 'Team Development Plan',
+      'module.training' => 'Training',
+      'module.player_development' => 'IDP',
+      _ => fallback,
+    };
+  }
+
+  String moduleDescription(String key, String fallback) {
+    if (isSwedish) return fallback;
+    return switch (key) {
+      'module.match_workspace' =>
+        'Match plan, pitch line-up, key metrics and match review',
+      'module.team_development' =>
+        'Season goals, periods with development goals and team playing principles',
+      'module.training' =>
+        'Training sessions with exercises, exercise library and evaluation',
+      'module.player_development' =>
+        'Player development plans with goals, activities and check-ins',
+      _ => fallback,
+    };
+  }
+
   /// English copy for [swedish]. A missing entry fails tests and debug
   /// builds (and test/fnd05 scans all of lib/ for it); a release build shows
   /// the Swedish text rather than throwing in front of the user.
@@ -203,6 +253,202 @@ class AppStrings {
   }
 
   static const Map<String, String> _featureEnglish = {
+    // Module and training copy (2026-10-25 localization review).
+    'Beta': 'Beta',
+    'Ingår': 'Included',
+    'Ingår inte': 'Not included',
+    'Skrivskyddad': 'Read-only',
+    'Ange en minut mellan 0 och 300.': 'Enter a minute between 0 and 300.',
+    'Ansökningar om lagsida': 'Team page requests',
+    'Anteckning (frivilligt)': 'Note (optional)',
+    'Byggs nu.': 'Under development.',
+    'Bytesplan': 'Substitution plan',
+    'Bytesplanen ser bara ledarna.':
+        'Only coaches can see the substitution plan.',
+    'Efteranalys': 'Post-match analysis',
+    'Formation': 'Formation',
+    'Fyll i': 'Fill in',
+    'Förberedelse': 'Preparation',
+    'Föregående match': 'Previous match',
+    'har inte svarat': 'have not responded',
+    'In': 'On',
+    'Inga fler spelare att välja.': 'No more players to choose from.',
+    'Inga matchmål än. De sätts under Förberedelser i aktiviteten.':
+        'No match goals yet. Set them under Preparation in the event.',
+    'Ingen kommande match.': 'No upcoming match.',
+    'Ingen kommande match. Matcher läggs in i kalendern i TeamZone.':
+        'No upcoming match. Add matches in the TeamZone calendar.',
+    'Ingen är kallad till nästa match än.':
+        'No one has been called up for the next match yet.',
+    'Inställd': 'Cancelled',
+    'Klubbens behörigheter': 'Club permissions',
+    'kommer': 'attending',
+    'kommer inte': 'not attending',
+    'Laget har inga spelare än.': 'The team has no players yet.',
+    'Live': 'Live',
+    'Lägg till avbytare': 'Add substitute',
+    'Lägg till länk': 'Add link',
+    'Länkar': 'Links',
+    'Länken kunde inte läggas till. Den ska börja med https://.':
+        'The link could not be added. It must start with https://.',
+    'Länken kunde inte ändras.': 'The link could not be changed.',
+    'Matcherna kunde inte hämtas.': 'Matches could not be loaded.',
+    'Matchmål': 'Match goals',
+    'Matchplan': 'Match plan',
+    'Matchplanen kunde inte hämtas. Försök igen.':
+        'The match plan could not be loaded. Try again.',
+    'Matchplanen kunde inte sparas.': 'The match plan could not be saved.',
+    'Matchplanen är sparad.': 'Match plan saved.',
+    'Minut (frivilligt)': 'Minute (optional)',
+    'Moduler': 'Modules',
+    'Modulerna kunde inte hämtas.': 'Modules could not be loaded.',
+    'Mot': 'Against',
+    'Någon annan har ändrat matchplanen. Den senaste versionen visas nu.':
+        'Someone else changed the match plan. The latest version is now shown.',
+    'Någon annan har ändrat uppställningen. Den senaste versionen visas nu.':
+        'Someone else changed the line-up. The latest version is now shown.',
+    'Nästa match': 'Next match',
+    'Planerat byte': 'Planned substitution',
+    'Publicerad för spelarna': 'Published for players',
+    'på planen': 'on the pitch',
+    'Spelade': 'Played',
+    'Spelar': 'Playing',
+    'spelare': 'players',
+    'Spelarna ser de delar som visas, när planen är publicerad.':
+        'Players can see the visible sections once the plan is published.',
+    'T.ex. vid trötthet eller om vi leder':
+        'E.g. when tired or if we are ahead',
+    'T.ex. video på motståndaren eller ett dokument om fasta situationer.':
+        'E.g. opponent video or a document about set pieces.',
+    'Tillbaka till TeamZone': 'Back to TeamZone',
+    'tryck för att välja spelare, dra för att flytta':
+        'tap to choose players, drag to move',
+    'Uppställning': 'Line-up',
+    'Uppställningen kunde inte hämtas. Försök igen.':
+        'The line-up could not be loaded. Try again.',
+    'Uppställningen kunde inte sparas.': 'The line-up could not be saved.',
+    'Uppställningen är inte publicerad än.':
+        'The line-up has not been published yet.',
+    'Uppställningen är sparad.': 'Line-up saved.',
+    'Ut': 'Off',
+    'Vem som sköter publicering, medlemmar, anslag och domare':
+        'Who manages publishing, members, announcements and referees',
+    'Visa uppställningen för spelarna': 'Show the line-up to players',
+    'Välj spelare': 'Choose players',
+    'Ändras under Förberedelser i aktiviteten och följs upp efter matchen.':
+        'Edit under Preparation in the event and review after the match.',
+    'Öppna matchen': 'Open match',
+    'Ny övning': 'New exercise',
+    'Ändra övningen': 'Edit exercise',
+    'Övning': 'Exercise',
+    'Till exempel rondo 5 mot 2': 'For example, a 5v2 rondo',
+    'Skede som tränas (valfritt)': 'Game phase to train (optional)',
+    'Inget skede': 'No phase',
+    'med boll': 'with the ball',
+    'utan boll': 'without the ball',
+    'Organisation': 'Organisation',
+    'Yta, antal spelare, regler': 'Area, number of players, rules',
+    'Coachpunkter': 'Coaching points',
+    'Vad ledarna lyfter under övningen':
+        'What coaches emphasise during the exercise',
+    'Utvärdering': 'Evaluation',
+    'Passet är inte utvärderat än.': 'The session has not been evaluated yet.',
+    'Ändra utvärderingen': 'Edit evaluation',
+    'Utvärdera passet': 'Evaluate session',
+    'Ingen kallelse eller närvaro registrerad.':
+        'No callups or attendance recorded.',
+    'närvaron är inte registrerad': 'attendance has not been recorded',
+    'Utvärderingen är sparad.': 'Evaluation saved.',
+    'Utvärderingen har ändrats av någon annan. Stäng och öppna den igen.':
+        'Someone else changed the evaluation. Close and reopen it.',
+    'Utvärderingen kunde inte sparas.': 'The evaluation could not be saved.',
+    'Hur gick passet?': 'How did the session go?',
+    'Nådde ni målen för träningen?': 'Did you reach the training goals?',
+    'Övningarna': 'Exercises',
+    'Vad fungerade?': 'What worked?',
+    'Det ni vill behålla': 'What you want to keep',
+    'Vad gör ni annorlunda?': 'What would you do differently?',
+    'Det som inte fungerade': 'What did not work',
+    'Till nästa pass': 'For the next session',
+    'Det ni tar med er': 'What you will take forward',
+    'Ett tryck gör den till passets träningsfokus.':
+        'Tap to use it as the session\'s training focus.',
+    'Tips för perioden': 'Tips for this period',
+    'Träningspass': 'Training session',
+    'Publicerat för spelarna': 'Published for players',
+    'Utkast, bara ledarna ser det': 'Draft, visible to coaches only',
+    'Träningsfokus': 'Training focus',
+    'Inget pass planerat än.': 'No session planned yet.',
+    'Ändra i träningsmodulen': 'Edit in the Training module',
+    'Planera passet': 'Plan session',
+    'Öppna i träningsmodulen': 'Open in the Training module',
+    'Passet är sparat och visas för spelarna.':
+        'Session saved and visible to players.',
+    'Passet är sparat. Bara ledarna ser det.':
+        'Session saved. Only coaches can see it.',
+    'Passet har ändrats av någon annan. Det senaste visas nu, gör dina ändringar igen.':
+        'Someone else changed the session. The latest version is now shown; make your changes again.',
+    'Passet kunde inte sparas.': 'The session could not be saved.',
+    'Lämna utan att spara?': 'Leave without saving?',
+    'Dina ändringar i passet sparas inte.':
+        'Your changes to the session will not be saved.',
+    'Stanna': 'Stay',
+    'Lämna': 'Leave',
+    'Passet kunde inte hämtas. Försök igen.':
+        'The session could not be loaded. Try again.',
+    'Ledarna har inte publicerat något pass för träningen än.':
+        'The coaches have not published a session for this training yet.',
+    'Till exempel press och återerövring':
+        'For example, pressing and regaining possession',
+    'Övningar': 'Exercises',
+    'Träningsplanen från eventet': 'Training plan from the event',
+    'Visa passet för spelarna': 'Show the session to players',
+    'Spelarna ser övningarna, tiderna, organisationen och coachpunkterna.':
+        'Players can see the exercises, timings, organisation and coaching points.',
+    'Fokus, anteckningar, material, uppgifter och filer kunde inte hämtas. Försök igen.':
+        'Focus, notes, equipment, tasks and files could not be loaded. Try again.',
+    'Lägg till övning': 'Add exercise',
+    'Inga övningar än.': 'No exercises yet.',
+    'Flytta upp': 'Move up',
+    'Flytta ned': 'Move down',
+    'Träningarna kunde inte hämtas. Passen planeras av ledare med behörighet för träningsupplägg.':
+        'Training sessions could not be loaded. Sessions are planned by coaches with training planning permission.',
+    'Inga kommande träningar': 'No upcoming training sessions',
+    'Lägg in träningar i kalendern, så planerar du passen här.':
+        'Add training sessions to the calendar, then plan them here.',
+    'Inga fler kommande träningar.': 'No more upcoming training sessions.',
+    'Inga tidigare träningar.': 'No past training sessions.',
+    'Träningarna kunde inte hämtas.': 'Training sessions could not be loaded.',
+    'Ej utvärderad': 'Not evaluated',
+    'Utvärderad': 'Evaluated',
+    'Imorgon': 'Tomorrow',
+    'Inget pass planerat än': 'No session planned yet',
+    'Öppna passet': 'Open session',
+    'Publicerat': 'Published',
+    'Inget pass': 'No session',
+    'Uppvärmning': 'Warm-up',
+    'Huvuddel': 'Main part',
+    'Avslutning': 'Cool-down',
+    'Ja': 'Yes',
+    'Delvis': 'Partly',
+    'Nej': 'No',
+    'Bra': 'Good',
+    'Okej': 'Okay',
+    'Mindre bra': 'Not so good',
+    'Komma till avslut och göra mål': 'Creating chances and scoring',
+    'Speluppbyggnad': 'Build-up play',
+    'Kontring/omställning': 'Counter-attacking and transitions',
+    'Anfallsspel': 'Attacking play',
+    'Förhindra och rädda avslut': 'Preventing and saving shots',
+    'Förhindra speluppbyggnad': 'Preventing build-up play',
+    'Återerövring av boll': 'Regaining possession',
+    'Försvarsspel': 'Defending',
+    'Målet nått': 'Goal reached',
+    'Senast ändrad av': 'Last changed by',
+    'Senast ändrat av': 'Last changed by',
+    'Från lagets plan': 'From the team plan',
+    'Mål framåt': 'Upcoming goals',
+    'Spelprinciper': 'Playing principles',
     // Copy that reached feature() without English (2026-10-11 review).
     'Ändra uppgifterna under Kontakt.': 'Change the details under Contact.',
     'Ändra adressen under Kontakt.': 'Change the address under Contact.',

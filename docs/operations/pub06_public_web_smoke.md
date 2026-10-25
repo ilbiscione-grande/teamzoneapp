@@ -19,6 +19,12 @@ npm run smoke -- https://VALD-HOST
 
 Scriptet verifierar security headers, robots→sitemap, begränsad sitemapcache, API `no-store`, riktig 404 och frånvaro av privata fel-/hemlighetsmarkörer.
 
+Avstämt 2026-10-25: kanonisk origin är `https://teamzoneapp.se`, och körningen
+mot den passerar. `https://public.teamzoneapp.se` är alias; dess `/robots.txt`
+ger 308. Scriptet följer inte redirect och kräver 200, så en körning mot aliaset
+avbryts utan att det i sig visar driftstopp. Testa redirectmålet separat och
+kör denna strikta smoke mot kanonisk origin. Se [aktuell status](../implementation/current_status.md).
+
 ## Cache- och invalidations-SLA
 
 1. Läs publicerad klubb-, lag- och artikelväg två gånger och verifiera `s-maxage=60, must-revalidate` utan `stale-while-revalidate`.
@@ -37,4 +43,10 @@ Scriptet verifierar security headers, robots→sitemap, begränsad sitemapcache,
 
 ## Scopegrind
 
-Ingen publik matchklocka, score-feed, realtimekanal eller moderation för liverapportering får införas under PUB-06. Det kräver LATER-03:s separata specifikation och godkännande.
+PUB-06:s ursprungliga scope omfattade inte publik matchklocka eller score-feed.
+Den gränsen har senare ändrats genom godkänt
+[beslutspaket 12](../specification/source/27_public_live_match_decision.md).
+Publikt match-live har nu egen implementation. Detta smoke-script verifierar
+inte dess publicering, samtycken, skyddade identiteter eller liveuppdatering;
+dessa måste verifieras separat enligt paketet. Det ändrade beslutet är inte
+ett generellt tillstånd att publicera fler datafält eller införa nya livekanaler.

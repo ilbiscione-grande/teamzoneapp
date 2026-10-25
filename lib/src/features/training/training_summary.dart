@@ -58,13 +58,15 @@ class _TrainingSessionSectionState extends State<_TrainingSessionSection> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Träningspass',
+                      AppStrings.of(context).feature('Träningspass'),
                       style: theme.textTheme.titleMedium,
                     ),
                   ),
                   if (planned)
                     Text(
-                      '${session.minutes} av ${session.eventMinutes} min',
+                      AppStrings.of(
+                        context,
+                      ).trainingMinutes(session.minutes, session.eventMinutes),
                       style: theme.textTheme.labelLarge,
                     ),
                 ],
@@ -72,14 +74,18 @@ class _TrainingSessionSectionState extends State<_TrainingSessionSection> {
               if (session.canEdit && planned)
                 Text(
                   session.published
-                      ? 'Publicerat för spelarna'
-                      : 'Utkast, bara ledarna ser det',
+                      ? AppStrings.of(
+                          context,
+                        ).feature('Publicerat för spelarna')
+                      : AppStrings.of(
+                          context,
+                        ).feature('Utkast, bara ledarna ser det'),
                   style: theme.textTheme.bodySmall,
                 ),
               if (session.theme.trim().isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'Träningsfokus: ${session.theme.trim()}',
+                  '${AppStrings.of(context).feature('Träningsfokus')}: ${session.theme.trim()}',
                   style: theme.textTheme.titleSmall,
                 ),
               ],
@@ -88,15 +94,17 @@ class _TrainingSessionSectionState extends State<_TrainingSessionSection> {
                 Text(session.goal.trim()),
               ],
               if (!planned)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(top: 6),
-                  child: Text('Inget pass planerat än.'),
+                  child: Text(
+                    AppStrings.of(context).feature('Inget pass planerat än.'),
+                  ),
                 ),
               for (final part in TrainingPart.values)
                 if (session.blocks.any((block) => block.part == part)) ...[
                   const SizedBox(height: 12),
                   Text(
-                    '${part.label} · ${session.blocks.where((block) => block.part == part).fold(0, (sum, block) => sum + block.minutes)} min',
+                    '${AppStrings.of(context).feature(part.label)} · ${session.blocks.where((block) => block.part == part).fold(0, (sum, block) => sum + block.minutes)} min',
                     style: theme.textTheme.labelLarge?.copyWith(
                       color: theme.colorScheme.primary,
                     ),
@@ -116,7 +124,7 @@ class _TrainingSessionSectionState extends State<_TrainingSessionSection> {
                               Text(block.organisation.trim()),
                             if (block.coachingPoints.trim().isNotEmpty)
                               Text(
-                                'Coachpunkter: ${block.coachingPoints.trim()}',
+                                '${AppStrings.of(context).feature('Coachpunkter')}: ${block.coachingPoints.trim()}',
                                 style: theme.textTheme.bodySmall,
                               ),
                           ],
@@ -137,9 +145,15 @@ class _TrainingSessionSectionState extends State<_TrainingSessionSection> {
                   label: Text(
                     session.canEdit
                         ? (planned
-                              ? 'Ändra i träningsmodulen'
-                              : 'Planera passet')
-                        : 'Öppna i träningsmodulen',
+                              ? AppStrings.of(
+                                  context,
+                                ).feature('Ändra i träningsmodulen')
+                              : AppStrings.of(
+                                  context,
+                                ).feature('Planera passet'))
+                        : AppStrings.of(
+                            context,
+                          ).feature('Öppna i träningsmodulen'),
                   ),
                 ),
               ),

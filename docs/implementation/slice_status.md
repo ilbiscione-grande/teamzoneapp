@@ -1,6 +1,20 @@
 # TeamZone implementation slice status
 
-Updated: 2026-10-11
+Updated: 2026-10-25
+
+Current cross-product delivery, environment, verification and release gates:
+[current_status.md](current_status.md), based on the
+[25 October review](../evidence/app_status_review_2026-10-25.md).
+The S00–S10 closures below retain their original scope and dated evidence;
+they do not certify all later changes. After the local
+[localization fix](../evidence/localization_modules_2026-10-25.md), analysis is
+clean and all 810 Flutter tests pass. Webtools now has a separate CI job for
+typecheck, tests, build and production-dependency audit; GitHub execution is
+not established merely by the local workflow change.
+Both sites were locally updated to Next.js 16.4.3 after a fresh audit found
+critical advisories. Clean installations, 148 web tests, builds and audits
+pass; the patch is not deployed by this work. See
+[CI/security evidence](../evidence/webtools_ci_2026-10-25.md).
 
 Latest consolidated implementation deltas:
 [2026-10-02–2026-10-04](../evidence/core_app_iteration_2026-10-02_10-04.md),
@@ -43,9 +57,16 @@ database are greenfield, with no backfill or compatibility path from Teamzone6.
 | S08 | `[x]` | [Development signals evidence](../evidence/s08_development_signals_baseline_2026-08-15.md) |
 | S09 | `[x]` | [Publication and custom-domain evidence](../evidence/s09_publication_fail_closed_baseline_2026-08-15.md) |
 | S10 | `[x]` | Implemented and verified within the approved scope; PAR-FIN-03 remains deliberately closed and separate production provisioning is deferred |
-| S11 | `[ ]` | Workspaces/webtools explicitly deferred |
+| S11 | `[~]` | Later approved decisions are partly implemented: Workspaces opens Match, Team Development Plan and Training; Tacticsboard, Booking Manager and Tournament Planner betas exist. Full IDP, the app/library connection and remaining release gates are open; see [current status](current_status.md). |
 
 ## Cross-cutting stabilization
+
+Rows below record the historical foundation checks. The review's 64 missing
+English texts and training-view copy were subsequently fixed locally; the
+current localization contract and all 810 Flutter tests pass. Web error
+reporting and Android push have since been added; iOS
+configuration and physical verification remain open. Current test results
+and operational gaps are listed in [current status](current_status.md).
 
 | Status | Task | Current result |
 |---|---|---|
@@ -197,12 +218,12 @@ areas above remain deliberately unimplemented and do not prevent slice closure.
 
 | Status | Task | Current result |
 |---|---|---|
-| `[x]` | S09-DB-01 | Locked boundary, age-band/field consent, private settings/projections, consent commands and two-phase projection/cache worker are deployed and remain impossible to publish. |
-| `[x]` | S09-API-01 | Service-only club/team/event/content/contact allowlist plus the deployed Next.js server adapter enforce limits, IP hashing, CAPTCHA assertion, neutral errors and retention; activation remains structurally false. |
-| `[x]` | S09-WEB-01 | Canonical club/team pages and contact foundation are deployed to App Hosting `teamzoneapp-public` in `europe-west4`; Turnstile, security headers, IP-HMAC and same-origin controls are configured fail-closed. Generated hosted.app smoke shows publication inactive with no private data. |
+| `[x]` | S09-DB-01 | Consent, private settings/projections and projection/cache worker passed the original locked-boundary checks. Publication is now enabled in audit; privacy and capability checks still apply. |
+| `[x]` | S09-API-01 | Service-only publication/contact allowlist and Next.js server adapter implement limits, IP hashing, CAPTCHA assertion, neutral errors and retention. Original inactive-boundary evidence is historical; audit runtime is now enabled. |
+| `[x]` | S09-WEB-01 | Public site deployed to App Hosting `teamzoneapp-public` in `europe-west4`, with Turnstile/security headers/IP-HMAC and same-origin boundaries. Current canonical origin is `teamzoneapp.se`; `public.teamzoneapp.se` is an alias. See current status for latest checks and open manual gates. |
 | `[n/a]` | S09-MIG-01 | Greenfield decision: no legacy public data import exists or is permitted. |
-| `[x]` | S09-TEST-01 | Hosted DB matrices, 6/6 local request/CAPTCHA tests, TypeScript, Next compilation, hosted inactive-page/API/header/origin/schema smoke and `public.teamzoneapp.se` HTTPS/CDN tests pass. Successful real contact remains correctly unavailable while publication is structurally false. |
-| `[x]` | S09-REL-01 | Firebase/Blaze, SEK 100 alerts-only budget, three backend-scoped secrets, `europe-west4` App Hosting backend, rollout `build-2026-08-16-000` and connected temporary domain `public.teamzoneapp.se` are verified. Apex, `www`, `webtools` and publication activation remain unchanged/separately gated. |
+| `[x]` | S09-TEST-01 | Original inactive-publication boundary and hosted matrices passed in the linked S09 evidence. Publication runtime is now enabled in audit; current web tests, build and canonical-domain smoke pass. This does not close later manual publication gates. |
+| `[x]` | S09-REL-01 | Original Firebase/Blaze, budget, backend and temporary-domain release passed. As of 25 October, `teamzoneapp.se` is the public site's canonical origin, `public.teamzoneapp.se` is an alias and new Webtools runs on its Firebase URL. Separate production provisioning remains open. |
 
 S09 P0 parameters PAR-PRIV-02, PAR-PRIV-03, PAR-API-01, PAR-OPS-01 and
 PAR-OPS-02 are approved as of 2026-08-15. Dataspec/API implementation is
@@ -247,10 +268,11 @@ provisioning remain explicit later decisions rather than unfinished S10 work.
 Detailed progress for authentication, Team, Calendar, Inbox, role-specific
 Home, public club pages and Min assistent is maintained in
 [`core_app_delivery_cards.md`](core_app_delivery_cards.md). As of 2026-09-13,
-FND-01–05, AUTH-03–05, TEAM-01–08, CAL-01–06, CAL-10–11 and REL-01–03 are closed. Other cards
-remain partial only for the explicit gates stated on each card; deferred
-imports, workspaces/webtools, generative AI and production provisioning are not
-silently counted as current implementation work.
+FND-01–05, AUTH-03–05, TEAM-01–08, CAL-01–06, CAL-10–11 and REL-01–03 were closed at that checkpoint. The 25 October localization regression is now fixed with green analysis/tests; REL-01's full current build gate has not been rerun. REL-02/03 retain their original scope. Other cards
+remain partial for their explicit gates; see the cards for later additions.
+Legacy imports remain excluded, generative AI and production provisioning
+remain separately gated, and workspaces/webtools have since been partly built
+under later decisions. Their current scope is in [current status](current_status.md).
 
 ### Wave 10 – extensions after the core app (2026-09-27 – 2026-10-08)
 
@@ -317,8 +339,8 @@ iteration moved Statistik from the bottom bar to Laget → Statistik, a team vie
 for team managers (attendance over a period, per month, lowest attendance and
 every member). The fifth bottom-bar button now follows the role (Arbetsytor for
 leaders, Ekonomi or Styrelse for club functionaries, Inställningar for everyone
-else), and users can choose it themselves. Arbetsytor is a placeholder for the
-coming modules. Attendance taps cycle back to unregistered, undone late
+else), and users can choose it themselves. At that iteration Arbetsytor was a
+placeholder; it now opens three modules (see current status). Attendance taps cycle back to unregistered, undone late
 corrections are no longer staged, and the event status circles explain
 themselves. Migrations `20261013090000`–`20261016090000` are applied to the
 audit project. Evidence:

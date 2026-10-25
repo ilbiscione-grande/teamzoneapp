@@ -95,6 +95,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
   });
 
   Future<void> _save() async {
+    final strings = AppStrings.of(context);
     final session = _session;
     if (session == null || _busy) return;
     final messenger = ScaffoldMessenger.of(context);
@@ -114,17 +115,18 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
         SnackBar(
           content: Text(
             saved.published
-                ? 'Passet är sparat och visas för spelarna.'
-                : 'Passet är sparat. Bara ledarna ser det.',
+                ? strings.feature('Passet är sparat och visas för spelarna.')
+                : strings.feature('Passet är sparat. Bara ledarna ser det.'),
           ),
         ),
       );
     } on TrainingSessionConflict {
       messenger.showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Passet har ändrats av någon annan. Det senaste visas nu, '
-            'gör dina ändringar igen.',
+            strings.feature(
+              'Passet har ändrats av någon annan. Det senaste visas nu, gör dina ändringar igen.',
+            ),
           ),
         ),
       );
@@ -132,7 +134,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
     } catch (error) {
       AppErrors.caught('training_session._save', error);
       messenger.showSnackBar(
-        const SnackBar(content: Text('Passet kunde inte sparas.')),
+        SnackBar(content: Text(strings.feature('Passet kunde inte sparas.'))),
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -144,16 +146,20 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
     final leave = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Lämna utan att spara?'),
-        content: const Text('Dina ändringar i passet sparas inte.'),
+        title: Text(AppStrings.of(context).feature('Lämna utan att spara?')),
+        content: Text(
+          AppStrings.of(
+            context,
+          ).feature('Dina ändringar i passet sparas inte.'),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Stanna'),
+            child: Text(AppStrings.of(context).feature('Stanna')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Lämna'),
+            child: Text(AppStrings.of(context).feature('Lämna')),
           ),
         ],
       ),
@@ -222,7 +228,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Träningspass'),
+          title: Text(AppStrings.of(context).feature('Träningspass')),
           actions: [
             if (canEdit)
               Padding(
@@ -230,7 +236,11 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                 child: FilledButton(
                   key: const Key('training-session-save'),
                   onPressed: _dirty && !_busy ? _save : null,
-                  child: Text(_busy ? 'Sparar…' : 'Spara'),
+                  child: Text(
+                    _busy
+                        ? AppStrings.of(context).feature('Sparar…')
+                        : AppStrings.of(context).feature('Spara'),
+                  ),
                 ),
               ),
           ],
@@ -259,23 +269,29 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
       return Center(
         child: TextButton(
           onPressed: _load,
-          child: const Text('Passet kunde inte hämtas. Försök igen.'),
+          child: Text(
+            AppStrings.of(
+              context,
+            ).feature('Passet kunde inte hämtas. Försök igen.'),
+          ),
         ),
       );
     }
     if (_missing) {
-      return const Center(
+      return Center(
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            'Ledarna har inte publicerat något pass för träningen än.',
+            AppStrings.of(context).feature(
+              'Ledarna har inte publicerat något pass för träningen än.',
+            ),
             textAlign: TextAlign.center,
           ),
         ),
       );
     }
     if (session == null) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator());
     }
     final theme = Theme.of(context);
     final canEdit = session.canEdit;
@@ -315,26 +331,36 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
               key: const Key('training-session-theme'),
               controller: _theme,
               maxLength: 200,
-              decoration: const InputDecoration(
-                labelText: 'Träningsfokus',
-                hintText: 'Till exempel press och återerövring',
+              decoration: InputDecoration(
+                labelText: AppStrings.of(context).feature('Träningsfokus'),
+                hintText: AppStrings.of(
+                  context,
+                ).feature('Till exempel press och återerövring'),
               ),
             )
           else if (session.theme.trim().isNotEmpty) ...[
-            Text('Träningsfokus', style: theme.textTheme.labelLarge),
+            Text(
+              AppStrings.of(context).feature('Träningsfokus'),
+              style: theme.textTheme.labelLarge,
+            ),
             Text(session.theme, style: theme.textTheme.titleMedium),
           ],
         ]),
       ],
     );
     final exercises = _part([
-      Text('Övningar', style: theme.textTheme.titleMedium),
+      Text(
+        AppStrings.of(context).feature('Övningar'),
+        style: theme.textTheme.titleMedium,
+      ),
       if (canEdit && _blocks.isEmpty && session.eventPlan != null)
         Card(
           key: const Key('training-session-event-plan'),
           child: ListTile(
             leading: const Icon(Icons.notes),
-            title: const Text('Träningsplanen från eventet'),
+            title: Text(
+              AppStrings.of(context).feature('Träningsplanen från eventet'),
+            ),
             subtitle: Text(
               session.eventPlan!,
               maxLines: 4,
@@ -345,12 +371,12 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                 () => _blocks = [
                   TrainingBlock(
                     part: TrainingPart.main,
-                    title: 'Träningsplan',
+                    title: AppStrings.of(context).feature('Träningsplan'),
                     organisation: session.eventPlan!,
                   ),
                 ],
               ),
-              child: const Text('Använd'),
+              child: Text(AppStrings.of(context).feature('Använd')),
             ),
           ),
         ),
@@ -361,9 +387,13 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
         SwitchListTile(
           key: const Key('training-session-published'),
           contentPadding: EdgeInsets.zero,
-          title: const Text('Visa passet för spelarna'),
-          subtitle: const Text(
-            'Spelarna ser övningarna, tiderna, organisationen och coachpunkterna.',
+          title: Text(
+            AppStrings.of(context).feature('Visa passet för spelarna'),
+          ),
+          subtitle: Text(
+            AppStrings.of(context).feature(
+              'Spelarna ser övningarna, tiderna, organisationen och coachpunkterna.',
+            ),
           ),
           value: _published,
           onChanged: (value) => _edit(() => _published = value),
@@ -378,7 +408,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
         Padding(
           padding: const EdgeInsets.only(top: 8, bottom: 24),
           child: Text(
-            'Senast ändrat av ${session.updatedBy}',
+            '${AppStrings.of(context).feature('Senast ändrat av')} ${session.updatedBy}',
             style: theme.textTheme.bodySmall,
           ),
         ),
@@ -392,7 +422,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
         final data = snapshot.data;
         if (data == null) {
           if (!snapshot.hasError) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(child: CircularProgressIndicator());
           }
           return ListView(
             children: [
@@ -404,8 +434,10 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                   onPressed: () => setState(() {
                     _event = _loadEvent();
                   }),
-                  child: const Text(
-                    'Fokus, anteckningar, material, uppgifter och filer kunde inte hämtas. Försök igen.',
+                  child: Text(
+                    AppStrings.of(context).feature(
+                      'Fokus, anteckningar, material, uppgifter och filer kunde inte hämtas. Försök igen.',
+                    ),
                   ),
                 ),
               ]),
@@ -441,14 +473,17 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
           Row(
             children: [
               Expanded(
-                child: Text(part.label, style: theme.textTheme.titleMedium),
+                child: Text(
+                  AppStrings.of(context).feature(part.label),
+                  style: theme.textTheme.titleMedium,
+                ),
               ),
               if (minutes > 0)
                 Text('$minutes min', style: theme.textTheme.labelLarge),
               if (canEdit)
                 IconButton(
                   key: ValueKey('training-add-${part.name}'),
-                  tooltip: 'Lägg till övning',
+                  tooltip: AppStrings.of(context).feature('Lägg till övning'),
                   icon: const Icon(Icons.add),
                   onPressed: () => _editBlock(part: part),
                 ),
@@ -456,7 +491,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
           ),
           if (indices.isEmpty)
             Text(
-              'Inga övningar än.',
+              AppStrings.of(context).feature('Inga övningar än.'),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -497,7 +532,9 @@ class _TrainingMinutes extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          length > 0 ? '$minutes av $length min planerade' : '$minutes min',
+          AppStrings.of(
+            context,
+          ).trainingMinutes(minutes, length, planned: true),
           style: TextStyle(color: over ? colors.error : null),
         ),
         const SizedBox(height: 4),
@@ -562,7 +599,7 @@ class _TrainingBlockCard extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
-                          phase.label,
+                          AppStrings.of(context).feature(phase.label),
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: theme.colorScheme.primary,
                           ),
@@ -574,7 +611,10 @@ class _TrainingBlockCard extends StatelessWidget {
                     ],
                     if (block.coachingPoints.trim().isNotEmpty) ...[
                       const SizedBox(height: 6),
-                      Text('Coachpunkter', style: theme.textTheme.labelMedium),
+                      Text(
+                        AppStrings.of(context).feature('Coachpunkter'),
+                        style: theme.textTheme.labelMedium,
+                      ),
                       Text(block.coachingPoints.trim()),
                     ],
                   ],
@@ -584,13 +624,13 @@ class _TrainingBlockCard extends StatelessWidget {
                 Column(
                   children: [
                     IconButton(
-                      tooltip: 'Flytta upp',
+                      tooltip: AppStrings.of(context).feature('Flytta upp'),
                       visualDensity: VisualDensity.compact,
                       icon: const Icon(Icons.keyboard_arrow_up),
                       onPressed: onUp,
                     ),
                     IconButton(
-                      tooltip: 'Flytta ned',
+                      tooltip: AppStrings.of(context).feature('Flytta ned'),
                       visualDensity: VisualDensity.compact,
                       icon: const Icon(Icons.keyboard_arrow_down),
                       onPressed: onDown,

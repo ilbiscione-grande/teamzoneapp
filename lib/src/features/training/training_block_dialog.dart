@@ -70,7 +70,11 @@ class _TrainingBlockDialogState extends State<_TrainingBlockDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: Text(widget.block == null ? 'Ny övning' : 'Ändra övningen'),
+    title: Text(
+      widget.block == null
+          ? AppStrings.of(context).feature('Ny övning')
+          : AppStrings.of(context).feature('Ändra övningen'),
+    ),
     content: SizedBox(
       width: 520,
       child: SingleChildScrollView(
@@ -81,7 +85,8 @@ class _TrainingBlockDialogState extends State<_TrainingBlockDialog> {
             _TdpChoices<TrainingPart>(
               key: const Key('training-block-part'),
               values: {
-                for (final part in TrainingPart.values) part: part.label,
+                for (final part in TrainingPart.values)
+                  part: AppStrings.of(context).feature(part.label),
               },
               selected: _part,
               onSelected: (value) => setState(() => _part = value),
@@ -95,9 +100,11 @@ class _TrainingBlockDialogState extends State<_TrainingBlockDialog> {
                     key: const Key('training-block-title'),
                     controller: _title,
                     maxLength: 120,
-                    decoration: const InputDecoration(
-                      labelText: 'Övning',
-                      hintText: 'Till exempel rondo 5 mot 2',
+                    decoration: InputDecoration(
+                      labelText: AppStrings.of(context).feature('Övning'),
+                      hintText: AppStrings.of(
+                        context,
+                      ).feature('Till exempel rondo 5 mot 2'),
                     ),
                     onChanged: (_) => setState(() {}),
                   ),
@@ -109,8 +116,8 @@ class _TrainingBlockDialogState extends State<_TrainingBlockDialog> {
                     key: const Key('training-block-minutes'),
                     controller: _minutes,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Minuter',
+                    decoration: InputDecoration(
+                      labelText: AppStrings.of(context).feature('Minuter'),
                       counterText: '',
                     ),
                     maxLength: 3,
@@ -123,16 +130,21 @@ class _TrainingBlockDialogState extends State<_TrainingBlockDialog> {
               key: const Key('training-block-phase'),
               isExpanded: true,
               initialValue: _phase,
-              decoration: const InputDecoration(
-                labelText: 'Skede som tränas (valfritt)',
+              decoration: InputDecoration(
+                labelText: AppStrings.of(
+                  context,
+                ).feature('Skede som tränas (valfritt)'),
               ),
               items: [
-                const DropdownMenuItem(value: null, child: Text('Inget skede')),
+                DropdownMenuItem(
+                  value: null,
+                  child: Text(AppStrings.of(context).feature('Inget skede')),
+                ),
                 for (final area in PrincipleArea.values)
                   DropdownMenuItem(
                     value: area,
                     child: Text(
-                      '${area.label} (${area.withBall ? 'med boll' : 'utan boll'})',
+                      '${AppStrings.of(context).feature(area.label)} (${area.withBall ? AppStrings.of(context).feature('med boll') : AppStrings.of(context).feature('utan boll')})',
                     ),
                   ),
               ],
@@ -145,9 +157,11 @@ class _TrainingBlockDialogState extends State<_TrainingBlockDialog> {
               maxLength: 2000,
               minLines: 2,
               maxLines: 6,
-              decoration: const InputDecoration(
-                labelText: 'Organisation',
-                hintText: 'Yta, antal spelare, regler',
+              decoration: InputDecoration(
+                labelText: AppStrings.of(context).feature('Organisation'),
+                hintText: AppStrings.of(
+                  context,
+                ).feature('Yta, antal spelare, regler'),
                 border: OutlineInputBorder(),
               ),
             ),
@@ -158,9 +172,11 @@ class _TrainingBlockDialogState extends State<_TrainingBlockDialog> {
               maxLength: 2000,
               minLines: 2,
               maxLines: 6,
-              decoration: const InputDecoration(
-                labelText: 'Coachpunkter',
-                hintText: 'Vad ledarna lyfter under övningen',
+              decoration: InputDecoration(
+                labelText: AppStrings.of(context).feature('Coachpunkter'),
+                hintText: AppStrings.of(
+                  context,
+                ).feature('Vad ledarna lyfter under övningen'),
                 border: OutlineInputBorder(),
               ),
             ),
@@ -173,16 +189,16 @@ class _TrainingBlockDialogState extends State<_TrainingBlockDialog> {
         TextButton(
           key: const Key('training-block-delete'),
           onPressed: () => Navigator.pop(context, (null, true)),
-          child: const Text('Ta bort'),
+          child: Text(AppStrings.of(context).feature('Ta bort')),
         ),
       TextButton(
         onPressed: () => Navigator.pop(context),
-        child: const Text('Avbryt'),
+        child: Text(AppStrings.of(context).feature('Avbryt')),
       ),
       FilledButton(
         key: const Key('training-block-save'),
         onPressed: _valid ? _save : null,
-        child: const Text('Klar'),
+        child: Text(AppStrings.of(context).feature('Klar')),
       ),
     ],
   );

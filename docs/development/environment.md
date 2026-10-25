@@ -13,9 +13,32 @@
 
 Visual Studio is intentionally absent because native Windows desktop is not a v1 target. Android and web are buildable on this host. iOS project files are maintained here, while building/signing requires macOS or suitable CI.
 
-No Docker-compatible runtime or local PostgreSQL server is required. New and patched migrations are first checked in an in-memory PostgreSQL (PGlite, `supabase/tests/*.local.mjs`) with stubs for the objects they touch; patch points in live functions are checked read-only against the audit project before the migration is run there.
+Routine isolated SQL tests do not require Docker or a local PostgreSQL server:
+they use PGlite (`supabase/tests/*.local.mjs`) with fixtures for the objects
+they touch. This is not a full migration replay. The empty-database release
+check uses Docker/Supabase; the last documented replay covered 320 migrations
+on 13 October and must be repeated for the current chain. See
+[production provisioning](../operations/production_provisioning.md).
 
 ## Environment contract
+
+Status checked 2026-10-25: [current delivery status](../implementation/current_status.md).
+Separate production is not provisioned. Current public addresses still run
+against the audit project; planned address moves are not completed deployments.
+
+| Surface | Current origin | Hosting |
+|---|---|---|
+| Flutter audit | `https://app.teamzoneapp.se` | Firebase Hosting target `test` |
+| Public site, audit | `https://teamzoneapp.se` (canonical), `https://public.teamzoneapp.se` (alias) | App Hosting `teamzoneapp-public` |
+| New Webtools, audit | `https://teamzoneapp-webtools--teamzoneapp-b02a2.europe-west4.hosted.app` | App Hosting `teamzoneapp-webtools` |
+| Old Webtools | `https://webtools.teamzoneapp.se` | Older deployment; domain not moved to new backend |
+
+`ops/environments.json` remains the build/deployment guard manifest; its audit
+`publicOrigin` records the alias while the site's `PUBLIC_ORIGIN` is now the
+apex domain. The current origin table above records that distinction without
+changing the build guard as part of this documentation update. Planned
+`test.`/`test-public.` addresses and production Stockholm database are described
+in the production runbook.
 
 `TEAMZONE_ENV` accepts `local`, `audit`, `staging` or `production`. Unknown values parse fail-safe to `local`. `local` does not wire a Supabase project — a plain `flutter build`/`flutter run` therefore shows "Backend är inte ansluten" by design, not as a bug. See [command_matrix.md](command_matrix.md) for the exact `--dart-define` flags needed for a backend-connected build against a real (e.g. `audit`) project.
 
@@ -32,8 +55,26 @@ No Docker-compatible runtime or local PostgreSQL server is required. New and pat
 | `PUBLIC_API_IP_HMAC_SECRET` (secret) | IP hashing for rate limits |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `CAPTCHA_SECRET_KEY` (secret) | Cloudflare Turnstile for contact and sign-up |
 | `PUBLIC_PERSONAL_HOME_ENABLED` | Enables the personal start page |
+| `NEXT_PUBLIC_WEBTOOLS_URL` | New Webtools origin linked by the public portal; currently the Firebase hosted.app origin |
 
-External settings that must match: the Turnstile widget allows `public.teamzoneapp.se` and `teamzoneapp.se`, and Supabase Auth allows `https://public.teamzoneapp.se/**` as a redirect URL for follower confirmation emails.
+Current `PUBLIC_ORIGIN` is `https://teamzoneapp.se`. The alias may return a
+canonical 308; use the canonical origin for the strict PUB-06 smoke runner.
+
+External settings for the public site must match its origins: the Turnstile
+widget's allowed hostnames and Supabase Auth's follower-confirmation redirect
+allow list must include the actual callback origin. Recheck these when moving
+domains; an App Hosting variable alone does not update external allow lists.
+
+## Webtools environment
+
+`webtools/apphosting.yaml` points to the audit project with public Supabase
+configuration, TeamZone site/app links and a server-only secret for public
+tournament reads. The secret is never browser configuration. See
+[Webtools README](../../webtools/README.md) for commands and route scope.
+The signup confirmation origin must be in Auth's redirect allow list.
+`TACTICS_DEMO=1` is an optional local demo switch, not a required production setting.
+
+## Secret handling
 
 Secrets are supplied outside Git. Flutter/web/mobile clients may only receive a Supabase publishable key; secret/service-role keys remain server-side. There is no committed `.env` file in this repo (only `.env.example` with placeholders) and no `.vscode/launch.json` — get the real `SUPABASE_URL`/`SUPABASE_PUBLISHABLE_KEY` values from the Supabase dashboard or `supabase projects list`/CLI access to the linked project.
 

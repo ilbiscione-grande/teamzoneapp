@@ -3,6 +3,13 @@
 **Syfte:** beskriva hur appen ser ut och används för varje roll idag, så att vi kan testa flödena ett i taget och förbättra dem.
 **Läge:** sammanställt 2026-10-19 från koden (main, commit `06081f9`). Det som är märkt *(verifiera)* är härlett ur koden och behöver bekräftas på telefonen.
 
+**Avstämning 2026-10-25:** detta är ett daterat UX-testunderlag med kvarvarande
+manuella provpunkter. Gamla fynd är inte automatiskt reproducerade i dagens
+version. Arbetsytor har sedan fått Match, Team Development Plan och Träning;
+lagstatistik nås under Laget. Se [aktuellt leveransläge](../implementation/current_status.md)
+för senare beslut, verifieringsresultat och öppna grindar. Kontotabellen nedan
+är en ögonblicksbild från 19 oktober, inte en ny inventering av behörigheter.
+
 Så här testar vi:
 
 1. Logga in med testkontot för rollen (se avsnitt 1) på telefonen och, där det anges, på webben (app.teamzoneapp.se).
@@ -300,7 +307,11 @@ Ekonomi- och styrelsebehörigheter kan inte delas ut i appen idag (lucka 3 i avs
 
 ### 5.6 Arbetsytor och Utveckling
 
-Arbetsytor är femte knappen och har planeringsytor *(verifiera innehåll)*. Utveckling innehåller spelarutveckling.
+Arbetsytor är ledarnas förvalda femte knapp (valet kan ändras). Den öppnar nu
+Match, Team Development Plan och Träning med egen modulnavigation. Den äldre
+utvecklingsplansgrunden finns kvar, men den nya fullständiga IDP-modulen har
+ingen öppnare ännu. Bibliotekskopplingen från Tacticsboard väntar enligt
+paket 13; fysisk UX-provning av de nya modulerna återstår i helhetsmatrisen.
 
 ### 5.7 Nyckelflöden att testa
 

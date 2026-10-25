@@ -209,6 +209,12 @@ void main() {
       'lib/src/features/calendar/calendar_surface.dart',
       'lib/src/features/messaging/inbox_surface.dart',
       'lib/src/app/product_shell.dart',
+      'lib/src/features/training/training_block_dialog.dart',
+      'lib/src/features/training/training_evaluation.dart',
+      'lib/src/features/training/training_module.dart',
+      'lib/src/features/training/training_season.dart',
+      'lib/src/features/training/training_session_page.dart',
+      'lib/src/features/training/training_summary.dart',
     ];
     final strings = File(
       'lib/src/core/localization/app_strings.dart',
