@@ -244,6 +244,8 @@ void main() {
     final profile = _Profile();
     await tester.pumpWidget(_app(profile, clubAdmin: true));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Laget'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Laget'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Trupp'));
