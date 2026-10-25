@@ -350,6 +350,12 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
           value: _published,
           onChanged: (value) => _edit(() => _published = value),
         ),
+      if (canEdit && !session.startsAt.isAfter(DateTime.now()))
+        _TrainingEvaluationSection(
+          eventId: session.eventId,
+          services: widget.services,
+          blockTitles: [for (final block in session.blocks) block.title],
+        ),
       if (session.updatedBy != null)
         Padding(
           padding: const EdgeInsets.only(top: 8),

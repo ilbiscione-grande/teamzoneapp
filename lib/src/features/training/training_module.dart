@@ -224,6 +224,11 @@ class _TrainingOverviewState extends State<_TrainingOverview> {
                 _sessionStatus(training.session).$1,
                 if (training.blocks > 0)
                   '${training.blocks} övningar · ${training.minutes} min',
+                if (!training.startsAt.isAfter(DateTime.now()) &&
+                    training.state != 'cancelled')
+                  training.evaluated
+                      ? 'Utvärderad${training.rating == null ? '' : ' ${'★' * training.rating!}'}'
+                      : 'Ej utvärderad',
                 if (training.state == 'cancelled') 'Inställd',
               ].join(' · '),
             ),

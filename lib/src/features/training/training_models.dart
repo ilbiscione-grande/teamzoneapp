@@ -142,6 +142,8 @@ class ModuleTraining {
     this.theme,
     this.minutes = 0,
     this.blocks = 0,
+    this.evaluated = false,
+    this.rating,
   });
   factory ModuleTraining.fromJson(Map<String, dynamic> json) => ModuleTraining(
     eventId: json['event_id'] as String,
@@ -153,9 +155,116 @@ class ModuleTraining {
     theme: json['theme'] as String?,
     minutes: (json['minutes'] as num?)?.toInt() ?? 0,
     blocks: (json['blocks'] as num?)?.toInt() ?? 0,
+    evaluated: json['evaluated'] == true,
+    rating: (json['rating'] as num?)?.toInt(),
   );
   final String eventId, title, state, session;
   final String? theme;
   final DateTime startsAt, endsAt;
   final int minutes, blocks;
+  final bool evaluated;
+  final int? rating;
+}
+
+/// Whether the session's goal was reached.
+enum GoalReached {
+  yes('Ja'),
+  partly('Delvis'),
+  no('Nej');
+
+  const GoalReached(this.label);
+  final String label;
+
+  static GoalReached? from(Object? value) =>
+      values.where((item) => item.name == value).firstOrNull;
+}
+
+/// How an exercise went.
+enum BlockRating {
+  good('Bra'),
+  fair('Okej'),
+  poor('Mindre bra');
+
+  const BlockRating(this.label);
+  final String label;
+
+  static BlockRating? from(Object? value) =>
+      values.where((item) => item.name == value).firstOrNull;
+}
+
+/// One exercise in the evaluation, by its title in the session.
+class EvaluatedBlock {
+  const EvaluatedBlock({required this.title, this.rating, this.note = ''});
+  factory EvaluatedBlock.fromJson(Map<String, dynamic> json) => EvaluatedBlock(
+    title: json['title'] as String? ?? '',
+    rating: BlockRating.from(json['rating']),
+    note: json['note'] as String? ?? '',
+  );
+  final String title, note;
+  final BlockRating? rating;
+
+  Map<String, Object?> toJson() => {
+    'title': title,
+    'rating': rating?.name,
+    'note': note,
+  };
+}
+
+/// The leaders' evaluation after the session (decision package 11, step
+/// 3), with the attendance against the callups. Revision 0 before it is
+/// written.
+class TrainingEvaluation {
+  const TrainingEvaluation({
+    required this.eventId,
+    required this.canEdit,
+    required this.started,
+    required this.revision,
+    this.rating,
+    this.goalReached,
+    this.wentWell = '',
+    this.doDifferently = '',
+    this.nextTime = '',
+    this.blocks = const [],
+    this.called = 0,
+    this.accepted = 0,
+    this.attended = 0,
+    this.recorded = 0,
+    this.updatedBy,
+  });
+  factory TrainingEvaluation.fromJson(Map<String, dynamic> json) {
+    final attendance = Map<String, dynamic>.from(
+      json['attendance'] as Map? ?? const {},
+    );
+    int count(String key) => (attendance[key] as num?)?.toInt() ?? 0;
+    return TrainingEvaluation(
+      eventId: json['event_id'] as String,
+      canEdit: json['can_edit'] == true,
+      started: json['started'] == true,
+      revision: (json['revision'] as num?)?.toInt() ?? 0,
+      rating: (json['rating'] as num?)?.toInt(),
+      goalReached: GoalReached.from(json['goal_reached']),
+      wentWell: json['went_well'] as String? ?? '',
+      doDifferently: json['do_differently'] as String? ?? '',
+      nextTime: json['next_time'] as String? ?? '',
+      blocks: [
+        for (final row
+            in (json['blocks'] as List? ?? const []).whereType<Map>())
+          EvaluatedBlock.fromJson(Map<String, dynamic>.from(row)),
+      ],
+      called: count('called'),
+      accepted: count('accepted'),
+      attended: count('attended'),
+      recorded: count('recorded'),
+      updatedBy: json['updated_by'] as String?,
+    );
+  }
+  final String eventId, wentWell, doDifferently, nextTime;
+  final bool canEdit, started;
+  final int revision, called, accepted, attended, recorded;
+  final int? rating;
+  final GoalReached? goalReached;
+  final List<EvaluatedBlock> blocks;
+  final String? updatedBy;
+
+  bool get written => revision > 0;
 }

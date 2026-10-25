@@ -112,11 +112,73 @@ void main() {
     expect(find.textContaining('visas för spelarna'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('a leader evaluates a session after the training', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final sessions = _Sessions(started: true);
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'training'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _Identity(),
+          modules: const _Modules(),
+          calendar: _Calendar(sessions),
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('bottom-nav-more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Arbetsytor'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('workspace-module-module.training')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('module-next-training-open')));
+    await tester.pumpAndSettle();
+
+    // The evaluation shows on the session once it has started.
+    await tester.ensureVisible(find.byKey(const Key('training-evaluation')));
+    expect(find.text('7 närvarade · 10 kallade, 8 tackade ja'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('training-evaluation-open')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('training-evaluation-star-4')));
+    await tester.tap(find.text('Ja'));
+    await tester.tap(find.text('Bra'));
+    await tester.enterText(
+      find.byKey(const Key('training-evaluation-next')),
+      'Följ upp pressen',
+    );
+    await tester.tap(find.byKey(const Key('training-evaluation-save')));
+    await tester.pumpAndSettle();
+    final saved = sessions.evaluation!;
+    expect(
+      [saved.rating, saved.goalReached, saved.nextTime],
+      [4, GoalReached.yes, 'Följ upp pressen'],
+    );
+    expect(saved.blocks.single.title, 'Rondo');
+    expect(saved.blocks.single.rating, BlockRating.good);
+    expect(
+      find.textContaining('Till nästa pass: Följ upp pressen'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _Sessions implements TrainingServices {
+  _Sessions({this.started = false});
+  final bool started;
   TrainingSession? saved;
-  static final _start = DateTime.now().add(const Duration(days: 1));
+  TrainingEvaluation? evaluation;
+  late final DateTime _start = started
+      ? DateTime.now().subtract(const Duration(hours: 1))
+      : DateTime.now().add(const Duration(days: 1));
 
   TrainingSession get _empty => TrainingSession(
     eventId: 'training-1',
@@ -124,9 +186,18 @@ class _Sessions implements TrainingServices {
     title: 'Träning',
     startsAt: _start,
     endsAt: _start.add(const Duration(minutes: 90)),
-    revision: 0,
     theme: 'Press',
     eventPlan: 'Rondo, press 4v4, match',
+    blocks: started
+        ? const [
+            TrainingBlock(
+              part: TrainingPart.warmup,
+              title: 'Rondo',
+              minutes: 12,
+            ),
+          ]
+        : const [],
+    revision: started ? 1 : 0,
   );
 
   @override
@@ -169,6 +240,47 @@ class _Sessions implements TrainingServices {
       theme: 'Press',
     ),
   ];
+
+  @override
+  Future<TrainingEvaluation> getEvaluation(String eventId) async =>
+      evaluation ??
+      TrainingEvaluation(
+        eventId: eventId,
+        canEdit: true,
+        started: started,
+        revision: 0,
+        called: 10,
+        accepted: 8,
+        attended: 7,
+        recorded: 9,
+      );
+
+  @override
+  Future<TrainingEvaluation> saveEvaluation({
+    required String eventId,
+    required int expectedRevision,
+    int? rating,
+    GoalReached? goalReached,
+    required String wentWell,
+    required String doDifferently,
+    required String nextTime,
+    required List<EvaluatedBlock> blocks,
+  }) async => evaluation = TrainingEvaluation(
+    eventId: eventId,
+    canEdit: true,
+    started: true,
+    revision: expectedRevision + 1,
+    rating: rating,
+    goalReached: goalReached,
+    wentWell: wentWell,
+    doDifferently: doDifferently,
+    nextTime: nextTime,
+    blocks: blocks,
+    called: 10,
+    accepted: 8,
+    attended: 7,
+    recorded: 9,
+  );
 }
 
 class _Calendar extends UnconfiguredCalendarServices {

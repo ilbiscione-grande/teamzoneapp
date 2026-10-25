@@ -75,3 +75,4 @@ Inga. Alias, ålder och nivå samt matchens tavlor är besvarade (TBL-15–TBL-1
 | 2026-10-25 | Ett bibliotek i stället för tre: den som delar väljer hela communityn eller bara klubben, och klubben erbjuder sina lag en kurerad lista ur hela biblioteket (TBL-03, TBL-08 och TBL-09 ändrade). | Produktägaren |
 | 2026-10-25 | Mitt bibliotek är bara egna tavlor; favoriter ur biblioteket som tillägg (TBL-18). | Produktägaren |
 | 2026-10-25 | Mitt bibliotek är alla mina projekt med samma filter som biblioteket; publicering direkt från projektet, med ikon för vad som är publicerat (TBL-19). | Produktägaren |
+| 2026-10-25 | Steg 1–3 byggda; kopplingen till appens träningspass (steg 4) väntar tills vidare. | Produktägaren |

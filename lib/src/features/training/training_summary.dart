@@ -30,7 +30,11 @@ class _TrainingSessionSectionState extends State<_TrainingSessionSection> {
       eventId: widget.eventId,
       services: widget.services,
     );
-    if (mounted) setState(() => _session = _load());
+    if (mounted) {
+      setState(() {
+        _session = _load();
+      });
+    }
   }
 
   @override

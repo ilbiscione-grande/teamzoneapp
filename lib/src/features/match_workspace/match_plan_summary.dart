@@ -38,7 +38,11 @@ class _MatchPlanSectionState extends State<_MatchPlanSection> {
       match: widget.match,
       sides: widget.sides,
     );
-    if (mounted) setState(() => _plan = _load());
+    if (mounted) {
+      setState(() {
+        _plan = _load();
+      });
+    }
   }
 
   @override

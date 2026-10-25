@@ -148,6 +148,7 @@ part '../features/training/training_module.dart';
 part '../features/training/training_session_page.dart';
 part '../features/training/training_block_dialog.dart';
 part '../features/training/training_summary.dart';
+part '../features/training/training_evaluation.dart';
 part '../features/match_workspace/match_squad.dart';
 part '../features/match_workspace/match_page.dart';
 part '../features/match_workspace/match_lineup_editor.dart';

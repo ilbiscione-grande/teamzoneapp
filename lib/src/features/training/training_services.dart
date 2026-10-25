@@ -29,6 +29,21 @@ abstract interface class TrainingServices {
     required DateTime from,
     required DateTime to,
   });
+
+  /// The leaders' evaluation after the session (step 3).
+  Future<TrainingEvaluation> getEvaluation(String eventId);
+
+  /// Saves the evaluation on [expectedRevision] (0 for a new one).
+  Future<TrainingEvaluation> saveEvaluation({
+    required String eventId,
+    required int expectedRevision,
+    int? rating,
+    GoalReached? goalReached,
+    required String wentWell,
+    required String doDifferently,
+    required String nextTime,
+    required List<EvaluatedBlock> blocks,
+  });
 }
 
 class UnconfiguredTrainingServices implements TrainingServices {
@@ -50,6 +65,20 @@ class UnconfiguredTrainingServices implements TrainingServices {
     required String teamId,
     required DateTime from,
     required DateTime to,
+  }) => Future.error(_error);
+  @override
+  Future<TrainingEvaluation> getEvaluation(String eventId) =>
+      Future.error(_error);
+  @override
+  Future<TrainingEvaluation> saveEvaluation({
+    required String eventId,
+    required int expectedRevision,
+    int? rating,
+    GoalReached? goalReached,
+    required String wentWell,
+    required String doDifferently,
+    required String nextTime,
+    required List<EvaluatedBlock> blocks,
   }) => Future.error(_error);
 }
 
@@ -125,5 +154,50 @@ class SupabaseTrainingServices
         .whereType<Map<String, dynamic>>()
         .map(ModuleTraining.fromJson)
         .toList(growable: false);
+  }
+
+  @override
+  Future<TrainingEvaluation> getEvaluation(String eventId) async {
+    final value = await _rpc('get_training_evaluation', {
+      'target_event_id': eventId,
+    });
+    if (value is! Map<String, dynamic>) {
+      throw const FormatException('Invalid training evaluation.');
+    }
+    return TrainingEvaluation.fromJson(value);
+  }
+
+  @override
+  Future<TrainingEvaluation> saveEvaluation({
+    required String eventId,
+    required int expectedRevision,
+    int? rating,
+    GoalReached? goalReached,
+    required String wentWell,
+    required String doDifferently,
+    required String nextTime,
+    required List<EvaluatedBlock> blocks,
+  }) async {
+    try {
+      final value = await _rpc('save_training_evaluation', {
+        'target_event_id': eventId,
+        'expected_revision': expectedRevision,
+        'session_rating': rating,
+        'reached': goalReached?.name,
+        'well': wentWell,
+        'differently': doDifferently,
+        'next_session': nextTime,
+        'block_ratings': [for (final block in blocks) block.toJson()],
+      });
+      if (value is! Map<String, dynamic>) {
+        throw const FormatException('Invalid training evaluation.');
+      }
+      return TrainingEvaluation.fromJson(value);
+    } on PostgrestException catch (error) {
+      if (error.message.contains('stale_revision')) {
+        throw const TrainingSessionConflict();
+      }
+      rethrow;
+    }
   }
 }
