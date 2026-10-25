@@ -1,6 +1,7 @@
 # Språkval under Personligt – 25 oktober 2026
 
-Implementerat lokalt efter användarens önskemål. Ändringen är inte driftsatt.
+Implementerat efter användarens önskemål och publicerat till audit.
+Se [releasekvittot](language_release_2026-10-25.md) för revision och efterkontroller.
 
 Under **Inställningar → Personligt → Språk** kan användaren välja:
 
@@ -25,4 +26,5 @@ att sidan stannar kvar, att engelskan återställs efter omstart och att
 Enhetens språk återgår till enhetens locale och tar bort det sparade valet.
 Språk-, roll-, tränings- och inställningsregressioner: **45 tester godkända**.
 Statisk analys av samtliga sex berörda Dart-filer: **inga fynd**.
-Manuell engelsk acceptans av driftsatt app återstår.
+Manuellt språkbyte och återläsning efter omladdning har verifierats i audit.
+Full engelsk roll-/modulacceptans återstår.

@@ -2,7 +2,8 @@
 
 Uppföljning efter [auditreleasen](audit_release_2026-10-25.md), mot
 driftsatt kod från `e0a6ffb`. Detta är en delgenomgång, inte ett slutgodkännande.
-Rättningarna nedan finns lokalt och är inte driftsatta.
+Rättningarna nedan har därefter publicerats till audit;
+se [releasekvittot](language_release_2026-10-25.md).
 
 ## Provad omfattning
 
@@ -71,14 +72,16 @@ användning från flera konton. Dessa åtgärder utfördes inte mot lagets data.
   att tills vidare redovisa denna automatiska verifiering. Manuell engelsk
   acceptans kvarstår som öppen; ingen manuell engelsk session har genomförts.
   Därefter beställde användaren ett eget språkval under Personligt.
-  Det är [implementerat lokalt](language_setting_2026-10-25.md) för nästa auditrelease.
+  Det är [publicerat och provat i audit](language_setting_2026-10-25.md).
+  Byte till English, omladdning och återgång till enhetens språk passerar;
+  detta stänger inte full engelsk roll-/modulacceptans.
 - **Mobil app:** inledande storleksändring slog inte igenom på Flutterfliken.
   Efter användarens byte till ledarsession var den faktiska appvyn
   522 × 874 och provades visuellt. 390-pixels appbredd täcks automatiskt,
   men har inte manuellt godkänts. Publiksajten och Webtools provades vid 390 × 844.
 - Inloggade Webtools-verktyg, fysisk enhet, två samtidiga användare,
   skärmläsare med tal och övriga rollkombinationer återstår.
-- Lokala rättningar behöver därefter publiceras och verifieras i audit.
+- Rättningarna är publicerade till audit enligt releasekvittot ovan.
 
 Databasens migreringsavstämning, tomdatabasreplay och behörighetsöversyn
 ligger kvar i [aktuellt leveransläge](../implementation/current_status.md).
