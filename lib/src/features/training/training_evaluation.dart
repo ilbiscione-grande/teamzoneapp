@@ -265,7 +265,7 @@ class _TrainingEvaluationPageState extends State<_TrainingEvaluationPage> {
         onChanged: (value) => setState(() => _rating = value),
       ),
       const SizedBox(height: 12),
-      Text('Nådde ni passets mål?', style: theme.textTheme.titleMedium),
+      Text('Nådde ni målen för träningen?', style: theme.textTheme.titleMedium),
       const SizedBox(height: 4),
       _TdpChoices<GoalReached?>(
         key: const Key('training-evaluation-goal'),

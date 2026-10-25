@@ -78,7 +78,10 @@ class _TrainingSessionSectionState extends State<_TrainingSessionSection> {
                 ),
               if (session.theme.trim().isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text(session.theme.trim(), style: theme.textTheme.titleSmall),
+                Text(
+                  'Träningsfokus: ${session.theme.trim()}',
+                  style: theme.textTheme.titleSmall,
+                ),
               ],
               if (session.goal.trim().isNotEmpty) ...[
                 const SizedBox(height: 4),

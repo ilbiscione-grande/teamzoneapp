@@ -17,6 +17,8 @@ class _TrainingSessionPage extends StatefulWidget {
 
 class _TrainingSessionPageState extends State<_TrainingSessionPage> {
   final _theme = TextEditingController();
+  // The old free-text goal, saved back as loaded: goals are now the list
+  // in the preparation ("Mål för träningen").
   final _goal = TextEditingController();
   TrainingSession? _session;
   List<TrainingBlock> _blocks = const [];
@@ -278,65 +280,53 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
     final theme = Theme.of(context);
     final canEdit = session.canEdit;
     final minutes = _blocks.fold(0, (sum, b) => sum + b.minutes);
-    final head = _part([
-      Text(
-        _trainingDay(context, session.startsAt),
-        style: theme.textTheme.labelLarge,
-      ),
-      Text(session.title, style: theme.textTheme.headlineSmall),
-      const SizedBox(height: 12),
-      _TrainingMinutes(minutes: minutes, length: session.eventMinutes),
-      const SizedBox(height: 16),
-      if (canEdit)
-        TextField(
-          key: const Key('training-session-theme'),
-          controller: _theme,
-          maxLength: 200,
-          decoration: const InputDecoration(
-            labelText: 'Tema',
-            hintText: 'Till exempel press och återerövring',
+    final head = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _part([
+          Text(
+            _trainingDay(context, session.startsAt),
+            style: theme.textTheme.labelLarge,
           ),
-        )
-      else if (session.theme.trim().isNotEmpty)
-        Text(session.theme, style: theme.textTheme.titleMedium),
-    ]);
-    final goal = _part([
-      Text('Mål för träningen', style: theme.textTheme.titleMedium),
-      const SizedBox(height: 8),
-      if (canEdit) ...[
-        TextField(
-          key: const Key('training-session-goal'),
-          controller: _goal,
-          maxLength: 2000,
-          minLines: 2,
-          maxLines: 5,
-          decoration: const InputDecoration(
-            labelText: 'Passets mål',
-            hintText: 'Vad spelarna ska ta med sig från passet',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        FutureBuilder<TeamPlanSuggestion?>(
-          future: _suggestion,
-          builder: (context, snapshot) => switch (snapshot.data) {
-            final suggestion? => _PlanSuggestionBox(
-              suggestion: suggestion,
-              taken: {
-                for (final line in _goal.text.split('\n'))
-                  line.replaceFirst(RegExp(r'^•\s*'), '').trim().toLowerCase(),
-              },
-              onTake: (label) async => _edit(() {
-                final text = _goal.text.trimRight();
-                _goal.text = text.isEmpty ? '• $label' : '$text\n• $label';
-              }),
-              takeHint: 'Ett tryck lägger in den i passets mål.',
+          Text(session.title, style: theme.textTheme.headlineSmall),
+          const SizedBox(height: 12),
+          _TrainingMinutes(minutes: minutes, length: session.eventMinutes),
+        ]),
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 852),
+            child: _TrainingSeasonPlan(
+              suggestion: _suggestion,
+              focus: _theme.text,
+              onTake: canEdit
+                  ? (label) async => _edit(() {
+                      final text = _theme.text.trim();
+                      _theme.text = text.isEmpty ? label : '$text, $label';
+                    })
+                  : null,
             ),
-            null => const SizedBox.shrink(),
-          },
+          ),
         ),
-      ] else
-        Text(session.goal.trim().isEmpty ? 'Inget mål skrivet.' : session.goal),
-    ]);
+        // One focus for the session, the event's theme; its goals follow
+        // as a list (the preparation's "Mål för träningen").
+        _part([
+          if (canEdit)
+            TextField(
+              key: const Key('training-session-theme'),
+              controller: _theme,
+              maxLength: 200,
+              decoration: const InputDecoration(
+                labelText: 'Träningsfokus',
+                hintText: 'Till exempel press och återerövring',
+              ),
+            )
+          else if (session.theme.trim().isNotEmpty) ...[
+            Text('Träningsfokus', style: theme.textTheme.labelLarge),
+            Text(session.theme, style: theme.textTheme.titleMedium),
+          ],
+        ]),
+      ],
+    );
     final exercises = _part([
       Text('Övningar', style: theme.textTheme.titleMedium),
       if (canEdit && _blocks.isEmpty && session.eventPlan != null)
@@ -407,7 +397,6 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
           return ListView(
             children: [
               head,
-              goal,
               exercises,
               tail,
               _part([
@@ -430,12 +419,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
           people: [...squad.roster, ..._guestRosterFor(squad)],
           services: widget.calendar.preparation,
           allowEdit: canEdit && event.archivedAt == null,
-          sessionParts: (
-            head: head,
-            goal: goal,
-            exercises: exercises,
-            tail: tail,
-          ),
+          sessionParts: (head: head, exercises: exercises, tail: tail),
         );
       },
     );

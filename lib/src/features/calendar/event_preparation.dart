@@ -43,12 +43,12 @@ class _PreparationTab extends StatefulWidget {
   final Widget? trainingSession;
 
   /// Inside the Training module, the session's own parts woven into the
-  /// preparation as one plan: its theme first, then the training focus, its
-  /// goal and the event's goals, the exercises, then notes, material,
-  /// tasks and files, and last publishing and the evaluation. The event's
-  /// own details (theme, focus, plan) are left out; the session holds them.
-  final ({Widget head, Widget goal, Widget exercises, Widget tail})?
-  sessionParts;
+  /// preparation as one plan: its season plan and its one training focus
+  /// first, then the goals for the training as a list, the exercises, then
+  /// notes, material, tasks and files, and last publishing and the
+  /// evaluation. The event's own details (theme, focus, plan) and the focus
+  /// chips are left out; the session holds its focus.
+  final ({Widget head, Widget exercises, Widget tail})? sessionParts;
 
   @override
   State<_PreparationTab> createState() => _PreparationTabState();
@@ -206,8 +206,6 @@ class _PreparationTabState extends State<_PreparationTab> {
     final sections = parts != null
         ? <Widget?>[
             parts.head,
-            _focusSection(data),
-            parts.goal,
             kpiGoals,
             parts.exercises,
             _noteSection(data, 'Anteckningar'),
