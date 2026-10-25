@@ -62,7 +62,7 @@ jobs:
         with:
           deno-version: v2.x
       - run: deno check supabase/functions/*/index.ts
-      - run: deno test --allow-env=SUPABASE_URL,SUPABASE_PUBLISHABLE_KEYS,SUPABASE_SECRET_KEYS,TEAMZONE_EXTRA_WEB_ORIGINS supabase/functions/tests
+      - run: deno test --allow-env=SUPABASE_URL,SUPABASE_PUBLISHABLE_KEYS,SUPABASE_SECRET_KEYS,TEAMZONE_EXTRA_WEB_ORIGINS,TEAMZONE_ENV supabase/functions/tests
 
   public-site:
     name: Public site typecheck, tests, build and audit
