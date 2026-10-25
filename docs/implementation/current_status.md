@@ -6,8 +6,9 @@ Senare lokal rättning samma dag: [modulöversättningar](../evidence/localizati
 Den tidigare språkregressionen är rättad; aktuell Flutter-svit är grön.
 Ytterligare uppföljning: [Webtools i CI och Next.js-säkerhetsuppdatering](../evidence/webtools_ci_2026-10-25.md).
 Den rena CI-verifieringen hittade ett kritiskt Next.js-paketfynd; båda sajterna
-har därför uppdaterats lokalt från 16.3.8 till 16.4.3. Driftsättning ingår inte
-i denna lokala rättning och behöver hanteras separat.
+har därför uppdaterats från 16.3.8 till 16.4.3. Appen och båda sajterna är
+driftsatta till audit efter användarens godkännande; se
+[releasekvittot](../evidence/audit_release_2026-10-25.md) för revision och verifiering.
 Detta är den gemensamma ingången till aktuell status. Daterade rapporter och
 äldre testantal är historisk evidens, inte ett löfte om dagens releasekvalitet.
 
@@ -74,19 +75,20 @@ eller TestFlight-verifiering. Native desktop är inte v1-mål.
 | Public-site | Ren installation, typkontroll, 94 tester, produktionsbygge och audit godkända efter lokal uppdatering till Next.js 16.4.3. |
 | Webtools | Ren installation, typkontroll, 54 tester, produktionsbygge och audit godkända efter lokal uppdatering till Next.js 16.4.3. Eget CI-jobb tillagt. |
 | SQL/PGlite | 84 lokala testfiler avslutade utan fel, plus tre extra testlägen för direktresultat, matchrapporter och följarnotiser. Filantal är inte antal assertions. |
-| Firebase Functions | 8 tester godkända. |
-| npm audit | Noll fynd för public-site och Webtools efter 16.4.3-uppdateringen; noll i Firebase Functions produktionsberoenden vid ursprungliga granskningen. Ett kritiskt Next.js-fynd i den rena 16.3.8-installationen föranledde uppdateringen. Omfattar inte Deno-importerna eller ett bevis om driftsatt patchstatus. |
+| Firebase Functions | 8 tester och audit godkända lokalt och i GitHub. Senare body-parser-fynd rättat och driftsatt till tre befintliga auditfunktioner. |
+| npm audit | Noll fynd för båda sajterna och Firebase Functions efter Next.js- respektive body-parser-patch. Kontrollerna passerar även i GitHub. Omfattar inte Deno-importerna; driftsättningen styrks separat i releasekvittot. |
 | Publik smoke | Huvuddomänen godkänd. Aliasdomänens test avbryts på förväntad kanonisk 308, eftersom scriptet kräver 200. |
 
 Kod-, databas- och HTTP-granskning ersätter inte inloggad visuell provning.
-Ingen ny full roll-/enhetsmatris, iOS-körning, APK/AAB, Flutter-releasebyggnad
-eller full Edge/Deno-testkörning gjordes i nulägesgenomgången.
+Ingen ny full roll-/enhetsmatris, iOS-körning eller APK/AAB gjordes.
+Efterföljande Flutter-webbrelease och full Edge/Deno-testkörning redovisas
+i releasekvittot.
 
 ## Öppna kvalitets- och releasepunkter
 
-1. **Klart lokalt:** språkgrindens 64 saknade översättningar och träningsvyerna
+1. **Driftsatt till audit:** språkgrindens 64 saknade översättningar och träningsvyerna
    är rättade. Engelskt mobilflöde, hela sviten, analys och format passerar.
-   Rättningen är inte driftsatt som del av arbetet och stänger inte full
+   Rättningen finns i publicerad Flutter-webb men stänger inte full
    fysisk språk-/enhetsacceptans för alla andra moduler.
 2. Avstäm migreringsloggen: **389 lokala versioner, 387 loggade**.
    `20261022090000` (inloggningsbegränsning) och `20261128090000`
@@ -98,18 +100,18 @@ eller full Edge/Deno-testkörning gjordes i nulägesgenomgången.
    fortfarande avstängt i audit. Bedöm också advisor-varningen om `pg_net` i `public`.
 5. Genomför [behörighetsöversynen](permissions-review.md) och stäng återstående
    roll-, tvåenhets-, tillgänglighets-, juridik- och releasegrindar med egen evidens.
-6. **CI-jobb tillagt lokalt:** `.github/workflows/ci.yml` omfattar nu även
+6. **CI-jobb pushat och verifierat:** `.github/workflows/ci.yml` omfattar nu även
    Webtools med ren installation, typkontroll, test, bygge och audit.
    Det utökar befintlig CI för Flutter, SQL, Edge, public-site och Firebase
    Functions. Samtliga steg har passerat i rena lokala kopior utan
-   tjänstekonfiguration. En faktisk GitHub-körning har ännu inte verifierats.
+   tjänstekonfiguration. Samtliga sex jobb har även passerat på GitHub,
+   inklusive Flutter och SQL. Revision och körning finns i releasekvittot.
 7. Verifiera verklig automatisk meddelandegallring. Workern finns, men inget
    motsvarande databas-cronjobb identifierades; extern schemaläggning är okontrollerad.
 8. Bestäm flytten av gamla Webtools-domänen och synka produktkatalogens texter
    efter verifierad funktion. Den beskriver fortfarande vissa byggda funktioner som kommande.
-9. **Säkerhetsrelease:** driftsätt de verifierade Next.js-uppdateringarna efter
-   separat miljö-/releasegodkännande och kör respektive sajt-smoke. Att koden
-   och CI-konfigurationen är uppdaterade ändrar inte automatiskt en driftmiljö.
+9. **Next.js-säkerhetsrelease genomförd i audit:** båda App Hosting-utrullningarna
+   är klara och läsande efterkontroller passerar. Se releasekvittot.
 
 Detaljer, säkerhetskontrollens omfattning och historiska källor finns i
 [rapporten 25 oktober](../evidence/app_status_review_2026-10-25.md).

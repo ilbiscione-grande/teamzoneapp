@@ -17,6 +17,9 @@
 > [CI- och säkerhetsuppföljningen](webtools_ci_2026-10-25.md). Npm-resultaten
 > nedan bevarar den tidigare kontrollen och är inte ett intyg om driftsatt patchstatus.
 
+> Efter godkännande genomfördes push och auditdriftsättning av appen, båda
+> sajterna och Functions-beroendepatchen. Se [releasekvittot](audit_release_2026-10-25.md).
+
 Underlag: repot `C:\Dev\TeamzoneApp` vid commit `760dbe0`, dokumentationen i
 `docs/`, läsande kontroller av Supabase-projektet TeamzoneApp, HTTP-kontroller av
 sajterna och nya lokala analys-, test- och byggkörningar. Rapporten ändrar inga

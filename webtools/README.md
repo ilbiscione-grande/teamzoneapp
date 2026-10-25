@@ -7,13 +7,13 @@ Status checked 2026-10-25: three tools have beta implementations; Video
 Analyzer is planned. A clean local installation, typecheck, 54 tests, build
 and dependency audit pass on Next.js 16.4.3. The repository
 now has a separate `webtools` CI job for installation, typecheck, tests,
-production build and dependency audit. A local workflow change does not prove
-a completed GitHub runner execution or certify all signed-in/device flows. The
+production build and dependency audit. The site jobs have also passed on the
+GitHub Ubuntu runner; this does not certify all signed-in/device flows. The
 [shared status](../docs/implementation/current_status.md) records remaining
 release gates and the distinction between built, deployed and verified.
 See [CI/security verification](../docs/evidence/webtools_ci_2026-10-25.md)
-for the critical finding that prompted the local version update; deployment
-of that update is separate.
+for the critical finding that prompted the version update and the
+[audit release receipt](../docs/evidence/audit_release_2026-10-25.md) for deployment evidence.
 
 ## Tools currently built
 

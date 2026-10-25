@@ -21,11 +21,13 @@ Production is not provisioned. After the local
 [localization fix](docs/evidence/localization_modules_2026-10-25.md), Flutter
 analysis is clean and all 810 tests pass. Webtools now has its own CI job for
 typecheck, tests, build and production-dependency audit. A fresh verification
-found critical Next.js advisories, so both sites are locally pinned to 16.4.3;
+found critical Next.js advisories, so both sites are pinned to 16.4.3;
 clean installations, all 148 web tests, both builds and audits now pass.
 See [CI/security evidence](docs/evidence/webtools_ci_2026-10-25.md).
-The security update has not been deployed in this work. Manual and production
-release gates remain open; GitHub runner execution is not yet verified.
+The app, both sites and the Functions dependency patch are deployed to audit.
+GitHub verification and deployment checks are recorded in the
+[release receipt](docs/evidence/audit_release_2026-10-25.md).
+Manual and production release gates remain open.
 
 Since 2026-09-27 the core app has been extended with team roles and permissions,
 event preparations and match mode, member profiles, follower accounts on the

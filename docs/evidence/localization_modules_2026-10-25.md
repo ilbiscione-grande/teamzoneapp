@@ -2,8 +2,8 @@
 
 Uppföljning av språkregressionen i
 [nulägesrapporten](app_status_review_2026-10-25.md), utförd efter
-dokumentationsavstämningen samma dag. Rättningen finns lokalt; den är inte
-driftsatt som del av detta arbete.
+dokumentationsavstämningen samma dag. Rättningen är nu pushad och driftsatt
+till audit-webben; se [releasekvittot](audit_release_2026-10-25.md).
 
 ## Ändring
 
@@ -46,7 +46,8 @@ flutter test
 flutter analyze
 ```
 
-Detta är lokal automatiserad verifiering. Ingen ny APK/AAB, release-webb,
-iOS-byggnad, fysisk enhetsprovning eller driftsättning ingick.
+Ovanstående är den ursprungliga lokala verifieringen. Efterföljande
+release-webb, GitHub-verifiering och auditdriftsättning redovisas i releasekvittot.
+Ingen APK/AAB, iOS-byggnad eller fysisk enhetsprovning ingick.
 Övriga drift-, databas- och releasepunkter följs i
 [aktuell leveransstatus](../implementation/current_status.md).

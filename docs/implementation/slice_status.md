@@ -9,12 +9,12 @@ The S00–S10 closures below retain their original scope and dated evidence;
 they do not certify all later changes. After the local
 [localization fix](../evidence/localization_modules_2026-10-25.md), analysis is
 clean and all 810 Flutter tests pass. Webtools now has a separate CI job for
-typecheck, tests, build and production-dependency audit; GitHub execution is
-not established merely by the local workflow change.
-Both sites were locally updated to Next.js 16.4.3 after a fresh audit found
+typecheck, tests, build and production-dependency audit, also passed on GitHub.
+Both sites were updated to Next.js 16.4.3 after a fresh audit found
 critical advisories. Clean installations, 148 web tests, builds and audits
-pass; the patch is not deployed by this work. See
-[CI/security evidence](../evidence/webtools_ci_2026-10-25.md).
+pass. The app and both sites are now deployed to audit. See
+[CI/security evidence](../evidence/webtools_ci_2026-10-25.md) and the
+[release receipt](../evidence/audit_release_2026-10-25.md).
 
 Latest consolidated implementation deltas:
 [2026-10-02–2026-10-04](../evidence/core_app_iteration_2026-10-02_10-04.md),

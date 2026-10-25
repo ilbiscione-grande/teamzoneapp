@@ -12,8 +12,8 @@ publika sajtens befintliga jobb:
 - Befintliga triggers: pull requests, push till `main` och manuell dispatch.
 - Endast `contents: read`; inga tjänstehemligheter eller deploymentsteg.
 
-Detta är en lokal workflowändring. Ingen push eller GitHub Actions-körning
-har genomförts som del av arbetet, och ingen sajt har driftsatts.
+Ändringen har nu pushats och sajtjobben har passerat på GitHubs Ubuntu-runner.
+Båda sajterna har driftsatts till audit; se [releasekvittot](audit_release_2026-10-25.md).
 
 ## Säkerhetsfynd vid ren verifiering
 
@@ -58,8 +58,6 @@ paketversioner ändrades inte. `git diff --check` passerar. Befintligt
 kontraktstest för public-site:s Server Action-gräns passerar mot den nya
 installerade Next-versionen.
 
-Lokala Windows-resultat ersätter inte en verifierad körning på GitHubs
-Ubuntu-runner. GitHub-körningen återstår efter att ändringen pushats.
-
-Den lokala uppdateringen ändrar inte de driftsatta sajternas version.
-Säkerhetsuppdateringen behöver en separat godkänd driftsättning.
+Efter användarens godkännande genomfördes push, GitHub-körning och
+driftsättning. Båda sajtjobben passerade även på Ubuntu. Releasekvittot
+redovisar miljö, revision, utrullning och efterkontroller.
