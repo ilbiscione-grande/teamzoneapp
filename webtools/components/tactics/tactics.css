@@ -203,3 +203,6 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
   .tb-narrow-only { display: inline-flex; }
   .tb-save[data-state="saved"] { display: none; }
 }
+
+/* TeamZone's library: its five filters in as many columns as fit. */
+.tb-filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 12px; }

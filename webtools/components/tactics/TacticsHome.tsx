@@ -14,6 +14,7 @@ import { useAccount } from "../account";
 import { kindLabels } from "./TopBar.tsx";
 import { useTemplates } from "./use-templates.ts";
 import { useLibrary } from "./use-library.ts";
+import { useSharedLibrary } from "./use-shared-library.ts";
 import { boardsFromLibrary, libraryKindLabels, librarySummaryLine, projectKindOf } from "../../lib/tactics/library.ts";
 import "./tactics.css";
 
@@ -27,7 +28,18 @@ export function TacticsHome() {
   const [start, setStart] = useState("ready");
   const [picked, setPicked] = useState<string[]>(defaultStarterKeys.match);
   const { templates, error: templateError, boardsOf, remove: removeTemplate } = useTemplates();
-  const { items: library, error: libraryError, boardsOf: libraryBoardsOf, remove: removeLibraryItem } = useLibrary();
+  const { items: library, error: libraryError, boardsOf: libraryBoardsOf, remove: removeLibraryItem, reload: reloadLibrary } = useLibrary();
+  const { error: shareError, share, unshare } = useSharedLibrary();
+
+  // TBL-05: sharing means others may use and copy it; asked each time.
+  const shareItem = async (id: string, title: string, again: boolean) => {
+    if (!again && !window.confirm(`Dela ${title} i TeamZones bibliotek? Alla med Tacticsboard kan se den med ditt namn, använda och kopiera den. Kopplingar till spelare följer inte med.`)) return;
+    if (await share(id)) void reloadLibrary();
+  };
+  const unshareItem = async (sharedId: string, title: string) => {
+    if (!window.confirm(`Sluta dela ${title}? Den tas bort ur TeamZones bibliotek men finns kvar i ditt. De som redan använt den behåller sina kopior.`)) return;
+    if (await unshare(sharedId)) void reloadLibrary();
+  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -79,6 +91,11 @@ export function TacticsHome() {
   return (
     <div className="bk-home">
       {error && <p role="alert" className="wt-error">{error}</p>}
+      <section className="wt-panel">
+        <h2>TeamZones bibliotek</h2>
+        <p>Övningar, pass och sessioner som tränare delar med varandra, och TeamZones egna. Sök på skede, ålder och spelform.</p>
+        <Link className="wt-button small" href="/tacticsboard/bibliotek">Sök i TeamZones bibliotek</Link>
+      </section>
       <section className="wt-panel">
         <h2>Nytt projekt</h2>
         <form className="wt-form" onSubmit={create}>
@@ -159,15 +176,30 @@ export function TacticsHome() {
         <section className="wt-panel" aria-label="Ditt bibliotek">
           <h2>Ditt bibliotek</h2>
           <p className="wt-small">Övningar, pass och sessioner du har sparat. Börja ett nytt projekt från dem ovan.</p>
-          {libraryError && <p role="alert" className="wt-error">{libraryError}</p>}
+          {(libraryError || shareError) && <p role="alert" className="wt-error">{libraryError || shareError}</p>}
           <ul className="bk-resource-list">
             {library.map(item => (
               <li key={item.id}>
                 <div>
                   <strong>{item.title}</strong>
                   <span>{[libraryKindLabels[item.kind], librarySummaryLine(item), item.version > 1 && `version ${item.version}`].filter(Boolean).join(" · ")}</span>
+                  {item.shared && (
+                    <span>{item.shared.hidden ? "Dold i TeamZones bibliotek efter rapporter"
+                      : item.shared.current ? `Delad i TeamZones bibliotek (version ${item.shared.version})`
+                      : "Delad i TeamZones bibliotek, men du har ändrat den sedan"}</span>
+                  )}
                 </div>
                 <div className="wt-actions">
+                  {!item.shared ? (
+                    <button type="button" className="wt-button secondary small" onClick={() => void shareItem(item.id, item.title, false)}>Dela</button>
+                  ) : (
+                    <>
+                      {!item.shared.current && !item.shared.hidden && (
+                        <button type="button" className="wt-button secondary small" onClick={() => void shareItem(item.id, item.title, true)}>Dela nya versionen</button>
+                      )}
+                      <button type="button" className="wt-button secondary small" onClick={() => void unshareItem(item.shared!.id, item.title)}>Sluta dela</button>
+                    </>
+                  )}
                   <button type="button" className="wt-button secondary small"
                     onClick={() => { if (window.confirm(`Ta bort ${item.title} ur biblioteket?`)) { if (start === `library:${item.id}`) setStart("ready"); void removeLibraryItem(item.id); } }}>Ta bort</button>
                 </div>

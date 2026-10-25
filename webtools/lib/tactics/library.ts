@@ -97,6 +97,8 @@ export type LibraryItemSummary = {
   source_board_id: string | null;
   board_count: number;
   boards: { id: string; name: string }[];
+  /** Shared in TeamZone's library (step 2), or null. */
+  shared?: LibraryShare;
   updated_at: string;
 };
 
@@ -124,7 +126,7 @@ export function lessonItem(boards: Board[], title: string): LibrarySave {
 }
 
 /** A library item's boards to start a project from, with their exercise details back on them. */
-export function boardsFromLibrary(item: LibraryItemSummary, boards: Board[]): Board[] {
+export function boardsFromLibrary(item: Pick<LibraryItemSummary, "kind" | "details">, boards: Board[]): Board[] {
   return boards.map((board, index) => {
     const json = item.kind === "exercise" ? item.details : item.kind === "plan" ? item.details.exercises?.[index] : undefined;
     return json ? { ...board, exercise: exerciseFromJson(json) } : board;
@@ -132,7 +134,7 @@ export function boardsFromLibrary(item: LibraryItemSummary, boards: Board[]): Bo
 }
 
 /** A short line about an item: its part, minutes, phase and boards. */
-export function librarySummaryLine(item: LibraryItemSummary): string {
+export function librarySummaryLine(item: Pick<LibraryItemSummary, "kind" | "details" | "board_count">): string {
   if (item.kind === "exercise") {
     return [
       item.details.part && partLabels[item.details.part],
@@ -146,3 +148,17 @@ export function librarySummaryLine(item: LibraryItemSummary): string {
   }
   return `${item.board_count} ${item.board_count === 1 ? "tavla" : "tavlor"}`;
 }
+
+/** An item of TeamZone's library: the writer by name, yours or TeamZone's own. */
+export type SharedItemSummary = Omit<LibraryItemSummary, "source_project_id" | "source_board_id"> & {
+  author: string;
+  starter: boolean;
+  mine: boolean;
+  hidden: boolean;
+};
+
+/** Whether an item of your library is shared, and with its latest version. */
+export type LibraryShare = { id: string; version: number; hidden: boolean; current: boolean } | null;
+
+export type SharedFilters = { text: string; kind: LibraryKind | ""; part: ExercisePart | ""; phase: GamePhase | ""; age: AgeClass | ""; form: GameForm | "" };
+export const noFilters: SharedFilters = { text: "", kind: "", part: "", phase: "", age: "", form: "" };
