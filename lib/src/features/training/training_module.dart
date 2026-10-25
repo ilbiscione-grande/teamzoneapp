@@ -22,10 +22,8 @@ abstract final class _TrainingModule {
           label: 'Översikt',
           icon: Icons.dashboard_outlined,
           selectedIcon: Icons.dashboard,
-          builder: (_) => _TrainingOverview(
-            teamId: team.teamId!,
-            services: calendar.trainingSessions,
-          ),
+          builder: (_) =>
+              _TrainingOverview(teamId: team.teamId!, calendar: calendar),
         ),
       ],
     ),
@@ -36,10 +34,10 @@ abstract final class _TrainingModule {
   static Future<void> openSession(
     BuildContext context, {
     required String eventId,
-    required TrainingServices services,
+    required CalendarServices calendar,
   }) => _ModuleScope.push<void>(
     context,
-    (_) => _TrainingSessionPage(eventId: eventId, services: services),
+    (_) => _TrainingSessionPage(eventId: eventId, calendar: calendar),
     seed: _ModuleShell.seeds[_key],
   );
 }
@@ -59,9 +57,11 @@ String _trainingDay(BuildContext context, DateTime value) {
 
 /// Översikt: the next training up front, then the coming or past ones.
 class _TrainingOverview extends StatefulWidget {
-  const _TrainingOverview({required this.teamId, required this.services});
+  const _TrainingOverview({required this.teamId, required this.calendar});
   final String teamId;
-  final TrainingServices services;
+  final CalendarServices calendar;
+
+  TrainingServices get services => calendar.trainingSessions;
 
   @override
   State<_TrainingOverview> createState() => _TrainingOverviewState();
@@ -96,7 +96,7 @@ class _TrainingOverviewState extends State<_TrainingOverview> {
     await _TrainingModule.openSession(
       context,
       eventId: training.eventId,
-      services: widget.services,
+      calendar: widget.calendar,
     );
     if (mounted) _reload();
   }

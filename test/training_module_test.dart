@@ -71,6 +71,10 @@ void main() {
     await tester.tap(find.byKey(const Key('module-next-training-open')));
     await tester.pumpAndSettle();
 
+    // The session and the event's Förberedelser, as two tabs.
+    expect(find.widgetWithText(Tab, 'Passet'), findsOneWidget);
+    expect(find.widgetWithText(Tab, 'Förberedelser'), findsOneWidget);
+
     // It starts from the event's theme, and its plan can become a block.
     expect(find.text('Press'), findsOneWidget);
     expect(

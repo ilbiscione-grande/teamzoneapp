@@ -523,7 +523,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                       ? _TrainingSessionSection(
                           key: ValueKey('event-training-session-${event.id}'),
                           eventId: event.id,
-                          services: widget.calendar.trainingSessions,
+                          calendar: widget.calendar,
                         )
                       : null,
                 ),

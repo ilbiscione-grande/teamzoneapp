@@ -1,16 +1,17 @@
 part of '../../app/teamzone_app.dart';
 
-/// Förberedelser for a training: its session in the Training module, how
-/// far it is planned, and the way into it. Hidden without the module, or
-/// for a player when nothing is published.
+/// Förberedelser for a training: its session from the Training module in
+/// full, the theme, the goal and the exercises of each part with minutes,
+/// organisation and coaching points, and the way into the module. Hidden
+/// without the module, or for a player when nothing is published.
 class _TrainingSessionSection extends StatefulWidget {
   const _TrainingSessionSection({
     super.key,
     required this.eventId,
-    required this.services,
+    required this.calendar,
   });
   final String eventId;
-  final TrainingServices services;
+  final CalendarServices calendar;
 
   @override
   State<_TrainingSessionSection> createState() =>
@@ -20,7 +21,7 @@ class _TrainingSessionSection extends StatefulWidget {
 class _TrainingSessionSectionState extends State<_TrainingSessionSection> {
   late Future<TrainingSession?> _session = _load();
 
-  Future<TrainingSession?> _load() => widget.services
+  Future<TrainingSession?> _load() => widget.calendar.trainingSessions
       .getSession(widget.eventId)
       .then<TrainingSession?>((session) => session, onError: (_) => null);
 
@@ -28,7 +29,7 @@ class _TrainingSessionSectionState extends State<_TrainingSessionSection> {
     await _TrainingModule.openSession(
       context,
       eventId: widget.eventId,
-      services: widget.services,
+      calendar: widget.calendar,
     );
     if (mounted) {
       setState(() {
@@ -44,29 +45,82 @@ class _TrainingSessionSectionState extends State<_TrainingSessionSection> {
       final session = snapshot.data;
       if (session == null) return const SizedBox.shrink();
       final theme = Theme.of(context);
-      final status = session.revision == 0
-          ? 'Inget pass planerat än'
-          : [
-              '${session.blocks.length} övningar · ${session.minutes} av ${session.eventMinutes} min',
-              session.published
-                  ? 'Publicerat för spelarna'
-                  : 'Utkast, bara ledarna ser det',
-            ].join(' · ');
+      final planned = session.revision > 0 && session.blocks.isNotEmpty;
       return Card(
         key: const Key('event-training-session'),
         margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Träningspass', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 6),
-              Text(session.canEdit ? status : session.theme),
-              if (!session.canEdit)
-                for (final block in session.blocks)
-                  Text('${block.title} · ${block.minutes} min'),
-              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Träningspass',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                  if (planned)
+                    Text(
+                      '${session.minutes} av ${session.eventMinutes} min',
+                      style: theme.textTheme.labelLarge,
+                    ),
+                ],
+              ),
+              if (session.canEdit && planned)
+                Text(
+                  session.published
+                      ? 'Publicerat för spelarna'
+                      : 'Utkast, bara ledarna ser det',
+                  style: theme.textTheme.bodySmall,
+                ),
+              if (session.theme.trim().isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(session.theme.trim(), style: theme.textTheme.titleSmall),
+              ],
+              if (session.goal.trim().isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(session.goal.trim()),
+              ],
+              if (!planned)
+                const Padding(
+                  padding: EdgeInsets.only(top: 6),
+                  child: Text('Inget pass planerat än.'),
+                ),
+              for (final part in TrainingPart.values)
+                if (session.blocks.any((block) => block.part == part)) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    '${part.label} · ${session.blocks.where((block) => block.part == part).fold(0, (sum, block) => sum + block.minutes)} min',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  for (final block in session.blocks)
+                    if (block.part == part)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${block.title} · ${block.minutes} min',
+                              style: theme.textTheme.titleSmall,
+                            ),
+                            if (block.organisation.trim().isNotEmpty)
+                              Text(block.organisation.trim()),
+                            if (block.coachingPoints.trim().isNotEmpty)
+                              Text(
+                                'Coachpunkter: ${block.coachingPoints.trim()}',
+                                style: theme.textTheme.bodySmall,
+                              ),
+                          ],
+                        ),
+                      ),
+                ],
+              const SizedBox(height: 12),
               Align(
                 alignment: Alignment.centerLeft,
                 child: FilledButton.tonalIcon(
@@ -79,10 +133,10 @@ class _TrainingSessionSectionState extends State<_TrainingSessionSection> {
                   ),
                   label: Text(
                     session.canEdit
-                        ? (session.revision == 0
-                              ? 'Planera passet'
-                              : 'Öppna passet')
-                        : 'Visa passet',
+                        ? (planned
+                              ? 'Ändra i träningsmodulen'
+                              : 'Planera passet')
+                        : 'Öppna i träningsmodulen',
                   ),
                 ),
               ),
@@ -92,4 +146,63 @@ class _TrainingSessionSectionState extends State<_TrainingSessionSection> {
       );
     },
   );
+}
+
+/// The session's Förberedelser tab in the Training module: the event's own
+/// preparation (goals, training focus, notes, material, tasks and files),
+/// the same items as on the event, so what is filled in here shows there.
+class _TrainingPreparation extends StatefulWidget {
+  const _TrainingPreparation({
+    required this.eventId,
+    required this.calendar,
+    required this.canEdit,
+  });
+  final String eventId;
+  final CalendarServices calendar;
+  final bool canEdit;
+
+  @override
+  State<_TrainingPreparation> createState() => _TrainingPreparationState();
+}
+
+class _TrainingPreparationState extends State<_TrainingPreparation> {
+  late Future<(EventDetails, SquadDetails)> _event = _load();
+
+  Future<(EventDetails, SquadDetails)> _load() async => (
+    await widget.calendar.getEventDetails(widget.eventId),
+    await widget.calendar.getEventSquad(widget.eventId),
+  );
+
+  @override
+  Widget build(BuildContext context) =>
+      FutureBuilder<(EventDetails, SquadDetails)>(
+        future: _event,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: TextButton(
+                onPressed: () => setState(() {
+                  _event = _load();
+                }),
+                child: const Text(
+                  'Förberedelserna kunde inte hämtas. Försök igen.',
+                ),
+              ),
+            );
+          }
+          final data = snapshot.data;
+          if (data == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final (event, squad) = data;
+          return _PreparationTab(
+            key: ValueKey('training-preparation-${event.id}'),
+            event: event,
+            people: [...squad.roster, ..._guestRosterFor(squad)],
+            services: widget.calendar.preparation,
+            allowEdit: widget.canEdit && event.archivedAt == null,
+            showEventDetails: false,
+          );
+        },
+      );
 }

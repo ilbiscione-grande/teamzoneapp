@@ -5,9 +5,11 @@ part of '../../app/teamzone_app.dart';
 /// whether the players see it. Edited locally and saved whole; who may not
 /// edit reads the published session.
 class _TrainingSessionPage extends StatefulWidget {
-  const _TrainingSessionPage({required this.eventId, required this.services});
+  const _TrainingSessionPage({required this.eventId, required this.calendar});
   final String eventId;
-  final TrainingServices services;
+  final CalendarServices calendar;
+
+  TrainingServices get services => calendar.trainingSessions;
 
   @override
   State<_TrainingSessionPage> createState() => _TrainingSessionPageState();
@@ -209,22 +211,42 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
           navigator.pop();
         }
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Träningspass'),
-          actions: [
-            if (canEdit)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: FilledButton(
-                  key: const Key('training-session-save'),
-                  onPressed: _dirty && !_busy ? _save : null,
-                  child: Text(_busy ? 'Sparar…' : 'Spara'),
+      child: DefaultTabController(
+        length: 2,
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Träningspass'),
+            // The session, and the event's Förberedelser: the same items as on
+            // the event, filled in here or there.
+            bottom: const TabBar(
+              tabs: [
+                Tab(text: 'Passet'),
+                Tab(text: 'Förberedelser'),
+              ],
+            ),
+            actions: [
+              if (canEdit)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: FilledButton(
+                    key: const Key('training-session-save'),
+                    onPressed: _dirty && !_busy ? _save : null,
+                    child: Text(_busy ? 'Sparar…' : 'Spara'),
+                  ),
                 ),
+            ],
+          ),
+          body: TabBarView(
+            children: [
+              _body(session),
+              _TrainingPreparation(
+                eventId: widget.eventId,
+                calendar: widget.calendar,
+                canEdit: canEdit,
               ),
-          ],
+            ],
+          ),
         ),
-        body: _body(session),
       ),
     );
   }

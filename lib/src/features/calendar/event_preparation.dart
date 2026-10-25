@@ -18,6 +18,7 @@ class _PreparationTab extends StatefulWidget {
     this.lineup,
     this.matchPlan,
     this.trainingSession,
+    this.showEventDetails = true,
   });
 
   final EventDetails event;
@@ -40,6 +41,10 @@ class _PreparationTab extends StatefulWidget {
 
   /// For a training where the club has the Training module: its session.
   final Widget? trainingSession;
+
+  /// The event's own details (theme, focus, plan); off inside the Training
+  /// module, where the session holds them.
+  final bool showEventDetails;
 
   @override
   State<_PreparationTab> createState() => _PreparationTabState();
@@ -191,7 +196,7 @@ class _PreparationTabState extends State<_PreparationTab> {
       if (type == 'match') widget.lineup,
       if (type == 'match') widget.matchPlan,
       if (type == 'training') widget.trainingSession,
-      _eventDetailsSection(),
+      if (widget.showEventDetails) _eventDetailsSection(),
       _KpiGoalsSection(
         key: ValueKey('kpi-goals-${widget.event.id}'),
         event: widget.event,
