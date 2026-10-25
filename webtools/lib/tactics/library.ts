@@ -155,10 +155,22 @@ export type SharedItemSummary = Omit<LibraryItemSummary, "source_project_id" | "
   starter: boolean;
   mine: boolean;
   hidden: boolean;
+  /** Shared only with this club (step 3); null for the whole community. */
+  club_id: string | null;
+  club_name: string | null;
+  /** One of your favourites: an addition to your own library. */
+  favorite: boolean;
+  /** Your clubs whose list holds it. */
+  picked_by_clubs: string[];
+  /** Yours, or shared with a club whose list you keep. */
+  can_remove: boolean;
 };
 
 /** Whether an item of your library is shared, and with its latest version. */
-export type LibraryShare = { id: string; version: number; hidden: boolean; current: boolean } | null;
+export type LibraryShare = { id: string; version: number; hidden: boolean; current: boolean; club_id: string | null; club_name: string | null } | null;
+
+/** A club whose library you use; whether you keep its list. */
+export type TacticsClub = { club_id: string; club_name: string; can_manage: boolean };
 
 export type SharedFilters = { text: string; kind: LibraryKind | ""; part: ExercisePart | ""; phase: GamePhase | ""; age: AgeClass | ""; form: GameForm | "" };
 export const noFilters: SharedFilters = { text: "", kind: "", part: "", phase: "", age: "", form: "" };
