@@ -18,7 +18,7 @@ class _PreparationTab extends StatefulWidget {
     this.lineup,
     this.matchPlan,
     this.trainingSession,
-    this.showEventDetails = true,
+    this.sessionParts,
   });
 
   final EventDetails event;
@@ -42,9 +42,13 @@ class _PreparationTab extends StatefulWidget {
   /// For a training where the club has the Training module: its session.
   final Widget? trainingSession;
 
-  /// The event's own details (theme, focus, plan); off inside the Training
-  /// module, where the session holds them.
-  final bool showEventDetails;
+  /// Inside the Training module, the session's own parts woven into the
+  /// preparation as one plan: its theme first, then the training focus, its
+  /// goal and the event's goals, the exercises, then notes, material,
+  /// tasks and files, and last publishing and the evaluation. The event's
+  /// own details (theme, focus, plan) are left out; the session holds them.
+  final ({Widget head, Widget goal, Widget exercises, Widget tail})?
+  sessionParts;
 
   @override
   State<_PreparationTab> createState() => _PreparationTabState();
@@ -191,46 +195,62 @@ class _PreparationTabState extends State<_PreparationTab> {
       );
     }
     final type = widget.event.type;
-    final sections = <Widget?>[
-      if (type == 'match' && widget.onOpenMatchMode != null) _matchModeCard(),
-      if (type == 'match') widget.lineup,
-      if (type == 'match') widget.matchPlan,
-      if (type == 'training') widget.trainingSession,
-      if (widget.showEventDetails) _eventDetailsSection(),
-      _KpiGoalsSection(
-        key: ValueKey('kpi-goals-${widget.event.id}'),
-        event: widget.event,
-        services: widget.services,
-        allowEdit: widget.allowEdit,
-        onChanged: widget.onChanged,
-      ),
-      ...switch (type) {
-        'training' => [
-          _focusSection(data),
-          _noteSection(data, 'Anteckningar'),
-          _materialSection(data),
-          _taskSection(data),
-          _fileSection(data),
-        ],
-        'match' => [
-          _noteSection(data, 'Matchförberedelse'),
-          _materialSection(data),
-          _taskSection(data),
-          _fileSection(data),
-        ],
-        'meeting' => [
-          _agendaSection(data),
-          _taskSection(data),
-          _noteSection(data, 'Anteckningar'),
-          _fileSection(data),
-        ],
-        _ => [
-          _noteSection(data, 'Anteckningar'),
-          _taskSection(data),
-          _fileSection(data),
-        ],
-      },
-    ].whereType<Widget>().toList();
+    final parts = widget.sessionParts;
+    final kpiGoals = _KpiGoalsSection(
+      key: ValueKey('kpi-goals-${widget.event.id}'),
+      event: widget.event,
+      services: widget.services,
+      allowEdit: widget.allowEdit,
+      onChanged: widget.onChanged,
+    );
+    final sections = parts != null
+        ? <Widget?>[
+            parts.head,
+            _focusSection(data),
+            parts.goal,
+            kpiGoals,
+            parts.exercises,
+            _noteSection(data, 'Anteckningar'),
+            _materialSection(data),
+            _taskSection(data),
+            _fileSection(data),
+            parts.tail,
+          ].whereType<Widget>().toList()
+        : <Widget?>[
+            if (type == 'match' && widget.onOpenMatchMode != null)
+              _matchModeCard(),
+            if (type == 'match') widget.lineup,
+            if (type == 'match') widget.matchPlan,
+            if (type == 'training') widget.trainingSession,
+            _eventDetailsSection(),
+            kpiGoals,
+            ...switch (type) {
+              'training' => [
+                _focusSection(data),
+                _noteSection(data, 'Anteckningar'),
+                _materialSection(data),
+                _taskSection(data),
+                _fileSection(data),
+              ],
+              'match' => [
+                _noteSection(data, 'Matchförberedelse'),
+                _materialSection(data),
+                _taskSection(data),
+                _fileSection(data),
+              ],
+              'meeting' => [
+                _agendaSection(data),
+                _taskSection(data),
+                _noteSection(data, 'Anteckningar'),
+                _fileSection(data),
+              ],
+              _ => [
+                _noteSection(data, 'Anteckningar'),
+                _taskSection(data),
+                _fileSection(data),
+              ],
+            },
+          ].whereType<Widget>().toList();
     final empty =
         !_canAny &&
         data.items.isEmpty &&

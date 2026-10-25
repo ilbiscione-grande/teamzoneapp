@@ -33,6 +33,13 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
             })
       : Future.value(null);
 
+  late Future<(EventDetails, SquadDetails)> _event = _loadEvent();
+
+  Future<(EventDetails, SquadDetails)> _loadEvent() async => (
+    await widget.calendar.getEventDetails(widget.eventId),
+    await widget.calendar.getEventSquad(widget.eventId),
+  );
+
   @override
   void initState() {
     super.initState();
@@ -211,45 +218,39 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
           navigator.pop();
         }
       },
-      child: DefaultTabController(
-        length: 2,
-        child: Scaffold(
-          appBar: AppBar(
-            title: const Text('Träningspass'),
-            // The session, and the event's Förberedelser: the same items as on
-            // the event, filled in here or there.
-            bottom: const TabBar(
-              tabs: [
-                Tab(text: 'Passet'),
-                Tab(text: 'Förberedelser'),
-              ],
-            ),
-            actions: [
-              if (canEdit)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilledButton(
-                    key: const Key('training-session-save'),
-                    onPressed: _dirty && !_busy ? _save : null,
-                    child: Text(_busy ? 'Sparar…' : 'Spara'),
-                  ),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Träningspass'),
+          actions: [
+            if (canEdit)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: FilledButton(
+                  key: const Key('training-session-save'),
+                  onPressed: _dirty && !_busy ? _save : null,
+                  child: Text(_busy ? 'Sparar…' : 'Spara'),
                 ),
-            ],
-          ),
-          body: TabBarView(
-            children: [
-              _body(session),
-              _TrainingPreparation(
-                eventId: widget.eventId,
-                calendar: widget.calendar,
-                canEdit: canEdit,
               ),
-            ],
-          ),
+          ],
         ),
+        body: _body(session),
       ),
     );
   }
+
+  /// A part of the session, as wide as is readable, beside the preparation's.
+  Widget _part(List<Widget> children) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+    child: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 820),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
+      ),
+    ),
+  );
 
   Widget _body(TrainingSession? session) {
     if (_error != null) {
@@ -277,17 +278,16 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
     final theme = Theme.of(context);
     final canEdit = session.canEdit;
     final minutes = _blocks.fold(0, (sum, b) => sum + b.minutes);
-    final length = session.eventMinutes;
-    final children = <Widget>[
+    final head = _part([
       Text(
         _trainingDay(context, session.startsAt),
         style: theme.textTheme.labelLarge,
       ),
       Text(session.title, style: theme.textTheme.headlineSmall),
       const SizedBox(height: 12),
-      _TrainingMinutes(minutes: minutes, length: length),
+      _TrainingMinutes(minutes: minutes, length: session.eventMinutes),
       const SizedBox(height: 16),
-      if (canEdit) ...[
+      if (canEdit)
         TextField(
           key: const Key('training-session-theme'),
           controller: _theme,
@@ -296,7 +296,14 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
             labelText: 'Tema',
             hintText: 'Till exempel press och återerövring',
           ),
-        ),
+        )
+      else if (session.theme.trim().isNotEmpty)
+        Text(session.theme, style: theme.textTheme.titleMedium),
+    ]);
+    final goal = _part([
+      Text('Mål för träningen', style: theme.textTheme.titleMedium),
+      const SizedBox(height: 8),
+      if (canEdit) ...[
         TextField(
           key: const Key('training-session-goal'),
           controller: _goal,
@@ -327,14 +334,11 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
             null => const SizedBox.shrink(),
           },
         ),
-      ] else ...[
-        if (session.theme.trim().isNotEmpty)
-          Text(session.theme, style: theme.textTheme.titleMedium),
-        if (session.goal.trim().isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(session.goal),
-        ],
-      ],
+      ] else
+        Text(session.goal.trim().isEmpty ? 'Inget mål skrivet.' : session.goal),
+    ]);
+    final exercises = _part([
+      Text('Övningar', style: theme.textTheme.titleMedium),
       if (canEdit && _blocks.isEmpty && session.eventPlan != null)
         Card(
           key: const Key('training-session-event-plan'),
@@ -361,6 +365,8 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
           ),
         ),
       for (final part in TrainingPart.values) _partSection(part, canEdit),
+    ]);
+    final tail = _part([
       if (canEdit)
         SwitchListTile(
           key: const Key('training-session-published'),
@@ -380,29 +386,58 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
         ),
       if (session.updatedBy != null)
         Padding(
-          padding: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.only(top: 8, bottom: 24),
           child: Text(
             'Senast ändrat av ${session.updatedBy}',
             style: theme.textTheme.bodySmall,
           ),
         ),
-    ];
-    return RefreshIndicator(
-      onRefresh: () async {
-        if (!_dirty || await _confirmLeave()) await _load();
+    ]);
+    // One plan: the session's parts woven into the event's preparation
+    // (focus, goals, notes, material, tasks, files), the same items as on
+    // the event. Without it, the session alone.
+    return FutureBuilder<(EventDetails, SquadDetails)>(
+      future: _event,
+      builder: (context, snapshot) {
+        final data = snapshot.data;
+        if (data == null) {
+          if (!snapshot.hasError) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          return ListView(
+            children: [
+              head,
+              goal,
+              exercises,
+              tail,
+              _part([
+                TextButton(
+                  onPressed: () => setState(() {
+                    _event = _loadEvent();
+                  }),
+                  child: const Text(
+                    'Fokus, anteckningar, material, uppgifter och filer kunde inte hämtas. Försök igen.',
+                  ),
+                ),
+              ]),
+            ],
+          );
+        }
+        final (event, squad) = data;
+        return _PreparationTab(
+          key: ValueKey('training-plan-${event.id}'),
+          event: event,
+          people: [...squad.roster, ..._guestRosterFor(squad)],
+          services: widget.calendar.preparation,
+          allowEdit: canEdit && event.archivedAt == null,
+          sessionParts: (
+            head: head,
+            goal: goal,
+            exercises: exercises,
+            tail: tail,
+          ),
+        );
       },
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-        children: [
-          for (final child in children)
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 820),
-                child: child,
-              ),
-            ),
-        ],
-      ),
     );
   }
 
