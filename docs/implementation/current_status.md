@@ -33,7 +33,8 @@ Rättningarna är nu publicerade till audit och granskade läsande i den engelsk
 ledarsessionen. Omprovets mindre rester är rättade i en komplettering. Se
 [engelsk release och omprov](../evidence/english_release_2026-10-25.md) för
 revisioner och avgränsning. Skriv-/rollacceptans och manuell mobilgranskning
-återstår, liksom mindre språkputs av singularformer och hörnresultatet Short.
+återstår. Språkputsen av singularformer och hörnresultatet Short följs upp i
+[Matchs språkputs 26 oktober](../evidence/english_polish_2026-10-26.md).
 
 ## Statusregler
 

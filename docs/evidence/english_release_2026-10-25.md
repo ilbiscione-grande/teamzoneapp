@@ -19,8 +19,8 @@ Ingen sajt, databas eller funktion publicerades i denna release.
 
 [CI för kompletteringen](https://github.com/ilbiscione-grande/teamzoneapp/actions/runs/40238641745):
 Flutter, båda sajterna, Firebase Functions och Edge Functions passerade.
-SQL-jobbet kör fortfarande vid rapportens avslut (25 oktober cirka 23:13 CET).
-Det finns därför ännu inget komplett grönt CI-kvitto för kompletteringen.
+SQL-jobbet körde fortfarande vid rapportens avslut 25 oktober. Vid uppföljning
+26 oktober bekräftades att även SQL passerat: samtliga sex jobb är gröna.
 
 ## Manuell omfattning
 
@@ -74,9 +74,12 @@ sparande. Sessionen lämnades på Settings → Personal med English valt.
 
 EN-01–EN-04:s observerade svenska systemtexter har rättats och omprovats
 inom ovanstående läsomfattning. Detta är inte ett godkännande av hela appen.
-Två mindre språkkvalitetsfynd återstår: kartans antal böjs ännu inte i singular
+Två mindre språkkvalitetsfynd kvarstod vid detta omprov: kartans antal böjs ännu inte i singular
 (1 goals), och en hörnhändelses resultat Short visas som Card. De bör få
 kontextspecifik språkputs före fullständig engelsk acceptans.
 
 Bildbevis för slutversionen:
 .tmp-acceptance-evidence/english-release-match-my-view.png.
+
+Uppföljning 26 oktober: singularformer och Short rättas och verifieras i
+[fortsatt språkputs](english_polish_2026-10-26.md).
