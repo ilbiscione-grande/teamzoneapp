@@ -1,5 +1,25 @@
 # Träning – aktiv arbetsyta i mitten
 
+## Senare justering: en gemensam tidslinje
+
+Efter användarens återkoppling har den separata tidsstapeln tagits bort från
+desktopens planeringsvy. Planerad tid visas i tidslinjens rubrikrad och de lägre
+övningsblocken ligger ovanpå en gemensam linje. Tidslinjens höjd har minskats
+från 142 till 104 pixlar; även den tidigare separata tidsstapeln och dess
+mellanrum försvinner. Blockens tidsintervall, val och omordning finns kvar.
+Överskriden eventtid markeras fortfarande med felkulör. Mobilens tidsöversikt
+och kortföljd behålls.
+
+Justeringen är publicerad till samma auditmiljö. Träningsmodulens fyra tester
+är godkända och kodanalysen har inga anmärkningar. Releasebyggning och kontroll
+av auditprojektet är godkända. Visuellt kontrollerad vid 1440 × 1000 i det
+befintliga fyrövningspasset, utan skrivning av passdata. Skärmbild:
+`.tmp-training-program/desktop-unified-timeline.png`.
+Publicerad `main.dart.js` matchar lokalt bygge med SHA-256:
+`EFA9E41AF7CA91EB73C48D60C3D8EBF8B88F8A39099FED913964B3E0C778A3F2`.
+
+## Föregående iteration
+
 Uppföljning av [första testversionen](training_program_trial_2026-10-26.md).
 Användaren upplevde att mittenytan var underutnyttjad och valde att gå vidare
 med en sammanhängande tidslinje och direkt redigering av vald övning.

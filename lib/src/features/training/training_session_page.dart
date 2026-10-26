@@ -412,14 +412,31 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                                   labelText: strings.feature('Träningsfokus'),
                                 ),
                               ),
-                              _TrainingMinutes(
-                                minutes: minutes,
-                                length: session.eventMinutes,
-                              ),
-                              const SizedBox(height: 20),
-                              Text(
-                                strings.feature('Tidslinje'),
-                                style: Theme.of(context).textTheme.titleMedium,
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      strings.feature('Tidslinje'),
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleMedium,
+                                    ),
+                                  ),
+                                  Text(
+                                    strings.trainingMinutes(
+                                      minutes,
+                                      session.eventMinutes,
+                                      planned: true,
+                                    ),
+                                    style: TextStyle(
+                                      color:
+                                          session.eventMinutes > 0 &&
+                                              minutes > session.eventMinutes
+                                          ? colors.error
+                                          : colors.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 8),
                               LayoutBuilder(
@@ -431,118 +448,142 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                                               : session.eventMinutes)
                                           .clamp(1, 1440);
                                   return SizedBox(
-                                    height: 142,
-                                    child: ReorderableListView.builder(
-                                      scrollDirection: Axis.horizontal,
-                                      buildDefaultDragHandles: false,
-                                      itemCount: _blocks.length,
-                                      onReorderItem: (oldIndex, newIndex) {
-                                        if (!(_workspaceForm.currentState
-                                                ?.validate() ??
-                                            true)) {
-                                          return;
-                                        }
-                                        final item = _blocks[oldIndex];
-                                        final items = [..._blocks]
-                                          ..removeAt(oldIndex);
-                                        items.insert(newIndex, item);
-                                        if (newIndex > 0 &&
-                                            items[newIndex - 1].part.index >
-                                                item.part.index) {
-                                          return;
-                                        }
-                                        if (newIndex + 1 < items.length &&
-                                            items[newIndex + 1].part.index <
-                                                item.part.index) {
-                                          return;
-                                        }
-                                        _edit(() {
-                                          _blocks = items;
-                                          _selectedBlock = newIndex;
-                                          _editorRevision++;
-                                        });
-                                      },
-                                      itemBuilder: (context, i) {
-                                        final item = _blocks[i];
-                                        final start = _blocks
-                                            .take(i)
-                                            .fold(
-                                              0,
-                                              (sum, b) => sum + b.minutes,
-                                            );
-                                        return SizedBox(
-                                          key: ObjectKey(item),
-                                          width: (item.minutes * scale).clamp(
-                                            156,
-                                            1000,
+                                    height: 104,
+                                    child: Stack(
+                                      children: [
+                                        Positioned(
+                                          left: 0,
+                                          right: 0,
+                                          top: 60,
+                                          child: Container(
+                                            height: 3,
+                                            color:
+                                                minutes >
+                                                        session.eventMinutes &&
+                                                    session.eventMinutes > 0
+                                                ? colors.error
+                                                : colors.outlineVariant,
                                           ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.stretch,
-                                            children: [
-                                              Text(
-                                                '$start–${start + item.minutes} min',
-                                                style: Theme.of(
-                                                  context,
-                                                ).textTheme.labelMedium,
-                                              ),
-                                              Expanded(
-                                                child: Card(
-                                                  color: selected == i
-                                                      ? colors
-                                                            .secondaryContainer
-                                                      : colors
-                                                            .surfaceContainerHigh,
-                                                  child: InkWell(
-                                                    onTap: () =>
-                                                        _selectExercise(i),
-                                                    child: Padding(
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                            10,
+                                        ),
+                                        ReorderableListView.builder(
+                                          scrollDirection: Axis.horizontal,
+                                          buildDefaultDragHandles: false,
+                                          itemCount: _blocks.length,
+                                          onReorderItem: (oldIndex, newIndex) {
+                                            if (!(_workspaceForm.currentState
+                                                    ?.validate() ??
+                                                true)) {
+                                              return;
+                                            }
+                                            final item = _blocks[oldIndex];
+                                            final items = [..._blocks]
+                                              ..removeAt(oldIndex);
+                                            items.insert(newIndex, item);
+                                            if (newIndex > 0 &&
+                                                items[newIndex - 1].part.index >
+                                                    item.part.index) {
+                                              return;
+                                            }
+                                            if (newIndex + 1 < items.length &&
+                                                items[newIndex + 1].part.index <
+                                                    item.part.index) {
+                                              return;
+                                            }
+                                            _edit(() {
+                                              _blocks = items;
+                                              _selectedBlock = newIndex;
+                                              _editorRevision++;
+                                            });
+                                          },
+                                          itemBuilder: (context, i) {
+                                            final item = _blocks[i];
+                                            final start = _blocks
+                                                .take(i)
+                                                .fold(
+                                                  0,
+                                                  (sum, b) => sum + b.minutes,
+                                                );
+                                            return SizedBox(
+                                              key: ObjectKey(item),
+                                              width: (item.minutes * scale)
+                                                  .clamp(156, 1000),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.stretch,
+                                                children: [
+                                                  Text(
+                                                    '$start–${start + item.minutes} min',
+                                                    style: Theme.of(
+                                                      context,
+                                                    ).textTheme.labelMedium,
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Expanded(
+                                                    child: Card(
+                                                      margin:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 4,
+                                                            vertical: 4,
                                                           ),
-                                                      child: Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          Text(
-                                                            strings.feature(
-                                                              item.part.label,
-                                                            ),
-                                                            style:
-                                                                Theme.of(
-                                                                      context,
-                                                                    )
-                                                                    .textTheme
-                                                                    .labelSmall,
-                                                          ),
-                                                          const SizedBox(
-                                                            height: 4,
-                                                          ),
-                                                          Expanded(
-                                                            child: Text(
-                                                              item.title,
-                                                              maxLines: 2,
-                                                              overflow:
-                                                                  TextOverflow
-                                                                      .ellipsis,
-                                                            ),
-                                                          ),
-                                                          Row(
+                                                      color: selected == i
+                                                          ? colors
+                                                                .secondaryContainer
+                                                          : colors
+                                                                .surfaceContainerHigh,
+                                                      child: InkWell(
+                                                        onTap: () =>
+                                                            _selectExercise(i),
+                                                        child: Padding(
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 10,
+                                                                vertical: 8,
+                                                              ),
+                                                          child: Row(
                                                             children: [
                                                               Expanded(
-                                                                child: Text(
-                                                                  '${item.minutes} min',
+                                                                child: Column(
+                                                                  crossAxisAlignment:
+                                                                      CrossAxisAlignment
+                                                                          .start,
+                                                                  mainAxisAlignment:
+                                                                      MainAxisAlignment
+                                                                          .center,
+                                                                  children: [
+                                                                    Text(
+                                                                      strings.feature(
+                                                                        item
+                                                                            .part
+                                                                            .label,
+                                                                      ),
+                                                                      maxLines:
+                                                                          1,
+                                                                      overflow:
+                                                                          TextOverflow
+                                                                              .ellipsis,
+                                                                      style: Theme.of(
+                                                                        context,
+                                                                      ).textTheme.labelSmall,
+                                                                    ),
+                                                                    const SizedBox(
+                                                                      height: 4,
+                                                                    ),
+                                                                    Text(
+                                                                      item.title,
+                                                                      maxLines:
+                                                                          2,
+                                                                      overflow:
+                                                                          TextOverflow
+                                                                              .ellipsis,
+                                                                    ),
+                                                                  ],
                                                                 ),
                                                               ),
                                                               ReorderableDragStartListener(
                                                                 index: i,
-                                                                child: const Padding(
-                                                                  padding:
-                                                                      EdgeInsets.all(
-                                                                        8,
-                                                                      ),
+                                                                child: const SizedBox(
+                                                                  width: 32,
+                                                                  height: 48,
                                                                   child: Icon(
                                                                     Icons
                                                                         .drag_indicator,
@@ -552,16 +593,16 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                                                               ),
                                                             ],
                                                           ),
-                                                        ],
+                                                        ),
                                                       ),
                                                     ),
                                                   ),
-                                                ),
+                                                ],
                                               ),
-                                            ],
-                                          ),
-                                        );
-                                      },
+                                            );
+                                          },
+                                        ),
+                                      ],
                                     ),
                                   );
                                 },
