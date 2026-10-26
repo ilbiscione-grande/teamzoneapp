@@ -278,6 +278,9 @@ class AppStrings {
   }
 
   static const Map<String, String> _featureEnglish = {
+    'Kallade – accepterat': 'Called up – accepted',
+    'Kallade – obesvarat': 'Called up – unanswered',
+    'Kallade – nekat': 'Called up – declined',
     'Spelare i övningen': 'Players in this exercise',
     'Indelningen gäller bara den här övningen och ändrar inte kallelserna.':
         'These groups apply only to this exercise and do not change callups.',
@@ -2115,7 +2118,7 @@ class AppStrings {
     'Kunde inte uppdatera. Försök igen.': 'Could not update. Try again.',
     'Obesvarade': 'Unanswered',
     'Okallade ledare': 'Not called-up coaches',
-    'Okallade spelare': 'Not called-up players',
+    'Okallade spelare': 'Players not called up',
     'Registrera eller granska närvaro': 'Record or review attendance',
     'Utkast': 'Draft',
     'Deltog': 'Attended',

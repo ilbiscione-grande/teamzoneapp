@@ -129,7 +129,34 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('training-player-add-roster')));
     await tester.pumpAndSettle();
+    expect(find.text('Kallade – accepterat'), findsOneWidget);
+    final rosterScroll = find
+        .descendant(
+          of: find.byType(ListView).last,
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    for (final heading in [
+      'Kallade – obesvarat',
+      'Kallade – nekat',
+      'Okallade spelare',
+    ]) {
+      await tester.scrollUntilVisible(
+        find.text(heading),
+        140,
+        scrollable: rosterScroll,
+      );
+      expect(find.text(heading), findsOneWidget);
+    }
+    tester.state<ScrollableState>(rosterScroll).position.jumpTo(0);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Alex Spelare'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('training-roster-team-player-1')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Grönt lag').last);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('training-player-roster-confirm')));
     await tester.pumpAndSettle();
@@ -147,7 +174,7 @@ void main() {
     expect(saved.revision, 1);
     expect(saved.blocks.single.players.map((p) => p.team), [
       TrainingPlayerTeam.red,
-      TrainingPlayerTeam.blue,
+      TrainingPlayerTeam.green,
     ]);
     expect(saved.blocks.single.players.last.personId, 'player-1');
     expect(saved.blocks.map((b) => [b.part, b.title, b.minutes]).toList(), [
@@ -541,6 +568,36 @@ class _Calendar extends UnconfiguredCalendarServices {
       EventRosterPerson(
         personId: 'player-1',
         name: 'Alex Spelare',
+        teamId: 'team',
+        teamName: 'P2012',
+        rolePackage: 'player',
+        inDraft: false,
+        callupId: 'callup-1',
+        callupState: 'accepted',
+      ),
+      EventRosterPerson(
+        personId: 'player-2',
+        name: 'Bertil Obesvarad',
+        teamId: 'team',
+        teamName: 'P2012',
+        rolePackage: 'player',
+        inDraft: false,
+        callupId: 'callup-2',
+        callupState: 'pending',
+      ),
+      EventRosterPerson(
+        personId: 'player-3',
+        name: 'Cecilia Nekad',
+        teamId: 'team',
+        teamName: 'P2012',
+        rolePackage: 'player',
+        inDraft: false,
+        callupId: 'callup-3',
+        callupState: 'declined',
+      ),
+      EventRosterPerson(
+        personId: 'player-4',
+        name: 'Dani Okallad',
         teamId: 'team',
         teamName: 'P2012',
         rolePackage: 'player',

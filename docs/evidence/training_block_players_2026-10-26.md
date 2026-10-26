@@ -1,5 +1,40 @@
 # Spelare och lagfärger per övning
 
+## Uppföljning: färg och kallelsestatus i spelardialogen
+
+Truppväljaren erbjuder nu ett eget lag-/färgval för varje markerad spelare.
+Valet följer med när spelarna läggs till i övningen. Avbruten dialog påverkar
+inte blockets befintliga spelare.
+
+Kallade spelare visas först i tre sektioner: accepterat, obesvarat och nekat.
+Okallade visas sist i en separat sektion. Tomma sektioner utelämnas. Varje
+sektion behåller truppens alfabetiska ordning och sökningen behåller indelningen.
+Avbrutna kallelser behandlas som okallade. Andra aktiva, ännu inte besvarade
+kallelselägen hamnar under obesvarat. Redan tillagda spelare filtreras bort som
+tidigare. Ändringen använder befintliga kallelseuppgifter i eventtruppen och
+kräver ingen ytterligare databasändring.
+
+Verifierat med 16 godkända tränings-/lokaliseringskontroller och kodanalys
+utan anmärkningar. Det utökade mobilflödet rullar genom alla fyra sektionerna,
+markerar en accepterad spelare, väljer grönt lag i dialogen och kontrollerar
+att lagvalet sparas i övningsblocket. Webbbygget är godkänt.
+
+Uppföljningen är publicerad till audit. Publicerad `main.dart.js` matchar
+lokalt bygge med SHA-256:
+`41571D5B2C49DC7B05EF181B25F642A4131152E63C4C1262DB3AA11B0B6BD986`.
+Manuellt kontrollerad i engelska auditappen vid 1440 × 1000 och 390 × 844.
+Dagens pass utan kallelser visar sektionen för okallade; eventet den 29 oktober
+visar kallade under obesvarat. Grönt lag valdes direkt i dialogen och behölls
+vid rullning och byte av skärmbredd. Accepterat/nekat och blandad ordning
+verifierades i det automatiska testet, eftersom den manuella kallelselistan
+för detta event innehöll obesvarade kallelser.
+
+Ett tillfälligt block behövdes för att öppna dialogen i det annars tomma passet
+den 29 oktober. Dialogen avbröts och utkastet lämnades utan att sparas; listan
+visar fortfarande ”No session”. Inga kallelser eller passdata ändrades.
+Skärmbilder finns i `.tmp-training-program/roster-dialog-status-color.png`
+och `.tmp-training-program/roster-dialog-status-color-mobile.png`.
+
 ## Funktion
 
 Varje träningsblock har en egen lista över spelare. Ledaren kan lägga till

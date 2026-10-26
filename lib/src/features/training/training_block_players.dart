@@ -26,7 +26,7 @@ class _TrainingBlockPlayers extends StatelessWidget {
     BuildContext context,
     List<EventRosterPerson> people,
   ) async {
-    final picked = await showDialog<List<EventRosterPerson>>(
+    final picked = await showDialog<List<TrainingBlockPlayer>>(
       context: context,
       builder: (_) => _TrainingRosterPicker(
         people: people
@@ -39,11 +39,7 @@ class _TrainingBlockPlayers extends StatelessWidget {
       ),
     );
     if (picked == null || picked.isEmpty || !context.mounted) return;
-    onChanged?.call([
-      ...players,
-      for (final person in picked)
-        TrainingBlockPlayer(personId: person.personId, name: person.name),
-    ]);
+    onChanged?.call([...players, ...picked]);
   }
 
   @override
@@ -182,7 +178,18 @@ class _TrainingRosterPicker extends StatefulWidget {
 
 class _TrainingRosterPickerState extends State<_TrainingRosterPicker> {
   final Set<String> _selected = {};
+  final Map<String, TrainingPlayerTeam> _teams = {};
   String _query = '';
+
+  int _group(EventRosterPerson person) {
+    if (person.callupId == null || person.callupState == 'cancelled') return 3;
+    return switch (person.callupState) {
+      'accepted' => 0,
+      'declined' => 2,
+      _ => 1,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
@@ -194,7 +201,7 @@ class _TrainingRosterPickerState extends State<_TrainingRosterPicker> {
     return AlertDialog(
       title: Text(strings.feature('Från truppen')),
       content: SizedBox(
-        width: 440,
+        width: 560,
         height: 360,
         child: Column(
           children: [
@@ -214,22 +221,86 @@ class _TrainingRosterPickerState extends State<_TrainingRosterPicker> {
                     )
                   : ListView(
                       children: [
-                        for (final person in people)
-                          CheckboxListTile(
-                            title: Text(person.name),
-                            value: _selected.contains(person.personId),
-                            onChanged:
-                                !_selected.contains(person.personId) &&
-                                    _selected.length >= widget.limit
-                                ? null
-                                : (value) => setState(() {
-                                    if (value == true) {
-                                      _selected.add(person.personId);
-                                    } else {
-                                      _selected.remove(person.personId);
-                                    }
-                                  }),
-                          ),
+                        for (var group = 0; group < 4; group++)
+                          if (people.any(
+                            (person) => _group(person) == group,
+                          )) ...[
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(0, 16, 0, 8),
+                              child: Text(
+                                strings.feature(switch (group) {
+                                  0 => 'Kallade – accepterat',
+                                  1 => 'Kallade – obesvarat',
+                                  2 => 'Kallade – nekat',
+                                  _ => 'Okallade spelare',
+                                }),
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                            ),
+                            for (final person in people.where(
+                              (person) => _group(person) == group,
+                            ))
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: CheckboxListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      controlAffinity:
+                                          ListTileControlAffinity.leading,
+                                      title: Text(person.name),
+                                      value: _selected.contains(
+                                        person.personId,
+                                      ),
+                                      onChanged:
+                                          !_selected.contains(
+                                                person.personId,
+                                              ) &&
+                                              _selected.length >= widget.limit
+                                          ? null
+                                          : (value) => setState(() {
+                                              if (value == true) {
+                                                _selected.add(person.personId);
+                                              } else {
+                                                _selected.remove(
+                                                  person.personId,
+                                                );
+                                              }
+                                            }),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  DropdownButton<TrainingPlayerTeam>(
+                                    key: ValueKey(
+                                      'training-roster-team-${person.personId}',
+                                    ),
+                                    value:
+                                        _teams[person.personId] ??
+                                        TrainingPlayerTeam.blue,
+                                    items: [
+                                      for (final team
+                                          in TrainingPlayerTeam.values)
+                                        DropdownMenuItem(
+                                          value: team,
+                                          child: Text(
+                                            strings.feature(team.label),
+                                          ),
+                                        ),
+                                    ],
+                                    onChanged:
+                                        !_selected.contains(person.personId)
+                                        ? null
+                                        : (team) {
+                                            if (team != null) {
+                                              setState(
+                                                () => _teams[person.personId] =
+                                                    team,
+                                              );
+                                            }
+                                          },
+                                  ),
+                                ],
+                              ),
+                          ],
                       ],
                     ),
             ),
@@ -249,6 +320,15 @@ class _TrainingRosterPickerState extends State<_TrainingRosterPicker> {
                   context,
                   widget.people
                       .where((person) => _selected.contains(person.personId))
+                      .map(
+                        (person) => TrainingBlockPlayer(
+                          personId: person.personId,
+                          name: person.name,
+                          team:
+                              _teams[person.personId] ??
+                              TrainingPlayerTeam.blue,
+                        ),
+                      )
                       .toList(),
                 ),
           child: Text(strings.feature('Lägg till')),

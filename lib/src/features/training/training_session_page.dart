@@ -748,7 +748,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                                     border: const OutlineInputBorder(),
                                   ),
                                   onChanged: (value) => _updateExercise(
-                                    selected!,
+                                    selected,
                                     _blocks[selected].copyWith(
                                       organisation: value,
                                     ),
@@ -771,7 +771,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                                     border: const OutlineInputBorder(),
                                   ),
                                   onChanged: (value) => _updateExercise(
-                                    selected!,
+                                    selected,
                                     _blocks[selected].copyWith(
                                       coachingPoints: value,
                                     ),
