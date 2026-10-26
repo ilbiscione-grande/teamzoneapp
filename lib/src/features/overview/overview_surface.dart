@@ -578,7 +578,9 @@ class _HomeGreetingHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final firstName = displayName.trim().split(RegExp(r'\s+')).first;
-    final greeting = _greeting(DateTime.now().hour);
+    final greeting = AppStrings.of(
+      context,
+    ).feature(_greeting(DateTime.now().hour));
     final material = MaterialLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
@@ -896,6 +898,7 @@ class _PlayerHomeContentState extends State<_PlayerHomeContent> {
     }
 
     final day = _HomeDaySections.build(
+      context: context,
       today: widget.value.todayEvents.map(withCallup).toList(),
       upcoming: widget.value.upcomingEvents.map(withCallup).toList(),
       next: widget.value.nextEvent == null
@@ -1167,6 +1170,7 @@ class _LeaderHomeContentState extends State<_LeaderHomeContent> {
     // "Behöver din uppmärksamhet" moved to Min assistent — all of that
     // kind of information goes through the assistant now, not Home.
     final day = _HomeDaySections.build(
+      context: context,
       today: value.todayEvents,
       upcoming: value.upcomingEvents,
       next: value.nextEvent,
@@ -1178,7 +1182,9 @@ class _LeaderHomeContentState extends State<_LeaderHomeContent> {
     final todaySection = day.today;
     final upcomingSection = day.upcoming;
     final planning = _LeaderHomeSection(
-      title: wide ? 'Planering och administration' : 'Snabbåtgärder',
+      title: AppStrings.of(
+        context,
+      ).feature(wide ? 'Planering och administration' : 'Snabbåtgärder'),
       icon: Icons.dashboard_customize_outlined,
       emptyText: '',
       children: [
@@ -1189,7 +1195,14 @@ class _LeaderHomeContentState extends State<_LeaderHomeContent> {
               'manage_team' => Icons.groups_outlined,
               _ => Icons.inbox_outlined,
             }),
-            title: Text(action.title),
+            title: Text(switch (action.kind) {
+              'create_event' => AppStrings.of(
+                context,
+              ).feature('Planera aktivitet'),
+              'manage_team' => AppStrings.of(context).feature('Hantera laget'),
+              'open_inbox' => AppStrings.of(context).feature('Öppna inkorgen'),
+              _ => action.title,
+            }),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => onNavigate(action.route),
           ),
@@ -1246,6 +1259,7 @@ class _HomeDaySections {
   final Set<String> shown;
 
   static _HomeDaySections build({
+    required BuildContext context,
     required List<LeaderHomeEvent> today,
     required List<LeaderHomeEvent> upcoming,
     required LeaderHomeEvent? next,
@@ -1280,10 +1294,12 @@ class _HomeDaySections {
     );
     return _HomeDaySections._(
       hero == null
-          ? const _LeaderHomeSection(
-              title: 'Nästa aktivitet',
+          ? _LeaderHomeSection(
+              title: AppStrings.of(context).feature('Nästa aktivitet'),
               icon: Icons.event_available_outlined,
-              emptyText: 'Ingen kommande aktivitet är planerad',
+              emptyText: AppStrings.of(
+                context,
+              ).feature('Ingen kommande aktivitet är planerad'),
               children: [],
             )
           : _HomeHeroEventCard(
@@ -1296,7 +1312,7 @@ class _HomeDaySections {
       restOfToday.isEmpty
           ? null
           : _LeaderHomeSection(
-              title: 'Resten av idag',
+              title: AppStrings.of(context).feature('Resten av idag'),
               icon: Icons.today_outlined,
               emptyText: '',
               children: [
@@ -1306,7 +1322,7 @@ class _HomeDaySections {
       coming.isEmpty
           ? null
           : _LeaderHomeSection(
-              title: 'Kommande',
+              title: AppStrings.of(context).feature('Kommande'),
               icon: Icons.date_range_outlined,
               emptyText: '',
               children: [
@@ -1563,7 +1579,7 @@ class _HomeHeroEventCard extends StatelessWidget {
   final String? pendingCallupId;
   final void Function(LeaderHomeCallup callup, String response) onRespond;
 
-  String _moment(MaterialLocalizations material) {
+  String _moment(MaterialLocalizations material, AppStrings strings) {
     final start = event.startsAt.toLocal();
     final time = material.formatTimeOfDay(TimeOfDay.fromDateTime(start));
     final today = DateUtils.dateOnly(now);
@@ -1572,11 +1588,18 @@ class _HomeHeroEventCard extends StatelessWidget {
       final end = material.formatTimeOfDay(
         TimeOfDay.fromDateTime(event.endsAt.toLocal()),
       );
-      return 'PÅGÅR NU · SLUTAR $end';
+      return strings.formatFeature('PÅGÅR NU · SLUTAR {end}', {'end': end});
     }
-    if (day == today) return 'SENARE IDAG · $time';
-    if (day == today.add(const Duration(days: 1))) return 'IMORGON · $time';
-    return 'NÄSTA · ${material.formatMediumDate(start).toUpperCase()} · $time';
+    if (day == today) {
+      return strings.formatFeature('SENARE IDAG · {time}', {'time': time});
+    }
+    if (day == today.add(const Duration(days: 1))) {
+      return strings.formatFeature('IMORGON · {time}', {'time': time});
+    }
+    return strings.formatFeature('NÄSTA · {date} · {time}', {
+      'date': material.formatMediumDate(start).toUpperCase(),
+      'time': time,
+    });
   }
 
   @override
@@ -1605,7 +1628,7 @@ class _HomeHeroEventCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _moment(material),
+                  _moment(material, AppStrings.of(context)),
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: Colors.white70,
                     letterSpacing: 1.2,

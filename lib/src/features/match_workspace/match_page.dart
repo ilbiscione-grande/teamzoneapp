@@ -155,7 +155,7 @@ class _MatchAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onPrevious, onNext;
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 48);
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 64);
 
   @override
   Widget build(BuildContext context) {
@@ -222,16 +222,21 @@ class _MatchAppBar extends StatelessWidget implements PreferredSizeWidget {
         ],
       ],
       bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(48),
+        preferredSize: const Size.fromHeight(64),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
           child: SizedBox(
             width: double.infinity,
+            height: 56,
             child: SegmentedButton<_MatchPhase>(
               key: const Key('module-match-phase'),
               showSelectedIcon: false,
               style: ButtonStyle(
-                visualDensity: VisualDensity.compact,
+                visualDensity: VisualDensity.standard,
+                textStyle: WidgetStatePropertyAll(
+                  Theme.of(context).textTheme.labelLarge,
+                ),
+                minimumSize: const WidgetStatePropertyAll(Size(0, 56)),
                 foregroundColor: WidgetStateProperty.resolveWith(
                   (states) => states.contains(WidgetState.selected)
                       ? colors.primary
@@ -249,15 +254,26 @@ class _MatchAppBar extends StatelessWidget implements PreferredSizeWidget {
               segments: [
                 ButtonSegment(
                   value: _MatchPhase.preparation,
-                  label: Text(strings.feature('Förberedelse')),
+                  label: Text(
+                    strings.feature('Förberedelse'),
+                    style: Theme.of(context).textTheme.labelLarge,
+                    textAlign: TextAlign.center,
+                  ),
                 ),
                 ButtonSegment(
                   value: _MatchPhase.live,
-                  label: Text(strings.feature('Live')),
+                  label: Text(
+                    strings.feature('Live'),
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
                 ),
                 ButtonSegment(
                   value: _MatchPhase.analysis,
-                  label: Text(strings.feature('Efteranalys')),
+                  label: Text(
+                    strings.feature('Efteranalys'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
                 ),
               ],
               selected: {phase},

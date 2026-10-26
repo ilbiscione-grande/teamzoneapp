@@ -278,6 +278,19 @@ class AppStrings {
   }
 
   static const Map<String, String> _featureEnglish = {
+    'Nästa aktivitet': 'Next activity',
+    'NÄSTA · {date} · {time}': 'NEXT · {date} · {time}',
+    'IMORGON · {time}': 'TOMORROW · {time}',
+    'SENARE IDAG · {time}': 'LATER TODAY · {time}',
+    'PÅGÅR NU · SLUTAR {end}': 'HAPPENING NOW · ENDS {end}',
+    'Ingen kommande aktivitet är planerad': 'No upcoming activity is planned',
+    'Resten av idag': 'The rest of today',
+    'Snabbåtgärder': 'Quick actions',
+    'Planering och administration': 'Planning and administration',
+    'God kväll': 'Good evening',
+    'God eftermiddag': 'Good afternoon',
+    'God förmiddag': 'Good morning',
+    'God morgon': 'Good morning',
     '{shots} avslut · {goals} mål · {target} på mål · {missed} utanför · {blocked} blockerade':
         '{shots} shots · {goals} goals · {target} on target · {missed} off target · {blocked} blocked',
     'Markera avslut och mål på planen så syns de här.':

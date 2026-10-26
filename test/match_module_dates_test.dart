@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:teamzone_app/src/features/match/match_models.dart';
 import 'package:teamzone_app/src/features/match/match_services.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +14,12 @@ import 'package:teamzone_app/src/features/team_development/team_development_serv
 import 'package:teamzone_app/src/features/workspaces/module_services.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() async {
+    final font = FontLoader('Geist')
+      ..addFont(rootBundle.load('assets/fonts/Geist/Geist-Regular.ttf'));
+    await font.load();
+  });
   testWidgets(
     'English match planning and analysis translate system labels and keep team content',
     (tester) async {
@@ -57,6 +64,12 @@ void main() {
             matching: find.byType(Scrollable),
           )
           .first;
+      final segments = tester.getRect(
+        find.byKey(const Key('module-match-phase')),
+      );
+      final analysisLabel = tester.getRect(find.text('Post-match analysis'));
+      expect(analysisLabel.top, greaterThanOrEqualTo(segments.top + 4));
+      expect(analysisLabel.bottom, lessThanOrEqualTo(segments.bottom - 4));
       expect(find.text('Tactics'), findsOneWidget);
       expect(find.text('Defence:'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'Svensk taktik'), findsOneWidget);
