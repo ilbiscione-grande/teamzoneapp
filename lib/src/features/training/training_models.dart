@@ -35,15 +35,18 @@ enum TrainingPlayerTeam {
 class TrainingBlockPlayer {
   const TrainingBlockPlayer({
     this.personId,
+    this.rosterId,
     this.name = '',
     this.team = TrainingPlayerTeam.blue,
   });
-  final String? personId;
+  final String? personId, rosterId;
+  String get id => rosterId ?? personId ?? '';
   final String name;
   final TrainingPlayerTeam team;
   factory TrainingBlockPlayer.fromJson(Map<String, dynamic> json) =>
       TrainingBlockPlayer(
         personId: json['person_id'] as String?,
+        rosterId: json['roster_id'] as String?,
         name: json['name'] as String? ?? '',
         team:
             TrainingPlayerTeam.values
@@ -53,11 +56,16 @@ class TrainingBlockPlayer {
       );
   Map<String, Object?> toJson() => {
     'person_id': personId,
+    if (id.isNotEmpty) 'roster_id': id,
     'name': name,
     'team': team.name,
   };
-  TrainingBlockPlayer withTeam(TrainingPlayerTeam value) =>
-      TrainingBlockPlayer(personId: personId, name: name, team: value);
+  TrainingBlockPlayer withTeam(TrainingPlayerTeam value) => TrainingBlockPlayer(
+    personId: personId,
+    rosterId: rosterId,
+    name: name,
+    team: value,
+  );
 }
 
 /// One exercise in the session.
@@ -148,6 +156,8 @@ class TrainingSession {
     this.eventPlan,
     this.blocks = const [],
     this.updatedBy,
+    this.roster = const [],
+    this.rosterSaved = true,
   });
   factory TrainingSession.fromJson(Map<String, dynamic> json) =>
       TrainingSession(
@@ -161,6 +171,12 @@ class TrainingSession {
         theme: json['theme'] as String? ?? '',
         goal: json['goal'] as String? ?? '',
         eventPlan: json['event_plan'] as String?,
+        rosterSaved: json['roster_saved'] == true,
+        roster: [
+          for (final player
+              in (json['roster'] as List? ?? const []).whereType<Map>())
+            TrainingBlockPlayer.fromJson(Map<String, dynamic>.from(player)),
+        ],
         updatedBy: json['updated_by'] as String?,
         blocks: [
           for (final row
@@ -174,6 +190,8 @@ class TrainingSession {
   final int revision;
   final String? eventPlan, updatedBy;
   final List<TrainingBlock> blocks;
+  final List<TrainingBlockPlayer> roster;
+  final bool rosterSaved;
 
   int get minutes => blocks.fold(0, (sum, block) => sum + block.minutes);
   int get eventMinutes => endsAt.difference(startsAt).inMinutes;

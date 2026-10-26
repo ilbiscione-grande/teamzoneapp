@@ -278,6 +278,28 @@ class AppStrings {
   }
 
   static const Map<String, String> _featureEnglish = {
+    'Sessionstrupp': 'Session squad',
+    'Accepterade kallelser är förvalda när sessionstruppen skapas. Sparade val ändras inte automatiskt.':
+        'Accepted callups are selected when the session squad is created. Saved choices do not change automatically.',
+    'Deltagare i sessionen': 'Session participants',
+    'Välj vilka spelare som deltar i den här sessionen.':
+        'Choose the players taking part in this session.',
+    'Från sessionstruppen': 'From the session squad',
+    'Ändra sessionstruppen': 'Manage session squad',
+    'Ospecificerade spelare': 'Unnamed players',
+    'Ta bort från sessionstruppen?': 'Remove from the session squad?',
+    'Spelaren tas också bort från övningar där den används.':
+        'The player will also be removed from exercises where they are assigned.',
+    'Öppna planeringen': 'Open planning',
+    'Eventets inställningar kunde inte hämtas. Försök igen.':
+        'Could not load event settings. Try again.',
+    'Kallelser används': 'Callups enabled',
+    'Utan kallelser': 'No callups',
+    'Träningsmålen visas under Förberedelser.':
+        'Training goals are available under Preparation.',
+    'Förberedelserna kunde inte hämtas. Försök igen.':
+        'Could not load preparations. Try again.',
+
     'Kallade – accepterat': 'Called up – accepted',
     'Kallade – obesvarat': 'Called up – unanswered',
     'Kallade – nekat': 'Called up – declined',

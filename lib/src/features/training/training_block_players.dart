@@ -16,8 +16,12 @@ class _TrainingBlockPlayers extends StatelessWidget {
     required this.roster,
     required this.onRetry,
     this.onChanged,
+    this.isSessionRoster = false,
+    this.onManageRoster,
   });
   final List<TrainingBlockPlayer> players;
+  final bool isSessionRoster;
+  final VoidCallback? onManageRoster;
   final Future<List<EventRosterPerson>>? roster;
   final VoidCallback onRetry;
   final ValueChanged<List<TrainingBlockPlayer>>? onChanged;
@@ -32,10 +36,11 @@ class _TrainingBlockPlayers extends StatelessWidget {
         people: people
             .where(
               (person) =>
-                  !players.any((player) => player.personId == person.personId),
+                  !players.any((player) => player.id == person.personId),
             )
             .toList(),
         limit: 80 - players.length,
+        chooseTeams: !isSessionRoster,
       ),
     );
     if (picked == null || picked.isEmpty || !context.mounted) return;
@@ -52,14 +57,18 @@ class _TrainingBlockPlayers extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            strings.feature('Spelare i övningen'),
+            strings.feature(
+              isSessionRoster ? 'Deltagare i sessionen' : 'Spelare i övningen',
+            ),
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
           if (onChanged != null) ...[
             Text(
               strings.feature(
-                'Indelningen gäller bara den här övningen och ändrar inte kallelserna.',
+                isSessionRoster
+                    ? 'Välj vilka spelare som deltar i den här sessionen.'
+                    : 'Indelningen gäller bara den här övningen och ändrar inte kallelserna.',
               ),
             ),
             const SizedBox(height: 8),
@@ -70,10 +79,34 @@ class _TrainingBlockPlayers extends StatelessWidget {
                 OutlinedButton.icon(
                   key: const Key('training-player-add-anonymous'),
                   onPressed: players.length < 80
-                      ? () => onChanged!([
-                          ...players,
-                          const TrainingBlockPlayer(),
-                        ])
+                      ? () async {
+                          if (isSessionRoster) {
+                            onChanged!([
+                              ...players,
+                              TrainingBlockPlayer(
+                                rosterId:
+                                    'anonymous-${DateTime.now().microsecondsSinceEpoch}',
+                              ),
+                            ]);
+                          } else {
+                            try {
+                              final people = await roster!;
+                              if (context.mounted) {
+                                await _pickRoster(
+                                  context,
+                                  people
+                                      .where(
+                                        (person) =>
+                                            person.rolePackage == 'anonymous',
+                                      )
+                                      .toList(),
+                                );
+                              }
+                            } catch (_) {
+                              if (context.mounted) onRetry();
+                            }
+                          }
+                        }
                       : null,
                   icon: const Icon(Icons.person_add_alt),
                   label: Text(strings.feature('Ospecificerad spelare')),
@@ -94,16 +127,35 @@ class _TrainingBlockPlayers extends StatelessWidget {
                     return OutlinedButton.icon(
                       key: const Key('training-player-add-roster'),
                       onPressed: snapshot.hasData && players.length < 80
-                          ? () => _pickRoster(context, snapshot.data!)
+                          ? () => _pickRoster(
+                              context,
+                              snapshot.data!
+                                  .where(
+                                    (person) =>
+                                        person.rolePackage != 'anonymous',
+                                  )
+                                  .toList(),
+                            )
                           : null,
                       icon: const Icon(Icons.groups_outlined),
-                      label: Text(strings.feature('Från truppen')),
+                      label: Text(
+                        strings.feature(
+                          isSessionRoster
+                              ? 'Från truppen'
+                              : 'Från sessionstruppen',
+                        ),
+                      ),
                     );
                   },
                 ),
               ],
             ),
           ],
+          if (onManageRoster != null)
+            TextButton(
+              onPressed: onManageRoster,
+              child: Text(strings.feature('Ändra sessionstruppen')),
+            ),
           for (var i = 0; i < players.length; i++)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -133,23 +185,24 @@ class _TrainingBlockPlayers extends StatelessWidget {
                   if (onChanged == null)
                     Text(strings.feature(players[i].team.label))
                   else ...[
-                    DropdownButton<TrainingPlayerTeam>(
-                      key: ValueKey('training-player-team-$i'),
-                      value: players[i].team,
-                      items: [
-                        for (final team in TrainingPlayerTeam.values)
-                          DropdownMenuItem(
-                            value: team,
-                            child: Text(strings.feature(team.label)),
-                          ),
-                      ],
-                      onChanged: (team) {
-                        if (team == null) return;
-                        onChanged!(
-                          [...players]..[i] = players[i].withTeam(team),
-                        );
-                      },
-                    ),
+                    if (!isSessionRoster)
+                      DropdownButton<TrainingPlayerTeam>(
+                        key: ValueKey('training-player-team-$i'),
+                        value: players[i].team,
+                        items: [
+                          for (final team in TrainingPlayerTeam.values)
+                            DropdownMenuItem(
+                              value: team,
+                              child: Text(strings.feature(team.label)),
+                            ),
+                        ],
+                        onChanged: (team) {
+                          if (team == null) return;
+                          onChanged!(
+                            [...players]..[i] = players[i].withTeam(team),
+                          );
+                        },
+                      ),
                     IconButton(
                       key: ValueKey('training-player-remove-$i'),
                       tooltip: strings.feature('Ta bort spelare'),
@@ -169,9 +222,14 @@ class _TrainingBlockPlayers extends StatelessWidget {
 }
 
 class _TrainingRosterPicker extends StatefulWidget {
-  const _TrainingRosterPicker({required this.people, required this.limit});
+  const _TrainingRosterPicker({
+    required this.people,
+    required this.limit,
+    this.chooseTeams = true,
+  });
   final List<EventRosterPerson> people;
   final int limit;
+  final bool chooseTeams;
   @override
   State<_TrainingRosterPicker> createState() => _TrainingRosterPickerState();
 }
@@ -182,6 +240,7 @@ class _TrainingRosterPickerState extends State<_TrainingRosterPicker> {
   String _query = '';
 
   int _group(EventRosterPerson person) {
+    if (person.rolePackage == 'anonymous') return 4;
     if (person.callupId == null || person.callupState == 'cancelled') return 3;
     return switch (person.callupState) {
       'accepted' => 0,
@@ -221,7 +280,7 @@ class _TrainingRosterPickerState extends State<_TrainingRosterPicker> {
                     )
                   : ListView(
                       children: [
-                        for (var group = 0; group < 4; group++)
+                        for (var group = 0; group < 5; group++)
                           if (people.any(
                             (person) => _group(person) == group,
                           )) ...[
@@ -232,6 +291,7 @@ class _TrainingRosterPickerState extends State<_TrainingRosterPicker> {
                                   0 => 'Kallade – accepterat',
                                   1 => 'Kallade – obesvarat',
                                   2 => 'Kallade – nekat',
+                                  4 => 'Ospecificerade spelare',
                                   _ => 'Okallade spelare',
                                 }),
                                 style: Theme.of(context).textTheme.titleSmall,
@@ -269,35 +329,37 @@ class _TrainingRosterPickerState extends State<_TrainingRosterPicker> {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  DropdownButton<TrainingPlayerTeam>(
-                                    key: ValueKey(
-                                      'training-roster-team-${person.personId}',
-                                    ),
-                                    value:
-                                        _teams[person.personId] ??
-                                        TrainingPlayerTeam.blue,
-                                    items: [
-                                      for (final team
-                                          in TrainingPlayerTeam.values)
-                                        DropdownMenuItem(
-                                          value: team,
-                                          child: Text(
-                                            strings.feature(team.label),
+                                  if (widget.chooseTeams)
+                                    DropdownButton<TrainingPlayerTeam>(
+                                      key: ValueKey(
+                                        'training-roster-team-${person.personId}',
+                                      ),
+                                      value:
+                                          _teams[person.personId] ??
+                                          TrainingPlayerTeam.blue,
+                                      items: [
+                                        for (final team
+                                            in TrainingPlayerTeam.values)
+                                          DropdownMenuItem(
+                                            value: team,
+                                            child: Text(
+                                              strings.feature(team.label),
+                                            ),
                                           ),
-                                        ),
-                                    ],
-                                    onChanged:
-                                        !_selected.contains(person.personId)
-                                        ? null
-                                        : (team) {
-                                            if (team != null) {
-                                              setState(
-                                                () => _teams[person.personId] =
-                                                    team,
-                                              );
-                                            }
-                                          },
-                                  ),
+                                      ],
+                                      onChanged:
+                                          !_selected.contains(person.personId)
+                                          ? null
+                                          : (team) {
+                                              if (team != null) {
+                                                setState(
+                                                  () =>
+                                                      _teams[person.personId] =
+                                                          team,
+                                                );
+                                              }
+                                            },
+                                    ),
                                 ],
                               ),
                           ],
@@ -322,8 +384,13 @@ class _TrainingRosterPickerState extends State<_TrainingRosterPicker> {
                       .where((person) => _selected.contains(person.personId))
                       .map(
                         (person) => TrainingBlockPlayer(
-                          personId: person.personId,
-                          name: person.name,
+                          rosterId: person.personId,
+                          personId: person.rolePackage == 'anonymous'
+                              ? null
+                              : person.personId,
+                          name: person.rolePackage == 'anonymous'
+                              ? ''
+                              : person.name,
                           team:
                               _teams[person.personId] ??
                               TrainingPlayerTeam.blue,

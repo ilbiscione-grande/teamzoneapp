@@ -89,11 +89,27 @@ void main() {
     await tester.tap(find.byKey(const Key('module-next-training-open')));
     await tester.pumpAndSettle();
 
-    // One plan, no separate Förberedelser beside it: the session stands
-    // alone when the event's preparation cannot be fetched.
+    expect(find.byKey(const Key('training-session-overview')), findsOneWidget);
+    expect(find.text('Alex Spelare'), findsOneWidget);
+    await tester.ensureVisible(
+      find.byKey(const Key('training-player-add-anonymous')),
+    );
+    await tester.tap(find.byKey(const Key('training-player-add-anonymous')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('training-player-add-roster')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Kallade – accepterat'),
+      findsNothing,
+    ); // already selected automatically
+    await tester.tap(find.text('Bertil Obesvarad'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('training-player-roster-confirm')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('training-open-planning')));
+    await tester.tap(find.byKey(const Key('training-open-planning')));
+    await tester.pumpAndSettle();
     expect(find.byType(Tab), findsNothing);
-    expect(find.textContaining('kunde inte hämtas'), findsOneWidget);
-
     // It starts from the event's theme, and its plan can become a block.
     expect(find.text('Press'), findsOneWidget);
     expect(
@@ -123,6 +139,10 @@ void main() {
     );
     await tester.tap(find.byKey(const Key('training-player-add-anonymous')));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Spelare 1'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('training-player-roster-confirm')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('training-player-team-0')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Rött lag').last);
@@ -130,26 +150,8 @@ void main() {
     await tester.tap(find.byKey(const Key('training-player-add-roster')));
     await tester.pumpAndSettle();
     expect(find.text('Kallade – accepterat'), findsOneWidget);
-    final rosterScroll = find
-        .descendant(
-          of: find.byType(ListView).last,
-          matching: find.byType(Scrollable),
-        )
-        .first;
-    for (final heading in [
-      'Kallade – obesvarat',
-      'Kallade – nekat',
-      'Okallade spelare',
-    ]) {
-      await tester.scrollUntilVisible(
-        find.text(heading),
-        140,
-        scrollable: rosterScroll,
-      );
-      expect(find.text(heading), findsOneWidget);
-    }
-    tester.state<ScrollableState>(rosterScroll).position.jumpTo(0);
-    await tester.pumpAndSettle();
+    expect(find.text('Cecilia Nekad'), findsNothing);
+    expect(find.text('Dani Okallad'), findsNothing);
     await tester.tap(find.text('Alex Spelare'));
     await tester.pumpAndSettle();
     await tester.tap(
@@ -172,6 +174,8 @@ void main() {
     final saved = sessions.saved!;
     expect(saved.published, isTrue);
     expect(saved.revision, 1);
+    expect(saved.roster.length, 3);
+    expect(saved.roster.where((p) => p.personId == null).single.id, isNotEmpty);
     expect(saved.blocks.single.players.map((p) => p.team), [
       TrainingPlayerTeam.red,
       TrainingPlayerTeam.green,
@@ -181,6 +185,29 @@ void main() {
       [TrainingPart.warmup, 'Rondo 5 mot 2', 12],
     ]);
     expect(find.textContaining('visas för spelarna'), findsOneWidget);
+
+    // Removing a session participant confirms and prunes existing assignments.
+    await tester.tap(find.text('Översikt'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('training-player-remove-1')),
+    );
+    await tester.tap(find.byKey(const ValueKey('training-player-remove-1')));
+    await tester.pumpAndSettle();
+    expect(find.text('Ta bort från sessionstruppen?'), findsOneWidget);
+    await tester.tap(find.text('Avbryt'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('training-player-remove-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ta bort').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('training-session-save')));
+    await tester.pumpAndSettle();
+    expect(sessions.saved!.roster.length, 2);
+    expect(sessions.saved!.blocks.single.players.single.personId, 'player-1');
+    await tester.ensureVisible(find.byKey(const Key('training-open-planning')));
+    await tester.tap(find.byKey(const Key('training-open-planning')));
+    await tester.pumpAndSettle();
 
     // Cancelling the guide leaves the saved plan untouched.
     await tester.tap(find.byKey(const Key('training-guide-open')));
@@ -231,7 +258,17 @@ void main() {
       workspaceField('organisation'),
       'Två ytor, fem spelare per yta.',
     );
-    await tester.ensureVisible(workspaceField('coaching'));
+    final workspaceList = find
+        .ancestor(of: workspaceField('title'), matching: find.byType(ListView))
+        .first;
+    final workspaceScroll = find
+        .descendant(of: workspaceList, matching: find.byType(Scrollable))
+        .first;
+    await tester.scrollUntilVisible(
+      workspaceField('coaching'),
+      140,
+      scrollable: workspaceScroll,
+    );
     await tester.enterText(
       workspaceField('coaching'),
       'Öppna kroppen före mottagning.',
@@ -332,7 +369,10 @@ void main() {
     await tester.pumpAndSettle();
 
     // The evaluation shows on the session once it has started.
-    await tester.ensureVisible(find.byKey(const Key('training-evaluation')));
+    await tester.ensureVisible(
+      find.byKey(const Key('training-evaluation-open')),
+    );
+    await tester.pumpAndSettle();
     expect(find.text('7 närvarade · 10 kallade, 8 tackade ja'), findsOneWidget);
     await tester.tap(find.byKey(const Key('training-evaluation-open')));
     await tester.pumpAndSettle();
@@ -392,7 +432,13 @@ void main() {
       expect(find.textContaining('No session planned yet'), findsOneWidget);
       await tester.tap(find.byKey(const Key('module-next-training-open')));
       await tester.pumpAndSettle();
-      expect(find.text('Training session'), findsOneWidget);
+      expect(find.text('Training session'), findsWidgets);
+      expect(
+        find.byKey(const Key('training-session-overview')),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('training-open-planning')));
+      await tester.pumpAndSettle();
       expect(find.text('Warm-up'), findsOneWidget);
       expect(find.text('Press'), findsOneWidget);
       expect(find.text('12 of 90 min planned'), findsOneWidget);
@@ -420,7 +466,10 @@ void main() {
       expect(sessions.saved!.blocks.last.title, 'Återerövring');
       expect(sessions.saved!.blocks.last.phase, PrincipleArea.regaining);
 
-      await tester.ensureVisible(find.byKey(const Key('training-evaluation')));
+      await tester.ensureVisible(
+        find.byKey(const Key('training-evaluation-open')),
+      );
+      await tester.pumpAndSettle();
       expect(
         find.text('7 attended · 10 called up, 8 accepted'),
         findsOneWidget,
@@ -461,6 +510,9 @@ class _Sessions implements TrainingServices {
     endsAt: _start.add(const Duration(minutes: 90)),
     theme: 'Press',
     eventPlan: 'Rondo, press 4v4, match',
+    roster: const [
+      TrainingBlockPlayer(personId: 'player-1', name: 'Alex Spelare'),
+    ],
     blocks: started
         ? const [
             TrainingBlock(
@@ -484,6 +536,7 @@ class _Sessions implements TrainingServices {
     required String goal,
     required bool published,
     required List<TrainingBlock> blocks,
+    List<TrainingBlockPlayer>? roster,
   }) async => saved = TrainingSession(
     eventId: eventId,
     canEdit: true,
@@ -495,6 +548,7 @@ class _Sessions implements TrainingServices {
     theme: theme,
     goal: goal,
     blocks: blocks,
+    roster: roster ?? const [],
   );
 
   @override

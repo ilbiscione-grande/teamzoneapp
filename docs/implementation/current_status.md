@@ -5,6 +5,8 @@ Första testversionen ger tidslinje på bred desktop, bevarad kortföljd på min
 skärm och en guidad start som lämnar ett redigerbart utkast.
 Efter användarens återkoppling: [aktiv mittenyta med direkt övningsredigering](../evidence/training_workspace_iteration_2026-10-26.md).
 Senare tillägg: [spelare och lagfärger per träningsblock](../evidence/training_block_players_2026-10-26.md).
+Nästa iteration: [träningsöversikt och sessionstrupp](../evidence/training_session_dashboard_2026-10-26.md).
+Passet öppnas på översikten och övningarnas spelarval begränsas till dess sparade sessionstrupp.
 
 Senast avstämt: **2026-10-25**, mot kod vid `760dbe0` och
 [nulägesrapporten](../evidence/app_status_review_2026-10-25.md).

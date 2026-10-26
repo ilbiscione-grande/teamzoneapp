@@ -23,6 +23,7 @@ abstract interface class TrainingServices {
     required String goal,
     required bool published,
     required List<TrainingBlock> blocks,
+    List<TrainingBlockPlayer>? roster,
   });
   Future<List<ModuleTraining>> listTrainings({
     required String teamId,
@@ -59,6 +60,7 @@ class UnconfiguredTrainingServices implements TrainingServices {
     required String goal,
     required bool published,
     required List<TrainingBlock> blocks,
+    List<TrainingBlockPlayer>? roster,
   }) => Future.error(_error);
   @override
   Future<List<ModuleTraining>> listTrainings({
@@ -114,6 +116,7 @@ class SupabaseTrainingServices
     required String goal,
     required bool published,
     required List<TrainingBlock> blocks,
+    List<TrainingBlockPlayer>? roster,
   }) async {
     try {
       final value = await _rpc('save_training_session', {
@@ -123,6 +126,8 @@ class SupabaseTrainingServices
         'session_goal': goal,
         'is_published': published,
         'session_blocks': [for (final block in blocks) block.toJson()],
+        if (roster != null)
+          'session_roster': [for (final player in roster) player.toJson()],
       });
       if (value is! Map<String, dynamic>) {
         throw const FormatException('Invalid training session.');
