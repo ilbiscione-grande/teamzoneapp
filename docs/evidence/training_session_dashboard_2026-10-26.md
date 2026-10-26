@@ -70,3 +70,19 @@ närvarofakta ändrades under provet.
 Lokala skärmbilder: .tmp-training-program/session-overview-desktop.png och
 .tmp-training-program/session-overview-mobile.png. Befintlig SQL-svit
 training_sessions passerade också som regressionstest.
+
+## Desktoplayout – uppföljning
+
+Översikten använder hela tillgängliga bredden med 24 px kantmarginal.
+Från 1200 px visas tre kolumner med relativa bredder 4:5:4: pass och
+inställningar till vänster, sessionstrupp i mitten, övningar och förberedelser
+till höger. Korten har naturlig innehållshöjd och behöver inte linjera i
+underkant. Från 900 till 1199 px används två kolumner, under 900 px en.
+Befintliga träningsflödestester (4) är gröna efter layoutändringen.
+
+Kodanalys och webbbygge godkända. Publicerad till audit med verifierad
+main.dart.js SHA-256:
+B995A2A061E778DBD6876CCE941AD343F833DC587E4C1697D6C7C113419DFE69.
+Desktop 1440 × 1000 och tvåkolumnsläget 1024 × 900 visuellt kontrollerade
+i det befintliga AUDIT-passet. Ingen sessionsdata ändrades i layoutprovet.
+Skärmbild: .tmp-training-program/dashboard-columns-desktop.png.
