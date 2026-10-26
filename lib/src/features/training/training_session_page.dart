@@ -42,6 +42,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
     _edit(() {
       _theme.text = draft.$1;
       _blocks = draft.$2;
+      _editorRevision++;
       _selectedBlock = null;
     });
   }
@@ -89,6 +90,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
     _theme.text = session.theme;
     _goal.text = session.goal;
     _settingText = false;
+    _editorRevision++;
     _session = session;
     _blocks = [...session.blocks];
     _published = session.published;
@@ -119,6 +121,13 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
     final strings = AppStrings.of(context);
     final session = _session;
     if (session == null || _busy) return;
+    if (!(_workspaceForm.currentState?.validate() ?? true)) return;
+    if (_blocks.any((block) => block.title.trim().isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.feature('Ange ett namn på övningen.'))),
+      );
+      return;
+    }
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _busy = true);
     try {
@@ -211,6 +220,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
         default:
       }
       _blocks = _ordered(blocks);
+      _editorRevision++;
       _selectedBlock = null;
     });
   }
@@ -286,12 +296,26 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
     );
   }
 
+  final _workspaceForm = GlobalKey<FormState>();
+  int _editorRevision = 0;
+
+  void _selectExercise(int index) {
+    if (!(_workspaceForm.currentState?.validate() ?? true)) return;
+    setState(() => _selectedBlock = index);
+  }
+
+  void _updateExercise(int index, TrainingBlock block) {
+    _edit(() => _blocks = [..._blocks]..[index] = block);
+  }
+
   Widget _program(TrainingSession session) {
     final strings = AppStrings.of(context);
-    final selected = _selectedBlock;
-    final block = selected != null && selected < _blocks.length
-        ? _blocks[selected]
-        : null;
+    final selected = _selectedBlock != null && _selectedBlock! < _blocks.length
+        ? _selectedBlock
+        : (_blocks.isEmpty ? null : 0);
+    final block = selected == null ? null : _blocks[selected];
+    final colors = Theme.of(context).colorScheme;
+    final minutes = _blocks.fold(0, (sum, b) => sum + b.minutes);
     return Column(
       children: [
         Padding(
@@ -305,7 +329,14 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                 ),
               ),
               Text(strings.feature(_dirty ? 'Osparade ändringar' : 'Sparat')),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
+              Text(strings.feature('Visa passet för spelarna')),
+              Switch(
+                key: const Key('training-program-published'),
+                value: _published,
+                onChanged: (value) => _edit(() => _published = value),
+              ),
+              const SizedBox(width: 12),
               SegmentedButton<bool>(
                 segments: [
                   ButtonSegment(
@@ -318,8 +349,11 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                   ),
                 ],
                 selected: {_showPreparation},
-                onSelectionChanged: (value) =>
-                    setState(() => _showPreparation = value.single),
+                onSelectionChanged: (value) {
+                  if (_workspaceForm.currentState?.validate() ?? true) {
+                    setState(() => _showPreparation = value.single);
+                  }
+                },
               ),
             ],
           ),
@@ -328,248 +362,467 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
         Expanded(
           child: _showPreparation
               ? _body(session)
-              : Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      width: 220,
-                      child: ListView(
-                        padding: const EdgeInsets.all(12),
-                        children: [
-                          Text(
-                            strings.feature('Passets delar'),
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          for (final part in TrainingPart.values) ...[
-                            ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(strings.feature(part.label)),
-                              trailing: IconButton(
-                                tooltip: strings.feature('Lägg till övning'),
-                                onPressed: () => _editBlock(part: part),
-                                icon: const Icon(Icons.add),
-                              ),
+              : Form(
+                  key: _workspaceForm,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        width: 200,
+                        child: ListView(
+                          padding: const EdgeInsets.all(12),
+                          children: [
+                            Text(
+                              strings.feature('Passets delar'),
+                              style: Theme.of(context).textTheme.titleMedium,
                             ),
-                            for (var i = 0; i < _blocks.length; i++)
-                              if (_blocks[i].part == part)
-                                ListTile(
-                                  selected: selected == i,
-                                  title: Text(_blocks[i].title),
-                                  subtitle: Text('${_blocks[i].minutes} min'),
-                                  onTap: () =>
-                                      setState(() => _selectedBlock = i),
+                            for (final part in TrainingPart.values) ...[
+                              ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(strings.feature(part.label)),
+                                trailing: IconButton(
+                                  tooltip: strings.feature('Lägg till övning'),
+                                  onPressed: () => _editBlock(part: part),
+                                  icon: const Icon(Icons.add),
                                 ),
+                              ),
+                              for (var i = 0; i < _blocks.length; i++)
+                                if (_blocks[i].part == part)
+                                  ListTile(
+                                    selected: selected == i,
+                                    title: Text(_blocks[i].title),
+                                    subtitle: Text('${_blocks[i].minutes} min'),
+                                    onTap: () => _selectExercise(i),
+                                  ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
-                    ),
-                    const VerticalDivider(width: 1),
-                    Expanded(
-                      child: ListView(
-                        padding: const EdgeInsets.all(24),
-                        children: [
-                          TextField(
-                            controller: _theme,
-                            maxLength: 200,
-                            decoration: InputDecoration(
-                              labelText: strings.feature('Träningsfokus'),
-                            ),
-                          ),
-                          _TrainingMinutes(
-                            minutes: _blocks.fold(
-                              0,
-                              (sum, b) => sum + b.minutes,
-                            ),
-                            length: session.eventMinutes,
-                          ),
-                          const SizedBox(height: 24),
-                          Text(
-                            strings.feature('Tidslinje'),
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 12),
-                          if (_blocks.isEmpty) ...[
-                            Text(strings.feature('Inga övningar än.')),
-                            const SizedBox(height: 16),
-                            FilledButton.tonal(
-                              onPressed: _guide,
-                              child: Text(strings.feature('Guidad planering')),
-                            ),
-                          ],
-                          for (final part in TrainingPart.values) ...[
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              child: Text(strings.feature(part.label)),
-                            ),
-                            SizedBox(
-                              height: 150,
-                              child: ReorderableListView.builder(
-                                scrollDirection: Axis.horizontal,
-                                buildDefaultDragHandles: false,
-                                itemCount: _blocks
-                                    .where((b) => b.part == part)
-                                    .length,
-                                onReorderItem: (oldIndex, newIndex) {
-                                  final indices = [
-                                    for (var i = 0; i < _blocks.length; i++)
-                                      if (_blocks[i].part == part) i,
-                                  ];
-                                  _edit(() {
-                                    final items = [..._blocks];
-                                    final moving = items.removeAt(
-                                      indices[oldIndex],
-                                    );
-                                    items.insert(indices[newIndex], moving);
-                                    _blocks = items;
-                                    _selectedBlock = indices[newIndex];
-                                  });
-                                },
-                                itemBuilder: (context, localIndex) {
-                                  final indices = [
-                                    for (var i = 0; i < _blocks.length; i++)
-                                      if (_blocks[i].part == part) i,
-                                  ];
-                                  final i = indices[localIndex];
-                                  final item = _blocks[i];
+                      const VerticalDivider(width: 1),
+                      Expanded(
+                        child: ColoredBox(
+                          color: colors.surfaceContainerLowest,
+                          child: ListView(
+                            padding: const EdgeInsets.all(24),
+                            children: [
+                              TextField(
+                                controller: _theme,
+                                maxLength: 200,
+                                decoration: InputDecoration(
+                                  labelText: strings.feature('Träningsfokus'),
+                                ),
+                              ),
+                              _TrainingMinutes(
+                                minutes: minutes,
+                                length: session.eventMinutes,
+                              ),
+                              const SizedBox(height: 20),
+                              Text(
+                                strings.feature('Tidslinje'),
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 8),
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final scale =
+                                      constraints.maxWidth /
+                                      (minutes > session.eventMinutes
+                                              ? minutes
+                                              : session.eventMinutes)
+                                          .clamp(1, 1440);
                                   return SizedBox(
-                                    key: ObjectKey(item),
-                                    width: (item.minutes * 6.0).clamp(170, 420),
-                                    child: Card(
-                                      color: selected == i
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.secondaryContainer
-                                          : null,
-                                      child: InkWell(
-                                        onTap: () =>
-                                            setState(() => _selectedBlock = i),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(12),
+                                    height: 142,
+                                    child: ReorderableListView.builder(
+                                      scrollDirection: Axis.horizontal,
+                                      buildDefaultDragHandles: false,
+                                      itemCount: _blocks.length,
+                                      onReorderItem: (oldIndex, newIndex) {
+                                        if (!(_workspaceForm.currentState
+                                                ?.validate() ??
+                                            true)) {
+                                          return;
+                                        }
+                                        final item = _blocks[oldIndex];
+                                        final items = [..._blocks]
+                                          ..removeAt(oldIndex);
+                                        items.insert(newIndex, item);
+                                        if (newIndex > 0 &&
+                                            items[newIndex - 1].part.index >
+                                                item.part.index) {
+                                          return;
+                                        }
+                                        if (newIndex + 1 < items.length &&
+                                            items[newIndex + 1].part.index <
+                                                item.part.index) {
+                                          return;
+                                        }
+                                        _edit(() {
+                                          _blocks = items;
+                                          _selectedBlock = newIndex;
+                                          _editorRevision++;
+                                        });
+                                      },
+                                      itemBuilder: (context, i) {
+                                        final item = _blocks[i];
+                                        final start = _blocks
+                                            .take(i)
+                                            .fold(
+                                              0,
+                                              (sum, b) => sum + b.minutes,
+                                            );
+                                        return SizedBox(
+                                          key: ObjectKey(item),
+                                          width: (item.minutes * scale).clamp(
+                                            156,
+                                            1000,
+                                          ),
                                           child: Column(
                                             crossAxisAlignment:
-                                                CrossAxisAlignment.start,
+                                                CrossAxisAlignment.stretch,
                                             children: [
-                                              Expanded(
-                                                child: Text(
-                                                  item.title,
-                                                  maxLines: 2,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
+                                              Text(
+                                                '$start–${start + item.minutes} min',
+                                                style: Theme.of(
+                                                  context,
+                                                ).textTheme.labelMedium,
                                               ),
-                                              Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      '${item.minutes} min',
+                                              Expanded(
+                                                child: Card(
+                                                  color: selected == i
+                                                      ? colors
+                                                            .secondaryContainer
+                                                      : colors
+                                                            .surfaceContainerHigh,
+                                                  child: InkWell(
+                                                    onTap: () =>
+                                                        _selectExercise(i),
+                                                    child: Padding(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            10,
+                                                          ),
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          Text(
+                                                            strings.feature(
+                                                              item.part.label,
+                                                            ),
+                                                            style:
+                                                                Theme.of(
+                                                                      context,
+                                                                    )
+                                                                    .textTheme
+                                                                    .labelSmall,
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 4,
+                                                          ),
+                                                          Expanded(
+                                                            child: Text(
+                                                              item.title,
+                                                              maxLines: 2,
+                                                              overflow:
+                                                                  TextOverflow
+                                                                      .ellipsis,
+                                                            ),
+                                                          ),
+                                                          Row(
+                                                            children: [
+                                                              Expanded(
+                                                                child: Text(
+                                                                  '${item.minutes} min',
+                                                                ),
+                                                              ),
+                                                              ReorderableDragStartListener(
+                                                                index: i,
+                                                                child: const Padding(
+                                                                  padding:
+                                                                      EdgeInsets.all(
+                                                                        8,
+                                                                      ),
+                                                                  child: Icon(
+                                                                    Icons
+                                                                        .drag_indicator,
+                                                                    size: 20,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ],
+                                                      ),
                                                     ),
                                                   ),
-                                                  ReorderableDragStartListener(
-                                                    index: localIndex,
-                                                    child: const Padding(
-                                                      padding: EdgeInsets.all(
-                                                        8,
-                                                      ),
-                                                      child: Icon(
-                                                        Icons.drag_indicator,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
+                                                ),
                                               ),
                                             ],
                                           ),
-                                        ),
-                                      ),
+                                        );
+                                      },
                                     ),
                                   );
                                 },
                               ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const VerticalDivider(width: 1),
-                    SizedBox(
-                      width: 280,
-                      child: ListView(
-                        padding: const EdgeInsets.all(16),
-                        children: [
-                          Text(
-                            strings.feature('Övning'),
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 16),
-                          if (block == null)
-                            Text(
-                              strings.feature('Välj en övning i tidslinjen.'),
-                            )
-                          else ...[
-                            Text(
-                              block.title,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            Text('${block.minutes} min'),
-                            const SizedBox(height: 16),
-                            Text(block.organisation),
-                            const SizedBox(height: 12),
-                            Text(strings.feature('Coachpunkter')),
-                            Text(block.coachingPoints),
-                            const SizedBox(height: 16),
-                            FilledButton.tonal(
-                              onPressed: () => _editBlock(index: selected),
-                              child: Text(strings.feature('Redigera övning')),
-                            ),
-                            Row(
-                              children: [
-                                IconButton(
-                                  tooltip: strings.feature('Flytta upp'),
-                                  onPressed:
-                                      selected! > 0 &&
-                                          _blocks[selected - 1].part ==
-                                              block.part
-                                      ? () {
-                                          _move(selected, -1);
-                                          setState(
-                                            () => _selectedBlock = selected - 1,
-                                          );
-                                        }
-                                      : null,
-                                  icon: const Icon(Icons.arrow_back),
+                              const SizedBox(height: 24),
+                              if (block == null) ...[
+                                Text(strings.feature('Inga övningar än.')),
+                                const SizedBox(height: 12),
+                                FilledButton.tonal(
+                                  onPressed: _guide,
+                                  child: Text(
+                                    strings.feature('Guidad planering'),
+                                  ),
                                 ),
-                                IconButton(
-                                  tooltip: strings.feature('Flytta ned'),
-                                  onPressed:
-                                      selected < _blocks.length - 1 &&
-                                          _blocks[selected + 1].part ==
-                                              block.part
-                                      ? () {
-                                          _move(selected, 1);
-                                          setState(
-                                            () => _selectedBlock = selected + 1,
-                                          );
-                                        }
+                              ] else ...[
+                                Text(
+                                  strings.feature('Övning'),
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                ),
+                                const SizedBox(height: 16),
+                                TextFormField(
+                                  key: ValueKey(
+                                    'workspace-title-$_editorRevision-$selected',
+                                  ),
+                                  initialValue: block.title,
+                                  maxLength: 120,
+                                  decoration: InputDecoration(
+                                    labelText: strings.feature('Övning'),
+                                  ),
+                                  validator: (value) =>
+                                      value == null || value.trim().isEmpty
+                                      ? strings.feature(
+                                          'Ange ett namn på övningen.',
+                                        )
                                       : null,
-                                  icon: const Icon(Icons.arrow_forward),
+                                  onChanged: (value) => _updateExercise(
+                                    selected!,
+                                    _blocks[selected].copyWith(title: value),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                TextFormField(
+                                  key: ValueKey(
+                                    'workspace-organisation-$_editorRevision-$selected',
+                                  ),
+                                  initialValue: block.organisation,
+                                  minLines: 5,
+                                  maxLines: 12,
+                                  maxLength: 2000,
+                                  decoration: InputDecoration(
+                                    labelText: strings.feature('Organisation'),
+                                    hintText: strings.feature(
+                                      'Yta, antal spelare, regler',
+                                    ),
+                                    border: const OutlineInputBorder(),
+                                  ),
+                                  onChanged: (value) => _updateExercise(
+                                    selected!,
+                                    _blocks[selected].copyWith(
+                                      organisation: value,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                TextFormField(
+                                  key: ValueKey(
+                                    'workspace-coaching-$_editorRevision-$selected',
+                                  ),
+                                  initialValue: block.coachingPoints,
+                                  minLines: 4,
+                                  maxLines: 10,
+                                  maxLength: 2000,
+                                  decoration: InputDecoration(
+                                    labelText: strings.feature('Coachpunkter'),
+                                    hintText: strings.feature(
+                                      'Vad ledarna lyfter under övningen',
+                                    ),
+                                    border: const OutlineInputBorder(),
+                                  ),
+                                  onChanged: (value) => _updateExercise(
+                                    selected!,
+                                    _blocks[selected].copyWith(
+                                      coachingPoints: value,
+                                    ),
+                                  ),
                                 ),
                               ],
-                            ),
-                          ],
-                          const Divider(),
-                          SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(
-                              strings.feature('Visa passet för spelarna'),
-                            ),
-                            value: _published,
-                            onChanged: (value) =>
-                                _edit(() => _published = value),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
+                      const VerticalDivider(width: 1),
+                      SizedBox(
+                        width: 220,
+                        child: ListView(
+                          padding: const EdgeInsets.all(16),
+                          children: [
+                            Text(
+                              strings.feature('Egenskaper'),
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 20),
+                            if (block == null)
+                              Text(
+                                strings.feature('Välj en övning i tidslinjen.'),
+                              )
+                            else ...[
+                              TextFormField(
+                                key: ValueKey(
+                                  'workspace-minutes-$_editorRevision-$selected',
+                                ),
+                                initialValue: '${block.minutes}',
+                                keyboardType: TextInputType.number,
+                                maxLength: 3,
+                                decoration: InputDecoration(
+                                  labelText: strings.feature('Minuter'),
+                                ),
+                                validator: (value) {
+                                  final number = int.tryParse(value ?? '');
+                                  return number == null ||
+                                          number < 0 ||
+                                          number > 240
+                                      ? strings.feature('Ange 0–240 minuter.')
+                                      : null;
+                                },
+                                onChanged: (value) {
+                                  final number = int.tryParse(value);
+                                  if (number != null &&
+                                      number >= 0 &&
+                                      number <= 240) {
+                                    _updateExercise(
+                                      selected!,
+                                      _blocks[selected].copyWith(
+                                        minutes: number,
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              DropdownButtonFormField<TrainingPart>(
+                                key: ValueKey(
+                                  'workspace-part-$_editorRevision-$selected',
+                                ),
+                                initialValue: block.part,
+                                isExpanded: true,
+                                decoration: InputDecoration(
+                                  labelText: strings.feature('Passdel'),
+                                ),
+                                items: [
+                                  for (final part in TrainingPart.values)
+                                    DropdownMenuItem(
+                                      value: part,
+                                      child: Text(strings.feature(part.label)),
+                                    ),
+                                ],
+                                onChanged: (part) {
+                                  if (part == null ||
+                                      !(_workspaceForm.currentState
+                                              ?.validate() ??
+                                          true)) {
+                                    return;
+                                  }
+                                  final changed = block.copyWith(part: part);
+                                  _edit(() {
+                                    final items = [..._blocks]
+                                      ..[selected!] = changed;
+                                    _blocks = _ordered(items);
+                                    _selectedBlock = _blocks.indexOf(changed);
+                                    _editorRevision++;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                strings.feature('Skede som tränas (valfritt)'),
+                              ),
+                              const SizedBox(height: 8),
+                              DropdownButtonFormField<PrincipleArea?>(
+                                key: ValueKey(
+                                  'workspace-phase-$_editorRevision-$selected',
+                                ),
+                                initialValue: block.phase,
+                                isExpanded: true,
+                                items: [
+                                  DropdownMenuItem(
+                                    value: null,
+                                    child: Text(strings.feature('Inget skede')),
+                                  ),
+                                  for (final area in PrincipleArea.values)
+                                    DropdownMenuItem(
+                                      value: area,
+                                      child: Text(strings.feature(area.label)),
+                                    ),
+                                ],
+                                onChanged: (value) => _updateExercise(
+                                  selected!,
+                                  _blocks[selected].copyWith(
+                                    phase: value,
+                                    clearPhase: value == null,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  IconButton(
+                                    tooltip: strings.feature('Flytta upp'),
+                                    onPressed:
+                                        selected! > 0 &&
+                                            _blocks[selected - 1].part ==
+                                                block.part
+                                        ? () {
+                                            if (!(_workspaceForm.currentState
+                                                    ?.validate() ??
+                                                true)) {
+                                              return;
+                                            }
+                                            _move(selected, -1);
+                                            setState(() {
+                                              _selectedBlock = selected - 1;
+                                              _editorRevision++;
+                                            });
+                                          }
+                                        : null,
+                                    icon: const Icon(Icons.arrow_back),
+                                  ),
+                                  IconButton(
+                                    tooltip: strings.feature('Flytta ned'),
+                                    onPressed:
+                                        selected < _blocks.length - 1 &&
+                                            _blocks[selected + 1].part ==
+                                                block.part
+                                        ? () {
+                                            if (!(_workspaceForm.currentState
+                                                    ?.validate() ??
+                                                true)) {
+                                              return;
+                                            }
+                                            _move(selected, 1);
+                                            setState(() {
+                                              _selectedBlock = selected + 1;
+                                              _editorRevision++;
+                                            });
+                                          }
+                                        : null,
+                                    icon: const Icon(Icons.arrow_forward),
+                                  ),
+                                ],
+                              ),
+                              TextButton.icon(
+                                onPressed: () => _editBlock(index: selected),
+                                icon: const Icon(Icons.more_horiz),
+                                label: Text(strings.feature('Fler alternativ')),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
         ),
       ],

@@ -152,6 +152,84 @@ void main() {
     expect(find.text('Tidslinje'), findsOneWidget);
     expect(find.text('Passets delar'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    Finder workspaceField(String name) => find.byWidgetPredicate(
+      (widget) =>
+          widget is TextFormField &&
+          widget.key is ValueKey<String> &&
+          (widget.key! as ValueKey<String>).value.startsWith(
+            'workspace-$name-',
+          ),
+    );
+    await tester.enterText(workspaceField('title'), 'Rondo i bredd');
+    await tester.enterText(
+      workspaceField('organisation'),
+      'Två ytor, fem spelare per yta.',
+    );
+    await tester.ensureVisible(workspaceField('coaching'));
+    await tester.enterText(
+      workspaceField('coaching'),
+      'Öppna kroppen före mottagning.',
+    );
+    await tester.enterText(workspaceField('minutes'), '999');
+    await tester.tap(find.byKey(const Key('training-session-save')));
+    await tester.pumpAndSettle();
+    expect(find.text('Ange 0–240 minuter.'), findsOneWidget);
+    expect(sessions.saved!.blocks.first.title, 'Uppvärmning');
+    await tester.enterText(workspaceField('minutes'), '22');
+    await tester.tap(find.byKey(const Key('training-session-save')));
+    await tester.pumpAndSettle();
+    expect(sessions.saved!.blocks.first.title, 'Rondo i bredd');
+    expect(sessions.saved!.blocks.first.minutes, 22);
+    expect(
+      sessions.saved!.blocks.first.organisation,
+      'Två ytor, fem spelare per yta.',
+    );
+    expect(
+      sessions.saved!.blocks.first.coachingPoints,
+      'Öppna kroppen före mottagning.',
+    );
+    expect(sessions.saved!.blocks[1].minutes, 63);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byTooltip('Lägg till övning').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('training-block-title')),
+      'Andra uppvärmningen',
+    );
+    await tester.enterText(
+      find.byKey(const Key('training-block-minutes')),
+      '7',
+    );
+    await tester.tap(find.byKey(const Key('training-block-save')));
+    await tester.pumpAndSettle();
+    tester
+        .widget<ReorderableListView>(find.byType(ReorderableListView))
+        .onReorderItem!(0, 1);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('training-session-save')));
+    await tester.pumpAndSettle();
+    expect(sessions.saved!.blocks.map((b) => b.title), [
+      'Andra uppvärmningen',
+      'Rondo i bredd',
+      'Huvuddel',
+      'Avslutning',
+    ]);
+    expect(
+      sessions.saved!.blocks[1].organisation,
+      'Två ytor, fem spelare per yta.',
+    );
+    expect(sessions.saved!.blocks.map((b) => b.minutes), [7, 22, 63, 9]);
+    // Moving across phase boundaries is rejected; phase changes use the property field.
+    tester
+        .widget<ReorderableListView>(find.byType(ReorderableListView))
+        .onReorderItem!(0, 3);
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const Key('training-session-save')))
+          .onPressed,
+      isNull,
+    );
     tester.view.physicalSize = const Size(390, 1400);
     await tester.pumpAndSettle();
     expect(find.text('Spelvändning'), findsOneWidget);

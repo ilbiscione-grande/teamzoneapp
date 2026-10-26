@@ -278,6 +278,10 @@ class AppStrings {
   }
 
   static const Map<String, String> _featureEnglish = {
+    'Ange ett namn på övningen.': 'Enter an exercise name.',
+    'Ange 0–240 minuter.': 'Enter 0–240 minutes.',
+    'Passdel': 'Session phase',
+    'Egenskaper': 'Properties',
     'Guidad planering': 'Guided planning',
     'Osparade ändringar': 'Unsaved changes',
     'Sparat': 'Saved',
