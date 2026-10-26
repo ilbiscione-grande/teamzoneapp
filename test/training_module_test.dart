@@ -6,6 +6,7 @@ import 'package:teamzone_app/src/core/identity/identity_models.dart';
 import 'package:teamzone_app/src/core/identity/identity_services.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_services.dart';
+import 'package:teamzone_app/src/features/calendar/calendar_models.dart';
 import 'package:teamzone_app/src/features/team_development/team_development_services.dart';
 import 'package:teamzone_app/src/features/training/training_services.dart';
 import 'package:teamzone_app/src/features/workspaces/module_services.dart';
@@ -36,6 +37,23 @@ void main() {
     expect(session.blocks.last.phase, PrincipleArea.regaining);
     expect(session.blocks.last.toJson()['phase'], 'regaining');
     expect(session.blocks.first.toJson()['part'], 'warmup');
+    final withPlayers = session.blocks.first.copyWith(
+      players: const [
+        TrainingBlockPlayer(),
+        TrainingBlockPlayer(
+          personId: 'person-1',
+          name: 'Alex',
+          team: TrainingPlayerTeam.red,
+        ),
+      ],
+    );
+    final decoded = TrainingBlock.fromJson(withPlayers.toJson());
+    expect(decoded.players.map((p) => p.team), [
+      TrainingPlayerTeam.blue,
+      TrainingPlayerTeam.red,
+    ]);
+    expect(decoded.copyWith(title: 'Ändrat').players.last.personId, 'person-1');
+    expect(session.blocks.last.players, isEmpty);
   });
 
   testWidgets('a leader plans a training session in the module', (
@@ -100,6 +118,22 @@ void main() {
     expect(find.text('Rondo 5 mot 2'), findsOneWidget);
     expect(find.text('12 av 90 min planerade'), findsOneWidget);
 
+    await tester.ensureVisible(
+      find.byKey(const Key('training-player-add-anonymous')),
+    );
+    await tester.tap(find.byKey(const Key('training-player-add-anonymous')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('training-player-team-0')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rött lag').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('training-player-add-roster')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Alex Spelare'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('training-player-roster-confirm')));
+    await tester.pumpAndSettle();
+
     // Published and saved.
     await tester.ensureVisible(
       find.byKey(const Key('training-session-published')),
@@ -111,6 +145,11 @@ void main() {
     final saved = sessions.saved!;
     expect(saved.published, isTrue);
     expect(saved.revision, 1);
+    expect(saved.blocks.single.players.map((p) => p.team), [
+      TrainingPlayerTeam.red,
+      TrainingPlayerTeam.blue,
+    ]);
+    expect(saved.blocks.single.players.last.personId, 'player-1');
     expect(saved.blocks.map((b) => [b.part, b.title, b.minutes]).toList(), [
       [TrainingPart.warmup, 'Rondo 5 mot 2', 12],
     ]);
@@ -491,6 +530,28 @@ class _Sessions implements TrainingServices {
 }
 
 class _Calendar extends UnconfiguredCalendarServices {
+  @override
+  Future<SquadDetails> getEventSquad(String eventId) async => SquadDetails(
+    eventId: eventId,
+    state: 'empty',
+    members: const [],
+    callups: const [],
+    attendance: const [],
+    roster: const [
+      EventRosterPerson(
+        personId: 'player-1',
+        name: 'Alex Spelare',
+        teamId: 'team',
+        teamName: 'P2012',
+        rolePackage: 'player',
+        inDraft: false,
+      ),
+    ],
+    callerActions: const {},
+    selectionSource: 'manual',
+    selectionContext: const {},
+    dispatchKind: 'none',
+  );
   _Calendar(this.trainingSessions);
   @override
   final TrainingServices trainingSessions;

@@ -20,6 +20,46 @@ enum TrainingPart {
   };
 }
 
+enum TrainingPlayerTeam {
+  blue('Blått lag'),
+  red('Rött lag'),
+  green('Grönt lag'),
+  yellow('Gult lag'),
+  neutral('Neutral');
+
+  const TrainingPlayerTeam(this.label);
+  final String label;
+}
+
+/// A roster reference plus display-name snapshot, or an unnamed player.
+class TrainingBlockPlayer {
+  const TrainingBlockPlayer({
+    this.personId,
+    this.name = '',
+    this.team = TrainingPlayerTeam.blue,
+  });
+  final String? personId;
+  final String name;
+  final TrainingPlayerTeam team;
+  factory TrainingBlockPlayer.fromJson(Map<String, dynamic> json) =>
+      TrainingBlockPlayer(
+        personId: json['person_id'] as String?,
+        name: json['name'] as String? ?? '',
+        team:
+            TrainingPlayerTeam.values
+                .where((team) => team.name == json['team'])
+                .firstOrNull ??
+            TrainingPlayerTeam.blue,
+      );
+  Map<String, Object?> toJson() => {
+    'person_id': personId,
+    'name': name,
+    'team': team.name,
+  };
+  TrainingBlockPlayer withTeam(TrainingPlayerTeam value) =>
+      TrainingBlockPlayer(personId: personId, name: name, team: value);
+}
+
 /// One exercise in the session.
 class TrainingBlock {
   const TrainingBlock({
@@ -31,6 +71,7 @@ class TrainingBlock {
     this.phase,
     this.sourceKind = 'own',
     this.sourceId,
+    this.players = const [],
   });
   factory TrainingBlock.fromJson(Map<String, dynamic> json) => TrainingBlock(
     part: TrainingPart.from(json['part']),
@@ -41,10 +82,16 @@ class TrainingBlock {
     phase: json['phase'] == null ? null : PrincipleArea.from(json['phase']),
     sourceKind: json['source_kind'] as String? ?? 'own',
     sourceId: json['source_id'] as String?,
+    players: [
+      for (final player
+          in (json['players'] as List? ?? const []).whereType<Map>())
+        TrainingBlockPlayer.fromJson(Map<String, dynamic>.from(player)),
+    ],
   );
   final TrainingPart part;
   final String title, organisation, coachingPoints, sourceKind;
   final int minutes;
+  final List<TrainingBlockPlayer> players;
 
   /// The phase of the game the exercise trains, if any.
   final PrincipleArea? phase;
@@ -59,6 +106,7 @@ class TrainingBlock {
     'phase': phase?.key,
     'source_kind': sourceKind,
     'source_id': sourceId,
+    'players': [for (final player in players) player.toJson()],
   };
 
   TrainingBlock copyWith({
@@ -69,6 +117,7 @@ class TrainingBlock {
     String? coachingPoints,
     PrincipleArea? phase,
     bool clearPhase = false,
+    List<TrainingBlockPlayer>? players,
   }) => TrainingBlock(
     part: part ?? this.part,
     title: title ?? this.title,
@@ -78,6 +127,7 @@ class TrainingBlock {
     phase: clearPhase ? null : phase ?? this.phase,
     sourceKind: sourceKind,
     sourceId: sourceId,
+    players: players ?? this.players,
   );
 }
 

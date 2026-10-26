@@ -147,6 +147,7 @@ part '../features/team_development/team_development_sharing.dart';
 part '../features/team_development/team_development_shared_view.dart';
 part '../features/training/training_module.dart';
 part '../features/training/training_session_page.dart';
+part '../features/training/training_block_players.dart';
 part '../features/training/training_block_dialog.dart';
 part '../features/training/training_summary.dart';
 part '../features/training/training_evaluation.dart';

@@ -278,6 +278,22 @@ class AppStrings {
   }
 
   static const Map<String, String> _featureEnglish = {
+    'Spelare i övningen': 'Players in this exercise',
+    'Indelningen gäller bara den här övningen och ändrar inte kallelserna.':
+        'These groups apply only to this exercise and do not change callups.',
+    'Ospecificerad spelare': 'Unnamed player',
+    'Truppen kunde inte hämtas. Försök igen.':
+        'Could not load the squad. Try again.',
+    'Spelare {number}': 'Player {number}',
+    'Blått lag': 'Blue team',
+    'Rött lag': 'Red team',
+    'Grönt lag': 'Green team',
+    'Gult lag': 'Yellow team',
+    'Neutral': 'Neutral',
+    'Ta bort spelare': 'Remove player',
+    'Högst 80 spelare per övning.': 'Up to 80 players per exercise.',
+    'Sök spelare': 'Search players',
+    'Inga fler spelare att lägga till.': 'No more players to add.',
     'Ange ett namn på övningen.': 'Enter an exercise name.',
     'Ange 0–240 minuter.': 'Enter 0–240 minutes.',
     'Passdel': 'Session phase',

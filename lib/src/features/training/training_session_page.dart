@@ -62,6 +62,27 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
       : Future.value(null);
 
   late Future<(EventDetails, SquadDetails)> _event = _loadEvent();
+  late Future<List<EventRosterPerson>> _playerRoster = _loadPlayerRoster();
+
+  Future<List<EventRosterPerson>> _loadPlayerRoster() async {
+    final squad = await widget.calendar.getEventSquad(widget.eventId);
+    final people = <String, EventRosterPerson>{
+      for (final person in squad.roster)
+        if (person.rolePackage == 'player') person.personId: person,
+    }.values.toList()..sort((a, b) => a.name.compareTo(b.name));
+    return people;
+  }
+
+  Widget _playersFor(int index, bool canEdit) => _TrainingBlockPlayers(
+    key: ValueKey('training-players-$index'),
+    players: _blocks[index].players,
+    roster: canEdit ? _playerRoster : null,
+    onRetry: () => setState(() => _playerRoster = _loadPlayerRoster()),
+    onChanged: canEdit
+        ? (players) =>
+              _updateExercise(index, _blocks[index].copyWith(players: players))
+        : null,
+  );
 
   Future<(EventDetails, SquadDetails)> _loadEvent() async => (
     await widget.calendar.getEventDetails(widget.eventId),
@@ -710,6 +731,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
+                                _playersFor(selected!, true),
                                 TextFormField(
                                   key: ValueKey(
                                     'workspace-organisation-$_editorRevision-$selected',
@@ -1182,7 +1204,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-          for (final i in indices)
+          for (final i in indices) ...[
             _TrainingBlockCard(
               key: ValueKey('training-block-$i'),
               block: _blocks[i],
@@ -1198,6 +1220,8 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                   ? () => _move(i, 1)
                   : null,
             ),
+            _playersFor(i, canEdit),
+          ],
         ],
       ),
     );
