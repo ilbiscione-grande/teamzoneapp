@@ -45,6 +45,7 @@ Bildbevis: .tmp-acceptance-evidence/english-polish-match-2026-10-26.png.
 
 De två kvarvarande språkfynden från 25 oktober är därmed rättade och omprovade.
 
-Vid rapportens avslut körde nya CI-körningens Flutter- och SQL-jobb fortfarande.
-Övriga fyra jobb hade passerat. Lokala tester, analys, releasebygge,
-miljögrind och manuellt omprov är godkända enligt ovan.
+Vid rapportens första avslut körde Flutter- och SQL-jobben fortfarande.
+Uppföljning under mobilbreddsprovet 26 oktober bekräftade att samtliga sex
+CI-jobb passerat, inklusive Flutter och SQL. Lokala tester, analys,
+releasebygge, miljögrind och manuellt omprov är godkända enligt ovan.

@@ -33,8 +33,14 @@ Rättningarna är nu publicerade till audit och granskade läsande i den engelsk
 ledarsessionen. Omprovets mindre rester är rättade i en komplettering. Se
 [engelsk release och omprov](../evidence/english_release_2026-10-25.md) för
 revisioner och avgränsning. Skriv-/rollacceptans och manuell mobilgranskning
-återstår. Språkputsen av singularformer och hörnresultatet Short följs upp i
+återstod vid det omprovet. Språkputsen av singularformer och hörnresultatet Short följs upp i
 [Matchs språkputs 26 oktober](../evidence/english_polish_2026-10-26.md).
+
+Senare uppföljning: [390-pixelsvy och skrivprov 26 oktober](../evidence/mobile390_write_acceptance_2026-10-26.md).
+Grundläggande skapa/redigera/spara/läsa tillbaka passerade för TDP-mål,
+träningsutkast och matchplansutkast. Testposterna är märkta AUDIT; målet är
+avbrutet och båda planerna opublicerade. Nya fynd: för trång analysflik och
+svenska systemtexter på Home. Fysisk telefon och andra roller återstår.
 
 ## Statusregler
 
