@@ -12,8 +12,9 @@ class AppStrings {
     required int missed,
     required int blocked,
   }) {
-    if (isSwedish)
+    if (isSwedish) {
       return '$shots avslut · $goals mål · $onTarget på mål · $missed utanför · $blocked blockerade';
+    }
     return '$shots ${shots == 1 ? 'shot' : 'shots'} · $goals ${goals == 1 ? 'goal' : 'goals'} · $onTarget on target · $missed off target · $blocked blocked';
   }
 
