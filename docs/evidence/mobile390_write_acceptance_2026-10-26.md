@@ -14,8 +14,10 @@ inte ett prov av fysisk telefon, touch, skärmtangentbord, iOS/Safari,
 Android, installation eller push. Andra roller och samtidiga redigeringar
 är inte godkända av detta prov.
 
-Två nya fynd kvarstår: för trång matchflik och svenska systemtexter på Home.
-Språkets helhetsacceptans är därför fortsatt öppen.
+Vid detta prov hittades en för trång matchflik och svenska systemtexter på
+Home. Dessa två fynd är därefter rättade, publicerade och omprovade; se
+[rättningskvittot](mobile390_fixes_2026-10-26.md). Fyndbeskrivningarna nedan
+behålls som historisk evidens. Språkets helhetsacceptans är fortsatt avgränsad.
 
 ## Granskade ytor
 

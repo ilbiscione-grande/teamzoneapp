@@ -39,8 +39,10 @@ revisioner och avgränsning. Skriv-/rollacceptans och manuell mobilgranskning
 Senare uppföljning: [390-pixelsvy och skrivprov 26 oktober](../evidence/mobile390_write_acceptance_2026-10-26.md).
 Grundläggande skapa/redigera/spara/läsa tillbaka passerade för TDP-mål,
 träningsutkast och matchplansutkast. Testposterna är märkta AUDIT; målet är
-avbrutet och båda planerna opublicerade. Nya fynd: för trång analysflik och
-svenska systemtexter på Home. Fysisk telefon och andra roller återstår.
+avbrutet och båda planerna opublicerade. De efterföljande fynden om för trång analysflik och svenska systemtexter
+på Home är rättade, publicerade och manuellt omprovade i 390 pixlars bredd;
+se [rättningskvittot](../evidence/mobile390_fixes_2026-10-26.md).
+Fysisk telefon och andra roller återstår.
 
 ## Statusregler
 
