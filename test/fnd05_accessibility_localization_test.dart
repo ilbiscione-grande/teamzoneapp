@@ -17,6 +17,49 @@ import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 import 'package:teamzone_app/src/shared/theme/app_theme.dart';
 
 void main() {
+  testWidgets('shot counts and short set pieces use contextual English', (
+    tester,
+  ) async {
+    late AppStrings strings;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            strings = AppStrings.of(context);
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+    expect(
+      strings.shotMapSummary(
+        shots: 1,
+        goals: 1,
+        onTarget: 0,
+        missed: 0,
+        blocked: 0,
+      ),
+      '1 shot · 1 goal · 0 on target · 0 off target · 0 blocked',
+    );
+    expect(
+      strings.shotMapSummary(
+        shots: 2,
+        goals: 0,
+        onTarget: 1,
+        missed: 1,
+        blocked: 0,
+      ),
+      '2 shots · 0 goals · 1 on target · 1 off target · 0 blocked',
+    );
+    for (final type in ['corner', 'free_kick']) {
+      final label = liveEventKind(
+        type,
+      )!.results.firstWhere((r) => r.$1 == 'short').$2;
+      expect(strings.feature(label), 'Short');
+    }
+    expect(strings.feature('Kort'), 'Card');
+  });
+
   test('interactive theme targets remain at least 48 logical pixels', () {
     final theme = AppTheme.light();
     for (final style in [

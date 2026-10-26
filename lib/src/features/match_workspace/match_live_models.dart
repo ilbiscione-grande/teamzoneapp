@@ -62,7 +62,7 @@ const liveEventKinds = <LiveEventKind>[
       ('delivery', 'Inlägg'),
       ('shot', 'Avslut'),
       ('cleared', 'Rensad'),
-      ('short', 'Kort'),
+      ('short', 'Kort passning'),
     ],
     defaultResult: 'delivery',
     needsPlayer: false,
@@ -70,7 +70,11 @@ const liveEventKinds = <LiveEventKind>[
   LiveEventKind(
     type: 'free_kick',
     label: 'Frispark',
-    results: [('delivery', 'Inlägg'), ('shot', 'Avslut'), ('short', 'Kort')],
+    results: [
+      ('delivery', 'Inlägg'),
+      ('shot', 'Avslut'),
+      ('short', 'Kort passning'),
+    ],
     defaultResult: 'delivery',
     needsPlayer: false,
     locatable: true,

@@ -403,15 +403,12 @@ class _ShotMapCardState extends State<_ShotMapCard> {
                   ? AppStrings.of(context).feature(
                       'Markera avslut och mål på planen så syns de här.',
                     )
-                  : AppStrings.of(context).formatFeature(
-                      '{shots} avslut · {goals} mål · {target} på mål · {missed} utanför · {blocked} blockerade',
-                      {
-                        'shots': shown.length,
-                        'goals': count('goal'),
-                        'target': count('on_target'),
-                        'missed': count('missed') + count('woodwork'),
-                        'blocked': count('blocked'),
-                      },
+                  : AppStrings.of(context).shotMapSummary(
+                      shots: shown.length,
+                      goals: count('goal'),
+                      onTarget: count('on_target'),
+                      missed: count('missed') + count('woodwork'),
+                      blocked: count('blocked'),
                     ),
               style: theme.textTheme.bodySmall,
             ),

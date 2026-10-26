@@ -5,6 +5,18 @@ class AppStrings {
 
   final bool isSwedish;
 
+  String shotMapSummary({
+    required int shots,
+    required int goals,
+    required int onTarget,
+    required int missed,
+    required int blocked,
+  }) {
+    if (isSwedish)
+      return '$shots avslut · $goals mål · $onTarget på mål · $missed utanför · $blocked blockerade';
+    return '$shots ${shots == 1 ? 'shot' : 'shots'} · $goals ${goals == 1 ? 'goal' : 'goals'} · $onTarget on target · $missed off target · $blocked blocked';
+  }
+
   static AppStrings of(BuildContext context) => AppStrings._(
     Localizations.localeOf(context).languageCode.toLowerCase() == 'sv',
   );
@@ -2372,6 +2384,7 @@ class AppStrings {
     'Starta andra halvlek': 'Start second half',
     'Halvtid': 'Half-time',
     'Kort': 'Card',
+    'Kort passning': 'Short',
     'Byte': 'Substitution',
     'Skada': 'Injury',
     'Tillbaka': 'Back',
