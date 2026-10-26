@@ -1,5 +1,25 @@
 # Träning – aktiv arbetsyta i mitten
 
+## Senaste justering: fast minutskala under blocken
+
+Efter ytterligare återkoppling ligger linjen vid övningsblockens nederkant.
+Fasta markeringar under linjen visar 0, 15, 30, 45 minuter och så vidare till
+passets längd (eller planerad längd om planen är längre). Varje övnings
+start-/slutminut står inuti blocket. Blockbredderna är nu proportionella mot
+tiden utan den tidigare minsta blockbredden, så att kanterna stämmer med skalan.
+En läsbar minsta skala kan göra att hela tidslinjen behöver rullas horisontellt.
+Korta block kan korta av texten; pekarhjälpen visar fullständigt namn och tid,
+och vald övning redigeras som tidigare i mittenytan. Denna skala ersätter
+de tidigare iterationernas ungefärliga blockbredder.
+
+Publicerad till audit. Fyra träningstester är godkända, kodanalysen har inga
+anmärkningar och webbbygget är godkänt. Manuellt visuellt kontrollerad vid
+1440 × 1000: blocken slutar vid linjen, markeringarna 0–90 visas under den
+och intervallen ligger inuti blocken. Inga passdata ändrades vid kontrollen.
+Skärmbild: `.tmp-training-program/desktop-quarter-hour-axis.png`.
+Publicerad `main.dart.js` matchar lokalt bygge med SHA-256:
+`D699CDD27B4ED46B73CE4546CDB5333F8FBE21A5781F231E1364807E08F2F0BB`.
+
 ## Senare justering: en gemensam tidslinje
 
 Efter användarens återkoppling har den separata tidsstapeln tagits bort från

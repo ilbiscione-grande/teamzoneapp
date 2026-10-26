@@ -29,7 +29,9 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
 
   Future<void> _guide() async {
     final session = _session;
-    if (session == null) return;
+    if (session == null) {
+      return;
+    }
     final draft = await showDialog<(String, List<TrainingBlock>)>(
       context: context,
       builder: (_) => _TrainingGuide(
@@ -38,7 +40,9 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
         hasBlocks: _blocks.isNotEmpty,
       ),
     );
-    if (draft == null || !mounted) return;
+    if (draft == null || !mounted) {
+      return;
+    }
     _edit(() {
       _theme.text = draft.$1;
       _blocks = draft.$2;
@@ -100,7 +104,9 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
   Future<void> _load() async {
     try {
       final session = await widget.services.getSession(widget.eventId);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = null;
         _missing = session == null;
@@ -120,8 +126,12 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
   Future<void> _save() async {
     final strings = AppStrings.of(context);
     final session = _session;
-    if (session == null || _busy) return;
-    if (!(_workspaceForm.currentState?.validate() ?? true)) return;
+    if (session == null || _busy) {
+      return;
+    }
+    if (!(_workspaceForm.currentState?.validate() ?? true)) {
+      return;
+    }
     if (_blocks.any((block) => block.title.trim().isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(strings.feature('Ange ett namn på övningen.'))),
@@ -139,7 +149,9 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
         published: _published,
         blocks: _blocks,
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _show(saved));
       messenger.showSnackBar(
         SnackBar(
@@ -203,7 +215,9 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
       block: index == null ? null : _blocks[index],
       part: part,
     );
-    if (result == null || !mounted) return;
+    if (result == null || !mounted) {
+      return;
+    }
     _edit(() {
       final blocks = [..._blocks];
       switch (result) {
@@ -234,8 +248,12 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
 
   void _move(int index, int delta) {
     final target = index + delta;
-    if (target < 0 || target >= _blocks.length) return;
-    if (_blocks[target].part != _blocks[index].part) return;
+    if (target < 0 || target >= _blocks.length) {
+      return;
+    }
+    if (_blocks[target].part != _blocks[index].part) {
+      return;
+    }
     _edit(() {
       final blocks = [..._blocks];
       final block = blocks.removeAt(index);
@@ -251,7 +269,9 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
     return PopScope(
       canPop: !_dirty,
       onPopInvokedWithResult: (popped, _) async {
-        if (popped) return;
+        if (popped) {
+          return;
+        }
         final navigator = Navigator.of(context);
         if (await _confirmLeave()) {
           _dirty = false;
@@ -300,7 +320,9 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
   int _editorRevision = 0;
 
   void _selectExercise(int index) {
-    if (!(_workspaceForm.currentState?.validate() ?? true)) return;
+    if (!(_workspaceForm.currentState?.validate() ?? true)) {
+      return;
+    }
     setState(() => _selectedBlock = index);
   }
 
@@ -441,89 +463,140 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                               const SizedBox(height: 8),
                               LayoutBuilder(
                                 builder: (context, constraints) {
-                                  final scale =
-                                      constraints.maxWidth /
+                                  final length =
                                       (minutes > session.eventMinutes
                                               ? minutes
                                               : session.eventMinutes)
                                           .clamp(1, 1440);
-                                  return SizedBox(
-                                    height: 104,
-                                    child: Stack(
-                                      children: [
-                                        Positioned(
-                                          left: 0,
-                                          right: 0,
-                                          top: 60,
-                                          child: Container(
-                                            height: 3,
-                                            color:
-                                                minutes >
-                                                        session.eventMinutes &&
-                                                    session.eventMinutes > 0
-                                                ? colors.error
-                                                : colors.outlineVariant,
+                                  final scale =
+                                      ((constraints.maxWidth - 32) / length)
+                                          .clamp(8.0, double.infinity);
+                                  final width = length * scale;
+                                  return SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: SizedBox(
+                                      width: width + 32,
+                                      height: 132,
+                                      child: Stack(
+                                        children: [
+                                          Positioned(
+                                            left: 0,
+                                            top: 94,
+                                            width: width,
+                                            child: Container(
+                                              height: 2,
+                                              color:
+                                                  minutes >
+                                                          session
+                                                              .eventMinutes &&
+                                                      session.eventMinutes > 0
+                                                  ? colors.error
+                                                  : colors.outline,
+                                            ),
                                           ),
-                                        ),
-                                        ReorderableListView.builder(
-                                          scrollDirection: Axis.horizontal,
-                                          buildDefaultDragHandles: false,
-                                          itemCount: _blocks.length,
-                                          onReorderItem: (oldIndex, newIndex) {
-                                            if (!(_workspaceForm.currentState
-                                                    ?.validate() ??
-                                                true)) {
-                                              return;
-                                            }
-                                            final item = _blocks[oldIndex];
-                                            final items = [..._blocks]
-                                              ..removeAt(oldIndex);
-                                            items.insert(newIndex, item);
-                                            if (newIndex > 0 &&
-                                                items[newIndex - 1].part.index >
-                                                    item.part.index) {
-                                              return;
-                                            }
-                                            if (newIndex + 1 < items.length &&
-                                                items[newIndex + 1].part.index <
-                                                    item.part.index) {
-                                              return;
-                                            }
-                                            _edit(() {
-                                              _blocks = items;
-                                              _selectedBlock = newIndex;
-                                              _editorRevision++;
-                                            });
-                                          },
-                                          itemBuilder: (context, i) {
-                                            final item = _blocks[i];
-                                            final start = _blocks
-                                                .take(i)
-                                                .fold(
-                                                  0,
-                                                  (sum, b) => sum + b.minutes,
-                                                );
-                                            return SizedBox(
-                                              key: ObjectKey(item),
-                                              width: (item.minutes * scale)
-                                                  .clamp(156, 1000),
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.stretch,
-                                                children: [
-                                                  Text(
-                                                    '$start–${start + item.minutes} min',
-                                                    style: Theme.of(
-                                                      context,
-                                                    ).textTheme.labelMedium,
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Expanded(
+                                          for (
+                                            var minute = 0;
+                                            minute <= length;
+                                            minute += 15
+                                          ) ...[
+                                            Positioned(
+                                              left: minute * scale,
+                                              top: 94,
+                                              child: Container(
+                                                width: 1,
+                                                height: 7,
+                                                color: colors.outline,
+                                              ),
+                                            ),
+                                            Positioned(
+                                              left: (minute * scale - 15).clamp(
+                                                0.0,
+                                                width,
+                                              ),
+                                              top: 105,
+                                              child: SizedBox(
+                                                width: 30,
+                                                child: Text(
+                                                  '$minute',
+                                                  textAlign: minute == 0
+                                                      ? TextAlign.left
+                                                      : TextAlign.center,
+                                                  style: Theme.of(
+                                                    context,
+                                                  ).textTheme.labelMedium,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                          Positioned(
+                                            left: 0,
+                                            top: 0,
+                                            width: width,
+                                            height: 94,
+                                            child: ReorderableListView.builder(
+                                              scrollDirection: Axis.horizontal,
+                                              physics:
+                                                  const NeverScrollableScrollPhysics(),
+                                              buildDefaultDragHandles: false,
+                                              itemCount: _blocks.length,
+                                              onReorderItem:
+                                                  (oldIndex, newIndex) {
+                                                    if (!(_workspaceForm
+                                                            .currentState
+                                                            ?.validate() ??
+                                                        true)) {
+                                                      return;
+                                                    }
+                                                    final item =
+                                                        _blocks[oldIndex];
+                                                    final items = [..._blocks]
+                                                      ..removeAt(oldIndex);
+                                                    items.insert(
+                                                      newIndex,
+                                                      item,
+                                                    );
+                                                    if (newIndex > 0 &&
+                                                        items[newIndex - 1]
+                                                                .part
+                                                                .index >
+                                                            item.part.index) {
+                                                      return;
+                                                    }
+                                                    if (newIndex + 1 <
+                                                            items.length &&
+                                                        items[newIndex + 1]
+                                                                .part
+                                                                .index <
+                                                            item.part.index) {
+                                                      return;
+                                                    }
+                                                    _edit(() {
+                                                      _blocks = items;
+                                                      _selectedBlock = newIndex;
+                                                      _editorRevision++;
+                                                    });
+                                                  },
+                                              itemBuilder: (context, i) {
+                                                final item = _blocks[i];
+                                                final start = _blocks
+                                                    .take(i)
+                                                    .fold(
+                                                      0,
+                                                      (sum, b) =>
+                                                          sum + b.minutes,
+                                                    );
+                                                return SizedBox(
+                                                  key: ObjectKey(item),
+                                                  width: item.minutes * scale,
+                                                  child: Tooltip(
+                                                    message:
+                                                        '${item.title} · $start–${start + item.minutes} min',
                                                     child: Card(
                                                       margin:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 4,
-                                                            vertical: 4,
+                                                          const EdgeInsets.only(
+                                                            left: 2,
+                                                            right: 2,
+                                                            top: 4,
                                                           ),
                                                       color: selected == i
                                                           ? colors
@@ -535,59 +608,52 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                                                             _selectExercise(i),
                                                         child: Padding(
                                                           padding:
-                                                              const EdgeInsets.symmetric(
-                                                                horizontal: 10,
-                                                                vertical: 8,
+                                                              const EdgeInsets.all(
+                                                                6,
                                                               ),
-                                                          child: Row(
+                                                          child: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .stretch,
                                                             children: [
                                                               Expanded(
-                                                                child: Column(
-                                                                  crossAxisAlignment:
-                                                                      CrossAxisAlignment
-                                                                          .start,
-                                                                  mainAxisAlignment:
-                                                                      MainAxisAlignment
-                                                                          .center,
-                                                                  children: [
-                                                                    Text(
-                                                                      strings.feature(
-                                                                        item
-                                                                            .part
-                                                                            .label,
-                                                                      ),
-                                                                      maxLines:
-                                                                          1,
-                                                                      overflow:
-                                                                          TextOverflow
-                                                                              .ellipsis,
-                                                                      style: Theme.of(
-                                                                        context,
-                                                                      ).textTheme.labelSmall,
-                                                                    ),
-                                                                    const SizedBox(
-                                                                      height: 4,
-                                                                    ),
-                                                                    Text(
-                                                                      item.title,
-                                                                      maxLines:
-                                                                          2,
-                                                                      overflow:
-                                                                          TextOverflow
-                                                                              .ellipsis,
-                                                                    ),
-                                                                  ],
+                                                                child: Text(
+                                                                  item.title,
+                                                                  maxLines: 2,
+                                                                  overflow:
+                                                                      TextOverflow
+                                                                          .ellipsis,
                                                                 ),
                                                               ),
-                                                              ReorderableDragStartListener(
-                                                                index: i,
-                                                                child: const SizedBox(
-                                                                  width: 32,
-                                                                  height: 48,
-                                                                  child: Icon(
-                                                                    Icons
-                                                                        .drag_indicator,
-                                                                    size: 20,
+                                                              Text(
+                                                                '$start–${start + item.minutes} min',
+                                                                maxLines: 1,
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                                style: Theme.of(
+                                                                  context,
+                                                                ).textTheme.labelSmall,
+                                                              ),
+                                                              SizedBox(
+                                                                height: 24,
+                                                                child: Align(
+                                                                  alignment:
+                                                                      Alignment
+                                                                          .centerRight,
+                                                                  child: ReorderableDragStartListener(
+                                                                    index: i,
+                                                                    child: const SizedBox(
+                                                                      width: 24,
+                                                                      height:
+                                                                          24,
+                                                                      child: Icon(
+                                                                        Icons
+                                                                            .drag_indicator,
+                                                                        size:
+                                                                            18,
+                                                                      ),
+                                                                    ),
                                                                   ),
                                                                 ),
                                                               ),
@@ -597,12 +663,12 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                                                       ),
                                                     ),
                                                   ),
-                                                ],
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ],
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   );
                                 },
