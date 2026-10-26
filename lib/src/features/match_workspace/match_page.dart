@@ -256,7 +256,11 @@ class _MatchAppBar extends StatelessWidget implements PreferredSizeWidget {
                   value: _MatchPhase.preparation,
                   label: Text(
                     strings.feature('Förberedelse'),
-                    style: Theme.of(context).textTheme.labelLarge,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: phase == _MatchPhase.preparation
+                          ? colors.primary
+                          : Colors.white,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -264,7 +268,11 @@ class _MatchAppBar extends StatelessWidget implements PreferredSizeWidget {
                   value: _MatchPhase.live,
                   label: Text(
                     strings.feature('Live'),
-                    style: Theme.of(context).textTheme.labelLarge,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: phase == _MatchPhase.live
+                          ? colors.primary
+                          : Colors.white,
+                    ),
                   ),
                 ),
                 ButtonSegment(
@@ -272,7 +280,11 @@ class _MatchAppBar extends StatelessWidget implements PreferredSizeWidget {
                   label: Text(
                     strings.feature('Efteranalys'),
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.labelLarge,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: phase == _MatchPhase.analysis
+                          ? colors.primary
+                          : Colors.white,
+                    ),
                   ),
                 ),
               ],

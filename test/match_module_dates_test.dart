@@ -68,6 +68,10 @@ void main() {
         find.byKey(const Key('module-match-phase')),
       );
       final analysisLabel = tester.getRect(find.text('Post-match analysis'));
+      expect(
+        tester.widget<Text>(find.text('Post-match analysis')).style?.color,
+        Colors.white,
+      );
       expect(analysisLabel.top, greaterThanOrEqualTo(segments.top + 4));
       expect(analysisLabel.bottom, lessThanOrEqualTo(segments.bottom - 4));
       expect(find.text('Tactics'), findsOneWidget);
