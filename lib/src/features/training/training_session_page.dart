@@ -24,6 +24,27 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
   List<TrainingBlock> _blocks = const [];
   bool _published = false, _dirty = false, _busy = false, _missing = false;
   Object? _error;
+  int? _selectedBlock;
+  bool _showPreparation = false;
+
+  Future<void> _guide() async {
+    final session = _session;
+    if (session == null) return;
+    final draft = await showDialog<(String, List<TrainingBlock>)>(
+      context: context,
+      builder: (_) => _TrainingGuide(
+        focus: _theme.text,
+        minutes: session.eventMinutes,
+        hasBlocks: _blocks.isNotEmpty,
+      ),
+    );
+    if (draft == null || !mounted) return;
+    _edit(() {
+      _theme.text = draft.$1;
+      _blocks = draft.$2;
+      _selectedBlock = null;
+    });
+  }
 
   late final Future<TeamPlanSuggestion?> _suggestion =
       widget.services is TeamPlanSuggestionServices
@@ -190,6 +211,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
         default:
       }
       _blocks = _ordered(blocks);
+      _selectedBlock = null;
     });
   }
 
@@ -231,6 +253,13 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
           title: Text(AppStrings.of(context).feature('Träningspass')),
           actions: [
             if (canEdit)
+              IconButton(
+                key: const Key('training-guide-open'),
+                tooltip: AppStrings.of(context).feature('Guidad planering'),
+                onPressed: _busy ? null : _guide,
+                icon: const Icon(Icons.auto_awesome_outlined),
+              ),
+            if (canEdit)
               Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: FilledButton(
@@ -245,8 +274,305 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
               ),
           ],
         ),
-        body: _body(session),
+        body: session != null && canEdit
+            ? LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth < 1200) return _body(session);
+                  return _program(session);
+                },
+              )
+            : _body(session),
       ),
+    );
+  }
+
+  Widget _program(TrainingSession session) {
+    final strings = AppStrings.of(context);
+    final selected = _selectedBlock;
+    final block = selected != null && selected < _blocks.length
+        ? _blocks[selected]
+        : null;
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  session.title,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              Text(strings.feature(_dirty ? 'Osparade ändringar' : 'Sparat')),
+              const SizedBox(width: 16),
+              SegmentedButton<bool>(
+                segments: [
+                  ButtonSegment(
+                    value: false,
+                    label: Text(strings.feature('Planering')),
+                  ),
+                  ButtonSegment(
+                    value: true,
+                    label: Text(strings.feature('Förberedelser')),
+                  ),
+                ],
+                selected: {_showPreparation},
+                onSelectionChanged: (value) =>
+                    setState(() => _showPreparation = value.single),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: _showPreparation
+              ? _body(session)
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      width: 220,
+                      child: ListView(
+                        padding: const EdgeInsets.all(12),
+                        children: [
+                          Text(
+                            strings.feature('Passets delar'),
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          for (final part in TrainingPart.values) ...[
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(strings.feature(part.label)),
+                              trailing: IconButton(
+                                tooltip: strings.feature('Lägg till övning'),
+                                onPressed: () => _editBlock(part: part),
+                                icon: const Icon(Icons.add),
+                              ),
+                            ),
+                            for (var i = 0; i < _blocks.length; i++)
+                              if (_blocks[i].part == part)
+                                ListTile(
+                                  selected: selected == i,
+                                  title: Text(_blocks[i].title),
+                                  subtitle: Text('${_blocks[i].minutes} min'),
+                                  onTap: () =>
+                                      setState(() => _selectedBlock = i),
+                                ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const VerticalDivider(width: 1),
+                    Expanded(
+                      child: ListView(
+                        padding: const EdgeInsets.all(24),
+                        children: [
+                          TextField(
+                            controller: _theme,
+                            maxLength: 200,
+                            decoration: InputDecoration(
+                              labelText: strings.feature('Träningsfokus'),
+                            ),
+                          ),
+                          _TrainingMinutes(
+                            minutes: _blocks.fold(
+                              0,
+                              (sum, b) => sum + b.minutes,
+                            ),
+                            length: session.eventMinutes,
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            strings.feature('Tidslinje'),
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 12),
+                          if (_blocks.isEmpty) ...[
+                            Text(strings.feature('Inga övningar än.')),
+                            const SizedBox(height: 16),
+                            FilledButton.tonal(
+                              onPressed: _guide,
+                              child: Text(strings.feature('Guidad planering')),
+                            ),
+                          ],
+                          for (final part in TrainingPart.values) ...[
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: Text(strings.feature(part.label)),
+                            ),
+                            SizedBox(
+                              height: 150,
+                              child: ReorderableListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                buildDefaultDragHandles: false,
+                                itemCount: _blocks
+                                    .where((b) => b.part == part)
+                                    .length,
+                                onReorderItem: (oldIndex, newIndex) {
+                                  final indices = [
+                                    for (var i = 0; i < _blocks.length; i++)
+                                      if (_blocks[i].part == part) i,
+                                  ];
+                                  _edit(() {
+                                    final items = [..._blocks];
+                                    final moving = items.removeAt(
+                                      indices[oldIndex],
+                                    );
+                                    items.insert(indices[newIndex], moving);
+                                    _blocks = items;
+                                    _selectedBlock = indices[newIndex];
+                                  });
+                                },
+                                itemBuilder: (context, localIndex) {
+                                  final indices = [
+                                    for (var i = 0; i < _blocks.length; i++)
+                                      if (_blocks[i].part == part) i,
+                                  ];
+                                  final i = indices[localIndex];
+                                  final item = _blocks[i];
+                                  return SizedBox(
+                                    key: ObjectKey(item),
+                                    width: (item.minutes * 6.0).clamp(170, 420),
+                                    child: Card(
+                                      color: selected == i
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.secondaryContainer
+                                          : null,
+                                      child: InkWell(
+                                        onTap: () =>
+                                            setState(() => _selectedBlock = i),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(12),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  item.title,
+                                                  maxLines: 2,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      '${item.minutes} min',
+                                                    ),
+                                                  ),
+                                                  ReorderableDragStartListener(
+                                                    index: localIndex,
+                                                    child: const Padding(
+                                                      padding: EdgeInsets.all(
+                                                        8,
+                                                      ),
+                                                      child: Icon(
+                                                        Icons.drag_indicator,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const VerticalDivider(width: 1),
+                    SizedBox(
+                      width: 280,
+                      child: ListView(
+                        padding: const EdgeInsets.all(16),
+                        children: [
+                          Text(
+                            strings.feature('Övning'),
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 16),
+                          if (block == null)
+                            Text(
+                              strings.feature('Välj en övning i tidslinjen.'),
+                            )
+                          else ...[
+                            Text(
+                              block.title,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            Text('${block.minutes} min'),
+                            const SizedBox(height: 16),
+                            Text(block.organisation),
+                            const SizedBox(height: 12),
+                            Text(strings.feature('Coachpunkter')),
+                            Text(block.coachingPoints),
+                            const SizedBox(height: 16),
+                            FilledButton.tonal(
+                              onPressed: () => _editBlock(index: selected),
+                              child: Text(strings.feature('Redigera övning')),
+                            ),
+                            Row(
+                              children: [
+                                IconButton(
+                                  tooltip: strings.feature('Flytta upp'),
+                                  onPressed:
+                                      selected! > 0 &&
+                                          _blocks[selected - 1].part ==
+                                              block.part
+                                      ? () {
+                                          _move(selected, -1);
+                                          setState(
+                                            () => _selectedBlock = selected - 1,
+                                          );
+                                        }
+                                      : null,
+                                  icon: const Icon(Icons.arrow_back),
+                                ),
+                                IconButton(
+                                  tooltip: strings.feature('Flytta ned'),
+                                  onPressed:
+                                      selected < _blocks.length - 1 &&
+                                          _blocks[selected + 1].part ==
+                                              block.part
+                                      ? () {
+                                          _move(selected, 1);
+                                          setState(
+                                            () => _selectedBlock = selected + 1,
+                                          );
+                                        }
+                                      : null,
+                                  icon: const Icon(Icons.arrow_forward),
+                                ),
+                              ],
+                            ),
+                          ],
+                          const Divider(),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(
+                              strings.feature('Visa passet för spelarna'),
+                            ),
+                            value: _published,
+                            onChanged: (value) =>
+                                _edit(() => _published = value),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ],
     );
   }
 
@@ -519,6 +845,158 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
 }
 
 /// How the session's minutes fit the training: a bar, red when it runs over.
+class _TrainingGuide extends StatefulWidget {
+  const _TrainingGuide({
+    required this.focus,
+    required this.minutes,
+    required this.hasBlocks,
+  });
+  final String focus;
+  final int minutes;
+  final bool hasBlocks;
+  @override
+  State<_TrainingGuide> createState() => _TrainingGuideState();
+}
+
+class _TrainingGuideState extends State<_TrainingGuide> {
+  late final _focus = TextEditingController(text: widget.focus);
+  final List<TextEditingController> _titles = [];
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_titles.isEmpty) {
+      for (final part in TrainingPart.values) {
+        _titles.add(
+          TextEditingController(
+            text: AppStrings.of(context).feature(part.label),
+          ),
+        );
+      }
+    }
+  }
+
+  int _step = 0;
+  @override
+  void dispose() {
+    _focus.dispose();
+    for (final title in _titles) {
+      title.dispose();
+    }
+    super.dispose();
+  }
+
+  List<TrainingBlock> get _draft {
+    final total = widget.minutes.clamp(0, 720);
+    final warmup = (total * .2).round();
+    final finish = (total * .1).round();
+    final times = [warmup, total - warmup - finish, finish];
+    return [
+      for (var i = 0; i < 3; i++)
+        TrainingBlock(
+          part: TrainingPart.values[i],
+          title: _titles[i].text.trim(),
+          minutes: times[i],
+        ),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return AlertDialog(
+      title: Text(strings.feature('Guidad planering')),
+      content: SizedBox(
+        width: 480,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('${_step + 1} / 3'),
+              const SizedBox(height: 16),
+              if (_step == 0) ...[
+                Text(strings.feature('Vad vill ni träna på?')),
+                const SizedBox(height: 12),
+                TextField(
+                  key: const Key('training-guide-focus'),
+                  controller: _focus,
+                  maxLength: 200,
+                  decoration: InputDecoration(
+                    labelText: strings.feature('Träningsfokus'),
+                  ),
+                ),
+              ] else if (_step == 1) ...[
+                Text(strings.feature('Ge passets tre delar namn.')),
+                for (var i = 0; i < 3; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: TextField(
+                      controller: _titles[i],
+                      maxLength: 200,
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        labelText: strings.feature(
+                          TrainingPart.values[i].label,
+                        ),
+                      ),
+                    ),
+                  ),
+              ] else ...[
+                Text(_focus.text.trim()),
+                for (final block in _draft)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(block.title),
+                    trailing: Text('${block.minutes} min'),
+                  ),
+                Text(
+                  strings.feature(
+                    'Du kan ändra namn, tider och innehåll efteråt. Utkastet sparas inte automatiskt.',
+                  ),
+                ),
+                if (widget.hasBlocks)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(
+                      strings.feature(
+                        'Detta ersätter övningarna i ditt nuvarande utkast.',
+                      ),
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(strings.feature('Avbryt')),
+        ),
+        if (_step > 0)
+          TextButton(
+            onPressed: () => setState(() => _step--),
+            child: Text(strings.feature('Tillbaka')),
+          ),
+        FilledButton(
+          key: const Key('training-guide-next'),
+          onPressed:
+              _step == 1 && _titles.any((title) => title.text.trim().isEmpty)
+              ? null
+              : () {
+                  if (_step < 2) {
+                    setState(() => _step++);
+                  } else {
+                    Navigator.pop(context, (_focus.text.trim(), _draft));
+                  }
+                },
+          child: Text(strings.feature(_step == 2 ? 'Använd utkast' : 'Nästa')),
+        ),
+      ],
+    );
+  }
+}
+
 class _TrainingMinutes extends StatelessWidget {
   const _TrainingMinutes({required this.minutes, required this.length});
   final int minutes, length;

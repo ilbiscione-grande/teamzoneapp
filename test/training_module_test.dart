@@ -115,6 +115,46 @@ void main() {
       [TrainingPart.warmup, 'Rondo 5 mot 2', 12],
     ]);
     expect(find.textContaining('visas för spelarna'), findsOneWidget);
+
+    // Cancelling the guide leaves the saved plan untouched.
+    await tester.tap(find.byKey(const Key('training-guide-open')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avbryt'));
+    await tester.pumpAndSettle();
+    expect(find.text('Rondo 5 mot 2'), findsOneWidget);
+
+    // The guide replaces the local draft only after review, then uses
+    // the same save contract and preserves the publication setting.
+    await tester.tap(find.byKey(const Key('training-guide-open')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('training-guide-focus')),
+      'Spelvändning',
+    );
+    await tester.tap(find.byKey(const Key('training-guide-next')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('training-guide-next')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('ersätter övningarna'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('training-guide-next')));
+    await tester.pumpAndSettle();
+    expect(sessions.saved!.blocks.single.title, 'Rondo 5 mot 2');
+    await tester.tap(find.byKey(const Key('training-session-save')));
+    await tester.pumpAndSettle();
+    expect(sessions.saved!.theme, 'Spelvändning');
+    expect(sessions.saved!.blocks.map((b) => b.minutes), [18, 63, 9]);
+    expect(sessions.saved!.published, isTrue);
+
+    // A wide window uses the planning surface; the same draft survives
+    // resizing back to the mobile card sequence.
+    tester.view.physicalSize = const Size(1440, 1000);
+    await tester.pumpAndSettle();
+    expect(find.text('Tidslinje'), findsOneWidget);
+    expect(find.text('Passets delar'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    tester.view.physicalSize = const Size(390, 1400);
+    await tester.pumpAndSettle();
+    expect(find.text('Spelvändning'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

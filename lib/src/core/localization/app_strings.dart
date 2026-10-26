@@ -278,6 +278,20 @@ class AppStrings {
   }
 
   static const Map<String, String> _featureEnglish = {
+    'Guidad planering': 'Guided planning',
+    'Osparade ändringar': 'Unsaved changes',
+    'Sparat': 'Saved',
+    'Passets delar': 'Session structure',
+    'Tidslinje': 'Timeline',
+    'Välj en övning i tidslinjen.': 'Select an exercise in the timeline.',
+    'Redigera övning': 'Edit exercise',
+    'Vad vill ni träna på?': 'What would you like to work on?',
+    'Ge passets tre delar namn.': 'Name the three parts of your session.',
+    'Du kan ändra namn, tider och innehåll efteråt. Utkastet sparas inte automatiskt.':
+        'You can change names, timings and content afterwards. The draft is not saved automatically.',
+    'Detta ersätter övningarna i ditt nuvarande utkast.':
+        'This replaces the exercises in your current draft.',
+    'Använd utkast': 'Use draft',
     'Nästa aktivitet': 'Next activity',
     'NÄSTA · {date} · {time}': 'NEXT · {date} · {time}',
     'IMORGON · {time}': 'TOMORROW · {time}',

@@ -1,5 +1,9 @@
 # TeamZone – aktuellt leveransläge
 
+Pågående UX-iteration 26 oktober: [Träningsmodulens första planeringsmiljö](../evidence/training_program_trial_2026-10-26.md).
+Första testversionen ger tidslinje på bred desktop, bevarad kortföljd på mindre
+skärm och en guidad start som lämnar ett redigerbart utkast.
+
 Senast avstämt: **2026-10-25**, mot kod vid `760dbe0` och
 [nulägesrapporten](../evidence/app_status_review_2026-10-25.md).
 Senare lokal rättning samma dag: [modulöversättningar](../evidence/localization_modules_2026-10-25.md).
