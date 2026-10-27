@@ -157,12 +157,18 @@ void main() {
       find.descendant(of: hero, matching: find.text('Kvällsmatch')),
       findsOneWidget,
     );
+    // Unanswered: both thumbs under Kommer du?, no status text.
     expect(
-      find.descendant(
-        of: hero,
-        matching: find.textContaining('Obesvarat – svara gärna'),
-      ),
+      find.descendant(of: hero, matching: find.text('Kommer du?')),
       findsOneWidget,
+    );
+    expect(
+      find.descendant(of: hero, matching: find.byTooltip('Avböj')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: hero, matching: find.textContaining('Din kallelse')),
+      findsNothing,
     );
     expect(find.text('Resten av idag'), findsOneWidget);
     expect(find.textContaining('Avslutad'), findsOneWidget);
@@ -173,7 +179,7 @@ void main() {
     // A declined callup is filled red and says why.
     expect(find.widgetWithText(FilledButton, 'Avböjt'), findsOneWidget);
     expect(find.textContaining('Avböjt – Sjukdom'), findsOneWidget);
-    expect(find.byKey(const ValueKey('callup-status-pending')), findsOneWidget);
+    expect(find.byKey(const ValueKey('callup-status-pending')), findsNothing);
     expect(find.text('Nästa aktivitet'), findsNothing);
 
     await tester.tap(
@@ -186,6 +192,22 @@ void main() {
       find.descendant(of: hero, matching: find.byTooltip('Accepterat')),
       findsOneWidget,
     );
+    // Answered: only the green thumb; tapping it asks before changing.
+    expect(
+      find.descendant(of: hero, matching: find.byTooltip('Avböj')),
+      findsNothing,
+    );
+    await tester.tap(
+      find.descendant(of: hero, matching: find.byTooltip('Accepterat')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Du har tackat ja. Vill du ändra ditt svar till nej?'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Avbryt'));
+    await tester.pumpAndSettle();
+    expect(prep.responses, [('c-match', 'accepted')]);
     expect(tester.takeException(), isNull);
   });
   testWidgets('spelarens Hem visar kallelsen i dagens kort', (tester) async {
@@ -242,12 +264,18 @@ void main() {
       find.descendant(of: hero, matching: find.text('Kvällsträning')),
       findsOneWidget,
     );
+    // Unanswered: both thumbs under Kommer du?, no status text.
     expect(
-      find.descendant(
-        of: hero,
-        matching: find.textContaining('Obesvarat – svara gärna'),
-      ),
+      find.descendant(of: hero, matching: find.text('Kommer du?')),
       findsOneWidget,
+    );
+    expect(
+      find.descendant(of: hero, matching: find.byTooltip('Avböj')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: hero, matching: find.textContaining('Din kallelse')),
+      findsNothing,
     );
     expect(find.text('Kommande aktiviteter'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Accepterat'), findsOneWidget);

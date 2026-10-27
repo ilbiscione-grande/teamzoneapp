@@ -345,6 +345,12 @@ class AppStrings {
     'Ingen kommande aktivitet är planerad': 'No upcoming activity is planned',
     'Resten av idag': 'The rest of today',
     'Kommer du?': 'Are you coming?',
+    'Ändra svar?': 'Change your answer?',
+    'Ändra svar': 'Change answer',
+    'Du har tackat ja. Vill du ändra ditt svar till nej?':
+        'You have accepted. Do you want to change your answer to no?',
+    'Du har tackat nej. Vill du ändra ditt svar till ja?':
+        'You have declined. Do you want to change your answer to yes?',
     'Vägbeskrivning': 'Directions',
     'Snabbåtgärder': 'Quick actions',
     'Planering och administration': 'Planning and administration',

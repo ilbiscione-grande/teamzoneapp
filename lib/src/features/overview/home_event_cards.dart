@@ -21,9 +21,9 @@ IconData _homeEventIcon(String type) => switch (type) {
 };
 
 /// The Home page's hero card: what is on now, later today, tomorrow or
-/// next — a round accent badge, title, time and place, thumbs up/down
-/// while the own callup can be answered — followed by three quick-action
-/// tiles for the same event.
+/// next — a round accent badge, title, time and place, the own callup as
+/// thumbs (see [_HomeRsvpButtons]) and three quick-action tiles for the
+/// same event along the bottom.
 class _HomeHeroEventCard extends StatelessWidget {
   const _HomeHeroEventCard({
     required this.event,
@@ -74,13 +74,26 @@ class _HomeHeroEventCard extends StatelessWidget {
       event.address,
     ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' · ');
     final callup = event.myCallup;
-    final canRespond = callup != null && callup.canRespond;
+    // Called and unanswered: both thumbs under "Kommer du?". Answered:
+    // only the chosen thumb, which changes the answer when it can.
+    final unanswered =
+        callup != null && callup.canRespond && callup.state == 'pending';
+    final answered = callup != null && callup.state != 'pending';
     String clock(DateTime at) =>
         material.formatTimeOfDay(TimeOfDay.fromDateTime(at.toLocal()));
     final eventRoute = ProductRouteContract.calendarEvent(event.id);
-    final card = Card(
+    final directions = place.isEmpty
+        ? null
+        : () => launchUrl(
+            Uri.https('www.google.com', '/maps/search/', {
+              'api': '1',
+              'query': place,
+            }),
+            mode: LaunchMode.externalApplication,
+          );
+    return Card(
       key: const Key('home-hero-event'),
-      margin: EdgeInsets.zero,
+      margin: const EdgeInsets.only(bottom: 16),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => onNavigate(eventRoute),
@@ -100,7 +113,7 @@ class _HomeHeroEventCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (canRespond)
+                  if (unanswered)
                     Text(
                       strings.feature('Kommer du?'),
                       style: theme.textTheme.labelMedium?.copyWith(
@@ -166,9 +179,10 @@ class _HomeHeroEventCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (canRespond)
+                  if (unanswered || answered)
                     _HomeRsvpButtons(
                       response: callup.state,
+                      canChange: callup.canRespond,
                       busy: pendingCallupId != null,
                       onRespond: (response) => onRespond(callup, response),
                     )
@@ -176,75 +190,85 @@ class _HomeHeroEventCard extends StatelessWidget {
                     Icon(Icons.chevron_right, color: palette.muted),
                 ],
               ),
-              if (callup != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: _CallupStatus(callup: callup),
-                ),
+              const SizedBox(height: 14),
+              Row(
+                spacing: 8,
+                children: [
+                  _HomeQuickTile(
+                    icon: Icons.info_outline,
+                    label: strings.feature('Detaljer'),
+                    onTap: () => onNavigate(eventRoute),
+                  ),
+                  _HomeQuickTile(
+                    icon: Icons.near_me_outlined,
+                    label: strings.feature('Vägbeskrivning'),
+                    onTap: directions,
+                  ),
+                  _HomeQuickTile(
+                    icon: Icons.description_outlined,
+                    label: strings.feature('Förberedelser'),
+                    onTap: () => onNavigate('$eventRoute?tab=preparation'),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
       ),
     );
-    final directions = place.isEmpty
-        ? null
-        : () => launchUrl(
-            Uri.https('www.google.com', '/maps/search/', {
-              'api': '1',
-              'query': place,
-            }),
-            mode: LaunchMode.externalApplication,
-          );
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          card,
-          const SizedBox(height: 12),
-          Row(
-            spacing: 10,
-            children: [
-              _HomeQuickTile(
-                icon: Icons.info_outline,
-                label: strings.feature('Detaljer'),
-                onTap: () => onNavigate(eventRoute),
-              ),
-              _HomeQuickTile(
-                icon: Icons.near_me_outlined,
-                label: strings.feature('Vägbeskrivning'),
-                onTap: directions,
-              ),
-              _HomeQuickTile(
-                icon: Icons.description_outlined,
-                label: strings.feature('Förberedelser'),
-                onTap: () => onNavigate('$eventRoute?tab=preparation'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
   }
 }
 
-/// Thumbs up/down for the hero card's callup: soft mint and pale red
-/// tiles, the chosen answer filled. Declining still asks for a reason.
+/// The hero card's callup as thumbs. Unanswered: a soft mint thumb up
+/// and a pale red thumb down. Answered: only the chosen thumb, filled;
+/// tapping it asks before switching to the other answer (and declining
+/// still asks for a reason, in [onRespond]).
 class _HomeRsvpButtons extends StatelessWidget {
   const _HomeRsvpButtons({
     required this.response,
+    required this.canChange,
     required this.busy,
     required this.onRespond,
   });
   final String response;
+  final bool canChange;
   final bool busy;
   final ValueChanged<String> onRespond;
+
+  Future<void> _change(BuildContext context, String to) async {
+    final strings = AppStrings.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(strings.feature('Ändra svar?')),
+        content: Text(
+          strings.feature(
+            to == 'declined'
+                ? 'Du har tackat ja. Vill du ändra ditt svar till nej?'
+                : 'Du har tackat nej. Vill du ändra ditt svar till ja?',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(strings.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(strings.feature('Ändra svar')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) onRespond(to);
+  }
 
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     final palette = AppPalette.of(context);
     final colors = Theme.of(context).colorScheme;
+    final answered = response != 'pending';
     Widget button({
       required String value,
       required String label,
@@ -255,20 +279,24 @@ class _HomeRsvpButtons extends StatelessWidget {
       required Color onStrong,
     }) {
       final selected = response == value;
+      final other = value == 'accepted' ? 'declined' : 'accepted';
       return Tooltip(
         message: selected ? chosenLabel : label,
         child: Semantics(
           selected: selected,
           child: IconButton(
-            onPressed: busy
+            onPressed: busy || !canChange
                 ? null
                 : selected
-                ? () {}
+                ? () => _change(context, other)
                 : () => onRespond(value),
             style: IconButton.styleFrom(
               backgroundColor: selected ? strong : soft,
               foregroundColor: selected ? onStrong : strong,
-              disabledBackgroundColor: soft.withValues(alpha: .6),
+              disabledBackgroundColor: (selected ? strong : soft).withValues(
+                alpha: .6,
+              ),
+              disabledForegroundColor: selected ? onStrong : strong,
               fixedSize: const Size(44, 44),
               minimumSize: const Size(44, 44),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -286,30 +314,33 @@ class _HomeRsvpButtons extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       spacing: 8,
       children: [
-        button(
-          value: 'accepted',
-          label: strings.feature('Acceptera'),
-          chosenLabel: strings.feature('Accepterat'),
-          icon: Icons.thumb_up,
-          soft: palette.accentSoft,
-          strong: palette.accent,
-          onStrong: colors.onPrimary,
-        ),
-        button(
-          value: 'declined',
-          label: strings.feature('Avböj'),
-          chosenLabel: strings.feature('Avböjt'),
-          icon: Icons.thumb_down,
-          soft: palette.dangerSoft,
-          strong: palette.danger,
-          onStrong: Colors.white,
-        ),
+        if (!answered || response == 'accepted')
+          button(
+            value: 'accepted',
+            label: strings.feature('Acceptera'),
+            chosenLabel: strings.feature('Accepterat'),
+            icon: Icons.thumb_up,
+            soft: palette.accentSoft,
+            strong: palette.accent,
+            onStrong: colors.onPrimary,
+          ),
+        if (!answered || response == 'declined')
+          button(
+            value: 'declined',
+            label: strings.feature('Avböj'),
+            chosenLabel: strings.feature('Avböjt'),
+            icon: Icons.thumb_down,
+            soft: palette.dangerSoft,
+            strong: palette.danger,
+            onStrong: Colors.white,
+          ),
       ],
     );
   }
 }
 
-/// A square quick-action tile: an accent icon over a short label.
+/// A quick-action tile inside the hero card: an accent icon over a short
+/// label, on a flat tile one step off the card's color.
 class _HomeQuickTile extends StatelessWidget {
   const _HomeQuickTile({
     required this.icon,
@@ -325,13 +356,14 @@ class _HomeQuickTile extends StatelessWidget {
     final palette = AppPalette.of(context);
     final enabled = onTap != null;
     return Expanded(
-      child: Card(
-        margin: EdgeInsets.zero,
+      child: Material(
+        color: Theme.of(context).colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(AppRadius.chip),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
           child: SizedBox(
-            height: 84,
+            height: 72,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
