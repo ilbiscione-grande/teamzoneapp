@@ -46,15 +46,8 @@ class _ModuleShell extends StatefulWidget {
   };
 
   /// The module's theme: TeamZone's look in the module's accent color.
-  static ThemeData themeFor(BuildContext context, Color seed) {
-    final base = Theme.of(context);
-    return base.copyWith(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: seed,
-        brightness: base.brightness,
-      ),
-    );
-  }
+  static ThemeData themeFor(BuildContext context, Color seed) =>
+      AppTheme.seeded(Theme.of(context).brightness, seed);
 
   @override
   State<_ModuleShell> createState() => _ModuleShellState();

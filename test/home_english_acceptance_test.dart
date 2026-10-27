@@ -31,7 +31,7 @@ void main() {
       expect(find.textContaining('Good '), findsOneWidget);
       expect(find.textContaining('LATER TODAY'), findsOneWidget);
       expect(find.text('Svensk träningstitel'), findsNWidgets(2));
-      expect(find.text('Upcoming'), findsOneWidget);
+      expect(find.text('Upcoming events'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('Quick actions'),
         300,

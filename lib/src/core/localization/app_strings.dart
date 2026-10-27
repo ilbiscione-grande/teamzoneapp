@@ -344,6 +344,8 @@ class AppStrings {
     'PÅGÅR NU · SLUTAR {end}': 'HAPPENING NOW · ENDS {end}',
     'Ingen kommande aktivitet är planerad': 'No upcoming activity is planned',
     'Resten av idag': 'The rest of today',
+    'Kommer du?': 'Are you coming?',
+    'Vägbeskrivning': 'Directions',
     'Snabbåtgärder': 'Quick actions',
     'Planering och administration': 'Planning and administration',
     'God kväll': 'Good evening',

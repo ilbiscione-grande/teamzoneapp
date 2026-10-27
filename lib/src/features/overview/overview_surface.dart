@@ -582,19 +582,23 @@ class _HomeGreetingHeader extends StatelessWidget {
       context,
     ).feature(_greeting(DateTime.now().hour));
     final material = MaterialLocalizations.of(context);
+    final textTheme = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             firstName.isEmpty ? greeting : '$greeting, $firstName',
-            style: Theme.of(context).textTheme.headlineMedium,
+            style: textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
+          const SizedBox(height: 2),
           Text(
             material.formatFullDate(DateTime.now()),
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            style: textTheme.bodyLarge?.copyWith(
+              color: AppPalette.of(context).muted,
             ),
           ),
         ],
@@ -1311,20 +1315,17 @@ class _HomeDaySections {
             ),
       restOfToday.isEmpty
           ? null
-          : _LeaderHomeSection(
+          : _HomeEventList(
               title: AppStrings.of(context).feature('Resten av idag'),
-              icon: Icons.today_outlined,
-              emptyText: '',
               children: [
                 for (final event in restOfToday) row(event, isToday: true),
               ],
             ),
       coming.isEmpty
           ? null
-          : _LeaderHomeSection(
-              title: AppStrings.of(context).feature('Kommande'),
-              icon: Icons.date_range_outlined,
-              emptyText: '',
+          : _HomeEventList(
+              title: AppStrings.of(context).upcomingEvents,
+              onShowAll: () => onNavigate('/calendar'),
               children: [
                 for (final event in coming) row(event, isToday: false),
               ],
@@ -1383,7 +1384,6 @@ class _CallupResponseButtons extends StatelessWidget {
     required this.response,
     required this.compact,
     required this.onRespond,
-    this.onDark = false,
   });
   final bool busy;
   final bool saving;
@@ -1391,12 +1391,11 @@ class _CallupResponseButtons extends StatelessWidget {
   final bool compact;
   final ValueChanged<String> onRespond;
 
-  /// On the coloured hero card: outlines and text in white.
-  final bool onDark;
-
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
+    final palette = AppPalette.of(context);
+    final colors = Theme.of(context).colorScheme;
     final disabled = busy || saving;
     Widget button({
       required String value,
@@ -1404,6 +1403,7 @@ class _CallupResponseButtons extends StatelessWidget {
       required String chosenLabel,
       required IconData icon,
       required Color selectedColor,
+      required Color onSelected,
     }) {
       final selected = response == value;
       // Choosing the current answer again changes nothing.
@@ -1423,7 +1423,7 @@ class _CallupResponseButtons extends StatelessWidget {
                     visualDensity: VisualDensity.compact,
                     style: IconButton.styleFrom(
                       backgroundColor: selectedColor,
-                      foregroundColor: Colors.white,
+                      foregroundColor: onSelected,
                     ),
                     onPressed: onPressed,
                     icon: Icon(icon),
@@ -1436,9 +1436,7 @@ class _CallupResponseButtons extends StatelessWidget {
           ),
         );
       }
-      final side = BorderSide(
-        color: onDark ? Colors.white70 : Theme.of(context).colorScheme.outline,
-      );
+      final side = BorderSide(color: colors.outline);
       const padding = EdgeInsets.symmetric(horizontal: 14, vertical: 8);
       return Semantics(
         selected: selected,
@@ -1446,9 +1444,9 @@ class _CallupResponseButtons extends StatelessWidget {
             ? FilledButton.icon(
                 style: FilledButton.styleFrom(
                   backgroundColor: selectedColor,
-                  foregroundColor: Colors.white,
+                  foregroundColor: onSelected,
                   disabledBackgroundColor: selectedColor.withValues(alpha: .6),
-                  disabledForegroundColor: Colors.white,
+                  disabledForegroundColor: onSelected,
                   visualDensity: VisualDensity.compact,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   padding: padding,
@@ -1459,7 +1457,6 @@ class _CallupResponseButtons extends StatelessWidget {
               )
             : OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: onDark ? Colors.white : null,
                   side: side,
                   visualDensity: VisualDensity.compact,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -1480,14 +1477,16 @@ class _CallupResponseButtons extends StatelessWidget {
             : strings.feature('Acceptera'),
         chosenLabel: strings.feature('Accepterat'),
         icon: Icons.check,
-        selectedColor: Colors.green.shade700,
+        selectedColor: colors.primary,
+        onSelected: colors.onPrimary,
       ),
       button(
         value: 'declined',
         label: strings.feature('Avböj'),
         chosenLabel: strings.feature('Avböjt'),
         icon: Icons.close,
-        selectedColor: Colors.red.shade700,
+        selectedColor: palette.danger,
+        onSelected: Colors.white,
       ),
     ];
     // Full-width buttons wrap on narrow screens instead of overflowing.
@@ -1501,18 +1500,18 @@ class _CallupResponseButtons extends StatelessWidget {
 /// "Din kallelse: Obesvarat – svara gärna", "Accepterat" or
 /// "Avböjt – Sjukdom".
 class _CallupStatus extends StatelessWidget {
-  const _CallupStatus({required this.callup, this.onDark = false});
+  const _CallupStatus({required this.callup});
   final LeaderHomeCallup callup;
-  final bool onDark;
 
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     final colors = Theme.of(context).colorScheme;
+    final palette = AppPalette.of(context);
     final (icon, color) = switch (callup.state) {
-      'accepted' => (Icons.check_circle, Colors.green.shade600),
-      'declined' => (Icons.cancel, Colors.red.shade600),
-      _ => (Icons.help, Colors.amber.shade700),
+      'accepted' => (Icons.check_circle, palette.accent),
+      'declined' => (Icons.cancel, palette.danger),
+      _ => (Icons.help, palette.warning),
     };
     final reason = callup.state == 'declined'
         ? _callupDeclineReason(
@@ -1527,18 +1526,11 @@ class _CallupStatus extends StatelessWidget {
         strings.feature('svara gärna'),
       ?reason,
     ].join(' – ');
-    final text = onDark ? Colors.white : colors.onSurface;
     return Row(
       key: ValueKey('callup-status-${callup.state}'),
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          decoration: BoxDecoration(
-            color: onDark ? Colors.white : null,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, size: 20, color: color),
-        ),
+        Icon(icon, size: 20, color: color),
         const SizedBox(width: 8),
         Flexible(
           child: Text.rich(
@@ -1553,237 +1545,10 @@ class _CallupStatus extends StatelessWidget {
             ),
             style: Theme.of(
               context,
-            ).textTheme.bodyMedium?.copyWith(color: text),
+            ).textTheme.bodyMedium?.copyWith(color: colors.onSurface),
           ),
         ),
       ],
-    );
-  }
-}
-
-/// The Home page's hero card: what is on now, later today, tomorrow or
-/// next, on the current color theme's accent gradient (see
-/// AppColorTheme.menuGradient) with light text. Full width, matching the
-/// cards below it.
-class _HomeHeroEventCard extends StatelessWidget {
-  const _HomeHeroEventCard({
-    required this.event,
-    required this.now,
-    required this.onNavigate,
-    required this.pendingCallupId,
-    required this.onRespond,
-  });
-  final LeaderHomeEvent event;
-  final DateTime now;
-  final ValueChanged<String> onNavigate;
-  final String? pendingCallupId;
-  final void Function(LeaderHomeCallup callup, String response) onRespond;
-
-  String _moment(MaterialLocalizations material, AppStrings strings) {
-    final start = event.startsAt.toLocal();
-    final time = material.formatTimeOfDay(TimeOfDay.fromDateTime(start));
-    final today = DateUtils.dateOnly(now);
-    final day = DateUtils.dateOnly(start);
-    if (!event.startsAt.isAfter(now) && event.endsAt.isAfter(now)) {
-      final end = material.formatTimeOfDay(
-        TimeOfDay.fromDateTime(event.endsAt.toLocal()),
-      );
-      return strings.formatFeature('PÅGÅR NU · SLUTAR {end}', {'end': end});
-    }
-    if (day == today) {
-      return strings.formatFeature('SENARE IDAG · {time}', {'time': time});
-    }
-    if (day == today.add(const Duration(days: 1))) {
-      return strings.formatFeature('IMORGON · {time}', {'time': time});
-    }
-    return strings.formatFeature('NÄSTA · {date} · {time}', {
-      'date': material.formatMediumDate(start).toUpperCase(),
-      'time': time,
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final local = event.startsAt.toLocal();
-    final material = MaterialLocalizations.of(context);
-    final place = [
-      event.locationName,
-      event.address,
-    ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' · ');
-    final gradient = AppColorThemeScope.of(context).colorTheme.menuGradient;
-    final callup = event.myCallup;
-    final textStyle = Theme.of(context).textTheme.bodyMedium;
-    return Card(
-      key: const Key('home-hero-event'),
-      margin: const EdgeInsets.only(bottom: 12),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => onNavigate(ProductRouteContract.calendarEvent(event.id)),
-        child: Ink(
-          decoration: BoxDecoration(gradient: gradient),
-          width: double.infinity,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _moment(material, AppStrings.of(context)),
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: Colors.white70,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  event.title,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${material.formatFullDate(local)} · '
-                  '${material.formatTimeOfDay(TimeOfDay.fromDateTime(local))}',
-                  style: textStyle?.copyWith(color: Colors.white),
-                ),
-                if (place.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      place,
-                      style: textStyle?.copyWith(color: Colors.white70),
-                    ),
-                  ),
-                if (callup != null) ...[
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: _CallupStatus(callup: callup, onDark: true),
-                  ),
-                  if (callup.canRespond)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: _CallupResponseButtons(
-                        busy: pendingCallupId != null,
-                        saving: pendingCallupId == callup.id,
-                        response: callup.state,
-                        compact: false,
-                        onDark: true,
-                        onRespond: (response) => onRespond(callup, response),
-                      ),
-                    ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// One row under "Resten av idag" or "Kommande": a date badge, title and
-/// time, whether it is on now or finished, and the own callup with
-/// Acceptera/Avböj while it can still be answered.
-class _HomeEventRow extends StatelessWidget {
-  const _HomeEventRow({
-    required this.event,
-    required this.now,
-    required this.isToday,
-    required this.onNavigate,
-    required this.pendingCallupId,
-    required this.onRespond,
-  });
-  final LeaderHomeEvent event;
-  final DateTime now;
-  final bool isToday;
-  final ValueChanged<String> onNavigate;
-  final String? pendingCallupId;
-  final void Function(LeaderHomeCallup callup, String response) onRespond;
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = AppStrings.of(context);
-    final local = event.startsAt.toLocal();
-    final material = MaterialLocalizations.of(context);
-    final colors = Theme.of(context).colorScheme;
-    final finished = !event.endsAt.isAfter(now);
-    final ongoing = !finished && !event.startsAt.isAfter(now);
-    final callup = event.myCallup;
-    final time = material.formatTimeOfDay(TimeOfDay.fromDateTime(local));
-    final details = [
-      if (isToday) time else '${material.formatShortDate(local)} · $time',
-      if (finished) strings.feature('Avslutad'),
-      if (ongoing) strings.feature('Pågår'),
-    ];
-    return Opacity(
-      opacity: finished ? .55 : 1,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          ListTile(
-            leading: Container(
-              width: 44,
-              height: 44,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: colors.secondaryContainer,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    material.narrowWeekdays[local.weekday % 7].toUpperCase(),
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: colors.onSecondaryContainer,
-                    ),
-                  ),
-                  Text(
-                    '${local.day}',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: colors.onSecondaryContainer,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            title: Text(event.title),
-            subtitle: Text(details.join(' · ')),
-            trailing: finished
-                ? Icon(Icons.check, color: colors.onSurfaceVariant)
-                : const Icon(Icons.chevron_right),
-            onTap: () =>
-                onNavigate(ProductRouteContract.calendarEvent(event.id)),
-          ),
-          if (callup != null && !finished)
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                72,
-                0,
-                16,
-                callup.canRespond ? 6 : 10,
-              ),
-              child: _CallupStatus(callup: callup),
-            ),
-          if (callup != null && callup.canRespond && !finished)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(72, 0, 16, 10),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: _CallupResponseButtons(
-                  busy: pendingCallupId != null,
-                  saving: pendingCallupId == callup.id,
-                  response: callup.state,
-                  compact: false,
-                  onRespond: (response) => onRespond(callup, response),
-                ),
-              ),
-            ),
-        ],
-      ),
     );
   }
 }

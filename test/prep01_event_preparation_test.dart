@@ -166,10 +166,10 @@ void main() {
     );
     expect(find.text('Resten av idag'), findsOneWidget);
     expect(find.textContaining('Avslutad'), findsOneWidget);
-    expect(find.text('Kommande'), findsOneWidget);
+    expect(find.text('Kommande aktiviteter'), findsOneWidget);
     // An answered callup shows its choice filled and keeps the other open.
     expect(find.widgetWithText(FilledButton, 'Accepterat'), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, 'Avböj'), findsNWidgets(2));
+    expect(find.widgetWithText(OutlinedButton, 'Avböj'), findsOneWidget);
     // A declined callup is filled red and says why.
     expect(find.widgetWithText(FilledButton, 'Avböjt'), findsOneWidget);
     expect(find.textContaining('Avböjt – Sjukdom'), findsOneWidget);
@@ -177,14 +177,15 @@ void main() {
     expect(find.text('Nästa aktivitet'), findsNothing);
 
     await tester.tap(
-      find.descendant(
-        of: hero,
-        matching: find.widgetWithText(OutlinedButton, 'Acceptera'),
-      ),
+      find.descendant(of: hero, matching: find.byTooltip('Acceptera')),
     );
     await tester.pumpAndSettle();
     expect(prep.responses, [('c-match', 'accepted')]);
-    expect(find.widgetWithText(FilledButton, 'Accepterat'), findsNWidgets(2));
+    expect(find.widgetWithText(FilledButton, 'Accepterat'), findsOneWidget);
+    expect(
+      find.descendant(of: hero, matching: find.byTooltip('Accepterat')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
   testWidgets('spelarens Hem visar kallelsen i dagens kort', (tester) async {
@@ -248,7 +249,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('Kommande'), findsOneWidget);
+    expect(find.text('Kommande aktiviteter'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Accepterat'), findsOneWidget);
     // A callup beyond the card and lists keeps its own section.
     expect(find.text('Fler kallelser'), findsOneWidget);
@@ -256,14 +257,15 @@ void main() {
     expect(find.text('Dina kallelser'), findsNothing);
 
     await tester.tap(
-      find.descendant(
-        of: hero,
-        matching: find.widgetWithText(OutlinedButton, 'Acceptera'),
-      ),
+      find.descendant(of: hero, matching: find.byTooltip('Acceptera')),
     );
     await tester.pumpAndSettle();
     expect(prep.responses, [('c-evening', 'accepted')]);
-    expect(find.widgetWithText(FilledButton, 'Accepterat'), findsNWidgets(2));
+    expect(find.widgetWithText(FilledButton, 'Accepterat'), findsOneWidget);
+    expect(
+      find.descendant(of: hero, matching: find.byTooltip('Accepterat')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
   group('Mål och uppföljning', () {

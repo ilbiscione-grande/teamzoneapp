@@ -1514,11 +1514,11 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                                     ? Icons.cancel
                                     : Icons.remove_circle,
                                 _present(p)
-                                    ? Colors.green
+                                    ? AppPalette.of(context).accent
                                     : !expected
                                     ? Colors.blueGrey.shade300
                                     : status == 'absent'
-                                    ? Colors.red
+                                    ? AppPalette.of(context).danger
                                     : Colors.blueGrey,
                                 attendanceLabel,
                                 primary,
@@ -1526,7 +1526,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                             else if (noticeLabel != null && !p.isCalled)
                               _smallAction(
                                 Icons.event_busy,
-                                Colors.orange.shade700,
+                                AppPalette.of(context).warning,
                                 noticeLabel,
                                 null,
                               )
@@ -1565,7 +1565,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                               if (_canRespond(p)) ...[
                                 _smallAction(
                                   Icons.check,
-                                  Colors.green,
+                                  AppPalette.of(context).accent,
                                   _s.feature('Acceptera'),
                                   canRespond
                                       ? () => _respondToCallup(p, 'accepted')
@@ -1573,7 +1573,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                                 ),
                                 _smallAction(
                                   Icons.close,
-                                  Colors.red,
+                                  AppPalette.of(context).danger,
                                   _s.feature('Avböj'),
                                   canRespond
                                       ? () => _respondToCallup(p, 'declined')
@@ -1602,9 +1602,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                                       ? Icons.cancel
                                       : Icons.schedule,
                                   color: p.callupState == 'accepted'
-                                      ? Colors.green
+                                      ? AppPalette.of(context).accent
                                       : p.callupState == 'declined'
-                                      ? Colors.red
+                                      ? AppPalette.of(context).danger
                                       : Colors.blueGrey,
                                   size: 24,
                                 ),

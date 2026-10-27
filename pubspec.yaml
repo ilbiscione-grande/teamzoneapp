@@ -48,3 +48,14 @@ flutter:
           weight: 600
         - asset: assets/fonts/Geist/Geist-Bold.ttf
           weight: 700
+    - family: BricolageGrotesque
+      fonts:
+        - asset: assets/fonts/BricolageGrotesque/BricolageGrotesque-Regular.ttf
+        - asset: assets/fonts/BricolageGrotesque/BricolageGrotesque-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/BricolageGrotesque/BricolageGrotesque-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/BricolageGrotesque/BricolageGrotesque-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/BricolageGrotesque/BricolageGrotesque-ExtraBold.ttf
+          weight: 800

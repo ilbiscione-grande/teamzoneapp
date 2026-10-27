@@ -11,9 +11,11 @@ void main() {
   final models = File(
     'lib/src/features/overview/overview_models.dart',
   ).readAsStringSync();
-  final surface = File(
+  // The Home cards live next to the surface in home_event_cards.dart.
+  final surface = [
     'lib/src/features/overview/overview_surface.dart',
-  ).readAsStringSync();
+    'lib/src/features/overview/home_event_cards.dart',
+  ].map((path) => File(path).readAsStringSync()).join('\n');
   final services = File(
     'lib/src/features/overview/overview_services.dart',
   ).readAsStringSync();

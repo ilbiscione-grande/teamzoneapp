@@ -1958,7 +1958,7 @@ class _StatusHeaderRow extends StatelessWidget {
           description: sv
               ? '$accepted har tackat ja'
               : '$accepted have accepted',
-          color: Colors.green,
+          color: AppPalette.of(context).accent,
           showLabel: showLabels,
         ),
         _StatusCircle(
@@ -1967,7 +1967,7 @@ class _StatusHeaderRow extends StatelessWidget {
           description: sv
               ? '$unanswered har inte svarat på kallelsen'
               : '$unanswered have not answered',
-          color: Colors.amber.shade800,
+          color: AppPalette.of(context).warning,
           showLabel: showLabels,
         ),
         _StatusCircle(
@@ -1976,7 +1976,7 @@ class _StatusHeaderRow extends StatelessWidget {
           description: sv
               ? '$declined har tackat nej'
               : '$declined have declined',
-          color: Colors.red,
+          color: AppPalette.of(context).danger,
           showLabel: showLabels,
         ),
         if (_hasEnded)
