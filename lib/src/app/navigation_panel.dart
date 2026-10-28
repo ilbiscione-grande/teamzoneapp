@@ -29,16 +29,20 @@ class _NavPanelCount extends StatelessWidget {
       constraints: const BoxConstraints(minWidth: 24),
       height: 24,
       padding: const EdgeInsets.symmetric(horizontal: 6),
-      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: Color.lerp(palette.danger, Colors.white, .3),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(
-        '$count',
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: const Color(0xFF3A0D0D),
-          fontWeight: FontWeight.w700,
+      // widthFactor 1: a plain alignment would stretch the pill across the
+      // row and squeeze the label into one letter per line.
+      child: Center(
+        widthFactor: 1,
+        child: Text(
+          '$count',
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: const Color(0xFF3A0D0D),
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );
