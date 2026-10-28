@@ -1159,7 +1159,9 @@ Future<void> _openRoster(
   await tester.pumpAndSettle();
   await tester.tap(find.text('Laget'));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Trupp'));
+  await tester.tap(
+    find.descendant(of: find.byType(TabBar), matching: find.text('Trupp')),
+  );
   await tester.pumpAndSettle();
 }
 

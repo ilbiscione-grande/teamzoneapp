@@ -147,27 +147,27 @@ class _TeamStatisticsViewState extends State<_TeamStatisticsView> {
                   '${stats.otherEvents > 0 ? ', ${stats.otherEvents} other' : ''}.',
         style: theme.textTheme.bodySmall,
       ),
+      const SizedBox(height: 16),
+      Text(
+        strings.feature('Närvaro'),
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      const SizedBox(height: 8),
+      _TeamAttendanceCard(
+        stats: stats,
+        periodLabel: switch (_period) {
+          TeamStatisticsPeriod.last30Days => strings.feature('30 dagar'),
+          TeamStatisticsPeriod.last90Days => strings.feature('90 dagar'),
+          TeamStatisticsPeriod.thisYear => strings.feature('I år'),
+        },
+      ),
       const SizedBox(height: 8),
       Wrap(
         spacing: 8,
         runSpacing: 8,
         children: [
-          _TeamStatTile(
-            label: strings.feature('Närvaro'),
-            value: _percent(stats.attendanceRate),
-          ),
-          _TeamStatTile(
-            label: strings.feature('Träningar'),
-            value: _percent(stats.trainingRate),
-          ),
-          _TeamStatTile(
-            label: strings.feature('Matcher'),
-            value: _percent(stats.matchRate),
-          ),
-          _TeamStatTile(
-            label: strings.feature('Svar på kallelser'),
-            value: _percent(stats.responseRate),
-          ),
           _TeamStatTile(
             label: strings.feature('Sena ankomster'),
             value: '${stats.late}',
@@ -242,6 +242,131 @@ class _TeamStatisticsViewState extends State<_TeamStatisticsView> {
         style: theme.textTheme.bodySmall,
       ),
     ];
+  }
+}
+
+/// The players' attendance in a ring beside "Snittnärvaro" and the period,
+/// with the trainings, the matches (each with its attendance) and the
+/// answers to callups in a row under it.
+class _TeamAttendanceCard extends StatelessWidget {
+  const _TeamAttendanceCard({required this.stats, required this.periodLabel});
+  final TeamStatistics stats;
+  final String periodLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
+    final rate = stats.attendanceRate;
+    Widget figure(
+      String value,
+      String label,
+      String? note, {
+      Color? color,
+    }) => Expanded(
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(color: palette.muted),
+          ),
+          if (note != null)
+            Text(
+              note,
+              style: theme.textTheme.labelSmall?.copyWith(color: palette.muted),
+            ),
+        ],
+      ),
+    );
+    return Card(
+      key: const Key('team-statistics-attendance'),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                SizedBox.square(
+                  dimension: 88,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CircularProgressIndicator(
+                        value: (rate ?? 0) / 100,
+                        strokeWidth: 9,
+                        strokeCap: StrokeCap.round,
+                        color: palette.accent,
+                        backgroundColor: palette.accentSoft,
+                      ),
+                      Center(
+                        child: Text(
+                          _percent(rate),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 18),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        strings.feature('Snittnärvaro'),
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        periodLabel,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: palette.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 28),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                figure(
+                  '${stats.trainings}',
+                  strings.feature('Träningar'),
+                  _percent(stats.trainingRate),
+                ),
+                figure(
+                  '${stats.matches}',
+                  strings.feature('Matcher'),
+                  _percent(stats.matchRate),
+                ),
+                figure(
+                  _percent(stats.responseRate),
+                  strings.feature('Svar på kallelser'),
+                  null,
+                  color: palette.accent,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

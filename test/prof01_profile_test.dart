@@ -248,7 +248,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Laget'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Trupp'));
+    await tester.tap(
+      find.descendant(of: find.byType(TabBar), matching: find.text('Trupp')),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Hantera'));
     await tester.pumpAndSettle();
@@ -655,7 +657,9 @@ Future<void> _openSettingsProfile(WidgetTester tester, _Profile profile) async {
   await tester.pumpAndSettle();
   await tester.tap(find.text('Laget'));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Trupp'));
+  await tester.tap(
+    find.descendant(of: find.byType(TabBar), matching: find.text('Trupp')),
+  );
   await tester.pumpAndSettle();
   await tester.tap(find.text('Ada Spelare'));
   await tester.pumpAndSettle();
@@ -672,7 +676,9 @@ Future<void> _openMember(
   await tester.pumpAndSettle();
   await tester.tap(find.text('Laget'));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Trupp'));
+  await tester.tap(
+    find.descendant(of: find.byType(TabBar), matching: find.text('Trupp')),
+  );
   await tester.pumpAndSettle();
   await tester.tap(find.text('Ada Spelare'));
   await tester.pumpAndSettle();

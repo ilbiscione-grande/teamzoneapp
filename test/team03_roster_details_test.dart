@@ -24,7 +24,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Laget'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Trupp'));
+    await tester.tap(
+      find.descendant(of: find.byType(TabBar), matching: find.text('Trupp')),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Person 00'), findsOneWidget);
@@ -73,7 +75,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Laget'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Trupp'));
+    await tester.tap(
+      find.descendant(of: find.byType(TabBar), matching: find.text('Trupp')),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Person 00'));
     await tester.pumpAndSettle();
@@ -99,7 +103,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Laget'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Trupp'));
+    await tester.tap(
+      find.descendant(of: find.byType(TabBar), matching: find.text('Trupp')),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Truppen är inte tillgänglig'), findsOneWidget);
     expect(find.text('Person 00'), findsNothing);

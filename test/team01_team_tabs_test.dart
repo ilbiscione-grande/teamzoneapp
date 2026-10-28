@@ -34,7 +34,10 @@ void main() {
     await tester.tap(find.text('Laget'));
     await tester.pumpAndSettle();
     expect(find.text('Översikt'), findsOneWidget);
-    expect(find.text('Trupp'), findsOneWidget);
+    expect(
+      find.descendant(of: find.byType(TabBar), matching: find.text('Trupp')),
+      findsOneWidget,
+    );
     final calendarTab = find.descendant(
       of: find.byType(TabBar),
       matching: find.text('Kalender'),

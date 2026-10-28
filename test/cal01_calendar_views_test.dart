@@ -450,10 +450,12 @@ void main() {
     await tester.tap(find.text('Dag').last);
     await tester.pumpAndSettle();
     final scrollable = tester.state<ScrollableState>(
-      find.descendant(
-        of: find.byKey(const Key('calendarDayTimelineScroll')),
-        matching: find.byType(Scrollable),
-      ).first,
+      find
+          .descendant(
+            of: find.byKey(const Key('calendarDayTimelineScroll')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
     );
     // An hour above today's current or next activity, or as close as the
     // end of the day allows.

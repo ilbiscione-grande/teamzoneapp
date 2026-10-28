@@ -21,7 +21,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Laget'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Trupp'));
+    await tester.tap(
+      find.descendant(of: find.byType(TabBar), matching: find.text('Trupp')),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Hantera'));
     await tester.pumpAndSettle();
@@ -58,7 +60,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Laget'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Trupp'));
+      await tester.tap(
+        find.descendant(of: find.byType(TabBar), matching: find.text('Trupp')),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Hantera'));
       await tester.pumpAndSettle();

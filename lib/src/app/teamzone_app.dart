@@ -140,6 +140,7 @@ part '../features/publication/publication_self_service_surface.dart';
 part '../features/publication/domain_management_surface.dart';
 part '../features/roster/roster_surface.dart';
 part '../features/roster/team_statistics_view.dart';
+part '../features/roster/team_overview_cards.dart';
 part '../features/workspaces/workspaces_surface.dart';
 part '../features/workspaces/module_shell.dart';
 part '../features/match_workspace/match_module.dart';

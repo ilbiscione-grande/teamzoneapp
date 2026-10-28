@@ -388,6 +388,22 @@ class _RosterSurfaceState extends State<_RosterSurface> {
               container: true,
               label: strings.feature('Lagets innehåll'),
               child: TabBar(
+                // Pills: the active tab on a soft accent field in bold
+                // accent, the others muted, without the Material underline.
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                indicator: BoxDecoration(
+                  color: AppPalette.of(context).accentSoft,
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
+                ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                dividerColor: Colors.transparent,
+                labelColor: AppPalette.of(context).accent,
+                unselectedLabelColor: AppPalette.of(context).muted,
+                labelStyle: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                unselectedLabelStyle: Theme.of(context).textTheme.titleSmall,
+                splashBorderRadius: BorderRadius.circular(AppRadius.chip),
                 tabs: [
                   Tab(text: strings.feature('Översikt')),
                   Tab(text: strings.feature('Trupp')),
@@ -5142,11 +5158,6 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
     if (oldWidget.contextValue.id != widget.contextValue.id) setState(_reload);
   }
 
-  Widget _sectionTitle(BuildContext context, String text) => Padding(
-    padding: const EdgeInsets.only(top: 24, bottom: 8),
-    child: Text(text, style: Theme.of(context).textTheme.titleLarge),
-  );
-
   @override
   Widget build(BuildContext context) => FutureBuilder<TeamOverview>(
     future: _load,
@@ -5183,18 +5194,9 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
           await _load;
         },
         child: ListView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            _TeamImage(value: value),
-            const SizedBox(height: 20),
-            Text(
-              value.teamName,
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            Text(
-              value.clubName,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            _TeamBanner(value: value),
             if ([value.teamType, value.ageClass].whereType<String>().isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -5203,6 +5205,9 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
                     value.teamType,
                     value.ageClass,
                   ].whereType<String>().join(' · '),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppPalette.of(context).muted,
+                  ),
                 ),
               ),
             if (showAdmin && hasRequests) ...[
@@ -5225,18 +5230,48 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
               builder: (context, eventsSnapshot) => _TeamOverviewEvents(
                 snapshot: eventsSnapshot,
                 teamId: widget.contextValue.teamId,
-                sectionTitle: _sectionTitle,
                 onOpenCalendar: () => widget.onNavigate('/team?tab=calendar'),
               ),
             ),
+            _TeamSectionHeader(title: strings.feature('Snabbvägar')),
+            _TeamQuickLinks(
+              links: [
+                (
+                  icon: Icons.groups_outlined,
+                  title: strings.feature('Trupp'),
+                  subtitle: strings.feature('Spelare och ledare'),
+                  onTap: () => widget.onNavigate('/team?tab=roster'),
+                ),
+                (
+                  icon: Icons.calendar_month_outlined,
+                  title: strings.feature('Kalender'),
+                  subtitle: strings.feature('Alla lagets aktiviteter'),
+                  onTap: () => widget.onNavigate('/team?tab=calendar'),
+                ),
+                if (_canSeeTeamStatistics(widget.contextValue))
+                  (
+                    icon: Icons.bar_chart_rounded,
+                    title: strings.feature('Statistik'),
+                    subtitle: strings.feature('Närvaro och resultat'),
+                    onTap: () =>
+                        widget.onNavigate(ProductRouteContract.teamStatistics),
+                  ),
+                (
+                  icon: Icons.inbox_outlined,
+                  title: strings.feature('Inkorg'),
+                  subtitle: strings.feature('Meddelanden och utskick'),
+                  onTap: () => widget.onNavigate(ProductRouteContract.inbox),
+                ),
+              ],
+            ),
             if (widget.contextValue.teamId case final teamId?)
               _TeamPlanCard(teamId: teamId, services: widget.teamDevelopment),
-            _sectionTitle(context, strings.feature('Om laget')),
+            _TeamSectionHeader(title: strings.feature('Om laget')),
             Text(
               value.summary ??
                   strings.feature('Ingen laginformation har publicerats ännu.'),
             ),
-            _sectionTitle(context, strings.feature('Ledare')),
+            _TeamSectionHeader(title: strings.feature('Ledare')),
             FutureBuilder<TeamRoles?>(
               future: _roles,
               builder: (context, rolesSnapshot) {
@@ -5474,12 +5509,10 @@ class _TeamOverviewEvents extends StatelessWidget {
   const _TeamOverviewEvents({
     required this.snapshot,
     required this.teamId,
-    required this.sectionTitle,
     required this.onOpenCalendar,
   });
   final AsyncSnapshot<List<CalendarEventSummary>> snapshot;
   final String? teamId;
-  final Widget Function(BuildContext context, String text) sectionTitle;
   final VoidCallback onOpenCalendar;
 
   @override
@@ -5492,8 +5525,14 @@ class _TeamOverviewEvents extends StatelessWidget {
         onTap: calendarLink ? onOpenCalendar : null,
       ),
     );
-    final nextTitle = sectionTitle(context, strings.feature('Nästa händelse'));
-    final matchTitle = sectionTitle(context, strings.feature('Senaste match'));
+    final nextTitle = _TeamSectionHeader(
+      title: strings.feature('Nästa händelse'),
+      onShowAll: onOpenCalendar,
+    );
+    final matchTitle = _TeamSectionHeader(
+      title: strings.feature('Senaste match'),
+      onShowAll: onOpenCalendar,
+    );
     if (snapshot.connectionState != ConnectionState.done) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -5536,7 +5575,7 @@ class _TeamOverviewEvents extends StatelessWidget {
         else
           KeyedSubtree(
             key: const ValueKey('team-overview-next-event'),
-            child: _TeamEventCard(event: next),
+            child: _TeamOverviewEventCard(event: next),
           ),
         matchTitle,
         if (lastMatch == null)
@@ -5544,7 +5583,7 @@ class _TeamOverviewEvents extends StatelessWidget {
         else
           KeyedSubtree(
             key: const ValueKey('team-overview-last-match'),
-            child: _TeamEventCard(event: lastMatch),
+            child: _TeamOverviewEventCard(event: lastMatch),
           ),
       ],
     );
