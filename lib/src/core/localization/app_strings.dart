@@ -345,6 +345,9 @@ class AppStrings {
     'Ingen kommande aktivitet är planerad': 'No upcoming activity is planned',
     'Resten av idag': 'The rest of today',
     'Kommer du?': 'Are you coming?',
+    'Huvudmeny': 'Main menu',
+    'Verktyg': 'Tools',
+    'Administration': 'Administration',
     'Ändra svar?': 'Change your answer?',
     'Ändra svar': 'Change answer',
     'Du har tackat ja. Vill du ändra ditt svar till nej?':

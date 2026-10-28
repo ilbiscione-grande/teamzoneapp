@@ -94,6 +94,7 @@ import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 part 'product_shell.dart';
 part 'product_routes.dart';
+part 'navigation_panel.dart';
 part '../features/account/profile_settings_surface.dart';
 part '../features/account/my_profile.dart';
 part '../features/account/contact_change_requests.dart';
