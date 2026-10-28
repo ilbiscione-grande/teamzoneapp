@@ -977,3 +977,32 @@ class ResourceAvailability {
         busyTo: DateTime.tryParse(json['busy_to'] as String? ?? ''),
       );
 }
+
+/// Where the day timeline opens: at today's current or next timed event,
+/// or a day's first one; with none left, at [now] on today and at 15:00,
+/// when most team activities are, on other days.
+DateTime calendarDayScrollAnchor(
+  List<CalendarEventSummary> events,
+  DateTime day,
+  DateTime now,
+) {
+  final dayStart = DateTime(day.year, day.month, day.day);
+  final dayEnd = calendarAddDays(dayStart, 1);
+  final isToday = !now.isBefore(dayStart) && now.isBefore(dayEnd);
+  final timed =
+      events
+          .where(
+            (event) =>
+                !event.allDay &&
+                event.endsAt.toLocal().isAfter(dayStart) &&
+                event.startsAt.toLocal().isBefore(dayEnd),
+          )
+          .toList()
+        ..sort((left, right) => left.startsAt.compareTo(right.startsAt));
+  for (final event in timed) {
+    if (isToday && !event.endsAt.toLocal().isAfter(now)) continue;
+    final start = event.startsAt.toLocal();
+    return start.isBefore(dayStart) ? dayStart : start;
+  }
+  return isToday ? now : DateTime(day.year, day.month, day.day, 15);
+}

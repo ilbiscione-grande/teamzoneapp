@@ -104,18 +104,25 @@ void main() {
     expect(find.byKey(const Key('calendarDraftMarker')), findsOneWidget);
     expect(tester.takeException(), isNull);
     await selectView('Vecka');
-    // The week grid shows the 7 selected-week days plus one extra "peek"
-    // box for next week's first day (8 day cells total, each a Card), and
-    // reuses the same fixed-grid/scrolling-day-panel layout as month view.
-    expect(find.byType(Card), findsNWidgets(8));
-    // Each preview names the team, and the place when there is one.
+    // The week is a time grid: seven days on top, the selected (today)
+    // wider, and the events in their day's column, opened at the first one.
+    expect(find.byKey(const Key('calendarWeekView')), findsOneWidget);
+    final today = DateTime.now().weekday;
+    final selectedDay = tester.getSize(
+      find.byKey(ValueKey('calendarWeekDay-$today')),
+    );
+    final otherDay = tester.getSize(
+      find.byKey(ValueKey('calendarWeekDay-${today % 7 + 1}')),
+    );
+    expect(selectedDay.width, greaterThan(otherDay.width * 1.5));
+    expect(find.byKey(const ValueKey('week-event-event')), findsOneWidget);
+    // The selected day's blocks also name the team.
     expect(
       tester
-          .widget<Text>(find.byKey(const ValueKey('week-event-where-event')))
+          .widget<Text>(find.byKey(const ValueKey('week-event-team-event')))
           .data,
-      'F2012 · Ekbacken',
+      'F2012',
     );
-    expect(find.byKey(const Key('calendarSelectedDayPanel')), findsOneWidget);
     expect(tester.takeException(), isNull);
     await selectView('Dag');
     // Dag mode is a 24h timeline: hour gridlines with labels...
@@ -130,12 +137,19 @@ void main() {
     final kvallstraningLeft = tester.getTopLeft(find.text('Kvällsträning')).dx;
     final extraevent1Left = tester.getTopLeft(find.text('Extraevent 1')).dx;
     expect(kvallstraningLeft, isNot(equals(extraevent1Left)));
-    // An hour or longer has room for team and place on a line of its own.
+    // An hour and a half has room for team and place on lines of their own;
+    // an hour folds them into one.
     expect(
       tester
-          .widget<Text>(find.byKey(const ValueKey('day-event-where-event')))
+          .widget<Text>(find.byKey(const ValueKey('day-event-team-event')))
           .data,
-      'F2012 · Ekbacken',
+      'F2012',
+    );
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('day-event-place-event')))
+          .data,
+      'Ekbacken',
     );
     expect(
       tester
@@ -384,7 +398,46 @@ void main() {
     },
   );
 
-  testWidgets('day view opens at 15:00', (tester) async {
+  test('day view opens at the current or next activity', () {
+    final day = DateTime(2026, 10, 28);
+    final events = [
+      _event(
+        id: 'morning',
+        startsAt: DateTime(2026, 10, 28, 9),
+        endsAt: DateTime(2026, 10, 28, 10),
+      ),
+      _event(
+        id: 'evening',
+        startsAt: DateTime(2026, 10, 28, 18),
+        endsAt: DateTime(2026, 10, 28, 19),
+      ),
+    ];
+    // Today: the activity still going on or coming next...
+    expect(
+      calendarDayScrollAnchor(events, day, DateTime(2026, 10, 28, 9, 30)),
+      DateTime(2026, 10, 28, 9),
+    );
+    expect(
+      calendarDayScrollAnchor(events, day, DateTime(2026, 10, 28, 12)),
+      DateTime(2026, 10, 28, 18),
+    );
+    // ...or now, when the day's activities are over.
+    expect(
+      calendarDayScrollAnchor(events, day, DateTime(2026, 10, 28, 20)),
+      DateTime(2026, 10, 28, 20),
+    );
+    // Other days open at their first activity, or at 15:00 without any.
+    expect(
+      calendarDayScrollAnchor(events, day, DateTime(2026, 10, 27, 12)),
+      DateTime(2026, 10, 28, 9),
+    );
+    expect(
+      calendarDayScrollAnchor(const [], day, DateTime(2026, 10, 27, 12)),
+      DateTime(2026, 10, 28, 15),
+    );
+  });
+
+  testWidgets('day view opens an hour above its anchor', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -400,13 +453,24 @@ void main() {
       find.descendant(
         of: find.byKey(const Key('calendarDayTimelineScroll')),
         matching: find.byType(Scrollable),
-      ),
+      ).first,
     );
-    // 15:00 at the top, or as close as the end of the day allows on a
-    // screen taller than 15:00–24:00.
+    // An hour above today's current or next activity, or as close as the
+    // end of the day allows.
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final events = await _Calendar().listCalendar(
+      contextIds: const [],
+      from: today,
+      to: today,
+    );
+    final anchor = calendarDayScrollAnchor(events, today, now);
+    final hours = anchor.difference(today).inMinutes / 60;
     final position = scrollable.position;
-    expect(position.pixels, min(15 * 64.0, position.maxScrollExtent));
-    expect(position.pixels, greaterThan(14 * 64));
+    expect(
+      position.pixels,
+      closeTo(min(max(0, (hours - 1) * 64.0), position.maxScrollExtent), 64),
+    );
     expect(tester.takeException(), isNull);
   });
 }

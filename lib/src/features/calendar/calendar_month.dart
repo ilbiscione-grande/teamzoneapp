@@ -114,11 +114,7 @@ class _CalendarMonthDayCell extends StatelessWidget {
         : theme.colorScheme.onSurface;
     Color dot(CalendarEventSummary event) => isSelected
         ? foreground
-        : switch (event.type) {
-            'match' => palette.danger,
-            'training' => palette.accent,
-            _ => _calendarOtherEventColor(context),
-          };
+        : _calendarTypeColors(context, event.type).strong;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
       child: Semantics(
