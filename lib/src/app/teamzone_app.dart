@@ -131,6 +131,7 @@ part '../features/roster/intake_surface.dart';
 part '../features/match/match_result_card.dart';
 part '../features/match/written_report_card.dart';
 part '../features/messaging/inbox_surface.dart';
+part '../features/messaging/inbox_cards.dart';
 part '../features/overview/overview_surface.dart';
 part '../features/overview/club_home_surface.dart';
 part '../features/overview/home_event_cards.dart';

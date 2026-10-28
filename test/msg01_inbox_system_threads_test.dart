@@ -57,7 +57,7 @@ void main() {
     expect(services, contains('watchInboxInvalidations'));
     expect(surface, contains("('unread', 'Olästa')"));
     expect(surface, contains("('muted', 'Tystade')"));
-    expect(surface, contains('_inboxTime(context, thread.lastAt)'));
+    expect(surface, contains('_InboxThreadRow('));
     expect(surface, contains('Duration(milliseconds: 300)'));
     expect(surface, contains('persistentFooterButtons: compact'));
     expect(surface, contains("strings.feature('Fler inkorgsåtgärder')"));

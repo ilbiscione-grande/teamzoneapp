@@ -426,6 +426,12 @@ class _InboxSurfaceState extends State<_InboxSurface>
         'pinned' => (MessageThreadSummary thread) => thread.pinned,
         'team' => (MessageThreadSummary thread) => thread.type == 'team',
         'leader' => (MessageThreadSummary thread) => thread.type == 'leader',
+        'important' =>
+          (MessageThreadSummary thread) =>
+              thread.type == 'announcement' && thread.unreadCount > 0,
+        'archived' =>
+          (MessageThreadSummary thread) =>
+              thread.type == 'announcement' && thread.unreadCount == 0,
         _ => null,
       },
     );
@@ -1232,6 +1238,15 @@ class _InboxSurfaceState extends State<_InboxSurface>
                               padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
                               child: SearchBar(
                                 controller: _search,
+                                elevation: const WidgetStatePropertyAll(0),
+                                backgroundColor: WidgetStatePropertyAll(
+                                  Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHigh,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minHeight: 48,
+                                ),
                                 leading: const Icon(Icons.search),
                                 hintText: AppStrings.of(
                                   context,
@@ -1270,7 +1285,20 @@ class _InboxSurfaceState extends State<_InboxSurface>
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 10),
+                            _InboxQuickFilters(
+                              selected: _filter,
+                              total: (state.data ?? const []).length,
+                              important: (state.data ?? const [])
+                                  .where(
+                                    (thread) =>
+                                        thread.type == 'announcement' &&
+                                        thread.unreadCount > 0,
+                                  )
+                                  .length,
+                              onSelected: _setFilter,
+                            ),
+                            const SizedBox(height: 2),
                             Expanded(
                               child:
                                   threads.isEmpty &&
@@ -1323,84 +1351,15 @@ class _InboxSurfaceState extends State<_InboxSurface>
                                                       ),
                                               ),
                                             ),
-                                          if (attentionAnnouncements
-                                              .isNotEmpty) ...[
-                                            Container(
-                                              margin: const EdgeInsets.only(
-                                                bottom: 8,
-                                              ),
-                                              padding: const EdgeInsets.all(12),
-                                              decoration: BoxDecoration(
-                                                color: Theme.of(
-                                                  context,
-                                                ).colorScheme.tertiaryContainer,
-                                                borderRadius:
-                                                    BorderRadius.circular(16),
-                                                border: Border.all(
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).colorScheme.tertiary,
-                                                ),
-                                              ),
-                                              child: Row(
-                                                children: [
-                                                  const Icon(Icons.campaign),
-                                                  const SizedBox(width: 10),
-                                                  Expanded(
-                                                    child: Text(
-                                                      strings.feature(
-                                                        'Behöver din uppmärksamhet',
-                                                      ),
-                                                      style: Theme.of(
-                                                        context,
-                                                      ).textTheme.titleMedium,
-                                                    ),
-                                                  ),
-                                                  Badge(
-                                                    label: Text(
-                                                      '${attentionAnnouncements.length}',
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
+                                          // Unread notices first; the
+                                          // "Viktigt" filter shows only
+                                          // these (Behöver din uppmärksamhet).
+                                          for (final thread
+                                              in attentionAnnouncements)
+                                            _InboxAnnouncementCard(
+                                              thread: thread,
+                                              onTap: () => _openThread(thread),
                                             ),
-                                            for (final thread
-                                                in attentionAnnouncements)
-                                              Card(
-                                                color: Theme.of(
-                                                  context,
-                                                ).colorScheme.tertiaryContainer,
-                                                margin: const EdgeInsets.only(
-                                                  bottom: 8,
-                                                ),
-                                                child: ListTile(
-                                                  leading: const Icon(
-                                                    Icons.campaign,
-                                                  ),
-                                                  title: Text(
-                                                    thread.subject ??
-                                                        strings.feature(
-                                                          'Viktigt anslag',
-                                                        ),
-                                                    style: const TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                    ),
-                                                  ),
-                                                  subtitle: Text(
-                                                    '${thread.preview ?? strings.noMessages}\n${_inboxTime(context, thread.lastAt)}',
-                                                    maxLines: 3,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                  trailing: const Icon(
-                                                    Icons.priority_high_rounded,
-                                                  ),
-                                                  onTap: () =>
-                                                      _openThread(thread),
-                                                ),
-                                              ),
-                                          ],
                                           for (final club in clubs) ...[
                                             Builder(
                                               builder: (context) {
@@ -1505,12 +1464,23 @@ class _InboxSurfaceState extends State<_InboxSurface>
                                                   ),
                                               ],
                                           ],
-                                          if (archivedAnnouncements.isNotEmpty)
+                                          if (_filter == 'archived')
+                                            for (final thread
+                                                in archivedAnnouncements)
+                                              _InboxAnnouncementCard(
+                                                thread: thread,
+                                                onTap: () =>
+                                                    _openThread(thread),
+                                              )
+                                          else if (archivedAnnouncements
+                                              .isNotEmpty)
                                             Card(
                                               margin: const EdgeInsets.only(
                                                 top: 8,
                                               ),
+                                              clipBehavior: Clip.antiAlias,
                                               child: ExpansionTile(
+                                                shape: const Border(),
                                                 initiallyExpanded:
                                                     _announcementArchiveExpanded,
                                                 onExpansionChanged:
@@ -1525,25 +1495,18 @@ class _InboxSurfaceState extends State<_InboxSurface>
                                                 title: Text(
                                                   '${strings.feature('Arkiverade anslag')} (${archivedAnnouncements.length})',
                                                 ),
+                                                childrenPadding:
+                                                    const EdgeInsets.fromLTRB(
+                                                      8,
+                                                      0,
+                                                      8,
+                                                      0,
+                                                    ),
                                                 children: [
                                                   for (final thread
                                                       in archivedAnnouncements)
-                                                    ListTile(
-                                                      leading: const Icon(
-                                                        Icons.campaign_outlined,
-                                                      ),
-                                                      title: Text(
-                                                        thread.subject ??
-                                                            strings.feature(
-                                                              'Anslag',
-                                                            ),
-                                                      ),
-                                                      subtitle: Text(
-                                                        '${thread.preview ?? strings.noMessages}\n${_inboxTime(context, thread.lastAt)}',
-                                                        maxLines: 3,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
+                                                    _InboxAnnouncementCard(
+                                                      thread: thread,
                                                       onTap: () =>
                                                           _openThread(thread),
                                                     ),
@@ -1618,6 +1581,23 @@ class _InboxSurfaceState extends State<_InboxSurface>
                 ? TabBar(
                     key: const ValueKey('inbox-tabs'),
                     controller: _tabs,
+                    // Bold accent with a short line under the active tab,
+                    // the others muted, no full-width divider.
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    padding: const EdgeInsets.only(left: 4),
+                    indicatorSize: TabBarIndicatorSize.label,
+                    indicatorWeight: 3,
+                    dividerColor: Colors.transparent,
+                    labelColor: AppPalette.of(context).accent,
+                    unselectedLabelColor: Theme.of(
+                      context,
+                    ).colorScheme.onSurface,
+                    labelStyle: Theme.of(context).textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                    unselectedLabelStyle: Theme.of(
+                      context,
+                    ).textTheme.titleSmall,
                     tabs: [
                       for (final key in _tabKeys)
                         switch (key) {
@@ -1693,48 +1673,10 @@ class _InboxSurfaceState extends State<_InboxSurface>
     BuildContext context,
     AppStrings strings,
     MessageThreadSummary thread,
-  ) => Card(
-    margin: const EdgeInsets.only(bottom: 6),
-    child: ListTile(
-      leading: switch (_avatars[thread.id]) {
-        final avatars? when avatars.people.isNotEmpty => _ThreadAvatarStack(
-          key: ValueKey('inbox-avatars-${thread.id}'),
-          avatars: avatars,
-        ),
-        _ => Icon(
-          thread.muted
-              ? Icons.notifications_off_outlined
-              : thread.type == 'group'
-              ? Icons.groups_outlined
-              : Icons.forum_outlined,
-        ),
-      },
-      title: Text(thread.subject ?? strings.directMessage),
-      // A long preview is cut at two lines; the date always shows.
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '${(thread.senderName ?? '').trim().isEmpty ? '' : '${thread.senderName}: '}${thread.preview ?? strings.noMessages}',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(_inboxTime(context, thread.lastAt)),
-        ],
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // With pictures the muted icon moves here from the leading slot.
-          if (thread.muted && _avatars[thread.id]?.people.isNotEmpty == true)
-            const Icon(Icons.notifications_off_outlined, size: 18),
-          if (thread.pinned) const Icon(Icons.push_pin, size: 18),
-          if (thread.unreadCount > 0)
-            Badge(label: Text('${thread.unreadCount}')),
-        ],
-      ),
-      onTap: () => _openThread(thread),
-    ),
+  ) => _InboxThreadRow(
+    thread: thread,
+    avatars: _avatars[thread.id],
+    onTap: () => _openThread(thread),
   );
 
   String _announcementSendError(AppStrings strings, Object error) {
@@ -3110,24 +3052,25 @@ class _InboxClubHeader extends StatelessWidget {
         hint: strings.feature(
           expanded ? 'Dölj konversationer' : 'Visa konversationer',
         ),
-        child: Material(
-          color: colors.secondaryContainer,
-          borderRadius: BorderRadius.circular(12),
+        child: Card(
+          margin: EdgeInsets.zero,
+          clipBehavior: Clip.antiAlias,
           child: InkWell(
-            borderRadius: BorderRadius.circular(12),
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               child: Row(
                 children: [
                   const Icon(Icons.shield_outlined),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   if (intake > 0) ...[
@@ -3198,7 +3141,7 @@ class _InboxTeamHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
+    padding: const EdgeInsets.fromLTRB(6, 14, 8, 6),
     child: Row(
       children: [
         Expanded(
@@ -3215,7 +3158,9 @@ class _InboxTeamHeading extends StatelessWidget {
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelLarge,
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
         ),
         if (intake case final item?)
@@ -3985,6 +3930,7 @@ class _ThreadDialogState extends State<_ThreadDialog>
             ],
           );
         }
+        final groups = groupMessagesForDisplay(messages);
         final bubbleMaxWidth = min(
           360.0,
           MediaQuery.sizeOf(context).width * 0.78,
@@ -4005,7 +3951,16 @@ class _ThreadDialogState extends State<_ThreadDialog>
                   label: Text(strings.feature('Visa äldre meddelanden')),
                 ),
               ),
-            for (final group in groupMessagesForDisplay(messages))
+            for (final (index, group) in groups.indexed) ...[
+              // The date between days, and above the first message.
+              if (index == 0 ||
+                  !DateUtils.isSameDay(
+                    group.first.createdAt.toLocal(),
+                    groups[index - 1].first.createdAt.toLocal(),
+                  ))
+                _ThreadDateDivider(
+                  day: DateUtils.dateOnly(group.first.createdAt.toLocal()),
+                ),
               Align(
                 alignment: group.first.mine
                     ? Alignment.centerRight
@@ -4013,37 +3968,33 @@ class _ThreadDialogState extends State<_ThreadDialog>
                 child: ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: bubbleMaxWidth),
                   child: Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.only(bottom: 10),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: group.first.mine
                           ? CrossAxisAlignment.end
                           : CrossAxisAlignment.start,
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            left: 8,
-                            right: 8,
-                            bottom: 2,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (!group.first.mine) ...[
-                                if (!_isDirect) ...[
-                                  _SenderAvatar(
-                                    key: ValueKey(
-                                      'sender-avatar-${group.first.id}',
-                                    ),
-                                    name: group.first.senderName,
-                                    imageUrl:
-                                        _senderAvatars[group
-                                            .first
-                                            .senderProfileId],
+                        // Who wrote, in a group; a direct conversation has
+                        // the person in its title.
+                        if (!group.first.mine && !_isDirect)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4, bottom: 4),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _SenderAvatar(
+                                  key: ValueKey(
+                                    'sender-avatar-${group.first.id}',
                                   ),
-                                  const SizedBox(width: 6),
-                                ],
-                                // A long name gives way to the time.
+                                  name: group.first.senderName,
+                                  imageUrl:
+                                      _senderAvatars[group
+                                          .first
+                                          .senderProfileId],
+                                ),
+                                const SizedBox(width: 6),
+                                // A long name is cut.
                                 Flexible(
                                   child: Text(
                                     group.first.senderName,
@@ -4051,73 +4002,24 @@ class _ThreadDialogState extends State<_ThreadDialog>
                                     overflow: TextOverflow.ellipsis,
                                     style: Theme.of(context)
                                         .textTheme
-                                        .labelSmall
+                                        .labelMedium
                                         ?.copyWith(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
+                                          color: AppPalette.of(context).muted,
                                         ),
                                   ),
                                 ),
-                                const SizedBox(width: 6),
                               ],
-                              Text(
-                                _inboxTime(context, group.first.createdAt),
-                                style: Theme.of(context).textTheme.labelSmall
-                                    ?.copyWith(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
-                                    ),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
                         for (final message in group.messages) ...[
-                          if (message != group.first) const SizedBox(height: 6),
-                          Card(
-                            margin: EdgeInsets.zero,
-                            color: message.mine
-                                ? Theme.of(context).colorScheme.primaryContainer
-                                : Theme.of(
-                                    context,
-                                  ).colorScheme.surfaceContainerHigh,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: InkWell(
-                              onLongPress: () => _messageAction(message),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: message.mine
-                                      ? CrossAxisAlignment.end
-                                      : CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      message.body ?? strings.recalledMessage,
-                                      textAlign: message.mine
-                                          ? TextAlign.right
-                                          : TextAlign.left,
-                                    ),
-                                    for (final file in files.where(
-                                      (item) => item.messageId == message.id,
-                                    )) ...[
-                                      const SizedBox(height: 6),
-                                      _InlineMessageFile(
-                                        file: file,
-                                        messaging: widget.messaging,
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ),
+                          if (message != group.first) const SizedBox(height: 4),
+                          _MessageBubble(
+                            message: message,
+                            files: files
+                                .where((item) => item.messageId == message.id)
+                                .toList(growable: false),
+                            messaging: widget.messaging,
+                            onLongPress: () => _messageAction(message),
                           ),
                         ],
                       ],
@@ -4125,6 +4027,7 @@ class _ThreadDialogState extends State<_ThreadDialog>
                   ),
                 ),
               ),
+            ],
             for (final pending in _pending)
               Align(
                 alignment: Alignment.centerRight,
@@ -4201,64 +4104,135 @@ class _ThreadDialogState extends State<_ThreadDialog>
     return Dialog.fullscreen(
       child: Scaffold(
         appBar: AppBar(
-          title: _isDirect
-              ? Row(
+          titleSpacing: 0,
+          // The person (or group) with what they are, as in the inbox row.
+          title: Row(
+            children: [
+              if (_isDirect)
+                _SenderAvatar(
+                  key: const ValueKey('thread-title-avatar'),
+                  name: widget.counterpart?.name ?? widget.thread.subject ?? '',
+                  imageUrl: _counterpartImage,
+                  radius: 20,
+                )
+              else
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: AppPalette.of(context).accentSoft,
+                  child: Icon(
+                    widget.thread.type == 'announcement'
+                        ? Icons.campaign_outlined
+                        : Icons.groups_outlined,
+                    color: AppPalette.of(context).accent,
+                  ),
+                ),
+              const SizedBox(width: 12),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    _SenderAvatar(
-                      key: const ValueKey('thread-title-avatar'),
-                      name:
-                          widget.counterpart?.name ??
-                          widget.thread.subject ??
-                          '',
-                      imageUrl: _counterpartImage,
-                      radius: 18,
-                    ),
-                    const SizedBox(width: 10),
-                    Flexible(
-                      child: Text(
-                        widget.thread.subject ?? strings.directMessage,
-                        overflow: TextOverflow.ellipsis,
+                    Text(
+                      widget.thread.subject ?? strings.directMessage,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
+                    if (widget.thread.scopeLabels.isNotEmpty)
+                      Text(
+                        widget.thread.scopeLabels.join(' · '),
+                        key: const ValueKey('thread-title-scope'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppPalette.of(context).muted,
+                        ),
+                      ),
                   ],
-                )
-              : Text(widget.thread.subject ?? strings.directMessage),
+                ),
+              ),
+            ],
+          ),
           leading: IconButton(
             onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
             tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-            icon: const Icon(Icons.close),
+            icon: const Icon(Icons.arrow_back),
           ),
           actions: [
-            if (widget.thread.type == 'group')
-              IconButton(
-                onPressed: _addParticipants,
-                tooltip: strings.feature('Lägg till deltagare'),
-                icon: const Icon(Icons.person_add_alt_1_outlined),
+            if (_pinned)
+              Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: Icon(
+                  Icons.push_pin,
+                  size: 18,
+                  color: AppPalette.of(context).muted,
+                ),
               ),
-            IconButton(
-              onPressed: _preferencePending ? null : _togglePin,
-              tooltip: strings.feature(_pinned ? 'Lossa tråd' : 'Fäst tråd'),
-              icon: Icon(_pinned ? Icons.push_pin : Icons.push_pin_outlined),
-            ),
-            IconButton(
-              onPressed: _preferencePending ? null : _toggleMute,
-              tooltip: _muted
-                  ? strings.feature('Slå på notiser')
-                  : strings.muteThread,
-              icon: Icon(
-                _muted
-                    ? Icons.notifications_active_outlined
-                    : Icons.notifications_off_outlined,
+            if (_muted)
+              Icon(
+                Icons.notifications_off_outlined,
+                size: 18,
+                color: AppPalette.of(context).muted,
               ),
-            ),
+            // Pin, mute and the rest under one menu, as in the concept.
             PopupMenuButton<String>(
+              key: const ValueKey('thread-menu'),
               tooltip: strings.feature('Fler alternativ'),
               onSelected: (value) {
+                if (value == 'participants') unawaited(_addParticipants());
+                if (value == 'pin' && !_preferencePending) {
+                  unawaited(_togglePin());
+                }
+                if (value == 'mute' && !_preferencePending) {
+                  unawaited(_toggleMute());
+                }
                 if (value == 'hide') unawaited(_hideThread());
                 if (value == 'leave') unawaited(_leaveThread());
                 if (value == 'close') unawaited(_closeThread());
               },
               itemBuilder: (context) => [
+                if (widget.thread.type == 'group')
+                  PopupMenuItem(
+                    value: 'participants',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.person_add_alt_1_outlined),
+                      title: Text(strings.feature('Lägg till deltagare')),
+                    ),
+                  ),
+                PopupMenuItem(
+                  value: 'pin',
+                  enabled: !_preferencePending,
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      _pinned ? Icons.push_pin : Icons.push_pin_outlined,
+                    ),
+                    title: Text(
+                      strings.feature(_pinned ? 'Lossa tråd' : 'Fäst tråd'),
+                    ),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'mute',
+                  enabled: !_preferencePending,
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      _muted
+                          ? Icons.notifications_active_outlined
+                          : Icons.notifications_off_outlined,
+                    ),
+                    title: Text(
+                      _muted
+                          ? strings.feature('Slå på notiser')
+                          : strings.muteThread,
+                    ),
+                  ),
+                ),
+                const PopupMenuDivider(),
                 PopupMenuItem(
                   value: 'hide',
                   child: Text(strings.feature('Dölj för mig')),
@@ -4297,47 +4271,12 @@ class _ThreadDialogState extends State<_ThreadDialog>
                 ),
               ),
             if (widget.thread.canSend && widget.thread.type != 'announcement')
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: _sending ? null : _pickFile,
-                        tooltip: AppStrings.of(context).feature('Bifoga fil'),
-                        icon: const Icon(Icons.attach_file),
-                      ),
-                      Expanded(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (_stagedName != null)
-                              Text(
-                                'Bilaga: $_stagedName',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            TextField(
-                              controller: _body,
-                              maxLength: 4000,
-                              minLines: 1,
-                              maxLines: 4,
-                              decoration: InputDecoration(
-                                labelText: strings.messageBody,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: _sending ? null : _send,
-                        tooltip: strings.sendMessage,
-                        icon: const Icon(Icons.send),
-                      ),
-                    ],
-                  ),
-                ),
+              _ThreadComposer(
+                controller: _body,
+                sending: _sending,
+                stagedName: _stagedName,
+                onAttach: _pickFile,
+                onSend: _send,
               ),
           ],
         ),
@@ -4518,16 +4457,17 @@ class _ThreadAvatarStack extends StatelessWidget {
         ),
     ];
     if (circles.length == 1) {
+      final tint = _avatarTint(context, shown.first.name);
       return CircleAvatar(
-        radius: 20,
-        backgroundColor: colors.secondaryContainer,
+        radius: 22,
+        backgroundColor: tint.background,
         foregroundImage: shown.first.imageUrl == null
             ? null
             : NetworkImage(shown.first.imageUrl!),
         onForegroundImageError: shown.first.imageUrl == null ? null : (_, _) {},
         child: Text(
           _avatarInitials(shown.first.name),
-          style: TextStyle(color: colors.onSecondaryContainer),
+          style: TextStyle(color: tint.foreground, fontWeight: FontWeight.w700),
         ),
       );
     }
@@ -4580,17 +4520,18 @@ class _SenderAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final tint = _avatarTint(context, name);
     return CircleAvatar(
       radius: radius,
-      backgroundColor: colors.secondaryContainer,
+      backgroundColor: tint.background,
       foregroundImage: imageUrl == null ? null : NetworkImage(imageUrl!),
       onForegroundImageError: imageUrl == null ? null : (_, _) {},
       child: Text(
         _avatarInitials(name),
         style: TextStyle(
           fontSize: radius * 0.8,
-          color: colors.onSecondaryContainer,
+          fontWeight: FontWeight.w700,
+          color: tint.foreground,
         ),
       ),
     );

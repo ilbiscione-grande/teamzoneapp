@@ -141,9 +141,16 @@ void main() {
     expect(surface, contains('_scheduleReconnectRetry()'));
   });
 
-  test('each visual message group shows its localized timestamp above', () {
-    expect(surface, contains('_inboxTime(context, group.first.createdAt)'));
-    expect(surface, contains('textTheme.labelSmall'));
+  test('each message shows its time and each day its date', () {
+    final cards = File(
+      'lib/src/features/messaging/inbox_cards.dart',
+    ).readAsStringSync();
+    expect(
+      cards,
+      contains('TimeOfDay.fromDateTime(message.createdAt.toLocal())'),
+    );
+    expect(cards, contains('formatMediumDate(day)'));
+    expect(surface, contains('_ThreadDateDivider('));
   });
 
   test('chat bubbles are compact and split by sender side', () {
@@ -161,22 +168,17 @@ void main() {
     expect(surface, contains('vertical: 6'));
   });
 
-  test('sender and time sit together above the message card', () {
+  test('the sender sits above the first bubble of a group', () {
     final bubble = surface.substring(
-      surface.indexOf('for (final group in groupMessagesForDisplay(messages))'),
+      surface.indexOf('for (final (index, group) in groups.indexed)'),
       surface.indexOf('for (final pending in _pending)'),
     );
     final sender = bubble.indexOf('group.first.senderName');
-    final card = bubble.indexOf('Card(');
-    final timestamp = bubble.indexOf(
-      '_inboxTime(context, group.first.createdAt)',
-    );
+    final card = bubble.indexOf('_MessageBubble(');
     expect(sender, greaterThanOrEqualTo(0));
     expect(sender, lessThan(card));
-    expect(timestamp, greaterThan(sender));
-    expect(timestamp, lessThan(card));
     expect(bubble, contains('if (message != group.first)'));
-    expect(bubble, contains('const SizedBox(height: 6)'));
+    expect(bubble, contains('const SizedBox(height: 4)'));
   });
 
   test('announcement title appears in the header, not inside its message', () {
@@ -188,7 +190,7 @@ void main() {
     // The app bar title (with a picture first in a one-to-one conversation).
     expect(
       surface,
-      contains(': Text(widget.thread.subject ?? strings.directMessage)'),
+      contains('widget.thread.subject ?? strings.directMessage,'),
     );
   });
 
