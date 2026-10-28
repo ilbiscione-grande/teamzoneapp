@@ -118,6 +118,7 @@ part '../features/calendar/calendar_month.dart';
 part '../features/calendar/calendar_week.dart';
 part '../features/calendar/calendar_day.dart';
 part '../features/calendar/event_details_page.dart';
+part '../features/calendar/event_details_cards.dart';
 part '../features/calendar/event_followup.dart';
 part '../features/calendar/event_participants.dart';
 part '../features/calendar/event_preparation.dart';

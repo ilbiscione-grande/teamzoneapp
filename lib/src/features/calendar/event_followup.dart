@@ -160,19 +160,15 @@ class _KpiGoalsSectionState extends State<_KpiGoalsSection> {
     if (_failed) return const SizedBox.shrink();
     if (data == null) return const SizedBox(height: 40);
     if (data.kpis.isEmpty && !_canEdit) return const SizedBox.shrink();
-    final colors = Theme.of(context).colorScheme;
     final title = switch (widget.event.type) {
       'training' => 'Mål för träningen',
       'match' => 'Mål för matchen',
       _ => 'Mål',
     };
-    return DecoratedBox(
+    return Card(
       key: const ValueKey('kpi-goals-section'),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: colors.outlineVariant, width: .5),
-        ),
-      ),
+      // A card per section, like the Info tab.
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Padding(
         padding: const EdgeInsets.only(bottom: 6),
         child: Column(
@@ -762,7 +758,12 @@ class _FollowupTabState extends State<_FollowupTab> {
         child: Row(
           children: [
             Expanded(
-              child: Text(text, style: Theme.of(context).textTheme.titleMedium),
+              child: Text(
+                text,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
             ),
             ?trailing,
           ],
@@ -864,14 +865,12 @@ class _FollowupTabState extends State<_FollowupTab> {
           null,
         ),
     ];
-    final colors = Theme.of(context).colorScheme;
     return Row(
       key: const ValueKey('followup-metrics'),
       children: [
         for (final card in cards)
           Expanded(
             child: Card(
-              color: colors.surfaceContainerHighest,
               margin: const EdgeInsets.symmetric(horizontal: 4),
               child: Padding(
                 padding: const EdgeInsets.all(10),
@@ -884,7 +883,10 @@ class _FollowupTabState extends State<_FollowupTab> {
                     ),
                     Text(
                       card.$2,
-                      style: Theme.of(context).textTheme.titleLarge,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AppPalette.of(context).accent,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     if (card.$3 != null)
                       Text(

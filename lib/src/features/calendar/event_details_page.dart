@@ -58,25 +58,21 @@ class _EventDetailsPageState extends State<_EventDetailsPage> {
   Future<(EventDetails, SquadDetails)>? _load;
   final _menu = ValueNotifier<List<_EventMenuAction>>(const []);
 
+  /// The event's title in the app bar, set by the body while its header is
+  /// folded away (every tab but Info).
+  final _barTitle = ValueNotifier<String?>(null);
+
   @override
   void dispose() {
     _menu.dispose();
+    _barTitle.dispose();
     super.dispose();
   }
-
-  // Kept separately from _load's snapshot so the AppBar title stays correct
-  // after _EventDetailsBody refreshes the event in place (a rename via
-  // "Redigera", say) without this page itself reloading.
-  String? _title;
 
   @override
   void initState() {
     super.initState();
     _reload();
-  }
-
-  void _updateTitle(String title) {
-    if (_title != title) setState(() => _title = title);
   }
 
   void _reload() {
@@ -101,21 +97,39 @@ class _EventDetailsPageState extends State<_EventDetailsPage> {
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     return Scaffold(
+      // The title, club and team stand in the body's header.
       appBar: AppBar(
         automaticallyImplyLeading: false,
         centerTitle: true,
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (_title != null)
-              Text(_title!, maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text(
-              '${widget.contextValue.clubName} · ${widget.contextValue.teamName ?? "Aktivitet"}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-          ],
+        title: ValueListenableBuilder<String?>(
+          valueListenable: _barTitle,
+          builder: (context, title, _) => title == null
+              ? const SizedBox.shrink()
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(
+                      '${widget.contextValue.clubName} · ${widget.contextValue.teamName ?? strings.feature('Aktivitet')}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
+                ),
+        ),
+        leading: IconButton(
+          key: const Key('event-back'),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          onPressed: () {
+            final navigator = Navigator.of(context);
+            if (navigator.canPop()) {
+              navigator.pop();
+            } else {
+              _goBackToCalendar();
+            }
+          },
+          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
         ),
         actions: [
           ValueListenableBuilder<List<_EventMenuAction>>(
@@ -195,8 +209,8 @@ class _EventDetailsPageState extends State<_EventDetailsPage> {
             match: widget.match,
             matchSpaceV2: widget.matchSpaceV2,
             onDeleted: _goBackToCalendar,
-            onTitleChanged: _updateTitle,
             menu: _menu,
+            barTitle: _barTitle,
           );
         },
       ),
@@ -215,8 +229,8 @@ class _EventDetailsBody extends StatefulWidget {
     required this.match,
     required this.matchSpaceV2,
     required this.onDeleted,
-    required this.onTitleChanged,
     required this.menu,
+    required this.barTitle,
     this.initialParticipants = false,
     this.initialPreparation = false,
     this.initialDeclineCallupId,
@@ -237,8 +251,8 @@ class _EventDetailsBody extends StatefulWidget {
   final MatchServices match;
   final bool matchSpaceV2;
   final VoidCallback onDeleted;
-  final ValueChanged<String> onTitleChanged;
   final ValueNotifier<List<_EventMenuAction>> menu;
+  final ValueNotifier<String?> barTitle;
 
   @override
   State<_EventDetailsBody> createState() => _EventDetailsBodyState();
@@ -349,9 +363,8 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => widget.onTitleChanged(event.title),
-    );
+    // Opened straight on another tab: the title starts in the app bar.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncBarTitle());
     unawaited(_loadMatch());
   }
 
@@ -362,7 +375,11 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     super.dispose();
   }
 
+  void _syncBarTitle() =>
+      widget.barTitle.value = _tabController.index == 0 ? null : event.title;
+
   void _handleTabIndexChanged() {
+    _syncBarTitle();
     // Fires once the swipe/tap settles on a new tab — enough to show or
     // hide the "Skicka kallelser" FAB without rebuilding every frame.
     if (!_tabController.indexIsChanging) setState(() {});
@@ -377,7 +394,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
           this.event = event;
           this.squad = squad;
         });
-        widget.onTitleChanged(event.title);
+        _syncBarTitle();
         widget.onChanged?.call();
         await _loadMatch();
       }
@@ -423,6 +440,31 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Folds away with the swipe off Info; the title moves to the app
+          // bar so the other tabs keep their room.
+          AnimatedBuilder(
+            animation: _tabController.animation!,
+            builder: (context, child) {
+              final expanded =
+                  (1 - _tabController.animation!.value.clamp(0.0, 1.0)).clamp(
+                    0.0,
+                    1.0,
+                  );
+              return ClipRect(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  heightFactor: expanded,
+                  child: Opacity(opacity: expanded, child: child),
+                ),
+              );
+            },
+            child: _EventHeader(
+              type: event.type,
+              title: event.title,
+              subtitle:
+                  '${widget.contextValue.clubName} · ${widget.contextValue.teamName ?? strings.feature('Aktivitet')}',
+            ),
+          ),
           ?resultHeader,
           // The squad counts are for those who call up; players and
           // guardians see their own answer instead.
@@ -433,7 +475,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
             // snapping once the tab settles.
             AnimatedBuilder(
               animation: _tabController.animation!,
-              builder: (context, child) {
+              builder: (context, _) {
                 final expanded =
                     (1 - _tabController.animation!.value.clamp(0.0, 1.0)).clamp(
                       0.0,
@@ -451,18 +493,32 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
                     child: Transform.scale(
                       scale: scale,
                       alignment: Alignment.topCenter,
-                      child: child,
+                      child: _StatusHeaderRow(
+                        event: event,
+                        squad: squad,
+                        labels: expanded,
+                      ),
                     ),
                   ),
                 );
               },
-              child: _StatusHeaderRow(event: event, squad: squad),
             ),
           const SizedBox(height: 4),
           TabBar(
             controller: _tabController,
             isScrollable: true,
             tabAlignment: TabAlignment.start,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            // Tighter than the default so all four fit on a phone.
+            labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+            indicatorSize: TabBarIndicatorSize.label,
+            indicatorWeight: 3,
+            labelColor: AppPalette.of(context).accent,
+            unselectedLabelColor: Theme.of(context).colorScheme.onSurface,
+            labelStyle: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            unselectedLabelStyle: Theme.of(context).textTheme.titleSmall,
             tabs: [
               Tab(text: strings.feature('Info')),
               Tab(text: strings.feature('Deltagare')),
@@ -544,13 +600,46 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
               ],
             ),
           ),
+          if (_absenceBarPerson case final person?)
+            _EventAbsenceBar(
+              personId: person.personId,
+              title: _absenceQuestion(strings, person),
+              saving: _savingAbsence,
+              onReport: () => _reportAbsence(person.personId),
+            ),
         ],
       ),
     );
   }
 
-  Widget _scroll(Widget child) =>
-      SingleChildScrollView(padding: const EdgeInsets.all(20), child: child);
+  Widget _scroll(Widget child) => SingleChildScrollView(
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+    child: child,
+  );
+
+  /// Without callups, one person you answer for and no absence yet: the
+  /// question stays at the bottom of the page.
+  ({String personId, String name})? get _absenceBarPerson {
+    if (!_absenceOpen || squad.representedPeople.length != 1) return null;
+    final person = squad.representedPeople.single;
+    return squad.noticeFor(person.personId) == null ? person : null;
+  }
+
+  bool get _absenceOpen =>
+      !event.callupsRequired &&
+      event.state != 'cancelled' &&
+      event.endsAt.isAfter(DateTime.now());
+
+  bool get _absenceSelf =>
+      squad.representedPeople.length == 1 &&
+      !widget.contextValue.roles.contains('guardian');
+
+  String _absenceQuestion(
+    AppStrings strings,
+    ({String personId, String name}) person,
+  ) => _absenceSelf
+      ? strings.feature('Kan du inte komma?')
+      : '${strings.feature('Kan inte')} ${person.name} ${strings.feature('komma?')}';
 
   bool _savingAbsence = false;
 
@@ -602,50 +691,37 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     final strings = AppStrings.of(context);
     final notice = squad.noticeFor(person.personId);
     // A guardian answers for the child: the child's name, not "Du".
-    final self =
-        squad.representedPeople.length == 1 &&
-        !widget.contextValue.roles.contains('guardian');
-    final who = self ? strings.feature('Du') : person.name;
-    return Card(
+    final who = _absenceSelf ? strings.feature('Du') : person.name;
+    return _EventInfoCard(
       key: ValueKey('event-absence-${person.personId}'),
-      margin: const EdgeInsets.only(top: 8),
-      child: ListTile(
-        leading: Icon(
-          notice == null ? Icons.event_available_outlined : Icons.event_busy,
-        ),
-        title: Text(
-          notice == null
-              ? (self
-                    ? strings.feature('Kan du inte komma?')
-                    : '${strings.feature('Kan inte')} ${person.name} ${strings.feature('komma?')}')
-              : '$who ${strings.feature('har anmält frånvaro')}',
-        ),
-        subtitle: Text(
-          notice == null
-              ? strings.feature(
-                  'Ledarna får besked. Du behöver inte svara om du kommer.',
-                )
-              : [
-                  _declineReasonLabel(notice.reasonCode),
-                  ?notice.reasonText,
-                ].join(' · '),
-        ),
-        trailing: notice == null
-            ? FilledButton.tonal(
-                key: ValueKey('event-absence-report-${person.personId}'),
-                onPressed: _savingAbsence
-                    ? null
-                    : () => _reportAbsence(person.personId),
-                child: Text(strings.feature('Anmäl')),
-              )
-            : TextButton(
-                key: ValueKey('event-absence-withdraw-${person.personId}'),
-                onPressed: _savingAbsence
-                    ? null
-                    : () => _withdrawAbsence(person.personId),
-                child: Text(strings.feature('Ångra')),
-              ),
-      ),
+      icon: notice == null ? Icons.event_available_outlined : Icons.event_busy,
+      soft: true,
+      title: notice == null
+          ? _absenceQuestion(strings, person)
+          : '$who ${strings.feature('har anmält frånvaro')}',
+      subtitle: notice == null
+          ? strings.feature(
+              'Ledarna får besked. Du behöver inte svara om du kommer.',
+            )
+          : [
+              _declineReasonLabel(notice.reasonCode),
+              ?notice.reasonText,
+            ].join(' · '),
+      trailing: notice == null
+          ? FilledButton.tonal(
+              key: ValueKey('event-absence-report-${person.personId}'),
+              onPressed: _savingAbsence
+                  ? null
+                  : () => _reportAbsence(person.personId),
+              child: Text(strings.feature('Anmäl')),
+            )
+          : TextButton(
+              key: ValueKey('event-absence-withdraw-${person.personId}'),
+              onPressed: _savingAbsence
+                  ? null
+                  : () => _withdrawAbsence(person.personId),
+              child: Text(strings.feature('Ångra')),
+            ),
     );
   }
 
@@ -658,74 +734,73 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     final sharedTeams = event.teams.where(
       (team) => team['relation'] != 'primary',
     );
+    final place = [
+      event.locationPitch,
+      event.locationSurface,
+    ].whereType<String>().where((part) => part.trim().isNotEmpty).join(' · ');
+    final start = event.startsAt.toLocal();
+    final barPerson = _absenceBarPerson;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (event.archivedAt != null) ...[
-          Card(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: ListTile(
-              leading: const Icon(Icons.archive_outlined),
-              title: Text(strings.feature('Eventet är arkiverat')),
-              subtitle: Text(
-                [
-                  if (event.archiveReason != null) event.archiveReason!,
-                  strings.feature(
-                    'Eventet är skrivskyddat men historiken finns kvar.',
-                  ),
-                ].join('\n'),
+        if (event.archivedAt != null)
+          _EventInfoCard(
+            icon: Icons.archive_outlined,
+            soft: true,
+            title: strings.feature('Eventet är arkiverat'),
+            subtitle: [
+              if (event.archiveReason != null) event.archiveReason!,
+              strings.feature(
+                'Eventet är skrivskyddat men historiken finns kvar.',
               ),
+            ].join('\n'),
+          ),
+        if (event.state == 'cancelled')
+          _EventInfoCard(
+            icon: Icons.event_busy,
+            soft: true,
+            title: strings.feature('Eventet är inställt'),
+            subtitle: strings.feature(
+              'Information och historik finns kvar, men eventet genomförs inte.',
             ),
           ),
-          const SizedBox(height: 8),
-        ],
-        if (event.state == 'cancelled') ...[
-          Card(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: ListTile(
-              leading: const Icon(Icons.event_busy),
-              title: Text(strings.feature('Eventet är inställt')),
-              subtitle: Text(
-                strings.feature(
-                  'Information och historik finns kvar, men eventet genomförs inte.',
-                ),
-              ),
-            ),
+        _EventInfoCard(
+          key: const ValueKey('event-info-when'),
+          icon: Icons.schedule_outlined,
+          leading: _EventDateTile(day: DateUtils.dateOnly(start)),
+          title: _capitalized(
+            MaterialLocalizations.of(context).formatFullDate(start),
           ),
-          const SizedBox(height: 8),
-        ],
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.schedule_outlined),
-          title: Text(_eventDateTimeLabel(context, event)),
-          subtitle: Text(event.timezone),
+          subtitle: [
+            _eventTimeLabel(context, event),
+            event.timezone,
+          ].join('\n'),
         ),
         if (event.locationName != null)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.place_outlined),
-            title: Text(event.locationName!),
-            subtitle:
-                [event.locationPitch, event.locationSurface]
-                    .whereType<String>()
-                    .where((part) => part.trim().isNotEmpty)
-                    .isEmpty
-                ? null
-                : Text(
-                    [event.locationPitch, event.locationSurface]
-                        .whereType<String>()
-                        .where((part) => part.trim().isNotEmpty)
-                        .join(' · '),
-                  ),
+          _EventInfoCard(
+            key: const ValueKey('event-info-place'),
+            icon: Icons.place_outlined,
+            title: event.locationName!,
+            subtitle: place,
+            trailing: IconButton(
+              key: const ValueKey('event-info-map'),
+              tooltip: strings.feature('Öppna i karta'),
+              onPressed: () => launchUrl(
+                Uri.https('www.google.com', '/maps/search/', {
+                  'api': '1',
+                  'query': [event.locationName!, place].join(' '),
+                }),
+                mode: LaunchMode.externalApplication,
+              ),
+              icon: const Icon(Icons.open_in_new),
+            ),
           ),
         if (event.assemblyMinutesBefore != null)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.group_outlined),
-            title: Text(strings.feature('Samling')),
-            subtitle: Text(
-              '${_formatMoment(context, event.startsAt.toLocal().subtract(Duration(minutes: event.assemblyMinutesBefore!)))} · ${event.assemblyMinutesBefore} min före start',
-            ),
+          _EventInfoCard(
+            icon: Icons.groups_outlined,
+            title: strings.feature('Samling'),
+            subtitle:
+                '${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(start.subtract(Duration(minutes: event.assemblyMinutesBefore!))))} · ${event.assemblyMinutesBefore} min före start',
           ),
         ..._typedInfoTiles(context, event),
         // REF-01: who referees the match.
@@ -752,65 +827,57 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         if (!event.callupsRequired &&
             (_contextCanCoManage || _contextCanManageRoster) &&
             event.can('revise'))
-          ListTile(
-            key: const Key('event-callups-not-required'),
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.unsubscribe_outlined),
-            title: const Text('Kallelse behövs inte'),
-            subtitle: const Text(
-              'Alla i laget förväntas komma, och den som inte kan anmäler frånvaro. Assistenten påminner inte om kallelser. Ändras i menyn ⋮.',
-            ),
+          const _EventInfoCard(
+            key: Key('event-callups-not-required'),
+            icon: Icons.mail_outline,
+            soft: true,
+            title: 'Kallelse behövs inte',
+            subtitle:
+                'Alla i laget förväntas komma, och den som inte kan anmäler frånvaro. Assistenten påminner inte om kallelser. Ändras i menyn ⋮.',
           ),
-        // Without callups: you (or your child) report not coming.
-        if (!event.callupsRequired &&
-            event.state != 'cancelled' &&
-            event.endsAt.isAfter(DateTime.now()))
+        // Without callups: you (or your child) report not coming; one
+        // person without a notice gets the bar at the bottom instead.
+        if (_absenceOpen)
           for (final person in squad.representedPeople)
-            _absenceTile(context, person),
+            if (person != barPerson) _absenceTile(context, person),
         if (_report case final report? when report.body.isNotEmpty)
-          ListTile(
+          _EventInfoCard(
             key: const Key('event-match-report'),
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.article_outlined),
-            title: const Text('Matchrapport'),
-            subtitle: Text(
-              '${report.body}\n${report.published ? 'Publiceras tillsammans med synligt slutresultat' : 'Internt utkast'}',
-            ),
+            icon: Icons.article_outlined,
+            title: 'Matchrapport',
+            subtitle:
+                '${report.body}\n${report.published ? 'Publiceras tillsammans med synligt slutresultat' : 'Internt utkast'}',
           ),
         if (ownerTeam != null)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.shield_outlined),
-            title: Text(ownerTeam['name'] as String? ?? ''),
-            subtitle: Text(strings.feature('Ägande lag')),
+          _EventInfoCard(
+            icon: Icons.shield_outlined,
+            title: ownerTeam['name'] as String? ?? '',
+            subtitle: strings.feature('Ägande lag'),
           ),
         for (final team in sharedTeams)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.group_outlined),
-            title: Text(team['name'] as String? ?? ''),
-            subtitle: Text(strings.feature('Delat med detta lag')),
+          _EventInfoCard(
+            icon: Icons.group_outlined,
+            title: team['name'] as String? ?? '',
+            subtitle: strings.feature('Delat med detta lag'),
           ),
         if (_myCallup != null)
-          Card(
-            margin: const EdgeInsets.only(top: 8),
-            child: ListTile(
-              leading: const Icon(Icons.mail_outline),
-              title: Text(strings.feature('Din kallelse')),
-              subtitle: Text(
-                strings.domainValue(_myCallup!.callupState ?? 'pending'),
-              ),
-              trailing: TextButton(
-                onPressed: () => _tabController.animateTo(1),
-                child: Text(strings.feature('Svara')),
-              ),
+          _EventInfoCard(
+            icon: Icons.mail_outline,
+            soft: true,
+            title: strings.feature('Din kallelse'),
+            subtitle: strings.domainValue(_myCallup!.callupState ?? 'pending'),
+            trailing: TextButton(
+              onPressed: () => _tabController.animateTo(1),
+              child: Text(strings.feature('Svara')),
             ),
           ),
-        if (event.description != null) ...[
-          const SizedBox(height: 8),
-          Text(event.description!),
-        ],
-        const SizedBox(height: 20),
+        if (event.description != null)
+          _EventInfoCard(
+            icon: Icons.notes_outlined,
+            title: strings.feature('Beskrivning'),
+            subtitle: event.description!,
+          ),
+        const SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -870,39 +937,29 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     return [
       for (final row in rows)
         if (row.$3 != null && row.$3!.isNotEmpty)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(row.$1),
-            title: Text(row.$2),
-            subtitle: Text(row.$3!),
-          ),
+          _EventInfoCard(icon: row.$1, title: row.$2, subtitle: row.$3!),
     ];
   }
 
-  String _formatMoment(BuildContext context, DateTime value) {
-    final localizations = MaterialLocalizations.of(context);
-    return '${localizations.formatMediumDate(value)} · ${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(value))}';
-  }
-
-  String _eventDateTimeLabel(BuildContext context, EventDetails event) {
+  /// The times under the date card's date: all day, or the end date when
+  /// the event runs past midnight.
+  String _eventTimeLabel(BuildContext context, EventDetails event) {
     final localizations = MaterialLocalizations.of(context);
     final start = event.startsAt.toLocal();
     final end = event.endsAt.toLocal();
     final sameDay = DateUtils.isSameDay(start, end);
     if (event.allDay) {
-      final startDate = localizations.formatFullDate(start);
       return sameDay
-          ? startDate
-          : '$startDate – ${localizations.formatFullDate(end)}';
+          ? AppStrings.of(context).feature('Heldag')
+          : '– ${localizations.formatFullDate(end)}';
     }
-    final startDate = localizations.formatFullDate(start);
     final startTime = localizations.formatTimeOfDay(
       TimeOfDay.fromDateTime(start),
     );
     final endTime = localizations.formatTimeOfDay(TimeOfDay.fromDateTime(end));
     return sameDay
-        ? '$startDate · $startTime–$endTime'
-        : '$startDate $startTime – ${localizations.formatFullDate(end)} $endTime';
+        ? '$startTime – $endTime'
+        : '$startTime – ${localizations.formatFullDate(end)} $endTime';
   }
 
   Future<void> _revise() async {
@@ -1890,9 +1947,17 @@ List<EventRosterPerson> _guestRosterFor(SquadDetails squad) {
 /// tab is active: draft/called/accepted/declined/unanswered counts, plus an
 /// "attended" circle once the event has ended.
 class _StatusHeaderRow extends StatelessWidget {
-  const _StatusHeaderRow({required this.event, required this.squad});
+  const _StatusHeaderRow({
+    required this.event,
+    required this.squad,
+    this.labels = 1,
+  });
   final EventDetails event;
   final SquadDetails squad;
+
+  /// How much of the labels shows: all on Info, folding away with the
+  /// circles on the other tabs.
+  final double labels;
 
   bool get _hasEnded => DateTime.now().toUtc().isAfter(event.endsAt.toUtc());
 
@@ -1922,12 +1987,6 @@ class _StatusHeaderRow extends StatelessWidget {
               p.attendanceStatus == 'partial',
         )
         .length;
-    // Labels take real width across up to six circles — dropped below the
-    // tablet breakpoint (a phone in portrait can't fit six labeled circles
-    // without wrapping awkwardly), keeping just the numbers, which still
-    // read fine at a glance; a tooltip on each circle covers the rest.
-    final showLabels =
-        MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
     final sv = strings.isSwedish;
     final circles = Row(
       mainAxisSize: MainAxisSize.min,
@@ -1941,7 +2000,7 @@ class _StatusHeaderRow extends StatelessWidget {
                 ? '$draft i urvalet som inte har kallats än'
                 : '$draft selected but not called yet',
             color: Colors.blueGrey,
-            showLabel: showLabels,
+            labels: labels,
           ),
         _StatusCircle(
           count: called,
@@ -1950,34 +2009,34 @@ class _StatusHeaderRow extends StatelessWidget {
               ? '$called har fått kallelse'
               : '$called have been called',
           color: Colors.indigo,
-          showLabel: showLabels,
+          labels: labels,
         ),
         _StatusCircle(
           count: accepted,
-          label: strings.domainValue('accepted'),
+          label: strings.feature('Kommer'),
           description: sv
               ? '$accepted har tackat ja'
               : '$accepted have accepted',
           color: AppPalette.of(context).accent,
-          showLabel: showLabels,
+          labels: labels,
         ),
         _StatusCircle(
           count: unanswered,
-          label: strings.feature('Obesvarade'),
+          label: strings.feature('Ej svarat'),
           description: sv
               ? '$unanswered har inte svarat på kallelsen'
               : '$unanswered have not answered',
           color: AppPalette.of(context).warning,
-          showLabel: showLabels,
+          labels: labels,
         ),
         _StatusCircle(
           count: declined,
-          label: strings.domainValue('declined'),
+          label: strings.feature('Kommer inte'),
           description: sv
               ? '$declined har tackat nej'
               : '$declined have declined',
           color: AppPalette.of(context).danger,
-          showLabel: showLabels,
+          labels: labels,
         ),
         if (_hasEnded)
           _StatusCircle(
@@ -1987,7 +2046,7 @@ class _StatusHeaderRow extends StatelessWidget {
                 ? '$attended registrerade som närvarande (även sena och delvis)'
                 : '$attended registered as attended (incl. late and partial)',
             color: Colors.teal,
-            showLabel: showLabels,
+            labels: labels,
           ),
       ],
     );
@@ -2012,16 +2071,17 @@ class _StatusCircle extends StatelessWidget {
     required this.label,
     required this.description,
     required this.color,
-    required this.showLabel,
+    required this.labels,
   });
   final int count;
   final String label, description;
   final Color color;
-  final bool showLabel;
+  final double labels;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(right: 14),
+  Widget build(BuildContext context) => SizedBox(
+    // Five fit across a phone without scrolling.
+    width: 68,
     // Hover on desktop and web, a tap on phones (long-press is hard to
     // discover there); the label leads, the description explains.
     child: Tooltip(
@@ -2031,23 +2091,51 @@ class _StatusCircle extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 42,
+            height: 42,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
+              color: color.withValues(alpha: 0.14),
               shape: BoxShape.circle,
-              border: Border.all(color: color.withValues(alpha: 0.4)),
+              border: Border.all(
+                color: color.withValues(alpha: 0.5),
+                width: 1.5,
+              ),
             ),
             child: Text(
               '$count',
-              style: TextStyle(color: color, fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
-          if (showLabel) ...[
-            const SizedBox(height: 4),
-            Text(label, style: Theme.of(context).textTheme.labelSmall),
-          ],
+          // A short label under the circle; the tooltip explains more.
+          if (labels > 0)
+            ClipRect(
+              child: Align(
+                alignment: Alignment.topCenter,
+                heightFactor: labels,
+                child: Opacity(
+                  opacity: labels,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    // Shrinks a long label rather than cutting it.
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: AppPalette.of(context).muted,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     ),
@@ -2304,10 +2392,19 @@ class _EventBookingsSectionState extends State<_EventBookingsSection> {
                 : null,
           ),
         for (final target in targets)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: FilledButton.tonalIcon(
               key: ValueKey('event-book-${target.organizationId}'),
+              // A soft full-width row, like the cards around it.
+              style: FilledButton.styleFrom(
+                alignment: Alignment.centerLeft,
+                minimumSize: const Size.fromHeight(52),
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.tile),
+                ),
+              ),
               onPressed: () => _book(target),
               icon: const Icon(Icons.add_circle_outline),
               label: Text(

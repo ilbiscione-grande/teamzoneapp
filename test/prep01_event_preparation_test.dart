@@ -932,9 +932,8 @@ void main() {
   });
 }
 
-Finder _sectionFor(String header) => find
-    .ancestor(of: find.text(header), matching: find.byType(DecoratedBox))
-    .first;
+Finder _sectionFor(String header) =>
+    find.ancestor(of: find.text(header), matching: find.byType(Card)).first;
 
 Future<void> _pumpFrames(WidgetTester tester) async {
   for (var i = 0; i < 8; i++) {

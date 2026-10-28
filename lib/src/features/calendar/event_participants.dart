@@ -1075,7 +1075,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
       children: [
         if (_canManage || _canRecordAttendance)
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
+            padding: const EdgeInsets.fromLTRB(16, 10, 4, 6),
             child: Row(
               children: [
                 Expanded(
@@ -1086,9 +1086,21 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                       hintText: _s.feature('Sök deltagare i klubben'),
                       prefixIcon: const Icon(Icons.search, size: 20),
                       isDense: true,
+                      filled: true,
+                      fillColor: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHigh,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 10,
-                        vertical: 8,
+                        vertical: 10,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(99),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(99),
+                        borderSide: BorderSide.none,
                       ),
                     ),
                   ),
@@ -1212,10 +1224,18 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                 (_s.feature('Ledare').toUpperCase(), leaders),
               ]) ...[
                 SliverToBoxAdapter(child: _groupHeader(group.$1, group.$2)),
-                SliverList.builder(
-                  itemCount: group.$2.length,
-                  itemBuilder: (context, index) => _personRow(group.$2[index]),
-                ),
+                if (group.$2.isNotEmpty)
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: DecoratedSliver(
+                      decoration: _eventSectionCard(context),
+                      sliver: SliverList.builder(
+                        itemCount: group.$2.length,
+                        itemBuilder: (context, index) =>
+                            _personRow(group.$2[index]),
+                      ),
+                    ),
+                  ),
               ],
               if (_eventEnded && _canRecordAttendance)
                 SliverToBoxAdapter(
@@ -1325,8 +1345,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
         !_eventEnded && _canManage && people.any((p) => !p.isCalled);
     return Container(
       constraints: const BoxConstraints(minHeight: 34),
-      padding: const EdgeInsets.only(left: 16, right: 8),
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      padding: const EdgeInsets.fromLTRB(20, 12, 12, 4),
       child: Row(
         children: [
           Text(
@@ -1449,7 +1468,7 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
     return Material(
       color: selected || expanded
           ? colors.primary.withValues(alpha: .07)
-          : colors.surface,
+          : Colors.transparent,
       child: Column(
         children: [
           Semantics(

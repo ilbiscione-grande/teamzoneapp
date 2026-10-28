@@ -16,8 +16,8 @@ void main() {
     expect(source, contains("Tab(text: strings.feature('Förberedelser'))"));
     expect(source, contains("Tab(text: strings.feature('Uppföljning'))"));
     expect(source, contains('isScrollable: true'));
-    expect(source, contains('_eventDateTimeLabel(context, event)'));
-    expect(source, contains('localizations.formatFullDate(start)'));
+    expect(source, contains('_eventTimeLabel(context, event)'));
+    expect(source, contains('formatFullDate(start)'));
     expect(source, contains('localizations.formatTimeOfDay('));
     expect(source, contains("strings.feature('Ägande lag')"));
     // Förberedelser v1 replaced the old placeholder text with a real

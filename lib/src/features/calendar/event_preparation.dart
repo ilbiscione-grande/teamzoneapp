@@ -257,7 +257,10 @@ class _PreparationTabState extends State<_PreparationTab> {
     return RefreshIndicator(
       onRefresh: _reload,
       child: ListView(
-        padding: EdgeInsets.only(bottom: _assistantUsesFab(context) ? 88 : 24),
+        padding: EdgeInsets.only(
+          top: 8,
+          bottom: _assistantUsesFab(context) ? 88 : 24,
+        ),
         children: [
           ...sections,
           if (empty)
@@ -329,13 +332,9 @@ class _PreparationTabState extends State<_PreparationTab> {
     List<Widget> children = const [],
     String? addLabel,
   }) {
-    final colors = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: colors.outlineVariant, width: .5),
-        ),
-      ),
+    return Card(
+      // A card per section, like the Info tab.
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Padding(
         padding: const EdgeInsets.only(bottom: 6),
         child: Column(
