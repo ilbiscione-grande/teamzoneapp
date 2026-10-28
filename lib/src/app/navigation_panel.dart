@@ -10,8 +10,8 @@ class _NavPanelSection extends StatelessWidget {
     child: Text(
       label.toUpperCase(),
       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-        color: AppPalette.of(context).muted,
-        fontWeight: FontWeight.w600,
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .75),
+        fontWeight: FontWeight.w700,
         letterSpacing: 2,
       ),
     ),
@@ -66,7 +66,6 @@ class _NavPanelRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final palette = AppPalette.of(context);
-    final dark = theme.brightness == Brightness.dark;
     return Tooltip(
       message: label,
       child: Padding(
@@ -82,15 +81,14 @@ class _NavPanelRow extends StatelessWidget {
           iconColor: theme.colorScheme.onSurface,
           textColor: theme.colorScheme.onSurface,
           selectedColor: palette.accent,
-          selectedTileColor: palette.accentSoft,
+          selectedTileColor: theme.brightness == Brightness.dark
+              ? Color.lerp(theme.colorScheme.surface, palette.accent, .2)
+              : palette.accentSoft,
           titleTextStyle: theme.textTheme.bodyLarge?.copyWith(
             fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.tile),
-            side: selected && dark
-                ? BorderSide(color: palette.accent.withValues(alpha: .35))
-                : BorderSide.none,
           ),
         ),
       ),
@@ -98,19 +96,81 @@ class _NavPanelRow extends StatelessWidget {
   }
 }
 
-/// The top of the panel: the profile picture as a toned backdrop, the
-/// picture itself in an accent ring with an edit badge, name and roles.
+/// Faint tactics-board marks (players, arrows, a centre circle) behind the
+/// profile header.
+class _NavPanelPitchPainter extends CustomPainter {
+  const _NavPanelPitchPainter(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6
+      ..strokeCap = StrokeCap.round;
+    Offset at(double x, double y) => Offset(size.width * x, size.height * y);
+    void cross(Offset c) {
+      const r = 6.0;
+      canvas.drawLine(c + const Offset(-r, -r), c + const Offset(r, r), stroke);
+      canvas.drawLine(c + const Offset(-r, r), c + const Offset(r, -r), stroke);
+    }
+
+    void arrow(Offset from, Offset control, Offset to) {
+      final path = Path()
+        ..moveTo(from.dx, from.dy)
+        ..quadraticBezierTo(control.dx, control.dy, to.dx, to.dy);
+      // Dashed curve.
+      for (final metric in path.computeMetrics()) {
+        for (var d = 0.0; d < metric.length; d += 10) {
+          canvas.drawPath(metric.extractPath(d, d + 5), stroke);
+        }
+        final end = metric.getTangentForOffset(metric.length);
+        if (end != null) {
+          final back = -end.vector * 8;
+          final side = Offset(-back.dy, back.dx) * .6;
+          canvas.drawLine(end.position, end.position + back + side, stroke);
+          canvas.drawLine(end.position, end.position + back - side, stroke);
+        }
+      }
+    }
+
+    canvas.drawCircle(at(.5, .42), size.width * .2, stroke);
+    canvas.drawLine(at(0, .42), at(.22, .42), stroke);
+    canvas.drawLine(at(.78, .42), at(1, .42), stroke);
+    canvas.drawCircle(at(.12, .2), 7, stroke);
+    canvas.drawCircle(at(.86, .62), 7, stroke);
+    canvas.drawCircle(at(.18, .7), 7, stroke);
+    cross(at(.3, .1));
+    cross(at(.72, .14));
+    cross(at(.9, .3));
+    cross(at(.08, .5));
+    arrow(at(.14, .26), at(.2, .05), at(.36, .08));
+    arrow(at(.66, .2), at(.8, .02), at(.92, .22));
+    arrow(at(.2, .66), at(.06, .58), at(.1, .42));
+    arrow(at(.82, .56), at(.96, .48), at(.88, .34));
+  }
+
+  @override
+  bool shouldRepaint(_NavPanelPitchPainter old) => old.color != color;
+}
+
+/// The top of the panel: the picture in an accent ring with an edit badge,
+/// name, roles and the team switcher, on a soft accent wash with faint
+/// tactics marks.
 class _NavPanelProfileHeader extends StatelessWidget {
   const _NavPanelProfileHeader({
     required this.profile,
     required this.contextValue,
     required this.ownSummary,
     required this.onOpenOwnProfile,
+    required this.teamSwitcher,
   });
   final TeamZoneProfile profile;
   final TeamZoneContext contextValue;
   final Future<_OwnSummary> ownSummary;
   final VoidCallback onOpenOwnProfile;
+  final Widget teamSwitcher;
 
   @override
   Widget build(BuildContext context) {
@@ -129,39 +189,35 @@ class _NavPanelProfileHeader extends StatelessWidget {
         return Stack(
           children: [
             Positioned.fill(
-              child: avatar == null
-                  ? DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [palette.accentSoft, colors.surface],
-                        ),
-                      ),
-                    )
-                  : Image.network(
-                      avatar,
-                      fit: BoxFit.cover,
-                      alignment: Alignment.topCenter,
-                      opacity: AlwaysStoppedAnimation(dark ? .45 : .6),
-                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                    ),
-            ),
-            // Tones the picture toward the accent and fades it into the
-            // panel, so the name stays readable.
-            Positioned.fill(
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    stops: const [0, .55, 1],
-                    colors: [
-                      palette.accent.withValues(alpha: dark ? .25 : .18),
-                      colors.surface.withValues(alpha: dark ? .7 : .55),
-                      colors.surface,
-                    ],
+                    stops: const [0, .7, 1],
+                    colors: dark
+                        ? [
+                            Color.lerp(colors.surface, palette.accent, .2)!,
+                            Color.lerp(colors.surface, palette.accent, .06)!,
+                            colors.surface,
+                          ]
+                        : [
+                            Color.lerp(
+                              palette.accentSoft,
+                              palette.accent,
+                              .12,
+                            )!,
+                            palette.accentSoft.withValues(alpha: .5),
+                            colors.surface,
+                          ],
                   ),
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _NavPanelPitchPainter(
+                  palette.accent.withValues(alpha: dark ? .16 : .12),
                 ),
               ),
             ),
@@ -169,102 +225,139 @@ class _NavPanelProfileHeader extends StatelessWidget {
               bottom: false,
               child: SizedBox(
                 width: double.infinity,
-                child: Semantics(
-                  button: true,
-                  label: strings.feature('Min profil'),
-                  child: InkWell(
-                    key: const Key('drawer-own-profile'),
-                    onTap: onOpenOwnProfile,
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        16,
-                        compact ? 8 : 32,
-                        16,
-                        compact ? 12 : 20,
-                      ),
-                      child: Column(
-                        children: [
-                          Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(3),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: colors.surface,
-                                  border: Border.all(
-                                    color: palette.accent,
-                                    width: 3,
-                                  ),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    compact ? 8 : 28,
+                    16,
+                    compact ? 8 : 12,
+                  ),
+                  child: Column(
+                    children: [
+                      Semantics(
+                        button: true,
+                        label: strings.feature('Min profil'),
+                        child: InkWell(
+                          key: const Key('drawer-own-profile'),
+                          onTap: onOpenOwnProfile,
+                          borderRadius: BorderRadius.circular(AppRadius.card),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            child: Column(
+                              children: [
+                                Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(3),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: colors.surface,
+                                        border: Border.all(
+                                          color: palette.accent,
+                                          width: 4,
+                                        ),
+                                      ),
+                                      child: CircleAvatar(
+                                        key: const Key('drawer-own-avatar'),
+                                        radius: compact ? 30 : 50,
+                                        backgroundColor: palette.accentSoft,
+                                        foregroundColor: palette.accent,
+                                        backgroundImage: avatar == null
+                                            ? null
+                                            : NetworkImage(avatar),
+                                        child: avatar == null
+                                            ? Icon(
+                                                Icons.person,
+                                                size: compact ? 32 : 52,
+                                              )
+                                            : null,
+                                      ),
+                                    ),
+                                    Positioned(
+                                      right: 0,
+                                      bottom: 2,
+                                      child: Container(
+                                        width: 32,
+                                        height: 32,
+                                        decoration: BoxDecoration(
+                                          color: colors.primary,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: colors.surface,
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          Icons.edit,
+                                          size: 16,
+                                          color: colors.onPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                child: CircleAvatar(
-                                  key: const Key('drawer-own-avatar'),
-                                  radius: compact ? 30 : 46,
-                                  backgroundColor: palette.accentSoft,
-                                  foregroundColor: palette.accent,
-                                  backgroundImage: avatar == null
-                                      ? null
-                                      : NetworkImage(avatar),
-                                  child: avatar == null
-                                      ? Icon(
-                                          Icons.person,
-                                          size: compact ? 32 : 48,
-                                        )
-                                      : null,
+                                SizedBox(height: compact ? 8 : 14),
+                                Text(
+                                  name.trim().isEmpty
+                                      ? strings.feature('Min profil')
+                                      : name,
+                                  key: const Key('drawer-own-name'),
+                                  textAlign: TextAlign.center,
+                                  // A login address as the name stays on one
+                                  // line.
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style:
+                                      (compact
+                                              ? theme.textTheme.titleLarge
+                                              : theme.textTheme.headlineSmall)
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w800,
+                                          ),
                                 ),
-                              ),
-                              Positioned(
-                                right: 0,
-                                bottom: 2,
-                                child: Container(
-                                  width: 30,
-                                  height: 30,
-                                  decoration: BoxDecoration(
-                                    color: colors.primary,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: colors.surface,
-                                      width: 2,
+                                const SizedBox(height: 4),
+                                Text(
+                                  snapshot.data?.title ??
+                                      _contextRolesLabel(strings, contextValue),
+                                  key: const Key('drawer-own-roles'),
+                                  textAlign: TextAlign.center,
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    color: colors.onSurface.withValues(
+                                      alpha: .7,
                                     ),
                                   ),
-                                  child: Icon(
-                                    Icons.edit,
-                                    size: 15,
-                                    color: colors.onPrimary,
-                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: compact ? 8 : 14),
-                          Text(
-                            name.trim().isEmpty
-                                ? strings.feature('Min profil')
-                                : name,
-                            key: const Key('drawer-own-name'),
-                            textAlign: TextAlign.center,
-                            // A login address as the name stays on one line.
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style:
-                                (compact
-                                        ? theme.textTheme.titleLarge
-                                        : theme.textTheme.headlineSmall)
-                                    ?.copyWith(fontWeight: FontWeight.w800),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            snapshot.data?.title ??
-                                _contextRolesLabel(strings, contextValue),
-                            key: const Key('drawer-own-roles'),
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: colors.onSurface.withValues(alpha: .75),
+                              ],
                             ),
                           ),
-                        ],
+                        ),
                       ),
+                      SizedBox(height: compact ? 2 : 6),
+                      teamSwitcher,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SafeArea(
+              bottom: false,
+              child: Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 12, 12, 0),
+                  child: IconButton.filledTonal(
+                    key: const Key('drawer-own-profile-button'),
+                    tooltip: strings.feature('Min profil'),
+                    style: IconButton.styleFrom(
+                      backgroundColor: palette.accentSoft,
+                      foregroundColor: colors.onSurface,
                     ),
+                    onPressed: onOpenOwnProfile,
+                    icon: const Icon(Icons.person),
                   ),
                 ),
               ),
@@ -272,6 +365,71 @@ class _NavPanelProfileHeader extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// The active team under the roles: shield, team, club and a chevron.
+class _NavPanelTeamSwitcher extends StatelessWidget {
+  const _NavPanelTeamSwitcher({
+    required this.contextValue,
+    required this.pendingTeamRequests,
+    required this.onTap,
+  });
+  final TeamZoneContext contextValue;
+  final Future<int> pendingTeamRequests;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
+    final team = contextValue.teamName ?? contextValue.clubName;
+    return InkWell(
+      key: const Key('drawer-team-switcher'),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.chip),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        child: FutureBuilder<int>(
+          future: pendingTeamRequests,
+          initialData: 0,
+          builder: (context, snapshot) => Badge.count(
+            count: snapshot.data ?? 0,
+            isLabelVisible: (snapshot.data ?? 0) > 0,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.shield_outlined, size: 24, color: palette.accent),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    team,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                if (contextValue.teamName != null) ...[
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      contextValue.clubName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 6),
+                const Icon(Icons.expand_more, size: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -376,62 +534,22 @@ class _AppNavigationPanel extends StatelessWidget {
                   contextValue: contextValue,
                   ownSummary: ownSummary,
                   onOpenOwnProfile: onOpenOwnProfile,
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Card(
-                    margin: EdgeInsets.zero,
-                    clipBehavior: Clip.antiAlias,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.card),
-                      side: theme.brightness == Brightness.dark
-                          ? BorderSide(color: theme.colorScheme.outlineVariant)
-                          : BorderSide.none,
-                    ),
-                    elevation: theme.brightness == Brightness.dark ? 0 : 3,
-                    child: InkWell(
-                      onTap: () => _showContextPicker(
-                        context: context,
-                        contexts: contexts,
-                        activeContext: contextValue,
-                        pendingTeamRequests: pendingTeamRequests,
-                        onContextChanged: onContextChanged,
-                        membership: membership,
-                        onContextsChanged: onContextsChanged,
-                        onTeamCreated: onTeamCreated,
-                        onTeamRequestsChanged: onTeamRequestsChanged,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.shield_outlined,
-                              size: 28,
-                              color: palette.accent,
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: FutureBuilder<int>(
-                                future: pendingTeamRequests,
-                                initialData: 0,
-                                builder: (context, snapshot) => Badge.count(
-                                  count: snapshot.data ?? 0,
-                                  isLabelVisible: (snapshot.data ?? 0) > 0,
-                                  child: _ContextTwoLineLabel(
-                                    contextValue: contextValue,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const Icon(Icons.expand_more),
-                          ],
-                        ),
-                      ),
+                  teamSwitcher: _NavPanelTeamSwitcher(
+                    contextValue: contextValue,
+                    pendingTeamRequests: pendingTeamRequests,
+                    onTap: () => _showContextPicker(
+                      context: context,
+                      contexts: contexts,
+                      activeContext: contextValue,
+                      pendingTeamRequests: pendingTeamRequests,
+                      onContextChanged: onContextChanged,
+                      membership: membership,
+                      onContextsChanged: onContextsChanged,
+                      onTeamCreated: onTeamCreated,
+                      onTeamRequestsChanged: onTeamRequestsChanged,
                     ),
                   ),
                 ),
-                const SizedBox(height: 4),
                 _NavPanelSection(strings.feature('Huvudmeny')),
                 for (final path in _drawerMainOrder)
                   _NavPanelRow(
