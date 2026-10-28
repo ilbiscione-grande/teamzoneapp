@@ -114,6 +114,7 @@ part '../features/billing/billing_surface.dart';
 part '../features/board/board_surface.dart';
 part '../features/calendar/calendar_surface.dart';
 part '../features/calendar/calendar_agenda.dart';
+part '../features/calendar/calendar_month.dart';
 part '../features/calendar/event_details_page.dart';
 part '../features/calendar/event_followup.dart';
 part '../features/calendar/event_participants.dart';

@@ -18,8 +18,6 @@ class _CalendarAgendaView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final strings = AppStrings.of(context);
-    final theme = Theme.of(context);
     final day = projection.dayStart;
     final dayEvents = projection.eventsOn(day);
     final shown = {for (final event in dayEvents) event.id};
@@ -32,6 +30,39 @@ class _CalendarAgendaView extends StatelessWidget {
       children: [
         _CalendarWeekStrip(projection: projection, onDate: onDate),
         const SizedBox(height: 20),
+        _CalendarDayAndUpcoming(
+          day: day,
+          dayEvents: dayEvents,
+          upcoming: upcoming,
+          onEvent: onEvent,
+        ),
+      ],
+    );
+  }
+}
+
+/// The selected day's title and event cards, then the later events: shared
+/// by the agenda and the month view.
+class _CalendarDayAndUpcoming extends StatelessWidget {
+  const _CalendarDayAndUpcoming({
+    required this.day,
+    required this.dayEvents,
+    required this.upcoming,
+    required this.onEvent,
+  });
+
+  final DateTime day;
+  final List<CalendarEventSummary> dayEvents;
+  final List<CalendarEventSummary> upcoming;
+  final ValueChanged<CalendarEventSummary> onEvent;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
         Text(
           _capitalized(MaterialLocalizations.of(context).formatFullDate(day)),
           key: const Key('calendarAgendaDayTitle'),

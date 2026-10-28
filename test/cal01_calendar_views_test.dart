@@ -86,14 +86,14 @@ void main() {
     await tester.tap(find.byKey(const Key('calendarFilterClose')));
     await tester.pumpAndSettle();
     await selectView('Månad');
-    // Today's cell shows an event-count badge instead of cropped titles...
-    expect(find.text('4'), findsWidgets);
-    // ...while the full list for the selected day scrolls independently
-    // below the fixed month grid, so every event is reachable.
+    // The grid marks days with dots instead of cropped titles, and the
+    // selected day's cards scroll under it with the grid, so every event
+    // is reachable.
+    expect(find.byKey(const Key('calendarMonthGrid')), findsOneWidget);
     expect(find.text('Kvällsträning'), findsOneWidget);
     await tester.dragUntilVisible(
       find.text('Extraevent 3'),
-      find.byKey(const Key('calendarSelectedDayPanel')),
+      find.byKey(const Key('calendarMonthView')),
       const Offset(0, -100),
     );
     expect(find.text('Extraevent 1'), findsOneWidget);
@@ -102,25 +102,6 @@ void main() {
     // Planned events carry no status text; only the draft gets an icon.
     expect(find.text('Planerad'), findsNothing);
     expect(find.byKey(const Key('calendarDraftMarker')), findsOneWidget);
-    // The Dag/Månad switch sits in the title row of the list under the grid.
-    await tester.drag(
-      find.byKey(const Key('calendarSelectedDayPanel')),
-      const Offset(0, 600),
-    );
-    await tester.pumpAndSettle();
-    final toggle = find.byKey(const Key('calendarMonthScopeToggle'));
-    expect(
-      find.descendant(
-        of: find.byKey(const Key('calendarSelectedDayPanel')),
-        matching: toggle,
-      ),
-      findsOneWidget,
-    );
-    await tester.tap(find.descendant(of: toggle, matching: find.text('Månad')));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('calendarMonthEventsPanel')), findsOneWidget);
-    await tester.tap(find.descendant(of: toggle, matching: find.text('Dag')));
-    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     await selectView('Vecka');
     // The week grid shows the 7 selected-week days plus one extra "peek"

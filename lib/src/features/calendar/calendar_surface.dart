@@ -279,17 +279,10 @@ class _CalendarModeBody extends StatelessWidget {
                     ),
                     monthEvents,
                   )
-                : Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                        child: _CalendarMonthGrid(
-                          projection: projection,
-                          onDate: onDate,
-                        ),
-                      ),
-                      Expanded(child: monthEvents),
-                    ],
+                : _CalendarMonthView(
+                    projection: projection,
+                    onDate: onDate,
+                    onEvent: onEvent,
                   ),
           CalendarViewMode.week =>
             twoColumns
@@ -550,10 +543,9 @@ class _CalendarDateNavigation extends StatelessWidget {
     );
     final weekStart = calendarAddDays(start, 1 - start.weekday);
     final periodTitle = switch (mode) {
-      CalendarViewMode.month =>
-        compact
-            ? _compactMonthYear(localizations.formatMonthYear(selectedDate))
-            : localizations.formatMonthYear(selectedDate),
+      CalendarViewMode.month => _capitalized(
+        localizations.formatMonthYear(selectedDate),
+      ),
       CalendarViewMode.week =>
         compact
             ? '${localizations.formatShortMonthDay(weekStart)} – ${localizations.formatShortMonthDay(calendarAddDays(weekStart, 6))}'
@@ -572,7 +564,9 @@ class _CalendarDateNavigation extends StatelessWidget {
         _calendarStep(mode, selectedDate, direction);
     return Row(
       children: [
-        if (showWeekNumber && mode != CalendarViewMode.agenda)
+        if (showWeekNumber &&
+            mode != CalendarViewMode.agenda &&
+            mode != CalendarViewMode.month)
           Tooltip(
             message: strings.feature('Veckonummer'),
             child: Padding(
@@ -617,7 +611,11 @@ class _CalendarDateNavigation extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium,
+                style: mode == CalendarViewMode.month
+                    ? Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      )
+                    : Theme.of(context).textTheme.titleMedium,
               ),
             ),
           ),
@@ -687,14 +685,6 @@ class _CalendarSwipe extends StatelessWidget {
 /// ISO-8601 week number (weeks start on Monday, week 1 contains the year's
 /// first Thursday).
 int _isoWeekNumber(DateTime date) => calendarIsoWeek(date);
-
-/// Shortens a localized "month year" string (e.g. "augusti 2026") to its
-/// first three letters (e.g. "aug 2026") to save horizontal space on phones.
-String _compactMonthYear(String monthYear) {
-  final spaceIndex = monthYear.indexOf(' ');
-  if (spaceIndex < 3) return monthYear;
-  return '${monthYear.substring(0, 3)}${monthYear.substring(spaceIndex)}';
-}
 
 /// View mode, filters and display options behind one calendar button.
 /// Picking a view applies it and closes the sheet; the other settings apply
@@ -1626,28 +1616,37 @@ class _CalendarMonthGrid extends StatelessWidget {
     final first = projection.rangeStart;
     final gridStart = calendarAddDays(first, 1 - first.weekday);
     final selected = projection.selectedDate;
-    return LayoutBuilder(
+    // Only as many weeks as the month touches, so no empty sixth row.
+    final weeks =
+        (first.weekday -
+            1 +
+            DateUtils.getDaysInMonth(first.year, first.month) +
+            6) ~/
+        7;
+    final grid = LayoutBuilder(
       builder: (context, constraints) {
         final cellWidth = constraints.maxWidth / 7;
-        final cellHeight = constraints.maxHeight / 6;
+        final cellHeight = constraints.maxHeight / weeks;
         final aspectRatio = fillHeight && cellHeight > 0
             ? cellWidth / cellHeight
             : MediaQuery.sizeOf(context).width >= 600
             ? 1.7
-            : 1.3;
+            : 1.05;
         return GridView.builder(
+          key: const Key('calendarMonthGrid'),
           shrinkWrap: !fillHeight,
+          padding: EdgeInsets.zero,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 7,
             childAspectRatio: aspectRatio,
           ),
-          itemCount: 42,
+          itemCount: weeks * 7,
           itemBuilder: (context, index) {
             final day = calendarAddDays(gridStart, index);
-            return _CalendarGridDayCell(
+            return _CalendarMonthDayCell(
               day: day,
-              items: projection.eventsOn(day),
+              events: projection.eventsOn(day),
               dimmed: day.month != projection.selectedDate.month,
               isSelected: _isSameDay(day, selected),
               onTap: () => onDate(day),
@@ -1655,6 +1654,13 @@ class _CalendarMonthGrid extends StatelessWidget {
           },
         );
       },
+    );
+    return Column(
+      mainAxisSize: fillHeight ? MainAxisSize.max : MainAxisSize.min,
+      children: [
+        _CalendarWeekdayHeader(weekStart: gridStart),
+        if (fillHeight) Expanded(child: grid) else grid,
+      ],
     );
   }
 }
