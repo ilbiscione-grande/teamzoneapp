@@ -2283,6 +2283,7 @@ class AppStrings {
     'Byt månad eller justera filtren.':
         'Change the month or adjust the filters.',
     'Inga event den här dagen.': 'No events on this day.',
+    'Inga aktiviteter denna dag.': 'No activities this day.',
     'Heldag': 'All day',
     'Start': 'Start',
     'Slut': 'End',

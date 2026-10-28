@@ -242,7 +242,6 @@ class _CalendarModeBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final strings = AppStrings.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final twoColumns = constraints.maxWidth >= AppBreakpoints.tablet;
@@ -339,17 +338,10 @@ class _CalendarModeBody extends StatelessWidget {
                     onEvent: onEvent,
                     showQuarterHours: showQuarterHourMarks,
                   ),
-          CalendarViewMode.agenda => SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: projection.visibleEvents.isEmpty
-                ? _StateCard(
-                    icon: Icons.event_busy,
-                    title: strings.feature('Inga event i vald vy'),
-                    message: strings.feature(
-                      'Byt datum eller justera filtren.',
-                    ),
-                  )
-                : _CalendarAgenda(projection: projection, onEvent: onEvent),
+          CalendarViewMode.agenda => _CalendarAgendaView(
+            projection: projection,
+            onDate: onDate,
+            onEvent: onEvent,
           ),
         };
       },
@@ -566,19 +558,21 @@ class _CalendarDateNavigation extends StatelessWidget {
         compact
             ? '${localizations.formatShortMonthDay(weekStart)} – ${localizations.formatShortMonthDay(calendarAddDays(weekStart, 6))}'
             : '${localizations.formatMediumDate(weekStart)} – ${localizations.formatMediumDate(calendarAddDays(weekStart, 6))}',
-      CalendarViewMode.agenda || CalendarViewMode.day =>
+      // The agenda's week strip shows the days: the week and month here.
+      CalendarViewMode.agenda =>
+        'v.${_isoWeekNumber(selectedDate)} · '
+            '${_capitalized(localizations.formatMonthYear(selectedDate))}',
+      CalendarViewMode.day =>
         compact
             ? localizations.formatMediumDate(selectedDate)
             : localizations.formatFullDate(selectedDate),
     };
-    final title = mode == CalendarViewMode.agenda
-        ? strings.calendarFrom(periodTitle)
-        : periodTitle;
+    final title = periodTitle;
     DateTime move(int direction) =>
         _calendarStep(mode, selectedDate, direction);
     return Row(
       children: [
-        if (showWeekNumber)
+        if (showWeekNumber && mode != CalendarViewMode.agenda)
           Tooltip(
             message: strings.feature('Veckonummer'),
             child: Padding(
@@ -654,8 +648,8 @@ class _CalendarDateNavigation extends StatelessWidget {
 DateTime _calendarStep(CalendarViewMode mode, DateTime date, int direction) =>
     switch (mode) {
       CalendarViewMode.month => DateTime(date.year, date.month + direction, 1),
-      CalendarViewMode.week => calendarAddDays(date, 7 * direction),
-      CalendarViewMode.agenda ||
+      CalendarViewMode.week ||
+      CalendarViewMode.agenda => calendarAddDays(date, 7 * direction),
       CalendarViewMode.day => calendarAddDays(date, direction),
     };
 
