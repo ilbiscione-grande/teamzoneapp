@@ -40,6 +40,8 @@ export type BookingStatus = "pending" | "confirmed" | "declined" | "cancelled";
 
 export type Booking = {
   id: string;
+  revision: number;
+  revisions: Record<string, number>;
   resource_id: string;
   resource_name: string;
   starts_at: string;
@@ -127,6 +129,9 @@ export const statusLabels: Record<BookingStatus, string> = {
 
 /** The API's error codes as sentences; anything else is a general failure. */
 const errorMessages: Record<string, string> = {
+  stale_revision: "Bokningen har ändrats. Ladda om bokningarna och kontrollera dem igen.",
+  revision_required: "Ladda om bokningarna innan du fortsätter.",
+  idempotency_conflict: "Förfrågan har ändrats. Ladda om och försök igen.",
   resource_busy: "Resursen är redan bokad den tiden. Välj en annan tid eller resurs.",
   in_the_past: "Tiden har redan passerat.",
   invalid_time: "Sluttiden behöver vara efter starttiden, och en bokning får vara högst 31 dagar.",

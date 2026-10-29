@@ -10,7 +10,7 @@ export type Rect = { x: number; y: number; width: number; height: number };
 export const MARGIN = 4;
 
 /** How much is shown round the lines: more where stands or a fence are drawn round the pitch. */
-export const marginFor = (surroundings: Surroundings | undefined) => (surroundings === "arena" ? 11 : surroundings === "training" ? 7 : MARGIN);
+export const marginFor = (surroundings: Surroundings | undefined) => (surroundings === "arena" ? 14 : surroundings === "training" ? 7 : MARGIN);
 
 export function viewRect(view: PitchView, margin = MARGIN): Rect {
   const half = PITCH_LENGTH / 2;

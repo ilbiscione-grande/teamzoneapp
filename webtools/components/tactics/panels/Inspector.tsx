@@ -2,9 +2,10 @@
 
 // Properties of what is selected: one object's own fields, or what several
 // have in common. Nothing selected shows the board's settings.
-import { kindName, newId, objectLabel } from "../../../lib/tactics/document.ts";
+import { kindName, newId, objectLabel, updateBoard } from "../../../lib/tactics/document.ts";
 import type { BallFlight, Board, TacticsObject } from "../../../lib/tactics/model.ts";
-import { effectsOf } from "../../../lib/tactics/timeline.ts";
+import { effectsOf, standingFacing } from "../../../lib/tactics/timeline.ts";
+import { facings, facingToRotation, normalAngle } from "../../../lib/tactics/facing.ts";
 import { effects } from "./effects.ts";
 import { activeObjects, useEditor } from "../store.ts";
 import { BoardSettings } from "./BoardSettings.tsx";
@@ -36,6 +37,20 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
             </label>
           </div>
           {item.personId && <p className="tb-hint">Hämtat från laget när spelaren kopplades. Det du skriver här gäller på tavlan.</p>}
+          <div className="tb-field">Blickriktning
+            <div className="tb-facings" role="group" aria-label="Blickriktning">
+              {facings.map(way => (
+                <button key={way.angle} type="button" aria-label={way.label} title={way.label}
+                  aria-pressed={Math.round(normalAngle(standingFacing(item))) === way.angle}
+                  onClick={() => {
+                    // Turning a player shows which way players face on this board.
+                    if (!board.showFacing) useEditor.getState().change(document => updateBoard(document, board.id, current => ({ ...current, showFacing: true })));
+                    patch({ rotation: facingToRotation(way.angle, item.side) });
+                  }}>{way.arrow}</button>
+              ))}
+            </div>
+            <span className="tb-hint">Eller dra i den gula punkten framför spelaren.</span>
+          </div>
           <Swatches label="Egen färg (t.ex. målvakt)" value={item.color} onChange={color => patch({ color })} />
           {item.color && <button type="button" className="tb-link" onClick={() => patch({ color: null })}>Lagets färg</button>}
         </>

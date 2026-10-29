@@ -3,13 +3,15 @@
 // Handles for the selection: a transformer to turn and resize equipment,
 // areas and text with one corner handle (equipment grows around its middle,
 // so the object itself stays easy to see), and for a single line its two ends and a middle point that
-// bends it. Handles are sized for a finger whatever the zoom.
+// bends it; for a single player, when the board shows facing, a handle that
+// turns them. Handles are sized for a finger whatever the zoom.
 import type Konva from "konva";
 import { useEffect, useRef, useState } from "react";
 import { Circle, Group, Transformer } from "react-konva";
 import type { LineObject, Point, TacticsObject } from "../../../lib/tactics/model.ts";
 import { linePoints } from "../objects/LineNode.tsx";
 import { useEditor } from "../store.ts";
+import { FacingHandle } from "./FacingHandle.tsx";
 import { useStage } from "./stage-context.ts";
 
 const TRANSFORMABLE = new Set(["cone", "pole", "mannequin", "goal", "rect", "ellipse", "text"]);
@@ -97,14 +99,17 @@ function LineHandles({ item }: { item: LineObject }) {
   );
 }
 
-export function Selection({ objects, selection, upright }: { objects: TacticsObject[]; selection: string[]; upright: number }) {
+/** facing: the board shows which way players face, so a single selected player gets a handle to turn them. */
+export function Selection({ objects, selection, upright, facing = false }: { objects: TacticsObject[]; selection: string[]; upright: number; facing?: boolean }) {
   const selected = objects.filter(item => selection.includes(item.id) && !item.locked && !item.hidden);
   const transformable = selected.filter(item => TRANSFORMABLE.has(item.type));
   const line = selected.length === 1 && selected[0].type === "line" ? selected[0] : null;
+  const player = facing && selected.length === 1 && selected[0].type === "player" ? selected[0] : null;
   return (
     <>
       {transformable.length > 0 && <Transform items={transformable} upright={upright} />}
       {line && <LineHandles key={line.id + line.points.join(",")} item={line} />}
+      {player && <FacingHandle key={player.id} item={player} />}
     </>
   );
 }

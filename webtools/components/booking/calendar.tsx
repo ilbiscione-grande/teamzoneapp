@@ -6,6 +6,7 @@ import {
   gridPlacement, groupResources, localInstant, matchesFilter, nowFraction, parseFilter, slotAt, statusLabels, weekStart,
   type Booking, type CalendarFilter, type Organization, type Resource,
 } from "../../lib/booking";
+import { bookingCommand, bookingRevisions } from "../../lib/booking-command";
 import { useAccount } from "../account";
 import { BookingForm } from "./booking-form";
 
@@ -338,7 +339,7 @@ function BookingDetails({ booking, onClose, onChanged }: { booking: Booking; onC
     const params = name.endsWith("_series") ? { target_series_id: booking.series_id, ...decision }
       : name.endsWith("_group") ? { target_group_id: booking.group_id, ...decision }
       : { target_booking_id: booking.id, ...decision };
-    const { error: actError } = await client.schema("api").rpc(name, params);
+    const { error: actError } = await bookingCommand(client, name, params, bookingRevisions(booking, name));
     setBusy(false);
     if (actError) { setError(bookingError(actError)); return; }
     onChanged();

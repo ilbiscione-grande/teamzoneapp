@@ -254,9 +254,10 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
 .tb-folder-share { display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--wt-line); }
 
 /* 3D: the pitch tilted as if seen from the stand, for watching and playing. */
-.tb-stage[data-tilt="true"] { perspective: 1300px; background: radial-gradient(ellipse at 50% 0%, #1e293b, #070b11 70%); }
-.tb-stage .konvajs-content { transition: transform .45s ease; transform-origin: 50% 60%; }
-.tb-stage[data-tilt="true"] .konvajs-content { transform: rotateX(40deg) scale(.92); }
+/* The sky above the stand; the tilt itself comes from lib/tactics/projection.ts. */
+.tb-stage[data-tilt="true"] { background: linear-gradient(#0b1424 0%, #1e3a5f 38%, #0b1220 100%); }
+.tb-ground { position: absolute; inset: 0; }
+.tb-figures { position: absolute; inset: 0; pointer-events: none; }
 .tb-mini-button[aria-pressed="true"] { background: var(--wt-accent); color: var(--wt-accent-ink); border-color: var(--wt-accent); }
 
 /* The project's logo under Tavlan. */
@@ -264,3 +265,8 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
 .tb-branding-row { display: flex; align-items: center; gap: 8px; }
 .tb-branding-logo { width: 40px; height: 40px; object-fit: contain; border: 1px solid var(--wt-line); border-radius: 6px; background: white; }
 .tb-branding-row .tb-panel-select { flex: 1; min-width: 0; }
+
+/* A player's way to face: eight arrows. */
+.tb-facings { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 3px; margin-top: 4px; }
+.tb-facings button { min-height: 32px; border: 1px solid var(--wt-line); border-radius: 6px; background: white; color: var(--wt-text); font: inherit; font-size: 1rem; cursor: pointer; }
+.tb-facings button[aria-pressed="true"] { border-color: var(--wt-brand); background: #f0f9e8; }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { bookingError, bookingSpan, kindLabels, statusLabels, type Booking, type Organization } from "../../lib/booking";
+import { bookingCommand, bookingRevisions } from "../../lib/booking-command";
 import { useAccount } from "../account";
 import { BookingCalendar } from "./calendar";
 import { ResourcesAdmin, SettingsAdmin } from "./admin";
@@ -77,11 +78,11 @@ function BookingRow({ booking, onChanged, showResource = false, showDate = false
     if (!client) return;
     if (name === "cancel_booking" && !window.confirm("Avboka den här bokningen?")) return;
     const { error: actError } = name === "decide_booking" && series
-      ? await client.schema("api").rpc("decide_booking_series", { target_series_id: booking.series_id, approve })
+      ? await bookingCommand(client, "decide_booking_series", { target_series_id: booking.series_id, approve }, bookingRevisions(booking, "decide_booking_series"))
       : name === "decide_booking" && group
-      ? await client.schema("api").rpc("decide_booking_group", { target_group_id: booking.group_id, approve })
-      : await client.schema("api").rpc(name, name === "cancel_booking"
-        ? { target_booking_id: booking.id } : { target_booking_id: booking.id, approve });
+      ? await bookingCommand(client, "decide_booking_group", { target_group_id: booking.group_id, approve }, bookingRevisions(booking, "decide_booking_group"))
+      : await bookingCommand(client, name, name === "cancel_booking"
+        ? { target_booking_id: booking.id } : { target_booking_id: booking.id, approve }, bookingRevisions(booking, name));
     if (actError) { setError(bookingError(actError)); return; }
     onChanged();
   };

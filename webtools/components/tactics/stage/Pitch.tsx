@@ -38,6 +38,13 @@ function Ends({ line }: { line: string }) {
             <Rect x={left ? 0 : L - BOX_DEPTH} y={top} width={BOX_DEPTH} height={BOX_WIDTH} stroke={line} strokeWidth={STROKE} />
             <Rect x={left ? 0 : L - SIX_DEPTH} y={sixTop} width={SIX_DEPTH} height={SIX_WIDTH} stroke={line} strokeWidth={STROKE} />
             <Rect x={left ? -2 : L} y={goalTop} width={2} height={GOAL_WIDTH} stroke={line} strokeWidth={STROKE} fill="rgba(255,255,255,0.12)" />
+            {/* The net: a mesh across the goal behind the line. */}
+            {[0.5, 1, 1.5].map(dx => (
+              <Line key={`d${dx}`} points={[left ? -dx : L + dx, goalTop, left ? -dx : L + dx, goalTop + GOAL_WIDTH]} stroke={line} strokeWidth={0.04} opacity={0.6} />
+            ))}
+            {Array.from({ length: 7 }, (_, i) => goalTop + (GOAL_WIDTH * (i + 1)) / 8).map(y => (
+              <Line key={`n${y}`} points={[left ? -2 : L, y, left ? 0 : L + 2, y]} stroke={line} strokeWidth={0.04} opacity={0.6} />
+            ))}
             <Circle x={x + inward * SPOT} y={W / 2} radius={0.22} fill={line} />
             <Arc x={x + inward * SPOT} y={W / 2} innerRadius={CIRCLE} outerRadius={CIRCLE} angle={arcAngle * 2}
               rotation={left ? -arcAngle : 180 - arcAngle} stroke={line} strokeWidth={STROKE} />
@@ -79,18 +86,21 @@ function Pattern({ style, look }: { style: PitchStyle; look: ThemeLook }) {
   );
 }
 
-export function Pitch({ view, overlay, style, surroundings, branding, upright = 0 }: {
-  view: PitchView; overlay: PitchOverlay; style?: Partial<PitchStyle>; surroundings?: Kind; branding?: Branding; upright?: number;
+/** tilted: 3D, where the surroundings stand up on a stage of their own and the ground ends at the stands. */
+export function Pitch({ view, overlay, style, surroundings, branding, upright = 0, tilted = false }: {
+  view: PitchView; overlay: PitchOverlay; style?: Partial<PitchStyle>; surroundings?: Kind; branding?: Branding; upright?: number; tilted?: boolean;
 }) {
   const whole = styleOf(style);
   const look = themes[whole.theme];
   // Far beyond the frame whatever the zoom, so a press anywhere off the pitch still pans.
-  const ground = { x: -200, y: -200, width: L + 400, height: W + 400 };
+  // Tilted, it ends at the foot of the stands so the sky shows beyond.
+  const reach = tilted ? (surroundings === "arena" ? 5 : 8) : 200;
+  const ground = { x: -reach, y: -reach, width: L + reach * 2, height: W + reach * 2 };
   return (
     <Group>
       {/* The surface catches taps and drags on the empty pitch. */}
       <Rect name="grass" {...ground} fill={look.ground} />
-      <Surroundings kind={surroundings} />
+      {!tilted && <Surroundings kind={surroundings} />}
       <Pattern style={whole} look={look} />
       <PitchLogo branding={branding} upright={upright} />
       {view !== "empty" && (

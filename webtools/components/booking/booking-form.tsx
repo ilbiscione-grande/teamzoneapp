@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { addDays, bookingError, categoryLabels, dateKey, eventOptionLabel, groupResources, isoWeekday, localInstant, timeOf, weekdayLabels, type Organization, type Resource, type SeriesPlan, type TeamEvent } from "../../lib/booking";
+import { bookingCommand } from "../../lib/booking-command";
 import { useAccount } from "../account";
 
 /** Book a resource: time, a title and, with TeamZone, a team and activity. */
@@ -112,7 +113,7 @@ export function BookingForm({ org, resource: given, day, startTime = "18:00", en
     if (new Date(endsAt) <= new Date(startsAt)) endsAt = new Date(new Date(endsAt).getTime() + 86400e3).toISOString();
     setBusy(true);
     setError("");
-    const { data, error: bookError } = await client.schema("api").rpc("create_booking", {
+    const { data, error: bookError } = await bookingCommand(client, "create_booking", {
       target_resource_id: resource.id,
       booking_starts_at: startsAt,
       booking_ends_at: endsAt,
@@ -133,7 +134,7 @@ export function BookingForm({ org, resource: given, day, startTime = "18:00", en
     if (new Date(endsAt) <= new Date(startsAt)) endsAt = new Date(new Date(endsAt).getTime() + 86400e3).toISOString();
     setBusy(true);
     setError("");
-    const { data, error: groupError } = await client.schema("api").rpc("create_booking_group", {
+    const { data, error: groupError } = await bookingCommand(client, "create_booking_group", {
       target_resource_ids: selected, booking_starts_at: startsAt, booking_ends_at: endsAt,
       booking_title: title || null, booking_notes: notes || null,
       target_team_id: teamId || null, target_event_id: eventId || null, dry_run: false,
@@ -154,7 +155,7 @@ export function BookingForm({ org, resource: given, day, startTime = "18:00", en
     if (end <= start) { setError("En återkommande bokning slutar samma dag: sluttiden behöver vara efter starttiden."); return; }
     setBusy(true);
     setError("");
-    const { data, error: seriesError } = await client.schema("api").rpc("create_booking_series", {
+    const { data, error: seriesError } = await bookingCommand(client, "create_booking_series", {
       target_resource_id: resource.id,
       series_weekdays: [...weekdays].sort(),
       series_interval: interval,

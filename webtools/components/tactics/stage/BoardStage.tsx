@@ -22,6 +22,8 @@ import { Pitch } from "./Pitch.tsx";
 import { Selection } from "./Selection.tsx";
 import { Marks } from "./Marks.tsx";
 import { SpotlightLayer } from "./SpotlightLayer.tsx";
+import { Figures3D, STANDING } from "./Figures3D.tsx";
+import { projector, TILT, tiltOrigin, tiltTransform } from "../../../lib/tactics/projection.ts";
 import { pitchPointer, StageContext, stageHolder, type StageShared } from "./stage-context.ts";
 import { useBand } from "./use-band.ts";
 import { isDrawTool, isPlaceTool, useDrawing } from "./use-drawing.ts";
@@ -102,16 +104,19 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
   const sight = camera ? blendViewport(view.viewport, zoomTo(camera.at, fit, size.width, size.height, camera.scale), camera.amount) : view.viewport;
   const zoomed = { x: sight.x, y: sight.y, scaleX: sight.scale, scaleY: sight.scale };
   const spotlight = playing || between ? spotlightAt(board.frames, playhead, shown) : null;
+  // 3D: the ground keeps what lies on it; what stands up is drawn upright over it.
+  const onGround = tilt ? visible.filter(item => !STANDING.has(item.type)) : visible;
   const tapGrass = (target: Konva.Node) => {
     if (isPlaceTool(tool)) drawing.place();
     else if (tool === "select" && target.name() === "grass") useEditor.getState().select([]);
   };
 
   return (
-    <div ref={frame} className="tb-stage" data-tool={tool} data-tilt={tilt}>
+    <div ref={frame} className="tb-stage" data-tool={tool} data-tilt={tilt} style={tilt ? { perspective: `${TILT.perspective}px` } : undefined}>
       {/* Konva fails drawing into a board without width or height (a phone with the panel open). */}
       {size.width > 0 && size.height > 0 && (
         <StageContext.Provider value={shared}>
+          <div className="tb-ground" style={tilt ? { transform: tiltTransform, transformOrigin: tiltOrigin } : undefined}>
           <Stage ref={node => { stageHolder.current = node; }} width={size.width} height={size.height}
             onWheel={event => {
               event.evt.preventDefault();
@@ -143,7 +148,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
                 onDragMove={event => view.panMove({ x: event.target.x(), y: event.target.y() })}
                 onDragEnd={view.panEnd}>
                 <Group {...fitted}>
-                  <Pitch view={board.view} overlay={board.overlay} style={board.pitch} surroundings={board.surroundings} branding={branding} upright={upright} />
+                  <Pitch view={board.view} overlay={board.overlay} style={board.pitch} surroundings={board.surroundings} branding={branding} upright={upright} tilted={tilt} />
                 </Group>
               </Group>
             </Layer>
@@ -152,22 +157,24 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
                 <Group ref={content} {...fitted}>
                   {previous && <Ghosts previous={previous} current={objects} selection={selection} editable={canEdit} ink={lookOf(board.pitch).ink} />}
                   <Marks objects={visible} board={board} />
-                  {visible.map(item => (
+                  {onGround.map(item => (
                     <ObjectNode key={item.id} item={item} board={board} selected={selection.includes(item.id)} upright={upright} holding={holders.has(item.id)} />
                   ))}
-                  {fullEdit && <Selection objects={objects} selection={selection} upright={upright} />}
+                  {fullEdit && <Selection objects={objects} selection={selection} upright={upright} facing={board.showFacing ?? false} />}
                   {drawing.draft && <DraftNode draft={drawing.draft} ink={lookOf(board.pitch).ink} />}
                   {extra}
                 </Group>
               </Group>
             </Layer>
-            <SpotlightLayer spotlight={spotlight} zoomed={zoomed} fitted={fitted} />
+            {!tilt && <SpotlightLayer spotlight={spotlight} zoomed={zoomed} fitted={fitted} />}
             {fullEdit && (
               <Layer listening={false}>
                 <Rect ref={band.band} visible={false} fill="rgba(250,204,21,0.12)" stroke="#facc15" strokeWidth={1.5} dash={[6, 4]} />
               </Layer>
             )}
           </Stage>
+          </div>
+          {tilt && <Figures3D objects={visible} board={board} project={projector(fit, sight, size.width, size.height)} spotlight={spotlight} width={size.width} height={size.height} />}
         </StageContext.Provider>
       )}
       {fullEdit && (
