@@ -439,6 +439,15 @@ void main() {
         contactSource: 'club',
       );
     await _openMember(tester, profile);
+    // The contact rows sit below the heading card and the figures.
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('person-contact')),
+      200,
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('person-profile-overview')),
+        matching: find.byType(Scrollable),
+      ),
+    );
     expect(find.byKey(const ValueKey('person-contact')), findsOneWidget);
     expect(find.text('forälder@mail.se'), findsOneWidget);
     expect(find.text('Ifyllt av klubben.'), findsOneWidget);
@@ -544,7 +553,7 @@ void main() {
         ),
       );
     await _openMember(tester, profile);
-    expect(find.widgetWithText(Tab, 'Medlemsinfo'), findsOneWidget);
+    expect(find.widgetWithText(Tab, 'Översikt'), findsOneWidget);
     expect(find.widgetWithText(Tab, 'Statistik'), findsOneWidget);
     // Settings are only on your own profile.
     expect(find.widgetWithText(Tab, 'Inställningar'), findsNothing);

@@ -57,7 +57,6 @@ Future<bool> _openMyProfileEditor(
 /// Round picture with initials as fallback.
 class _ProfileAvatar extends StatelessWidget {
   const _ProfileAvatar({
-    super.key,
     required this.name,
     this.url,
     this.bytes,

@@ -4130,8 +4130,12 @@ class _RosterPersonDetailsView extends StatelessWidget {
     this.contact,
     this.onOpenMemberCard,
     this.guardians,
+    this.stats,
   });
   final Future<RosterPersonDetails> future;
+
+  /// The person's figures for the overview's grid; null when not shown.
+  final Future<PersonStatistics>? stats;
 
   /// UX: the player's guardians and who a message reaches.
   final Future<PersonGuardians>? guardians;
@@ -4184,109 +4188,84 @@ class _RosterPersonDetailsView extends StatelessWidget {
         );
       }
       final person = snapshot.data!;
+      // Your own card, and for those who manage the team; teammates do not
+      // see each other's.
+      final memberCard =
+          onOpenMemberCard != null && (person.isSelf || canManage)
+          ? _ProfileActionButton(
+              key: const ValueKey('open-member-card'),
+              icon: Icons.badge_outlined,
+              label: strings.feature('Medlemskort'),
+              onPressed: () => onOpenMemberCard!(person),
+            )
+          : null;
       return ListView(
-        padding: const EdgeInsets.all(24),
+        key: const ValueKey('person-profile-overview'),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
-          Center(
-            child: FutureBuilder<(PersonContact, String?)>(
-              future: contact,
-              builder: (context, snapshot) => _ProfileAvatar(
-                key: const ValueKey('person-profile-avatar'),
-                name: person.displayName,
-                url: snapshot.data?.$2,
-                radius: 34,
-              ),
-            ),
+          _PersonProfileHero(
+            person: person,
+            clubName: contextValue.clubName,
+            roles: roles,
+            contact: contact,
           ),
-          const SizedBox(height: 12),
-          Text(
-            person.isSelf
-                ? '${person.displayName} (${strings.feature('du')})'
-                : person.displayName,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          FutureBuilder<TeamRoles>(
-            future: roles,
-            builder: (context, rolesSnapshot) {
-              final held = rolesSnapshot.data?.rolesOf(person.id) ?? const [];
-              if (held.isEmpty) return const SizedBox.shrink();
+          FutureBuilder<PersonGuardians>(
+            future: person.isSelf ? null : guardians,
+            builder: (context, snapshot) {
+              final to = snapshot.data?.messageProfileIds ?? const <String>[];
+              final message = to.isEmpty
+                  ? null
+                  : _ProfileActionButton(
+                      key: const ValueKey('person-message'),
+                      icon: Icons.mail_outline,
+                      label: strings.feature('Meddelande'),
+                      onPressed: () => GoRouter.of(
+                        context,
+                      ).go(ProductRouteContract.inboxCompose(to: to)),
+                    );
+              final buttons = [?memberCard, ?message];
+              if (buttons.isEmpty) return const SizedBox.shrink();
               return Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  held.map((role) => _roleLabel(strings, role)).join(' · '),
-                  key: const ValueKey('person-profile-roles'),
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                padding: const EdgeInsets.only(top: 12),
+                child: Row(
+                  children: [
+                    for (final (index, button) in buttons.indexed) ...[
+                      if (index > 0) const SizedBox(width: 8),
+                      Expanded(child: button),
+                    ],
+                  ],
                 ),
               );
             },
           ),
-          // Your own card, and for those who manage the team; teammates
-          // do not see each other's.
-          if (onOpenMemberCard != null && (person.isSelf || canManage)) ...[
-            const SizedBox(height: 12),
-            Center(
-              child: FilledButton.tonalIcon(
-                key: const ValueKey('open-member-card'),
-                onPressed: () => onOpenMemberCard!(person),
-                icon: const Icon(Icons.badge_outlined),
-                label: Text(strings.feature('Visa medlemskort')),
-              ),
+          if (stats != null && person.homeMember)
+            FutureBuilder<PersonStatistics>(
+              future: stats,
+              builder: (context, snapshot) {
+                final value = snapshot.data;
+                if (value == null) return const SizedBox.shrink();
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _ProfileSectionHeading(
+                      title: strings.feature('Statistik'),
+                      action: strings.feature('Alla siffror'),
+                      onAction: () =>
+                          DefaultTabController.maybeOf(context)?.animateTo(1),
+                    ),
+                    _ProfileStatGrid(stats: value),
+                  ],
+                );
+              },
             ),
-          ],
-          const SizedBox(height: 20),
-          ListTile(
-            leading: const Icon(Icons.groups_outlined),
-            title: Text(strings.feature('Lag')),
-            subtitle: Text(person.teamName),
-          ),
-          if (person.ageClass != null)
-            ListTile(
-              leading: const Icon(Icons.badge_outlined),
-              title: Text(strings.feature('Födelseår')),
-              subtitle: Text(person.ageClass!),
+          _ProfileSectionHeading(title: strings.feature('Medlemsinfo')),
+          Card(
+            margin: EdgeInsets.zero,
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: _infoTiles(context, strings, person),
             ),
-          FutureBuilder<(PersonContact, String?)>(
-            future: contact,
-            builder: (context, snapshot) {
-              final value = snapshot.data?.$1;
-              if (value == null) return const SizedBox.shrink();
-              return _PersonContactTiles(contact: value, isSelf: person.isSelf);
-            },
-          ),
-          _PersonRoleTile(
-            contextValue: contextValue,
-            roster: roster,
-            person: person,
-            roles: roles,
-            onChanged: (held) => onRolesChanged(person, held),
-            interactive: !person.isSelf,
-          ),
-          _PersonTeamDetailsTile(
-            roster: roster,
-            clubId: contextValue.clubId,
-            teamId: person.teamId,
-            personId: person.id,
-            roles: roles,
-            interactive: !person.isSelf,
-          ),
-          _PersonPermissionsTile(
-            contextValue: contextValue,
-            roster: roster,
-            personId: person.id,
-            roles: roles,
-          ),
-          if (person.birthDate != null)
-            ListTile(
-              leading: const Icon(Icons.cake_outlined),
-              title: Text(strings.feature('Födelsedatum')),
-              subtitle: Text(_formatBirthDate(person.birthDate!)),
-            ),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: Text(strings.feature('Status')),
-            subtitle: Text(strings.domainValue(person.assignmentState)),
           ),
           if (!person.isSelf && guardians != null)
             FutureBuilder<PersonGuardians>(
@@ -4298,10 +4277,69 @@ class _RosterPersonDetailsView extends StatelessWidget {
       );
     },
   );
+
+  List<Widget> _infoTiles(
+    BuildContext context,
+    AppStrings strings,
+    RosterPersonDetails person,
+  ) => [
+    ListTile(
+      leading: const Icon(Icons.groups_outlined),
+      title: Text(strings.feature('Lag')),
+      subtitle: Text(person.teamName),
+    ),
+    if (person.ageClass != null)
+      ListTile(
+        leading: const Icon(Icons.badge_outlined),
+        title: Text(strings.feature('Födelseår')),
+        subtitle: Text(person.ageClass!),
+      ),
+    FutureBuilder<(PersonContact, String?)>(
+      future: contact,
+      builder: (context, snapshot) {
+        final value = snapshot.data?.$1;
+        if (value == null) return const SizedBox.shrink();
+        return _PersonContactTiles(contact: value, isSelf: person.isSelf);
+      },
+    ),
+    _PersonRoleTile(
+      contextValue: contextValue,
+      roster: roster,
+      person: person,
+      roles: roles,
+      onChanged: (held) => onRolesChanged(person, held),
+      interactive: !person.isSelf,
+    ),
+    _PersonTeamDetailsTile(
+      roster: roster,
+      clubId: contextValue.clubId,
+      teamId: person.teamId,
+      personId: person.id,
+      roles: roles,
+      interactive: !person.isSelf,
+    ),
+    _PersonPermissionsTile(
+      contextValue: contextValue,
+      roster: roster,
+      personId: person.id,
+      roles: roles,
+    ),
+    if (person.birthDate != null)
+      ListTile(
+        leading: const Icon(Icons.cake_outlined),
+        title: Text(strings.feature('Födelsedatum')),
+        subtitle: Text(_formatBirthDate(person.birthDate!)),
+      ),
+    ListTile(
+      leading: const Icon(Icons.info_outline),
+      title: Text(strings.feature('Status')),
+      subtitle: Text(strings.domainValue(person.assignmentState)),
+    ),
+  ];
 }
 
-/// The player's guardians with what contact may be shown, and a message to
-/// the player and the guardians at once.
+/// The player's guardians with what contact may be shown. The message
+/// button above reaches the player and the guardians at once.
 class _PersonGuardiansSection extends StatelessWidget {
   const _PersonGuardiansSection({required this.value});
   final PersonGuardians? value;
@@ -4309,72 +4347,61 @@ class _PersonGuardiansSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final value = this.value;
-    if (value == null) return const SizedBox.shrink();
+    if (value == null || value.guardians.isEmpty) {
+      return const SizedBox.shrink();
+    }
     final strings = AppStrings.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (value.messageProfileIds.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: OutlinedButton.icon(
-              key: const ValueKey('person-message'),
-              onPressed: () => GoRouter.of(context).go(
-                ProductRouteContract.inboxCompose(to: value.messageProfileIds),
-              ),
-              icon: const Icon(Icons.edit_outlined),
-              label: Text(
-                strings.feature(
-                  value.guardians.isEmpty
-                      ? 'Skicka meddelande'
-                      : 'Skicka meddelande till spelare och vårdnadshavare',
+        _ProfileSectionHeading(title: strings.feature('Vårdnadshavare')),
+        Card(
+          margin: EdgeInsets.zero,
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final guardian in value.guardians)
+                ListTile(
+                  key: ValueKey('person-guardian-${guardian.personId}'),
+                  leading: const Icon(Icons.family_restroom_outlined),
+                  title: Text(guardian.name),
+                  subtitle: Text(
+                    [
+                      if (guardian.canSeeContact && guardian.phone != null)
+                        guardian.phone!,
+                      if (guardian.canSeeContact &&
+                          guardian.contactEmail != null)
+                        guardian.contactEmail!,
+                      if (!guardian.hasAccount)
+                        strings.feature('Inget konto i TeamZone'),
+                    ].join(' · '),
+                  ),
+                  trailing: Wrap(
+                    children: [
+                      if (guardian.canSeeContact && guardian.phone != null)
+                        IconButton(
+                          tooltip: strings.feature('Ring'),
+                          onPressed: () => launchUrl(
+                            Uri(scheme: 'tel', path: guardian.phone),
+                          ),
+                          icon: const Icon(Icons.phone_outlined),
+                        ),
+                      if (guardian.canSeeContact &&
+                          guardian.contactEmail != null)
+                        IconButton(
+                          tooltip: strings.feature('Skicka e-post'),
+                          onPressed: () => launchUrl(
+                            Uri(scheme: 'mailto', path: guardian.contactEmail),
+                          ),
+                          icon: const Icon(Icons.mail_outline),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
+            ],
           ),
-        if (value.guardians.isNotEmpty) ...[
-          const Divider(height: 24),
-          Text(
-            strings.feature('Vårdnadshavare'),
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          for (final guardian in value.guardians)
-            ListTile(
-              key: ValueKey('person-guardian-${guardian.personId}'),
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.family_restroom_outlined),
-              title: Text(guardian.name),
-              subtitle: Text(
-                [
-                  if (guardian.canSeeContact && guardian.phone != null)
-                    guardian.phone!,
-                  if (guardian.canSeeContact && guardian.contactEmail != null)
-                    guardian.contactEmail!,
-                  if (!guardian.hasAccount)
-                    strings.feature('Inget konto i TeamZone'),
-                ].join(' · '),
-              ),
-              trailing: Wrap(
-                children: [
-                  if (guardian.canSeeContact && guardian.phone != null)
-                    IconButton(
-                      tooltip: strings.feature('Ring'),
-                      onPressed: () =>
-                          launchUrl(Uri(scheme: 'tel', path: guardian.phone)),
-                      icon: const Icon(Icons.phone_outlined),
-                    ),
-                  if (guardian.canSeeContact && guardian.contactEmail != null)
-                    IconButton(
-                      tooltip: strings.feature('Skicka e-post'),
-                      onPressed: () => launchUrl(
-                        Uri(scheme: 'mailto', path: guardian.contactEmail),
-                      ),
-                      icon: const Icon(Icons.mail_outline),
-                    ),
-                ],
-              ),
-            ),
-        ],
+        ),
       ],
     );
   }
@@ -4413,8 +4440,21 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
   late Future<RosterPersonDetails> _load = _reload();
   late Future<(PersonContact, String?)> _contact = _loadContact();
   late final Future<PersonGuardians> _guardians = _loadGuardians();
+  // Loaded once the person is known, for both the overview and the tab.
+  Future<PersonStatistics>? _stats;
   // Bumped on every reload so the profile tiles pick up the new roles.
   int _generation = 0;
+
+  Future<PersonStatistics> _statsFor(RosterPersonDetails person) => _stats ??=
+      widget.profileServices
+          .getPersonStatistics(
+            clubId: widget.contextValue.clubId,
+            teamId: person.teamId,
+            personId: person.id,
+          )
+          .timeout(const Duration(seconds: 15))
+        // The views show the failure; it may settle before they listen.
+        ..ignore();
 
   /// Guardians; optional, so failures just hide them.
   Future<PersonGuardians> _loadGuardians() async {
@@ -4512,6 +4552,7 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
     _roles = _loadRoles();
     _load = _reload();
     _contact = _loadContact();
+    _stats = null;
     _generation++;
   });
 
@@ -4582,7 +4623,29 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
           onPressed: widget.onBack,
           icon: const Icon(Icons.arrow_back),
         ),
-        title: Text(strings.feature('Medlemsuppgifter')),
+        // A player's or a leader's profile once the roles are known.
+        title: FutureBuilder<RosterPersonDetails>(
+          future: allowed ? _load : null,
+          builder: (context, person) => FutureBuilder<TeamRoles>(
+            future: allowed ? _roles : null,
+            builder: (context, roles) {
+              final id = person.data?.id;
+              final held = id == null
+                  ? const <String>[]
+                  : roles.data?.rolesOf(id) ?? const <String>[];
+              return Text(
+                strings.feature(
+                  held.contains('player')
+                      ? 'Spelarprofil'
+                      : held.any(_isLeaderRole)
+                      ? 'Ledarprofil'
+                      : 'Profil',
+                ),
+                key: const ValueKey('person-profile-title'),
+              );
+            },
+          ),
+        ),
         actions: [
           if (allowed)
             FutureBuilder<RosterPersonDetails>(
@@ -4635,9 +4698,16 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
           ? FutureBuilder<RosterPersonDetails>(
               future: _load,
               builder: (context, snapshot) {
+                final person = snapshot.data;
+                // Statistics for yourself and those who manage the team.
+                // Own settings live in the app-bar edit flow.
+                final showStats =
+                    person != null && (person.isSelf || canManage);
+                final stats = showStats ? _statsFor(person) : null;
                 final view = _RosterPersonDetailsView(
                   key: ValueKey(_generation),
                   future: _load,
+                  stats: stats,
                   roles: _roles,
                   contact: _contact,
                   guardians: _guardians,
@@ -4653,33 +4723,44 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
                     personId: person.id,
                   ),
                 );
-                final person = snapshot.data;
-                if (person == null) return view;
-                // Statistics for yourself and those who manage the team.
-                // Own settings live in the app-bar edit flow.
-                final showStats = person.isSelf || canManage;
+                if (person == null || !showStats) return view;
                 final tabs = <(String, Widget)>[
-                  (strings.feature('Medlemsinfo'), view),
-                  if (showStats)
-                    (
-                      strings.feature('Statistik'),
-                      _PersonStatisticsView(
-                        key: ValueKey('stats-$_generation'),
-                        profile: widget.profileServices,
-                        clubId: contextValue.clubId,
-                        teamId: person.teamId,
-                        personId: person.id,
-                        homeMember: person.homeMember,
+                  (strings.feature('Översikt'), view),
+                  (
+                    strings.feature('Statistik'),
+                    _PersonStatisticsView(
+                      key: ValueKey('stats-$_generation'),
+                      profile: widget.profileServices,
+                      clubId: contextValue.clubId,
+                      teamId: person.teamId,
+                      personId: person.id,
+                      homeMember: person.homeMember,
+                      initial: stats,
+                      header: _PersonProfileHero(
+                        person: person,
+                        clubName: contextValue.clubName,
+                        roles: _roles,
+                        contact: _contact,
                       ),
                     ),
+                  ),
                 ];
-                if (tabs.length == 1) return view;
+                final palette = AppPalette.of(context);
                 return DefaultTabController(
                   key: ValueKey('profile-tabs-${tabs.length}'),
                   length: tabs.length,
                   child: Column(
                     children: [
-                      TabBar(tabs: [for (final tab in tabs) Tab(text: tab.$1)]),
+                      TabBar(
+                        indicatorSize: TabBarIndicatorSize.label,
+                        indicatorColor: palette.accent,
+                        labelColor: palette.accent,
+                        labelStyle: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                        ),
+                        unselectedLabelColor: palette.muted,
+                        tabs: [for (final tab in tabs) Tab(text: tab.$1)],
+                      ),
                       Expanded(
                         child: TabBarView(
                           children: [for (final tab in tabs) tab.$2],

@@ -53,14 +53,14 @@ void main() {
     expect(find.text('Person 00'), findsNothing);
     await tester.tap(find.text('Tidigare 00'));
     await tester.pumpAndSettle();
-    expect(find.text('Medlemsuppgifter'), findsOneWidget);
+    expect(find.byKey(const ValueKey('person-profile-title')), findsOneWidget);
     // Member info no longer shows the administrative section.
     expect(find.text('Administrativa uppgifter'), findsNothing);
     expect(find.text('Testimport'), findsNothing);
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    expect(find.text('Medlemsuppgifter'), findsNothing);
+    expect(find.byKey(const ValueKey('person-profile-title')), findsNothing);
     expect(find.text('Tidigare 00'), findsOneWidget);
   });
 
@@ -82,8 +82,8 @@ void main() {
     await tester.tap(find.text('Person 00'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Medlemsuppgifter'), findsOneWidget);
-    expect(find.text('Medlemsinfo'), findsOneWidget);
+    expect(find.byKey(const ValueKey('person-profile-title')), findsOneWidget);
+    expect(find.text('Översikt'), findsOneWidget);
     expect(find.text('Administrativa uppgifter'), findsNothing);
     expect(find.text('Välj en person'), findsNothing);
   });

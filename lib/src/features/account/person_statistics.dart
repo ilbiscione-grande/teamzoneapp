@@ -11,6 +11,8 @@ class _PersonStatisticsView extends StatefulWidget {
     required this.teamId,
     required this.personId,
     this.homeMember = true,
+    this.initial,
+    this.header,
   });
   final ProfileServices profile;
   final String clubId, teamId, personId;
@@ -18,12 +20,18 @@ class _PersonStatisticsView extends StatefulWidget {
   /// Players have training and match figures; leaders mostly not.
   final bool homeMember;
 
+  /// Figures already being loaded by the profile; loaded here otherwise.
+  final Future<PersonStatistics>? initial;
+
+  /// The profile's heading, above the figures.
+  final Widget? header;
+
   @override
   State<_PersonStatisticsView> createState() => _PersonStatisticsViewState();
 }
 
 class _PersonStatisticsViewState extends State<_PersonStatisticsView> {
-  late Future<PersonStatistics> _load = _reload();
+  late Future<PersonStatistics> _load = widget.initial ?? _reload();
 
   Future<PersonStatistics> _reload() => widget.profile
       .getPersonStatistics(
@@ -68,13 +76,18 @@ class _PersonStatisticsViewState extends State<_PersonStatisticsView> {
           },
           child: ListView(
             key: const ValueKey('person-statistics'),
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             children: [
+              if (widget.header != null) ...[
+                widget.header!,
+                const SizedBox(height: 4),
+              ],
               _StatSection(
                 title: strings.feature('Träning och match'),
                 icon: Icons.sports_soccer_outlined,
                 tiles: [
                   _StatTile(
+                    icon: Icons.fitness_center_outlined,
                     label: strings.feature('Träningsnärvaro'),
                     value: '${stats.trainingsAttended}/${stats.trainingsTotal}',
                     detail: _withExtra(
@@ -84,6 +97,7 @@ class _PersonStatisticsViewState extends State<_PersonStatisticsView> {
                     ),
                   ),
                   _StatTile(
+                    icon: Icons.sports_soccer_outlined,
                     label: strings.feature('Matcher spelade'),
                     value: '${stats.matchesPlayed}/${stats.matchesTotal}',
                     detail: _withExtra(
@@ -94,14 +108,17 @@ class _PersonStatisticsViewState extends State<_PersonStatisticsView> {
                   ),
                   _StatTile(
                     key: const ValueKey('stat-goals'),
+                    icon: Icons.sports_score_outlined,
                     label: strings.feature('Mål'),
                     value: '${stats.goals}',
                   ),
                   _StatTile(
+                    icon: Icons.handshake_outlined,
                     label: strings.feature('Assist'),
                     value: '${stats.assists}',
                   ),
                   _StatTile(
+                    icon: Icons.style_outlined,
                     label: strings.feature('Kort'),
                     value: '${stats.cards}',
                   ),
@@ -112,10 +129,12 @@ class _PersonStatisticsViewState extends State<_PersonStatisticsView> {
                 icon: Icons.how_to_reg_outlined,
                 tiles: [
                   _StatTile(
+                    icon: Icons.mark_email_unread_outlined,
                     label: strings.feature('Mottagna'),
                     value: '${stats.callupsReceived}',
                   ),
                   _StatTile(
+                    icon: Icons.check_circle_outline,
                     label: strings.feature('Tackat ja'),
                     value: '${stats.callupsAccepted}',
                     detail: _percent(
@@ -124,11 +143,13 @@ class _PersonStatisticsViewState extends State<_PersonStatisticsView> {
                     ),
                   ),
                   _StatTile(
+                    icon: Icons.cancel_outlined,
                     label: strings.feature('Tackat nej'),
                     value: '${stats.callupsDeclined}',
                   ),
                   _StatTile(
                     key: const ValueKey('stat-response-time'),
+                    icon: Icons.schedule,
                     label: strings.feature('Snittid för svar'),
                     value: stats.averageResponseMinutes == null
                         ? '–'
@@ -143,20 +164,24 @@ class _PersonStatisticsViewState extends State<_PersonStatisticsView> {
                   tiles: [
                     _StatTile(
                       key: const ValueKey('stat-streak'),
+                      icon: Icons.local_fire_department_outlined,
                       label: strings.feature('Dagar i rad'),
                       value: '${app.currentStreak}',
                       detail: app.currentStreak > 0 ? '🔥' : null,
                     ),
                     _StatTile(
+                      icon: Icons.emoji_events_outlined,
                       label: strings.feature('Längsta svit'),
                       value: '${app.longestStreak}',
                     ),
                     _StatTile(
+                      icon: Icons.calendar_month_outlined,
                       label: strings.feature('Aktiva dagar (30 d)'),
                       value: '${app.activeDays30}',
                     ),
                     _StatTile(
                       key: const ValueKey('stat-messages'),
+                      icon: Icons.send_outlined,
                       label: strings.feature('Skickade meddelanden'),
                       value: '${app.messagesSent}',
                     ),
@@ -184,6 +209,7 @@ class _PersonStatisticsViewState extends State<_PersonStatisticsView> {
   }
 }
 
+/// A heading and a card with one row per figure.
 class _StatSection extends StatelessWidget {
   const _StatSection({
     required this.title,
@@ -197,93 +223,104 @@ class _StatSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+    final palette = AppPalette.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
+          child: Row(
             children: [
-              Icon(icon, size: 18, color: theme.colorScheme.primary),
+              Icon(icon, size: 18, color: palette.accent),
               const SizedBox(width: 8),
               Text(
                 title,
-                style: theme.textTheme.titleSmall?.copyWith(
+                style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final columns = constraints.maxWidth >= 520 ? 4 : 2;
-              final width =
-                  (constraints.maxWidth - 10 * (columns - 1)) / columns;
-              return Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  for (final tile in tiles) SizedBox(width: width, child: tile),
+        ),
+        Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              children: [
+                for (final (index, tile) in tiles.indexed) ...[
+                  if (index > 0)
+                    Divider(
+                      height: 1,
+                      indent: 48,
+                      color: theme.colorScheme.outlineVariant.withValues(
+                        alpha: .5,
+                      ),
+                    ),
+                  tile,
                 ],
-              );
-            },
+              ],
+            ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
+/// A figure as a row: an icon, the label, an optional detail and the value.
 class _StatTile extends StatelessWidget {
   const _StatTile({
     super.key,
+    required this.icon,
     required this.label,
     required this.value,
     this.detail,
   });
+  final IconData icon;
   final String label, value;
   final String? detail;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.labelMedium,
-            ),
-            const SizedBox(height: 4),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
+    final palette = AppPalette.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: palette.muted),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Flexible(
-                  child: Text(
-                    value,
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyLarge,
+                ),
+                if (detail != null)
+                  Text(
+                    detail!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: palette.muted,
                     ),
                   ),
-                ),
-                if (detail != null) ...[
-                  const SizedBox(width: 6),
-                  Text(detail!, style: theme.textTheme.bodySmall),
-                ],
               ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            value,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }

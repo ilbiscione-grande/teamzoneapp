@@ -798,7 +798,7 @@ void main() {
     expect(find.byKey(const ValueKey('roster-leader-lars')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('roster-leader-lars')));
     await tester.pumpAndSettle();
-    expect(find.text('Medlemsuppgifter'), findsOneWidget);
+    expect(find.byKey(const ValueKey('person-profile-title')), findsOneWidget);
     expect(find.text('Lars Ledare'), findsOneWidget);
     expect(find.byKey(const ValueKey('person-profile-roles')), findsOneWidget);
     // Player-only statistics are not shown for a leader.
@@ -831,7 +831,14 @@ void main() {
     await _openRoster(tester, roster);
     await tester.tap(find.byKey(const ValueKey('roster-leader-mats')));
     await tester.pumpAndSettle();
-    expect(find.text('Lagledare'), findsOneWidget);
+    // The title shows in the heading card and in the details row.
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('person-team-details')),
+        matching: find.text('Lagledare'),
+      ),
+      findsOneWidget,
+    );
     await tester.ensureVisible(
       find.byKey(const ValueKey('person-permissions')),
     );
@@ -854,7 +861,7 @@ void main() {
     await tester.tap(find.text('Ta bort ledarrollen'));
     await tester.pumpAndSettle();
     expect(roster.calls.last, ('mats', 'leader', null));
-    expect(find.text('Medlemsuppgifter'), findsNothing);
+    expect(find.byKey(const ValueKey('person-profile-title')), findsNothing);
     expect(find.byKey(const ValueKey('roster-leader-mats')), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -875,7 +882,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('drawer-own-profile')));
     await tester.pumpAndSettle();
-    expect(find.text('Medlemsuppgifter'), findsOneWidget);
+    expect(find.byKey(const ValueKey('person-profile-title')), findsOneWidget);
     expect(find.text('Thomas Emilson (du)'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
