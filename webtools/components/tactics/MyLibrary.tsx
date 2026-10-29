@@ -5,9 +5,11 @@
 // of the session, the phase of the game, age class and game form). Each
 // project shows with an icon whether something of it is published, and
 // for whom; what is published can be taken back here. Publishing is done
-// in the project, under Tavlan → Publicera.
+// in the project, under Tavlan → Publicera. Your folders show above the
+// projects; each project shows the folders it is in and can be put in others.
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { removalNote, type FolderRef } from "../../lib/tactics/folders.ts";
 import {
   ageClasses, ageClassLabels, gameFormLabels, gameForms, libraryKindLabels, partLabels, phaseLabels,
 } from "../../lib/tactics/library.ts";
@@ -15,12 +17,16 @@ import type { AgeClass, ExercisePart, GameForm, GamePhase, ProjectKind, ProjectS
 import { useAccount } from "../account";
 import { kindLabels } from "./TopBar.tsx";
 import { PublishedIcon } from "./PublishedIcon.tsx";
+import { FolderCards } from "./FolderCards.tsx";
+import { FolderPicker } from "./FolderPicker.tsx";
+import { useFolders } from "./use-folders.ts";
 
 type Published = {
   item_id: string; kind: "exercise" | "plan" | "lesson"; title: string; board_id: string | null; shared_id: string;
   version: number; hidden: boolean; current: boolean; club_id: string | null; club_name: string | null;
 };
-type MyProject = ProjectSummary & { published: Published[] };
+// Folders come with the migration 20261223090000; missing before it.
+type MyProject = ProjectSummary & { published: Published[]; folders?: FolderRef[] };
 type Filters = { text: string; kind: ProjectKind | ""; part: ExercisePart | ""; phase: GamePhase | ""; age: AgeClass | ""; form: GameForm | "" };
 const none: Filters = { text: "", kind: "", part: "", phase: "", age: "", form: "" };
 
@@ -29,6 +35,8 @@ export function MyLibrary() {
   const [filters, setFilters] = useState<Filters>(none);
   const [projects, setProjects] = useState<MyProject[] | null>(null);
   const [error, setError] = useState("");
+  const { folders, error: folderError, create, reload: reloadFolders } = useFolders();
+  const [picking, setPicking] = useState<MyProject | null>(null);
   const set = (patch: Partial<Filters>) => setFilters(current => ({ ...current, ...patch }));
 
   const load = useCallback(async (current: Filters) => {
@@ -48,10 +56,11 @@ export function MyLibrary() {
 
   const remove = async (project: MyProject) => {
     if (!client || !window.confirm(`Ta bort ${project.name}? Det går inte att ångra.${project.published.length > 0
-      ? " Det du publicerat från projektet finns kvar i TeamZones bibliotek." : ""}`)) return;
+      ? " Det du publicerat från projektet finns kvar i TeamZones bibliotek." : ""}${removalNote(project.folders ?? [])}`)) return;
     const { error: removeError } = await client.schema("api").rpc("delete_tactics_project", { target_project_id: project.id });
     if (removeError) { setError("Projektet kunde inte tas bort."); return; }
     void load(filters);
+    if (project.folders?.length) void reloadFolders();
   };
 
   const unpublish = async (item: Published) => {
@@ -66,6 +75,12 @@ export function MyLibrary() {
     <section className="wt-panel" aria-label="Mitt bibliotek">
       <h2>Mitt bibliotek</h2>
       <p className="wt-small">Alla dina projekt. Publicera en övning, ett pass eller en session i ett projekt under Tavlan → Publicera.</p>
+      <FolderCards folders={folders} error={folderError} create={create} />
+      {picking && (
+        <FolderPicker projectId={picking.id} projectName={picking.name} current={picking.folders ?? []}
+          onClose={changed => { setPicking(null); if (changed) { void load(filters); void reloadFolders(); } }} />
+      )}
+      <h3 className="tb-projects-heading">Projekt</h3>
       <div className="wt-form">
         <label>Sök<input value={filters.text} maxLength={100} placeholder="Namn, tavlor, beskrivning" onChange={event => set({ text: event.target.value })} /></label>
         <div className="bk-times tb-filters">
@@ -118,6 +133,11 @@ export function MyLibrary() {
                 </strong>
                 <span>{[kindLabels[project.kind], project.team_name, `${project.board_count} ${project.board_count === 1 ? "tavla" : "tavlor"}`,
                   `ändrat ${new Date(project.updated_at).toLocaleDateString("sv-SE", { day: "numeric", month: "short" })}`].filter(Boolean).join(" · ")}</span>
+                {project.folders && project.folders.length > 0 && (
+                  <span className="tb-folder-tags" aria-label="Mappar">
+                    {project.folders.map(folder => <Link key={folder.id} className="tb-folder-tag" href={`/tacticsboard/mapp/${folder.id}`}>{folder.name}</Link>)}
+                  </span>
+                )}
                 {project.published.map(item => (
                   <span key={item.item_id} className="tb-published-line">
                     <PublishedIcon clubName={item.club_name} />
@@ -129,6 +149,7 @@ export function MyLibrary() {
               </div>
               <div className="wt-actions">
                 <Link className="wt-button small" href={`/tacticsboard/${project.id}`}>Öppna</Link>
+                <button type="button" className="wt-button secondary small" onClick={() => setPicking(project)}>Mappar…</button>
                 <button type="button" className="wt-button secondary small" onClick={() => void remove(project)}>Ta bort</button>
               </div>
             </li>

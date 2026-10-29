@@ -3,9 +3,10 @@
 // Tacticsboard's start: TeamZone's library, a new project (a match, a
 // training or teaching material, for one of your TeamZone teams or none,
 // started from ready boards, a template or a favourite), your templates and
-// favourites, and your library: all of your projects.
+// favourites, and your library: all of your projects. Come from a folder
+// (?mapp=<id>), the new project is put in that folder.
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { newDocument } from "../../lib/tactics/document.ts";
 import type { Board, ProjectKind, ProjectSummary } from "../../lib/tactics/model.ts";
@@ -16,12 +17,16 @@ import { kindLabels } from "./TopBar.tsx";
 import { useTemplates } from "./use-templates.ts";
 import { useSharedLibrary } from "./use-shared-library.ts";
 import { MyLibrary } from "./MyLibrary.tsx";
+import { useFolders } from "./use-folders.ts";
 import { boardsFromLibrary, libraryKindLabels, librarySummaryLine, noFilters, projectKindOf } from "../../lib/tactics/library.ts";
 import "./tactics.css";
 
 export function TacticsHome() {
   const { client } = useAccount();
   const router = useRouter();
+  const { folders, addProject } = useFolders();
+  const folderId = useSearchParams().get("mapp");
+  const folder = folders?.find(item => item.id === folderId) ?? null;
   const [teams, setTeams] = useState<LeaderTeam[]>([]);
   const [form, setForm] = useState({ name: "", kind: "match" as ProjectKind, teamId: "" });
   // "ready" for the ready boards picked below, else a template's id.
@@ -61,9 +66,12 @@ export function TacticsHome() {
       project_name: form.name.trim() || "Namnlöst projekt", project_kind: form.kind, target_team_id: team?.team_id ?? null,
       project_document: { ...newDocument(), boards },
     });
+    if (createError) { setBusy(false); setError("Projektet kunde inte skapas. Försök igen."); return; }
+    const created = (data as ProjectSummary).id;
+    // Not put in the folder, the project is still made; the folder page tells.
+    if (folder) await addProject(folder.id, created);
     setBusy(false);
-    if (createError) { setError("Projektet kunde inte skapas. Försök igen."); return; }
-    router.push(`/tacticsboard/${(data as ProjectSummary).id}`);
+    router.push(`/tacticsboard/${created}`);
   };
 
   return (
@@ -74,8 +82,9 @@ export function TacticsHome() {
         <p>Övningar, pass och sessioner som tränare delar med varandra, och TeamZones egna. Sök på skede, ålder och spelform.{clubs.length > 0 ? " Där finns också klubbens lista." : ""}</p>
         <Link className="wt-button small" href="/tacticsboard/bibliotek">Sök i TeamZones bibliotek</Link>
       </section>
-      <section className="wt-panel">
+      <section className="wt-panel" id="nytt-projekt">
         <h2>Nytt projekt</h2>
+        {folder && <p className="wt-small">Projektet läggs i mappen <Link className="wt-link" href={`/tacticsboard/mapp/${folder.id}`}>{folder.name}</Link>.</p>}
         <form className="wt-form" onSubmit={create}>
           <label>Namn<input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} maxLength={120} placeholder="T.ex. Match mot Aneby SK" /></label>
           <div className="bk-times">

@@ -215,3 +215,23 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
 .tb-published { margin: 0 0 8px; padding: 0; list-style: none; display: grid; gap: 4px; }
 .tb-published li { display: flex; align-items: center; gap: 4px; }
 .tb-published .tb-published-icon { margin-left: 0; }
+
+/* Folders: cards above the projects, a project's folders as tags, the picker and a folder's page. */
+.tb-folders { display: grid; gap: 8px; margin: 12px 0 16px; }
+.tb-folders-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tb-folders-head h3, .tb-projects-heading { margin: 0; font-size: 1.05rem; text-transform: uppercase; }
+.tb-projects-heading { margin-bottom: 8px; }
+.tb-folder-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.tb-folder-cards a { display: grid; gap: 2px; min-height: 64px; padding: 12px 14px; border: 1px solid var(--wt-line); border-left: 4px solid var(--wt-brand); border-radius: 6px; background: white; color: var(--wt-text); text-decoration: none; }
+.tb-folder-cards a:hover, .tb-folder-cards a:focus-visible { background: var(--wt-bg-alt); }
+.tb-folder-cards span { color: var(--wt-muted); font-size: .85rem; }
+.tb-folder-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tb-folder-tag { padding: 1px 8px; border-radius: 999px; background: var(--wt-bg-alt); color: var(--wt-text); font-size: .8rem; text-decoration: none; }
+.tb-folder-tag:hover { text-decoration: underline; }
+.tb-folder-picks { display: grid; gap: 6px; max-height: 40dvh; overflow-y: auto; }
+.tb-folder-new { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; margin-top: 12px; }
+.tb-folder-new .tb-field { flex: 1 1 200px; }
+.tb-folder-description { white-space: pre-line; }
+.tb-folder-projects .wt-actions { align-items: center; }
+.tb-order { width: 32px; height: 32px; border: 1px solid var(--wt-line); border-radius: 6px; background: white; color: var(--wt-text); cursor: pointer; }
+.tb-order:disabled { opacity: .35; cursor: default; }
