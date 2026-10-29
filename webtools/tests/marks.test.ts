@@ -70,6 +70,12 @@ test("the view zoomed in on a pitch point has it in the middle", () => {
   near(view.x + onScreen.x * view.scale, 500);
   near(view.y + onScreen.y * view.scale, 350);
   assert.deepEqual(blendViewport({ x: 0, y: 0, scale: 1 }, view, 0), { x: 0, y: 0, scale: 1 });
+  // At the touchline the view stops at the edge instead of showing beyond it.
+  const edge = zoomTo({ x: 50, y: 0 }, fit, 1000, 700, 2);
+  near(edge.y, 0);
+  const corner = zoomTo({ x: 105, y: 68 }, fit, 1000, 700, 2);
+  near(corner.x, 1000 - 2000);
+  near(corner.y, 700 - 1400);
   near(blendViewport({ x: 0, y: 0, scale: 1 }, view, 0.5).scale, 1.5);
 });
 

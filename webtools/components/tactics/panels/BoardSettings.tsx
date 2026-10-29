@@ -3,6 +3,7 @@
 // The board's own settings: its name, duplicating it, which part of the pitch shows, the
 // grid, the teams' names and colours, and whether names show on players.
 import { updateBoard } from "../../../lib/tactics/document.ts";
+import { exportFileName, exportProject } from "../../../lib/tactics/transfer.ts";
 import type { Board, PitchOverlay, PitchView, Side } from "../../../lib/tactics/model.ts";
 import { useEditor } from "../store.ts";
 import { Swatches } from "./Swatches.tsx";
@@ -23,6 +24,15 @@ export function BoardSettings({ board }: { board: Board }) {
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const kind = useEditor(state => state.meta?.kind);
+  const exportFile = () => {
+    const { meta, document } = useEditor.getState();
+    if (!meta || !document) return;
+    const link = window.document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([exportProject(meta.name, meta.kind, document)], { type: "application/json" }));
+    link.download = exportFileName(meta.name);
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  };
   const team = (side: Side, changes: Partial<Board["teams"][Side]>) =>
     change(current => ({ ...current, teams: { ...current.teams, [side]: { ...current.teams[side], ...changes } } }));
   return (
@@ -34,6 +44,8 @@ export function BoardSettings({ board }: { board: Board }) {
         {savingTemplate && <TemplateDialog onClose={() => setSavingTemplate(false)} />}
         <button type="button" className="wt-button secondary small" onClick={() => setPublishing(true)}>Publicera…</button>
         {publishing && <PublishDialog onClose={() => setPublishing(false)} />}
+        <button type="button" className="wt-button secondary small" onClick={exportFile}
+          title="Hela projektet som en fil, att importera på startsidan">Exportera som fil</button>
       </div>
       <h3>Tavlan</h3>
       <label className="tb-field">Namn<input value={board.name} maxLength={60} onChange={event => change(current => ({ ...current, name: event.target.value }))} /></label>

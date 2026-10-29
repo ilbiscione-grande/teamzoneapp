@@ -244,3 +244,7 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
 @media (max-width: 760px) {
   .tb-timeline-foot { margin-top: 4px; }
 }
+
+/* Importing a project from a file, under a new project. */
+.tb-import { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--wt-line); }
+.tb-import .wt-error { flex-basis: 100%; margin: 0; }

@@ -55,10 +55,18 @@ export function zoomAround(viewport: Viewport, factor: number, center: Point): V
   return { scale, x: center.x - (center.x - viewport.x) * ratio, y: center.y - (center.y - viewport.y) * ratio };
 }
 
-/** The view `scale` times in with a pitch point in the middle of a frame of this size. */
+/**
+ * The view `scale` times in with a pitch point in the middle of a frame of
+ * this size, as near the middle as it can be without showing more than the
+ * whole view does (an object at the touchline is not shown half off it).
+ */
 export function zoomTo(point: Point, fit: Fit, width: number, height: number, scale: number): Viewport {
   const at = pitchToFrame(point, fit);
-  return { scale, x: width / 2 - at.x * scale, y: height / 2 - at.y * scale };
+  return {
+    scale,
+    x: clamp(width / 2 - at.x * scale, width - width * scale, 0),
+    y: clamp(height / 2 - at.y * scale, height - height * scale, 0),
+  };
 }
 
 /** Part of the way (0–1) from one view to another. */
