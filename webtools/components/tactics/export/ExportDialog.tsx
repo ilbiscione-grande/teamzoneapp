@@ -1,10 +1,12 @@
 "use client";
 
-// Making a PDF: which boards, and for animated ones which frames. Each
-// picture is drawn off screen in turn, then the pages are put together.
+// Making a PDF: which boards, and for animated ones which frames and
+// whether the moves show as arrows. Each picture is drawn off screen in
+// turn, then the pages are put together.
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { layoutPages, pdfFileName, type FrameChoice } from "../../../lib/tactics/pdf-layout.ts";
+import { movesInto, type Trail } from "../../../lib/tactics/marks.ts";
 import type { Board, TacticsObject } from "../../../lib/tactics/model.ts";
 import { activeBoard, useEditor, NONE } from "../store.ts";
 import { kindLabels } from "../TopBar.tsx";
@@ -13,7 +15,13 @@ import { buildPdf } from "./pdf.ts";
 
 const OffscreenBoard = dynamic(() => import("./OffscreenBoard.tsx"), { ssr: false });
 
-type Job = { board: Board; objects: TacticsObject[]; done: (picture: string) => void };
+type Job = { board: Board; objects: TacticsObject[]; moves: Trail[]; done: (picture: string) => void };
+
+/** A frame's moves for its picture: into it, or with only the last frame shown, the whole play up to it. */
+function movesFor(board: Board, frameIndex: number, choice: FrameChoice): Trail[] {
+  if (choice !== "last") return movesInto(board.frames, frameIndex);
+  return board.frames.flatMap((_, index) => index <= frameIndex ? movesInto(board.frames, index) : []);
+}
 
 export function ExportDialog({ onClose }: { onClose: () => void }) {
   const meta = useEditor(state => state.meta);
@@ -21,6 +29,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   const board = useEditor(activeBoard);
   const [which, setWhich] = useState<"this" | "all">("this");
   const [frames, setFrames] = useState<FrameChoice>("grid");
+  const [showMoves, setShowMoves] = useState(true);
   const [job, setJob] = useState<Job | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -33,7 +42,8 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   if (!meta || !board) return null;
   const animated = (which === "all" ? boards : [board]).some(item => item.frames.length > 1);
 
-  const picture = (target: Board, objects: TacticsObject[]) => new Promise<string>(resolve => setJob({ board: target, objects, done: resolve }));
+  const picture = (target: Board, objects: TacticsObject[], moves: Trail[]) =>
+    new Promise<string>(resolve => setJob({ board: target, objects, moves, done: resolve }));
 
   const make = async () => {
     working.current = true;
@@ -47,7 +57,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
         setProgress(`Ritar ${done + 1} av ${wanted.length}…`);
         const [boardIndex, frameIndex] = key.split(":").map(Number);
         const target = boards[boardIndex];
-        pictures.set(key, await picture(target, target.frames[frameIndex].objects));
+        pictures.set(key, await picture(target, target.frames[frameIndex].objects, showMoves ? movesFor(target, frameIndex, frames) : []));
       }
       setJob(null);
       setProgress("Skapar PDF…");
@@ -85,12 +95,18 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
             <label><input type="radio" checked={frames === "last"} onChange={() => setFrames("last")} />Bara sista framen</label>
           </fieldset>
         )}
+        {animated && (
+          <label className="tb-check">
+            <input type="checkbox" checked={showMoves} onChange={event => setShowMoves(event.target.checked)} />
+            Visa rörelser med pilar{frames === "last" ? " (hela förloppet på en bild)" : ""}
+          </label>
+        )}
         <p className="tb-hint">A4 liggande, med projektets och tavlans namn, numret och anteckningen för varje frame, och tavlans beskrivning.</p>
         {error && <p className="wt-error" role="alert">{error}</p>}
         <div className="tb-actions">
           <button type="button" className="wt-button" disabled={progress !== null} onClick={() => void make()}>{progress ?? "Skapa PDF"}</button>
         </div>
-        {job && <OffscreenBoard board={job.board} objects={job.objects} onPicture={job.done} />}
+        {job && <OffscreenBoard board={job.board} objects={job.objects} moves={job.moves} onPicture={job.done} />}
       </div>
     </div>
   );

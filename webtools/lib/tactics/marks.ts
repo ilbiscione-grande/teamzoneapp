@@ -7,8 +7,8 @@ import { ballPosition } from "./ball.ts";
 import type { Frame, Point, TacticsObject } from "./model.ts";
 import { curvePoint, ease, effectsOf, lerp, lerpPoint, quick } from "./motion.ts";
 
-/** A dashed track along a move: pitch points x, y, …, how visible, and whether it ends in an arrowhead. */
-export type Trail = { points: number[]; opacity: number; arrow?: boolean };
+/** A dashed track along a move: pitch points x, y, …, how visible, whether it ends in an arrowhead, and whether the ball made it. */
+export type Trail = { points: number[]; opacity: number; arrow?: boolean; ball?: boolean };
 /** A ring round an object: how visible, and how large (1 when settled). */
 export type Ring = { opacity: number; grow: number };
 /** What the marks add to an object while the board plays. */
@@ -113,6 +113,23 @@ export function withMarks<T extends TacticsObject>(frames: Frame[], playhead: nu
     if (trails.length > 0) marks.trails = trails;
     if (ring && ring.opacity > 0) marks.ring = ring;
     return Object.keys(marks).length > 0 ? { ...item, ...marks } : item;
+  });
+}
+
+/** What moves along the pitch; lines, shapes and text are redrawn rather than moved. */
+const MOVING = new Set(["player", "ball", "cone", "pole", "mannequin", "goal"]);
+
+/**
+ * For a still picture (the PDF): every move into frame `index`, each a
+ * whole dashed way with an arrowhead, effect or not. The ball's passes are
+ * told apart; a ball riding with its holder has no way of its own.
+ */
+export function movesInto(frames: Frame[], index: number): Trail[] {
+  if (index < 1 || index >= frames.length) return [];
+  return frames[index].objects.flatMap(item => {
+    if (item.hidden || !MOVING.has(item.type)) return [];
+    const path = pathOf(frames[index - 1], frames[index], item.id);
+    return path ? [{ points: sample(path, 0, 1), opacity: 1, arrow: true, ball: item.type === "ball" }] : [];
   });
 }
 

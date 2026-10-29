@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createObject, createPlayer, newFrame } from "../lib/tactics/document.ts";
 import { blendViewport, fitView, pitchToFrame, viewRect, zoomTo } from "../lib/tactics/geometry.ts";
-import { arrowOf, cameraAt } from "../lib/tactics/marks.ts";
+import { arrowOf, cameraAt, movesInto } from "../lib/tactics/marks.ts";
 import type { Effect, Frame, TacticsObject } from "../lib/tactics/model.ts";
 import { objectsAt, type Rendered } from "../lib/tactics/timeline.ts";
 
@@ -95,4 +95,26 @@ test("duplicating a board puts a copy right after it, frames and effects alike, 
   assert.notEqual(copy.frames[0].id, first.frames[0].id);
   assert.deepEqual(copy.frames[1].objects[0].effects, ["ring"]);
   assert.equal(duplicateBoard(copied, "unknown").copyId, null);
+});
+
+test("a still picture shows every move into its frame as a whole arrow, passes told apart", async () => {
+  const { dropBall } = await import("../lib/tactics/ball.ts");
+  const runner = createPlayer({ x: 10, y: 10 }, "home", []);
+  const passer = createPlayer({ x: 20, y: 30 }, "home", []);
+  const still = createPlayer({ x: 40, y: 40 }, "away", []);
+  const ball = dropBall(createObject("ball", { x: 21, y: 30 }) as Parameters<typeof dropBall>[0], { x: 21, y: 30 }, [passer]);
+  const text = createObject("text", { x: 5, y: 5 });
+  const start = frame([runner, passer, still, ball, text]);
+  const moved = { ...runner, x: 30, y: 10, pathControl: { x: 20, y: 0 } };
+  const passed = dropBall(ball, { x: 31, y: 10 }, [moved, passer]);
+  const end = frame([moved, passer, still, passed, { ...text, x: 50 }]);
+  const moves = movesInto([start, end], 1);
+  assert.equal(moves.length, 2, "the runner and the pass; not the still player or the text");
+  const run = moves.find(move => !move.ball)!;
+  assert.equal(run.arrow, true);
+  near(run.points[0], 10);
+  near(run.points.at(-2)!, 30);
+  assert.ok(Math.min(...run.points.filter((_, i) => i % 2 === 1)) < 10, "follows the bend");
+  assert.ok(moves.some(move => move.ball));
+  assert.deepEqual(movesInto([start, end], 0), [], "the first frame has no moves");
 });
