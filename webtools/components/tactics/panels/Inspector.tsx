@@ -8,6 +8,7 @@ import { effectsOf } from "../../../lib/tactics/timeline.ts";
 import { effects } from "./effects.ts";
 import { activeObjects, useEditor } from "../store.ts";
 import { BoardSettings } from "./BoardSettings.tsx";
+import { CopyTo } from "./CopyTo.tsx";
 import { Swatches } from "./Swatches.tsx";
 import { PlayerLink } from "./PlayerLink.tsx";
 
@@ -143,6 +144,7 @@ export function Inspector({ board }: { board: Board }) {
         <button type="button" className="wt-button secondary small" onClick={duplicate}>Kopiera</button>
         <button type="button" className="wt-button secondary small" disabled={allLocked} onClick={removeSelected}>Ta bort</button>
       </div>
+      <CopyTo key={`${frameIndex}:${selection.join()}`} board={board} ids={selected.map(item => item.id)} />
     </div>
   );
 }

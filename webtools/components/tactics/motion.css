@@ -54,3 +54,7 @@
 .tb-scrub:focus-visible .tb-scrub-thumb { box-shadow: 0 0 0 3px var(--wt-accent), 0 0 0 6px rgba(255, 255, 255, .5); }
 .tb-scrub-time { min-width: 76px; color: #a9b4c4; font-size: .78rem; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 
+
+/* Copying the selected objects to another frame or board. */
+.tb-copy-to { display: grid; gap: 4px; }
+.tb-copy-to .tb-panel-select { flex: 1 1 140px; min-height: 32px; }
