@@ -4,6 +4,7 @@
 // have in common. Nothing selected shows the board's settings.
 import { kindName, newId, objectLabel } from "../../../lib/tactics/document.ts";
 import type { Board, TacticsObject } from "../../../lib/tactics/model.ts";
+import { effectsOf } from "../../../lib/tactics/timeline.ts";
 import { effects } from "./effects.ts";
 import { activeObjects, useEditor } from "../store.ts";
 import { BoardSettings } from "./BoardSettings.tsx";
@@ -97,12 +98,12 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
   }
 }
 
-/** The object's effect in this frame (chosen under Ramar), and its path's bend. */
+/** The object's effects in this frame (chosen under Frames), and its path's bend. */
 function Motion({ item, frameIndex }: { item: TacticsObject; frameIndex: number }) {
   const patch = (changes: Partial<TacticsObject>) => useEditor.getState().patch({ [item.id]: changes });
   return (
     <>
-      {frameIndex > 0 && <p className="tb-hint">Effekt i framen: {item.effect ? effects[item.effect].label : "ingen"}. Effekter väljer du under Frames.</p>}
+      {frameIndex > 0 && <p className="tb-hint">Effekter i framen: {effectsOf(item).map(kind => effects[kind].label).join(", ") || "inga"}. Effekter väljer du under Frames.</p>}
       {frameIndex > 0 && item.pathControl && <button type="button" className="tb-link" onClick={() => patch({ pathControl: null })}>Rak väg hit</button>}
       {frameIndex > 0 && !item.pathControl && <p className="tb-hint">Dra i punkten mitt på spåret för att böja vägen hit.</p>}
     </>

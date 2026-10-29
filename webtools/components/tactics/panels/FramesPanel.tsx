@@ -2,12 +2,16 @@
 
 // The frames: each one with its move's length and note, a new one copied
 // from the one in hand, moving and removing it; and the effects of the
-// frame in hand: what shows how as the board moves into it, chosen for the
-// objects selected on the pitch and tried out with a preview.
-import { insertFrame, moveFrame, objectLabel, removeFrame, setFrameDuration, updateBoard } from "../../../lib/tactics/document.ts";
-import type { Board, Effect } from "../../../lib/tactics/model.ts";
+// frame in hand: what shows how as the board moves into it, several to an
+// object if wanted, chosen for the objects selected on the pitch and tried
+// out with a preview; and whether the move starts and stops softly.
+import {
+  insertFrame, moveFrame, objectLabel, removeFrame, setFrameDuration, setFrameEasing, toggleEffect, updateBoard,
+} from "../../../lib/tactics/document.ts";
+import type { Board, Easing, Effect } from "../../../lib/tactics/model.ts";
+import { effectsOf } from "../../../lib/tactics/timeline.ts";
 import { useEditor } from "../store.ts";
-import { effectKinds, effects, effectSuits } from "./effects.ts";
+import { easingLabels, effectKinds, effects, effectSuits } from "./effects.ts";
 
 const durations = [500, 750, 1000, 1500, 2000, 3000, 4000];
 const seconds = (ms: number) => `${(ms / 1000).toLocaleString("sv-SE")} s`;
@@ -37,17 +41,19 @@ export function FramesPanel({ board }: { board: Board }) {
 
   const before = new Set(frames[frameIndex - 1]?.objects.map(item => item.id) ?? []);
   const selected = frame.objects.filter(item => selection.includes(item.id));
-  const withEffect = frame.objects.filter(item => item.effect);
-  const give = (kind: Effect | null) => patch(Object.fromEntries(selected
-    .filter(item => kind === null || effectSuits(kind, item))
-    .map(item => [item.id, { effect: kind }])));
+  const withEffect = frame.objects.filter(item => effectsOf(item).length > 0);
+  /** One effect on or off for the selected objects it suits. */
+  const toggle = (kind: Effect, on: boolean) => patch(Object.fromEntries(selected
+    .filter(item => effectSuits(kind, item))
+    .map(item => [item.id, toggleEffect(item, kind, on)])));
+  const clear = () => patch(Object.fromEntries(selected.map(item => [item.id, { effects: [], effect: null }])));
 
   return (
     <div className="tb-inspector tb-frames-panel">
       <h3>Frames</h3>
       <ol className="tb-frame-list">
         {frames.map((item, index) => {
-          const count = item.objects.filter(object => object.effect).length;
+          const count = item.objects.reduce((sum, object) => sum + effectsOf(object).length, 0);
           return (
             <li key={item.id}>
               <button type="button" aria-current={index === frameIndex} onClick={() => setFrame(index)}>
@@ -74,6 +80,13 @@ export function FramesPanel({ board }: { board: Board }) {
           </select>
         </label>
       )}
+      {frameIndex > 0 && (
+        <label className="tb-field">Rörelsen
+          <select value={frame.easing ?? "smooth"} onChange={event => changeBoard(current => setFrameEasing(current, frameIndex, event.target.value as Easing))}>
+            {Object.entries(easingLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+      )}
       <label className="tb-field">Anteckning
         <textarea rows={2} maxLength={500} value={frame.note ?? ""} placeholder="Visas under bilden i PDF:en och i visningsläget"
           onChange={event => changeBoard(current => ({ ...current, frames: current.frames.map((item, index) => index === frameIndex ? { ...item, note: event.target.value } : item) }))} />
@@ -88,13 +101,13 @@ export function FramesPanel({ board }: { board: Board }) {
             <p className="tb-hint">Markera ett eller flera objekt på planen för att ge dem en effekt i frame {frameIndex + 1}.</p>
           ) : (
             <>
-              <p className="tb-hint">{selected.length === 1 ? objectLabel(selected[0], board) : `${selected.length} markerade`}: välj effekt när frame {frameIndex + 1} nås.</p>
+              <p className="tb-hint">{selected.length === 1 ? objectLabel(selected[0], board) : `${selected.length} markerade`}: välj en eller flera effekter när frame {frameIndex + 1} nås.</p>
               <div className="tb-effects">
                 {effectKinds.map(kind => {
-                  const suits = selected.some(item => effectSuits(kind, item));
-                  const all = selected.every(item => item.effect === kind);
+                  const suited = selected.filter(item => effectSuits(kind, item));
+                  const all = suited.length > 0 && suited.every(item => effectsOf(item).includes(kind));
                   return (
-                    <button key={kind} type="button" aria-pressed={all} disabled={!suits} title={effects[kind].hint} onClick={() => give(all ? null : kind)}>
+                    <button key={kind} type="button" aria-pressed={all} disabled={suited.length === 0} title={effects[kind].hint} onClick={() => toggle(kind, !all)}>
                       <span aria-hidden="true">{effects[kind].icon}</span>
                       <strong>{effects[kind].label}</strong>
                       <small>{effects[kind].hint}</small>
@@ -102,7 +115,7 @@ export function FramesPanel({ board }: { board: Board }) {
                   );
                 })}
               </div>
-              {selected.some(item => item.effect) && <button type="button" className="tb-link" onClick={() => give(null)}>Ingen effekt</button>}
+              {selected.some(item => effectsOf(item).length > 0) && <button type="button" className="tb-link" onClick={clear}>Inga effekter</button>}
             </>
           )}
           {withEffect.length > 0 && (
@@ -113,11 +126,15 @@ export function FramesPanel({ board }: { board: Board }) {
                     {objectLabel(item, board)}
                     <small>{before.has(item.id) ? "finns sedan förut" : "ny i framen"}</small>
                   </button>
-                  <select value={item.effect ?? ""} aria-label={`Effekt för ${objectLabel(item, board)}`}
-                    onChange={event => patch({ [item.id]: { effect: (event.target.value || null) as Effect | null } })}>
-                    <option value="">Ingen</option>
-                    {effectKinds.filter(kind => effectSuits(kind, item)).map(kind => <option key={kind} value={kind}>{effects[kind].label}</option>)}
-                  </select>
+                  <span className="tb-effect-toggles" role="group" aria-label={`Effekter för ${objectLabel(item, board)}`}>
+                    {effectKinds.filter(kind => effectSuits(kind, item)).map(kind => {
+                      const on = effectsOf(item).includes(kind);
+                      return (
+                        <button key={kind} type="button" aria-pressed={on} title={effects[kind].label} aria-label={effects[kind].label}
+                          onClick={() => patch({ [item.id]: toggleEffect(item, kind, !on) })}>{effects[kind].icon}</button>
+                      );
+                    })}
+                  </span>
                 </li>
               ))}
             </ul>

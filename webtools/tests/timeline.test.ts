@@ -171,3 +171,72 @@ test("scrubbing: the playhead as time and back, each move as long as it plays", 
   const { playheadAt } = await import("../lib/tactics/timeline.ts");
   near(playheadAt(frames, 1000, 1, false, 1.2)!, 1 + 1600 / 3000);
 });
+
+test("a frame's easing: smooth by default, the same speed all the way, or soft at one end", async () => {
+  const { ease } = await import("../lib/tactics/timeline.ts");
+  const player = createPlayer({ x: 0, y: 0 }, "home", []);
+  const from = frame([player]);
+  const moved = (easing?: Frame["easing"]) => ({ ...frame([{ ...player, x: 10, y: 0 }]), ...(easing ? { easing } : {}) });
+  near(blendFrames(from, moved(), 0.25)[0].x, 10 * easeInOut(0.25));
+  near(blendFrames(from, moved("linear"), 0.25)[0].x, 2.5);
+  near(blendFrames(from, moved("linear"), 0.1)[0].x, 1, 1e-9);
+  assert.ok(blendFrames(from, moved("in"), 0.5)[0].x < 5, "soft start lags at first");
+  assert.ok(blendFrames(from, moved("out"), 0.5)[0].x > 5, "soft stop is ahead, then brakes");
+  for (const easing of ["smooth", "linear", "in", "out"] as const) {
+    near(ease(easing, 0), 0);
+    near(ease(easing, 1), 1);
+  }
+});
+
+test("several effects on one object play together; one effect of an older board still plays", async () => {
+  const { effectsOf } = await import("../lib/tactics/timeline.ts");
+  const { toggleEffect } = await import("../lib/tactics/document.ts");
+  const cone = createObject("cone", { x: 5, y: 5 });
+  const old = { ...cone, effect: "pulse" as const };
+  assert.deepEqual(effectsOf(old), ["pulse"]);
+  const both = { ...old, ...toggleEffect(old, "highlight", true) } as TacticsObject;
+  assert.deepEqual(effectsOf(both), ["pulse", "highlight"]);
+  assert.equal(both.effect, null);
+  assert.deepEqual(effectsOf({ ...both, ...toggleEffect(both, "pulse", false) } as TacticsObject), ["highlight"]);
+  assert.deepEqual(toggleEffect(both, "highlight", true).effects, ["pulse", "highlight"], "added once");
+
+  const t = 0.3;
+  const shown = blendFrames(frame([cone]), frame([both]), t)[0];
+  near(shown.glow ?? 0, Math.sin(t * Math.PI) * 0.6 + t * 0.4);
+  near(shown.grow ?? 1, 1 + Math.sin(t * Math.PI * 3) * 0.14 * (1 - t * 0.5));
+  // A new object popping and lit: the fainter opacity, the pop's size.
+  const fresh = { ...createObject("cone", { x: 1, y: 1 }), effects: ["pop", "highlight"] as TacticsObject["effects"] };
+  const coming = blendFrames(frame([]), frame([fresh]), 0.2)[0];
+  near(coming.opacity ?? 1, 0.2);
+  assert.ok((coming.glow ?? 0) > 0 && (coming.grow ?? 1) < 1);
+  // New with only a trail (nothing to trail yet) still fades in.
+  near(blendFrames(frame([]), frame([{ ...fresh, effects: ["trail"] }]), 0.4)[0].opacity ?? 1, 0.4);
+});
+
+test("a trail follows the move, stays at its frame and fades over the next move", () => {
+  const player = createPlayer({ x: 0, y: 0 }, "home", []);
+  const there = { ...player, x: 10, y: 0, effects: ["trail"] as TacticsObject["effects"] };
+  const frames = [frame([player]), { ...frame([there]), easing: "linear" as const }, frame([{ ...there, effects: [], x: 10, y: 5 }])];
+  const half = objectsAt(frames, 0.5)[0] as Rendered;
+  assert.equal(half.trails?.length, 1);
+  const points = half.trails![0].points;
+  near(points[0], 0);
+  near(points[points.length - 2], 5, 1e-9);
+  const reached = objectsAt(frames, 1)[0] as Rendered;
+  near(reached.trails![0].points.at(-2)!, 10, 1e-9);
+  near(reached.trails![0].opacity, 1);
+  near((objectsAt(frames, 1.75)[0] as Rendered).trails![0].opacity, 0.25, 1e-9);
+  // Without the effect, or standing still, no trail.
+  assert.equal((objectsAt([frame([player]), frame([{ ...player, x: 10 }])], 0.5)[0] as Rendered).trails, undefined);
+  assert.equal((objectsAt([frame([player]), frame([{ ...player, x: 0.1, effects: ["trail"] }])], 0.5)[0] as Rendered).trails, undefined);
+});
+
+test("a copied frame starts without effects and keeps the move's easing", async () => {
+  const { insertFrame, setFrameEasing } = await import("../lib/tactics/document.ts");
+  const cone = { ...createObject("cone", { x: 1, y: 1 }), effects: ["pulse"] as TacticsObject["effects"] };
+  const board = { frames: [frame([]), frame([cone])] } as unknown as Parameters<typeof insertFrame>[0];
+  const eased = setFrameEasing(board, 1, "linear");
+  const copied = insertFrame(eased, 1);
+  assert.equal(copied.frames[2].easing, "linear");
+  assert.deepEqual(copied.frames[2].objects[0].effects, []);
+});

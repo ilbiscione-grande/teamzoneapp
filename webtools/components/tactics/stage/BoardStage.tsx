@@ -18,6 +18,7 @@ import { DraftNode } from "./DraftNode.tsx";
 import { Ghosts } from "./Ghosts.tsx";
 import { Pitch } from "./Pitch.tsx";
 import { Selection } from "./Selection.tsx";
+import { Trails } from "./Trails.tsx";
 import { pitchPointer, StageContext, stageHolder, type StageShared } from "./stage-context.ts";
 import { useBand } from "./use-band.ts";
 import { isDrawTool, isPlaceTool, useDrawing } from "./use-drawing.ts";
@@ -139,6 +140,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
               <Group ref={view.objectView} {...zoomed}>
                 <Group ref={content} {...fitted}>
                   {previous && <Ghosts previous={previous} current={objects} selection={selection} editable={canEdit} />}
+                  <Trails objects={visible} />
                   {visible.map(item => (
                     <ObjectNode key={item.id} item={item} board={board} selected={selection.includes(item.id)} upright={upright} holding={holders.has(item.id)} />
                   ))}

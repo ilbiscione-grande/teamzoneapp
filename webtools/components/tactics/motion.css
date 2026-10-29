@@ -17,7 +17,10 @@
 .tb-effect-list li[data-selected="true"] { border-color: #facc15; }
 .tb-effect-name { flex: 1; min-width: 0; display: grid; text-align: left; border: 0; background: none; padding: 0; color: inherit; font: inherit; font-size: .88rem; cursor: pointer; }
 .tb-effect-name small { color: var(--wt-muted); font-size: .74rem; }
-.tb-effect-list select { min-height: 32px; border: 1px solid var(--wt-line); border-radius: 6px; background: white; font: inherit; font-size: .85rem; }
+.tb-effect-list li { flex-wrap: wrap; }
+.tb-effect-toggles { display: flex; flex-wrap: wrap; gap: 2px; }
+.tb-effect-toggles button { width: 28px; height: 28px; padding: 0; border: 1px solid var(--wt-line); border-radius: 6px; background: white; color: var(--wt-muted); font: inherit; font-size: .95rem; cursor: pointer; }
+.tb-effect-toggles button[aria-pressed="true"] { border-color: var(--wt-brand); background: #f0f9e8; color: var(--wt-text); }
 
 /* Presenting: the board on the whole screen, its description beside it. */
 .tb-present { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: #0f1a14; color: #e6efe9; }
@@ -43,7 +46,7 @@
 .tb-scrub { position: relative; flex: 1; height: 30px; cursor: pointer; touch-action: none; outline: none; }
 .tb-scrub-track { position: absolute; left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px; border-radius: 2px; background: rgba(255, 255, 255, .14); overflow: hidden; }
 .tb-scrub-fill { display: block; height: 100%; background: var(--wt-accent); }
-.tb-scrub-tick { position: absolute; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; display: grid; place-items: center; padding: 0; border: 0; background: none; color: #a9b4c4; font: inherit; font-size: .62rem; font-weight: 700; cursor: pointer; }
+.tb-scrub-tick { position: absolute; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; display: grid; place-items: center; padding: 0; border: 0; background: none; color: #a9b4c4; font: inherit; font-size: .62rem; font-weight: 700; pointer-events: none; }
 .tb-scrub-tick::before { content: ""; position: absolute; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--wt-accent); background: #13221a; }
 .tb-scrub-tick[data-passed="true"]::before { background: var(--wt-accent); }
 .tb-scrub-tick span { position: absolute; top: -12px; }

@@ -5,9 +5,10 @@ import { settleBalls } from "./ball.ts";
 import { formationPositions } from "./formations.ts";
 import {
   PITCH_LENGTH, PITCH_WIDTH, SCHEMA_VERSION,
-  type Board, type EquipmentKind, type Frame, type ObjectType, type PlayerObject, type Point,
+  type Board, type Easing, type Effect, type EquipmentKind, type Frame, type ObjectType, type PlayerObject, type Point,
   type ProjectDocument, type Side, type SquadPlayer, type TacticsObject,
 } from "./model.ts";
+import { effectsOf } from "./timeline.ts";
 
 export const newId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -167,8 +168,9 @@ export function keepOnGrass(point: Point, margin = 6): Point {
 export function insertFrame(board: Board, afterIndex: number): Board {
   const source = board.frames[afterIndex] ?? board.frames[board.frames.length - 1];
   const copy: Frame = {
-    ...newFrame(source.objects.map(item => ({ ...item, effect: null, pathControl: null }) as TacticsObject)),
+    ...newFrame(source.objects.map(item => ({ ...item, effect: null, effects: [], pathControl: null }) as TacticsObject)),
     durationMs: source.durationMs,
+    ...(source.easing ? { easing: source.easing } : {}),
   };
   const frames = [...board.frames];
   frames.splice(afterIndex + 1, 0, copy);
@@ -190,4 +192,15 @@ export function moveFrame(board: Board, index: number, step: 1 | -1): Board {
 
 export function setFrameDuration(board: Board, index: number, durationMs: number): Board {
   return { ...board, frames: board.frames.map((frame, i) => i === index ? { ...frame, durationMs: Math.min(10000, Math.max(200, durationMs)) } : frame) };
+}
+
+export function setFrameEasing(board: Board, index: number, easing: Easing): Board {
+  return { ...board, frames: board.frames.map((frame, i) => i === index ? { ...frame, easing } : frame) };
+}
+
+/** An object's effects with one added or taken away, as a patch; a board's single old effect becomes the list. */
+export function toggleEffect(item: TacticsObject, kind: Effect, on: boolean): Partial<TacticsObject> {
+  const current = effectsOf(item);
+  const effects = on ? (current.includes(kind) ? current : [...current, kind]) : current.filter(other => other !== kind);
+  return { effects, effect: null };
 }

@@ -22,17 +22,20 @@ type Base = {
   label?: string;
   /** Animation: the move into this frame bends through this pitch point. */
   pathControl?: Point | null;
-  /** Animation: how the object shows as this frame is reached. */
+  /** Animation: how the object shows as this frame is reached (one; boards from before several could be chosen). */
   effect?: Effect | null;
+  /** Animation: the effects played together as this frame is reached; read through effectsOf. */
+  effects?: Effect[];
 };
 
 /**
  * Effects play while the board moves into the frame that has them. An
  * object new in a frame fades in and one gone from the next fades out by
  * themselves; "pop" and "draw" are other ways in, "pulse" and "highlight"
- * point at an object already there.
+ * point at an object already there, and "trail" leaves a dashed track of
+ * the move behind it. Several play together.
  */
-export type Effect = "fade" | "pop" | "draw" | "pulse" | "highlight";
+export type Effect = "fade" | "pop" | "draw" | "pulse" | "highlight" | "trail";
 
 export type PlayerObject = Base & {
   type: "player";
@@ -126,8 +129,13 @@ export type Frame = {
   objects: TacticsObject[];
   /** How long the move into this frame takes when played. */
   durationMs: number;
+  /** How the move into this frame speeds up and slows down; smooth when missing. */
+  easing?: Easing;
   note: string;
 };
+
+/** smooth: starts and stops softly; linear: the same speed all the way; in/out: soft only at the start or the end. */
+export type Easing = "smooth" | "linear" | "in" | "out";
 
 export type PitchView = "full" | "attack" | "defend" | "empty";
 export type PitchOverlay = "none" | "corridors" | "thirds" | "zones";

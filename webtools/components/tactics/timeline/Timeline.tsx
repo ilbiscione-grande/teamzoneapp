@@ -1,11 +1,13 @@
 "use client";
 
 // Under the board: the timeline to scrub, play and pause, loop and speed,
-// the frames to choose from, a new frame copied from the one in hand, its length, moving and
-// removing it, and recording the play as a video.
+// the frames to choose from, a new frame copied from the one in hand, its length and how it
+// eases, moving and removing it, and recording the play as a video. Under it a slot of fixed
+// height for the frame's tools or a hint, so scrubbing never changes the board's size.
 import { useState } from "react";
-import { insertFrame, moveFrame, removeFrame, setFrameDuration, updateBoard } from "../../../lib/tactics/document.ts";
-import type { Board } from "../../../lib/tactics/model.ts";
+import { insertFrame, moveFrame, removeFrame, setFrameDuration, setFrameEasing, updateBoard } from "../../../lib/tactics/document.ts";
+import type { Board, Easing } from "../../../lib/tactics/model.ts";
+import { easingLabels } from "../panels/effects.ts";
 import { isBetween, useEditor } from "../store.ts";
 import { Scrubber } from "./Scrubber.tsx";
 import { usePlayback } from "./use-playback.ts";
@@ -84,27 +86,33 @@ export function Timeline({ board, readOnly = false }: { board: Board; readOnly?:
           </button>
         )}
       </div>
-      {!readOnly && between && (
-        <p className="tb-timeline-hint">Mellan frame {Math.floor(playhead) + 1} och {Math.floor(playhead) + 2}. Välj en frame för att redigera.</p>
-      )}
-      {!readOnly && !moving && frameIndex > 0 && (
-        <div className="tb-timeline-row tb-frame-tools">
-          <span className="tb-mini-text">Frame {frameIndex + 1}</span>
-          <label className="tb-mini"><span className="tb-mini-text">Förflyttning</span>
-            <select className="tb-mini-select" value={frames[frameIndex].durationMs}
-              onChange={event => changeBoard(current => setFrameDuration(current, frameIndex, Number(event.target.value)))}>
-              {[...new Set([...durations, frames[frameIndex].durationMs])].sort((a, b) => a - b).map(value => (
-                <option key={value} value={value}>{(value / 1000).toLocaleString("sv-SE")} s</option>
-              ))}
-            </select>
-          </label>
-          <button type="button" className="tb-mini-button" onClick={() => move(-1)} aria-label="Flytta framen bakåt">←</button>
-          <button type="button" className="tb-mini-button" disabled={frameIndex >= last} onClick={() => move(1)} aria-label="Flytta framen framåt">→</button>
-          <button type="button" className="tb-mini-button" onClick={remove}>Ta bort frame</button>
+      {!readOnly && (
+        <div className="tb-timeline-foot">
+          {between ? (
+            <p className="tb-timeline-hint">Mellan frame {Math.floor(playhead) + 1} och {Math.floor(playhead) + 2}. Välj en frame för att redigera.</p>
+          ) : !moving && frameIndex > 0 ? (
+            <div className="tb-timeline-row tb-frame-tools">
+              <span className="tb-mini-text">Frame {frameIndex + 1}</span>
+              <label className="tb-mini"><span className="tb-mini-text">Förflyttning</span>
+                <select className="tb-mini-select" value={frames[frameIndex].durationMs}
+                  onChange={event => changeBoard(current => setFrameDuration(current, frameIndex, Number(event.target.value)))}>
+                  {[...new Set([...durations, frames[frameIndex].durationMs])].sort((a, b) => a - b).map(value => (
+                    <option key={value} value={value}>{(value / 1000).toLocaleString("sv-SE")} s</option>
+                  ))}
+                </select>
+              </label>
+              <select className="tb-mini-select" value={frames[frameIndex].easing ?? "smooth"} aria-label="Rörelsen"
+                onChange={event => changeBoard(current => setFrameEasing(current, frameIndex, event.target.value as Easing))}>
+                {Object.entries(easingLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+              <button type="button" className="tb-mini-button" onClick={() => move(-1)} aria-label="Flytta framen bakåt">←</button>
+              <button type="button" className="tb-mini-button" disabled={frameIndex >= last} onClick={() => move(1)} aria-label="Flytta framen framåt">→</button>
+              <button type="button" className="tb-mini-button" onClick={remove}>Ta bort frame</button>
+            </div>
+          ) : !playing && frames.length < 2 ? (
+            <p className="tb-timeline-hint">Tryck + för en ny frame, flytta spelarna och tryck ▶ för att se rörelsen.</p>
+          ) : null}
         </div>
-      )}
-      {!readOnly && !playing && frameIndex === 0 && frames.length < 2 && (
-        <p className="tb-timeline-hint">Tryck + för en ny frame, flytta spelarna och tryck ▶ för att se rörelsen.</p>
       )}
       {error && <p className="tb-timeline-hint" role="alert">{error}</p>}
     </div>

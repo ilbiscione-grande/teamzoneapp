@@ -2,14 +2,16 @@
 
 // The timeline to scrub: each frame a dot where it is reached in time, the
 // playhead a handle to drag back and forth, stopping anywhere, between two
-// frames too. A dot jumps to its frame; near a dot the handle snaps to it.
-// The arrow keys step a tenth of a second, Page keys a frame.
+// frames too. Pressing anywhere on it, the handle and the dots included,
+// starts a drag there; near a dot the handle snaps to it, so a tap on a dot
+// goes to its frame. The arrow keys step a tenth of a second, Page keys a frame.
 import { useRef } from "react";
 import type { Frame } from "../../../lib/tactics/model.ts";
 import { frameTimes, playheadOfTime, secondsLabel, timeOfPlayhead } from "../../../lib/tactics/scrub.ts";
 import { useEditor } from "../store.ts";
 
-const SNAP_PX = 8;
+/** Half a dot's width: a press on a dot lands on its frame. */
+const SNAP_PX = 11;
 
 export function Scrubber({ frames }: { frames: Frame[] }) {
   const track = useRef<HTMLDivElement>(null);
@@ -56,11 +58,9 @@ export function Scrubber({ frames }: { frames: Frame[] }) {
         }}>
         <div className="tb-scrub-track"><span className="tb-scrub-fill" style={{ width: percent(now) }} /></div>
         {times.map((time, index) => (
-          <button key={frames[index].id} type="button" className="tb-scrub-tick" tabIndex={-1} style={{ left: percent(time) }}
-            data-passed={time <= now + 1} aria-label={`Frame ${index + 1}`}
-            onPointerDown={event => { event.stopPropagation(); setFrame(index); }}>
-            <span aria-hidden="true">{index + 1}</span>
-          </button>
+          <span key={frames[index].id} className="tb-scrub-tick" aria-hidden="true" style={{ left: percent(time) }} data-passed={time <= now + 1}>
+            <span>{index + 1}</span>
+          </span>
         ))}
         <span className="tb-scrub-thumb" style={{ left: percent(now) }} />
       </div>

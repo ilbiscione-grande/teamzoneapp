@@ -235,3 +235,12 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
 .tb-folder-projects .wt-actions { align-items: center; }
 .tb-order { width: 32px; height: 32px; border: 1px solid var(--wt-line); border-radius: 6px; background: white; color: var(--wt-text); cursor: pointer; }
 .tb-order:disabled { opacity: .35; cursor: default; }
+
+/* Under the timeline one slot of fixed height: the frame's tools or a hint, so scrubbing never changes the board's size. */
+.tb-timeline-foot { height: 36px; margin-top: 6px; display: flex; align-items: center; overflow: hidden; }
+.tb-timeline-foot > * { flex: 1; min-width: 0; margin: 0; }
+.tb-timeline-foot .tb-timeline-row { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.tb-timeline-foot .tb-timeline-hint { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 760px) {
+  .tb-timeline-foot { margin-top: 4px; }
+}
