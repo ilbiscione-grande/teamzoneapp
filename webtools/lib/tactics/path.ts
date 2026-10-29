@@ -1,7 +1,7 @@
 // Lines as point lists: a curved line sampled into short steps, and a line
 // cut to a share of its length (for drawing it out while it plays).
 import type { Point } from "./model.ts";
-import { curvePoint } from "./timeline.ts";
+import { curvePoint } from "./motion.ts";
 
 /** A curve through `through` at its middle, as points: the drawn curve of a bent line or path. */
 export function sampleCurve(from: Point, to: Point, through: Point | null, steps = 24): number[] {

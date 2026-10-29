@@ -55,5 +55,17 @@ export function zoomAround(viewport: Viewport, factor: number, center: Point): V
   return { scale, x: center.x - (center.x - viewport.x) * ratio, y: center.y - (center.y - viewport.y) * ratio };
 }
 
+/** The view `scale` times in with a pitch point in the middle of a frame of this size. */
+export function zoomTo(point: Point, fit: Fit, width: number, height: number, scale: number): Viewport {
+  const at = pitchToFrame(point, fit);
+  return { scale, x: width / 2 - at.x * scale, y: height / 2 - at.y * scale };
+}
+
+/** Part of the way (0–1) from one view to another. */
+export function blendViewport(from: Viewport, to: Viewport, amount: number): Viewport {
+  const part = (a: number, b: number) => a + (b - a) * amount;
+  return { x: part(from.x, to.x), y: part(from.y, to.y), scale: part(from.scale, to.scale) };
+}
+
 export const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 export const midpoint = (a: Point, b: Point): Point => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });

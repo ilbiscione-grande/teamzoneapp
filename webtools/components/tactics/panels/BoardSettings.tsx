@@ -1,6 +1,6 @@
 "use client";
 
-// The board's own settings: its name, which part of the pitch shows, the
+// The board's own settings: its name, duplicating it, which part of the pitch shows, the
 // grid, the teams' names and colours, and whether names show on players.
 import { updateBoard } from "../../../lib/tactics/document.ts";
 import type { Board, PitchOverlay, PitchView, Side } from "../../../lib/tactics/model.ts";
@@ -37,6 +37,8 @@ export function BoardSettings({ board }: { board: Board }) {
       </div>
       <h3>Tavlan</h3>
       <label className="tb-field">Namn<input value={board.name} maxLength={60} onChange={event => change(current => ({ ...current, name: event.target.value }))} /></label>
+      <button type="button" className="wt-button secondary small" onClick={() => useEditor.getState().duplicateBoard(board.id)}
+        title="En kopia med alla frames och effekter, direkt efter den här">Duplicera tavlan</button>
       <div className="tb-row">
         <label className="tb-field">Plan
           <select value={board.view} onChange={event => change(current => ({ ...current, view: event.target.value as PitchView }))}>

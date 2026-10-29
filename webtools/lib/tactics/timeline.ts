@@ -1,14 +1,17 @@
 // Playing a board: where the playhead is after some time, and the objects
 // between two frames. The playhead counts frames: 2.4 is 40 % of the way
 // from frame 2 to frame 3. From the first Tacticsboard, as pure functions.
+// What is drawn along a move (trails, arrows, rings, the zoom) is in marks.ts.
 import { ballPosition } from "./ball.ts";
-import type { BallObject, Easing, Effect, Frame, LineObject, Point, ShapeObject, TacticsObject } from "./model.ts";
+import { withMarks, type Marks } from "./marks.ts";
+import type { BallObject, Effect, Frame, LineObject, ShapeObject, TacticsObject } from "./model.ts";
+import { curvePoint, ease, effectsOf, lerp, lerpPoint } from "./motion.ts";
 
-/** A trail behind a moving object: pitch points x, y, … and how visible. */
-export type Trail = { points: number[]; opacity: number };
+export { curvePoint, ease, easeInOut, effectsOf } from "./motion.ts";
+export type { Trail } from "./marks.ts";
 
-/** What playing adds to an object: how visible, how large, how far drawn, how lit, and the trails behind it. */
-export type Rendered = TacticsObject & { opacity?: number; grow?: number; drawn?: number; glow?: number; trails?: Trail[] };
+/** What playing adds to an object: how visible, how large, how far drawn, how lit, and the marks along its move. */
+export type Rendered = TacticsObject & Marks & { opacity?: number; grow?: number; drawn?: number; glow?: number };
 
 /** A move's length in ms: the time into frame `index` (frame 0 has none). */
 export const moveTime = (frames: Frame[], index: number) => Math.max(100, frames[index]?.durationMs ?? 1500);
@@ -39,37 +42,6 @@ export function playheadAt(frames: Frame[], elapsed: number, speed = 1, loop = f
   }
 }
 
-export const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-
-const easings: Record<Easing, (t: number) => number> = {
-  smooth: easeInOut,
-  linear: t => t,
-  in: t => t * t * t,
-  out: t => 1 - Math.pow(1 - t, 3),
-};
-
-/** Progress t (0–1) of a move as the frame's easing shapes it; smooth when not set. */
-export const ease = (easing: Easing | undefined, t: number) => (easings[easing ?? "smooth"] ?? easeInOut)(t);
-
-/** An object's effects in its frame: several, or the one of a board from before several could be chosen. */
-export function effectsOf(item: TacticsObject): Effect[] {
-  if (Array.isArray(item.effects)) return item.effects;
-  return item.effect ? [item.effect] : [];
-}
-
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const lerpPoint = (a: Point, b: Point, t: number): Point => ({ x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t) });
-
-/** Along a curve through the control point (quadratic: the control pulls the path). */
-export function curvePoint(from: Point, to: Point, control: Point | null | undefined, t: number): Point {
-  if (!control) return lerpPoint(from, to, t);
-  const inv = 1 - t;
-  return {
-    x: inv * inv * from.x + 2 * inv * t * control.x + t * t * to.x,
-    y: inv * inv * from.y + 2 * inv * t * control.y + t * t * to.y,
-  };
-}
-
 /** The shortest turn between two angles. */
 const lerpAngle = (a: number, b: number, t: number) => {
   const delta = ((((b - a) % 360) + 540) % 360) - 180;
@@ -78,7 +50,10 @@ const lerpAngle = (a: number, b: number, t: number) => {
 
 type Look = { opacity?: number; grow?: number; drawn?: number; glow?: number };
 
-/** One effect's look at progress t (0–1) of the move into the frame. A trail is drawn apart (trailOf). */
+/** Effects drawn along the move or on the view (marks.ts), not on the object. */
+const MARKS = new Set<Effect>(["trail", "arrow", "ring", "zoom"]);
+
+/** One effect's look at progress t (0–1) of the move into the frame. */
 function effectLook(effect: Effect, t: number, entering: boolean): Look {
   switch (effect) {
     case "pop":
@@ -90,10 +65,10 @@ function effectLook(effect: Effect, t: number, entering: boolean): Look {
       return { grow: 1 + Math.sin(t * Math.PI * 3) * 0.14 * (1 - t * 0.5) };
     case "highlight":
       return { glow: Math.sin(t * Math.PI) * 0.6 + t * 0.4, opacity: entering ? t : 1 };
-    case "trail":
-      return {};
-    default:
+    case "fade":
       return entering ? { opacity: t } : {};
+    default:
+      return {};
   }
 }
 
@@ -101,7 +76,7 @@ function effectLook(effect: Effect, t: number, entering: boolean): Look {
 function withEffects(item: TacticsObject, t: number, entering: boolean): Rendered {
   const chosen = effectsOf(item);
   // Without a way in of its own, a new object fades in.
-  const kinds: Effect[] = chosen.some(kind => kind !== "trail") ? chosen : ["fade", ...chosen];
+  const kinds: Effect[] = chosen.some(kind => !MARKS.has(kind)) ? chosen : ["fade", ...chosen];
   const result: Rendered = { ...item };
   for (const look of kinds.map(kind => effectLook(kind, t, entering))) {
     if (look.opacity !== undefined) result.opacity = Math.min(result.opacity ?? 1, look.opacity);
@@ -110,36 +85,6 @@ function withEffects(item: TacticsObject, t: number, entering: boolean): Rendere
     if (look.glow !== undefined) result.glow = Math.max(result.glow ?? 0, look.glow);
   }
   return result;
-}
-
-const TRAIL_STEPS = 24;
-/** Shorter moves leave no trail. */
-const TRAIL_MIN = 0.3;
-
-/**
- * The trail an object with the trail effect leaves on its move from one
- * frame to the next, up to progress `upTo` (eased), as pitch points x, y, …;
- * null without the effect, without a move, or for a ball riding with its
- * holder.
- */
-export function trailOf(from: Frame, to: Frame, id: string, upTo: number): number[] | null {
-  const next = to.objects.find(item => item.id === id);
-  const prev = from.objects.find(item => item.id === id);
-  if (!next || !prev || !effectsOf(next).includes("trail")) return null;
-  let start: Point = prev;
-  let end: Point = next;
-  if (next.type === "ball" && prev.type === "ball") {
-    if (prev.attachedTo && prev.attachedTo === next.attachedTo) return null;
-    start = ballPosition(prev, from.objects);
-    end = ballPosition(next, to.objects);
-  }
-  if (Math.hypot(end.x - start.x, end.y - start.y) < TRAIL_MIN || upTo <= 0) return null;
-  const points: number[] = [];
-  for (let i = 0; i <= TRAIL_STEPS; i++) {
-    const at = curvePoint(start, end, next.pathControl, (upTo * i) / TRAIL_STEPS);
-    points.push(at.x, at.y);
-  }
-  return points;
 }
 
 /** The objects at progress t (0–1) of the move from one frame to the next. */
@@ -174,9 +119,7 @@ export function blendFrames(from: Frame, to: Frame, t: number): Rendered[] {
       blended = { ...blended, width: lerp(shape.width, next.width, eased), height: lerp(shape.height, next.height, eased) } as ShapeObject;
     }
     if ("scale" in next && "scale" in prev) blended = { ...blended, scale: lerp(prev.scale, next.scale, eased) } as TacticsObject;
-    const rendered = withEffects(blended, t, false);
-    const trail = trailOf(from, to, next.id, eased);
-    result.push(trail ? { ...rendered, trails: [{ points: trail, opacity: 1 }] } : rendered);
+    result.push(withEffects(blended, t, false));
   }
   // Gone in the next frame: fades out where it was.
   for (const prev of from.objects) {
@@ -204,23 +147,11 @@ export function blendFrames(from: Frame, to: Frame, t: number): Rendered[] {
   });
 }
 
-/** Adds the trails left on the move into frame `index`, fading by `opacity`, to the objects still there. */
-function withEarlierTrails(frames: Frame[], index: number, objects: Rendered[], opacity: number): Rendered[] {
-  if (index < 1 || opacity <= 0) return objects;
-  return objects.map(item => {
-    const points = trailOf(frames[index - 1], frames[index], item.id, 1);
-    return points ? { ...item, trails: [{ points, opacity }, ...(item.trails ?? [])] } : item;
-  });
-}
-
-/**
- * What the board shows at a playhead: a frame, or a move between two. A
- * trail stays drawn on reaching its frame and fades out over the next move.
- */
+/** What the board shows at a playhead: a frame, or a move between two, with the marks along it. */
 export function objectsAt(frames: Frame[], playhead: number): Rendered[] {
   if (frames.length === 0) return [];
   const index = Math.min(frames.length - 1, Math.max(0, Math.floor(playhead)));
   const t = playhead - index;
-  if (index >= frames.length - 1 || t <= 0) return withEarlierTrails(frames, index, frames[index].objects, 1);
-  return withEarlierTrails(frames, index, blendFrames(frames[index], frames[index + 1], t), 1 - t);
+  const shown: Rendered[] = index >= frames.length - 1 || t <= 0 ? frames[index].objects : blendFrames(frames[index], frames[index + 1], t);
+  return withMarks(frames, playhead, shown);
 }

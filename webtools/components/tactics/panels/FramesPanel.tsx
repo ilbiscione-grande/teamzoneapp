@@ -10,7 +10,7 @@ import {
 } from "../../../lib/tactics/document.ts";
 import type { Board, Easing, Effect } from "../../../lib/tactics/model.ts";
 import { effectsOf } from "../../../lib/tactics/timeline.ts";
-import { useEditor } from "../store.ts";
+import { activeObjects, useEditor } from "../store.ts";
 import { easingLabels, effectKinds, effects, effectSuits } from "./effects.ts";
 
 const durations = [500, 750, 1000, 1500, 2000, 3000, 4000];
@@ -42,10 +42,11 @@ export function FramesPanel({ board }: { board: Board }) {
   const before = new Set(frames[frameIndex - 1]?.objects.map(item => item.id) ?? []);
   const selected = frame.objects.filter(item => selection.includes(item.id));
   const withEffect = frame.objects.filter(item => effectsOf(item).length > 0);
-  /** One effect on or off for the selected objects it suits. */
-  const toggle = (kind: Effect, on: boolean) => patch(Object.fromEntries(selected
-    .filter(item => effectSuits(kind, item))
+  /** One effect on or off for these objects where it suits, read as they are now (quick clicks build on each other). */
+  const toggleOn = (ids: string[], kind: Effect, on: boolean) => patch(Object.fromEntries(activeObjects(useEditor.getState())
+    .filter(item => ids.includes(item.id) && effectSuits(kind, item))
     .map(item => [item.id, toggleEffect(item, kind, on)])));
+  const toggle = (kind: Effect, on: boolean) => toggleOn(selected.map(item => item.id), kind, on);
   const clear = () => patch(Object.fromEntries(selected.map(item => [item.id, { effects: [], effect: null }])));
 
   return (
@@ -131,7 +132,7 @@ export function FramesPanel({ board }: { board: Board }) {
                       const on = effectsOf(item).includes(kind);
                       return (
                         <button key={kind} type="button" aria-pressed={on} title={effects[kind].label} aria-label={effects[kind].label}
-                          onClick={() => patch({ [item.id]: toggleEffect(item, kind, !on) })}>{effects[kind].icon}</button>
+                          onClick={() => toggleOn([item.id], kind, !on)}>{effects[kind].icon}</button>
                       );
                     })}
                   </span>

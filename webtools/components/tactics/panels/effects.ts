@@ -1,5 +1,6 @@
 // The effects to choose from: what each is called, what it does, and which
-// objects it suits. Drawing in is for lines only, a trail for what moves. An
+// objects it suits. Drawing in is for lines only; a trail, an arrow and a
+// ring for what moves; zooming for anything. An
 // object may have several in the same frame; they play together.
 import type { Easing, Effect, TacticsObject } from "../../../lib/tactics/model.ts";
 
@@ -10,6 +11,9 @@ export const effects: Record<Effect, { label: string; icon: string; hint: string
   pulse: { label: "Puls", icon: "◎", hint: "Pulserar för att dra blicken till sig." },
   highlight: { label: "Lys upp", icon: "✺", hint: "En gul glöd runt objektet." },
   trail: { label: "Spår", icon: "⋯", hint: "Lämnar ett streckat spår efter sig, så man ser var det kom ifrån." },
+  arrow: { label: "Pil", icon: "➜", hint: "En streckad pil visar vägen först och försvinner bakom objektet när det rör sig." },
+  ring: { label: "Markera", icon: "◯", hint: "En streckad ring i objektets färg runt det." },
+  zoom: { label: "Zooma", icon: "⌕", hint: "Zoomar in på objektet och stannar där. Zoomar nästa frame inte, zoomar den ut igen." },
 };
 
 export const effectKinds = Object.keys(effects) as Effect[];
@@ -18,7 +22,7 @@ const MOVING = new Set(["player", "ball", "cone", "pole", "mannequin", "goal", "
 
 export function effectSuits(kind: Effect, item: TacticsObject): boolean {
   if (kind === "draw") return item.type === "line" || item.type === "freehand";
-  if (kind === "trail") return MOVING.has(item.type);
+  if (kind === "trail" || kind === "arrow" || kind === "ring") return MOVING.has(item.type);
   return true;
 }
 

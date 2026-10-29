@@ -32,10 +32,11 @@ type Base = {
  * Effects play while the board moves into the frame that has them. An
  * object new in a frame fades in and one gone from the next fades out by
  * themselves; "pop" and "draw" are other ways in, "pulse" and "highlight"
- * point at an object already there, and "trail" leaves a dashed track of
- * the move behind it. Several play together.
+ * point at an object already there, "trail" leaves a dashed track of the
+ * move behind it, "arrow" shows the way ahead of it, "ring" rings it in its
+ * colour and "zoom" brings the view in on it. Several play together.
  */
-export type Effect = "fade" | "pop" | "draw" | "pulse" | "highlight" | "trail";
+export type Effect = "fade" | "pop" | "draw" | "pulse" | "highlight" | "trail" | "arrow" | "zoom" | "ring";
 
 export type PlayerObject = Base & {
   type: "player";

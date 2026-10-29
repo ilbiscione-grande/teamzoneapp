@@ -7,6 +7,7 @@
 import { create } from "zustand";
 import { patchObjects, updateFrame } from "../../lib/tactics/document.ts";
 import { emptyHistory, record, redo, undo, type History } from "../../lib/tactics/history.ts";
+import { duplicateBoard } from "../../lib/tactics/templates.ts";
 import type { Board, Project, ProjectDocument, ProjectKind, TacticsObject } from "../../lib/tactics/model.ts";
 
 export type Tool =
@@ -55,6 +56,8 @@ type EditorState = {
   setBoard: (boardId: string) => void;
   /** A document change: remembered for undo, then saved. */
   change: (next: (document: ProjectDocument) => ProjectDocument) => void;
+  /** A copy of a board put right after it, and shown. */
+  duplicateBoard: (boardId: string) => void;
   /** A change to the active frame's objects. */
   changeObjects: (next: (objects: TacticsObject[]) => TacticsObject[]) => void;
   patch: (patches: Record<string, Partial<TacticsObject>>) => void;
@@ -131,6 +134,14 @@ export const useEditor = create<EditorState>((set, get) => ({
     const changed = next(document);
     if (changed === document) return;
     set({ document: changed, history: record(history, document), saveState: "dirty" });
+  },
+  duplicateBoard: boardId => {
+    const { document } = get();
+    if (!document) return;
+    const { document: changed, copyId } = duplicateBoard(document, boardId);
+    if (!copyId) return;
+    get().change(() => changed);
+    get().setBoard(copyId);
   },
   changeObjects: next => {
     const { boardId, frameIndex } = get();

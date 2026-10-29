@@ -1,12 +1,12 @@
 "use client";
 
-// "+ Tavla": an empty board, a copy of the board in hand, one of the ready
+// "+ Tavla": an empty board, a copy of the board in hand (put right after it), one of the ready
 // boards for the project's kind, or the boards of one of your templates.
 // The menu opens under the button, outside the tab row that scrolls.
 import { useEffect, useRef, useState } from "react";
 import { newBoard } from "../../lib/tactics/document.ts";
 import type { Board } from "../../lib/tactics/model.ts";
-import { boardsFromTemplate, copyBoard, starterBoard, starterSets } from "../../lib/tactics/templates.ts";
+import { boardsFromTemplate, starterBoard, starterSets } from "../../lib/tactics/templates.ts";
 import { activeBoard, useEditor, NONE } from "./store.ts";
 import { useTemplates } from "./use-templates.ts";
 
@@ -53,7 +53,7 @@ export function BoardMenu() {
       {open && (
         <div ref={menu} className="tb-menu" role="menu" style={{ left: at.left, top: at.top }}>
           <button type="button" role="menuitem" onClick={() => add([newBoard(`Tavla ${boards.length + 1}`, home, away)])}>Tom tavla</button>
-          {current && <button type="button" role="menuitem" onClick={() => add([copyBoard(current)])}>Kopia av {current.name || "tavlan"}</button>}
+          {current && <button type="button" role="menuitem" onClick={() => { useEditor.getState().duplicateBoard(current.id); setOpen(false); }}>Kopia av {current.name || "tavlan"}</button>}
           <span className="tb-menu-heading">Färdiga tavlor</span>
           {starterSets[meta?.kind ?? "match"].map(item => (
             <button key={item.key} type="button" role="menuitem" onClick={() => add([starterBoard(item, home, away)])}>{item.name}</button>

@@ -10,7 +10,8 @@ import Konva from "konva";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Group, Layer, Rect, Stage } from "react-konva";
 import { ballHolders } from "../../../lib/tactics/ball.ts";
-import { fitView, viewRect } from "../../../lib/tactics/geometry.ts";
+import { blendViewport, fitView, viewRect, zoomTo } from "../../../lib/tactics/geometry.ts";
+import { cameraAt, ZOOM } from "../../../lib/tactics/marks.ts";
 import { objectsAt } from "../../../lib/tactics/timeline.ts";
 import { ObjectNode } from "../objects/ObjectNode.tsx";
 import { activeBoard, activeObjects, isBetween, useEditor } from "../store.ts";
@@ -18,7 +19,7 @@ import { DraftNode } from "./DraftNode.tsx";
 import { Ghosts } from "./Ghosts.tsx";
 import { Pitch } from "./Pitch.tsx";
 import { Selection } from "./Selection.tsx";
-import { Trails } from "./Trails.tsx";
+import { Marks } from "./Marks.tsx";
 import { pitchPointer, StageContext, stageHolder, type StageShared } from "./stage-context.ts";
 import { useBand } from "./use-band.ts";
 import { isDrawTool, isPlaceTool, useDrawing } from "./use-drawing.ts";
@@ -90,7 +91,10 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
   // Ghosts of the frame before are for editing; a shared board shows none.
   const previous = fullEdit && frameIndex > 0 ? board.frames[frameIndex - 1]?.objects : undefined;
   const fitted = { x: fit.x, y: fit.y, scaleX: fit.scale, scaleY: fit.scale, rotation: fit.rotation };
-  const zoomed = { x: view.viewport.x, y: view.viewport.y, scaleX: view.viewport.scale, scaleY: view.viewport.scale };
+  // Playing into a frame that zooms, the view leaves the user's zoom for the object.
+  const camera = playing || between ? cameraAt(board.frames, playhead, shown) : null;
+  const sight = camera ? blendViewport(view.viewport, zoomTo(camera.at, fit, size.width, size.height, ZOOM), camera.amount) : view.viewport;
+  const zoomed = { x: sight.x, y: sight.y, scaleX: sight.scale, scaleY: sight.scale };
   const tapGrass = (target: Konva.Node) => {
     if (isPlaceTool(tool)) drawing.place();
     else if (tool === "select" && target.name() === "grass") useEditor.getState().select([]);
@@ -140,7 +144,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
               <Group ref={view.objectView} {...zoomed}>
                 <Group ref={content} {...fitted}>
                   {previous && <Ghosts previous={previous} current={objects} selection={selection} editable={canEdit} />}
-                  <Trails objects={visible} />
+                  <Marks objects={visible} board={board} />
                   {visible.map(item => (
                     <ObjectNode key={item.id} item={item} board={board} selected={selection.includes(item.id)} upright={upright} holding={holders.has(item.id)} />
                   ))}

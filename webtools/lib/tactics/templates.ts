@@ -5,7 +5,7 @@
 // hold the same template twice and share links stay apart.
 import { applyFormation, createObject, newBoard, newFrame, newId } from "./document.ts";
 import { formations } from "./formations.ts";
-import { PITCH_LENGTH, PITCH_WIDTH, type Board, type PitchView, type Point, type ProjectKind, type TacticsObject } from "./model.ts";
+import { PITCH_LENGTH, PITCH_WIDTH, type Board, type PitchView, type Point, type ProjectDocument, type ProjectKind, type TacticsObject } from "./model.ts";
 
 export type StarterBoard = { key: string; name: string; view: PitchView; ball?: Point; formation?: string };
 
@@ -86,6 +86,16 @@ export function boardsFromTemplate(boards: Board[], homeName?: string): Board[] 
 /** A copy of a board in the same project, named as a copy. */
 export function copyBoard(board: Board): Board {
   return { ...boardsFromTemplate([board])[0], name: `${board.name} (kopia)`.slice(0, 60) };
+}
+
+/** The project with a copy of one board put right after it, and the copy's id; unchanged (null) for an unknown board. */
+export function duplicateBoard(document: ProjectDocument, boardId: string): { document: ProjectDocument; copyId: string | null } {
+  const index = document.boards.findIndex(board => board.id === boardId);
+  if (index < 0) return { document, copyId: null };
+  const copy = copyBoard(document.boards[index]);
+  const boards = [...document.boards];
+  boards.splice(index + 1, 0, copy);
+  return { document: { ...document, boards }, copyId: copy.id };
 }
 
 export type TemplateSummary = { id: string; name: string; kind: ProjectKind; boards: { id: string; name: string }[]; updated_at: string };
