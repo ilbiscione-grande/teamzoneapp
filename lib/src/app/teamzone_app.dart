@@ -107,6 +107,7 @@ part '../features/publication/team_event_visibility_surface.dart';
 part '../features/assistant_coach/assistant_coach_entry.dart';
 part '../features/assistant_coach/assistant_event_time_dialog.dart';
 part '../features/auth/auth_surfaces.dart';
+part '../features/auth/auth_style.dart';
 part '../features/auth/invitation_flow.dart';
 part '../features/auth/support_admin_surface.dart';
 part '../features/legal/legal_acceptance_surface.dart';

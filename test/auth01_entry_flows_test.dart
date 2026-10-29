@@ -31,13 +31,16 @@ void main() {
       final entry = _EntryFake();
       await tester.pumpWidget(_app(entry));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Skapa konto'));
+      await _tapVisible(tester, find.text('Skapa konto'));
       await tester.pumpAndSettle();
 
       await tester.enterText(_field('E-post'), 'new@example.com');
       await tester.enterText(_field('Lösenord'), 'correct-horse');
       await tester.enterText(_field('Bekräfta lösenord'), 'correct-horse');
-      await tester.tap(find.widgetWithText(FilledButton, 'Skapa konto'));
+      await _tapVisible(
+        tester,
+        find.widgetWithText(FilledButton, 'Skapa konto'),
+      );
       await tester.pumpAndSettle();
 
       expect(entry.signUpCalls, 1);
@@ -60,12 +63,12 @@ void main() {
       );
     await tester.pumpWidget(_app(entry));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Skapa konto'));
+    await _tapVisible(tester, find.text('Skapa konto'));
     await tester.pumpAndSettle();
     await tester.enterText(_field('E-post'), 'new@example.com');
     await tester.enterText(_field('Lösenord'), 'correct-horse');
     await tester.enterText(_field('Bekräfta lösenord'), 'correct-horse');
-    await tester.tap(find.widgetWithText(FilledButton, 'Skapa konto'));
+    await _tapVisible(tester, find.widgetWithText(FilledButton, 'Skapa konto'));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('säkerhetskraven'), findsOneWidget);
@@ -78,10 +81,11 @@ void main() {
     final entry = _EntryFake();
     await tester.pumpWidget(_app(entry));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('E-postkod/länk'));
+    await _tapVisible(tester, find.text('E-postkod/länk'));
     await tester.pumpAndSettle();
     await tester.enterText(_field('E-post'), 'member@example.com');
-    await tester.tap(
+    await _tapVisible(
+      tester,
       find.widgetWithText(FilledButton, 'Skicka e-postkod/länk'),
     );
     await tester.pumpAndSettle();
@@ -104,18 +108,22 @@ void main() {
     final entry = _EntryFake();
     await tester.pumpWidget(_app(entry));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Skapa konto'));
-    await tester.tap(find.text('E-postkod/länk'));
+    await _tapVisible(tester, find.text('Skapa konto'));
+    await _tapVisible(tester, find.text('E-postkod/länk'));
     await tester.pumpAndSettle();
     await tester.enterText(_field('E-post'), 'new@example.com');
-    await tester.tap(
+    await _tapVisible(
+      tester,
       find.widgetWithText(FilledButton, 'Skicka e-postkod/länk'),
     );
     await tester.pumpAndSettle();
     expect(entry.lastPurpose, EmailChallengePurpose.signUp);
 
     await tester.enterText(_field('E-postkod'), '123456');
-    await tester.tap(find.widgetWithText(FilledButton, 'Verifiera kod'));
+    await _tapVisible(
+      tester,
+      find.widgetWithText(FilledButton, 'Verifiera kod'),
+    );
     await tester.pumpAndSettle();
     expect(entry.verifiedCode, '123456');
   });
@@ -137,7 +145,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(_field('E-post'), 'member@example.com');
       await tester.enterText(_field('Lösenord'), 'wrong-password');
-      await tester.tap(find.widgetWithText(FilledButton, 'Logga in'));
+      await _tapVisible(tester, find.widgetWithText(FilledButton, 'Logga in'));
       await tester.pumpAndSettle();
       expect(find.text(message), findsOneWidget);
       expect(find.textContaining('private detail'), findsNothing);
@@ -151,7 +159,7 @@ void main() {
     await tester.pumpWidget(_app(entry));
     await tester.pumpAndSettle();
     await tester.enterText(_field('E-post'), 'unknown@example.com');
-    await tester.tap(find.text('Glömt lösenord?'));
+    await _tapVisible(tester, find.text('Glömt lösenord?'));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Om adressen är registrerad'), findsOneWidget);
@@ -297,4 +305,12 @@ class _Identity implements IdentityServices {
 
   @override
   Future<void> signOut() async {}
+}
+
+/// The sign-in pages scroll on the test screen; brings the target into
+/// view before tapping it.
+Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  await tester.ensureVisible(finder);
+  await tester.pumpAndSettle();
+  await tester.tap(finder);
 }

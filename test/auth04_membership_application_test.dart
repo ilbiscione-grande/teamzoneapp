@@ -114,15 +114,15 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Hitta klubb eller lag'));
+    await _tapVisible(tester, find.text('Hitta klubb eller lag'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).last, 'test');
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
     expect(find.textContaining('Officiell klubb'), findsOneWidget);
-    await tester.tap(find.text('Ansök'));
+    await _tapVisible(tester, find.text('Ansök'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Skicka ansökan'));
+    await _tapVisible(tester, find.text('Skicka ansökan'));
     await tester.pumpAndSettle();
     expect(membership.appliedTeamId, 'team');
   });
@@ -187,7 +187,7 @@ void main() {
       expect(find.text('Nyhetsredaktion'), findsNothing);
       expect(find.text('Publika sidor'), findsNothing);
 
-      await tester.tap(find.text('Inkorg').first);
+      await _tapVisible(tester, find.text('Inkorg').first);
       await tester.pumpAndSettle();
       final queue = find.byKey(const Key('inbox-support-queue'));
       if (!admin) {
@@ -197,7 +197,7 @@ void main() {
       }
       expect(queue, findsOneWidget);
       expect(find.text('2 nya meddelanden från användare'), findsOneWidget);
-      await tester.tap(queue);
+      await _tapVisible(tester, queue);
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('inbox-support-queue')), findsNothing);
       debugDefaultTargetPlatformOverride = null;
@@ -247,14 +247,14 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Hitta klubb eller lag'));
+      await _tapVisible(tester, find.text('Hitta klubb eller lag'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).last, 'test');
       await tester.testTextInput.receiveAction(TextInputAction.search);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Ansök'));
+      await _tapVisible(tester, find.text('Ansök'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Skicka ansökan'));
+      await _tapVisible(tester, find.text('Skicka ansökan'));
       await tester.pumpAndSettle();
       expect(
         find.textContaining('Du har redan en väntande ansökan'),
@@ -279,11 +279,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Skapa klubb och första lag'));
+    await _tapVisible(tester, find.text('Skapa klubb och första lag'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).at(0), 'Nya Klubben');
     await tester.enterText(find.byType(TextFormField).at(1), 'F2014');
-    await tester.tap(find.text('Skapa klubb och lag'));
+    await _tapVisible(tester, find.text('Skapa klubb och lag'));
     await tester.pumpAndSettle();
     expect(membership.createdClubName, 'Nya Klubben');
     expect(membership.createdTeamName, 'F2014');
@@ -304,11 +304,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Skapa klubb och första lag'));
+    await _tapVisible(tester, find.text('Skapa klubb och första lag'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).at(0), 'TeamZone');
     await tester.enterText(find.byType(TextFormField).at(1), 'F2014');
-    await tester.tap(find.text('Skapa klubb och lag'));
+    await _tapVisible(tester, find.text('Skapa klubb och lag'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Namnet är skyddat'), findsOneWidget);
     expect(find.text('Kontakta TeamZone'), findsOneWidget);
@@ -332,17 +332,17 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Skapa klubb och första lag'));
+    await _tapVisible(tester, find.text('Skapa klubb och första lag'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).at(0), 'Team-Zone');
     await tester.enterText(find.byType(TextFormField).at(1), 'AUTH06 testlag');
-    await tester.tap(find.text('Skapa klubb och lag'));
+    await _tapVisible(tester, find.text('Skapa klubb och lag'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Kontakta TeamZone'));
+    await _tapVisible(tester, find.text('Kontakta TeamZone'));
     await tester.pumpAndSettle();
     expect(find.text('Team-Zone'), findsOneWidget);
     expect(find.text('AUTH06 testlag'), findsOneWidget);
-    await tester.tap(find.text('Skicka ärende'));
+    await _tapVisible(tester, find.text('Skicka ärende'));
     await tester.pumpAndSettle();
     expect(membership.supportClubName, 'Team-Zone');
     expect(membership.supportTeamName, 'AUTH06 testlag');
@@ -915,4 +915,12 @@ class _MembershipFake implements MembershipServices {
     required int expectedRevision,
     required String idempotencyKey,
   }) async => expectedRevision + 1;
+}
+
+/// The sign-in pages scroll on the test screen; brings the target into
+/// view before tapping it.
+Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  await tester.ensureVisible(finder);
+  await tester.pumpAndSettle();
+  await tester.tap(finder);
 }

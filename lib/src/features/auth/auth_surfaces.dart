@@ -272,281 +272,331 @@ class _SignInScreenState extends State<_SignInScreen> {
     final strings = AppStrings.of(context);
     return ListenableBuilder(
       listenable: Listenable.merge([_submission, _challenge]),
-      builder: (context, _) => Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: AutofillGroup(
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'TeamZone',
-                          style: Theme.of(context).textTheme.displaySmall,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(strings.environment(widget.environment.name)),
-                        const SizedBox(height: 32),
-                        if (!widget.isConfigured)
-                          _StateCard(
-                            icon: Icons.construction,
-                            title: strings.backendNotConnected,
-                            message: strings.backendInstructions,
-                          )
-                        else ...[
-                          if (widget.sessionEnded) ...[
-                            _StateCard(
-                              icon: Icons.lock_clock_outlined,
-                              title: strings.feature('Sessionen har avslutats'),
-                              message: strings.feature(
-                                'Logga in igen för att fortsätta. Ingen skyddad data visas.',
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                          SegmentedButton<_AuthStartMode>(
-                            segments: [
-                              ButtonSegment(
-                                value: _AuthStartMode.signIn,
-                                label: Text(strings.signIn),
-                                icon: const Icon(Icons.login),
-                              ),
-                              ButtonSegment(
-                                value: _AuthStartMode.createAccount,
-                                label: Text(strings.feature('Skapa konto')),
-                                icon: const Icon(Icons.person_add_alt_1),
-                              ),
-                            ],
-                            selected: {_mode},
-                            onSelectionChanged: _submission.isPending
+      builder: (context, _) {
+        final pending = _submission.isPending;
+        final creating = _mode == _AuthStartMode.createAccount;
+        final palette = AppPalette.of(context);
+        return Scaffold(
+          body: SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                  child: AutofillGroup(
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _AuthHero(
+                            title: creating
+                                ? strings.feature('Skapa ditt konto')
+                                : strings.feature('Välkommen tillbaka'),
+                            message: creating
+                                ? strings.feature(
+                                    'Ett konto räcker för alla lag du är med i, som spelare, ledare eller förälder.',
+                                  )
+                                : strings.feature(
+                                    'Logga in för att se kallelser, träningar och matcher för dina lag.',
+                                  ),
+                            chip: widget.environment.name == 'production'
                                 ? null
-                                : (selection) => _changeMode(selection.single),
+                                : strings.environment(widget.environment.name),
                           ),
                           const SizedBox(height: 16),
-                          SegmentedButton<_AuthMethod>(
-                            segments: [
-                              ButtonSegment(
-                                value: _AuthMethod.password,
-                                label: Text(strings.password),
-                              ),
-                              ButtonSegment(
-                                value: _AuthMethod.emailCode,
-                                label: Text(strings.feature('E-postkod/länk')),
-                              ),
-                            ],
-                            selected: {_method},
-                            onSelectionChanged: _submission.isPending
-                                ? null
-                                : (selection) => setState(() {
-                                    _method = selection.single;
-                                    _error = null;
-                                    _message = null;
-                                  }),
-                          ),
-                          const SizedBox(height: 20),
-                          if (kIsWeb) ...[
-                            CheckboxListTile(
-                              contentPadding: EdgeInsets.zero,
-                              value: _sharedDevice,
-                              onChanged: _submission.isPending
-                                  ? null
-                                  : (value) => setState(
-                                      () => _sharedDevice = value ?? false,
-                                    ),
-                              title: Text(strings.feature('Delad enhet')),
-                              subtitle: Text(
-                                strings.feature(
-                                  'Spara inte inloggningen i den här webbläsaren.',
+                          if (!widget.isConfigured)
+                            _StateCard(
+                              icon: Icons.construction,
+                              title: strings.backendNotConnected,
+                              message: strings.backendInstructions,
+                            )
+                          else ...[
+                            if (widget.sessionEnded) ...[
+                              _StateCard(
+                                icon: Icons.lock_clock_outlined,
+                                title: strings.feature(
+                                  'Sessionen har avslutats',
+                                ),
+                                message: strings.feature(
+                                  'Logga in igen för att fortsätta. Ingen skyddad data visas.',
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                          TextFormField(
-                            controller: _email,
-                            enabled: !_submission.isPending,
-                            keyboardType: TextInputType.emailAddress,
-                            textInputAction: TextInputAction.next,
-                            autofillHints: const [AutofillHints.email],
-                            validator: (value) {
-                              final email = value?.trim() ?? '';
-                              if (email.isEmpty) return strings.emailRequired;
-                              if (!RegExp(
-                                r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                              ).hasMatch(email)) {
-                                return strings.emailInvalid;
-                              }
-                              return null;
-                            },
-                            decoration: InputDecoration(
-                              labelText: strings.email,
-                            ),
-                          ),
-                          if (_method == _AuthMethod.password) ...[
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _password,
-                              enabled: !_submission.isPending,
-                              obscureText: true,
-                              textInputAction:
-                                  _mode == _AuthStartMode.createAccount
-                                  ? TextInputAction.next
-                                  : TextInputAction.done,
-                              autofillHints: [
-                                _mode == _AuthStartMode.createAccount
-                                    ? AutofillHints.newPassword
-                                    : AutofillHints.password,
+                              const SizedBox(height: 16),
+                            ],
+                            _AuthPillToggle<_AuthStartMode>(
+                              key: const ValueKey('auth-mode'),
+                              options: [
+                                (
+                                  _AuthStartMode.signIn,
+                                  strings.signIn,
+                                  Icons.login,
+                                ),
+                                (
+                                  _AuthStartMode.createAccount,
+                                  strings.feature('Skapa konto'),
+                                  Icons.person_add_alt_1,
+                                ),
                               ],
-                              onFieldSubmitted: (_) {
-                                if (_mode == _AuthStartMode.signIn) {
-                                  _submitPassword();
-                                }
-                              },
-                              validator: (value) {
-                                if (value?.isEmpty ?? true) {
-                                  return strings.passwordRequired;
-                                }
-                                if (_mode == _AuthStartMode.createAccount &&
-                                    value!.length < 8) {
-                                  return strings.feature(
-                                    'Lösenordet måste innehålla minst 8 tecken.',
-                                  );
-                                }
-                                return null;
-                              },
-                              decoration: InputDecoration(
-                                labelText: strings.password,
-                              ),
+                              selected: _mode,
+                              onChanged: pending ? null : _changeMode,
                             ),
-                            if (_mode == _AuthStartMode.createAccount) ...[
-                              const SizedBox(height: 12),
-                              TextFormField(
-                                controller: _confirmPassword,
-                                enabled: !_submission.isPending,
-                                obscureText: true,
-                                textInputAction: TextInputAction.done,
-                                autofillHints: const [
-                                  AutofillHints.newPassword,
-                                ],
-                                validator: (value) => value != _password.text
-                                    ? strings.feature(
-                                        'Lösenorden måste vara identiska.',
-                                      )
-                                    : null,
-                                onFieldSubmitted: (_) => _submitPassword(),
-                                decoration: InputDecoration(
-                                  labelText: strings.feature(
-                                    'Bekräfta lösenord',
+                            const SizedBox(height: 16),
+                            Card(
+                              margin: EdgeInsets.zero,
+                              child: Padding(
+                                padding: const EdgeInsets.all(18),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: _formFields(
+                                    context,
+                                    strings,
+                                    pending,
                                   ),
                                 ),
                               ),
-                            ],
-                          ] else if (_challenge.hasChallenge) ...[
+                            ),
                             const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _code,
-                              enabled: !_submission.isPending,
-                              keyboardType: TextInputType.number,
-                              textInputAction: TextInputAction.done,
-                              autofillHints: const [AutofillHints.oneTimeCode],
-                              onFieldSubmitted: (_) => _verifyChallenge(),
-                              decoration: InputDecoration(
-                                labelText: strings.feature('E-postkod'),
-                                helperText: _challenge.isExpired
-                                    ? strings.feature('Koden har gått ut.')
-                                    : strings.feature(
-                                        'Koden gäller i 10 minuter. Du kan också använda länken i mejlet.',
-                                      ),
-                              ),
-                            ),
-                          ],
-                          if (_error != null) ...[
-                            const SizedBox(height: 16),
-                            Semantics(liveRegion: true, child: Text(_error!)),
-                          ],
-                          if (_message != null) ...[
-                            const SizedBox(height: 16),
-                            Semantics(liveRegion: true, child: Text(_message!)),
-                          ],
-                          const SizedBox(height: 24),
-                          FilledButton(
-                            onPressed: _submission.isPending
-                                ? null
-                                : _method == _AuthMethod.password
-                                ? _submitPassword
-                                : _challenge.hasChallenge
-                                ? _verifyChallenge
-                                : _requestChallenge,
-                            child: _submission.isPending
-                                ? SizedBox.square(
-                                    dimension: 20,
-                                    child: Semantics(
-                                      label: strings.loading,
-                                      liveRegion: true,
-                                      child: const ExcludeSemantics(
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(
+                                  creating
+                                      ? strings.feature(
+                                          'Har du redan ett konto?',
+                                        )
+                                      : strings.feature('Ny i TeamZone?'),
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(color: palette.muted),
+                                ),
+                                TextButton(
+                                  key: const ValueKey('auth-switch-mode'),
+                                  onPressed: pending
+                                      ? null
+                                      : () => _changeMode(
+                                          creating
+                                              ? _AuthStartMode.signIn
+                                              : _AuthStartMode.createAccount,
                                         ),
-                                      ),
-                                    ),
-                                  )
-                                : Text(
-                                    _method == _AuthMethod.emailCode
-                                        ? _challenge.hasChallenge
-                                              ? strings.feature('Verifiera kod')
-                                              : strings.feature(
-                                                  'Skicka e-postkod/länk',
-                                                )
-                                        : _mode == _AuthStartMode.signIn
-                                        ? strings.signIn
-                                        : strings.feature('Skapa konto'),
+                                  child: Text(
+                                    creating
+                                        ? strings.feature('Logga in här')
+                                        : strings.feature('Skapa ett konto'),
                                   ),
-                          ),
-                          if (_method == _AuthMethod.emailCode &&
-                              _challenge.hasChallenge) ...[
-                            TextButton(
-                              onPressed:
-                                  _submission.isPending || !_challenge.canResend
-                                  ? null
-                                  : _requestChallenge,
-                              child: Text(
-                                _challenge.canResend
-                                    ? strings.feature('Skicka ny kod')
-                                    : strings
-                                          .feature(
-                                            'Skicka ny kod om {seconds} s',
-                                          )
-                                          .replaceFirst(
-                                            '{seconds}',
-                                            '${_challenge.resendWait.inSeconds + 1}',
-                                          ),
-                              ),
+                                ),
+                              ],
                             ),
                           ],
-                          if (_mode == _AuthStartMode.signIn &&
-                              _method == _AuthMethod.password)
-                            TextButton(
-                              onPressed: _submission.isPending
-                                  ? null
-                                  : _requestReset,
-                              child: Text(strings.feature('Glömt lösenord?')),
-                            ),
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
+        );
+      },
+    );
+  }
+
+  /// The card's content: how to sign in, the fields, any error or message,
+  /// the main button and the links under it.
+  List<Widget> _formFields(
+    BuildContext context,
+    AppStrings strings,
+    bool pending,
+  ) {
+    final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
+    final creating = _mode == _AuthStartMode.createAccount;
+    return [
+      Text(
+        creating
+            ? strings.feature('Skapa konto med')
+            : strings.feature('Logga in med'),
+        style: theme.textTheme.labelLarge?.copyWith(color: palette.muted),
+      ),
+      const SizedBox(height: 8),
+      _AuthPillToggle<_AuthMethod>(
+        key: const ValueKey('auth-method'),
+        options: [
+          (_AuthMethod.password, strings.password, Icons.password),
+          (
+            _AuthMethod.emailCode,
+            strings.feature('E-postkod/länk'),
+            Icons.mark_email_unread_outlined,
+          ),
+        ],
+        selected: _method,
+        onChanged: pending
+            ? null
+            : (method) => setState(() {
+                _method = method;
+                _error = null;
+                _message = null;
+              }),
+      ),
+      const SizedBox(height: 20),
+      TextFormField(
+        controller: _email,
+        enabled: !pending,
+        keyboardType: TextInputType.emailAddress,
+        textInputAction: TextInputAction.next,
+        autofillHints: const [AutofillHints.email],
+        validator: (value) {
+          final email = value?.trim() ?? '';
+          if (email.isEmpty) return strings.emailRequired;
+          if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+            return strings.emailInvalid;
+          }
+          return null;
+        },
+        decoration: InputDecoration(
+          labelText: strings.email,
+          prefixIcon: const Icon(Icons.mail_outline),
         ),
       ),
-    );
+      if (_method == _AuthMethod.password) ...[
+        const SizedBox(height: 12),
+        _AuthPasswordField(
+          controller: _password,
+          label: strings.password,
+          enabled: !pending,
+          textInputAction: creating
+              ? TextInputAction.next
+              : TextInputAction.done,
+          autofillHints: [
+            creating ? AutofillHints.newPassword : AutofillHints.password,
+          ],
+          onFieldSubmitted: (_) {
+            if (!creating) _submitPassword();
+          },
+          validator: (value) {
+            if (value?.isEmpty ?? true) return strings.passwordRequired;
+            if (creating && value!.length < 8) {
+              return strings.feature(
+                'Lösenordet måste innehålla minst 8 tecken.',
+              );
+            }
+            return null;
+          },
+        ),
+        if (creating) ...[
+          const SizedBox(height: 12),
+          _AuthPasswordField(
+            controller: _confirmPassword,
+            label: strings.feature('Bekräfta lösenord'),
+            enabled: !pending,
+            textInputAction: TextInputAction.done,
+            autofillHints: const [AutofillHints.newPassword],
+            validator: (value) => value != _password.text
+                ? strings.feature('Lösenorden måste vara identiska.')
+                : null,
+            onFieldSubmitted: (_) => _submitPassword(),
+          ),
+        ] else
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: pending ? null : _requestReset,
+              child: Text(strings.feature('Glömt lösenord?')),
+            ),
+          ),
+      ] else if (_challenge.hasChallenge) ...[
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _code,
+          enabled: !pending,
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.done,
+          autofillHints: const [AutofillHints.oneTimeCode],
+          onFieldSubmitted: (_) => _verifyChallenge(),
+          decoration: InputDecoration(
+            labelText: strings.feature('E-postkod'),
+            prefixIcon: const Icon(Icons.pin_outlined),
+            helperText: _challenge.isExpired
+                ? strings.feature('Koden har gått ut.')
+                : strings.feature(
+                    'Koden gäller i 10 minuter. Du kan också använda länken i mejlet.',
+                  ),
+            helperMaxLines: 2,
+          ),
+        ),
+      ],
+      if (_error != null) ...[
+        const SizedBox(height: 16),
+        _AuthNotice(text: _error!, error: true),
+      ],
+      if (_message != null) ...[
+        const SizedBox(height: 16),
+        _AuthNotice(text: _message!),
+      ],
+      const SizedBox(height: 20),
+      FilledButton(
+        style: _authPrimaryStyle(context),
+        onPressed: pending
+            ? null
+            : _method == _AuthMethod.password
+            ? _submitPassword
+            : _challenge.hasChallenge
+            ? _verifyChallenge
+            : _requestChallenge,
+        child: pending
+            ? SizedBox.square(
+                dimension: 20,
+                child: Semantics(
+                  label: strings.loading,
+                  liveRegion: true,
+                  child: const ExcludeSemantics(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              )
+            : Text(
+                _method == _AuthMethod.emailCode
+                    ? _challenge.hasChallenge
+                          ? strings.feature('Verifiera kod')
+                          : strings.feature('Skicka e-postkod/länk')
+                    : creating
+                    ? strings.feature('Skapa konto')
+                    : strings.signIn,
+              ),
+      ),
+      if (_method == _AuthMethod.emailCode && _challenge.hasChallenge)
+        TextButton(
+          onPressed: pending || !_challenge.canResend
+              ? null
+              : _requestChallenge,
+          child: Text(
+            _challenge.canResend
+                ? strings.feature('Skicka ny kod')
+                : strings
+                      .feature('Skicka ny kod om {seconds} s')
+                      .replaceFirst(
+                        '{seconds}',
+                        '${_challenge.resendWait.inSeconds + 1}',
+                      ),
+          ),
+        ),
+      if (kIsWeb) ...[
+        const SizedBox(height: 8),
+        CheckboxListTile(
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          value: _sharedDevice,
+          onChanged: pending
+              ? null
+              : (value) => setState(() => _sharedDevice = value ?? false),
+          title: Text(strings.feature('Delad enhet')),
+          subtitle: Text(
+            strings.feature('Spara inte inloggningen i den här webbläsaren.'),
+          ),
+        ),
+      ],
+    ];
   }
 }
 
@@ -601,72 +651,84 @@ class _ResetPasswordScreenState extends State<_ResetPasswordScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(AppStrings.of(context).feature('Nytt lösenord')),
-    ),
-    body: SafeArea(
-      child: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440),
-            child: Form(
-              key: _form,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextFormField(
-                    controller: _password,
-                    obscureText: true,
-                    autofillHints: const [AutofillHints.newPassword],
-                    textInputAction: TextInputAction.next,
-                    validator: (value) => (value?.length ?? 0) < 8
-                        ? AppStrings.of(context).feature(
-                            'Lösenordet måste innehålla minst 8 tecken.',
-                          )
-                        : null,
-                    decoration: InputDecoration(
-                      labelText: AppStrings.of(context).password,
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return Scaffold(
+      appBar: AppBar(title: Text(strings.feature('Nytt lösenord'))),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: Form(
+                key: _form,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _AuthHero(
+                      title: strings.feature('Välj ett nytt lösenord'),
+                      message: strings.feature(
+                        'Minst 8 tecken. Välj ett lösenord du inte använder någon annanstans.',
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _confirm,
-                    obscureText: true,
-                    autofillHints: const [AutofillHints.newPassword],
-                    textInputAction: TextInputAction.done,
-                    validator: (value) => value != _password.text
-                        ? AppStrings.of(
-                            context,
-                          ).feature('Lösenorden måste vara identiska.')
-                        : null,
-                    onFieldSubmitted: (_) => _save(),
-                    decoration: InputDecoration(
-                      labelText: AppStrings.of(
-                        context,
-                      ).feature('Bekräfta lösenord'),
-                    ),
-                  ),
-                  if (_error != null) ...[
                     const SizedBox(height: 16),
-                    Semantics(liveRegion: true, child: Text(_error!)),
-                  ],
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: _submission.isPending ? null : _save,
-                    child: Text(
-                      AppStrings.of(context).feature('Spara lösenord'),
+                    Card(
+                      margin: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.all(18),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _AuthPasswordField(
+                              controller: _password,
+                              label: strings.password,
+                              enabled: !_submission.isPending,
+                              autofillHints: const [AutofillHints.newPassword],
+                              textInputAction: TextInputAction.next,
+                              validator: (value) => (value?.length ?? 0) < 8
+                                  ? strings.feature(
+                                      'Lösenordet måste innehålla minst 8 tecken.',
+                                    )
+                                  : null,
+                            ),
+                            const SizedBox(height: 12),
+                            _AuthPasswordField(
+                              controller: _confirm,
+                              label: strings.feature('Bekräfta lösenord'),
+                              enabled: !_submission.isPending,
+                              autofillHints: const [AutofillHints.newPassword],
+                              textInputAction: TextInputAction.done,
+                              validator: (value) => value != _password.text
+                                  ? strings.feature(
+                                      'Lösenorden måste vara identiska.',
+                                    )
+                                  : null,
+                              onFieldSubmitted: (_) => _save(),
+                            ),
+                            if (_error != null) ...[
+                              const SizedBox(height: 16),
+                              _AuthNotice(text: _error!, error: true),
+                            ],
+                            const SizedBox(height: 20),
+                            FilledButton(
+                              style: _authPrimaryStyle(context),
+                              onPressed: _submission.isPending ? null : _save,
+                              child: Text(strings.feature('Spara lösenord')),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _ContextBootstrap extends StatefulWidget {
@@ -873,7 +935,6 @@ class _WaitingRoomState extends State<_WaitingRoom> {
     final strings = AppStrings.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('TeamZone'),
         actions: [
           IconButton(
             tooltip: strings.signOut,
@@ -882,90 +943,122 @@ class _WaitingRoomState extends State<_WaitingRoom> {
           ),
         ],
       ),
-      body: Center(
-        child: _StateCard(
-          icon: Icons.hourglass_top,
-          title: strings.welcome(widget.profile.displayName),
-          message: strings.waitingRoom,
-          action: Column(
-            children: [
-              TextField(
-                controller: _token,
-                enabled: !_pending,
-                decoration: InputDecoration(
-                  labelText: AppStrings.of(
-                    context,
-                  ).feature('Säker inbjudningskod'),
-                ),
-              ),
-              if (_message != null) ...[
-                const SizedBox(height: 8),
-                Semantics(liveRegion: true, child: Text(_message!)),
-              ],
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: _pending ? null : _claim,
-                child: Text(_pending ? 'Verifierar…' : 'Acceptera inbjudan'),
-              ),
-              TextButton(
-                onPressed: _pending ? null : _acceptGuardianInvite,
-                child: Text(
-                  AppStrings.of(context).feature('Acceptera som guardian'),
-                ),
-              ),
-              const Divider(height: 32),
-              OutlinedButton.icon(
-                onPressed: _pending
-                    ? null
-                    : () => showModalBottomSheet<void>(
-                        context: context,
-                        isScrollControlled: true,
-                        useSafeArea: true,
-                        builder: (_) => _MembershipJoinSheet(
-                          membership: widget.membership,
-                          onApproved: widget.onClaimed,
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: SingleChildScrollView(
+              key: const ValueKey('waiting-room'),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _AuthHero(
+                    title: strings.welcome(widget.profile.displayName),
+                    message: strings.waitingRoom,
+                  ),
+                  const SizedBox(height: 16),
+                  _AuthSection(
+                    title: strings.feature('Har du fått en inbjudan?'),
+                    message: strings.feature(
+                      'Klistra in koden från din ledare eller klubb.',
+                    ),
+                    children: [
+                      TextField(
+                        controller: _token,
+                        enabled: !_pending,
+                        decoration: InputDecoration(
+                          labelText: strings.feature('Säker inbjudningskod'),
+                          prefixIcon: const Icon(Icons.key_outlined),
                         ),
                       ),
-                icon: const Icon(Icons.search),
-                label: Text(strings.feature('Hitta klubb eller lag')),
-              ),
-              const SizedBox(height: 8),
-              FilledButton.icon(
-                onPressed: _pending
-                    ? null
-                    : () => showModalBottomSheet<void>(
-                        context: context,
-                        isScrollControlled: true,
-                        useSafeArea: true,
-                        builder: (_) => _CreateClubSheet(
-                          membership: widget.membership,
-                          onCreated: (_) {
-                            Navigator.pop(context);
-                            widget.onClaimed();
-                          },
+                      if (_message != null) ...[
+                        const SizedBox(height: 12),
+                        _AuthNotice(text: _message!, error: true),
+                      ],
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        style: _authPrimaryStyle(context),
+                        onPressed: _pending ? null : _claim,
+                        child: Text(
+                          _pending ? 'Verifierar…' : 'Acceptera inbjudan',
                         ),
                       ),
-                icon: const Icon(Icons.add_business_outlined),
-                label: Text(strings.feature('Skapa klubb och första lag')),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: _pending
-                    ? null
-                    : () => showModalBottomSheet<void>(
-                        context: context,
-                        useRootNavigator: true,
-                        isScrollControlled: true,
-                        useSafeArea: true,
-                        showDragHandle: true,
-                        builder: (_) => _MyProtectedNameSupportCasesSheet(
-                          membership: widget.membership,
-                        ),
+                      const SizedBox(height: 4),
+                      TextButton(
+                        onPressed: _pending ? null : _acceptGuardianInvite,
+                        child: Text(strings.feature('Acceptera som guardian')),
                       ),
-                icon: const Icon(Icons.support_agent_outlined),
-                label: Text(strings.feature('Mina supportärenden')),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _AuthSection(
+                    title: strings.feature('Kom igång på egen hand'),
+                    children: [
+                      _AuthActionTile(
+                        icon: Icons.search,
+                        title: strings.feature('Hitta klubb eller lag'),
+                        message: strings.feature(
+                          'Sök upp ditt lag och skicka en ansökan.',
+                        ),
+                        onTap: _pending
+                            ? null
+                            : () => showModalBottomSheet<void>(
+                                context: context,
+                                isScrollControlled: true,
+                                useSafeArea: true,
+                                builder: (_) => _MembershipJoinSheet(
+                                  membership: widget.membership,
+                                  onApproved: widget.onClaimed,
+                                ),
+                              ),
+                      ),
+                      _AuthActionTile(
+                        icon: Icons.add_business_outlined,
+                        title: strings.feature('Skapa klubb och första lag'),
+                        message: strings.feature(
+                          'För dig som startar upp en ny klubb i TeamZone.',
+                        ),
+                        onTap: _pending
+                            ? null
+                            : () => showModalBottomSheet<void>(
+                                context: context,
+                                isScrollControlled: true,
+                                useSafeArea: true,
+                                builder: (_) => _CreateClubSheet(
+                                  membership: widget.membership,
+                                  onCreated: (_) {
+                                    Navigator.pop(context);
+                                    widget.onClaimed();
+                                  },
+                                ),
+                              ),
+                      ),
+                      _AuthActionTile(
+                        icon: Icons.support_agent_outlined,
+                        title: strings.feature('Mina supportärenden'),
+                        message: strings.feature(
+                          'Följ ärenden du har skickat till TeamZone.',
+                        ),
+                        onTap: _pending
+                            ? null
+                            : () => showModalBottomSheet<void>(
+                                context: context,
+                                useRootNavigator: true,
+                                isScrollControlled: true,
+                                useSafeArea: true,
+                                showDragHandle: true,
+                                builder: (_) =>
+                                    _MyProtectedNameSupportCasesSheet(
+                                      membership: widget.membership,
+                                    ),
+                              ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

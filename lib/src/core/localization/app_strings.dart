@@ -2304,6 +2304,33 @@ class AppStrings {
     'Ledarprofil': 'Leader profile',
     'Alla siffror': 'All figures',
     'Medlemskort': 'Member card',
+    'Skapa ditt konto': 'Create your account',
+    'Välkommen tillbaka': 'Welcome back',
+    'Ett konto räcker för alla lag du är med i, som spelare, ledare eller förälder.':
+        'One account covers every team you are part of, as a player, leader or parent.',
+    'Logga in för att se kallelser, träningar och matcher för dina lag.':
+        'Sign in to see callups, training sessions and matches for your teams.',
+    'Har du redan ett konto?': 'Already have an account?',
+    'Ny i TeamZone?': 'New to TeamZone?',
+    'Logga in här': 'Sign in here',
+    'Skapa ett konto': 'Create an account',
+    'Skapa konto med': 'Create account with',
+    'Logga in med': 'Sign in with',
+    'Dölj lösenord': 'Hide password',
+    'Visa lösenord': 'Show password',
+    'Välj ett nytt lösenord': 'Choose a new password',
+    'Minst 8 tecken. Välj ett lösenord du inte använder någon annanstans.':
+        'At least 8 characters. Choose a password you do not use anywhere else.',
+    'Har du fått en inbjudan?': 'Have you received an invitation?',
+    'Klistra in koden från din ledare eller klubb.':
+        'Paste the code from your leader or club.',
+    'Kom igång på egen hand': 'Get started on your own',
+    'Sök upp ditt lag och skicka en ansökan.':
+        'Find your team and send a request.',
+    'För dig som startar upp en ny klubb i TeamZone.':
+        'For you who are starting a new club in TeamZone.',
+    'Följ ärenden du har skickat till TeamZone.':
+        'Follow cases you have sent to TeamZone.',
     'Heldag': 'All day',
     'Start': 'Start',
     'Slut': 'End',

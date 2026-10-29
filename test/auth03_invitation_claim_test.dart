@@ -95,7 +95,7 @@ void main() {
     expect(find.text('Du har blivit inbjuden'), findsOneWidget);
     expect(find.textContaining('Testklubben\nF2012\nAda'), findsOneWidget);
 
-    await tester.tap(find.text('Logga in för att fortsätta'));
+    await _tapVisible(tester, find.text('Logga in för att fortsätta'));
     await tester.pump();
     expect(find.text('Logga in'), findsWidgets);
 
@@ -103,7 +103,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('Acceptera inbjudan'), findsOneWidget);
-    await tester.tap(find.text('Acceptera inbjudan'));
+    await _tapVisible(tester, find.text('Acceptera inbjudan'));
     await tester.pumpAndSettle();
     expect(roster.claimCalls, 1);
     expect(find.textContaining('Ditt konto är klart'), findsOneWidget);
@@ -252,4 +252,12 @@ class _InviteRoster extends UnconfiguredRosterServices {
     required String token,
     required String idempotencyKey,
   }) async => 'relation';
+}
+
+/// The sign-in pages scroll on the test screen; brings the target into
+/// view before tapping it.
+Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  await tester.ensureVisible(finder);
+  await tester.pumpAndSettle();
+  await tester.tap(finder);
 }
