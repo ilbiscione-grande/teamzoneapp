@@ -24,8 +24,9 @@ export function Timeline({ board, readOnly = false }: { board: Board; readOnly?:
   const playhead = useEditor(state => state.playhead);
   const loop = useEditor(state => state.loop);
   const speed = useEditor(state => state.speed);
+  const tilt = useEditor(state => state.tilt);
   const between = useEditor(isBetween);
-  const { setFrame, play, pause, setLoop, setSpeed, change } = useEditor.getState();
+  const { setFrame, play, pause, setLoop, setSpeed, setTilt, change } = useEditor.getState();
   const [recording, setRecording] = useState<number | null>(null);
   const [error, setError] = useState("");
   const frames = board.frames;
@@ -74,6 +75,8 @@ export function Timeline({ board, readOnly = false }: { board: Board; readOnly?:
           {!readOnly && <button type="button" className="tb-frame-add" onClick={add} disabled={playing} aria-label="Ny frame (kopia av denna)" title="Ny frame: en kopia av den här att flytta vidare i">+</button>}
         </div>
         <span className="tb-spacer" />
+        <button type="button" className="tb-mini-button" aria-pressed={tilt} onClick={() => setTilt(!tilt)}
+          title="Planen sedd snett från läktaren. Redigera uppifrån.">3D</button>
         <label className="tb-mini" title="Spela om och om igen">
           <input type="checkbox" checked={loop} onChange={event => setLoop(event.target.checked)} /><span className="tb-mini-text">Slinga</span><span className="tb-mini-icon" aria-hidden="true">⟲</span>
         </label>

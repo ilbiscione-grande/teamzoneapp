@@ -13,6 +13,7 @@ export const effects: Record<Effect, { label: string; icon: string; hint: string
   trail: { label: "Spår", icon: "⋯", hint: "Lämnar ett streckat spår efter sig, så man ser var det kom ifrån." },
   arrow: { label: "Pil", icon: "➜", hint: "En streckad pil visar vägen först och försvinner bakom objektet när det rör sig." },
   ring: { label: "Markera", icon: "◯", hint: "En streckad ring i objektets färg runt det." },
+  spotlight: { label: "Strålkastare", icon: "◉", hint: "Dimmar allt utom objektet, så att blicken hamnar rätt." },
   zoom: { label: "Zooma", icon: "⌕", hint: "Zoomar in på objektet och stannar där. Zoomar nästa frame inte, zoomar den ut igen." },
 };
 

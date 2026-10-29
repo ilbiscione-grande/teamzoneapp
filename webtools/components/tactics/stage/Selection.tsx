@@ -50,6 +50,10 @@ function Transform({ items, upright }: { items: TacticsObject[]; upright: number
             node.scale({ x: 1, y: 1 });
           } else if ("scale" in item) {
             patches[item.id] = { ...common, scale: Math.min(4, Math.max(0.3, sx)) };
+          } else if (item.type === "player") {
+            // A player turns (the way they face) but keeps their size.
+            patches[item.id] = common;
+            node.scale({ x: 1, y: 1 });
           }
         }
         useEditor.getState().patch(patches);

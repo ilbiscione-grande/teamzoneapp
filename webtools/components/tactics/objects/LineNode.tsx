@@ -1,11 +1,13 @@
 "use client";
 
-// Lines, passes and runs: straight, or curved through a control point, with
-// an arrowhead at the end or both; and freehand strokes. A wide invisible
+// Lines, passes, runs and dribbles: straight, or curved through a control
+// point, with an arrowhead at the end or both, a dribble swinging from side
+// to side; and freehand strokes. White shows in the theme's ink on a light pitch. A wide invisible
 // hit area makes thin lines easy to take with a finger.
 import { Arrow, Group, Line } from "react-konva";
 import type { FreehandObject, LineObject } from "../../../lib/tactics/model.ts";
-import { partialPolyline, sampleCurve } from "../../../lib/tactics/path.ts";
+import { partialPolyline, sampleCurve, wavePoints } from "../../../lib/tactics/path.ts";
+import { inkFor, type ThemeLook } from "../../../lib/tactics/pitch-style.ts";
 import type { Rendered } from "../../../lib/tactics/timeline.ts";
 import { nodeRef, useStage } from "../stage/stage-context.ts";
 import { useObjectDrag } from "../stage/use-object-drag.ts";
@@ -36,24 +38,26 @@ function Stroke({ points, arrow, dashed, color, width, tension, selected }: {
   return <>{halo}<Arrow {...common} fill={color} pointerLength={1.5} pointerWidth={1.4} pointerAtBeginning={arrow === "both"} /></>;
 }
 
-export function LineNode({ item, selected }: { item: LineObject & Rendered; selected: boolean }) {
+const shaped = (points: number[], wavy: boolean | undefined) => (wavy ? wavePoints(points) : points);
+
+export function LineNode({ item, selected, look }: { item: LineObject & Rendered; selected: boolean; look: ThemeLook }) {
   const shared = useStage();
   const drag = useObjectDrag(item);
   return (
     <Group ref={nodeRef(shared, item.id)} x={item.x} y={item.y} opacity={item.opacity ?? 1} {...drag}>
-      <Stroke points={partialPolyline(linePoints(item), item.drawn ?? 1)} arrow={item.arrow} dashed={item.dashed} color={item.color} width={item.width}
-        tension={0} selected={selected} />
+      <Stroke points={shaped(partialPolyline(linePoints(item), item.drawn ?? 1), item.wavy)} arrow={item.arrow} dashed={item.dashed} color={inkFor(item.color, look)}
+        width={item.width} tension={item.wavy ? 0.4 : 0} selected={selected} />
     </Group>
   );
 }
 
-export function FreehandNode({ item, selected }: { item: FreehandObject & Rendered; selected: boolean }) {
+export function FreehandNode({ item, selected, look }: { item: FreehandObject & Rendered; selected: boolean; look: ThemeLook }) {
   const shared = useStage();
   const drag = useObjectDrag(item);
   return (
     <Group ref={nodeRef(shared, item.id)} x={item.x} y={item.y} opacity={item.opacity ?? 1} {...drag}>
-      <Stroke points={partialPolyline(item.points, item.drawn ?? 1)} arrow={item.arrow} dashed={item.dashed} color={item.color} width={item.width}
-        tension={0.45} selected={selected} />
+      <Stroke points={shaped(partialPolyline(item.points, item.drawn ?? 1), item.wavy)} arrow={item.arrow} dashed={item.dashed} color={inkFor(item.color, look)}
+        width={item.width} tension={0.45} selected={selected} />
     </Group>
   );
 }

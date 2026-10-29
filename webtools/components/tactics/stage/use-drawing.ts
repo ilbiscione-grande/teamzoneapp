@@ -10,7 +10,7 @@ import { activeObjects, useEditor, type Tool } from "../store.ts";
 
 export type Draft = { tool: Tool; start: Point; current: Point; path: number[] };
 
-const DRAW_TOOLS = new Set<Tool>(["arrow", "run", "line", "freehand", "rect", "ellipse"]);
+const DRAW_TOOLS = new Set<Tool>(["arrow", "run", "dribble", "line", "freehand", "rect", "ellipse"]);
 export const isDrawTool = (tool: Tool) => DRAW_TOOLS.has(tool);
 export const isPlaceTool = (tool: Tool) => tool !== "select" && !DRAW_TOOLS.has(tool);
 
@@ -34,7 +34,7 @@ export function draftObject(draft: Draft): TacticsObject | null {
   }
   return {
     ...base(start), type: "line", points: [0, 0, current.x - start.x, current.y - start.y], control: null,
-    arrow: draft.tool === "line" ? "none" : "end", dashed: draft.tool === "run", color: "#ffffff", width: 0.3,
+    arrow: draft.tool === "line" ? "none" : "end", dashed: draft.tool === "run", wavy: draft.tool === "dribble", color: "#ffffff", width: 0.3,
   };
 }
 

@@ -51,6 +51,7 @@ export function normalizeDocument(value: unknown): ProjectDocument {
   return {
     schemaVersion: SCHEMA_VERSION,
     squad: Array.isArray(raw.squad) ? raw.squad : [],
+    ...(raw.branding && typeof raw.branding === "object" ? { branding: raw.branding } : {}),
     boards: boards.map(board => ({
       ...newBoard(board.name ?? "Tavla"),
       ...board,
@@ -164,11 +165,11 @@ export function keepOnGrass(point: Point, margin = 6): Point {
 }
 
 
-/** A copy of a frame put after it: the same objects (same ids, so they move between the two), no effects or bends of its own. */
+/** A copy of a frame put after it: the same objects (same ids, so they move between the two), no effects, bends or lofted passes of its own. */
 export function insertFrame(board: Board, afterIndex: number): Board {
   const source = board.frames[afterIndex] ?? board.frames[board.frames.length - 1];
   const copy: Frame = {
-    ...newFrame(source.objects.map(item => ({ ...item, effect: null, effects: [], pathControl: null }) as TacticsObject)),
+    ...newFrame(source.objects.map(item => ({ ...item, effect: null, effects: [], pathControl: null, ...(item.type === "ball" ? { flight: undefined } : {}) }) as TacticsObject)),
     durationMs: source.durationMs,
     ...(source.easing ? { easing: source.easing } : {}),
   };

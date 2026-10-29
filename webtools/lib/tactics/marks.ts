@@ -48,7 +48,7 @@ function sample(path: Path, from: number, to: number): number[] {
   return points;
 }
 
-const has = (frame: Frame, id: string, effect: "trail" | "arrow" | "ring" | "zoom") => {
+const has = (frame: Frame, id: string, effect: "trail" | "arrow" | "ring" | "zoom" | "spotlight") => {
   const item = frame.objects.find(other => other.id === id);
   return !!item && effectsOf(item).includes(effect);
 };
@@ -171,4 +171,35 @@ export function cameraAt(frames: Frame[], playhead: number, shown: TacticsObject
   }
   if (hereAt && here) return { at: { x: hereAt.x, y: hereAt.y }, amount: 1 - step, scale: scaleOf(here) };
   return null;
+}
+
+/** All but some spots dimmed: how dark the rest is (0–1) and the pitch points left lit. */
+export type Spotlight = { amount: number; spots: Point[] };
+
+const lit = (frame: Frame | undefined) => frame?.objects.filter(item => effectsOf(item).includes("spotlight")).map(item => item.id) ?? [];
+
+/**
+ * The spotlight at a playhead: moving into a frame with the effect, the
+ * rest of the pitch darkens quickly round the lit objects (where they are
+ * shown) and stays dark on reaching it; a next frame that lights too keeps
+ * it dark, one that does not lights the pitch again. Null for no spotlight.
+ */
+export function spotlightAt(frames: Frame[], playhead: number, shown: TacticsObject[]): Spotlight | null {
+  if (frames.length === 0) return null;
+  const index = Math.min(frames.length - 1, Math.max(0, Math.floor(playhead)));
+  const t = playhead - index;
+  const moving = index < frames.length - 1 && t > 0;
+  const here = index > 0 ? lit(frames[index]) : [];
+  const next = moving ? lit(frames[index + 1]) : [];
+  const where = (ids: string[], frame: Frame) => ids.flatMap(id => {
+    const item = shown.find(other => other.id === id) ?? frame.objects.find(other => other.id === id);
+    return item ? [{ x: item.x, y: item.y }] : [];
+  });
+  if (!moving) return here.length > 0 ? { amount: 1, spots: where(here, frames[index]) } : null;
+  const step = quick(t);
+  if (next.length > 0) {
+    const spots = where([...new Set([...next, ...(here.length > 0 && step < 1 ? here : [])])], frames[index + 1]);
+    return { amount: here.length > 0 ? 1 : step, spots };
+  }
+  return here.length > 0 ? { amount: 1 - step, spots: where(here, frames[index]) } : null;
 }

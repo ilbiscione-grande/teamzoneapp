@@ -22,7 +22,10 @@ function pathPoints(from: Point, to: Point, control: Point | null | undefined): 
   return points;
 }
 
-export function Ghosts({ previous, current, selection, editable }: { previous: TacticsObject[]; current: TacticsObject[]; selection: string[]; editable: boolean }) {
+/** ink: what white shows as on the board's pitch. */
+export function Ghosts({ previous, current, selection, editable, ink = "#ffffff" }: {
+  previous: TacticsObject[]; current: TacticsObject[]; selection: string[]; editable: boolean; ink?: string;
+}) {
   const shared = useStage();
   const before = new Map(previous.map(item => [item.id, item]));
   const handle = shared.metresPerPixel() * 11;
@@ -43,9 +46,9 @@ export function Ghosts({ previous, current, selection, editable }: { previous: T
         const selected = selection.includes(item.id);
         return (
           <Group key={item.id}>
-            <Line points={pathPoints(from, to, item.pathControl)} stroke="#ffffff" strokeWidth={0.18} dash={[0.6, 0.5]} opacity={0.75} listening={false} perfectDrawEnabled={false} />
-            <Circle x={from.x} y={from.y} radius={item.type === "player" ? PLAYER_RADIUS : 0.9} fill="#ffffff" opacity={0.22}
-              stroke="#ffffff" strokeWidth={0.12} dash={[0.4, 0.3]} listening={false} perfectDrawEnabled={false} />
+            <Line points={pathPoints(from, to, item.pathControl)} stroke={ink} strokeWidth={0.18} dash={[0.6, 0.5]} opacity={0.75} listening={false} perfectDrawEnabled={false} />
+            <Circle x={from.x} y={from.y} radius={item.type === "player" ? PLAYER_RADIUS : 0.9} fill={ink} opacity={0.22}
+              stroke={ink} strokeWidth={0.12} dash={[0.4, 0.3]} listening={false} perfectDrawEnabled={false} />
             {selected && editable && (
               <Circle x={middle.x} y={middle.y} radius={handle} fill={item.pathControl ? "#ffffff" : "rgba(255,255,255,0.65)"}
                 stroke="#111827" strokeWidth={handle * 0.18} draggable

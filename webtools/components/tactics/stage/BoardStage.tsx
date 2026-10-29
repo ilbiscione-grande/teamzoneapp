@@ -10,8 +10,9 @@ import Konva from "konva";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Group, Layer, Rect, Stage } from "react-konva";
 import { ballHolders } from "../../../lib/tactics/ball.ts";
-import { blendViewport, fitView, viewRect, zoomTo } from "../../../lib/tactics/geometry.ts";
-import { cameraAt } from "../../../lib/tactics/marks.ts";
+import { blendViewport, fitView, marginFor, viewRect, zoomTo } from "../../../lib/tactics/geometry.ts";
+import { cameraAt, spotlightAt } from "../../../lib/tactics/marks.ts";
+import { lookOf } from "../../../lib/tactics/pitch-style.ts";
 import { objectsAt } from "../../../lib/tactics/timeline.ts";
 import { ObjectNode } from "../objects/ObjectNode.tsx";
 import { activeBoard, activeObjects, isBetween, useEditor } from "../store.ts";
@@ -20,6 +21,7 @@ import { Ghosts } from "./Ghosts.tsx";
 import { Pitch } from "./Pitch.tsx";
 import { Selection } from "./Selection.tsx";
 import { Marks } from "./Marks.tsx";
+import { SpotlightLayer } from "./SpotlightLayer.tsx";
 import { pitchPointer, StageContext, stageHolder, type StageShared } from "./stage-context.ts";
 import { useBand } from "./use-band.ts";
 import { isDrawTool, isPlaceTool, useDrawing } from "./use-drawing.ts";
@@ -39,6 +41,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
   const frame = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const board = useEditor(activeBoard);
+  const branding = useEditor(state => state.document?.branding);
   const objects = useEditor(activeObjects);
   const selection = useEditor(state => state.selection);
   const tool = useEditor(state => state.tool);
@@ -47,14 +50,16 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
   const frameIndex = useEditor(state => state.frameIndex);
   const between = useEditor(isBetween);
   // Nothing is edited while the board plays or stands between two frames.
-  const canEdit = editable && !playing && !between;
+  const tilt = useEditor(state => state.tilt);
+  // Nothing is edited tilted either: the screen no longer matches the pitch under the finger.
+  const canEdit = editable && !playing && !between && !tilt;
   // Everything but dragging: selecting with a band, handles, the bin, tools.
   const fullEdit = canEdit && !moveOnly;
   const content = useRef<Konva.Group>(null);
   const nodes = useRef(new Map<string, Konva.Node>());
   const trash = useRef<HTMLDivElement>(null);
   const band = useBand(nodes.current);
-  const view = useViewport(frame, size.width > 0, [board?.id, board?.view, size.width, size.height], () => {
+  const view = useViewport(frame, size.width > 0, [board?.id, board?.view, board?.surroundings, size.width, size.height], () => {
     band.cancel();
     nodes.current.forEach(node => { if (node.isDragging()) node.stopDrag(); });
   });
@@ -67,7 +72,8 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
     return () => observer.disconnect();
   }, []);
 
-  const fit = useMemo(() => fitView(viewRect(board?.view ?? "full"), size.width, size.height), [board?.view, size.width, size.height]);
+  const fit = useMemo(() => fitView(viewRect(board?.view ?? "full", marginFor(board?.surroundings)), size.width, size.height),
+    [board?.view, board?.surroundings, size.width, size.height]);
   const shared = useMemo<StageShared>(() => ({
     nodes: nodes.current,
     content,
@@ -95,13 +101,14 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
   const camera = playing || between ? cameraAt(board.frames, playhead, shown) : null;
   const sight = camera ? blendViewport(view.viewport, zoomTo(camera.at, fit, size.width, size.height, camera.scale), camera.amount) : view.viewport;
   const zoomed = { x: sight.x, y: sight.y, scaleX: sight.scale, scaleY: sight.scale };
+  const spotlight = playing || between ? spotlightAt(board.frames, playhead, shown) : null;
   const tapGrass = (target: Konva.Node) => {
     if (isPlaceTool(tool)) drawing.place();
     else if (tool === "select" && target.name() === "grass") useEditor.getState().select([]);
   };
 
   return (
-    <div ref={frame} className="tb-stage" data-tool={tool}>
+    <div ref={frame} className="tb-stage" data-tool={tool} data-tilt={tilt}>
       {/* Konva fails drawing into a board without width or height (a phone with the panel open). */}
       {size.width > 0 && size.height > 0 && (
         <StageContext.Provider value={shared}>
@@ -136,24 +143,25 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
                 onDragMove={event => view.panMove({ x: event.target.x(), y: event.target.y() })}
                 onDragEnd={view.panEnd}>
                 <Group {...fitted}>
-                  <Pitch view={board.view} overlay={board.overlay} />
+                  <Pitch view={board.view} overlay={board.overlay} style={board.pitch} surroundings={board.surroundings} branding={branding} upright={upright} />
                 </Group>
               </Group>
             </Layer>
             <Layer>
               <Group ref={view.objectView} {...zoomed}>
                 <Group ref={content} {...fitted}>
-                  {previous && <Ghosts previous={previous} current={objects} selection={selection} editable={canEdit} />}
+                  {previous && <Ghosts previous={previous} current={objects} selection={selection} editable={canEdit} ink={lookOf(board.pitch).ink} />}
                   <Marks objects={visible} board={board} />
                   {visible.map(item => (
                     <ObjectNode key={item.id} item={item} board={board} selected={selection.includes(item.id)} upright={upright} holding={holders.has(item.id)} />
                   ))}
                   {fullEdit && <Selection objects={objects} selection={selection} upright={upright} />}
-                  {drawing.draft && <DraftNode draft={drawing.draft} />}
+                  {drawing.draft && <DraftNode draft={drawing.draft} ink={lookOf(board.pitch).ink} />}
                   {extra}
                 </Group>
               </Group>
             </Layer>
+            <SpotlightLayer spotlight={spotlight} zoomed={zoomed} fitted={fitted} />
             {fullEdit && (
               <Layer listening={false}>
                 <Rect ref={band.band} visible={false} fill="rgba(250,204,21,0.12)" stroke="#facc15" strokeWidth={1.5} dash={[6, 4]} />

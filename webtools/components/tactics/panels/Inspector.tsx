@@ -3,7 +3,7 @@
 // Properties of what is selected: one object's own fields, or what several
 // have in common. Nothing selected shows the board's settings.
 import { kindName, newId, objectLabel } from "../../../lib/tactics/document.ts";
-import type { Board, TacticsObject } from "../../../lib/tactics/model.ts";
+import type { BallFlight, Board, TacticsObject } from "../../../lib/tactics/model.ts";
 import { effectsOf } from "../../../lib/tactics/timeline.ts";
 import { effects } from "./effects.ts";
 import { activeObjects, useEditor } from "../store.ts";
@@ -58,7 +58,12 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
               <input type="range" min={0.15} max={0.8} step={0.05} value={item.width} onChange={event => patch({ width: Number(event.target.value) })} />
             </label>
           </div>
-          <label className="tb-check"><input type="checkbox" checked={item.dashed} onChange={event => patch({ dashed: event.target.checked })} />Streckad (löpning)</label>
+          <label className="tb-field">Linje
+            <select value={item.wavy ? "wavy" : item.dashed ? "dashed" : "solid"}
+              onChange={event => patch({ dashed: event.target.value === "dashed", wavy: event.target.value === "wavy" })}>
+              <option value="solid">Heldragen (passning)</option><option value="dashed">Streckad (löpning)</option><option value="wavy">Vågig (dribbling)</option>
+            </select>
+          </label>
           {item.type === "line" && item.control && <button type="button" className="tb-link" onClick={() => patch({ control: null })}>Gör rak</button>}
           {item.type === "line" && <p className="tb-hint">Dra i mittpunkten för att böja linjen.</p>}
           <Swatches label="Färg" value={item.color} onChange={color => patch({ color })} />
@@ -99,7 +104,7 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
   }
 }
 
-/** The object's effects in this frame (chosen under Frames), and its path's bend. */
+/** The object's effects in this frame (chosen under Frames), its path's bend, and how a passed ball travels. */
 function Motion({ item, frameIndex }: { item: TacticsObject; frameIndex: number }) {
   const patch = (changes: Partial<TacticsObject>) => useEditor.getState().patch({ [item.id]: changes });
   return (
@@ -107,6 +112,13 @@ function Motion({ item, frameIndex }: { item: TacticsObject; frameIndex: number 
       {frameIndex > 0 && <p className="tb-hint">Effekter i framen: {effectsOf(item).map(kind => effects[kind].label).join(", ") || "inga"}. Effekter väljer du under Frames.</p>}
       {frameIndex > 0 && item.pathControl && <button type="button" className="tb-link" onClick={() => patch({ pathControl: null })}>Rak väg hit</button>}
       {frameIndex > 0 && !item.pathControl && <p className="tb-hint">Dra i punkten mitt på spåret för att böja vägen hit.</p>}
+      {frameIndex > 0 && item.type === "ball" && (
+        <label className="tb-field">Passningen hit
+          <select value={item.flight ?? "ground"} onChange={event => patch({ flight: event.target.value as BallFlight } as Partial<TacticsObject>)}>
+            <option value="ground">Längs marken</option><option value="chip">Chip (lyft)</option><option value="high">Långboll (hög)</option>
+          </select>
+        </label>
+      )}
     </>
   );
 }

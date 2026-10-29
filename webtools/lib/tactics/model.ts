@@ -3,6 +3,7 @@
 // metres on a 105 × 68 pitch, the home goal to the left. The whole document
 // is saved at once (core.tactics_projects.document) and carries its schema
 // version; ids are stable so a board can be linked from TeamZone.
+import type { PitchPattern, PitchTheme } from "./pitch-style.ts";
 
 export const SCHEMA_VERSION = 1;
 export const PITCH_LENGTH = 105;
@@ -38,9 +39,10 @@ export type ZoomLevel = "close" | "medium" | "wide";
  * themselves; "pop" and "draw" are other ways in, "pulse" and "highlight"
  * point at an object already there, "trail" leaves a dashed track of the
  * move behind it, "arrow" shows the way ahead of it, "ring" rings it in its
- * colour and "zoom" brings the view in on it. Several play together.
+ * colour, "zoom" brings the view in on it and "spotlight" dims all but it.
+ * Several play together.
  */
-export type Effect = "fade" | "pop" | "draw" | "pulse" | "highlight" | "trail" | "arrow" | "zoom" | "ring";
+export type Effect = "fade" | "pop" | "draw" | "pulse" | "highlight" | "trail" | "arrow" | "zoom" | "ring" | "spotlight";
 
 export type PlayerObject = Base & {
   type: "player";
@@ -63,7 +65,11 @@ export type BallObject = Base & {
   /** The player the ball sticks to, and where on the player's edge. */
   attachedTo: string | null;
   offset: Point | null;
+  /** How the ball travels into this frame when passed: along the ground (when missing), chipped or driven high. */
+  flight?: BallFlight;
 };
+
+export type BallFlight = "ground" | "chip" | "high";
 
 export type EquipmentKind = "cone" | "pole" | "mannequin" | "goal";
 
@@ -83,6 +89,8 @@ export type LineObject = Base & {
   control: Point | null;
   arrow: ArrowHead;
   dashed: boolean;
+  /** A dribble: the line swings from side to side. */
+  wavy?: boolean;
   color: string;
   width: number;
 };
@@ -92,6 +100,7 @@ export type FreehandObject = Base & {
   points: number[];
   arrow: ArrowHead;
   dashed: boolean;
+  wavy?: boolean;
   color: string;
   width: number;
 };
@@ -143,6 +152,11 @@ export type Frame = {
 export type Easing = "smooth" | "linear" | "in" | "out";
 
 export type PitchView = "full" | "attack" | "defend" | "empty";
+export type PitchStyle = { theme: PitchTheme; pattern: PitchPattern };
+export type Surroundings = "none" | "arena" | "training";
+
+/** The project's own look: a club's logo (a small picture kept in the document) and where it shows. */
+export type Branding = { logo: string | null; place: "centre" | "corner" | "none" };
 export type PitchOverlay = "none" | "corridors" | "thirds" | "zones";
 
 export type TeamStyle = { name: string; color: string; numberColor: string };
@@ -175,10 +189,16 @@ export type Board = {
   overlay: PitchOverlay;
   teams: Record<Side, TeamStyle>;
   showNames: boolean;
+  /** How the pitch looks; grass in stripes when missing (pitch-style.ts). */
+  pitch?: PitchStyle;
+  /** What is drawn round the pitch: nothing (when missing), an arena or a training ground. */
+  surroundings?: Surroundings;
   /** What the board shows, such as an exercise's set-up and coaching points: shown beside it when presenting. */
   description?: string;
   /** Positions above the players; missing on boards made before it. */
   showPositions?: boolean;
+  /** Which way each player faces, as a cone in front; turned the way they run while playing. */
+  showFacing?: boolean;
   /** In a training project: the board as an exercise (decision package 13); its organisation is the description. */
   exercise?: ExerciseDetails;
   frames: Frame[];
@@ -191,6 +211,7 @@ export type ProjectDocument = {
   schemaVersion: number;
   boards: Board[];
   squad: SquadPlayer[];
+  branding?: Branding;
 };
 
 export type ProjectKind = "match" | "training" | "education";

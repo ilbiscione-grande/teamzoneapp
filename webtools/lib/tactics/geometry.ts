@@ -2,19 +2,22 @@
 // view shows, and how it fits a frame of a given size. A tall frame turns the
 // pitch a quarter so it runs bottom to top, as on a phone held upright: the
 // own goal at the foot, attacking upwards.
-import { PITCH_LENGTH, PITCH_WIDTH, type PitchView, type Point } from "./model.ts";
+import { PITCH_LENGTH, PITCH_WIDTH, type PitchView, type Point, type Surroundings } from "./model.ts";
 
 export type Rect = { x: number; y: number; width: number; height: number };
 
 /** Grass around the lines, so objects by the touchline stay reachable. */
 export const MARGIN = 4;
 
-export function viewRect(view: PitchView): Rect {
+/** How much is shown round the lines: more where stands or a fence are drawn round the pitch. */
+export const marginFor = (surroundings: Surroundings | undefined) => (surroundings === "arena" ? 11 : surroundings === "training" ? 7 : MARGIN);
+
+export function viewRect(view: PitchView, margin = MARGIN): Rect {
   const half = PITCH_LENGTH / 2;
   switch (view) {
-    case "attack": return { x: half - MARGIN, y: -MARGIN, width: half + MARGIN * 2, height: PITCH_WIDTH + MARGIN * 2 };
-    case "defend": return { x: -MARGIN, y: -MARGIN, width: half + MARGIN * 2, height: PITCH_WIDTH + MARGIN * 2 };
-    default: return { x: -MARGIN, y: -MARGIN, width: PITCH_LENGTH + MARGIN * 2, height: PITCH_WIDTH + MARGIN * 2 };
+    case "attack": return { x: half - margin, y: -margin, width: half + margin * 2, height: PITCH_WIDTH + margin * 2 };
+    case "defend": return { x: -margin, y: -margin, width: half + margin * 2, height: PITCH_WIDTH + margin * 2 };
+    default: return { x: -margin, y: -margin, width: PITCH_LENGTH + margin * 2, height: PITCH_WIDTH + margin * 2 };
   }
 }
 

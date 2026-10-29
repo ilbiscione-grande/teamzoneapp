@@ -4,14 +4,27 @@
 // What is drawn along a move (trails, arrows, rings, the zoom) is in marks.ts.
 import { ballPosition } from "./ball.ts";
 import { withMarks, type Marks } from "./marks.ts";
-import type { BallObject, Effect, Frame, LineObject, ShapeObject, TacticsObject } from "./model.ts";
+import type { BallFlight, BallObject, Effect, Frame, LineObject, PlayerObject, ShapeObject, TacticsObject } from "./model.ts";
 import { curvePoint, ease, effectsOf, lerp, lerpPoint } from "./motion.ts";
 
 export { curvePoint, ease, easeInOut, effectsOf } from "./motion.ts";
 export type { Trail } from "./marks.ts";
 
-/** What playing adds to an object: how visible, how large, how far drawn, how lit, and the marks along its move. */
-export type Rendered = TacticsObject & Marks & { opacity?: number; grow?: number; drawn?: number; glow?: number };
+/**
+ * What playing adds to an object: how visible, how large, how far drawn, how
+ * lit, the marks along its move, a lofted ball's height in metres and the
+ * way a running player faces (degrees, 0 towards the right-hand goal).
+ */
+export type Rendered = TacticsObject & Marks & { opacity?: number; grow?: number; drawn?: number; glow?: number; lift?: number; facing?: number };
+
+/** How high a passed ball goes at the top of its flight, in metres. */
+const PEAK: Record<BallFlight, number> = { ground: 0, chip: 3, high: 7 };
+
+/** Which way a player faces when standing: their turn, the away side turned round to face the home goal. */
+export const standingFacing = (player: PlayerObject) => player.rotation + (player.side === "away" ? 180 : 0);
+
+/** Shorter moves keep the player's own facing. */
+const MIN_RUN = 0.3;
 
 /** A move's length in ms: the time into frame `index` (frame 0 has none). */
 export const moveTime = (frames: Frame[], index: number) => Math.max(100, frames[index]?.durationMs ?? 1500);
@@ -51,7 +64,7 @@ const lerpAngle = (a: number, b: number, t: number) => {
 type Look = { opacity?: number; grow?: number; drawn?: number; glow?: number };
 
 /** Effects drawn along the move or on the view (marks.ts), not on the object. */
-const MARKS = new Set<Effect>(["trail", "arrow", "ring", "zoom"]);
+const MARKS = new Set<Effect>(["trail", "arrow", "ring", "zoom", "spotlight"]);
 
 /** One effect's look at progress t (0–1) of the move into the frame. */
 function effectLook(effect: Effect, t: number, entering: boolean): Look {
@@ -119,6 +132,15 @@ export function blendFrames(from: Frame, to: Frame, t: number): Rendered[] {
       blended = { ...blended, width: lerp(shape.width, next.width, eased), height: lerp(shape.height, next.height, eased) } as ShapeObject;
     }
     if ("scale" in next && "scale" in prev) blended = { ...blended, scale: lerp(prev.scale, next.scale, eased) } as TacticsObject;
+    if (next.type === "player" && prev.type === "player" && Math.hypot(next.x - prev.x, next.y - prev.y) >= MIN_RUN) {
+      // Running: faces the way of the run, turning to their own facing over the last fifth.
+      const ahead = curvePoint(prev, next, next.pathControl, Math.min(1, eased + 0.02));
+      const here = curvePoint(prev, next, next.pathControl, Math.min(0.98, eased));
+      const along = (Math.atan2(ahead.y - here.y, ahead.x - here.x) * 180) / Math.PI;
+      const facing = eased < 0.8 ? along : lerpAngle(along, standingFacing(next), (eased - 0.8) / 0.2);
+      result.push({ ...withEffects(blended, t, false), facing });
+      continue;
+    }
     result.push(withEffects(blended, t, false));
   }
   // Gone in the next frame: fades out where it was.
@@ -143,7 +165,9 @@ export function blendFrames(from: Frame, to: Frame, t: number): Rendered[] {
     }
     const start = ballPosition(prev, from.objects);
     const end = ballPosition(next, to.objects);
-    return { ...item, ...curvePoint(start, end, next.pathControl, eased) };
+    const peak = PEAK[next.flight ?? "ground"] ?? 0;
+    const lift = peak * 4 * eased * (1 - eased);
+    return { ...item, ...curvePoint(start, end, next.pathControl, eased), ...(lift > 0 ? { lift } : {}) };
   });
 }
 

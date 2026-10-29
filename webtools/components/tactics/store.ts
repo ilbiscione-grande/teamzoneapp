@@ -13,7 +13,7 @@ import type { Board, Project, ProjectDocument, ProjectKind, TacticsObject } from
 export type Tool =
   | "select"
   | "player-home" | "player-away" | "ball" | "cone" | "pole" | "mannequin" | "goal" | "text"
-  | "arrow" | "run" | "line" | "freehand" | "rect" | "ellipse";
+  | "arrow" | "run" | "dribble" | "line" | "freehand" | "rect" | "ellipse";
 
 export type SaveState = "saved" | "dirty" | "saving" | "error" | "conflict";
 
@@ -34,6 +34,8 @@ type EditorState = {
   playing: boolean;
   playhead: number;
   loop: boolean;
+  /** The pitch tilted as if seen from the stand: for watching and playing, not editing. Not saved. */
+  tilt: boolean;
   speed: number;
   /** Playing one move only (an effect's preview): the frame it stops on. */
   stopAt: number | null;
@@ -48,6 +50,7 @@ type EditorState = {
   pause: () => void;
   setPlayhead: (playhead: number) => void;
   setLoop: (loop: boolean) => void;
+  setTilt: (tilt: boolean) => void;
   setSpeed: (speed: number) => void;
   load: (project: Project, document: ProjectDocument) => void;
   setTool: (tool: Tool) => void;
@@ -82,6 +85,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   playing: false,
   playhead: 0,
   loop: false,
+  tilt: false,
   speed: 1,
   stopAt: null,
   playSeq: 0,
@@ -114,6 +118,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   },
   setPlayhead: playhead => set({ playhead }),
   setLoop: loop => set({ loop }),
+  setTilt: tilt => set({ tilt, selection: [] }),
   setSpeed: speed => set({ speed }),
 
   load: (project, document) => set({

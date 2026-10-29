@@ -1,6 +1,6 @@
 "use client";
 
-// The tools: select, place players and equipment, draw passes, runs and
+// The tools: select, place players and equipment, draw passes, runs, dribbles and
 // areas. A placing tool stays in hand for several taps; a drawing tool goes
 // back to select after one stroke. On a wide screen the palette can be
 // wider, a short word under each icon, two or three to a row; the choice
@@ -30,6 +30,7 @@ const groups: { title: string; items: Item[] }[] = [
     items: [
       { tool: "arrow", label: "Passning", short: "Pass", icon: "→" },
       { tool: "run", label: "Löpning", short: "Löpning", icon: "⇢" },
+      { tool: "dribble", label: "Dribbling", short: "Dribbling", icon: "⤳" },
       { tool: "line", label: "Linje", short: "Linje", icon: "／" },
       { tool: "freehand", label: "Frihand", short: "Frihand", icon: "〰" },
       { tool: "rect", label: "Yta", short: "Yta", icon: "▭" },

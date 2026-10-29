@@ -37,7 +37,9 @@ export function BoardMenu() {
   };
   const add = (added: Board[]) => {
     if (added.length === 0) return;
-    useEditor.getState().change(document => ({ ...document, boards: [...document.boards, ...added] }));
+    // New boards look like the board in hand, unless they bring their own look.
+    const styled = added.map(item => (item.pitch || !current?.pitch ? item : { ...item, pitch: current.pitch }));
+    useEditor.getState().change(document => ({ ...document, boards: [...document.boards, ...styled] }));
     useEditor.getState().setBoard(added[0].id);
     setOpen(false);
   };

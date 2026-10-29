@@ -7,6 +7,7 @@
 import { Arrow, Circle, Group, Line } from "react-konva";
 import { PLAYER_RADIUS } from "../../../lib/tactics/ball.ts";
 import type { Board } from "../../../lib/tactics/model.ts";
+import { lookOf } from "../../../lib/tactics/pitch-style.ts";
 import type { Rendered } from "../../../lib/tactics/timeline.ts";
 
 const DASH = [0.7, 0.5];
@@ -20,6 +21,7 @@ function colorOf(item: Rendered, board: Board): string {
 export function Marks({ objects, board }: { objects: Rendered[]; board: Board }) {
   const marked = objects.filter(item => item.trails || item.ring);
   if (marked.length === 0) return null;
+  const look = lookOf(board.pitch);
   return (
     <Group listening={false}>
       {marked.flatMap(item => (item.trails ?? []).map((trail, index) => {
@@ -27,7 +29,7 @@ export function Marks({ objects, board }: { objects: Rendered[]; board: Board })
           points: trail.points, strokeWidth: 0.2, dash: DASH, lineCap: "round" as const, lineJoin: "round" as const,
           opacity: 0.85 * trail.opacity, listening: false, perfectDrawEnabled: false,
         };
-        const color = item.type === "ball" ? "#fef08a" : "#ffffff";
+        const color = item.type === "ball" ? (look.light ? "#ca8a04" : "#fef08a") : look.ink;
         return trail.arrow
           ? <Arrow key={`${item.id}-${index}`} {...common} stroke={color} fill={color} strokeWidth={0.24} pointerLength={1.2} pointerWidth={1.1} />
           : <Line key={`${item.id}-${index}`} {...common} stroke={color} />;
@@ -36,7 +38,7 @@ export function Marks({ objects, board }: { objects: Rendered[]; board: Board })
         const radius = PLAYER_RADIUS * 1.75 * ("scale" in item && typeof item.scale === "number" ? item.scale : 1) * item.ring!.grow;
         return (
           <Group key={`${item.id}-ring`} x={item.x} y={item.y} opacity={item.ring!.opacity} listening={false}>
-            <Circle radius={radius} stroke="#ffffff" strokeWidth={0.42} dash={DASH} listening={false} perfectDrawEnabled={false} />
+            <Circle radius={radius} stroke={look.light ? look.ink : "#ffffff"} strokeWidth={0.42} dash={DASH} listening={false} perfectDrawEnabled={false} />
             <Circle radius={radius} stroke={colorOf(item, board)} strokeWidth={0.22} dash={DASH} listening={false} perfectDrawEnabled={false} />
           </Group>
         );
