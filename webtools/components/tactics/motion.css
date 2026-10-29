@@ -56,5 +56,6 @@
 
 
 /* Copying the selected objects to another frame or board. */
-.tb-copy-to { display: grid; gap: 4px; }
-.tb-copy-to .tb-panel-select { flex: 1 1 140px; min-height: 32px; }
+.tb-copy-to { display: grid; gap: 4px; min-width: 0; }
+/* A select is as wide as its longest option unless told otherwise; on a phone that is wider than the panel. */
+.tb-copy-to .tb-panel-select { flex: 1 1 140px; min-width: 0; width: 100%; max-width: 100%; min-height: 32px; }

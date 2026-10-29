@@ -30,7 +30,9 @@ export function Scrubber({ frames }: { frames: Frame[] }) {
     const near = times.findIndex(time => Math.abs((time / total) * rect.width - x) <= SNAP_PX);
     scrub(near >= 0 ? near : playheadOfTime(frames, (x / rect.width) * total));
   };
-  const step = (ms: number) => scrub(playheadOfTime(frames, now + ms));
+  // Keys read the playhead as it is now: a held key repeats faster than the page draws.
+  const current = () => useEditor.getState().playhead;
+  const step = (ms: number) => scrub(playheadOfTime(frames, timeOfPlayhead(frames, current()) + ms));
 
   return (
     <div className="tb-scrub-row">
@@ -49,7 +51,7 @@ export function Scrubber({ frames }: { frames: Frame[] }) {
         onKeyDown={event => {
           const keys: Record<string, () => void> = {
             ArrowRight: () => step(100), ArrowLeft: () => step(-100),
-            PageUp: () => setFrame(Math.floor(playhead) + 1), PageDown: () => setFrame(Math.ceil(playhead) - 1),
+            PageUp: () => setFrame(Math.floor(current()) + 1), PageDown: () => setFrame(Math.ceil(current()) - 1),
             Home: () => setFrame(0), End: () => setFrame(frames.length - 1),
           };
           if (!keys[event.key]) return;

@@ -58,12 +58,15 @@
 .tb-editor[data-panel="false"] .tb-panel-tabs { flex-direction: column; border: 0; }
 .tb-editor[data-panel="false"] .tb-panel-tabs button { writing-mode: vertical-rl; min-height: 90px; min-width: 40px; border-bottom: 0; }
 
-.tb-inspector { display: grid; gap: 10px; }
+/* One column never wider than the panel, however wide a select's longest option is. */
+.tb-inspector { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .tb-inspector h3 { margin: 4px 0 0; font-size: 1.05rem; text-transform: uppercase; }
 .tb-field { display: grid; gap: 4px; font-size: .85rem; font-weight: 600; color: var(--wt-muted); }
 .tb-field input:not([type]), .tb-field input[inputmode], .tb-field select, .tb-field textarea { min-height: 36px; padding: 6px 8px; border: 1px solid var(--wt-line); border-radius: 6px; background: white; color: var(--wt-text); font: inherit; font-weight: 400; }
 .tb-field input[type="range"] { accent-color: var(--wt-brand); }
-.tb-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* Two fields side by side; a text field's own width must not push the second past the panel. */
+.tb-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.tb-row .tb-field input, .tb-row .tb-field select { min-width: 0; width: 100%; box-sizing: border-box; }
 .tb-check { display: flex; align-items: center; gap: 8px; font-size: .9rem; }
 .tb-check input { width: 18px; height: 18px; accent-color: var(--wt-brand); }
 .tb-hint { margin: 0; color: var(--wt-muted); font-size: .82rem; }
