@@ -11,7 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Group, Layer, Rect, Stage } from "react-konva";
 import { ballHolders } from "../../../lib/tactics/ball.ts";
 import { blendViewport, fitView, viewRect, zoomTo } from "../../../lib/tactics/geometry.ts";
-import { cameraAt, ZOOM } from "../../../lib/tactics/marks.ts";
+import { cameraAt } from "../../../lib/tactics/marks.ts";
 import { objectsAt } from "../../../lib/tactics/timeline.ts";
 import { ObjectNode } from "../objects/ObjectNode.tsx";
 import { activeBoard, activeObjects, isBetween, useEditor } from "../store.ts";
@@ -93,7 +93,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
   const fitted = { x: fit.x, y: fit.y, scaleX: fit.scale, scaleY: fit.scale, rotation: fit.rotation };
   // Playing into a frame that zooms, the view leaves the user's zoom for the object.
   const camera = playing || between ? cameraAt(board.frames, playhead, shown) : null;
-  const sight = camera ? blendViewport(view.viewport, zoomTo(camera.at, fit, size.width, size.height, ZOOM), camera.amount) : view.viewport;
+  const sight = camera ? blendViewport(view.viewport, zoomTo(camera.at, fit, size.width, size.height, camera.scale), camera.amount) : view.viewport;
   const zoomed = { x: sight.x, y: sight.y, scaleX: sight.scale, scaleY: sight.scale };
   const tapGrass = (target: Konva.Node) => {
     if (isPlaceTool(tool)) drawing.place();

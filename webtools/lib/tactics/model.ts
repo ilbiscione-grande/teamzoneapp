@@ -26,7 +26,11 @@ type Base = {
   effect?: Effect | null;
   /** Animation: the effects played together as this frame is reached; read through effectsOf. */
   effects?: Effect[];
+  /** Animation: how close the zoom effect goes on this object; "medium" when missing. */
+  zoomLevel?: ZoomLevel;
 };
+
+export type ZoomLevel = "close" | "medium" | "wide";
 
 /**
  * Effects play while the board moves into the frame that has them. An

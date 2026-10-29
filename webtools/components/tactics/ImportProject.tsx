@@ -9,7 +9,7 @@ import type { ProjectSummary } from "../../lib/tactics/model.ts";
 import { parseImport } from "../../lib/tactics/transfer.ts";
 import { useAccount } from "../account";
 
-export function ImportProject({ onCreated }: { onCreated?: (projectId: string) => Promise<unknown> }) {
+export function ImportProject({ folderId, onCreated }: { folderId?: string; onCreated?: (projectId: string) => Promise<unknown> }) {
   const { client } = useAccount();
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
@@ -27,7 +27,7 @@ export function ImportProject({ onCreated }: { onCreated?: (projectId: string) =
     if (createError) { setBusy(false); setError("Projektet kunde inte skapas. Försök igen."); return; }
     const id = (data as ProjectSummary).id;
     await onCreated?.(id);
-    router.push(`/tacticsboard/${id}`);
+    router.push(folderId ? `/tacticsboard/${id}?mapp=${folderId}` : `/tacticsboard/${id}`);
   };
 
   return (

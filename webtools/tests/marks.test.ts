@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createObject, createPlayer, newFrame } from "../lib/tactics/document.ts";
 import { blendViewport, fitView, pitchToFrame, viewRect, zoomTo } from "../lib/tactics/geometry.ts";
-import { arrowOf, cameraAt, movesInto } from "../lib/tactics/marks.ts";
+import { arrowOf, cameraAt, movesInto, zoomScales } from "../lib/tactics/marks.ts";
 import type { Effect, Frame, TacticsObject } from "../lib/tactics/model.ts";
 import { objectsAt, type Rendered } from "../lib/tactics/timeline.ts";
 
@@ -51,8 +51,8 @@ test("zoom: in quickly on the object and stays; a next zoom keeps it in, otherwi
   assert.equal(at(0), null);
   const zoomingIn = at(0.1)!;
   assert.ok(zoomingIn.amount > 0 && zoomingIn.amount < 1);
-  assert.deepEqual(at(0.5), { at: { x: 10, y: 10 }, amount: 1 });
-  assert.deepEqual(at(1), { at: { x: 10, y: 10 }, amount: 1 }, "stays on the frame");
+  assert.deepEqual(at(0.5), { at: { x: 10, y: 10 }, amount: 1, scale: zoomScales.medium });
+  assert.deepEqual(at(1), { at: { x: 10, y: 10 }, amount: 1, scale: zoomScales.medium }, "stays on the frame");
   const gliding = at(1.1)!;
   assert.equal(gliding.amount, 1, "the next frame zooms too: stays in");
   assert.ok(gliding.at.x > 10 && gliding.at.x < 40);
@@ -117,4 +117,17 @@ test("a still picture shows every move into its frame as a whole arrow, passes t
   assert.ok(Math.min(...run.points.filter((_, i) => i % 2 === 1)) < 10, "follows the bend");
   assert.ok(moves.some(move => move.ball));
   assert.deepEqual(movesInto([start, end], 0), [], "the first frame has no moves");
+});
+
+test("each zoomed object chooses how close the view goes; gliding between two blends it", () => {
+  const a = { ...createPlayer({ x: 10, y: 10 }, "home", []), zoomLevel: "close" as const };
+  const b = { ...createPlayer({ x: 40, y: 30 }, "away", []), zoomLevel: "wide" as const };
+  const frames = [frame([a, b]), frame([withEffects(a, "zoom"), b]), frame([a, withEffects(b, "zoom")])];
+  const at = (playhead: number) => cameraAt(frames, playhead, objectsAt(frames, playhead))!;
+  assert.equal(at(1).scale, zoomScales.close);
+  assert.equal(at(2).scale, zoomScales.wide);
+  const gliding = at(1.1).scale;
+  assert.ok(gliding < zoomScales.close && gliding > zoomScales.wide);
+  const unchosen = [frame([a]), frame([{ ...withEffects(a, "zoom"), zoomLevel: undefined }])];
+  assert.equal(cameraAt(unchosen, 1, unchosen[1].objects)!.scale, zoomScales.medium);
 });

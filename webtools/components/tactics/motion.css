@@ -59,3 +59,5 @@
 .tb-copy-to { display: grid; gap: 4px; min-width: 0; }
 /* A select is as wide as its longest option unless told otherwise; on a phone that is wider than the panel. */
 .tb-copy-to .tb-panel-select { flex: 1 1 140px; min-width: 0; width: 100%; max-width: 100%; min-height: 32px; }
+.tb-zoom-level { display: inline-flex; align-items: center; gap: 4px; color: var(--wt-muted); font-size: .8rem; }
+.tb-zoom-level select { min-height: 28px; border: 1px solid var(--wt-line); border-radius: 6px; background: white; font: inherit; }

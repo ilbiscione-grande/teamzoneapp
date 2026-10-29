@@ -1,6 +1,7 @@
 "use client";
 
-// Above the board, on one row: back to the projects, the boards as tabs,
+// Above the board, on one row: back to the projects (or the folder it was
+// opened from), the boards as tabs,
 // undo and redo, PDF, sharing and how saving goes. The project's name, kind
 // and team are under the board's settings.
 import Link from "next/link";
@@ -99,6 +100,12 @@ export function TopBar({ onPresent }: { onPresent: () => void }) {
   const [sharing, setSharing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [living, setLiving] = useState(false);
+  // Opened from a folder (?mapp=<id>), back goes to the folder.
+  const [folderId, setFolderId] = useState<string | null>(null);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("mapp");
+    setFolderId(id && /^[0-9a-f-]{36}$/.test(id) ? id : null);
+  }, []);
   if (!meta) return null;
   return (
     <header className="tb-top">
@@ -106,7 +113,8 @@ export function TopBar({ onPresent }: { onPresent: () => void }) {
       {exporting && <ExportDialog onClose={() => setExporting(false)} />}
       {living && <LiveDialog onClose={() => setLiving(false)} />}
       <div className="tb-top-row">
-        <Link href="/tacticsboard" className="tb-back" aria-label="Till projekten" title={meta.name}>‹</Link>
+        <Link href={folderId ? `/tacticsboard/mapp/${folderId}` : "/tacticsboard"} className="tb-back"
+          aria-label={folderId ? "Till mappen" : "Till projekten"} title={meta.name}>‹</Link>
         <Boards />
         <button type="button" className="tb-icon" onClick={undo} disabled={!canUndo} aria-label="Ångra" title="Ångra (Ctrl+Z)">↶</button>
         <button type="button" className="tb-icon" onClick={redo} disabled={!canRedo} aria-label="Gör om" title="Gör om (Ctrl+Y)">↷</button>

@@ -3,6 +3,7 @@
 // A shared link's page: the boards to watch and play, nothing to change.
 // The board and its timeline are the editor's own, read-only.
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { normalizeDocument } from "../../lib/tactics/document.ts";
 import type { SharedTactics } from "../../lib/tactics/shared.ts";
@@ -16,7 +17,8 @@ import "./tactics.css";
 
 const BoardStage = dynamic(() => import("./stage/BoardStage.tsx"), { ssr: false, loading: () => <div className="tb-stage" /> });
 
-export function SharedViewer({ shared }: { shared: SharedTactics }) {
+/** back: a way back up, for a project seen through a shared folder. */
+export function SharedViewer({ shared, back }: { shared: SharedTactics; back?: { href: string; label: string } }) {
   const [ready, setReady] = useState(false);
   const [qr, setQr] = useState(false);
   const [presenting, setPresenting] = useState(false);
@@ -37,7 +39,9 @@ export function SharedViewer({ shared }: { shared: SharedTactics }) {
     <div className="tb-editor tb-viewer">
       <header className="tb-top">
         <div className="tb-top-row">
-          <span className="tb-viewer-mark" aria-hidden="true">TZ</span>
+          {back
+            ? <Link href={back.href} className="tb-back" aria-label={back.label} title={back.label}>‹</Link>
+            : <span className="tb-viewer-mark" aria-hidden="true">TZ</span>}
           <div className="tb-viewer-title">
             <strong>{shared.name}</strong>
             <span>{[kindLabels[shared.kind], shared.team_name].filter(Boolean).join(" · ")}</span>

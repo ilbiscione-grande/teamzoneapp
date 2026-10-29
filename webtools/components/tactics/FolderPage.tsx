@@ -2,14 +2,15 @@
 
 // A folder's own page: its name and description, its projects in the order
 // you set, projects of yours added to it or a new one made in it, and the
-// folder removed. Taking a project out of the folder, or removing the
-// folder, keeps the projects.
+// folder shared by a link, or removed. Taking a project out of the folder,
+// or removing the folder, keeps the projects.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { folderErrorText, moveInOrder, type Folder } from "../../lib/tactics/folders.ts";
 import type { ProjectSummary } from "../../lib/tactics/model.ts";
 import { useAccount } from "../account";
+import { FolderShare } from "./FolderShare.tsx";
 import { kindLabels } from "./TopBar.tsx";
 import "./tactics.css";
 
@@ -88,6 +89,7 @@ export function FolderPage({ id }: { id: string }) {
               <button type="button" className="wt-button secondary small" onClick={() => { setForm({ name: folder.name, description: folder.description }); setEditing(true); }}>Ändra</button>
               <button type="button" className="wt-button secondary small" onClick={() => void remove()}>Ta bort mappen</button>
             </div>
+            <FolderShare folderId={id} />
           </>
         )}
       </section>
@@ -98,7 +100,7 @@ export function FolderPage({ id }: { id: string }) {
             {folder.projects.map((project, index) => (
               <li key={project.id}>
                 <div>
-                  <strong><Link className="wt-link" href={`/tacticsboard/${project.id}`}>{project.name}</Link></strong>
+                  <strong><Link className="wt-link" href={`/tacticsboard/${project.id}?mapp=${id}`}>{project.name}</Link></strong>
                   <span>{[kindLabels[project.kind], project.team_name, `${project.board_count} ${project.board_count === 1 ? "tavla" : "tavlor"}`].filter(Boolean).join(" · ")}</span>
                 </div>
                 <div className="wt-actions">
@@ -106,7 +108,7 @@ export function FolderPage({ id }: { id: string }) {
                     onClick={() => void call("order_tactics_folder", { target_folder_id: id, project_ids: moveInOrder(ids, index, -1) }, "Ordningen kunde inte sparas.")}>↑</button>
                   <button type="button" className="tb-order" aria-label={`Flytta ned ${project.name}`} disabled={busy || index === ids.length - 1}
                     onClick={() => void call("order_tactics_folder", { target_folder_id: id, project_ids: moveInOrder(ids, index, 1) }, "Ordningen kunde inte sparas.")}>↓</button>
-                  <Link className="wt-button small" href={`/tacticsboard/${project.id}`}>Öppna</Link>
+                  <Link className="wt-button small" href={`/tacticsboard/${project.id}?mapp=${id}`}>Öppna</Link>
                   <button type="button" className="wt-button secondary small" disabled={busy}
                     onClick={() => void call("remove_tactics_folder_project", { target_folder_id: id, target_project_id: project.id }, "Projektet kunde inte tas ur mappen.")}>Ta bort ur mappen</button>
                 </div>

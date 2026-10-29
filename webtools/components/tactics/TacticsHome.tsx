@@ -73,7 +73,7 @@ export function TacticsHome() {
     // Not put in the folder, the project is still made; the folder page tells.
     if (folder) await addProject(folder.id, created);
     setBusy(false);
-    router.push(`/tacticsboard/${created}`);
+    router.push(folder ? `/tacticsboard/${created}?mapp=${folder.id}` : `/tacticsboard/${created}`);
   };
 
   return (
@@ -140,7 +140,7 @@ export function TacticsHome() {
           <button type="submit" className="wt-button" disabled={busy}>Skapa och öppna</button>
           {teams.length > 0 && <p className="wt-small">Med ett lag hämtar du truppen till tavlan. Senare kan tavlan länkas till lagets aktiviteter i appen.</p>}
         </form>
-        <ImportProject onCreated={folder ? id => addProject(folder.id, id) : undefined} />
+        <ImportProject folderId={folder?.id} onCreated={folder ? id => addProject(folder.id, id) : undefined} />
       </section>
       {templates && templates.length > 0 && (
         <section className="wt-panel">

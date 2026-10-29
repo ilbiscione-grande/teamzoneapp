@@ -8,10 +8,10 @@
 import {
   insertFrame, moveFrame, objectLabel, removeFrame, setFrameDuration, setFrameEasing, toggleEffect, updateBoard,
 } from "../../../lib/tactics/document.ts";
-import type { Board, Easing, Effect } from "../../../lib/tactics/model.ts";
+import type { Board, Easing, Effect, ZoomLevel } from "../../../lib/tactics/model.ts";
 import { effectsOf } from "../../../lib/tactics/timeline.ts";
 import { activeObjects, useEditor } from "../store.ts";
-import { easingLabels, effectKinds, effects, effectSuits } from "./effects.ts";
+import { easingLabels, effectKinds, effects, effectSuits, zoomLabels } from "./effects.ts";
 
 const durations = [500, 750, 1000, 1500, 2000, 3000, 4000];
 const seconds = (ms: number) => `${(ms / 1000).toLocaleString("sv-SE")} s`;
@@ -136,6 +136,13 @@ export function FramesPanel({ board }: { board: Board }) {
                       );
                     })}
                   </span>
+                  {effectsOf(item).includes("zoom") && (
+                    <label className="tb-zoom-level">Zoom
+                      <select value={item.zoomLevel ?? "medium"} onChange={event => patch({ [item.id]: { zoomLevel: event.target.value as ZoomLevel } })}>
+                        {Object.entries(zoomLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                      </select>
+                    </label>
+                  )}
                 </li>
               ))}
             </ul>

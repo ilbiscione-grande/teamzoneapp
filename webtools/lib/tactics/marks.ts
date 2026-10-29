@@ -4,7 +4,7 @@
 // the board moves into the frame that has it; a trail and a ring stay on
 // reaching the frame and fade out over the next move.
 import { ballPosition } from "./ball.ts";
-import type { Frame, Point, TacticsObject } from "./model.ts";
+import type { Frame, Point, TacticsObject, ZoomLevel } from "./model.ts";
 import { curvePoint, ease, effectsOf, lerp, lerpPoint, quick } from "./motion.ts";
 
 /** A dashed track along a move: pitch points x, y, …, how visible, whether it ends in an arrowhead, and whether the ball made it. */
@@ -133,11 +133,15 @@ export function movesInto(frames: Frame[], index: number): Trail[] {
   });
 }
 
-/** Where the view looks while playing: a pitch point, and how far in (0 the whole view, 1 zoomed in). */
-export type Camera = { at: Point; amount: number };
+/** Where the view looks while playing: a pitch point, how far in (0 the whole view, 1 zoomed in) and how close zoomed in is. */
+export type Camera = { at: Point; amount: number; scale: number };
+
+/** How close the zoom effect goes, as times the whole view; "medium" when an object has not chosen. */
+export const zoomScales: Record<ZoomLevel, number> = { close: 2.8, medium: ZOOM, wide: 1.6 };
+const scaleOf = (item: TacticsObject) => zoomScales[item.zoomLevel ?? "medium"] ?? ZOOM;
 
 /** The object a frame zooms in on: the first with the zoom effect. */
-const zoomedOn = (frame: Frame | undefined) => frame?.objects.find(item => effectsOf(item).includes("zoom"))?.id ?? null;
+const zoomedOn = (frame: Frame | undefined) => frame?.objects.find(item => effectsOf(item).includes("zoom")) ?? null;
 
 /**
  * The view at a playhead, following the zoomed object where it is shown
@@ -154,17 +158,17 @@ export function cameraAt(frames: Frame[], playhead: number, shown: TacticsObject
     shown.find(item => item.id === id) ?? frame.objects.find(item => item.id === id) ?? null;
   const here = zoomedOn(index > 0 ? frames[index] : undefined);
   if (index >= frames.length - 1 || t <= 0) {
-    const at = here && where(here, frames[index]);
-    return at ? { at: { x: at.x, y: at.y }, amount: 1 } : null;
+    const at = here && where(here.id, frames[index]);
+    return at && here ? { at: { x: at.x, y: at.y }, amount: 1, scale: scaleOf(here) } : null;
   }
   const next = zoomedOn(frames[index + 1]);
   const step = quick(t);
-  const nextAt = next && where(next, frames[index + 1]);
-  const hereAt = here && where(here, frames[index]);
-  if (nextAt) {
-    if (hereAt) return { at: lerpPoint(hereAt, nextAt, step), amount: 1 };
-    return { at: { x: nextAt.x, y: nextAt.y }, amount: step };
+  const nextAt = next && where(next.id, frames[index + 1]);
+  const hereAt = here && where(here.id, frames[index]);
+  if (nextAt && next) {
+    if (hereAt && here) return { at: lerpPoint(hereAt, nextAt, step), amount: 1, scale: lerp(scaleOf(here), scaleOf(next), step) };
+    return { at: { x: nextAt.x, y: nextAt.y }, amount: step, scale: scaleOf(next) };
   }
-  if (hereAt) return { at: { x: hereAt.x, y: hereAt.y }, amount: 1 - step };
+  if (hereAt && here) return { at: { x: hereAt.x, y: hereAt.y }, amount: 1 - step, scale: scaleOf(here) };
   return null;
 }
