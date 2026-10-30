@@ -1,7 +1,9 @@
 "use client";
 
 // A shared link's page: the boards to watch and play, nothing to change.
-// The board and its timeline are the editor's own, read-only.
+// The board and its timeline are the editor's own, read-only. Made for a
+// phone: a large play button to start, a swipe for the next frame and a tap
+// to play or pause, and the frame's note under the board.
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -10,7 +12,8 @@ import type { SharedTactics } from "../../lib/tactics/shared.ts";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import { BigQr } from "./QrCode.tsx";
 import { Presenter } from "./Presenter.tsx";
-import { activeBoard, useEditor, NONE } from "./store.ts";
+import { SharedCaption } from "./SharedCaption.tsx";
+import { activeBoard, stepFrame, useEditor, NONE } from "./store.ts";
 import { Timeline } from "./timeline/Timeline.tsx";
 import { kindLabels } from "./TopBar.tsx";
 import "./tactics.css";
@@ -25,6 +28,11 @@ export function SharedViewer({ shared, back }: { shared: SharedTactics; back?: {
   const board = useEditor(activeBoard);
   const boards = useEditor(state => state.document?.boards ?? NONE);
   const boardId = useEditor(state => state.boardId);
+  const playing = useEditor(state => state.playing);
+  const moved = useEditor(state => state.playhead > 0);
+  // Until the board is first played or moved on, a large play button over it; again on another board.
+  const [startedOn, setStartedOn] = useState<string | null>(null);
+  useEffect(() => { if (playing || moved) setStartedOn(boardId); }, [playing, moved, boardId]);
   useEffect(() => {
     const document = normalizeDocument({ boards: shared.boards, branding: shared.branding });
     useEditor.getState().load({
@@ -62,7 +70,16 @@ export function SharedViewer({ shared, back }: { shared: SharedTactics; back?: {
       </header>
       {qr && <BigQr text={window.location.href} title={shared.name} onClose={() => setQr(false)} />}
       <div className="tb-center">
-        <ErrorBoundary label="Tavlan"><BoardStage editable={false} /></ErrorBoundary>
+        <div className="tb-viewer-board">
+          <ErrorBoundary label="Tavlan">
+            <BoardStage editable={false} onSwipe={stepFrame}
+              onTap={() => { const state = useEditor.getState(); if (state.playing) state.pause(); else state.play(); }} />
+          </ErrorBoundary>
+          {board.frames.length > 1 && startedOn !== boardId && (
+            <button type="button" className="tb-viewer-start" aria-label="Spela upp" onClick={() => useEditor.getState().play()}>▶</button>
+          )}
+        </div>
+        <SharedCaption board={board} />
         <ErrorBoundary label="Tidslinjen"><Timeline board={board} readOnly /></ErrorBoundary>
       </div>
     </div>

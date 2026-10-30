@@ -28,6 +28,7 @@ import { drawnGround, groundReach, projector, TILT, tiltOrigin, tiltTransform, u
 import { pitchPointer, StageContext, stageHolder, type StageShared } from "./stage-context.ts";
 import { tiltHolder } from "./tilt-picture.ts";
 import { useBand } from "./use-band.ts";
+import { useSwipe } from "./use-swipe.ts";
 import { isDrawTool, isPlaceTool, useDrawing } from "./use-drawing.ts";
 import { IDENTITY, useViewport } from "./use-viewport.ts";
 
@@ -43,8 +44,11 @@ const NO_REACH: Reach = { left: 0, top: 0, right: 0, bottom: 0 };
 /**
  * extra: drawn over the objects, in metres (a live lesson's pointer and drawings).
  * moveOnly: objects can be dragged and nothing else (a participant given the floor).
+ * onSwipe, onTap: watching only, not zoomed in: a swipe sideways and a tap on the board (use-swipe).
  */
-export default function BoardStage({ editable = true, moveOnly = false, extra }: { editable?: boolean; moveOnly?: boolean; extra?: React.ReactNode }) {
+export default function BoardStage({ editable = true, moveOnly = false, extra, onSwipe, onTap }: {
+  editable?: boolean; moveOnly?: boolean; extra?: React.ReactNode; onSwipe?: (direction: 1 | -1) => void; onTap?: () => void;
+}) {
   const frame = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const board = useEditor(activeBoard);
@@ -73,6 +77,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
     nodes.current.forEach(node => { if (node.isDragging()) node.stopDrag(); });
     tiltPan.current = null;
   }, tilt);
+  const swipe = useSwipe(!editable && view.viewport.scale <= 1.001, onSwipe, onTap);
   const stage = useRef<Konva.Stage | null>(null);
   // The tilted ground's canvas reaches far past the frame: drawn at 1×, it costs a quarter as much.
   useEffect(() => {
@@ -135,6 +140,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
   return (
     <div ref={frame} className="tb-stage" data-tool={tool} data-tilt={tilt} style={tilt ? { perspective: `${TILT.perspective}px` } : undefined}
       onPointerDown={event => {
+        swipe.down(event);
         if (!tilt || !zoomedIn || view.pinch.current) return;
         tiltPan.current = { from: onScreen(event), start: view.live.current };
         event.currentTarget.setPointerCapture(event.pointerId);
@@ -146,8 +152,11 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
         const at = onScreen(event);
         view.apply({ ...pan.start, x: pan.start.x + at.x - pan.from.x, y: pan.start.y + at.y - pan.from.y }, false);
       }}
-      onPointerUp={() => { if (tiltPan.current) { tiltPan.current = null; view.apply(view.live.current, true); } }}
-      onPointerCancel={() => { tiltPan.current = null; }}>
+      onPointerUp={event => {
+        swipe.up(event);
+        if (tiltPan.current) { tiltPan.current = null; view.apply(view.live.current, true); }
+      }}
+      onPointerCancel={() => { swipe.cancel(); tiltPan.current = null; }}>
       {/* Konva fails drawing into a board without width or height (a phone with the panel open). */}
       {size.width > 0 && size.height > 0 && (
         <StageContext.Provider value={shared}>

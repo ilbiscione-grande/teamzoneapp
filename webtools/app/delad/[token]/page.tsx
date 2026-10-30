@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SharedViewer } from "../../../components/tactics/SharedViewer.tsx";
+import { sharedMetadata } from "../../../components/tactics/share-preview.tsx";
 import { loadSharedTactics } from "../../../lib/tactics/shared.ts";
 
 // Always the board as last saved.
@@ -10,8 +11,7 @@ type Props = { params: Promise<{ token: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { token } = await params;
-  const shared = await loadSharedTactics(token);
-  return { title: shared?.name ?? "Delad tavla" };
+  return sharedMetadata(await loadSharedTactics(token));
 }
 
 /** A shared Tacticsboard project or board: watched and played without an account. */

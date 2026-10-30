@@ -6,7 +6,7 @@
 // left alone, and so is a key a control has already handled (the timeline).
 // Off while presenting: the presenter has keys of its own.
 import { useEffect } from "react";
-import { activeBoard, activeObjects, useEditor } from "./store.ts";
+import { activeBoard, activeObjects, stepFrame, useEditor } from "./store.ts";
 
 export function useShortcuts(enabled = true) {
   useEffect(() => {
@@ -43,10 +43,7 @@ export function useShortcuts(enabled = true) {
         state.patch(Object.fromEntries(moved.map(item => [item.id, { x: item.x + dx, y: item.y + dy }])));
       } else if (!command && (event.key === "ArrowLeft" || event.key === "ArrowRight") && frames > 1) {
         event.preventDefault();
-        // From where the board stands, between two frames too.
-        const at = state.playing || Math.abs(state.playhead - state.frameIndex) > 1e-6 ? state.playhead : state.frameIndex;
-        const next = event.key === "ArrowRight" ? Math.floor(at + 1e-6) + 1 : Math.ceil(at - 1e-6) - 1;
-        state.setFrame(Math.max(0, Math.min(frames - 1, next)));
+        stepFrame(event.key === "ArrowRight" ? 1 : -1);
       }
     };
     window.addEventListener("keydown", onKey);

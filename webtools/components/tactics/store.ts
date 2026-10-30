@@ -204,3 +204,13 @@ export function activeObjects(state: { document: ProjectDocument | null; boardId
   const board = activeBoard(state);
   return board?.frames[Math.min(state.frameIndex, board.frames.length - 1)]?.objects ?? NONE;
 }
+
+/** To the next (1) or the previous (-1) frame from where the board stands, between two frames too: the arrow keys, a swipe. */
+export function stepFrame(direction: 1 | -1) {
+  const state = useEditor.getState();
+  const frames = activeBoard(state)?.frames.length ?? 0;
+  if (frames < 2) return;
+  const at = state.playing || isBetween(state) ? state.playhead : state.frameIndex;
+  const next = direction > 0 ? Math.floor(at + 1e-6) + 1 : Math.ceil(at - 1e-6) - 1;
+  state.setFrame(Math.max(0, Math.min(frames - 1, next)));
+}

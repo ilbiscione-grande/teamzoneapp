@@ -41,3 +41,16 @@ body:has(.tb-viewer) .wt-header { display: none; }
 .tb-bigqr strong { font-size: clamp(1.4rem, 4vw, 2.4rem); text-transform: uppercase; }
 .tb-bigqr span { color: var(--wt-muted); font-size: 1rem; }
 
+
+/* A shared board on a phone: a large play button to start, the frame's note under the board. */
+.tb-viewer-board { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.tb-viewer-board .tb-stage { flex: 1; }
+.tb-viewer-start { position: absolute; left: 50%; top: 50%; width: 84px; height: 84px; margin: -42px 0 0 -42px; border: 0; border-radius: 50%; background: var(--wt-accent); color: var(--wt-accent-ink); font-size: 2rem; padding-left: 6px; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); cursor: pointer; }
+.tb-caption { position: relative; display: flex; align-items: flex-start; gap: 10px; height: 4.6em; padding: 8px 12px; overflow: hidden; background: #13221a; border-top: 1px solid rgba(255, 255, 255, .08); color: #e5ebf2; font-size: .92rem; line-height: 1.35; }
+.tb-caption-text { flex: 1; min-width: 0; height: 100%; overflow-y: auto; }
+.tb-caption-text strong { color: white; }
+.tb-caption-hint { color: #a9b4c4; }
+.tb-caption-about { flex: none; min-height: 32px; padding: 0 10px; border: 1px solid rgba(255, 255, 255, .25); border-radius: 6px; background: transparent; color: white; font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; }
+.tb-caption-sheet { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; background: rgba(11, 17, 28, .6); }
+.tb-caption-sheet > div { width: min(640px, 100%); max-height: 75dvh; overflow-y: auto; padding: 16px 18px 24px; border-radius: 14px 14px 0 0; background: white; color: var(--wt-text); }
+.tb-caption-sheet p { margin: 8px 0 0; white-space: pre-wrap; line-height: 1.5; }

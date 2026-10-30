@@ -7,6 +7,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ProjectKind } from "../../lib/tactics/model.ts";
+import { kindNames } from "../../lib/tactics/preview.ts";
 import type { LeaderTeam } from "../../lib/tournament";
 import { useAccount } from "../account";
 import { useEditor, type SaveState, NONE } from "./store.ts";
@@ -24,7 +25,7 @@ const saveLabels: Record<SaveState, string> = {
   saved: "Sparat", dirty: "Ändrat", saving: "Sparar…", error: "Kunde inte spara", conflict: "Ändrat på annat håll",
 };
 
-export const kindLabels: Record<ProjectKind, string> = { match: "Match", training: "Träning", education: "Utbildning" };
+export const kindLabels = kindNames;
 
 function Boards() {
   const boards = useEditor(state => state.document?.boards ?? NONE);

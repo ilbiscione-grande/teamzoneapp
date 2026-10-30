@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SharedViewer } from "../../../../../components/tactics/SharedViewer.tsx";
+import { sharedMetadata } from "../../../../../components/tactics/share-preview.tsx";
 import { loadSharedFolderProject } from "../../../../../lib/tactics/shared.ts";
 
 // Always the board as last saved.
@@ -10,8 +11,7 @@ type Props = { params: Promise<{ token: string; project: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { token, project } = await params;
-  const shared = await loadSharedFolderProject(token, project);
-  return { title: shared?.name ?? "Delad tavla" };
+  return sharedMetadata(await loadSharedFolderProject(token, project));
 }
 
 /** A project seen through a shared folder: watched and played, with the way back to the folder. */
