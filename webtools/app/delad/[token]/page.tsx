@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { SharedGone } from "../../../components/tactics/SharedGone.tsx";
 import { SharedViewer } from "../../../components/tactics/SharedViewer.tsx";
 import { sharedMetadata } from "../../../components/tactics/share-preview.tsx";
 import { loadSharedTactics } from "../../../lib/tactics/shared.ts";
@@ -18,6 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function SharedTacticsPage({ params }: Props) {
   const { token } = await params;
   const shared = await loadSharedTactics(token);
-  if (!shared) notFound();
+  // Said on the page itself: a run-out link from TeamZone is the usual case, not a wrong address.
+  if (!shared) return <SharedGone />;
   return <SharedViewer shared={shared} />;
 }

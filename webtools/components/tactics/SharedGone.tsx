@@ -1,6 +1,6 @@
 // A shared link that shows nothing: taken back by its owner, or one opened
 // from TeamZone, which is good for some hours only.
-export default function SharedNotFound() {
+export function SharedGone() {
   return (
     <div className="wt-wrap wt-section wt-narrow">
       <h1 className="wt-page-title">Länken gäller inte längre</h1>
