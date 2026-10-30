@@ -29,6 +29,48 @@ class MatchPlanLink {
   final bool visible;
 }
 
+/// A Tacticsboard board on the match plan, or a whole project
+/// (`boardId` null): opened in the shared view through a short link.
+class MatchPlanBoard {
+  const MatchPlanBoard({
+    required this.id,
+    required this.title,
+    required this.visible,
+  });
+  factory MatchPlanBoard.fromJson(Map<String, dynamic> json) => MatchPlanBoard(
+    id: json['id'] as String? ?? '',
+    title: json['title'] as String? ?? '',
+    visible: json['visible'] == true,
+  );
+  final String id, title;
+  final bool visible;
+}
+
+/// A Tacticsboard project those preparing the match may put on the plan:
+/// their own, or one of the team's they open as its leaders.
+class TacticsBoardChoice {
+  const TacticsBoardChoice({
+    required this.projectId,
+    required this.name,
+    required this.boards,
+    this.teamName,
+  });
+  factory TacticsBoardChoice.fromJson(
+    Map<String, dynamic> json,
+  ) => TacticsBoardChoice(
+    projectId: json['project_id'] as String? ?? '',
+    name: json['name'] as String? ?? '',
+    teamName: json['team_name'] as String?,
+    boards: [
+      for (final row in (json['boards'] as List? ?? const []).whereType<Map>())
+        (id: row['id'] as String? ?? '', name: row['name'] as String? ?? ''),
+    ],
+  );
+  final String projectId, name;
+  final String? teamName;
+  final List<({String id, String name})> boards;
+}
+
 /// The Match module's plan for one match (decision package 11, MFD-05). For
 /// those who edit it everything; for players the shown parts of a published
 /// plan, a missing part being null.
@@ -45,6 +87,7 @@ class MatchPlan {
     this.setPieces,
     this.opponent,
     this.links = const [],
+    this.boards = const [],
   });
 
   factory MatchPlan.fromJson(Map<String, dynamic> json) {
@@ -71,6 +114,11 @@ class MatchPlan {
         for (final row in (json['links'] as List? ?? const []).whereType<Map>())
           MatchPlanLink.fromJson(Map<String, dynamic>.from(row)),
       ],
+      boards: [
+        for (final row
+            in (json['boards'] as List? ?? const []).whereType<Map>())
+          MatchPlanBoard.fromJson(Map<String, dynamic>.from(row)),
+      ],
     );
   }
 
@@ -81,15 +129,17 @@ class MatchPlan {
   final DateTime? startsAt;
   final MatchPlanSection? tactics, setPieces, opponent;
   final List<MatchPlanLink> links;
+  final List<MatchPlanBoard> boards;
 
-  /// Nothing written and no links: a player sees nothing worth a card.
+  /// Nothing written, no links and no boards: a player sees nothing worth a card.
   bool get isEmpty =>
       [
         tactics,
         setPieces,
         opponent,
       ].every((section) => section == null || section.text.trim().isEmpty) &&
-      links.isEmpty;
+      links.isEmpty &&
+      boards.isEmpty;
 }
 
 /// A match in the module's list, with how far it is prepared:

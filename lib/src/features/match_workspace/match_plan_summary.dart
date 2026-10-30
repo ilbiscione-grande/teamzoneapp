@@ -112,6 +112,16 @@ class _MatchPlanSectionState extends State<_MatchPlanSection> {
                       icon: const Icon(Icons.link),
                       label: Text(link.title),
                     ),
+                  for (final board in plan.boards)
+                    TextButton.icon(
+                      onPressed: () => _openPlanBoard(
+                        context,
+                        widget.calendar.matchPlans,
+                        board,
+                      ),
+                      icon: const Icon(Icons.sports_soccer),
+                      label: Text(board.title),
+                    ),
                 ],
               ],
             ),

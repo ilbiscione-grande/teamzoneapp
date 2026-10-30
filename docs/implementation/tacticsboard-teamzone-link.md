@@ -3,7 +3,14 @@
 **Status 2026-10-30:**
 - Steg 1 är byggt: `supabase/migrations/20270101090000_tactics_versions.sql`, testat i `supabase/tests/tactics_versions.local.mjs`.
 - Steg 2 är byggt: `20270102090000_tactics_leader_access.sql`, testat i `supabase/tests/tactics_leader_access.local.mjs`. En ledare som bara får titta ser projektet i samma vy som en delad länk, med knappen "Gör en kopia".
-- Steg 3–5 är planerade. Produktägaren vill koppla Tacticsboard till TeamZones träningar och matcher. Spelarna ska se tavlorna och andra ledare ska kunna arbeta med dem, men utan att någon kan förstöra originalet. Steg 1 (versioner) är användbart på egen hand och byggs först.
+- Steg 3 är byggt: `20270103090000_tactics_player_links.sql`, testat i `supabase/tests/tactics_player_links.local.mjs`.
+  - `internal.issue_tactics_player_link(projekt, tavla)` ger den inloggade en egen länk som gäller i 6 timmar.
+  - Ingen kan anropa funktionen direkt. Steg 4:s funktioner anropar den efter sina egna kontroller.
+- Steg 4 är byggt: `20270104090000_tactics_event_boards.sql`, testat i `supabase/tests/tactics_event_boards.local.mjs`.
+  - Matchplanen har kortet "Tavlor" (`match_plan_links.dart`) och tavlorna visas i spelarnas sammanfattning.
+  - Träningen har SQL:en `api.open_training_block_board`. Knappen "Visa tavla" i appen väntar på träningssessionen, som har pågående ändringar i de filerna.
+  - Tavlor från klubbens eller TeamZones bibliotek (`club`, `teamzone`) visas inte för spelarna än (`library_board`).
+- Steg 5 är planerat. Produktägaren vill koppla Tacticsboard till TeamZones träningar och matcher. Spelarna ska se tavlorna och andra ledare ska kunna arbeta med dem, men utan att någon kan förstöra originalet. Steg 1 (versioner) är användbart på egen hand och byggs först.
 
 ## Beslut som styr planen
 

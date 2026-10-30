@@ -216,6 +216,13 @@ class _MatchPlanEditorState extends State<_MatchPlanEditor> {
           canEdit: edit,
           onChanged: _load,
         ),
+        _MatchPlanBoards(
+          eventId: widget.eventId,
+          services: widget.calendar.matchPlans,
+          boards: plan.boards,
+          canEdit: edit,
+          onChanged: _load,
+        ),
         if (edit) ...[
           SwitchListTile(
             key: const Key('match-plan-published'),

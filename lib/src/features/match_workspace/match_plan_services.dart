@@ -39,7 +39,23 @@ abstract interface class MatchPlanServices {
   });
 
   /// Shown to the players or not; `visible: null` removes the link.
+  /// Boards on the plan are changed the same way.
   Future<void> changeLink(String linkId, {required bool? visible});
+
+  /// The Tacticsboard projects that may be put on the plan.
+  Future<List<TacticsBoardChoice>> listBoardChoices(String eventId);
+
+  /// A board of the project, or the whole project (`boardId` null).
+  Future<MatchPlanBoard> addBoard({
+    required String eventId,
+    required String projectId,
+    required String? boardId,
+    required bool visible,
+  });
+
+  /// The shared view's path for a board on the plan, through a short link
+  /// of the asker's own; prefixed with Webtools' address to open.
+  Future<String> openBoard(String boardAttachmentId);
   Future<List<ModuleMatch>> listMatches({
     required String teamId,
     required DateTime from,
@@ -135,6 +151,18 @@ class UnconfiguredMatchPlanServices implements MatchPlanServices {
   @override
   Future<void> changeLink(String linkId, {required bool? visible}) =>
       Future.error(_error);
+  @override
+  Future<List<TacticsBoardChoice>> listBoardChoices(String eventId) =>
+      Future.error(_error);
+  @override
+  Future<MatchPlanBoard> addBoard({
+    required String eventId,
+    required String projectId,
+    required String? boardId,
+    required bool visible,
+  }) => Future.error(_error);
+  @override
+  Future<String> openBoard(String boardAttachmentId) => Future.error(_error);
   @override
   Future<List<ModuleMatch>> listMatches({
     required String teamId,
@@ -243,6 +271,40 @@ class SupabaseMatchPlanServices
     'change_match_plan_link',
     {'target_link_id': linkId, 'show_players': visible},
   );
+
+  @override
+  Future<List<TacticsBoardChoice>> listBoardChoices(String eventId) async {
+    final value = await _rpc('list_match_plan_board_choices', {
+      'target_event_id': eventId,
+    });
+    return [
+      for (final row in (value as List? ?? const []).whereType<Map>())
+        TacticsBoardChoice.fromJson(Map<String, dynamic>.from(row)),
+    ];
+  }
+
+  @override
+  Future<MatchPlanBoard> addBoard({
+    required String eventId,
+    required String projectId,
+    required String? boardId,
+    required bool visible,
+  }) async {
+    final value = await _rpc('add_match_plan_board', {
+      'target_event_id': eventId,
+      'target_project_id': projectId,
+      'target_board_id': boardId,
+      'show_players': visible,
+    });
+    return MatchPlanBoard.fromJson(Map<String, dynamic>.from(value as Map));
+  }
+
+  @override
+  Future<String> openBoard(String boardAttachmentId) async =>
+      await _rpc('open_match_plan_board', {
+            'target_attachment_id': boardAttachmentId,
+          })
+          as String;
 
   @override
   Future<List<ModuleMatch>> listMatches({
