@@ -48,9 +48,12 @@ const NO_REACH: Reach = { left: 0, top: 0, right: 0, bottom: 0 };
  * moveOnly: objects can be dragged and nothing else (a participant given the floor).
  * onSwipe, onTap: watching only: a swipe sideways (not zoomed in) and a tap on the board (use-swipe).
  * tiltButton: 3D among the zoom buttons, for a shared link without the editor's timeline button.
+ * tools: more buttons on the board's top right corner (a shared link's full screen, arena).
+ * portrait: a wide view turned upright whatever the frame's shape (a phone).
  */
-export default function BoardStage({ editable = true, moveOnly = false, extra, onSwipe, onTap, tiltButton = false }: {
+export default function BoardStage({ editable = true, moveOnly = false, extra, onSwipe, onTap, tiltButton = false, tools, portrait = false }: {
   editable?: boolean; moveOnly?: boolean; extra?: React.ReactNode; onSwipe?: (direction: 1 | -1) => void; onTap?: () => void; tiltButton?: boolean;
+  tools?: React.ReactNode; portrait?: boolean;
 }) {
   const frame = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -66,6 +69,8 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
   // Nothing is edited while the board plays or stands between two frames.
   const tilt = useEditor(state => state.tilt);
   const me = useEditor(state => state.me);
+  const plain = useEditor(state => state.plain);
+  const surroundings = plain ? undefined : board?.surroundings;
   // Nothing is edited tilted either: the screen no longer matches the pitch under the finger.
   const canEdit = editable && !playing && !between && !tilt;
   // Everything but dragging: selecting with a band, handles, the bin, tools.
@@ -76,7 +81,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
   const band = useBand(nodes.current);
   // 3D: a finger or the mouse moves the pitch under it, read back through the tilt.
   const tiltPan = useRef<{ from: Point; start: Viewport } | null>(null);
-  const view = useViewport(frame, size.width > 0, [board?.id, board?.view, board?.surroundings, size.width, size.height], () => {
+  const view = useViewport(frame, size.width > 0, [board?.id, board?.view, surroundings, portrait, size.width, size.height], () => {
     band.cancel();
     nodes.current.forEach(node => { if (node.isDragging()) node.stopDrag(); });
     tiltPan.current = null;
@@ -97,8 +102,8 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
     return () => observer.disconnect();
   }, []);
 
-  const fit = useMemo(() => fitView(viewRect(board?.view ?? "full", marginFor(board?.surroundings)), size.width, size.height),
-    [board?.view, board?.surroundings, size.width, size.height]);
+  const fit = useMemo(() => fitView(viewRect(board?.view ?? "full", marginFor(surroundings)), size.width, size.height, portrait),
+    [board?.view, surroundings, portrait, size.width, size.height]);
   const shared = useMemo<StageShared>(() => ({
     nodes: nodes.current,
     content,
@@ -131,7 +136,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
   const camera = playing || between ? cameraAt(board.frames, playhead, shown) : null;
   const sight = camera ? blendViewport(view.viewport, zoomTo(camera.at, fit, size.width, size.height, camera.scale), camera.amount) : view.viewport;
   const zoomed = { x: sight.x, y: sight.y, scaleX: sight.scale, scaleY: sight.scale };
-  const reach = tilt ? groundReach(size.width, size.height, drawnGround(fit, sight, tiltedReach(board.surroundings))) : NO_REACH;
+  const reach = tilt ? groundReach(size.width, size.height, drawnGround(fit, sight, tiltedReach(surroundings))) : NO_REACH;
   const offset = { x: reach.left, y: reach.top };
   tiltHolder.offset = offset;
   const spotlight = playing || between ? spotlightAt(board.frames, playhead, shown) : null;
@@ -199,7 +204,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
                 onDragMove={event => view.panMove({ x: event.target.x(), y: event.target.y() })}
                 onDragEnd={view.panEnd}>
                 <Group {...fitted}>
-                  <Pitch view={board.view} overlay={board.overlay} style={board.pitch} surroundings={board.surroundings} branding={branding} upright={upright} tilted={tilt} />
+                  <Pitch view={board.view} overlay={board.overlay} style={board.pitch} surroundings={surroundings} branding={branding} upright={upright} tilted={tilt} />
                 </Group>
               </Group>
             </Layer>
@@ -235,6 +240,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
           <span>🗑</span>Släpp för att ta bort
         </div>
       )}
+      {tools && <div className="tb-board-tools">{tools}</div>}
       <div className="tb-zoom" role="group" aria-label="Zoom">
         <button type="button" onClick={() => view.zoomBy(1.25, { x: size.width / 2, y: size.height / 2 })} aria-label="Zooma in">+</button>
         <button type="button" onClick={() => view.zoomBy(0.8, { x: size.width / 2, y: size.height / 2 })} aria-label="Zooma ut">−</button>

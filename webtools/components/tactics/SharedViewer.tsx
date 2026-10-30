@@ -4,7 +4,8 @@
 // The board and its timeline are the editor's own, read-only. Made for a
 // phone: a large play button to start, a swipe for the next frame and a tap
 // to play or pause, and the frame's note under the board. The TZ mark sits
-// on the board's corner, the header keeps its room for the name.
+// on the board's corner, the header keeps its room for the name. On a phone
+// the pitch stands upright, without its arena until that is turned on.
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -18,6 +19,7 @@ import { SharedCaption } from "./SharedCaption.tsx";
 import { activeBoard, stepFrame, togglePlay, useEditor, NONE } from "./store.ts";
 import { Timeline } from "./timeline/Timeline.tsx";
 import { kindLabels } from "./TopBar.tsx";
+import { AboutSheet, FullScreenIcon, InfoIcon, isPhone, shareLink, ShareIcon, SurroundingsButton, usePhone } from "./ViewerTools.tsx";
 import "./tactics.css";
 
 const BoardStage = dynamic(() => import("./stage/BoardStage.tsx"), { ssr: false, loading: () => <div className="tb-stage" /> });
@@ -27,6 +29,8 @@ export function SharedViewer({ shared, back }: { shared: SharedTactics; back?: {
   const [ready, setReady] = useState(false);
   const [qr, setQr] = useState(false);
   const [presenting, setPresenting] = useState(false);
+  const [about, setAbout] = useState(false);
+  const phone = usePhone();
   const board = useEditor(activeBoard);
   const boards = useEditor(state => state.document?.boards ?? NONE);
   const boardId = useEditor(state => state.boardId);
@@ -41,6 +45,7 @@ export function SharedViewer({ shared, back }: { shared: SharedTactics; back?: {
       id: "shared", name: shared.name, kind: shared.kind, teamzone_team_id: null, team_name: shared.team_name,
       board_count: document.boards.length, revision: 0, created_at: shared.updated_at, updated_at: shared.updated_at, document,
     }, document);
+    useEditor.getState().setPlain(isPhone());
     setReady(true);
   }, [shared]);
   if (!ready || !board) return null;
@@ -56,8 +61,8 @@ export function SharedViewer({ shared, back }: { shared: SharedTactics; back?: {
           </div>
           <span className="tb-spacer" />
           <MyNumber boards={boards} />
-          <button type="button" className="tb-icon tb-pdf" onClick={() => setPresenting(true)} aria-label="Visa i helskärm" title="Visa i helskärm med beskrivning">⛶</button>
-          <button type="button" className="tb-icon tb-pdf" onClick={() => setQr(true)} title="Visa länken som QR-kod">QR</button>
+          {board.description?.trim() && <button type="button" className="tb-icon tb-glyph" onClick={() => setAbout(true)} aria-label="Om tavlan" title="Om tavlan"><InfoIcon /></button>}
+          <button type="button" className="tb-icon tb-glyph" onClick={() => void shareLink(shared.name, () => setQr(true))} aria-label="Dela" title="Dela länken"><ShareIcon /></button>
         </div>
         {/* A phone chooses the board from a list, not a row of tabs to scroll. */}
         {boards.length > 1 && (
@@ -75,11 +80,15 @@ export function SharedViewer({ shared, back }: { shared: SharedTactics; back?: {
           </div>
         )}
       </header>
+      {about && <AboutSheet board={board} onClose={() => setAbout(false)} />}
       {qr && <BigQr text={window.location.href} title={shared.name} onClose={() => setQr(false)} />}
       <div className="tb-center">
         <div className="tb-viewer-board">
           <ErrorBoundary label="Tavlan">
-            <BoardStage editable={false} onSwipe={stepFrame} onTap={togglePlay} tiltButton />
+            <BoardStage editable={false} onSwipe={stepFrame} onTap={togglePlay} tiltButton portrait={phone} tools={<>
+              <button type="button" onClick={() => setPresenting(true)} aria-label="Visa i helskärm" title="Visa i helskärm med beskrivning"><FullScreenIcon /></button>
+              <SurroundingsButton board={board} />
+            </>} />
           </ErrorBoundary>
           <span className="tb-viewer-mark" aria-hidden="true">TZ</span>
           {board.frames.length > 1 && startedOn !== boardId && (

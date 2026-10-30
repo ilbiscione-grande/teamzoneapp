@@ -24,10 +24,11 @@ export function viewRect(view: PitchView, margin = MARGIN): Rect {
 /** The pitch group's place, scale and turn that fit the view in the frame. */
 export type Fit = { x: number; y: number; scale: number; rotation: 0 | -90 };
 
-export function fitView(rect: Rect, frameWidth: number, frameHeight: number): Fit {
+/** portrait: a wide view always turned upright (a phone held upright, however little room is left under its bars). */
+export function fitView(rect: Rect, frameWidth: number, frameHeight: number, portrait = false): Fit {
   if (frameWidth <= 0 || frameHeight <= 0) return { x: 0, y: 0, scale: 1, rotation: 0 };
   // Turn when the frame is tall and the view is wide (or the other way round).
-  const turn = frameHeight > frameWidth !== rect.height > rect.width;
+  const turn = portrait ? rect.width > rect.height : frameHeight > frameWidth !== rect.height > rect.width;
   const width = turn ? rect.height : rect.width;
   const height = turn ? rect.width : rect.height;
   const scale = Math.min(frameWidth / width, frameHeight / height);

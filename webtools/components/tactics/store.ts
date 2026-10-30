@@ -44,6 +44,9 @@ type EditorState = {
   /** Watching a shared link: the home number marked as the one watching (lib/tactics/me.ts). Not saved. */
   me: number | null;
   setMe: (me: number | null) => void;
+  /** Watching on a phone: the pitch without its arena or training ground round it, for room. Not saved. */
+  plain: boolean;
+  setPlain: (plain: boolean) => void;
   setFrame: (index: number) => void;
   play: () => void;
   /** Plays the move into a frame and stops there, keeping the selection. */
@@ -93,6 +96,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   stopAt: null,
   playSeq: 0,
   me: null,
+  plain: false,
   setMe: me => set({ me }),
 
   setFrame: index => {
@@ -124,6 +128,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   setPlayhead: playhead => set({ playhead }),
   setLoop: loop => set({ loop }),
   setTilt: tilt => set({ tilt, selection: [] }),
+  setPlain: plain => set({ plain }),
   setSpeed: speed => set({ speed }),
 
   load: (project, document) => set({

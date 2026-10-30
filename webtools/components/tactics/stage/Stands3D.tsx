@@ -11,6 +11,7 @@ import { useMemo } from "react";
 import { Group, Line, Rect, Text } from "react-konva";
 import { PITCH_LENGTH as L, PITCH_WIDTH as W, type Board, type Point } from "../../../lib/tactics/model.ts";
 import { TILT, type Projector } from "../../../lib/tactics/projection.ts";
+import { useEditor } from "../store.ts";
 import { crowdTile } from "./crowd.ts";
 
 /** Metres from the lines: the boards, the stands' foot and their back, and how high they rise. */
@@ -102,7 +103,8 @@ function Mast({ at, project }: { at: Point; project: Projector }) {
 
 export function Stands3D({ board, project, part = "back" }: { board: Board; project: Projector; part?: "back" | "front" }) {
   const tile = useMemo(crowdTile, []);
-  if (board.surroundings !== "arena") return null;
+  const plain = useEditor(state => state.plain);
+  if (plain || board.surroundings !== "arena") return null;
   // The crowd as a picture repeated over the stands, in screen pixels.
   const pattern = tile ? { fillPatternImage: tile as unknown as HTMLImageElement, fillPatternScale: { x: 0.5, y: 0.5 } } : { fill: "#1c2430" };
   if (part === "front") {

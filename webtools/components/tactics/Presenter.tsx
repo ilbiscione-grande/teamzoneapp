@@ -16,6 +16,7 @@ import { useLive } from "./live/live-store.ts";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import { activeBoard, stepFrame, togglePlay, useEditor, NONE } from "./store.ts";
 import { Timeline } from "./timeline/Timeline.tsx";
+import { SurroundingsButton, TextIcon, usePhone } from "./ViewerTools.tsx";
 
 const BoardStage = dynamic(() => import("./stage/BoardStage.tsx"), { ssr: false, loading: () => <div className="tb-stage" /> });
 
@@ -29,6 +30,7 @@ export function Presenter({ onClose, viewer = false }: { onClose: () => void; vi
   const [aside, setAside] = useState<"text" | "live" | null>(() => live ? "live" : hasBoardText(useEditor.getState()) ? "text" : null);
   const toggle = (which: "text" | "live") => setAside(aside === which ? null : which);
   const boardIndex = boards.findIndex(item => item.id === board?.id);
+  const phone = usePhone();
 
   useEffect(() => {
     const state = useEditor.getState();
@@ -64,13 +66,14 @@ export function Presenter({ onClose, viewer = false }: { onClose: () => void; vi
         {boards.length > 1 && <button type="button" className="tb-icon" onClick={() => step(1)} disabled={boardIndex >= boards.length - 1} aria-label="Nästa tavla">›</button>}
         <span className="tb-spacer" />
         {live && <button type="button" className="tb-present-toggle" aria-pressed={aside === "live"} onClick={() => toggle("live")}><LiveBadge label="Live" hands /></button>}
-        <button type="button" className="tb-present-toggle" aria-pressed={aside === "text"} onClick={() => toggle("text")}>Beskrivning</button>
+        <button type="button" className="tb-present-toggle tb-present-icon" aria-pressed={aside === "text"} onClick={() => toggle("text")}
+          aria-label="Beskrivning" title="Beskrivning"><TextIcon /></button>
         <button type="button" className="tb-icon" onClick={onClose} aria-label="Stäng visningen" title="Stäng (Esc)">×</button>
       </header>
       <div className="tb-present-body">
         <div className="tb-center">
           <ErrorBoundary label="Tavlan"><BoardStage editable={false} extra={<><LiveStrokes /><LiveAnswers /></>}
-            {...(viewer ? { onSwipe: stepFrame, onTap: togglePlay, tiltButton: true } : {})} /></ErrorBoundary>
+            {...(viewer ? { onSwipe: stepFrame, onTap: togglePlay, tiltButton: true, portrait: phone, tools: <SurroundingsButton board={board} /> } : {})} /></ErrorBoundary>
           <ErrorBoundary label="Tidslinjen"><Timeline board={board} readOnly viewer={viewer} /></ErrorBoundary>
         </div>
         {aside === "text" && <BoardText emptyHint="Tavlan har ingen beskrivning. Skriv en under Tavlan i redigeringen." />}
