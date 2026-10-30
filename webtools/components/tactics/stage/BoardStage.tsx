@@ -10,7 +10,8 @@ import Konva from "konva";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Group, Layer, Rect, Stage } from "react-konva";
 import { ballHolders } from "../../../lib/tactics/ball.ts";
-import { blendViewport, fitView, marginFor, viewRect, zoomTo } from "../../../lib/tactics/geometry.ts";
+import { blendViewport, fitView, marginFor, pitchToFrame, viewRect, zoomTo, type Fit, type Viewport } from "../../../lib/tactics/geometry.ts";
+import { PITCH_LENGTH, PITCH_WIDTH, type Point } from "../../../lib/tactics/model.ts";
 import { cameraAt, spotlightAt } from "../../../lib/tactics/marks.ts";
 import { lookOf } from "../../../lib/tactics/pitch-style.ts";
 import { objectsAt } from "../../../lib/tactics/timeline.ts";
@@ -18,12 +19,12 @@ import { ObjectNode } from "../objects/ObjectNode.tsx";
 import { activeBoard, activeObjects, isBetween, useEditor } from "../store.ts";
 import { DraftNode } from "./DraftNode.tsx";
 import { Ghosts } from "./Ghosts.tsx";
-import { Pitch } from "./Pitch.tsx";
+import { Pitch, tiltedReach } from "./Pitch.tsx";
 import { Selection } from "./Selection.tsx";
 import { Marks } from "./Marks.tsx";
 import { SpotlightLayer } from "./SpotlightLayer.tsx";
 import { Figures3D, STANDING } from "./Figures3D.tsx";
-import { projector, TILT, tiltOrigin, tiltTransform } from "../../../lib/tactics/projection.ts";
+import { groundReach, projector, TILT, tiltOrigin, tiltTransform, unproject, type Reach } from "../../../lib/tactics/projection.ts";
 import { pitchPointer, StageContext, stageHolder, type StageShared } from "./stage-context.ts";
 import { useBand } from "./use-band.ts";
 import { isDrawTool, isPlaceTool, useDrawing } from "./use-drawing.ts";
@@ -34,6 +35,9 @@ import { IDENTITY, useViewport } from "./use-viewport.ts";
 Konva.hitOnDragEnabled = false;
 // Sharper than 2× costs more than it shows on a tablet.
 if (typeof window !== "undefined") Konva.pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+const SHARP = Konva.pixelRatio;
+
+const NO_REACH: Reach = { left: 0, top: 0, right: 0, bottom: 0 };
 
 /**
  * extra: drawn over the objects, in metres (a live lesson's pointer and drawings).
@@ -61,10 +65,18 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
   const nodes = useRef(new Map<string, Konva.Node>());
   const trash = useRef<HTMLDivElement>(null);
   const band = useBand(nodes.current);
+  // 3D: a finger or the mouse moves the pitch under it, read back through the tilt.
+  const tiltPan = useRef<{ from: Point; start: Viewport } | null>(null);
   const view = useViewport(frame, size.width > 0, [board?.id, board?.view, board?.surroundings, size.width, size.height], () => {
     band.cancel();
     nodes.current.forEach(node => { if (node.isDragging()) node.stopDrag(); });
-  });
+    tiltPan.current = null;
+  }, tilt);
+  const stage = useRef<Konva.Stage | null>(null);
+  // The tilted ground's canvas reaches far past the frame: drawn at 1×, it costs a quarter as much.
+  useEffect(() => {
+    stage.current?.getLayers().forEach(layer => { layer.getCanvas().setPixelRatio(tilt ? 1 : SHARP); layer.batchDraw(); });
+  }, [tilt, size.width > 0]);
 
   useEffect(() => {
     const element = frame.current;
@@ -90,7 +102,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
   const upright = -fit.rotation;
   // Zoomed in, the grass moves the view; with the whole view in sight it selects.
   const zoomedIn = view.viewport.scale > 1.001;
-  const pannable = zoomedIn && (tool === "select" || isPlaceTool(tool));
+  const pannable = zoomedIn && !tilt && (tool === "select" || isPlaceTool(tool));
   const bandable = fullEdit && tool === "select" && !zoomedIn;
   // Hidden objects stay in the list, not on the pitch. Playing shows the moves.
   const shown = playing || between ? objectsAt(board.frames, playhead) : objects;
@@ -99,10 +111,17 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
   // Ghosts of the frame before are for editing; a shared board shows none.
   const previous = fullEdit && frameIndex > 0 ? board.frames[frameIndex - 1]?.objects : undefined;
   const fitted = { x: fit.x, y: fit.y, scaleX: fit.scale, scaleY: fit.scale, rotation: fit.rotation };
+  const onScreen = (event: { clientX: number; clientY: number }) => {
+    const rect = frame.current?.getBoundingClientRect();
+    const at = { x: event.clientX - (rect?.left ?? 0), y: event.clientY - (rect?.top ?? 0) };
+    return tilt ? unproject(at, size.width, size.height) : at;
+  };
   // Playing into a frame that zooms, the view leaves the user's zoom for the object.
   const camera = playing || between ? cameraAt(board.frames, playhead, shown) : null;
   const sight = camera ? blendViewport(view.viewport, zoomTo(camera.at, fit, size.width, size.height, camera.scale), camera.amount) : view.viewport;
   const zoomed = { x: sight.x, y: sight.y, scaleX: sight.scale, scaleY: sight.scale };
+  const reach = tilt ? groundReach(size.width, size.height, drawnRect(fit, sight, tiltedReach(board.surroundings))) : NO_REACH;
+  const offset = { x: reach.left, y: reach.top };
   const spotlight = playing || between ? spotlightAt(board.frames, playhead, shown) : null;
   // 3D: the ground keeps what lies on it; what stands up is drawn upright over it.
   const onGround = tilt ? visible.filter(item => !STANDING.has(item.type)) : visible;
@@ -112,15 +131,31 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
   };
 
   return (
-    <div ref={frame} className="tb-stage" data-tool={tool} data-tilt={tilt} style={tilt ? { perspective: `${TILT.perspective}px` } : undefined}>
+    <div ref={frame} className="tb-stage" data-tool={tool} data-tilt={tilt} style={tilt ? { perspective: `${TILT.perspective}px` } : undefined}
+      onPointerDown={event => {
+        if (!tilt || !zoomedIn || view.pinch.current) return;
+        tiltPan.current = { from: onScreen(event), start: view.live.current };
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }}
+      onPointerMove={event => {
+        const pan = tiltPan.current;
+        if (!pan) return;
+        if (view.pinch.current) { tiltPan.current = null; return; }
+        const at = onScreen(event);
+        view.apply({ ...pan.start, x: pan.start.x + at.x - pan.from.x, y: pan.start.y + at.y - pan.from.y }, false);
+      }}
+      onPointerUp={() => { if (tiltPan.current) { tiltPan.current = null; view.apply(view.live.current, true); } }}
+      onPointerCancel={() => { tiltPan.current = null; }}>
       {/* Konva fails drawing into a board without width or height (a phone with the panel open). */}
       {size.width > 0 && size.height > 0 && (
         <StageContext.Provider value={shared}>
           <div className="tb-ground" style={tilt ? { transform: tiltTransform, transformOrigin: tiltOrigin } : undefined}>
-          <Stage ref={node => { stageHolder.current = node; }} width={size.width} height={size.height}
+          <Stage ref={node => { stageHolder.current = node; stage.current = node; }}
+            width={size.width + reach.left + reach.right} height={size.height + reach.top + reach.bottom}
+            style={tilt ? { position: "absolute", left: -reach.left, top: -reach.top } : undefined}
             onWheel={event => {
               event.evt.preventDefault();
-              const at = event.target.getStage()?.getPointerPosition();
+              const at = tilt ? onScreen(event.evt) : event.target.getStage()?.getPointerPosition();
               if (at) view.zoomBy(event.evt.deltaY > 0 ? 1 / 1.12 : 1.12, at);
             }}
             onPointerDown={event => {
@@ -143,7 +178,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
               if (band.consumeClick() || !fullEdit || view.pinch.current) return;
               tapGrass(event.target);
             }}>
-            <Layer>
+            <Layer {...offset}>
               <Group ref={view.pitchView} {...zoomed} draggable={pannable}
                 onDragMove={event => view.panMove({ x: event.target.x(), y: event.target.y() })}
                 onDragEnd={view.panEnd}>
@@ -152,7 +187,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
                 </Group>
               </Group>
             </Layer>
-            <Layer>
+            <Layer {...offset}>
               <Group ref={view.objectView} {...zoomed}>
                 <Group ref={content} {...fitted}>
                   {previous && <Ghosts previous={previous} current={objects} selection={selection} editable={canEdit} ink={lookOf(board.pitch).ink} />}
@@ -189,4 +224,14 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
       </div>
     </div>
   );
+}
+
+/** The tilted ground as drawn (the pitch and the grass round it), in the frame's pixels. */
+function drawnRect(fit: Fit, sight: Viewport, metres: number) {
+  const corners = [{ x: -metres, y: -metres }, { x: PITCH_LENGTH + metres, y: PITCH_WIDTH + metres }].map(point => {
+    const flat = pitchToFrame(point, fit);
+    return { x: sight.x + flat.x * sight.scale, y: sight.y + flat.y * sight.scale };
+  });
+  const [x, y] = [Math.min(corners[0].x, corners[1].x), Math.min(corners[0].y, corners[1].y)];
+  return { x, y, width: Math.abs(corners[1].x - corners[0].x), height: Math.abs(corners[1].y - corners[0].y) };
 }

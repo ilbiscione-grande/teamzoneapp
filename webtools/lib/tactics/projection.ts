@@ -44,3 +44,39 @@ export function projector(fit: Fit, sight: Viewport, width: number, height: numb
   project.metre = metre;
   return project;
 }
+
+/** The flat-board point the tilted ground shows at this screen point (the inverse of projectStage at lift 0). */
+export function unproject(at: Point, width: number, height: number): Point {
+  const originX = width / 2, originY = height * TILT.originY, centreY = height / 2;
+  const turn = (TILT.degrees * Math.PI) / 180, P = TILT.perspective;
+  // Above the horizon nothing of the ground shows; the point just below it stands in.
+  const below = Math.max(P * Math.cos(turn) * 0.05, P * Math.cos(turn) + (at.y - centreY) * Math.sin(turn));
+  const y = (P * (at.y - originY)) / below;
+  const depth = P / (P - y * Math.sin(turn));
+  return { x: originX + (at.x - width / 2) / depth / TILT.scale, y: originY + y / TILT.scale };
+}
+
+export type Reach = { left: number; top: number; right: number; bottom: number };
+
+/** Steps the reach grows in, so zooming does not make a new canvas at every step. */
+const STEP = 64;
+
+/**
+ * How far past each side of the frame the tilted ground's own canvas must
+ * reach for the ground to fill the frame: its far side shows narrower and
+ * lower than the frame, so a canvas the frame's size leaves the edges bare.
+ * No further than what is drawn on it reaches (content, in the canvas's
+ * pixels), so a zoomed-out pitch keeps a small canvas.
+ */
+export function groundReach(width: number, height: number, content?: { x: number; y: number; width: number; height: number }): Reach {
+  const corners = [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: 0, y: height }, { x: width, y: height }].map(at => unproject(at, width, height));
+  const xs = corners.map(point => point.x), ys = corners.map(point => point.y);
+  const beyond = content
+    ? { left: -content.x, top: -content.y, right: content.x + content.width - width, bottom: content.y + content.height - height }
+    : { left: Infinity, top: Infinity, right: Infinity, bottom: Infinity };
+  const limit = (needed: number, drawn: number, most: number) => Math.ceil(Math.min(most, Math.max(0, needed), Math.max(0, drawn)) / STEP) * STEP;
+  return {
+    left: limit(-Math.min(...xs), beyond.left, width), right: limit(Math.max(...xs) - width, beyond.right, width),
+    top: limit(-Math.min(...ys), beyond.top, height * 2), bottom: limit(Math.max(...ys) - height, beyond.bottom, height),
+  };
+}

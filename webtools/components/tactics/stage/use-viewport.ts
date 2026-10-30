@@ -13,8 +13,9 @@ export const IDENTITY: Viewport = { x: 0, y: 0, scale: 1 };
 /**
  * frame: the element fingers touch. reset: what starts the view over (a
  * new board, view or size). onPinch: a pinch began, stop other gestures.
+ * everyStep: React hears of every step, for what is drawn from the state (3D).
  */
-export function useViewport(frame: React.RefObject<HTMLDivElement | null>, ready: boolean, reset: unknown[], onPinch: () => void) {
+export function useViewport(frame: React.RefObject<HTMLDivElement | null>, ready: boolean, reset: unknown[], onPinch: () => void, everyStep = false) {
   // The same zoom and pan on both layers: the pitch's group is dragged, the objects' group follows.
   const pitchView = useRef<Konva.Group>(null);
   const objectView = useRef<Konva.Group>(null);
@@ -23,6 +24,8 @@ export function useViewport(frame: React.RefObject<HTMLDivElement | null>, ready
   const pinch = useRef<{ distance: number; center: Point } | null>(null);
   const onPinchRef = useRef(onPinch);
   onPinchRef.current = onPinch;
+  const everyStepRef = useRef(everyStep);
+  everyStepRef.current = everyStep;
 
   useEffect(() => {
     live.current = IDENTITY;
@@ -35,7 +38,7 @@ export function useViewport(frame: React.RefObject<HTMLDivElement | null>, ready
       group?.setAttrs({ x: next.x, y: next.y, scaleX: next.scale, scaleY: next.scale });
       group?.getLayer()?.batchDraw();
     }
-    if (commit) setViewport(next);
+    if (commit || everyStepRef.current) setViewport(next);
   };
   const applyRef = useRef(apply);
   applyRef.current = apply;
@@ -87,6 +90,7 @@ export function useViewport(frame: React.RefObject<HTMLDivElement | null>, ready
     panMove: (at: Point) => {
       live.current = { ...live.current, ...at };
       objectView.current?.position(at);
+      if (everyStepRef.current) setViewport(live.current);
     },
     panEnd: () => setViewport(live.current),
   };

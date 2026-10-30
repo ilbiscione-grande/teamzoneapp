@@ -49,6 +49,11 @@ export function Timeline({ board, readOnly = false }: { board: Board; readOnly?:
   const record = async () => {
     setError("");
     setRecording(0);
+    // The video is of the flat board: leave 3D first and let the board redraw.
+    if (tilt) {
+      setTilt(false);
+      await new Promise(resolve => setTimeout(resolve, 150));
+    }
     try {
       const video = await recordBoard(share => setRecording(share));
       if (!video) setError("Webbläsaren kan inte spela in video här.");

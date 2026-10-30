@@ -86,6 +86,9 @@ function Pattern({ style, look }: { style: PitchStyle; look: ThemeLook }) {
   );
 }
 
+/** Tilted, how far the ground reaches past the lines: to the foot of the stands, so the sky shows beyond. */
+export const tiltedReach = (surroundings: Kind | undefined) => (surroundings === "arena" ? 5 : 8);
+
 /** tilted: 3D, where the surroundings stand up on a stage of their own and the ground ends at the stands. */
 export function Pitch({ view, overlay, style, surroundings, branding, upright = 0, tilted = false }: {
   view: PitchView; overlay: PitchOverlay; style?: Partial<PitchStyle>; surroundings?: Kind; branding?: Branding; upright?: number; tilted?: boolean;
@@ -93,8 +96,7 @@ export function Pitch({ view, overlay, style, surroundings, branding, upright = 
   const whole = styleOf(style);
   const look = themes[whole.theme];
   // Far beyond the frame whatever the zoom, so a press anywhere off the pitch still pans.
-  // Tilted, it ends at the foot of the stands so the sky shows beyond.
-  const reach = tilted ? (surroundings === "arena" ? 5 : 8) : 200;
+  const reach = tilted ? tiltedReach(surroundings) : 200;
   const ground = { x: -reach, y: -reach, width: L + reach * 2, height: W + reach * 2 };
   return (
     <Group>
