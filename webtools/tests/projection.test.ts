@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { facingToRotation, normalAngle, snapAngle } from "../lib/tactics/facing.ts";
 import { fitView, viewRect } from "../lib/tactics/geometry.ts";
-import { groundReach, projectStage, projector, TILT, unproject } from "../lib/tactics/projection.ts";
+import { groundReach, groundRow, projectStage, projector, TILT, unproject } from "../lib/tactics/projection.ts";
 
 const near = (a: number, b: number, tolerance = 1e-6) => assert.ok(Math.abs(a - b) < tolerance, `${a} ≈ ${b}`);
 
@@ -62,4 +62,16 @@ test("the canvas reaches no further than what is drawn, in whole steps", () => {
   const zoomed = groundReach(1250, 700, { x: -3000, y: -3000, width: 7000, height: 7000 });
   assert.deepEqual(zoomed, groundReach(1250, 700));
   assert.equal(zoomed.top % 64, 0);
+});
+
+test("a screen row maps to one ground row, and any point on it projects back onto it", () => {
+  const [width, height] = [1500, 1000];
+  for (const screenY of [80, 400, 900]) {
+    const row = groundRow(screenY, width, height)!;
+    for (const x of [0, 300, 1200]) {
+      const back = projectStage({ x, y: row.y }, 0, width, height);
+      near(back.y, screenY, 1e-6);
+      near(back.x, width / 2 + (x - width / 2) * row.scale, 1e-6);
+    }
+  }
 });

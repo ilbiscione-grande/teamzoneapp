@@ -44,7 +44,7 @@ export function TacticsWorkspace() {
   const [panelOpen, setPanelOpen] = useState(() => typeof window === "undefined" || window.innerWidth > 760);
   const board = useEditor(activeBoard);
   const selectionCount = useEditor(state => state.selection.length);
-  useShortcuts();
+  useShortcuts(!presenting);
   // Choosing something shows its properties, unless effects are being chosen
   // for it or it is chosen in the object list (where more can be added).
   useEffect(() => { if (selectionCount > 0) setPanel(current => current === "frames" || current === "objects" ? current : "properties"); }, [selectionCount]);

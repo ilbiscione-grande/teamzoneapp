@@ -1,7 +1,7 @@
 "use client";
 
 // Making a PDF: which boards, and for animated ones which frames and
-// whether the moves show as arrows. Each picture is drawn off screen in
+// whether the moves show as arrows, and whether in 3D. Each picture is drawn off screen in
 // turn, then the pages are put together.
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
@@ -30,6 +30,8 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   const [which, setWhich] = useState<"this" | "all">("this");
   const [frames, setFrames] = useState<FrameChoice>("grid");
   const [showMoves, setShowMoves] = useState(true);
+  // In 3D when the board is shown so.
+  const [tilted, setTilted] = useState(() => useEditor.getState().tilt);
   const [job, setJob] = useState<Job | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -101,12 +103,16 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
             Visa rörelser med pilar{frames === "last" ? " (hela förloppet på en bild)" : ""}
           </label>
         )}
+        <label className="tb-check">
+          <input type="checkbox" checked={tilted} onChange={event => setTilted(event.target.checked)} />
+          I 3D, planen sedd snett från läktaren
+        </label>
         <p className="tb-hint">A4 liggande, med projektets och tavlans namn, numret och anteckningen för varje frame, och tavlans beskrivning.</p>
         {error && <p className="wt-error" role="alert">{error}</p>}
         <div className="tb-actions">
           <button type="button" className="wt-button" disabled={progress !== null} onClick={() => void make()}>{progress ?? "Skapa PDF"}</button>
         </div>
-        {job && <OffscreenBoard board={job.board} objects={job.objects} moves={job.moves} onPicture={job.done} />}
+        {job && <OffscreenBoard board={job.board} objects={job.objects} moves={job.moves} tilted={tilted} onPicture={job.done} />}
       </div>
     </div>
   );

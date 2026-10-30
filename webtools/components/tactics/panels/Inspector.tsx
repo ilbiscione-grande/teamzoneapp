@@ -12,6 +12,7 @@ import { BoardSettings } from "./BoardSettings.tsx";
 import { CopyTo } from "./CopyTo.tsx";
 import { Swatches } from "./Swatches.tsx";
 import { PlayerLink } from "./PlayerLink.tsx";
+import { SharedFields } from "./SharedFields.tsx";
 
 function Fields({ item, board }: { item: TacticsObject; board: Board }) {
   const patch = (changes: Partial<TacticsObject>) => useEditor.getState().patch({ [item.id]: changes });
@@ -158,6 +159,7 @@ export function Inspector({ board }: { board: Board }) {
       {single && <p className="tb-hint">{kindName(single.type)}</p>}
       {single && !single.locked && <Fields item={single} board={board} />}
       {single && !single.locked && board.frames.length > 1 && <Motion item={single} frameIndex={frameIndex} />}
+      {!single && <SharedFields items={selected} board={board} />}
       {single && (
         <label className="tb-field">Namn i listan
           <input value={single.label ?? ""} maxLength={40} placeholder={objectLabel({ ...single, label: undefined }, board)}

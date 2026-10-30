@@ -4,6 +4,7 @@
 // the pitch and the objects every screen frame and the browser records it.
 // MP4 where the browser makes it (Safari, newer Chrome), else WebM.
 import { stageHolder } from "../stage/stage-context.ts";
+import { drawTilted, layerCanvases, tiltHolder } from "../stage/tilt-picture.ts";
 import { activeBoard, useEditor } from "../store.ts";
 
 const TYPES = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
@@ -21,7 +22,10 @@ export async function recordBoard(onProgress?: (share: number) => void): Promise
   const board = activeBoard(useEditor.getState());
   if (!stage || !board || board.frames.length < 2 || !canRecord()) return null;
   const layers = stage.getLayers().map(layer => layer.getNativeCanvasElement());
-  const width = layers[0].width, height = layers[0].height;
+  // In 3D the picture is put together from the tilted ground and the figures, at the figures' sharpness.
+  const figures = useEditor.getState().tilt ? tiltHolder.figures : null;
+  const width = figures ? layerCanvases(figures)[0].canvas.width : layers[0].width;
+  const height = figures ? layerCanvases(figures)[0].canvas.height : layers[0].height;
   const canvas = document.createElement("canvas");
   // Video encoders want even sizes.
   canvas.width = width - (width % 2);
@@ -29,6 +33,10 @@ export async function recordBoard(onProgress?: (share: number) => void): Promise
   const context = canvas.getContext("2d");
   if (!context) return null;
   const copy = () => {
+    if (figures) {
+      drawTilted(context, { ground: layerCanvases(stage), offset: tiltHolder.offset, figures: layerCanvases(figures), width: figures.width(), height: figures.height() });
+      return;
+    }
     context.fillStyle = "#24603a";
     context.fillRect(0, 0, canvas.width, canvas.height);
     for (const layer of layers) context.drawImage(layer, 0, 0);

@@ -49,11 +49,6 @@ export function Timeline({ board, readOnly = false }: { board: Board; readOnly?:
   const record = async () => {
     setError("");
     setRecording(0);
-    // The video is of the flat board: leave 3D first and let the board redraw.
-    if (tilt) {
-      setTilt(false);
-      await new Promise(resolve => setTimeout(resolve, 150));
-    }
     try {
       const video = await recordBoard(share => setRecording(share));
       if (!video) setError("Webbläsaren kan inte spela in video här.");
@@ -70,7 +65,7 @@ export function Timeline({ board, readOnly = false }: { board: Board; readOnly?:
       {frames.length > 1 ? <Scrubber frames={frames} /> : <div className="tb-progress" aria-hidden="true" />}
       <div className="tb-timeline-row">
         <button type="button" className="tb-play" disabled={frames.length < 2 || recording !== null}
-          aria-label={playing ? "Pausa" : "Spela"} title={frames.length < 2 ? "Lägg till en frame för att spela" : undefined}
+          aria-label={playing ? "Pausa" : "Spela"} title={frames.length < 2 ? "Lägg till en frame för att spela" : playing ? "Pausa (mellanslag)" : "Spela (mellanslag)"}
           onClick={() => (playing ? pause() : play())}>{playing ? "❚❚" : "▶"}</button>
         <div className="tb-frames" role="tablist" aria-label="Frames">
           {frames.map((frame, index) => (

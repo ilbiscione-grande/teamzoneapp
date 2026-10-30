@@ -4,7 +4,7 @@
 // over it, each point put where the tilted ground shows it by the same sum.
 // "Stage" points are the flat board's pixels, as the editor draws them.
 import { pitchToFrame, type Fit, type Viewport } from "./geometry.ts";
-import type { Point } from "./model.ts";
+import { PITCH_LENGTH, PITCH_WIDTH, type Point } from "./model.ts";
 
 /** How the ground is tilted: degrees back, the scale, where it turns (a share of the height) and the viewer's distance in pixels. */
 export const TILT = { degrees: 52, scale: 0.86, originY: 0.7, perspective: 1150 };
@@ -79,4 +79,26 @@ export function groundReach(width: number, height: number, content?: { x: number
     left: limit(-Math.min(...xs), beyond.left, width), right: limit(Math.max(...xs) - width, beyond.right, width),
     top: limit(-Math.min(...ys), beyond.top, height * 2), bottom: limit(Math.max(...ys) - height, beyond.bottom, height),
   };
+}
+
+/**
+ * One row of the tilted screen, back on the flat ground: tilted about a
+ * line across, each row of the ground shows as a row of the screen, as wide
+ * as `scale` times the flat one about the middle. Null above the horizon.
+ */
+export function groundRow(screenY: number, width: number, height: number): { y: number; scale: number } | null {
+  const turn = (TILT.degrees * Math.PI) / 180, P = TILT.perspective;
+  if (P * Math.cos(turn) + (screenY - height / 2) * Math.sin(turn) <= 0) return null;
+  const flat = unproject({ x: width / 2, y: screenY }, width, height);
+  return { y: flat.y, scale: TILT.scale * projectStage(flat, 0, width, height).depth };
+}
+
+/** The tilted ground as drawn (the pitch and `metres` of grass round it), in the frame's pixels through the fit and zoom. */
+export function drawnGround(fit: Fit, sight: Viewport, metres: number) {
+  const corners = [{ x: -metres, y: -metres }, { x: PITCH_LENGTH + metres, y: PITCH_WIDTH + metres }].map(point => {
+    const flat = pitchToFrame(point, fit);
+    return { x: sight.x + flat.x * sight.scale, y: sight.y + flat.y * sight.scale };
+  });
+  const [x, y] = [Math.min(corners[0].x, corners[1].x), Math.min(corners[0].y, corners[1].y)];
+  return { x, y, width: Math.abs(corners[1].x - corners[0].x), height: Math.abs(corners[1].y - corners[0].y) };
 }

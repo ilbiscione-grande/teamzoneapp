@@ -10,8 +10,8 @@ import Konva from "konva";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Group, Layer, Rect, Stage } from "react-konva";
 import { ballHolders } from "../../../lib/tactics/ball.ts";
-import { blendViewport, fitView, marginFor, pitchToFrame, viewRect, zoomTo, type Fit, type Viewport } from "../../../lib/tactics/geometry.ts";
-import { PITCH_LENGTH, PITCH_WIDTH, type Point } from "../../../lib/tactics/model.ts";
+import { blendViewport, fitView, marginFor, viewRect, zoomTo, type Viewport } from "../../../lib/tactics/geometry.ts";
+import type { Point } from "../../../lib/tactics/model.ts";
 import { cameraAt, spotlightAt } from "../../../lib/tactics/marks.ts";
 import { lookOf } from "../../../lib/tactics/pitch-style.ts";
 import { objectsAt } from "../../../lib/tactics/timeline.ts";
@@ -24,8 +24,9 @@ import { Selection } from "./Selection.tsx";
 import { Marks } from "./Marks.tsx";
 import { SpotlightLayer } from "./SpotlightLayer.tsx";
 import { Figures3D, STANDING } from "./Figures3D.tsx";
-import { groundReach, projector, TILT, tiltOrigin, tiltTransform, unproject, type Reach } from "../../../lib/tactics/projection.ts";
+import { drawnGround, groundReach, projector, TILT, tiltOrigin, tiltTransform, unproject, type Reach } from "../../../lib/tactics/projection.ts";
 import { pitchPointer, StageContext, stageHolder, type StageShared } from "./stage-context.ts";
+import { tiltHolder } from "./tilt-picture.ts";
 import { useBand } from "./use-band.ts";
 import { isDrawTool, isPlaceTool, useDrawing } from "./use-drawing.ts";
 import { IDENTITY, useViewport } from "./use-viewport.ts";
@@ -120,8 +121,9 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
   const camera = playing || between ? cameraAt(board.frames, playhead, shown) : null;
   const sight = camera ? blendViewport(view.viewport, zoomTo(camera.at, fit, size.width, size.height, camera.scale), camera.amount) : view.viewport;
   const zoomed = { x: sight.x, y: sight.y, scaleX: sight.scale, scaleY: sight.scale };
-  const reach = tilt ? groundReach(size.width, size.height, drawnRect(fit, sight, tiltedReach(board.surroundings))) : NO_REACH;
+  const reach = tilt ? groundReach(size.width, size.height, drawnGround(fit, sight, tiltedReach(board.surroundings))) : NO_REACH;
   const offset = { x: reach.left, y: reach.top };
+  tiltHolder.offset = offset;
   const spotlight = playing || between ? spotlightAt(board.frames, playhead, shown) : null;
   // 3D: the ground keeps what lies on it; what stands up is drawn upright over it.
   const onGround = tilt ? visible.filter(item => !STANDING.has(item.type)) : visible;
@@ -209,7 +211,8 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
             )}
           </Stage>
           </div>
-          {tilt && <Figures3D objects={visible} board={board} project={projector(fit, sight, size.width, size.height)} spotlight={spotlight} width={size.width} height={size.height} />}
+          {tilt && <Figures3D objects={visible} board={board} project={projector(fit, sight, size.width, size.height)} spotlight={spotlight} width={size.width} height={size.height}
+            stageRef={node => { tiltHolder.figures = node; }} />}
         </StageContext.Provider>
       )}
       {fullEdit && (
@@ -224,14 +227,4 @@ export default function BoardStage({ editable = true, moveOnly = false, extra }:
       </div>
     </div>
   );
-}
-
-/** The tilted ground as drawn (the pitch and the grass round it), in the frame's pixels. */
-function drawnRect(fit: Fit, sight: Viewport, metres: number) {
-  const corners = [{ x: -metres, y: -metres }, { x: PITCH_LENGTH + metres, y: PITCH_WIDTH + metres }].map(point => {
-    const flat = pitchToFrame(point, fit);
-    return { x: sight.x + flat.x * sight.scale, y: sight.y + flat.y * sight.scale };
-  });
-  const [x, y] = [Math.min(corners[0].x, corners[1].x), Math.min(corners[0].y, corners[1].y)];
-  return { x, y, width: Math.abs(corners[1].x - corners[0].x), height: Math.abs(corners[1].y - corners[0].y) };
 }

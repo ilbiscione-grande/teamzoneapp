@@ -6,6 +6,7 @@
 // air on a lofted pass with its shadow below, cones, poles, mannequins and
 // goals, and text. The far ones are drawn first, so the near ones stand in
 // front. The spotlight darkens the ground and the figures it leaves out.
+import type Konva from "konva";
 import { Circle, Ellipse, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
 import { PLAYER_RADIUS } from "../../../lib/tactics/ball.ts";
 import type { Spotlight } from "../../../lib/tactics/marks.ts";
@@ -149,8 +150,9 @@ function Dark({ spotlight, project, width, height }: { spotlight: Spotlight; pro
   );
 }
 
-export function Figures3D({ objects, board, project, spotlight, width, height }: {
-  objects: Rendered[]; board: Board; project: Projector; spotlight: Spotlight | null; width: number; height: number;
+/** stageRef: the stage, for putting the 3D picture together (tilt-picture.ts). */
+export function Figures3D({ objects, board, project, spotlight, width, height, stageRef }: {
+  objects: Rendered[]; board: Board; project: Projector; spotlight: Spotlight | null; width: number; height: number; stageRef?: (stage: Konva.Stage | null) => void;
 }) {
   // Far first: by where their feet are on the screen.
   const standing = objects.filter(item => STANDING.has(item.type)).map(item => ({ item, y: project(item).y })).sort((a, b) => a.y - b.y);
@@ -158,7 +160,7 @@ export function Figures3D({ objects, board, project, spotlight, width, height }:
   const isLit = (item: Rendered) => lit.has(`${Math.round(item.x * 10)},${Math.round(item.y * 10)}`);
   const dark = spotlight && spotlight.amount > 0 ? spotlight : null;
   return (
-    <Stage width={width} height={height} listening={false} className="tb-figures">
+    <Stage ref={stageRef} width={width} height={height} listening={false} className="tb-figures">
       <Layer listening={false}>
         <Stands3D board={board} project={project} />
         <Facings objects={objects} board={board} project={project} />
