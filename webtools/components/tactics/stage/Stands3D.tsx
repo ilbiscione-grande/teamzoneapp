@@ -4,8 +4,9 @@
 // with the figures. Behind the pitch ("back"): the far stand rising row on
 // row under a roof, the stands at the ends, floodlight masts in the corners
 // and advertising boards along the far side and the ends. In front of it
-// ("front"): the boards along the near side and the near masts. The near
-// stand is where the view is taken from, so it is not drawn.
+// ("front"): the boards along the near side, the near masts, and the
+// near stand's lowest rows. The view is taken from the near stand, so only
+// its foot shows, falling away off the bottom of the frame.
 import { useMemo } from "react";
 import { Group, Line, Rect, Text } from "react-konva";
 import { PITCH_LENGTH as L, PITCH_WIDTH as W, type Board, type Point } from "../../../lib/tactics/model.ts";
@@ -15,15 +16,19 @@ import { crowdTile } from "./crowd.ts";
 /** Metres from the lines: the boards, the stands' foot and their back, and how high they rise. */
 const BOARDS = 3.4, FOOT = 5, BACK = 16, LOW = 1.2, HIGH = 13;
 const BOARD_HEIGHT = 0.9;
+/** The near stand: only its lowest rows, out to here and this high. */
+const NEAR = 19, NEAR_HIGH = 4.5;
 
 const flat = (points: { x: number; y: number }[]) => points.flatMap(point => [point.x, point.y]);
 
 /** A stand as a slope from its foot to its back, `rows` lines across it. */
-function Stand({ foot, back, project, pattern, rows = 6 }: { foot: [Point, Point]; back: [Point, Point]; project: Projector; pattern: object; rows?: number }) {
-  const corners = [project(foot[0], LOW), project(foot[1], LOW), project(back[1], HIGH), project(back[0], HIGH)];
+function Stand({ foot, back, project, pattern, rows = 6, top = HIGH }: {
+  foot: [Point, Point]; back: [Point, Point]; project: Projector; pattern: object; rows?: number; top?: number;
+}) {
+  const corners = [project(foot[0], LOW), project(foot[1], LOW), project(back[1], top), project(back[0], top)];
   const lerp = (a: Point, b: Point, t: number) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
   const across = Array.from({ length: rows - 1 }, (_, i) => {
-    const t = (i + 1) / rows, lift = LOW + (HIGH - LOW) * t;
+    const t = (i + 1) / rows, lift = LOW + (top - LOW) * t;
     return [project(lerp(foot[0], back[0], t), lift), project(lerp(foot[1], back[1], t), lift)];
   });
   // Stairways up the stand every 14 m or so.
@@ -31,7 +36,7 @@ function Stand({ foot, back, project, pattern, rows = 6 }: { foot: [Point, Point
   const stairs = Math.max(1, Math.round(length / 14));
   const up = Array.from({ length: stairs - 1 }, (_, i) => {
     const t = (i + 1) / stairs;
-    return [project(lerp(foot[0], foot[1], t), LOW), project(lerp(back[0], back[1], t), HIGH)];
+    return [project(lerp(foot[0], foot[1], t), LOW), project(lerp(back[0], back[1], t), top)];
   });
   return (
     <Group listening={false}>
@@ -104,6 +109,9 @@ export function Stands3D({ board, project, part = "back" }: { board: Board; proj
     return (
       <Group listening={false}>
         <Boards from={{ x: -BOARDS, y: W + BOARDS }} to={{ x: L + BOARDS, y: W + BOARDS }} project={project} words />
+        {/* Nearer than the boards, so over them. */}
+        <Stand foot={[{ x: L + FOOT, y: W + FOOT }, { x: -FOOT, y: W + FOOT }]} back={[{ x: L + NEAR, y: W + NEAR }, { x: -NEAR, y: W + NEAR }]}
+          project={project} pattern={pattern} rows={5} top={NEAR_HIGH} />
         <Mast at={{ x: -BACK, y: W + BACK }} project={project} />
         <Mast at={{ x: L + BACK, y: W + BACK }} project={project} />
       </Group>

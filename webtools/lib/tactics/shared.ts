@@ -2,7 +2,7 @@
 // the database lets only the server read it. A link is to a project (or
 // one board of it), or to a folder of projects.
 import { createClient } from "@supabase/supabase-js";
-import type { Board, ProjectKind } from "./model.ts";
+import type { Board, Branding, ProjectKind } from "./model.ts";
 
 export type SharedTactics = {
   name: string;
@@ -14,6 +14,8 @@ export type SharedTactics = {
   boards: Board[];
   /** Read through a folder's link: the folder's name. */
   folder_name?: string;
+  /** The club logo on the pitch; absent before the branding migration. */
+  branding?: Branding | null;
 };
 
 export type SharedFolder = {

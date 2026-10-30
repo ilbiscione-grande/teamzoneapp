@@ -26,7 +26,7 @@ export function SharedViewer({ shared, back }: { shared: SharedTactics; back?: {
   const boards = useEditor(state => state.document?.boards ?? NONE);
   const boardId = useEditor(state => state.boardId);
   useEffect(() => {
-    const document = normalizeDocument({ boards: shared.boards });
+    const document = normalizeDocument({ boards: shared.boards, branding: shared.branding });
     useEditor.getState().load({
       id: "shared", name: shared.name, kind: shared.kind, teamzone_team_id: null, team_name: shared.team_name,
       board_count: document.boards.length, revision: 0, created_at: shared.updated_at, updated_at: shared.updated_at, document,

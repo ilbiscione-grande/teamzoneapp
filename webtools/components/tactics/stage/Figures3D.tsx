@@ -45,7 +45,8 @@ function Figure({ item, board, project }: { item: Rendered; board: Board; projec
             cornerRadius={[width * 0.45, width * 0.45, width * 0.18, width * 0.18]} />
           <Circle x={base.x} y={base.y - height + head * 0.2} radius={head} fill={fill} stroke="#ffffff" strokeWidth={Math.max(1, unit * 0.07)} />
           {item.number !== null && (
-            <Text x={base.x - width / 2} y={base.y - height * 0.62} width={width} align="center" text={String(item.number)}
+            // Two widths wide and on one line: on a small figure the smallest font is wider than the shirt.
+            <Text x={base.x - width} y={base.y - height * 0.62} width={width * 2} align="center" wrap="none" text={String(item.number)}
               fontSize={Math.max(8, unit * 0.95)} fontStyle="bold" fill={team.numberColor} />
           )}
           {board.showNames && lastName && (

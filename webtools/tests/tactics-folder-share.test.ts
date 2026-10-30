@@ -32,3 +32,14 @@ test("the shared pages are read by Webtools' server only", () => {
   assert.doesNotMatch(toSignedIn, /get_shared_tactics_folder/);
   assert.match(granted, /api\.get_shared_tactics_folder\(text\), api\.get_shared_tactics_folder_project\(text, uuid\)\nto service_role;/);
 });
+
+test("both shared reads carry the logo and keep their checks", () => {
+  const later = readFileSync(new URL("../../supabase/migrations/20261227090000_tactics_shared_branding.sql", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const own = (name: string) => later.slice(later.indexOf(`function internal.${name}(`), later.indexOf("\n$$;", later.indexOf(`function internal.${name}(`)));
+  for (const name of ["get_shared_tactics", "get_shared_tactics_folder_project"]) {
+    assert.match(own(name), /'branding', project\.document->'branding'/, name);
+    assert.match(own(name), /link\.revoked_at is null/, name);
+  }
+  assert.match(own("get_shared_tactics_folder_project"), /member\.folder_id = folder\.id and member\.project_id = target_project_id/);
+  assert.doesNotMatch(later, /^\s*(grant|revoke) /im, "the grants stay as they were");
+});
