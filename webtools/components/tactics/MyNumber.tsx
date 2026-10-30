@@ -9,6 +9,7 @@ import { createPortal } from "react-dom";
 import { myNumberKey, numbersOn } from "../../lib/tactics/me.ts";
 import type { Board } from "../../lib/tactics/model.ts";
 import { useEditor } from "./store.ts";
+import { PersonIcon } from "./ViewerTools.tsx";
 
 const read = (key: string) => { try { return window.localStorage.getItem(key); } catch { return null; } };
 const write = (key: string, value: string | null) => {
@@ -35,8 +36,10 @@ export function MyNumber({ boards }: { boards: Board[] }) {
   };
   return (
     <>
-      <button type="button" className="tb-icon tb-pdf tb-me" data-on={me !== null} onClick={() => setOpen(true)}
-        title="Välj ditt nummer så syns du på alla tavlor">{me !== null ? `Nr ${me}` : "Jag är…"}</button>
+      <button type="button" className="tb-icon tb-glyph tb-me" data-on={me !== null} onClick={() => setOpen(true)}
+        aria-label={me !== null ? `Du är nummer ${me}` : "Välj ditt nummer"} title="Välj ditt nummer så syns du på alla tavlor">
+        <PersonIcon />{me !== null && <strong>{me}</strong>}
+      </button>
       {open && createPortal(
         <div className="tb-caption-sheet" role="dialog" aria-label="Ditt nummer" onClick={() => setOpen(false)}>
           <div onClick={event => event.stopPropagation()}>

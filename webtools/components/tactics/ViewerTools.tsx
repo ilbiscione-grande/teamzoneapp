@@ -71,6 +71,10 @@ export function InfoIcon() {
   return <svg {...icon}><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>;
 }
 
+export function PersonIcon() {
+  return <svg {...icon}><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>;
+}
+
 export function FullScreenIcon() {
   return <svg {...icon}><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>;
 }

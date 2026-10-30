@@ -65,7 +65,8 @@ export function Timeline({ board, readOnly = false, viewer = false }: { board: B
   const moving = playing || between;
   return (
     <div className="tb-timeline" aria-label="Frames och uppspelning">
-      {frames.length > 1 ? <Scrubber frames={frames} time={!viewer} /> : <div className="tb-progress" aria-hidden="true" />}
+      {/* A shared board keeps it all on one row, the timeline between the buttons, for the pitch's room. */}
+      {viewer ? null : frames.length > 1 ? <Scrubber frames={frames} /> : <div className="tb-progress" aria-hidden="true" />}
       <div className="tb-timeline-row">
         {/* A shared board: a step either way round the play button; the dots on the timeline are the frames. */}
         {readOnly && frames.length > 1 && (
@@ -77,6 +78,7 @@ export function Timeline({ board, readOnly = false, viewer = false }: { board: B
         {readOnly && frames.length > 1 && (
           <button type="button" className="tb-step" aria-label="Nästa frame" onClick={() => stepFrame(1)}>›</button>
         )}
+        {viewer && frames.length > 1 && <Scrubber frames={frames} time={false} />}
         {!readOnly && <div className="tb-frames" role="tablist" aria-label="Frames">
           {frames.map((frame, index) => (
             <button key={frame.id} type="button" role="tab" aria-selected={!moving && index === frameIndex}
@@ -84,7 +86,7 @@ export function Timeline({ board, readOnly = false, viewer = false }: { board: B
           ))}
           <button type="button" className="tb-frame-add" onClick={add} disabled={playing} aria-label="Ny frame (kopia av denna)" title="Ny frame: en kopia av den här att flytta vidare i">+</button>
         </div>}
-        <span className="tb-spacer" />
+        {!viewer && <span className="tb-spacer" />}
         {!viewer && <button type="button" className="tb-mini-button" aria-pressed={tilt} onClick={() => setTilt(!tilt)}
           title="Planen sedd snett från läktaren. Redigera uppifrån.">3D</button>}
         {!viewer && <label className="tb-mini" title="Spela om och om igen">
