@@ -8,7 +8,7 @@ import { create } from "zustand";
 import { patchObjects, updateFrame } from "../../lib/tactics/document.ts";
 import { emptyHistory, record, redo, undo, type History } from "../../lib/tactics/history.ts";
 import { duplicateBoard } from "../../lib/tactics/templates.ts";
-import type { Board, Project, ProjectDocument, ProjectKind, TacticsObject } from "../../lib/tactics/model.ts";
+import type { Board, LeaderAccess, Project, ProjectAccess, ProjectDocument, ProjectKind, TacticsObject } from "../../lib/tactics/model.ts";
 
 export type Tool =
   | "select"
@@ -17,7 +17,11 @@ export type Tool =
 
 export type SaveState = "saved" | "dirty" | "saving" | "error" | "conflict";
 
-export type ProjectMeta = { id: string; name: string; kind: ProjectKind; teamId: string | null; teamName: string | null; revision: number };
+/** access: the owner's own, or another leader of the team's (who saves the boards only). */
+export type ProjectMeta = {
+  id: string; name: string; kind: ProjectKind; teamId: string | null; teamName: string | null; revision: number;
+  access: ProjectAccess; leaderAccess: LeaderAccess; ownerName: string | null;
+};
 
 type EditorState = {
   meta: ProjectMeta | null;
@@ -132,7 +136,10 @@ export const useEditor = create<EditorState>((set, get) => ({
   setSpeed: speed => set({ speed }),
 
   load: (project, document) => set({
-    meta: { id: project.id, name: project.name, kind: project.kind, teamId: project.teamzone_team_id, teamName: project.team_name, revision: project.revision },
+    meta: {
+      id: project.id, name: project.name, kind: project.kind, teamId: project.teamzone_team_id, teamName: project.team_name, revision: project.revision,
+      access: project.access ?? "owner", leaderAccess: project.leader_access ?? "view", ownerName: project.owner_name ?? null,
+    },
     document, boardId: document.boards[0]?.id ?? null, frameIndex: 0, selection: [], tool: "select", playing: false, playhead: 0, me: null,
     history: emptyHistory(), saveState: "saved",
   }),

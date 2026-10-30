@@ -1,13 +1,14 @@
 "use client";
 
 // On a phone the top bar keeps room for the board tabs: presenting, the PDF
-// and the live lesson move into a "more" menu under one button.
+// the live lesson and the versions move into a "more" menu under one button.
 import { useEffect, useRef, useState } from "react";
 import { useLive } from "./live/live-store.ts";
 
 type Item = { label: string; run: () => void };
 
-export function TopBarMore({ onPresent, onPdf, onLive }: { onPresent: () => void; onPdf: () => void; onLive: () => void }) {
+/** onLive: none for another leader of the team, whose project it is not. */
+export function TopBarMore({ onPresent, onPdf, onLive, onVersions }: { onPresent: () => void; onPdf: () => void; onLive?: () => void; onVersions: () => void }) {
   const [open, setOpen] = useState(false);
   const [at, setAt] = useState({ right: 8, top: 0 });
   const button = useRef<HTMLButtonElement>(null);
@@ -26,7 +27,8 @@ export function TopBarMore({ onPresent, onPdf, onLive }: { onPresent: () => void
   const items: Item[] = [
     { label: "Visa i helskärm", run: onPresent },
     { label: "Skapa PDF", run: onPdf },
-    { label: live ? "Livelektion pågår" : "Livelektion", run: onLive },
+    ...(onLive ? [{ label: live ? "Livelektion pågår" : "Livelektion", run: onLive }] : []),
+    { label: "Versioner", run: onVersions },
   ];
   const toggle = () => {
     const rect = button.current?.getBoundingClientRect();

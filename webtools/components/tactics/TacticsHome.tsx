@@ -3,9 +3,9 @@
 // Tacticsboard's start: TeamZone's library, a new project (a match, a
 // training or teaching material, for one of your TeamZone teams or none,
 // started from ready boards, a template or a favourite), your templates and
-// favourites, and your library: all of your projects. A project can also be
-// imported from a file. Come from a folder (?mapp=<id>), the new project is
-// put in that folder.
+// favourites, the team's projects other leaders made, and your library: all
+// of your projects. A project can also be imported from a file. Come from a
+// folder (?mapp=<id>), the new project is put in that folder.
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -18,6 +18,7 @@ import { kindLabels } from "./TopBar.tsx";
 import { useTemplates } from "./use-templates.ts";
 import { useSharedLibrary } from "./use-shared-library.ts";
 import { MyLibrary } from "./MyLibrary.tsx";
+import { TeamProjects } from "./TeamProjects.tsx";
 import { useFolders } from "./use-folders.ts";
 import { ImportProject } from "./ImportProject.tsx";
 import { boardsFromLibrary, libraryKindLabels, librarySummaryLine, noFilters, projectKindOf } from "../../lib/tactics/library.ts";
@@ -181,6 +182,7 @@ export function TacticsHome() {
           </ul>
         </section>
       )}
+      <TeamProjects />
       <MyLibrary />
     </div>
   );

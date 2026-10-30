@@ -95,3 +95,18 @@ body:has(.tb-viewer) .wt-header { display: none; }
 /* The timeline between the buttons on a shared board's one row. */
 .tb-viewer .tb-timeline { padding-top: 6px; }
 .tb-viewer .tb-timeline-row > .tb-scrub-row { flex: 1; min-width: 60px; padding: 6px 2px 0; }
+
+/* The project's versions: a list, the chosen one's boards in small. */
+.tb-versions { width: min(640px, 100%); }
+.tb-versions-hint { margin: 0; color: var(--wt-muted); font-size: .88rem; }
+.tb-version-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.tb-version-list li { border: 1px solid var(--wt-line); border-radius: 8px; }
+.tb-version-list li[data-chosen="true"] { border-color: var(--wt-ink); }
+.tb-version-list li > button { display: grid; gap: 2px; width: 100%; padding: 10px 12px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.tb-version-list li > button span { color: var(--wt-muted); font-size: .85rem; }
+.tb-version-detail { display: grid; gap: 10px; padding: 0 12px 12px; }
+.tb-version-detail p { margin: 0; font-size: .9rem; }
+.tb-version-boards { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.tb-version-board { margin: 0; display: grid; gap: 4px; }
+.tb-version-board svg { width: 100%; height: auto; }
+.tb-version-board figcaption { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78rem; color: var(--wt-muted); }

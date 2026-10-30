@@ -228,4 +228,8 @@ export type ProjectSummary = {
   updated_at: string;
 };
 
-export type Project = ProjectSummary & { document: ProjectDocument };
+/** The signed-in person's access: the owner's, or one of the team's other leaders who may edit or watch. */
+export type ProjectAccess = "owner" | "edit" | "view";
+export type LeaderAccess = "view" | "edit";
+
+export type Project = ProjectSummary & { document: ProjectDocument; access?: ProjectAccess; leader_access?: LeaderAccess; owner_name?: string | null };

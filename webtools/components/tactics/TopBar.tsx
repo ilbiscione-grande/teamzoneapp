@@ -6,18 +6,19 @@
 // and team are under the board's settings.
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { ProjectKind } from "../../lib/tactics/model.ts";
+import type { LeaderAccess, ProjectKind } from "../../lib/tactics/model.ts";
 import { kindNames } from "../../lib/tactics/preview.ts";
 import type { LeaderTeam } from "../../lib/tournament";
 import { useAccount } from "../account";
 import { useEditor, type SaveState, NONE } from "./store.ts";
-import { saveNow } from "./use-autosave.ts";
+import { saveAsCopy, saveNow } from "./use-autosave.ts";
 import { ShareDialog } from "./ShareDialog.tsx";
 import { ExportDialog } from "./export/ExportDialog.tsx";
 import { BoardMenu } from "./BoardMenu.tsx";
 import { LiveButton } from "./live/LiveButton.tsx";
 import { LiveDialog } from "./live/LiveDialog.tsx";
 import { TopBarMore } from "./TopBarMore.tsx";
+import { HistoryIcon, VersionsDialog } from "./VersionsDialog.tsx";
 import { useLibrary } from "./use-library.ts";
 import { PublishedIcon } from "./PublishedIcon.tsx";
 
@@ -70,6 +71,15 @@ export function ProjectFields({ className }: { className: string }) {
     client?.schema("api").rpc("list_tournament_leader_teams").then(({ data }) => setTeams((data as LeaderTeam[] | null) ?? []));
   }, [client]);
   if (!meta) return null;
+  // Another leader of the team changes the boards; the project itself is the owner's.
+  if (meta.access !== "owner") {
+    return <p className="tb-hint">{meta.ownerName?.trim() || "En annan ledare"} äger projektet. Du kan ändra tavlorna; namn, lag, delning och versioner sköter ägaren.</p>;
+  }
+  const setAccess = async (leaderAccess: LeaderAccess) => {
+    const { error } = await client?.schema("api").rpc("set_tactics_leader_access", { target_project_id: meta.id, access: leaderAccess }) ?? { error: true };
+    if (error) { window.alert("Det gick inte att ändra. Försök igen."); return; }
+    useEditor.setState(state => state.meta ? { meta: { ...state.meta, leaderAccess } } : {});
+  };
   return (
     <>
       <label className="tb-field">Namn<input value={meta.name} maxLength={120} onChange={event => setMeta({ name: event.target.value })} /></label>
@@ -87,6 +97,14 @@ export function ProjectFields({ className }: { className: string }) {
             {teams.map(team => <option key={team.team_id} value={team.team_id}>{team.team_name} · {team.club_name}</option>)}
           </select>
         )}
+        {meta.teamId && (
+          <label className="tb-field">Lagets andra ledare
+            <select className={className} value={meta.leaderAccess} onChange={event => void setAccess(event.target.value as LeaderAccess)}>
+              <option value="view">kan titta och kopiera</option>
+              <option value="edit">kan redigera tavlorna</option>
+            </select>
+          </label>
+        )}
     </>
   );
 }
@@ -101,6 +119,7 @@ export function TopBar({ onPresent }: { onPresent: () => void }) {
   const [sharing, setSharing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [living, setLiving] = useState(false);
+  const [versions, setVersions] = useState(false);
   // Opened from a folder (?mapp=<id>), back goes to the folder.
   const [folderId, setFolderId] = useState<string | null>(null);
   useEffect(() => {
@@ -108,11 +127,13 @@ export function TopBar({ onPresent }: { onPresent: () => void }) {
     setFolderId(id && /^[0-9a-f-]{36}$/.test(id) ? id : null);
   }, []);
   if (!meta) return null;
+  const owner = meta.access === "owner";
   return (
     <header className="tb-top">
       {sharing && <ShareDialog onClose={() => setSharing(false)} />}
       {exporting && <ExportDialog onClose={() => setExporting(false)} />}
       {living && <LiveDialog onClose={() => setLiving(false)} />}
+      {versions && <VersionsDialog onClose={() => setVersions(false)} />}
       <div className="tb-top-row">
         <Link href={folderId ? `/tacticsboard/mapp/${folderId}` : "/tacticsboard"} className="tb-back"
           aria-label={folderId ? "Till mappen" : "Till projekten"} title={meta.name}>‹</Link>
@@ -121,13 +142,15 @@ export function TopBar({ onPresent }: { onPresent: () => void }) {
         <button type="button" className="tb-icon" onClick={redo} disabled={!canRedo} aria-label="Gör om" title="Gör om (Ctrl+Y)">↷</button>
         <button type="button" className="tb-icon tb-pdf tb-wide-only" onClick={onPresent} aria-label="Visa i helskärm" title="Visa i helskärm, utan redigering">⛶</button>
         <button type="button" className="tb-icon tb-pdf tb-wide-only" onClick={() => setExporting(true)} aria-label="Skapa PDF" title="Skapa PDF">PDF</button>
-        <LiveButton onClick={() => setLiving(true)} />
-        <TopBarMore onPresent={onPresent} onPdf={() => setExporting(true)} onLive={() => setLiving(true)} />
-        <button type="button" className="tb-share" onClick={() => setSharing(true)}>Dela</button>
+        <button type="button" className="tb-icon tb-wide-only tb-glyph" onClick={() => setVersions(true)} aria-label="Versioner" title="Tidigare versioner"><HistoryIcon /></button>
+        {owner && <LiveButton onClick={() => setLiving(true)} />}
+        <TopBarMore onPresent={onPresent} onPdf={() => setExporting(true)} onLive={owner ? () => setLiving(true) : undefined} onVersions={() => setVersions(true)} />
+        {owner && <button type="button" className="tb-share" onClick={() => setSharing(true)}>Dela</button>}
         <span className="tb-save" data-state={saveState} role="status">
           {saveLabels[saveState]}
           {saveState === "error" && client && <button type="button" className="tb-link" onClick={() => void saveNow(client)}>Försök igen</button>}
           {saveState === "conflict" && <button type="button" className="tb-link" onClick={() => window.location.reload()}>Hämta senaste</button>}
+          {saveState === "conflict" && client && <button type="button" className="tb-link" onClick={() => void saveAsCopy(client).then(done => { if (!done) window.alert("Kopian kunde inte sparas. Försök igen."); })}>Spara mina ändringar som kopia</button>}
         </span>
       </div>
     </header>

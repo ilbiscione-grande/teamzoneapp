@@ -26,6 +26,8 @@ export function BoardSettings({ board }: { board: Board }) {
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const kind = useEditor(state => state.meta?.kind);
+  // Publishing and the notes are the owner's; another leader of the team changes the boards only.
+  const owner = useEditor(state => state.meta?.access === "owner");
   const boards = useEditor(state => state.document?.boards ?? NONE);
   const style = styleOf(board.pitch);
   const exportFile = () => {
@@ -46,7 +48,7 @@ export function BoardSettings({ board }: { board: Board }) {
         <ProjectFields className="tb-panel-select" />
         <button type="button" className="wt-button secondary small" onClick={() => setSavingTemplate(true)}>Spara som mall…</button>
         {savingTemplate && <TemplateDialog onClose={() => setSavingTemplate(false)} />}
-        <button type="button" className="wt-button secondary small" onClick={() => setPublishing(true)}>Publicera…</button>
+        {owner && <button type="button" className="wt-button secondary small" onClick={() => setPublishing(true)}>Publicera…</button>}
         {publishing && <PublishDialog onClose={() => setPublishing(false)} />}
         <BrandingFields />
         <button type="button" className="wt-button secondary small" onClick={exportFile}
@@ -96,7 +98,7 @@ export function BoardSettings({ board }: { board: Board }) {
       </label>
       <p className="tb-hint">Anteckningar för varje frame skriver du under Frames.</p>
       {kind === "training" && <ExerciseFields board={board} />}
-      <HostNotes compact />
+      {owner && <HostNotes compact />}
       <label className="tb-check"><input type="checkbox" checked={board.showNames} onChange={event => change(current => ({ ...current, showNames: event.target.checked }))} />Visa spelarnas namn</label>
       <label className="tb-check"><input type="checkbox" checked={board.showPositions ?? false} onChange={event => change(current => ({ ...current, showPositions: event.target.checked }))} />Visa spelarnas positioner</label>
       <label className="tb-check"><input type="checkbox" checked={board.showFacing ?? false} onChange={event => change(current => ({ ...current, showFacing: event.target.checked }))} />Visa blickriktning (vrid spelaren med ramen)</label>

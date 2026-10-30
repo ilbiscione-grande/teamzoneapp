@@ -15,6 +15,7 @@ import { ObjectList } from "./panels/ObjectList.tsx";
 import { SquadPanel } from "./panels/SquadPanel.tsx";
 import { FramesPanel } from "./panels/FramesPanel.tsx";
 import { Presenter } from "./Presenter.tsx";
+import { SharedViewer } from "./SharedViewer.tsx";
 import { LiveBadge } from "./live/LiveBadge.tsx";
 import { LivePanel } from "./live/LivePanel.tsx";
 import { LiveStrokes } from "./live/LiveStrokes.tsx";
@@ -86,9 +87,33 @@ export function TacticsWorkspace() {
   );
 }
 
+/** A team's project another leader may watch, not edit: as a shared link shows it, with a copy to make your own. */
+function WatchProject({ project }: { project: Project }) {
+  const { client } = useAccount();
+  const [busy, setBusy] = useState(false);
+  const copy = async () => {
+    if (!client) return;
+    setBusy(true);
+    const { data, error } = await client.schema("api").rpc("create_tactics_project", {
+      project_name: `${project.name} (kopia)`.slice(0, 120), project_kind: project.kind,
+      target_team_id: project.teamzone_team_id, project_document: project.document,
+    });
+    if (error) { setBusy(false); window.alert("Kopian kunde inte skapas. Försök igen."); return; }
+    window.location.href = `/tacticsboard/${(data as { id: string }).id}`;
+  };
+  const document = normalizeDocument(project.document);
+  return (
+    <SharedViewer back={{ href: "/tacticsboard", label: "Till projekten" }}
+      shared={{ name: project.name, kind: project.kind, updated_at: project.updated_at, team_name: project.team_name, board_id: null, boards: document.boards, branding: document.branding }}
+      actions={<button type="button" className="tb-icon tb-me" disabled={busy} onClick={() => void copy()}
+        title={`${project.owner_name?.trim() || "En annan ledare"} äger projektet. Gör en egen kopia att ändra i.`}>Gör en kopia</button>} />
+  );
+}
+
 export function TacticsEditor({ id }: { id: string }) {
   const { client } = useAccount();
   const [error, setError] = useState("");
+  const [watching, setWatching] = useState<Project | null>(null);
   const loaded = useEditor(state => state.meta?.id === id);
   useAutosave(client);
   useLiveHost(client);
@@ -100,6 +125,7 @@ export function TacticsEditor({ id }: { id: string }) {
       if (cancelled) return;
       if (loadError) { setError("Projektet hittades inte, eller så har du inte tillgång till det."); return; }
       const project = data as Project;
+      if (project.access === "view") { setWatching(project); return; }
       useEditor.getState().load(project, normalizeDocument(project.document));
       useHostNotes.getState().load(project.id, (data as { host_notes?: Record<string, string> }).host_notes ?? {});
     });
@@ -107,6 +133,7 @@ export function TacticsEditor({ id }: { id: string }) {
   }, [client, id]);
 
   if (error) return <div className="wt-wrap wt-section"><p className="wt-error" role="alert">{error}</p><Link className="wt-link" href="/tacticsboard">Till projekten</Link></div>;
+  if (watching) return <WatchProject project={watching} />;
   if (!loaded) return <p className="wt-wrap wt-section wt-status">Laddar…</p>;
   return <TacticsWorkspace />;
 }

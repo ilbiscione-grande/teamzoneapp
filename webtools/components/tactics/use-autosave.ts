@@ -27,6 +27,20 @@ export async function saveNow(client: SupabaseClient): Promise<void> {
   try { localStorage.removeItem(backupKey(meta.id)); } catch { /* storage unavailable */ }
 }
 
+/** After a conflict: what is in hand as a project of your own, opened in place of this one. */
+export async function saveAsCopy(client: SupabaseClient): Promise<boolean> {
+  const { meta, document } = useEditor.getState();
+  if (!meta || !document) return false;
+  const { data, error } = await client.schema("api").rpc("create_tactics_project", {
+    project_name: `${meta.name.trim() || "Namnlöst projekt"} (din kopia)`.slice(0, 120), project_kind: meta.kind,
+    target_team_id: meta.teamId, project_document: document,
+  });
+  if (error) return false;
+  try { localStorage.removeItem(backupKey(meta.id)); } catch { /* storage unavailable */ }
+  window.location.href = `/tacticsboard/${(data as { id: string }).id}`;
+  return true;
+}
+
 export function useAutosave(client: SupabaseClient | null) {
   const saveState = useEditor(state => state.saveState);
   const document = useEditor(state => state.document);

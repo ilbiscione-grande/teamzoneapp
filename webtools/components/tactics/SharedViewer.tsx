@@ -24,8 +24,12 @@ import "./tactics.css";
 
 const BoardStage = dynamic(() => import("./stage/BoardStage.tsx"), { ssr: false, loading: () => <div className="tb-stage" /> });
 
-/** back: a way back up, for a project seen through a shared folder. */
-export function SharedViewer({ shared, back }: { shared: SharedTactics; back?: { href: string; label: string } }) {
+/**
+ * back: a way back up, for a project seen through a shared folder.
+ * actions: more in the header (a team's project watched by another leader: make a copy),
+ * which is no link to share on.
+ */
+export function SharedViewer({ shared, back, actions }: { shared: SharedTactics; back?: { href: string; label: string }; actions?: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [qr, setQr] = useState(false);
   const [presenting, setPresenting] = useState(false);
@@ -60,9 +64,10 @@ export function SharedViewer({ shared, back }: { shared: SharedTactics; back?: {
             <span>{[kindLabels[shared.kind], shared.team_name].filter(Boolean).join(" · ")}</span>
           </div>
           <span className="tb-spacer" />
+          {actions}
           <MyNumber boards={boards} />
           {board.description?.trim() && <button type="button" className="tb-icon tb-glyph" onClick={() => setAbout(true)} aria-label="Om tavlan" title="Om tavlan"><InfoIcon /></button>}
-          <button type="button" className="tb-icon tb-glyph" onClick={() => void shareLink(shared.name, () => setQr(true))} aria-label="Dela" title="Dela länken"><ShareIcon /></button>
+          {!actions && <button type="button" className="tb-icon tb-glyph" onClick={() => void shareLink(shared.name, () => setQr(true))} aria-label="Dela" title="Dela länken"><ShareIcon /></button>}
         </div>
         {/* A phone chooses the board from a list, not a row of tabs to scroll. */}
         {boards.length > 1 && (
