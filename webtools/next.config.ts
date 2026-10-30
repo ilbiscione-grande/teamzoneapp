@@ -23,6 +23,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // The title and preview picture always in <head>, never streamed in later: a chat's link
+  // preview (WhatsApp) reads only the start of a page, and telling its fetch apart by its
+  // user agent missed every other time on the hosting.
+  htmlLimitedBots: /.*/,
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
