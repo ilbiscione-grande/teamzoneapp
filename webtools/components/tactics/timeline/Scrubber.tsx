@@ -13,7 +13,8 @@ import { useEditor } from "../store.ts";
 /** Half a dot's width: a press on a dot lands on its frame. */
 const SNAP_PX = 11;
 
-export function Scrubber({ frames }: { frames: Frame[] }) {
+/** time: the seconds beside it; a shared board leaves them out for a longer line. */
+export function Scrubber({ frames, time = true }: { frames: Frame[]; time?: boolean }) {
   const track = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const playhead = useEditor(state => state.playhead);
@@ -66,7 +67,7 @@ export function Scrubber({ frames }: { frames: Frame[] }) {
         ))}
         <span className="tb-scrub-thumb" style={{ left: percent(now) }} />
       </div>
-      <span className="tb-scrub-time">{secondsLabel(now)} / {secondsLabel(total)}</span>
+      {time && <span className="tb-scrub-time">{secondsLabel(now)} / {secondsLabel(total)}</span>}
     </div>
   );
 }

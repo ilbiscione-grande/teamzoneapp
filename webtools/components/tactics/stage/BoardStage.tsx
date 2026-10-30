@@ -47,9 +47,10 @@ const NO_REACH: Reach = { left: 0, top: 0, right: 0, bottom: 0 };
  * extra: drawn over the objects, in metres (a live lesson's pointer and drawings).
  * moveOnly: objects can be dragged and nothing else (a participant given the floor).
  * onSwipe, onTap: watching only: a swipe sideways (not zoomed in) and a tap on the board (use-swipe).
+ * tiltButton: 3D among the zoom buttons, for a shared link without the editor's timeline button.
  */
-export default function BoardStage({ editable = true, moveOnly = false, extra, onSwipe, onTap }: {
-  editable?: boolean; moveOnly?: boolean; extra?: React.ReactNode; onSwipe?: (direction: 1 | -1) => void; onTap?: () => void;
+export default function BoardStage({ editable = true, moveOnly = false, extra, onSwipe, onTap, tiltButton = false }: {
+  editable?: boolean; moveOnly?: boolean; extra?: React.ReactNode; onSwipe?: (direction: 1 | -1) => void; onTap?: () => void; tiltButton?: boolean;
 }) {
   const frame = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -237,6 +238,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
       <div className="tb-zoom" role="group" aria-label="Zoom">
         <button type="button" onClick={() => view.zoomBy(1.25, { x: size.width / 2, y: size.height / 2 })} aria-label="Zooma in">+</button>
         <button type="button" onClick={() => view.zoomBy(0.8, { x: size.width / 2, y: size.height / 2 })} aria-label="Zooma ut">−</button>
+        {tiltButton && <button type="button" className="tb-zoom-tilt" aria-pressed={tilt} onClick={() => useEditor.getState().setTilt(!tilt)} aria-label="3D" title="Planen sedd snett från läktaren">3D</button>}
         <button type="button" onClick={() => view.apply(IDENTITY, true)} aria-label="Visa hela" disabled={view.viewport === IDENTITY}>⤢</button>
       </div>
     </div>

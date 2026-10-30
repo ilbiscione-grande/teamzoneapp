@@ -210,6 +210,12 @@ export function activeObjects(state: { document: ProjectDocument | null; boardId
   return board?.frames[Math.min(state.frameIndex, board.frames.length - 1)]?.objects ?? NONE;
 }
 
+/** Play, or pause what plays. */
+export function togglePlay() {
+  const state = useEditor.getState();
+  if (state.playing) state.pause(); else state.play();
+}
+
 /** To the next (1) or the previous (-1) frame from where the board stands, between two frames too: the arrow keys, a swipe. */
 export function stepFrame(direction: 1 | -1) {
   const state = useEditor.getState();

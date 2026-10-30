@@ -1,7 +1,7 @@
 "use client";
 
 // Under a shared board: which frame it is and its note, changing with the
-// frame as it plays, and the board's description behind a button. A fixed
+// frame as it plays, and the board's description behind a small (i). A fixed
 // height, so a longer note never makes the board jump.
 import { useState } from "react";
 import type { Board } from "../../lib/tactics/model.ts";
@@ -20,7 +20,7 @@ export function SharedCaption({ board }: { board: Board }) {
         {frames > 1 && <strong>Frame {index + 1} av {frames}{note ? ": " : " · "}</strong>}
         {note || (frames > 1 ? <span className="tb-caption-hint">Svep eller ‹ › byter frame, tryck på planen för att spela.</span> : null)}
       </div>
-      {description && <button type="button" className="tb-caption-about" onClick={() => setAbout(true)}>Om tavlan</button>}
+      {description && <button type="button" className="tb-caption-about" onClick={() => setAbout(true)} aria-label="Om tavlan" title="Om tavlan">i</button>}
       {about && (
         <div className="tb-caption-sheet" role="dialog" aria-label="Om tavlan" onClick={() => setAbout(false)}>
           <div onClick={event => event.stopPropagation()}>

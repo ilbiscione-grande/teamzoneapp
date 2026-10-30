@@ -16,8 +16,11 @@ import { canRecord, download, recordBoard } from "./video-export.ts";
 const durations = [500, 750, 1000, 1500, 2000, 3000, 4000];
 const speeds = [0.5, 1, 1.5, 2];
 
-/** readOnly: for a shared link, playing and stepping through the frames only. */
-export function Timeline({ board, readOnly = false }: { board: Board; readOnly?: boolean }) {
+/**
+ * readOnly: playing and stepping through the frames only (presenting, a shared link).
+ * viewer: a shared link's players: no seconds, no loop, and 3D on the board instead.
+ */
+export function Timeline({ board, readOnly = false, viewer = false }: { board: Board; readOnly?: boolean; viewer?: boolean }) {
   usePlayback();
   const frameIndex = useEditor(state => state.frameIndex);
   const playing = useEditor(state => state.playing);
@@ -62,7 +65,7 @@ export function Timeline({ board, readOnly = false }: { board: Board; readOnly?:
   const moving = playing || between;
   return (
     <div className="tb-timeline" aria-label="Frames och uppspelning">
-      {frames.length > 1 ? <Scrubber frames={frames} /> : <div className="tb-progress" aria-hidden="true" />}
+      {frames.length > 1 ? <Scrubber frames={frames} time={!viewer} /> : <div className="tb-progress" aria-hidden="true" />}
       <div className="tb-timeline-row">
         {/* A shared board: a step either way round the play button; the dots on the timeline are the frames. */}
         {readOnly && frames.length > 1 && (
@@ -82,11 +85,11 @@ export function Timeline({ board, readOnly = false }: { board: Board; readOnly?:
           <button type="button" className="tb-frame-add" onClick={add} disabled={playing} aria-label="Ny frame (kopia av denna)" title="Ny frame: en kopia av den här att flytta vidare i">+</button>
         </div>}
         <span className="tb-spacer" />
-        <button type="button" className="tb-mini-button" aria-pressed={tilt} onClick={() => setTilt(!tilt)}
-          title="Planen sedd snett från läktaren. Redigera uppifrån.">3D</button>
-        <label className="tb-mini" title="Spela om och om igen">
+        {!viewer && <button type="button" className="tb-mini-button" aria-pressed={tilt} onClick={() => setTilt(!tilt)}
+          title="Planen sedd snett från läktaren. Redigera uppifrån.">3D</button>}
+        {!viewer && <label className="tb-mini" title="Spela om och om igen">
           <input type="checkbox" checked={loop} onChange={event => setLoop(event.target.checked)} /><span className="tb-mini-text">Slinga</span><span className="tb-mini-icon" aria-hidden="true">⟲</span>
-        </label>
+        </label>}
         <select className="tb-mini-select" value={speed} aria-label="Hastighet" onChange={event => setSpeed(Number(event.target.value))}>
           {speeds.map(value => <option key={value} value={value}>{value}×</option>)}
         </select>

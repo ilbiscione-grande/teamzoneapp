@@ -14,12 +14,13 @@ import { LiveStrokes } from "./live/LiveStrokes.tsx";
 import { LiveAnswers } from "./live/LiveAnswers.tsx";
 import { useLive } from "./live/live-store.ts";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
-import { activeBoard, useEditor, NONE } from "./store.ts";
+import { activeBoard, stepFrame, togglePlay, useEditor, NONE } from "./store.ts";
 import { Timeline } from "./timeline/Timeline.tsx";
 
 const BoardStage = dynamic(() => import("./stage/BoardStage.tsx"), { ssr: false, loading: () => <div className="tb-stage" /> });
 
-export function Presenter({ onClose }: { onClose: () => void }) {
+/** viewer: from a shared link, played as there: a tap plays or pauses, a swipe steps, 3D on the board. */
+export function Presenter({ onClose, viewer = false }: { onClose: () => void; viewer?: boolean }) {
   const root = useRef<HTMLDivElement>(null);
   const board = useEditor(activeBoard);
   const boards = useEditor(state => state.document?.boards ?? NONE);
@@ -68,8 +69,9 @@ export function Presenter({ onClose }: { onClose: () => void }) {
       </header>
       <div className="tb-present-body">
         <div className="tb-center">
-          <ErrorBoundary label="Tavlan"><BoardStage editable={false} extra={<><LiveStrokes /><LiveAnswers /></>} /></ErrorBoundary>
-          <ErrorBoundary label="Tidslinjen"><Timeline board={board} readOnly /></ErrorBoundary>
+          <ErrorBoundary label="Tavlan"><BoardStage editable={false} extra={<><LiveStrokes /><LiveAnswers /></>}
+            {...(viewer ? { onSwipe: stepFrame, onTap: togglePlay, tiltButton: true } : {})} /></ErrorBoundary>
+          <ErrorBoundary label="Tidslinjen"><Timeline board={board} readOnly viewer={viewer} /></ErrorBoundary>
         </div>
         {aside === "text" && <BoardText emptyHint="Tavlan har ingen beskrivning. Skriv en under Tavlan i redigeringen." />}
         {aside === "live" && live && <aside className="tb-present-text tb-present-live"><LivePanel /></aside>}
