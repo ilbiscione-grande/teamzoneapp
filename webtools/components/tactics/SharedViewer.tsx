@@ -12,6 +12,7 @@ import type { SharedTactics } from "../../lib/tactics/shared.ts";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import { BigQr } from "./QrCode.tsx";
 import { Presenter } from "./Presenter.tsx";
+import { MyNumber } from "./MyNumber.tsx";
 import { SharedCaption } from "./SharedCaption.tsx";
 import { activeBoard, stepFrame, useEditor, NONE } from "./store.ts";
 import { Timeline } from "./timeline/Timeline.tsx";
@@ -55,6 +56,7 @@ export function SharedViewer({ shared, back }: { shared: SharedTactics; back?: {
             <span>{[kindLabels[shared.kind], shared.team_name].filter(Boolean).join(" · ")}</span>
           </div>
           <span className="tb-spacer" />
+          <MyNumber boards={boards} />
           <button type="button" className="tb-icon tb-pdf" onClick={() => setPresenting(true)} aria-label="Visa i helskärm" title="Visa i helskärm med beskrivning">⛶</button>
           <button type="button" className="tb-icon tb-pdf" onClick={() => setQr(true)} title="Visa länken som QR-kod">QR</button>
         </div>

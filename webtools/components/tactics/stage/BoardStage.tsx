@@ -22,6 +22,8 @@ import { Ghosts } from "./Ghosts.tsx";
 import { Pitch, tiltedReach } from "./Pitch.tsx";
 import { Selection } from "./Selection.tsx";
 import { Marks } from "./Marks.tsx";
+import { MeMarker } from "./MeMarker.tsx";
+import { isMe } from "../../../lib/tactics/me.ts";
 import { SpotlightLayer } from "./SpotlightLayer.tsx";
 import { Figures3D, STANDING } from "./Figures3D.tsx";
 import { drawnGround, groundReach, projector, TILT, tiltOrigin, tiltTransform, unproject, type Reach } from "../../../lib/tactics/projection.ts";
@@ -62,6 +64,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
   const between = useEditor(isBetween);
   // Nothing is edited while the board plays or stands between two frames.
   const tilt = useEditor(state => state.tilt);
+  const me = useEditor(state => state.me);
   // Nothing is edited tilted either: the screen no longer matches the pitch under the finger.
   const canEdit = editable && !playing && !between && !tilt;
   // Everything but dragging: selecting with a band, handles, the bin, tools.
@@ -203,6 +206,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
                 <Group ref={content} {...fitted}>
                   {previous && <Ghosts previous={previous} current={objects} selection={selection} editable={canEdit} ink={lookOf(board.pitch).ink} />}
                   <Marks objects={visible} board={board} />
+                  {visible.filter(item => isMe(item, me)).map(item => <MeMarker key={`me-${item.id}`} at={item} upright={upright} label={!tilt} />)}
                   {onGround.map(item => (
                     <ObjectNode key={item.id} item={item} board={board} selected={selection.includes(item.id)} upright={upright} holding={holders.has(item.id)} />
                   ))}
@@ -220,7 +224,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
             )}
           </Stage>
           </div>
-          {tilt && <Figures3D objects={visible} board={board} project={projector(fit, sight, size.width, size.height)} spotlight={spotlight} width={size.width} height={size.height}
+          {tilt && <Figures3D objects={visible} board={board} project={projector(fit, sight, size.width, size.height)} spotlight={spotlight} width={size.width} height={size.height} me={me}
             stageRef={node => { tiltHolder.figures = node; }} />}
         </StageContext.Provider>
       )}

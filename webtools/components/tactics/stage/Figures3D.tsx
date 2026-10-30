@@ -13,6 +13,8 @@ import type { Spotlight } from "../../../lib/tactics/marks.ts";
 import type { Board, Point } from "../../../lib/tactics/model.ts";
 import { TILT, type Projector } from "../../../lib/tactics/projection.ts";
 import { standingFacing, type Rendered } from "../../../lib/tactics/timeline.ts";
+import { isMe } from "../../../lib/tactics/me.ts";
+import { ME_COLOUR } from "./MeMarker.tsx";
 import { Stands3D } from "./Stands3D.tsx";
 
 /** What stands up in 3D; lines, freehand and areas lie on the ground. */
@@ -150,10 +152,22 @@ function Dark({ spotlight, project, width, height }: { spotlight: Spotlight; pro
   );
 }
 
-/** stageRef: the stage, for putting the 3D picture together (tilt-picture.ts). */
-export function Figures3D({ objects, board, project, spotlight, width, height, stageRef }: {
-  objects: Rendered[]; board: Board; project: Projector; spotlight: Spotlight | null; width: number; height: number; stageRef?: (stage: Konva.Stage | null) => void;
+/** "DU" over the figure of the one watching a shared link; their ring lies on the ground. */
+function MeLabel({ item, project }: { item: Rendered; project: Projector }) {
+  const at = project(item, 2.1 * FIGURE + 1.4);
+  const size = Math.max(11, project.metre * TILT.scale * at.depth * FIGURE * 0.95);
+  return (
+    <Text x={at.x - size * 2} y={at.y - size} width={size * 4} align="center" text="DU" fontSize={size} fontStyle="bold" fill={ME_COLOUR}
+      stroke="rgba(11,17,28,0.85)" strokeWidth={Math.max(1, size * 0.12)} fillAfterStrokeEnabled listening={false} />
+  );
+}
+
+/** stageRef: the stage, for putting the 3D picture together (tilt-picture.ts). me: the number of the one watching. */
+export function Figures3D({ objects, board, project, spotlight, width, height, stageRef, me = null }: {
+  objects: Rendered[]; board: Board; project: Projector; spotlight: Spotlight | null; width: number; height: number;
+  stageRef?: (stage: Konva.Stage | null) => void; me?: number | null;
 }) {
+  const mine = objects.find(item => isMe(item, me));
   // Far first: by where their feet are on the screen.
   const standing = objects.filter(item => STANDING.has(item.type)).map(item => ({ item, y: project(item).y })).sort((a, b) => a.y - b.y);
   const lit = new Set(spotlight?.spots.map(spot => `${Math.round(spot.x * 10)},${Math.round(spot.y * 10)}`) ?? []);
@@ -166,6 +180,7 @@ export function Figures3D({ objects, board, project, spotlight, width, height, s
         <Facings objects={objects} board={board} project={project} />
         {standing.filter(({ item }) => !dark || !isLit(item)).map(({ item }) => <Figure key={item.id} item={item} board={board} project={project} />)}
         <Stands3D board={board} project={project} part="front" />
+        {mine && <MeLabel item={mine} project={project} />}
       </Layer>
       {dark && <Dark spotlight={dark} project={project} width={width} height={height} />}
       {dark && (

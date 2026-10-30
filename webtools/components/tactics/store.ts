@@ -41,6 +41,9 @@ type EditorState = {
   stopAt: number | null;
   /** Counted up to play on afresh from a new playhead while playing (a live lesson's host). */
   playSeq: number;
+  /** Watching a shared link: the home number marked as the one watching (lib/tactics/me.ts). Not saved. */
+  me: number | null;
+  setMe: (me: number | null) => void;
   setFrame: (index: number) => void;
   play: () => void;
   /** Plays the move into a frame and stops there, keeping the selection. */
@@ -89,6 +92,8 @@ export const useEditor = create<EditorState>((set, get) => ({
   speed: 1,
   stopAt: null,
   playSeq: 0,
+  me: null,
+  setMe: me => set({ me }),
 
   setFrame: index => {
     const board = activeBoard(get());
@@ -123,7 +128,7 @@ export const useEditor = create<EditorState>((set, get) => ({
 
   load: (project, document) => set({
     meta: { id: project.id, name: project.name, kind: project.kind, teamId: project.teamzone_team_id, teamName: project.team_name, revision: project.revision },
-    document, boardId: document.boards[0]?.id ?? null, frameIndex: 0, selection: [], tool: "select", playing: false, playhead: 0,
+    document, boardId: document.boards[0]?.id ?? null, frameIndex: 0, selection: [], tool: "select", playing: false, playhead: 0, me: null,
     history: emptyHistory(), saveState: "saved",
   }),
   setTool: tool => set({ tool, selection: tool === "select" ? get().selection : [] }),
