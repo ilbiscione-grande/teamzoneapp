@@ -46,7 +46,7 @@ const NO_REACH: Reach = { left: 0, top: 0, right: 0, bottom: 0 };
 /**
  * extra: drawn over the objects, in metres (a live lesson's pointer and drawings).
  * moveOnly: objects can be dragged and nothing else (a participant given the floor).
- * onSwipe, onTap: watching only, not zoomed in: a swipe sideways and a tap on the board (use-swipe).
+ * onSwipe, onTap: watching only: a swipe sideways (not zoomed in) and a tap on the board (use-swipe).
  */
 export default function BoardStage({ editable = true, moveOnly = false, extra, onSwipe, onTap }: {
   editable?: boolean; moveOnly?: boolean; extra?: React.ReactNode; onSwipe?: (direction: 1 | -1) => void; onTap?: () => void;
@@ -79,8 +79,9 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
     band.cancel();
     nodes.current.forEach(node => { if (node.isDragging()) node.stopDrag(); });
     tiltPan.current = null;
+    swipe.cancel();
   }, tilt);
-  const swipe = useSwipe(!editable && view.viewport.scale <= 1.001, onSwipe, onTap);
+  const swipe = useSwipe(!editable, view.viewport.scale > 1.001, onSwipe, onTap);
   const stage = useRef<Konva.Stage | null>(null);
   // The tilted ground's canvas reaches far past the frame: drawn at 1×, it costs a quarter as much.
   useEffect(() => {

@@ -18,7 +18,7 @@ export function SharedCaption({ board }: { board: Board }) {
     <div className="tb-caption">
       <div className="tb-caption-text">
         {frames > 1 && <strong>Frame {index + 1} av {frames}{note ? ": " : " · "}</strong>}
-        {note || (frames > 1 ? <span className="tb-caption-hint">Svep åt sidan för att byta frame, tryck på planen för att spela.</span> : null)}
+        {note || (frames > 1 ? <span className="tb-caption-hint">Svep eller ‹ › byter frame, tryck på planen för att spela.</span> : null)}
       </div>
       {description && <button type="button" className="tb-caption-about" onClick={() => setAbout(true)}>Om tavlan</button>}
       {about && (

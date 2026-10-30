@@ -8,7 +8,7 @@ import { useState } from "react";
 import { insertFrame, moveFrame, removeFrame, setFrameDuration, setFrameEasing, updateBoard } from "../../../lib/tactics/document.ts";
 import type { Board, Easing } from "../../../lib/tactics/model.ts";
 import { easingLabels } from "../panels/effects.ts";
-import { isBetween, useEditor } from "../store.ts";
+import { isBetween, stepFrame, useEditor } from "../store.ts";
 import { Scrubber } from "./Scrubber.tsx";
 import { usePlayback } from "./use-playback.ts";
 import { canRecord, download, recordBoard } from "./video-export.ts";
@@ -16,7 +16,7 @@ import { canRecord, download, recordBoard } from "./video-export.ts";
 const durations = [500, 750, 1000, 1500, 2000, 3000, 4000];
 const speeds = [0.5, 1, 1.5, 2];
 
-/** readOnly: for a shared link, playing and choosing frames only. */
+/** readOnly: for a shared link, playing and stepping through the frames only. */
 export function Timeline({ board, readOnly = false }: { board: Board; readOnly?: boolean }) {
   usePlayback();
   const frameIndex = useEditor(state => state.frameIndex);
@@ -64,16 +64,23 @@ export function Timeline({ board, readOnly = false }: { board: Board; readOnly?:
     <div className="tb-timeline" aria-label="Frames och uppspelning">
       {frames.length > 1 ? <Scrubber frames={frames} /> : <div className="tb-progress" aria-hidden="true" />}
       <div className="tb-timeline-row">
+        {/* A shared board: a step either way round the play button; the dots on the timeline are the frames. */}
+        {readOnly && frames.length > 1 && (
+          <button type="button" className="tb-step" aria-label="Föregående frame" onClick={() => stepFrame(-1)}>‹</button>
+        )}
         <button type="button" className="tb-play" disabled={frames.length < 2 || recording !== null}
           aria-label={playing ? "Pausa" : "Spela"} title={frames.length < 2 ? "Lägg till en frame för att spela" : playing ? "Pausa (mellanslag)" : "Spela (mellanslag)"}
           onClick={() => (playing ? pause() : play())}>{playing ? "❚❚" : "▶"}</button>
-        <div className="tb-frames" role="tablist" aria-label="Frames">
+        {readOnly && frames.length > 1 && (
+          <button type="button" className="tb-step" aria-label="Nästa frame" onClick={() => stepFrame(1)}>›</button>
+        )}
+        {!readOnly && <div className="tb-frames" role="tablist" aria-label="Frames">
           {frames.map((frame, index) => (
             <button key={frame.id} type="button" role="tab" aria-selected={!moving && index === frameIndex}
               data-current={moving && Math.round(playhead) === index} onClick={() => setFrame(index)}>{index + 1}</button>
           ))}
-          {!readOnly && <button type="button" className="tb-frame-add" onClick={add} disabled={playing} aria-label="Ny frame (kopia av denna)" title="Ny frame: en kopia av den här att flytta vidare i">+</button>}
-        </div>
+          <button type="button" className="tb-frame-add" onClick={add} disabled={playing} aria-label="Ny frame (kopia av denna)" title="Ny frame: en kopia av den här att flytta vidare i">+</button>
+        </div>}
         <span className="tb-spacer" />
         <button type="button" className="tb-mini-button" aria-pressed={tilt} onClick={() => setTilt(!tilt)}
           title="Planen sedd snett från läktaren. Redigera uppifrån.">3D</button>
@@ -83,7 +90,7 @@ export function Timeline({ board, readOnly = false }: { board: Board; readOnly?:
         <select className="tb-mini-select" value={speed} aria-label="Hastighet" onChange={event => setSpeed(Number(event.target.value))}>
           {speeds.map(value => <option key={value} value={value}>{value}×</option>)}
         </select>
-        {canRecord() && (
+        {!readOnly && canRecord() && (
           <button type="button" className="tb-mini-button" disabled={frames.length < 2 || playing || recording !== null} onClick={() => void record()}>
             {recording !== null ? `Spelar in ${Math.round(recording * 100)} %` : "Video"}
           </button>

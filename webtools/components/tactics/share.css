@@ -67,3 +67,11 @@ body:has(.tb-viewer) .wt-header { display: none; }
 /* A long name gives way to the buttons. */
 .tb-viewer .tb-top-row > .tb-viewer-title { flex: 0 1 auto; min-width: 0; }
 .tb-viewer-title strong, .tb-viewer-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* A shared board's controls: a step either way round a large play button, room between them. */
+.tb-viewer .tb-timeline { padding: 0 12px 10px; }
+.tb-viewer .tb-timeline-row { gap: 10px; }
+.tb-viewer .tb-play { width: 56px; height: 44px; font-size: 1.1rem; }
+.tb-step { flex: none; width: 44px; height: 44px; border: 1px solid rgba(255, 255, 255, .2); border-radius: 8px; background: transparent; color: white; font-size: 1.6rem; line-height: 1; cursor: pointer; }
+.tb-viewer .tb-mini-button, .tb-viewer .tb-mini-select { min-height: 36px; }
+.tb-viewer .tb-mini-button { min-width: 44px; }
