@@ -5,8 +5,8 @@
 // The chosen objects stand out and are kept in sight; a locked one says so
 // plainly. Choosing keeps the list in sight (Shift, Ctrl or Cmd adds to the
 // selection); a double click opens the object's properties.
-import { useEffect, useRef, useState } from "react";
-import { kindName, moveTo, objectLabel } from "../../../lib/tactics/document.ts";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { kindName, LAYERS, layered, layerOf, moveNextTo, objectLabel } from "../../../lib/tactics/document.ts";
 import type { Board, TacticsObject } from "../../../lib/tactics/model.ts";
 import { activeObjects, useEditor } from "../store.ts";
 
@@ -29,8 +29,9 @@ export function ObjectList({ board, onOpen }: { board: Board; onOpen: () => void
   useEffect(() => {
     list.current?.querySelector("li[data-selected='true']")?.scrollIntoView({ block: "nearest" });
   }, [selection]);
-  // Drawn last is on top, so listed first.
-  const listed = [...objects].reverse();
+  // Drawn last is on top, so listed first: the balls, then the players, then the rest.
+  const listed = [...layered(objects)].reverse();
+  const layerOfDragged = dragged ? layerOf(objects.find(item => item.id === dragged) ?? { type: "" }) : null;
   if (listed.length === 0) {
     return <p className="tb-empty">Tavlan är tom. Välj ett verktyg och tryck på planen, eller lägg ut en formation.</p>;
   }
@@ -38,29 +39,30 @@ export function ObjectList({ board, onOpen }: { board: Board; onOpen: () => void
   const place = (target: Drop) => {
     if (!dragged || dragged === target.id) return end();
     // Listed top-most first: below a row is under it in the drawing order.
-    changeObjects(current => {
-      const rest = current.filter(item => item.id !== dragged);
-      const at = rest.findIndex(item => item.id === target.id);
-      return at < 0 ? current : moveTo(current, dragged, target.after ? at : at + 1);
-    });
+    changeObjects(current => moveNextTo(current, dragged, target.id, !target.after));
     end();
   };
   return (
     <>
-      <p className="tb-hint">Dra en rad upp eller ner för att lägga objektet över eller under andra.</p>
+      <p className="tb-hint">Bollar ligger alltid överst, sedan spelarna och underst allt annat. Dra en rad upp eller ner för att ändra ordningen i sin grupp.</p>
       <ul ref={list} className="tb-objects" aria-label="Objekt på tavlan" onDragLeave={event => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDrop(null);
       }}>
-        {listed.map(item => {
+        {listed.map((item, index) => {
+          const layer = layerOf(item);
+          const heading = index === 0 || layerOf(listed[index - 1]) !== layer;
           const selected = selection.includes(item.id);
           const marker = drop?.id === item.id && dragged !== item.id ? (drop.after ? "after" : "before") : undefined;
           return (
-            <li key={item.id} data-selected={selected} data-hidden={item.hidden} data-locked={item.locked} data-drop={marker}
+            <Fragment key={item.id}>
+            {heading && <li className="tb-layer" aria-hidden="true">{LAYERS[layer]}</li>}
+            <li data-selected={selected} data-hidden={item.hidden} data-locked={item.locked} data-drop={marker}
               data-dragging={dragged === item.id} draggable
               onDragStart={event => { setDragged(item.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", item.id); }}
               onDragEnd={end}
               onDragOver={event => {
-                if (!dragged) return;
+                // Only within its own layer.
+                if (!dragged || layerOfDragged !== layer) return;
                 event.preventDefault();
                 const box = event.currentTarget.getBoundingClientRect();
                 const after = event.clientY > box.top + box.height / 2;
@@ -85,6 +87,7 @@ export function ObjectList({ board, onOpen }: { board: Board; onOpen: () => void
                   onClick={() => changeObjects(current => current.filter(other => other.id !== item.id))}>✕</button>
               </span>
             </li>
+            </Fragment>
           );
         })}
       </ul>

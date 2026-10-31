@@ -12,6 +12,7 @@ import { Group, Layer, Rect, Stage } from "react-konva";
 import { ballHolders } from "../../../lib/tactics/ball.ts";
 import { blendViewport, fitView, marginFor, viewRect, zoomTo, type Viewport } from "../../../lib/tactics/geometry.ts";
 import type { Point } from "../../../lib/tactics/model.ts";
+import { layered } from "../../../lib/tactics/document.ts";
 import { cameraAt, spotlightAt } from "../../../lib/tactics/marks.ts";
 import { lookOf } from "../../../lib/tactics/pitch-style.ts";
 import { objectsAt } from "../../../lib/tactics/timeline.ts";
@@ -149,7 +150,8 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
   tiltHolder.offset = offset;
   const spotlight = playing || between ? spotlightAt(board.frames, playhead, shown) : null;
   // 3D: the ground keeps what lies on it; what stands up is drawn upright over it.
-  const onGround = tilt ? visible.filter(item => !STANDING.has(item.type)) : visible;
+  // Drawn in layers: lines, areas and equipment, then the players, the balls on top.
+  const onGround = layered(tilt ? visible.filter(item => !STANDING.has(item.type)) : visible);
   const tapGrass = (target: Konva.Node) => {
     if (isPlaceTool(tool)) drawing.place();
     else if (tool === "select" && target.name() === "grass") useEditor.getState().select([]);

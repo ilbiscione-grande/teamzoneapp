@@ -13,6 +13,7 @@ import { fitView, marginFor, viewRect } from "../../../lib/tactics/geometry.ts";
 import { drawnGround, groundReach, projector } from "../../../lib/tactics/projection.ts";
 import type { Board, TacticsObject } from "../../../lib/tactics/model.ts";
 import type { Trail } from "../../../lib/tactics/marks.ts";
+import { layered } from "../../../lib/tactics/document.ts";
 import { ObjectNode } from "../objects/ObjectNode.tsx";
 import { MoveArrows } from "./MoveArrows.tsx";
 import { useEditor } from "../store.ts";
@@ -38,7 +39,8 @@ export default function OffscreenBoard({ board, objects, moves = [], tilted = fa
   const branding = useEditor(state => state.document?.branding);
   const fit = fitView(viewRect(board.view, marginFor(board.surroundings)), PICTURE.width, PICTURE.height);
   const holders = ballHolders(objects);
-  const shown = objects.filter(item => !item.hidden);
+  // In layers, as the board draws them.
+  const shown = layered(objects.filter(item => !item.hidden));
   const reach = tilted ? groundReach(PICTURE.width, PICTURE.height, drawnGround(fit, WHOLE, tiltedReach(board.surroundings))) : null;
   const offset = { x: reach?.left ?? 0, y: reach?.top ?? 0 };
   const shared = useMemo<StageShared>(() => ({ nodes: nodes.current, content, metresPerPixel: () => 1 / fit.scale, editable: false }), [fit.scale]);

@@ -285,3 +285,5 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
 
 .tb-stacking { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 4px; }
 .tb-stacking .wt-button { padding-inline: 4px; white-space: nowrap; }
+.tb-objects .tb-layer { display: block; border: 0; margin-top: 8px; padding: 2px 6px; color: var(--wt-muted); font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; background: none; }
+.tb-objects .tb-layer:first-child { margin-top: 0; }
