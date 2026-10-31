@@ -107,7 +107,7 @@ function Figure({ item, board, project }: { item: Rendered; board: Board; projec
       return (
         <Group opacity={opacity} listening={false}>
           <Text x={base.x - unit * 10} y={base.y - item.size * unit} width={unit * 20} align="center" text={item.text} fontSize={Math.max(8, item.size * unit)}
-            fontStyle="bold" fill={item.color} stroke={item.background ? "rgba(11,17,28,0.85)" : undefined} strokeWidth={item.background ? unit * 0.12 : 0} fillAfterStrokeEnabled />
+            fontStyle="bold" fill={item.color} stroke={item.background ? item.backgroundColor ?? "rgba(11,17,28,0.85)" : undefined} strokeWidth={item.background ? unit * 0.12 : 0} fillAfterStrokeEnabled />
         </Group>
       );
     default:

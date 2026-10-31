@@ -1,20 +1,4 @@
-/* What helps on the board: the quick menu over the selection, tips for a tool, the list of keys and ready drills. */
-
-/* The quick menu: dark, over the pitch, sized for a finger. */
-.tb-quick { position: absolute; z-index: 5; display: grid; gap: 4px; padding: 4px; border-radius: 10px; background: rgba(11, 17, 28, .9); box-shadow: 0 8px 24px rgba(0, 0, 0, .35); color: white; }
-.tb-quick-row { display: flex; gap: 2px; }
-.tb-quick button { display: grid; place-items: center; width: 38px; height: 38px; border: 0; border-radius: 7px; background: none; color: white; font-size: 1.05rem; cursor: pointer; }
-.tb-quick button:hover:not(:disabled) { background: rgba(255, 255, 255, .12); }
-.tb-quick button[aria-pressed="true"] { background: rgba(250, 204, 21, .25); }
-.tb-quick button[data-danger]:hover:not(:disabled) { background: rgba(220, 38, 38, .8); }
-.tb-quick button:disabled { opacity: .35; cursor: default; }
-.tb-quick-colour { width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; }
-.tb-quick-colours { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px; max-width: 320px; }
-.tb-quick-colours button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .5); }
-.tb-quick-colours button[aria-checked="true"] { border-color: #facc15; box-shadow: 0 0 0 2px #facc15; }
-@media (pointer: coarse) {
-  .tb-quick button { width: 44px; height: 44px; }
-}
+/* What helps on the board: the selection's actions in the panel, tips for a tool, the list of keys and ready drills. */
 
 .tb-group-tag { flex: none; padding: 1px 6px; border-radius: 999px; background: #e0e7ff; color: #3730a3; font-size: .7rem; font-weight: 700; }
 
@@ -74,3 +58,23 @@
 .tb-trainings button:disabled { opacity: .6; cursor: default; }
 .tb-trainings span { font-size: .88rem; text-transform: capitalize; }
 .tb-trainings small { color: var(--wt-muted); font-size: .8rem; }
+
+/* The selection in the panel: its name, its actions as large buttons, and its fields under headings. */
+.tb-inspector-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.tb-inspector-head .tb-hint { margin: 2px 0 0; }
+.tb-selection-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(54px, 1fr)); gap: 4px; }
+.tb-selection-actions button { display: grid; justify-items: center; gap: 2px; padding: 7px 4px; border: 1px solid var(--wt-line); border-radius: 8px; background: white; color: var(--wt-text); font: inherit; font-size: .78rem; font-weight: 600; cursor: pointer; }
+.tb-selection-actions button span { font-size: 1.15rem; line-height: 1; }
+.tb-selection-actions button:hover:not(:disabled) { border-color: var(--wt-brand); background: #f6fbf1; }
+.tb-selection-actions button[aria-pressed="true"] { border-color: var(--wt-brand); background: #f0f9e8; }
+.tb-selection-actions button[data-danger]:hover:not(:disabled) { border-color: #dc2626; background: #fef2f2; color: #b91c1c; }
+.tb-selection-actions button:disabled { opacity: .45; cursor: default; }
+.tb-section { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding-top: 10px; border-top: 1px solid var(--wt-line); }
+.tb-section h4 { margin: 0; color: var(--wt-muted); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; }
+.tb-section .tb-stacking { grid-template-columns: repeat(4, 1fr); margin-top: 0; }
+.tb-aligns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin-top: 4px; }
+.tb-aligns button { min-height: 32px; border: 1px solid var(--wt-line); border-radius: 6px; background: white; color: var(--wt-text); font: inherit; font-size: .85rem; cursor: pointer; }
+.tb-aligns button[aria-pressed="true"] { border-color: var(--wt-brand); background: #f0f9e8; }
+@media (pointer: coarse) {
+  .tb-selection-actions button { min-height: 52px; }
+}

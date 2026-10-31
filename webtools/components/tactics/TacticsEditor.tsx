@@ -15,7 +15,6 @@ import { ObjectList } from "./panels/ObjectList.tsx";
 import { SquadPanel } from "./panels/SquadPanel.tsx";
 import { FramesPanel } from "./panels/FramesPanel.tsx";
 import { Presenter } from "./Presenter.tsx";
-import { QuickMenu } from "./QuickMenu.tsx";
 import { HelpDialog } from "./HelpDialog.tsx";
 import { ToolHint } from "./ToolHint.tsx";
 import { DrillPicker } from "./DrillPicker.tsx";
@@ -67,8 +66,7 @@ export function TacticsWorkspace() {
         <Toolbar homeColor={board.teams.home.color} awayColor={board.teams.away.color} onHelp={openHelp} />
         <div className="tb-center">
           <ErrorBoundary label="Tavlan">
-            <BoardStage extra={<><LiveStrokes /><LiveAnswers /></>}
-              selectionTools={(box, frame) => <QuickMenu box={box} frame={frame} onProperties={() => { setPanel("properties"); setPanelOpen(true); }} />} />
+            <BoardStage extra={<><LiveStrokes /><LiveAnswers /></>} />
           </ErrorBoundary>
           <ToolHint />
           <DrillPicker />

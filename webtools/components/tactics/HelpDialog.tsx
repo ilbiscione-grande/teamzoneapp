@@ -46,7 +46,7 @@ const sections: { title: string; rows: [string, string][] }[] = [
     title: "Med fingret",
     rows: [
       ["Nyp", "Zooma in och ut"],
-      ["Tryck på ett objekt", "Snabbmenyn visas ovanför det"],
+      ["Tryck på ett objekt", "Dess egenskaper visas under Egenskaper"],
       ["Dubbeltryck på mittpunkten", "Gör en böjd linje rak"],
     ],
   },

@@ -12,6 +12,7 @@ import { activeObjects, useEditor } from "../store.ts";
 import { BoardSettings } from "./BoardSettings.tsx";
 import { CopyTo } from "./CopyTo.tsx";
 import { Swatches } from "./Swatches.tsx";
+import { TextLook } from "./TextLook.tsx";
 import { PlayerLink } from "./PlayerLink.tsx";
 import { SharedFields } from "./SharedFields.tsx";
 
@@ -110,8 +111,8 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
             <input type="range" min={0.8} max={8} step={0.2} value={item.size} onChange={event => patch({ size: Number(event.target.value) })} />
           </label>
           {item.width != null && <button type="button" className="tb-link" onClick={() => patch({ width: null, height: null })}>Anpassa rutan efter texten</button>}
-          <label className="tb-check"><input type="checkbox" checked={item.background} onChange={event => patch({ background: event.target.checked })} />Bakgrund</label>
-          <Swatches label="Färg" value={item.color} onChange={color => patch({ color })} />
+          <Swatches label="Textfärg" value={item.color} onChange={color => patch({ color })} />
+          <TextLook texts={[item]} />
         </>
       );
     case "chain":
@@ -178,54 +179,66 @@ function Motion({ item, frameIndex }: { item: TacticsObject; frameIndex: number 
 
 /** The order buttons: where, the label, what it does, and its key. */
 const stackings: [Stacking, string, string, string][] = [
-  ["top", "⤒ Överst", "Lägg överst", "Home"],
-  ["up", "↑ Upp", "Ett steg upp", "Page Up"],
-  ["down", "↓ Ner", "Ett steg ner", "Page Down"],
-  ["bottom", "⤓ Underst", "Lägg underst", "End"],
+  ["top", "⤒", "Lägg överst", "Home"],
+  ["up", "↑", "Ett steg upp", "Page Up"],
+  ["down", "↓", "Ett steg ner", "Page Down"],
+  ["bottom", "⤓", "Lägg underst", "End"],
 ];
+
+/** A part of the panel under its own heading. */
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return <section className="tb-section" aria-label={title}><h4>{title}</h4>{children}</section>;
+}
 
 export function Inspector({ board }: { board: Board }) {
   const objects = useEditor(activeObjects);
   const selection = useEditor(state => state.selection);
   const frameIndex = useEditor(state => state.frameIndex);
   const selected = objects.filter(item => selection.includes(item.id));
-  const { patch, changeObjects, removeSelected, duplicateSelected, groupSelected } = useEditor.getState();
+  const { patch, changeObjects, removeSelected, duplicateSelected, groupSelected, select } = useEditor.getState();
   if (selected.length === 0) return <BoardSettings board={board} />;
   const single = selected.length === 1 ? selected[0] : null;
   const allLocked = selected.every(item => item.locked);
   const grouped = oneGroup(objects, selection);
+  const action = (icon: string, label: string, hint: string, onClick: () => void, extra: { pressed?: boolean; disabled?: boolean; danger?: boolean } = {}) => (
+    <button type="button" title={hint} aria-pressed={extra.pressed} disabled={extra.disabled} data-danger={extra.danger || undefined} onClick={onClick}>
+      <span aria-hidden="true">{icon}</span>{label}
+    </button>
+  );
   return (
     <div className="tb-inspector">
-      <h3>{single ? objectLabel(single, board) : grouped ? `Grupp med ${selected.length} objekt` : `${selected.length} markerade`}</h3>
-      {single && <p className="tb-hint">{kindName(single.type)}</p>}
-      {single && !single.locked && <Fields item={single} board={board} />}
-      {single && !single.locked && board.frames.length > 1 && <Motion item={single} frameIndex={frameIndex} />}
-      {!single && <SharedFields items={selected} board={board} />}
+      <div className="tb-inspector-head">
+        <div>
+          <h3>{single ? objectLabel(single, board) : grouped ? `Grupp med ${selected.length} objekt` : `${selected.length} markerade`}</h3>
+          {single && <p className="tb-hint">{kindName(single.type)}</p>}
+        </div>
+        <button type="button" className="tb-link" title="Avmarkera" onClick={() => select([])}>Klar</button>
+      </div>
+      <div className="tb-selection-actions" role="group" aria-label="Åtgärder">
+        {action("⧉", "Kopiera", "Kopiera (Ctrl+D)", duplicateSelected)}
+        {(grouped || selected.length > 1) && action("⧈", grouped ? "Dela upp" : "Gruppera", grouped ? "Dela upp gruppen (Ctrl+Shift+G)" : "Gruppera (Ctrl+G)", () => groupSelected(!grouped), { pressed: grouped })}
+        {action(allLocked ? "🔒" : "🔓", allLocked ? "Lås upp" : "Lås", allLocked ? "Lås upp, så kan det ändras och flyttas" : "Lås, så flyttas det inte av misstag",
+          () => patch(Object.fromEntries(selected.map(item => [item.id, { locked: !allLocked }]))), { pressed: allLocked })}
+        {action("🗑", "Ta bort", "Ta bort (Delete)", removeSelected, { disabled: allLocked, danger: true })}
+      </div>
+      {allLocked && <p className="tb-hint">{single ? "Objektet" : "Objekten"} är låst. Lås upp för att ändra.</p>}
+      {single && !single.locked && <Section title="Utseende"><Fields item={single} board={board} /></Section>}
+      {single && !single.locked && board.frames.length > 1 && frameIndex > 0 && <Section title="Rörelse i framen"><Motion item={single} frameIndex={frameIndex} /></Section>}
+      {!single && selected.filter(item => !item.locked).length > 1 && <Section title="Gemensamt"><SharedFields items={selected} board={board} /></Section>}
+      <Section title="Ordning i lagret">
+        <div className="tb-stacking" role="group" aria-label="Ordning">
+          {stackings.map(([where, icon, hint, key]) => (
+            <button key={where} type="button" className="wt-button secondary small" title={`${hint} (${key})`} aria-label={hint}
+              onClick={() => changeObjects(current => stack(current, selection, where))}>{icon}</button>
+          ))}
+        </div>
+      </Section>
       {single && (
         <label className="tb-field">Namn i listan
           <input value={single.label ?? ""} maxLength={40} placeholder={objectLabel({ ...single, label: undefined }, board)}
             onChange={event => patch({ [single.id]: { label: event.target.value || undefined } })} />
         </label>
       )}
-      <div className="tb-field">Ordning
-        <div className="tb-stacking" role="group" aria-label="Ordning">
-          {stackings.map(([where, label, hint, key]) => (
-            <button key={where} type="button" className="wt-button secondary small" title={`${hint} (${key})`}
-              onClick={() => changeObjects(current => stack(current, selection, where))}>{label}</button>
-          ))}
-        </div>
-      </div>
-      <div className="tb-actions">
-        <button type="button" className="wt-button secondary small" onClick={() => patch(Object.fromEntries(selected.map(item => [item.id, { locked: !allLocked }])))}>
-          {allLocked ? "Lås upp" : "Lås"}
-        </button>
-        <button type="button" className="wt-button secondary small" title="Kopiera (Ctrl+D)" onClick={duplicateSelected}>Kopiera</button>
-        {(grouped || selected.length > 1) && (
-          <button type="button" className="wt-button secondary small" title={grouped ? "Dela upp gruppen (Ctrl+Shift+G)" : "Gruppera (Ctrl+G)"}
-            onClick={() => groupSelected(!grouped)}>{grouped ? "Dela upp" : "Gruppera"}</button>
-        )}
-        <button type="button" className="wt-button secondary small" disabled={allLocked} onClick={removeSelected}>Ta bort</button>
-      </div>
       <CopyTo key={`${frameIndex}:${selection.join()}`} board={board} ids={selected.map(item => item.id)} />
     </div>
   );

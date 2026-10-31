@@ -131,7 +131,17 @@ export type TextObject = Base & {
   height?: number | null;
   color: string;
   background: boolean;
+  /** How the lines lie in the box: left when missing. */
+  align?: TextAlign;
+  /** The background's colour and how much it covers (0–1); a dark blue, mostly opaque, when missing. */
+  backgroundColor?: string;
+  backgroundOpacity?: number;
 };
+
+export type TextAlign = "left" | "center" | "right";
+
+/** The background a text has when it has not chosen one. */
+export const textBackground = { color: "#0f1726", opacity: 0.78 };
 
 /**
  * A line through players that follows them as they move: open (a back line)

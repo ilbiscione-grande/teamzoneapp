@@ -13,6 +13,7 @@ import type { ArrowHead, Board, ChainObject, EquipmentObject, FreehandObject, Li
 import { standingFacing } from "../../../lib/tactics/timeline.ts";
 import { useEditor } from "../store.ts";
 import { Swatches } from "./Swatches.tsx";
+import { TextLook } from "./TextLook.tsx";
 
 const EQUIPMENT = new Set(["cone", "pole", "mannequin", "goal"]);
 /** "" when the selected differ, so a select shows its blank choice. */
@@ -136,9 +137,7 @@ export function SharedFields({ items, board }: { items: TacticsObject[]; board: 
             <input type="range" min={0.8} max={8} step={0.2} value={shared(texts, item => item.size) ?? texts[0].size}
               onChange={event => patchEach(texts, () => ({ size: Number(event.target.value) }))} />
           </label>
-          <label className="tb-check">
-            <input type="checkbox" checked={texts.every(item => item.background)} onChange={event => patchEach(texts, () => ({ background: event.target.checked }))} />Bakgrund
-          </label>
+          <TextLook texts={texts} />
         </>
       )}
       {coloured.length > 0 && (
