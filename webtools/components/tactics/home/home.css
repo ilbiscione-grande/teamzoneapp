@@ -1,0 +1,106 @@
+/* Tacticsboard's start page: actions, quick start, search, and the projects as a grid of cards. */
+.tb-home { display: grid; gap: 20px; }
+.tb-home-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.tb-home-actions .wt-button span { margin-right: 6px; font-size: 1.3em; line-height: 1; }
+.tb-home-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.tb-home-heading { margin: 0 0 8px; font-size: 1.15rem; text-transform: uppercase; }
+.tb-home-head .tb-home-heading { margin: 0; }
+.tb-count { color: var(--wt-muted); font-size: .9rem; }
+.tb-empty { color: var(--wt-muted); }
+.tb-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Quick start: a chip per kind; the bigger cards when there is nothing yet. */
+.tb-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tb-quick-label { color: var(--wt-muted); font-size: .9rem; }
+.tb-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 4px 14px; border: 1px solid var(--wt-line); border-radius: 999px; background: white; color: var(--wt-text); font: inherit; font-size: .95rem; cursor: pointer; }
+.tb-chip:hover, .tb-chip:focus-visible { border-color: var(--wt-brand); }
+.tb-dot { width: 10px; height: 10px; border-radius: 50%; }
+.tb-welcome { padding: 24px; border: 1px solid var(--wt-line); border-radius: 10px; background: var(--wt-bg-alt); }
+.tb-welcome h2 { margin: 0 0 4px; text-transform: uppercase; }
+.tb-welcome > p { margin: 0 0 16px; color: var(--wt-muted); }
+.tb-quick.big { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.tb-quick-card { display: grid; gap: 6px; align-content: start; padding: 16px; border: 1px solid var(--wt-line); border-radius: 8px; background: white; color: var(--wt-text); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.tb-quick-card:hover, .tb-quick-card:focus-visible { border-color: var(--wt-brand); box-shadow: 0 6px 18px rgba(15, 23, 38, .08); }
+.tb-quick-card span:last-child { color: var(--wt-muted); font-size: .9rem; }
+
+/* The kinds' colours, on dots, icons and the label on a card's picture. */
+.tb-kind-match { background: #1d4ed8; color: white; }
+.tb-kind-training { background: var(--wt-brand); color: white; }
+.tb-kind-education { background: #b45309; color: white; }
+.tb-kind-library { background: var(--wt-ink); color: var(--wt-accent); }
+.tb-choice-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 8px; font-weight: 800; }
+
+/* Search: words, kind as segments, more filters folded away. */
+.tb-filterbar { display: grid; gap: 10px; }
+.tb-filterbar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tb-search { position: relative; flex: 1 1 260px; display: flex; }
+.tb-search svg { position: absolute; left: 12px; top: 50%; width: 18px; height: 18px; transform: translateY(-50%); fill: none; stroke: var(--wt-muted); stroke-width: 2; stroke-linecap: round; }
+.tb-search input { width: 100%; min-height: 40px; padding: 8px 12px 8px 38px; border: 1px solid var(--wt-line); border-radius: 6px; font: inherit; }
+.tb-segments { display: inline-flex; border: 1px solid var(--wt-line); border-radius: 6px; overflow: hidden; }
+.tb-segments button { min-height: 38px; padding: 4px 14px; border: 0; border-left: 1px solid var(--wt-line); background: white; color: var(--wt-text); font: inherit; font-size: .95rem; cursor: pointer; }
+.tb-segments button:first-child { border-left: 0; }
+.tb-segments button[aria-pressed="true"] { background: var(--wt-ink); color: white; }
+
+/* The grid of project cards. */
+.tb-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.tb-card { position: relative; display: grid; grid-template-rows: auto 1fr; border: 1px solid var(--wt-line); border-radius: 8px; background: white; transition: box-shadow .15s, border-color .15s; }
+.tb-card:hover, .tb-card:focus-within { border-color: #c9d1dd; box-shadow: 0 8px 22px rgba(15, 23, 38, .1); }
+.tb-card-picture { position: relative; display: block; aspect-ratio: 16 / 10; border-radius: 8px 8px 0 0; overflow: hidden; background: #2f7d46; }
+.tb-thumb { display: block; width: 100%; height: 100%; }
+.tb-card-kind { box-shadow: 0 0 0 1px rgba(255, 255, 255, .7); position: absolute; left: 8px; bottom: 8px; padding: 2px 8px; border-radius: 4px; font-size: .75rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
+.tb-card-body { display: grid; gap: 3px; align-content: start; padding: 10px 40px 12px 12px; }
+.tb-card-title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; color: var(--wt-text); font-weight: 700; text-decoration: none; overflow-wrap: anywhere; }
+.tb-card-title:hover { text-decoration: underline; }
+.tb-card-meta { color: var(--wt-muted); font-size: .85rem; }
+.tb-card .tb-folder-tags { margin-top: 4px; }
+.tb-pin { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: 50%; background: rgba(11, 17, 28, .55); cursor: pointer; }
+.tb-pin svg { width: 18px; height: 18px; fill: none; stroke: white; stroke-width: 1.8; stroke-linejoin: round; }
+.tb-pin.on svg { fill: var(--wt-accent); stroke: var(--wt-accent); }
+.tb-pin:hover, .tb-pin:focus-visible { background: rgba(11, 17, 28, .8); }
+.tb-card-menu { position: absolute; right: 6px; bottom: 8px; }
+.tb-card-menu summary { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 6px; color: var(--wt-muted); font-size: 1.3rem; line-height: 1; list-style: none; cursor: pointer; }
+.tb-card-menu summary::-webkit-details-marker { display: none; }
+.tb-card-menu summary:hover, .tb-card-menu[open] summary { background: var(--wt-bg-alt); color: var(--wt-text); }
+.tb-card-menu [role="menu"] { position: absolute; right: 0; bottom: 36px; z-index: 5; display: grid; min-width: 200px; max-width: 280px; padding: 6px; border: 1px solid var(--wt-line); border-radius: 8px; background: white; box-shadow: 0 12px 30px rgba(15, 23, 38, .18); }
+.tb-card-menu [role="menuitem"] { display: block; padding: 8px 10px; border: 0; border-radius: 4px; background: none; color: var(--wt-text); font: inherit; font-size: .95rem; text-align: left; text-decoration: none; cursor: pointer; }
+.tb-card-menu [role="menuitem"]:hover, .tb-card-menu [role="menuitem"]:focus-visible { background: var(--wt-bg-alt); }
+.tb-card-menu .danger { color: var(--wt-red); }
+
+/* The new project dialog: steps, choices as cards, a summary to confirm. */
+.tb-modal-card.tb-new { width: min(720px, 100%); }
+.tb-steps { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; }
+.tb-steps li { flex: 1; }
+.tb-steps button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border: 0; border-bottom: 3px solid var(--wt-line); background: none; color: var(--wt-muted); font: inherit; font-size: .9rem; text-align: left; cursor: pointer; }
+.tb-steps button:disabled { cursor: default; }
+.tb-steps span { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--wt-bg-alt); font-size: .8rem; font-weight: 700; }
+.tb-steps .done button { border-color: var(--wt-brand); color: var(--wt-text); }
+.tb-steps .done span { background: var(--wt-brand); color: white; }
+.tb-steps .now button { border-color: var(--wt-ink); color: var(--wt-text); font-weight: 700; }
+.tb-steps .now span { background: var(--wt-ink); color: white; }
+.tb-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.tb-kinds { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.tb-choice { position: relative; display: grid; border: 2px solid var(--wt-line); border-radius: 8px; background: white; }
+button.tb-choice, .tb-choice-main { display: grid; gap: 4px; align-content: start; padding: 12px; border-radius: 6px; color: var(--wt-text); font: inherit; text-align: left; cursor: pointer; }
+.tb-choice-main { border: 0; background: none; }
+button.tb-choice { border: 2px solid var(--wt-line); border-radius: 8px; background: white; }
+.tb-choice span:not(.tb-choice-icon):not(.tb-choice-badge) { color: var(--wt-muted); font-size: .88rem; }
+.tb-choice:hover { border-color: #c9d1dd; }
+.tb-choice.on { border-color: var(--wt-brand); background: #f1faf4; }
+.tb-choice-badge { justify-self: start; padding: 1px 6px; border-radius: 4px; background: var(--wt-bg-alt); color: var(--wt-text); font-size: .72rem; font-weight: 700; text-transform: uppercase; }
+.tb-choice-remove { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; border: 0; border-radius: 4px; background: none; color: var(--wt-muted); font-size: 1.1rem; cursor: pointer; }
+.tb-choice-remove:hover { background: var(--wt-bg-alt); color: var(--wt-red); }
+.tb-more-starts summary { cursor: pointer; color: var(--wt-muted); margin-bottom: 8px; }
+.tb-new-summary { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; padding: 12px; border-radius: 6px; background: var(--wt-bg-alt); }
+.tb-new-summary dt { color: var(--wt-muted); }
+.tb-new-summary dd { margin: 0; font-weight: 600; }
+.tb-new-actions { justify-content: flex-end; }
+
+@media (max-width: 600px) {
+  .tb-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .tb-card-body { padding: 8px 34px 10px 10px; }
+  .tb-segments { width: 100%; }
+  .tb-segments button { flex: 1; padding: 4px 6px; }
+  .tb-steps button { font-size: 0; gap: 0; justify-content: center; }
+  .tb-steps span { font-size: .8rem; }
+  .tb-steps .now button { font-size: .85rem; gap: 6px; }
+}

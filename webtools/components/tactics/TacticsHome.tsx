@@ -1,189 +1,162 @@
 "use client";
 
-// Tacticsboard's start: TeamZone's library, a new project (a match, a
-// training or teaching material, for one of your TeamZone teams or none,
-// started from ready boards, a template or a favourite), your templates and
-// favourites, the team's projects other leaders made, and your library: all
-// of your projects. A project can also be imported from a file. Come from a
-// folder (?mapp=<id>), the new project is put in that folder.
+// Tacticsboard's start: a new project (guided in a dialog, NewProjectDialog)
+// or one quickly by kind, TeamZone's library, and your projects as a grid
+// of cards with their first board small. The ones you pin come first, then
+// your folders, your projects and the team's projects other leaders made,
+// all found with one search. A project can also be imported from a file.
+// Come from a folder (?mapp=<id>), the new project is put in that folder.
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { newDocument } from "../../lib/tactics/document.ts";
-import type { Board, ProjectKind, ProjectSummary } from "../../lib/tactics/model.ts";
-import { boardsFromTemplate, defaultStarterKeys, starterBoard, starterSets } from "../../lib/tactics/templates.ts";
+import { removalNote } from "../../lib/tactics/folders.ts";
+import type { ProjectKind } from "../../lib/tactics/model.ts";
+import { noFilters } from "../../lib/tactics/library.ts";
 import type { LeaderTeam } from "../../lib/tournament";
 import { useAccount } from "../account";
 import { kindLabels } from "./TopBar.tsx";
 import { useTemplates } from "./use-templates.ts";
 import { useSharedLibrary } from "./use-shared-library.ts";
-import { MyLibrary } from "./MyLibrary.tsx";
-import { TeamProjects } from "./TeamProjects.tsx";
 import { useFolders } from "./use-folders.ts";
+import { FolderCards } from "./FolderCards.tsx";
+import { FolderPicker } from "./FolderPicker.tsx";
 import { ImportProject } from "./ImportProject.tsx";
-import { boardsFromLibrary, libraryKindLabels, librarySummaryLine, noFilters, projectKindOf } from "../../lib/tactics/library.ts";
+import { HomeFilterBar } from "./home/HomeFilterBar.tsx";
+import { kindHints, NewProjectDialog } from "./home/NewProjectDialog.tsx";
+import { ProjectCard, type HomeProject } from "./home/ProjectCard.tsx";
+import { noHomeFilters, teamMatches, useHomeProjects } from "./home/use-home-projects.ts";
 import "./tactics.css";
+import "./home/home.css";
 
 export function TacticsHome() {
   const { client } = useAccount();
-  const router = useRouter();
-  const { folders, addProject } = useFolders();
+  const { folders, error: folderError, create: createFolder, addProject, reload: reloadFolders } = useFolders();
   const folderId = useSearchParams().get("mapp");
   const folder = folders?.find(item => item.id === folderId) ?? null;
   const [teams, setTeams] = useState<LeaderTeam[]>([]);
-  const [form, setForm] = useState({ name: "", kind: "match" as ProjectKind, teamId: "" });
-  // "ready" for the ready boards picked below, else a template's id.
-  const [start, setStart] = useState("ready");
-  const [picked, setPicked] = useState<string[]>(defaultStarterKeys.match);
   const { templates, error: templateError, boardsOf, remove: removeTemplate } = useTemplates();
-  // The library's items you marked: additions to your own library.
-  const { items: favorites, clubs, search, boardsOf: sharedBoardsOf, favorite } = useSharedLibrary();
+  // The library's items you marked, to start a project from.
+  const { items: favorites, search, boardsOf: sharedBoardsOf } = useSharedLibrary();
   useEffect(() => { void search(noFilters, null, true); }, [search]);
-  const unmark = async (id: string) => { if (await favorite(id, false)) void search(noFilters, null, true); };
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [filters, setFilters] = useState(noHomeFilters);
+  const { mine, team, error, pin, remove, unpublish } = useHomeProjects(filters);
+  // The dialog's preset kind, or "pick" to begin with the kind; null when closed.
+  const [creating, setCreating] = useState<ProjectKind | "pick" | null>(null);
+  const [picking, setPicking] = useState<HomeProject | null>(null);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     client?.schema("api").rpc("list_tournament_leader_teams").then(({ data }) => setTeams((data as LeaderTeam[] | null) ?? []));
   }, [client]);
+  // Come from a folder's "Nytt projekt", the dialog is open at once.
+  useEffect(() => { if (folderId) setCreating("pick"); }, [folderId]);
 
-  const create = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!client) return;
-    setBusy(true); setError("");
-    const team = teams.find(item => item.team_id === form.teamId);
-    let boards: Board[] | null;
-    if (start === "ready") {
-      const chosen = starterSets[form.kind].filter(item => picked.includes(item.key));
-      boards = chosen.length > 0 ? chosen.map(item => starterBoard(item, team?.team_name)) : newDocument("Tavla 1", team?.team_name).boards;
-    } else if (start.startsWith("favorite:")) {
-      const item = favorites?.find(entry => entry.id === start.slice(9));
-      const found = item ? await sharedBoardsOf(item.id) : null;
-      boards = item && found ? boardsFromTemplate(boardsFromLibrary(item, found), team?.team_name) : null;
-    } else {
-      const found = await boardsOf(start);
-      boards = found && boardsFromTemplate(found, team?.team_name);
+  const removeProject = async (project: HomeProject) => {
+    const published = (project.published ?? []).length > 0 ? " Det du publicerat från projektet finns kvar i TeamZones bibliotek." : "";
+    if (await remove(project, `Ta bort ${project.name}? Det går inte att ångra.${published}${removalNote(project.folders ?? [])}`) && project.folders?.length) {
+      void reloadFolders();
     }
-    if (!boards) { setBusy(false); setError("Mallen kunde inte hämtas. Försök igen."); return; }
-    const { data, error: createError } = await client.schema("api").rpc("create_tactics_project", {
-      project_name: form.name.trim() || "Namnlöst projekt", project_kind: form.kind, target_team_id: team?.team_id ?? null,
-      project_document: { ...newDocument(), boards },
-    });
-    if (createError) { setBusy(false); setError("Projektet kunde inte skapas. Försök igen."); return; }
-    const created = (data as ProjectSummary).id;
-    // Not put in the folder, the project is still made; the folder page tells.
-    if (folder) await addProject(folder.id, created);
-    setBusy(false);
-    router.push(folder ? `/tacticsboard/${created}?mapp=${folder.id}` : `/tacticsboard/${created}`);
   };
 
+  const teamShown = team.filter(project => teamMatches(project, filters));
+  const pinned = [...(mine ?? []), ...teamShown].filter(project => project.pinned);
+  const own = (mine ?? []).filter(project => !project.pinned);
+  const others = teamShown.filter(project => !project.pinned);
+  const filtered = Object.values(filters).some(value => value !== "");
+  const nothingYet = mine !== null && mine.length === 0 && team.length === 0 && !filtered;
+  const card = (project: HomeProject) => (
+    <ProjectCard key={project.id} project={project} onPin={pin} onFolders={setPicking}
+      onRemove={project.access === undefined ? removeProject : undefined} onUnpublish={unpublish} />
+  );
+
   return (
-    <div className="bk-home">
-      {error && <p role="alert" className="wt-error">{error}</p>}
-      <section className="wt-panel">
-        <h2>TeamZones bibliotek</h2>
-        <p>Övningar, pass och sessioner som tränare delar med varandra, och TeamZones egna. Sök på skede, ålder och spelform.{clubs.length > 0 ? " Där finns också klubbens lista." : ""}</p>
-        <Link className="wt-button small" href="/tacticsboard/bibliotek">Sök i TeamZones bibliotek</Link>
-      </section>
-      <section className="wt-panel" id="nytt-projekt">
-        <h2>Nytt projekt</h2>
-        {folder && <p className="wt-small">Projektet läggs i mappen <Link className="wt-link" href={`/tacticsboard/mapp/${folder.id}`}>{folder.name}</Link>.</p>}
-        <form className="wt-form" onSubmit={create}>
-          <label>Namn<input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} maxLength={120} placeholder="T.ex. Match mot Aneby SK" /></label>
-          <div className="bk-times">
-            <label>Typ
-              <select value={form.kind} onChange={event => {
-                const kind = event.target.value as ProjectKind;
-                setForm({ ...form, kind });
-                setPicked(defaultStarterKeys[kind]);
-              }}>
-                {Object.entries(kindLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-            </label>
-            {teams.length > 0 && (
-              <label>Lag i TeamZone (frivilligt)
-                <select value={form.teamId} onChange={event => setForm({ ...form, teamId: event.target.value })}>
-                  <option value="">Inget lag</option>
-                  {teams.map(team => <option key={team.team_id} value={team.team_id}>{team.team_name} · {team.club_name}</option>)}
-                </select>
-              </label>
-            )}
+    <div className="tb-home">
+      <div className="tb-home-actions">
+        <button type="button" className="wt-button" onClick={() => setCreating("pick")}>
+          <span aria-hidden="true">+</span> Nytt projekt
+        </button>
+        <Link className="wt-button secondary" href="/tacticsboard/bibliotek">TeamZones bibliotek</Link>
+        <button type="button" className="wt-button secondary" aria-expanded={importing} onClick={() => setImporting(!importing)}>Importera</button>
+      </div>
+      {importing && <ImportProject folderId={folder?.id} onCreated={folder ? id => addProject(folder.id, id) : undefined} />}
+      {templateError && <p role="alert" className="wt-error">{templateError}</p>}
+
+      {nothingYet ? (
+        <section className="tb-welcome" aria-label="Kom igång">
+          <h2>Kom igång</h2>
+          <p>Vad vill du göra först? Du väljer sedan vad projektet börjar från, så du slipper rita allt själv.</p>
+          <div className="tb-quick big">
+            {(Object.keys(kindLabels) as ProjectKind[]).map(kind => (
+              <button key={kind} type="button" className="tb-quick-card" onClick={() => setCreating(kind)}>
+                <span className={`tb-choice-icon tb-kind-${kind}`} aria-hidden="true">{kindLabels[kind].slice(0, 1)}</span>
+                <strong>Ny {kindLabels[kind].toLowerCase()}</strong>
+                <span>{kindHints[kind]}</span>
+              </button>
+            ))}
+            <Link className="tb-quick-card" href="/tacticsboard/bibliotek">
+              <span className="tb-choice-icon tb-kind-library" aria-hidden="true">B</span>
+              <strong>Hämta från biblioteket</strong>
+              <span>Övningar, pass och sessioner som andra tränare och TeamZone delar.</span>
+            </Link>
           </div>
-          <label>Börja från
-            <select value={start} onChange={event => {
-              setStart(event.target.value);
-              const template = templates?.find(item => item.id === event.target.value);
-              if (template) setForm({ ...form, kind: template.kind });
-              const marked = favorites?.find(entry => `favorite:${entry.id}` === event.target.value);
-              if (marked) setForm({ ...form, kind: projectKindOf[marked.kind], name: form.name || marked.title });
-            }}>
-              <option value="ready">Färdiga tavlor för {kindLabels[form.kind].toLowerCase()}</option>
-              {(templates ?? []).map(template => <option key={template.id} value={template.id}>Mall: {template.name}</option>)}
-              {(favorites ?? []).map(item => <option key={item.id} value={`favorite:${item.id}`}>Favorit: {item.title}</option>)}
-            </select>
-          </label>
-          {start === "ready" ? (
-            <fieldset className="tb-starters">
-              <legend>Tavlor att börja med</legend>
-              {starterSets[form.kind].map(item => (
-                <label key={item.key}>
-                  <input type="checkbox" checked={picked.includes(item.key)}
-                    onChange={event => setPicked(event.target.checked ? [...picked, item.key] : picked.filter(key => key !== item.key))} />
-                  {item.name}
-                </label>
-              ))}
-            </fieldset>
+        </section>
+      ) : (
+        <div className="tb-quick" aria-label="Snabbstart">
+          <span className="tb-quick-label">Snabbstart:</span>
+          {(Object.keys(kindLabels) as ProjectKind[]).map(kind => (
+            <button key={kind} type="button" className="tb-chip" onClick={() => setCreating(kind)}>
+              <span className={`tb-dot tb-kind-${kind}`} aria-hidden="true" />Ny {kindLabels[kind].toLowerCase()}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!nothingYet && <HomeFilterBar filters={filters} onChange={setFilters} />}
+      {error && <p role="alert" className="wt-error">{error}</p>}
+
+      {pinned.length > 0 && (
+        <section aria-labelledby="tb-pinned">
+          <h2 id="tb-pinned" className="tb-home-heading">Fästa</h2>
+          <ul className="tb-grid">{pinned.map(card)}</ul>
+        </section>
+      )}
+
+      {!filtered && !nothingYet && <FolderCards folders={folders} error={folderError} create={createFolder} />}
+
+      {!nothingYet && (
+        <section aria-labelledby="tb-mine">
+          <div className="tb-home-head">
+            <h2 id="tb-mine" className="tb-home-heading">Mina projekt</h2>
+            {mine && <span className="tb-count">{mine.length}</span>}
+          </div>
+          {mine === null ? <p className="wt-status">Laddar…</p> : own.length === 0 ? (
+            <p className="tb-empty">{filtered ? "Inget av dina projekt passar sökningen." : pinned.length > 0 ? "Alla dina projekt är fästa ovan." : "Inga egna projekt än."}</p>
           ) : (
-            <p className="wt-small">{start.startsWith("favorite:")
-              ? favorites?.find(item => `favorite:${item.id}` === start)?.boards.map(board => board.name).join(", ")
-              : templates?.find(item => item.id === start)?.boards.map(board => board.name).join(", ")}</p>
+            <ul className="tb-grid">{own.map(card)}</ul>
           )}
-          <button type="submit" className="wt-button" disabled={busy}>Skapa och öppna</button>
-          {teams.length > 0 && <p className="wt-small">Med ett lag hämtar du truppen till tavlan. Senare kan tavlan länkas till lagets aktiviteter i appen.</p>}
-        </form>
-        <ImportProject folderId={folder?.id} onCreated={folder ? id => addProject(folder.id, id) : undefined} />
-      </section>
-      {templates && templates.length > 0 && (
-        <section className="wt-panel">
-          <h2>Dina mallar</h2>
-          {templateError && <p role="alert" className="wt-error">{templateError}</p>}
-          <ul className="bk-resource-list">
-            {templates.map(template => (
-              <li key={template.id}>
-                <div>
-                  <strong>{template.name}</strong>
-                  <span>{[kindLabels[template.kind], template.boards.map(board => board.name).join(", ")].join(" · ")}</span>
-                </div>
-                <div className="wt-actions">
-                  <button type="button" className="wt-button secondary small"
-                    onClick={() => { if (window.confirm(`Ta bort mallen ${template.name}?`)) { if (start === template.id) setStart("ready"); void removeTemplate(template.id); } }}>Ta bort</button>
-                </div>
-              </li>
-            ))}
-          </ul>
         </section>
       )}
-      {favorites && favorites.length > 0 && (
-        <section className="wt-panel" aria-label="Dina favoriter">
-          <h2>Dina favoriter</h2>
-          <p className="wt-small">Övningar, pass och sessioner ur biblioteket som du har markerat. Börja ett nytt projekt från dem ovan.</p>
-          <ul className="bk-resource-list">
-            {favorites.map(item => (
-              <li key={item.id}>
-                <div>
-                  <strong>{item.title}</strong>
-                  <span>{[libraryKindLabels[item.kind], librarySummaryLine(item), item.starter ? "TeamZone" : `av ${item.author}`].filter(Boolean).join(" · ")}</span>
-                </div>
-                <div className="wt-actions">
-                  <button type="button" className="wt-button secondary small" onClick={() => { if (start === `favorite:${item.id}`) setStart("ready"); void unmark(item.id); }}>Ta bort favorit</button>
-                </div>
-              </li>
-            ))}
-          </ul>
+
+      {others.length > 0 && (
+        <section aria-labelledby="tb-team">
+          <div className="tb-home-head">
+            <h2 id="tb-team" className="tb-home-heading">Lagets tavlor</h2>
+            <span className="tb-count">{teamShown.length}</span>
+          </div>
+          <p className="wt-small">Projekt som andra ledare har gjort för dina lag. Ägaren bestämmer om du kan redigera dem; annars kan du titta och göra en egen kopia.</p>
+          <ul className="tb-grid">{others.map(card)}</ul>
         </section>
       )}
-      <TeamProjects />
-      <MyLibrary />
+
+      {picking && (
+        <FolderPicker projectId={picking.id} projectName={picking.name} current={picking.folders ?? []}
+          onClose={changed => { setPicking(null); if (changed) { setFilters(current => ({ ...current })); void reloadFolders(); } }} />
+      )}
+      {creating && (
+        <NewProjectDialog teams={teams} folder={folder} templates={templates} templateBoards={boardsOf}
+          removeTemplate={id => void removeTemplate(id)} favorites={favorites} favoriteBoards={sharedBoardsOf} addToFolder={addProject}
+          kind={creating === "pick" ? undefined : creating} onClose={() => setCreating(null)} />
+      )}
     </div>
   );
 }
