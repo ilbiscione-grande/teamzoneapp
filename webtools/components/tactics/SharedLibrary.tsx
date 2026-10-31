@@ -2,23 +2,24 @@
 
 // The library (decision package 13): exercises, passes and sessions shared
 // by coaches with the community or with a club, TeamZone's own starters, and
-// each club's curated list for its teams. Search by words
-// and filter on kind, part, phase, age class and game form; start a project
-// from an item (a copy: later versions never change it), report what does
-// not belong here, and remove what you shared yourself.
+// each club's curated list for its teams. Shown as the start page shows
+// projects: one search (words, the kind as one tap, the other filters folded
+// away) over a grid of cards. Start a project from an item (a copy: later
+// versions never change it), mark it a favourite, report what does not
+// belong here, and remove what you shared yourself.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { newDocument } from "../../lib/tactics/document.ts";
-import {
-  ageClasses, ageClassLabels, boardsFromLibrary, gameFormLabels, gameForms, libraryKindLabels, librarySummaryLine,
-  noFilters, partLabels, phaseLabels, projectKindOf, type SharedFilters, type SharedItemSummary,
-} from "../../lib/tactics/library.ts";
+import { boardsFromLibrary, libraryKindLabels, noFilters, projectKindOf, type SharedFilters, type SharedItemSummary } from "../../lib/tactics/library.ts";
 import type { ProjectSummary } from "../../lib/tactics/model.ts";
 import { boardsFromTemplate } from "../../lib/tactics/templates.ts";
 import { useAccount } from "../account";
 import { useSharedLibrary } from "./use-shared-library.ts";
+import { HomeFilterBar } from "./home/HomeFilterBar.tsx";
+import { LibraryCard } from "./home/LibraryCard.tsx";
 import "./tactics.css";
+import "./home/home.css";
 
 export function SharedLibrary() {
   const { client } = useAccount();
@@ -38,17 +39,15 @@ export function SharedLibrary() {
     return () => window.clearTimeout(timer);
   }, [filters, source, search]);
 
+  function refresh() {
+    return search(filters, source === "all" || source === "favorites" ? null : source, source === "favorites");
+  }
   const toggle = async (item: SharedItemSummary, clubId: string, picked: boolean) => {
     if (await pick(clubId, item.id, picked)) void refresh();
   };
   const mark = async (item: SharedItemSummary) => {
     if (await favorite(item.id, !item.favorite)) void refresh();
   };
-
-  const set = (patch: Partial<SharedFilters>) => setFilters(current => ({ ...current, ...patch }));
-  function refresh() {
-    return search(filters, source === "all" || source === "favorites" ? null : source, source === "favorites");
-  }
 
   const start = async (item: SharedItemSummary) => {
     if (!client) return;
@@ -77,91 +76,34 @@ export function SharedLibrary() {
     if (await unshare(item.id)) void refresh();
   };
 
+  const sources: [string, string][] = [["all", "Hela biblioteket"], ["favorites", "Mina favoriter"],
+    ...clubs.map(club => [club.club_id, clubs.length > 1 ? `Klubbens lista: ${club.club_name}` : "Klubbens lista"] as [string, string])];
+  const filtered = Object.values(filters).some(value => value !== "");
   return (
-    <div className="bk-home">
-      <p className="wt-small"><Link className="wt-link" href="/tacticsboard">← Dina projekt och ditt bibliotek</Link></p>
-      <section className="wt-panel">
-        <h2>{listClub ? `Klubbens lista: ${listClub.club_name}` : source === "favorites" ? "Mina favoriter" : "Sök i biblioteket"}</h2>
-        <p className="wt-small">{listClub
-          ? "Det klubben erbjuder sina lag: övningar utvalda ur hela biblioteket, och det som delats bara med klubben."
-          : "Övningar, pass och sessioner som tränare delar med hela communityn eller med din klubb, och TeamZones egna."} Det du använder blir en kopia i ett eget projekt.</p>
-        <div className="wt-form">
-          <label>Visa
-            <select value={source} onChange={event => setSource(event.target.value)}>
-              <option value="all">Hela biblioteket</option>
-              <option value="favorites">Mina favoriter</option>
-              {clubs.map(club => <option key={club.club_id} value={club.club_id}>Klubbens lista: {club.club_name}</option>)}
-            </select>
-          </label>
-          <label>Sök<input value={filters.text} maxLength={100} placeholder="T.ex. rondo eller press" onChange={event => set({ text: event.target.value })} /></label>
-          <div className="bk-times tb-filters">
-            <label>Typ
-              <select value={filters.kind} onChange={event => set({ kind: event.target.value as SharedFilters["kind"] })}>
-                <option value="">Alla</option>
-                {Object.entries(libraryKindLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-            </label>
-            <label>Del av passet
-              <select value={filters.part} onChange={event => set({ part: event.target.value as SharedFilters["part"] })}>
-                <option value="">Alla</option>
-                {Object.entries(partLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-            </label>
-            <label>Skede
-              <select value={filters.phase} onChange={event => set({ phase: event.target.value as SharedFilters["phase"] })}>
-                <option value="">Alla</option>
-                {Object.entries(phaseLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-            </label>
-            <label>Ålder
-              <select value={filters.age} onChange={event => set({ age: event.target.value as SharedFilters["age"] })}>
-                <option value="">Alla</option>
-                {ageClasses.map(age => <option key={age} value={age}>{ageClassLabels[age]}</option>)}
-              </select>
-            </label>
-            <label>Spelform
-              <select value={filters.form} onChange={event => set({ form: event.target.value as SharedFilters["form"] })}>
-                <option value="">Alla</option>
-                {gameForms.map(form => <option key={form} value={form}>{gameFormLabels[form]}</option>)}
-              </select>
-            </label>
-          </div>
+    <div className="tb-home">
+      <div className="tb-home-actions tb-library-top">
+        <Link className="wt-link" href="/tacticsboard">← Dina projekt</Link>
+        <div className="tb-segments" role="group" aria-label="Visa">
+          {sources.map(([value, label]) => (
+            <button key={value} type="button" aria-pressed={source === value} onClick={() => setSource(value)}>{label}</button>
+          ))}
         </div>
-      </section>
+      </div>
+      <p className="wt-small tb-library-intro">{listClub
+        ? "Det klubben erbjuder sina lag: övningar utvalda ur hela biblioteket, och det som delats bara med klubben."
+        : source === "favorites" ? "Det du har markerat med stjärnan. Du börjar också nya projekt från dem på startsidan."
+        : "Övningar, pass och sessioner som tränare delar med hela communityn eller med din klubb, och TeamZones egna."} Det du använder blir en kopia i ett eget projekt.</p>
+      <HomeFilterBar filters={filters} onChange={setFilters} kinds={libraryKindLabels} placeholder="Sök, t.ex. rondo eller press" />
       {(error || notice) && <p role="alert" className={error ? "wt-error" : "wt-status"}>{error || notice}</p>}
-      <section className="wt-panel" aria-label="Träffar">
-        {items === null ? <p className="wt-status">Laddar…</p> : items.length === 0 ? <p>Inget hittades. Prova med andra ord eller färre filter.</p> : (
-          <ul className="bk-resource-list">
+      <section aria-label="Träffar">
+        {items === null ? <p className="wt-status">Laddar…</p> : items.length === 0 ? (
+          <p className="tb-empty">{source === "favorites" && !filtered ? "Inga favoriter än. Tryck på stjärnan på det du vill hitta igen." : "Inget hittades. Prova med andra ord eller färre filter."}</p>
+        ) : (
+          <ul className="tb-grid">
             {items.map(item => (
-              <li key={item.id}>
-                <div>
-                  <strong>{item.title}</strong>
-                  <span>{[libraryKindLabels[item.kind], librarySummaryLine(item)].filter(Boolean).join(" · ")}</span>
-                  <span>{[item.starter ? "TeamZone" : `Delad av ${item.author}`, item.club_name && `bara för ${item.club_name}`,
-                    item.version > 1 && `version ${item.version}`, item.hidden && "dold efter rapporter",
-                    item.picked_by_clubs.length > 0 && `i klubbens lista`].filter(Boolean).join(" · ")}</span>
-                </div>
-                <div className="wt-actions">
-                  <button type="button" className="wt-button small" disabled={busy === item.id} onClick={() => void start(item)}>
-                    {busy === item.id ? "Skapar…" : "Nytt projekt"}
-                  </button>
-                  <button type="button" className="wt-button secondary small" aria-pressed={item.favorite} onClick={() => void mark(item)}>
-                    {item.favorite ? "★ Favorit" : "☆ Favorit"}
-                  </button>
-                  {keeping.filter(club => !item.club_id || item.club_id === club.club_id).map(club => {
-                    // What is shared only with the club is in its list already.
-                    if (item.club_id === club.club_id || item.hidden) return null;
-                    const picked = item.picked_by_clubs.includes(club.club_id);
-                    const label = picked ? "Ta bort ur klubbens lista" : "Lägg i klubbens lista";
-                    return (
-                      <button key={club.club_id} type="button" className="wt-button secondary small" title={club.club_name}
-                        onClick={() => void toggle(item, club.club_id, !picked)}>{keeping.length > 1 ? `${label}: ${club.club_name}` : label}</button>
-                    );
-                  })}
-                  {item.can_remove && <button type="button" className="wt-button secondary small" onClick={() => void remove(item)}>{item.mine ? "Sluta dela" : "Ta bort"}</button>}
-                  {!item.mine && !item.hidden && <button type="button" className="wt-button secondary small" onClick={() => void sendReport(item)}>Rapportera</button>}
-                </div>
-              </li>
+              <LibraryCard key={item.id} item={item} keeping={keeping} busy={busy === item.id} onUse={() => void start(item)}
+                onFavorite={() => void mark(item)} onPick={(clubId, picked) => void toggle(item, clubId, picked)}
+                onRemove={() => void remove(item)} onReport={() => void sendReport(item)} />
             ))}
           </ul>
         )}

@@ -5,9 +5,9 @@
 // hold the same template twice and share links stay apart.
 import { applyFormation, createObject, newBoard, newFrame, newId } from "./document.ts";
 import { formations } from "./formations.ts";
-import { PITCH_LENGTH, PITCH_WIDTH, type Board, type PitchView, type Point, type ProjectDocument, type ProjectKind, type TacticsObject } from "./model.ts";
+import { PITCH_LENGTH, PITCH_WIDTH, type Board, type ExercisePart, type PitchView, type Point, type ProjectDocument, type ProjectKind, type TacticsObject } from "./model.ts";
 
-export type StarterBoard = { key: string; name: string; view: PitchView; ball?: Point; formation?: string };
+export type StarterBoard = { key: string; name: string; view: PitchView; ball?: Point; formation?: string; part?: ExercisePart };
 
 const half = PITCH_LENGTH / 2;
 
@@ -26,7 +26,7 @@ export const starterSets: Record<ProjectKind, StarterBoard[]> = {
     { key: "throw-in-against", name: "Inkast försvar", view: "defend", ball: { x: 22, y: 0 } },
   ],
   training: [
-    { key: "warm-up", name: "Uppvärmning", view: "empty" },
+    { key: "warm-up", name: "Uppvärmning", view: "empty", part: "warmup" },
     { key: "technique", name: "Teknik", view: "empty" },
     { key: "passing", name: "Passningsövning", view: "empty" },
     { key: "possession", name: "Possession", view: "empty" },

@@ -111,7 +111,7 @@ export function TacticsHome() {
         </div>
       )}
 
-      {!nothingYet && <HomeFilterBar filters={filters} onChange={setFilters} />}
+      {!nothingYet && <HomeFilterBar filters={filters} onChange={setFilters} kinds={kindLabels} />}
       {error && <p role="alert" className="wt-error">{error}</p>}
 
       {pinned.length > 0 && (

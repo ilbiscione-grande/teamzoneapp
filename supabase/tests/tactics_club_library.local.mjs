@@ -36,6 +36,11 @@ grant usage on schema api, internal, core, auth to authenticated;`);
 for (const name of ['20261213090000_tactics_library', '20261214090000_tactics_shared_library', '20261215090000_tactics_club_library']) {
   await db.exec(read(`supabase/migrations/${name}.sql`));
 }
+// The board preview alone from 20270107090000 (the rest of it is the match plan's), then the summaries with it.
+const previews = read('supabase/migrations/20270107090000_tactics_board_previews.sql');
+const previewStart = previews.indexOf('create or replace function internal.tactics_board_preview');
+await db.exec(previews.slice(previewStart, previews.indexOf('\n$$;', previewStart) + 4));
+await db.exec(read('supabase/migrations/20270113090000_tactics_shared_previews.sql'));
 const call = async (who, sql, params = []) => {
   await db.query("select set_config('request.jwt.claim.sub',$1,false)", [who]);
   await db.exec('set role authenticated');
@@ -63,6 +68,8 @@ assert.deepEqual(await call(player, 'select api.list_my_tactics_clubs()'), []);
 const warmup = await saveLibrary('Klubbens uppvärmning', 'b1');
 const forClub = await call(anna, 'select api.share_tactics_library_item($1,$2)', [warmup.id, club]);
 assert.deepEqual([forClub.club_name, forClub.mine], ['Demoklubben IF', true]);
+// Each item brings its first board to draw.
+assert.deepEqual(forClub.preview, { view: null, teams: null, objects: [] });
 assert.deepEqual(titles(await search(bo, 'klubbens')), ['Klubbens uppvärmning']);
 assert.deepEqual(await search(outsider, 'klubbens'), []);
 await fails(outsider, 'select api.get_tactics_shared_item($1)', [forClub.id], /not_found/);

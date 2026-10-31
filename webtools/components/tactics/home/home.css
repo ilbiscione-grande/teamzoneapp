@@ -104,3 +104,20 @@ button.tb-choice { border: 2px solid var(--wt-line); border-radius: 8px; backgro
   .tb-steps span { font-size: .8rem; }
   .tb-steps .now button { font-size: .85rem; gap: 6px; }
 }
+.tb-new-details { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--wt-line); border-radius: 6px; }
+.tb-new-details h3 { margin: 0; font-size: 1rem; text-transform: uppercase; }
+.tb-new-details h3 span { color: var(--wt-muted); font-weight: 400; text-transform: none; }
+.tb-new-details p { margin: 0; }
+.tb-toggles { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; border: 0; }
+.tb-toggles legend { width: 100%; margin-bottom: 6px; font-weight: 600; }
+.tb-chip[aria-pressed="true"] { border-color: var(--wt-brand); background: #f1faf4; font-weight: 600; }
+
+/* TeamZone's library in the same grid: its kinds' colours, "Använd" on each card. */
+.tb-lib-exercise { background: var(--wt-brand); color: white; }
+.tb-lib-plan { background: #1d4ed8; color: white; }
+.tb-lib-lesson { background: #b45309; color: white; }
+button.tb-card-picture { width: 100%; padding: 0; border: 0; cursor: pointer; }
+.tb-card-use { justify-self: start; margin-top: 8px; }
+.tb-library-top { align-items: center; justify-content: space-between; }
+.tb-library-top .tb-segments { flex-wrap: wrap; }
+.tb-library-intro { margin: -8px 0 0; }

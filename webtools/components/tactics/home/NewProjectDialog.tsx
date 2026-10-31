@@ -3,18 +3,21 @@
 // A new project, guided in three steps: what it is (a match, a training or
 // teaching material), what it starts from (ready boards, an empty board,
 // one of your templates or a favourite from TeamZone's library), then its
-// name and TeamZone team, confirmed before it is made and opened. A step
+// name and TeamZone team and, if wished, the phase, ages and game forms the
+// library's filters find it by, confirmed before it is made and opened. A step
 // can be gone back to; a kind picked on the start page skips the first.
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { newDocument } from "../../../lib/tactics/document.ts";
 import type { FolderSummary } from "../../../lib/tactics/folders.ts";
 import { boardsFromLibrary, libraryKindLabels, projectKindOf, type SharedItemSummary } from "../../../lib/tactics/library.ts";
-import type { Board, ProjectKind, ProjectSummary } from "../../../lib/tactics/model.ts";
+import { noDetails, withDetails } from "../../../lib/tactics/home.ts";
+import type { Board, ExercisePart, ProjectKind, ProjectSummary } from "../../../lib/tactics/model.ts";
 import { boardsFromTemplate, defaultStarterKeys, starterBoard, starterSets, type TemplateSummary } from "../../../lib/tactics/templates.ts";
 import type { LeaderTeam } from "../../../lib/tournament";
 import { useAccount } from "../../account";
 import { kindLabels } from "../TopBar.tsx";
+import { detailsText, NewProjectDetailsFields } from "./NewProjectDetails.tsx";
 import "../share.css";
 
 export const kindHints: Record<ProjectKind, string> = {
@@ -47,6 +50,7 @@ export function NewProjectDialog({ teams, folder, templates, templateBoards, rem
   const [start, setStart] = useState<Start>("ready");
   const [picked, setPicked] = useState<string[]>(defaultStarterKeys[preset ?? "match"]);
   const [name, setName] = useState("");
+  const [details, setDetails] = useState(noDetails);
   const [teamId, setTeamId] = useState(teams.length === 1 ? teams[0].team_id : "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -82,9 +86,11 @@ export function NewProjectDialog({ teams, folder, templates, templateBoards, rem
     setBusy(true); setError("");
     const team = teams.find(item => item.team_id === teamId);
     let boards: Board[] | null;
+    let parts: (ExercisePart | undefined)[] = [];
     if (start === "ready" || start === "empty") {
       const chosen = start === "ready" ? starterSets[kind].filter(item => picked.includes(item.key)) : [];
       boards = chosen.length > 0 ? chosen.map(item => starterBoard(item, team?.team_name)) : newDocument("Tavla 1", team?.team_name).boards;
+      parts = chosen.map(item => item.part);
     } else if (favorite) {
       const found = await favoriteBoards(favorite.id);
       boards = found && boardsFromTemplate(boardsFromLibrary(favorite, found), team?.team_name);
@@ -95,7 +101,7 @@ export function NewProjectDialog({ teams, folder, templates, templateBoards, rem
     if (!boards) { setBusy(false); setError("Det du valde att börja från kunde inte hämtas. Försök igen."); return; }
     const { data, error: createError } = await client.schema("api").rpc("create_tactics_project", {
       project_name: name.trim() || "Namnlöst projekt", project_kind: kind, target_team_id: team?.team_id ?? null,
-      project_document: { ...newDocument(), boards },
+      project_document: { ...newDocument(), boards: withDetails(boards, details, parts) },
     });
     if (createError) { setBusy(false); setError("Projektet kunde inte skapas. Försök igen."); return; }
     const created = (data as ProjectSummary).id;
@@ -197,9 +203,11 @@ export function NewProjectDialog({ teams, folder, templates, templateBoards, rem
                 <span className="wt-small">Med ett lag hämtar du truppen till tavlan, och lagets andra ledare kan se projektet.</span>
               </label>
             )}
+            <NewProjectDetailsFields value={details} onChange={setDetails} />
             <dl className="tb-new-summary">
               <dt>Typ</dt><dd>{kindLabels[kind]}</dd>
               <dt>Börjar från</dt><dd>{startLabel}</dd>
+              {detailsText(details) && <><dt>Inställningar</dt><dd>{detailsText(details)}</dd></>}
               {folder && <><dt>Mapp</dt><dd>{folder.name}</dd></>}
             </dl>
           </div>
