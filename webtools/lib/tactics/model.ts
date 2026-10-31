@@ -113,7 +113,11 @@ export type ShapeObject = Base & {
   /** 0–1: how much the area is filled. */
   fill: number;
   dashed: boolean;
+  /** How the area is filled: evenly (when missing) or hatched in stripes. */
+  pattern?: AreaPattern;
 };
+
+export type AreaPattern = "solid" | "stripes";
 
 export type TextObject = Base & {
   type: "text";
@@ -141,6 +145,9 @@ export type ChainObject = Base & {
   dashed: boolean;
   /** 0–1: how much a closed one is filled. */
   fill: number;
+  pattern?: AreaPattern;
+  /** Rings at the players' feet; shown when missing. */
+  rings?: boolean;
 };
 
 export type TacticsObject =

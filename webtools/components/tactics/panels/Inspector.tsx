@@ -3,7 +3,7 @@
 // Properties of what is selected: one object's own fields, or what several
 // have in common. Nothing selected shows the board's settings.
 import { kindName, newId, objectLabel, updateBoard } from "../../../lib/tactics/document.ts";
-import type { BallFlight, Board, TacticsObject } from "../../../lib/tactics/model.ts";
+import type { AreaPattern, BallFlight, Board, TacticsObject } from "../../../lib/tactics/model.ts";
 import { effectsOf, standingFacing } from "../../../lib/tactics/timeline.ts";
 import { facings, facingToRotation, normalAngle } from "../../../lib/tactics/facing.ts";
 import { effects } from "./effects.ts";
@@ -92,6 +92,11 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
           <label className="tb-field">Fyllning
             <input type="range" min={0} max={1} step={0.05} value={item.fill} onChange={event => patch({ fill: Number(event.target.value) })} />
           </label>
+          <label className="tb-field">Mönster
+            <select value={item.pattern ?? "solid"} onChange={event => patch({ pattern: event.target.value as AreaPattern })}>
+              <option value="solid">Fylld</option><option value="stripes">Randig</option>
+            </select>
+          </label>
           <label className="tb-check"><input type="checkbox" checked={item.dashed} onChange={event => patch({ dashed: event.target.checked })} />Streckad kant</label>
           <Swatches label="Färg" value={item.color} onChange={color => patch({ color })} />
         </>
@@ -127,7 +132,15 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
               </label>
             )}
           </div>
+          {item.closed && (
+            <label className="tb-field">Mönster
+              <select value={item.pattern ?? "solid"} onChange={event => patch({ pattern: event.target.value as AreaPattern })}>
+                <option value="solid">Fylld</option><option value="stripes">Randig</option>
+              </select>
+            </label>
+          )}
           <label className="tb-check"><input type="checkbox" checked={item.dashed} onChange={event => patch({ dashed: event.target.checked })} />Streckad</label>
+          <label className="tb-check"><input type="checkbox" checked={item.rings !== false} onChange={event => patch({ rings: event.target.checked })} />Ringar vid spelarna</label>
           <Swatches label="Färg" value={item.color} onChange={color => patch({ color })} />
         </>
       );

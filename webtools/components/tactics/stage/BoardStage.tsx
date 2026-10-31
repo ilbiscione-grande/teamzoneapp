@@ -65,6 +65,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
   const tool = useEditor(state => state.tool);
   const measureOn = useEditor(state => state.measure);
   const ruler = useEditor(state => state.ruler);
+  const reshaping = useEditor(state => state.reshaping);
   const playing = useEditor(state => state.playing);
   const playhead = useEditor(state => state.playhead);
   const frameIndex = useEditor(state => state.frameIndex);
@@ -127,7 +128,9 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
   const measure = measureOn && fullEdit;
   // Hidden objects stay in the list, not on the pitch. Playing shows the moves.
   const shown = playing || between ? objectsAt(board.frames, playhead) : objects;
-  const visible = shown.filter(item => !item.hidden);
+  // One being reshaped is drawn at the size its handles give it.
+  const visible = shown.filter(item => !item.hidden)
+    .map(item => (reshaping?.id === item.id ? { ...item, ...reshaping.patch } as typeof item : item));
   const holders = ballHolders(visible);
   // Ghosts of the frame before are for editing; a shared board shows none.
   const previous = fullEdit && frameIndex > 0 ? board.frames[frameIndex - 1]?.objects : undefined;

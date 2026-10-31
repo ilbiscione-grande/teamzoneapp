@@ -39,6 +39,9 @@ type EditorState = {
   /** The ruler's last measure, from one point to another; gone with the next tool. Not saved. */
   ruler: { from: Point; to: Point } | null;
   setRuler: (ruler: { from: Point; to: Point } | null) => void;
+  /** An object being reshaped by its handles: drawn so, at its true size, until let go. Not saved. */
+  reshaping: { id: string; patch: Partial<TacticsObject> } | null;
+  setReshaping: (reshaping: { id: string; patch: Partial<TacticsObject> } | null) => void;
   history: History;
   saveState: SaveState;
   /** Playing: where the playhead is (in frames), and how. */
@@ -99,6 +102,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   attachBall: true,
   measure: false,
   ruler: null,
+  reshaping: null,
   history: emptyHistory(),
   saveState: "saved",
   playing: false,
@@ -155,6 +159,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   setTool: tool => set({ tool, ruler: null, selection: tool === "select" ? get().selection : [] }),
   setMeasure: measure => set({ measure }),
   setRuler: ruler => set({ ruler }),
+  setReshaping: reshaping => set({ reshaping }),
   setAttachBall: attachBall => set({ attachBall }),
   select: (ids, additive = false) => set(state => ({
     selection: additive ? [...new Set([...state.selection.filter(id => !ids.includes(id)), ...ids.filter(id => !state.selection.includes(id))])] : ids,
