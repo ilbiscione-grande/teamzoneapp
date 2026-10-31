@@ -29,6 +29,40 @@ void main() {
     );
   });
 
+  test('a board draws its first frame in the view it is set to', () {
+    final board = MatchPlanBoard.fromJson({
+      'id': 'a',
+      'title': 'Press',
+      'visible': true,
+      'preview': {
+        'view': 'attack',
+        'teams': {
+          'home': {'color': '#f00', 'numberColor': '#fff'},
+        },
+        'objects': [
+          {'type': 'player', 'side': 'home', 'x': 80, 'y': 34, 'number': 9},
+          {'type': 'player', 'side': 'away', 'x': 10, 'y': 34},
+          {'type': 'ball', 'x': 81, 'y': 34, 'attachedTo': null},
+          {'type': 'ball', 'x': 60, 'y': 30, 'attachedTo': 'p'},
+          {'type': 'arrow', 'x': 70, 'y': 30},
+        ],
+      },
+    });
+    final preview = board.preview!;
+    expect(preview.aspect, closeTo(58.5 / 74, 1e-9));
+    expect(
+      preview.dots.map((dot) => (dot.label, dot.ball)),
+      [('9', false), ('', true)],
+      reason: 'the away player is outside the attacking half',
+    );
+    expect(preview.dots.first.fill, 0xffff0000);
+    expect(preview.dots.first.left, closeTo((80 - 49.5) / 58.5, 1e-9));
+    expect(
+      MatchPlanBoard.fromJson({'id': 'b', 'title': 'Borta'}).preview,
+      isNull,
+    );
+  });
+
   test('a project to choose lists its boards', () {
     final choice = TacticsBoardChoice.fromJson({
       'project_id': 'p',

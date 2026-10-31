@@ -119,7 +119,10 @@ class _MatchPlanSectionState extends State<_MatchPlanSection> {
                         widget.calendar.matchPlans,
                         board,
                       ),
-                      icon: const Icon(Icons.sports_soccer),
+                      icon: TacticsBoardThumbnail(
+                        preview: board.preview,
+                        width: 48,
+                      ),
                       label: Text(board.title),
                     ),
                 ],

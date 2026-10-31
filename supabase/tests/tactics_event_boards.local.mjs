@@ -63,12 +63,13 @@ create function internal.training_session_can_edit(e core.events) returns boolea
   $$select auth.uid() in ('${coach}'::uuid, '${helper}'::uuid)$$;
 grant usage on schema api, internal, core, auth to authenticated;`);
 for (const file of ['20261123090000_tacticsboard', '20261124090000_tactics_share_links', '20261227090000_tactics_shared_branding',
-  '20270102090000_tactics_leader_access', '20270103090000_tactics_player_links', '20270104090000_tactics_event_boards']) {
+  '20270102090000_tactics_leader_access', '20270103090000_tactics_player_links', '20270104090000_tactics_event_boards', '20270107090000_tactics_board_previews']) {
   await db.exec(read(`supabase/migrations/${file}.sql`));
 }
 await db.exec('begin');
 
-const doc = JSON.stringify({ version: 1, boards: [{ id: 'A', name: 'Uppspel' }, { id: 'B', name: 'Press' }] });
+const doc = JSON.stringify({ version: 1, boards: [{ id: 'A', name: 'Uppspel' }, { id: 'B', name: 'Press', view: 'attack', teams: { home: { color: '#f00' } },
+  frames: [{ objects: [{ type: 'ball', x: 60, y: 30 }] }, { objects: [] }] }] });
 const mine = (await call(coach, "select api.create_tactics_project('Matchplan', 'match', $1, $2::jsonb)", [team, doc])).id;
 const private_ = (await call(helper, "select api.create_tactics_project('Annas egna', 'match', null, $1::jsonb)", [doc])).id;
 const annas = (await call(helper, "select api.create_tactics_project('Annas lag', 'match', $1, $2::jsonb)", [team, doc])).id;
@@ -94,6 +95,9 @@ await fails(player, 'select api.add_match_plan_board($1,$2,$3,$4)', [match, mine
 await db.exec(`insert into core.match_plans (event_id, published) values ('${match}', false)`);
 let plan = await planAs(coach, true);
 assert.deepEqual(plan.boards.map(board => board.title), ['Press · Matchplan', 'Annas lag']);
+// Each board brings its first frame to draw; a whole project its first board.
+assert.deepEqual(plan.boards[0].preview, { view: 'attack', teams: { home: { color: '#f00' } }, objects: [{ type: 'ball', x: 60, y: 30 }] });
+assert.deepEqual(plan.boards[1].preview, { view: null, teams: null, objects: [] });
 assert.deepEqual(plan.links, []);
 await fails(player, 'select api.open_match_plan_board($1)', [press.id], /not_found/);
 await db.exec(`update core.match_plans set published = true where event_id = '${match}'`);

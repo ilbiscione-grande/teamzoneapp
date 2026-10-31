@@ -449,7 +449,7 @@ class _MatchPlanBoards extends StatelessWidget {
             for (final board in boards)
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.sports_soccer),
+                leading: TacticsBoardThumbnail(preview: board.preview),
                 title: Text(board.title),
                 subtitle: canEdit
                     ? Text(

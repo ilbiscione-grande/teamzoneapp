@@ -21,7 +21,7 @@ class _MatchPlanEditorState extends State<_MatchPlanEditor> {
   bool _published = false, _busy = false, _dirty = false;
   MatchPlan? _plan;
   Object? _error;
-  late final Future<EventFollowup?> _goals = _loadGoals();
+  late Future<EventFollowup?> _goals = _loadGoals();
 
   // MFD-12: the period's focus and the team's principles, as support when
   // writing the tactics. A suggestion only.
@@ -208,7 +208,12 @@ class _MatchPlanEditorState extends State<_MatchPlanEditor> {
             _dirty = true;
           }),
         ),
-        _MatchGoalsCard(goals: _goals),
+        _MatchGoalsCard(
+          eventId: widget.eventId,
+          goals: _goals,
+          services: widget.calendar.preparation,
+          onChanged: () => setState(() => _goals = _loadGoals()),
+        ),
         _MatchPlanLinks(
           eventId: widget.eventId,
           services: widget.calendar.matchPlans,

@@ -59,6 +59,7 @@ import 'package:teamzone_app/src/features/development/development_services.dart'
 import 'package:teamzone_app/src/features/workspaces/module_services.dart';
 import 'package:teamzone_app/src/features/team_development/team_development_services.dart';
 import 'package:teamzone_app/src/features/match_workspace/match_plan_services.dart';
+import 'package:teamzone_app/src/features/match_workspace/tactics_board_thumbnail.dart';
 import 'package:teamzone_app/src/features/training/training_services.dart';
 import 'package:teamzone_app/src/features/economy/economy_models.dart';
 import 'package:teamzone_app/src/features/economy/economy_services.dart';

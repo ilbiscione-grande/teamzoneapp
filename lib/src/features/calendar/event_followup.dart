@@ -123,7 +123,7 @@ class _KpiGoalsSectionState extends State<_KpiGoalsSection> {
       useSafeArea: true,
       useRootNavigator: true,
       builder: (_) => _KpiGoalSheet(
-        event: widget.event,
+        eventId: widget.event.id,
         services: widget.services,
         existing: kpi,
       ),
@@ -263,11 +263,11 @@ class _KpiGoalsSectionState extends State<_KpiGoalsSection> {
 /// Picks a KPI and sets its goal.
 class _KpiGoalSheet extends StatefulWidget {
   const _KpiGoalSheet({
-    required this.event,
+    required this.eventId,
     required this.services,
     this.existing,
   });
-  final EventDetails event;
+  final String eventId;
   final EventPreparationServices services;
   final EventKpi? existing;
 
@@ -314,7 +314,7 @@ class _KpiGoalSheetState extends State<_KpiGoalSheet> {
 
   Future<void> _loadCatalog() async {
     try {
-      final catalog = await widget.services.getKpiCatalog(widget.event.id);
+      final catalog = await widget.services.getKpiCatalog(widget.eventId);
       if (mounted) setState(() => _catalog = catalog);
     } catch (error) {
       AppErrors.caught('event_followup._loadCatalog', error);
@@ -378,7 +378,7 @@ class _KpiGoalSheetState extends State<_KpiGoalSheet> {
     });
     try {
       await widget.services.saveKpiTarget(
-        eventId: widget.event.id,
+        eventId: widget.eventId,
         targetId: widget.existing?.id,
         kpiKey: _key,
         label: _key == 'custom' ? _label.text.trim() : null,

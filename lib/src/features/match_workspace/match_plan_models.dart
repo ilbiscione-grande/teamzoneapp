@@ -1,3 +1,5 @@
+import 'tactics_board_preview.dart';
+
 /// One part of the match plan (tactics, set pieces, the opponent) and
 /// whether the players see it once the plan is published.
 class MatchPlanSection {
@@ -36,14 +38,21 @@ class MatchPlanBoard {
     required this.id,
     required this.title,
     required this.visible,
+    this.preview,
   });
   factory MatchPlanBoard.fromJson(Map<String, dynamic> json) => MatchPlanBoard(
     id: json['id'] as String? ?? '',
     title: json['title'] as String? ?? '',
     visible: json['visible'] == true,
+    preview: json['preview'] is Map<String, dynamic>
+        ? TacticsBoardPreview.fromJson(json['preview'] as Map<String, dynamic>)
+        : null,
   );
   final String id, title;
   final bool visible;
+
+  /// Its first frame to draw small; null for a board since removed.
+  final TacticsBoardPreview? preview;
 }
 
 /// A Tacticsboard project those preparing the match may put on the plan:
