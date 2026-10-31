@@ -32,6 +32,7 @@ import { drawnGround, groundReach, projector, TILT, tiltOrigin, tiltTransform, u
 import { pitchPointer, StageContext, stageHolder, type StageShared } from "./stage-context.ts";
 import { tiltHolder } from "./tilt-picture.ts";
 import { useBand } from "./use-band.ts";
+import { useSelectionBox, type ScreenBox } from "./use-selection-box.ts";
 import { useSwipe } from "./use-swipe.ts";
 import { isDrawTool, isPlaceTool, useDrawing } from "./use-drawing.ts";
 import { IDENTITY, useViewport } from "./use-viewport.ts";
@@ -52,10 +53,11 @@ const NO_REACH: Reach = { left: 0, top: 0, right: 0, bottom: 0 };
  * tiltButton: 3D among the zoom buttons, for a shared link without the editor's timeline button.
  * tools: more buttons on the board's top right corner (a shared link's full screen, arena).
  * portrait: a wide view turned upright whatever the frame's shape (a phone).
+ * selectionTools: drawn over the board at the selection while editing (the quick menu), given where it is.
  */
-export default function BoardStage({ editable = true, moveOnly = false, extra, onSwipe, onTap, tiltButton = false, tools, portrait = false }: {
+export default function BoardStage({ editable = true, moveOnly = false, extra, onSwipe, onTap, tiltButton = false, tools, portrait = false, selectionTools }: {
   editable?: boolean; moveOnly?: boolean; extra?: React.ReactNode; onSwipe?: (direction: 1 | -1) => void; onTap?: () => void; tiltButton?: boolean;
-  tools?: React.ReactNode; portrait?: boolean;
+  tools?: React.ReactNode; portrait?: boolean; selectionTools?: (box: ScreenBox, frame: { width: number; height: number }) => React.ReactNode;
 }) {
   const frame = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -117,7 +119,17 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
     trash,
   }), [fit.scale, canEdit, view.live]);
 
+  // A drill just laid out is brought into view.
+  const focus = useEditor(state => state.focus);
+  useEffect(() => {
+    if (!focus || size.width === 0) return;
+    view.apply(zoomTo(focus.at, fit, size.width, size.height, focus.scale), true);
+    useEditor.getState().setFocus(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus, fit]);
   const drawing = useDrawing(() => content.current?.getRelativePointerPosition() ?? null);
+  const selectionBox = useSelectionBox(nodes.current, selection, !!selectionTools && canEdit && !moveOnly && !drawing.draft,
+    [objects, reshaping, view.viewport, fit, size.width, size.height]);
 
   if (!board) return <div ref={frame} className="tb-stage" />;
   const upright = -fit.rotation;
@@ -252,6 +264,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
           <span>🗑</span>Släpp för att ta bort
         </div>
       )}
+      {selectionBox && selectionTools?.(selectionBox, size)}
       {tools && <div className="tb-board-tools">{tools}</div>}
       <div className="tb-zoom" role="group" aria-label="Zoom">
         <button type="button" onClick={() => view.zoomBy(1.25, { x: size.width / 2, y: size.height / 2 })} aria-label="Zooma in">+</button>

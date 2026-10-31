@@ -1,0 +1,76 @@
+/* What helps on the board: the quick menu over the selection, tips for a tool, the list of keys and ready drills. */
+
+/* The quick menu: dark, over the pitch, sized for a finger. */
+.tb-quick { position: absolute; z-index: 5; display: grid; gap: 4px; padding: 4px; border-radius: 10px; background: rgba(11, 17, 28, .9); box-shadow: 0 8px 24px rgba(0, 0, 0, .35); color: white; }
+.tb-quick-row { display: flex; gap: 2px; }
+.tb-quick button { display: grid; place-items: center; width: 38px; height: 38px; border: 0; border-radius: 7px; background: none; color: white; font-size: 1.05rem; cursor: pointer; }
+.tb-quick button:hover:not(:disabled) { background: rgba(255, 255, 255, .12); }
+.tb-quick button[aria-pressed="true"] { background: rgba(250, 204, 21, .25); }
+.tb-quick button[data-danger]:hover:not(:disabled) { background: rgba(220, 38, 38, .8); }
+.tb-quick button:disabled { opacity: .35; cursor: default; }
+.tb-quick-colour { width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; }
+.tb-quick-colours { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px; max-width: 320px; }
+.tb-quick-colours button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .5); }
+.tb-quick-colours button[aria-checked="true"] { border-color: #facc15; box-shadow: 0 0 0 2px #facc15; }
+@media (pointer: coarse) {
+  .tb-quick button { width: 44px; height: 44px; }
+}
+
+.tb-group-tag { flex: none; padding: 1px 6px; border-radius: 999px; background: #e0e7ff; color: #3730a3; font-size: .7rem; font-weight: 700; }
+
+/* A tool's tip, over the top of the board. */
+.tb-center { position: relative; }
+.tb-tip { position: absolute; z-index: 6; top: 10px; left: 50%; transform: translateX(-50%); width: min(560px, calc(100% - 24px)); display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: rgba(11, 17, 28, .92); color: white; font-size: .9rem; line-height: 1.35; box-shadow: 0 8px 24px rgba(0, 0, 0, .35); }
+.tb-tip > span:first-child { flex: 1; }
+.tb-tip-actions { display: flex; align-items: center; gap: 4px; flex: none; }
+.tb-tip-off { border: 0; background: none; color: #a9b4c4; font: inherit; font-size: .78rem; text-decoration: underline; cursor: pointer; }
+.tb-tip-close { width: 28px; height: 28px; border: 0; border-radius: 6px; background: rgba(255, 255, 255, .1); color: white; font-size: 1.1rem; cursor: pointer; }
+@media (max-width: 760px) {
+  .tb-tip { flex-wrap: wrap; font-size: .85rem; }
+}
+
+/* The list of keys. */
+.tb-tools-help { margin-top: auto; font-weight: 800; font-size: 1rem !important; color: #a9b4c4 !important; }
+.tb-tools-help + .tb-tools-size { margin-top: 0; }
+.tb-help { width: min(560px, calc(100vw - 24px)); }
+.tb-help section + section { margin-top: 10px; }
+.tb-help h3 { margin: 0 0 4px; font-size: .78rem; letter-spacing: .05em; text-transform: uppercase; color: var(--wt-muted); }
+.tb-help dl { margin: 0; display: grid; gap: 2px; }
+.tb-help dl > div { display: grid; grid-template-columns: minmax(130px, 40%) 1fr; gap: 10px; align-items: baseline; padding: 3px 0; border-bottom: 1px solid var(--wt-line); }
+.tb-help dt, .tb-help dd { margin: 0; font-size: .88rem; }
+.tb-help kbd { display: inline-block; padding: 1px 6px; border: 1px solid var(--wt-line); border-bottom-width: 2px; border-radius: 5px; background: white; font: inherit; font-size: .8rem; font-weight: 700; white-space: nowrap; }
+
+/* Ready drills over an empty board. */
+.tb-drills { position: absolute; z-index: 4; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100% - 24px)); max-height: calc(100% - 24px); overflow-y: auto; display: grid; gap: 10px; padding: 14px; border-radius: 12px; background: rgba(11, 17, 28, .9); color: white; box-shadow: 0 16px 40px rgba(0, 0, 0, .4); }
+.tb-drills-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 12px; }
+.tb-drills .tb-link { color: var(--wt-accent); }
+.tb-drills-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.tb-drills-grid button { display: grid; gap: 2px; align-content: start; min-height: 56px; padding: 8px 10px; border: 1px solid rgba(255, 255, 255, .16); border-radius: 8px; background: rgba(255, 255, 255, .05); color: white; font: inherit; font-size: .88rem; font-weight: 700; text-align: left; cursor: pointer; }
+.tb-drills-grid button:hover { border-color: var(--wt-accent); background: rgba(255, 255, 255, .1); }
+.tb-drills-grid small { color: #a9b4c4; font-size: .76rem; font-weight: 400; line-height: 1.25; }
+.tb-drills-note { margin: 0; color: #a9b4c4; font-size: .8rem; }
+@media (max-width: 760px) {
+  .tb-drills { padding: 10px; gap: 8px; }
+  .tb-drills-grid { grid-template-columns: repeat(2, 1fr); }
+  .tb-drills-grid small { display: none; }
+  .tb-drills-grid button { min-height: 44px; }
+}
+
+/* The tools on a phone: four large group buttons, a group's tools opening above them. */
+.tb-phone-tools { position: relative; display: grid !important; grid-template-columns: repeat(4, 1fr); gap: 4px !important; padding: 4px 6px !important; overflow: visible !important; }
+.tb-phone-tools .tb-phone-button { width: auto !important; height: 50px !important; display: grid; place-items: center; align-content: center; gap: 1px; }
+.tb-phone-label { font-size: .7rem; font-weight: 700; color: #c9d5cd; }
+.tb-phone-tools .tb-phone-button[aria-pressed="true"] .tb-phone-label { color: var(--wt-accent-ink); }
+.tb-phone-tools .tb-phone-button[aria-expanded="true"] { box-shadow: inset 0 0 0 2px var(--wt-accent); }
+.tb-phone-group { position: absolute; z-index: 8; left: 6px; right: 6px; bottom: calc(100% + 6px); display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 6px; border-radius: 12px; background: #13221a; box-shadow: 0 -8px 24px rgba(0, 0, 0, .45); }
+.tb-phone-group button { width: auto !important; height: 58px !important; display: grid; place-items: center; align-content: center; gap: 2px; font-size: 1.2rem; }
+.tb-phone-group button span:last-child { font-size: .7rem; font-weight: 600; color: #c9d5cd; }
+.tb-phone-group button[aria-pressed="true"] span:last-child { color: var(--wt-accent-ink); }
+
+/* The team's coming training sessions, to put a board in one. */
+.tb-trainings { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; max-height: 50dvh; overflow-y: auto; }
+.tb-trainings button { width: 100%; display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--wt-line); border-radius: 8px; background: white; color: var(--wt-text); font: inherit; text-align: left; cursor: pointer; }
+.tb-trainings button:hover:not(:disabled) { border-color: var(--wt-brand); background: var(--wt-bg-alt); }
+.tb-trainings button:disabled { opacity: .6; cursor: default; }
+.tb-trainings span { font-size: .88rem; text-transform: capitalize; }
+.tb-trainings small { color: var(--wt-muted); font-size: .8rem; }

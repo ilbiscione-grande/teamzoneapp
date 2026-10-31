@@ -21,6 +21,8 @@ type Base = {
   hidden: boolean;
   /** The object's own name in the object list. */
   label?: string;
+  /** Objects with the same group are chosen and moved as one (grouping.ts). */
+  group?: string;
   /** Animation: the move into this frame bends through this pitch point. */
   pathControl?: Point | null;
   /** Animation: how the object shows as this frame is reached (one; boards from before several could be chosen). */

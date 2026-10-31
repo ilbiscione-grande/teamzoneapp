@@ -5,7 +5,8 @@
 // goes through `change`, which remembers the step for undo and marks the
 // project for saving.
 import { create } from "zustand";
-import { patchObjects, updateFrame } from "../../lib/tactics/document.ts";
+import { newId, patchObjects, updateBoard, updateFrame } from "../../lib/tactics/document.ts";
+import { copiesOf, setGroup, withGroups } from "../../lib/tactics/grouping.ts";
 import { emptyHistory, record, redo, undo, type History } from "../../lib/tactics/history.ts";
 import { duplicateBoard } from "../../lib/tactics/templates.ts";
 import type { Board, LeaderAccess, Point, Project, ProjectAccess, ProjectDocument, ProjectKind, TacticsObject } from "../../lib/tactics/model.ts";
@@ -42,6 +43,9 @@ type EditorState = {
   /** An object being reshaped by its handles: drawn so, at its true size, until let go. Not saved. */
   reshaping: { id: string; patch: Partial<TacticsObject> } | null;
   setReshaping: (reshaping: { id: string; patch: Partial<TacticsObject> } | null) => void;
+  /** The view to bring in on a pitch point, so many times in (a drill just laid out); the board takes it once. Not saved. */
+  focus: { at: Point; scale: number } | null;
+  setFocus: (focus: { at: Point; scale: number } | null) => void;
   history: History;
   saveState: SaveState;
   /** Playing: where the playhead is (in frames), and how. */
@@ -85,6 +89,10 @@ type EditorState = {
   changeObjects: (next: (objects: TacticsObject[]) => TacticsObject[]) => void;
   patch: (patches: Record<string, Partial<TacticsObject>>) => void;
   removeSelected: () => void;
+  /** Copies of the selection put a little aside, and chosen. */
+  duplicateSelected: () => void;
+  /** The selection put in a group of its own (on), or out of its groups. */
+  groupSelected: (on: boolean) => void;
   setMeta: (meta: Partial<Pick<ProjectMeta, "name" | "kind" | "teamId" | "teamName">>) => void;
   undo: () => void;
   redo: () => void;
@@ -103,6 +111,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   measure: false,
   ruler: null,
   reshaping: null,
+  focus: null,
   history: emptyHistory(),
   saveState: "saved",
   playing: false,
@@ -160,10 +169,25 @@ export const useEditor = create<EditorState>((set, get) => ({
   setMeasure: measure => set({ measure }),
   setRuler: ruler => set({ ruler }),
   setReshaping: reshaping => set({ reshaping }),
+  setFocus: focus => set({ focus }),
   setAttachBall: attachBall => set({ attachBall }),
-  select: (ids, additive = false) => set(state => ({
-    selection: additive ? [...new Set([...state.selection.filter(id => !ids.includes(id)), ...ids.filter(id => !state.selection.includes(id))])] : ids,
-  })),
+  // One of a group chooses the whole group.
+  select: (given, additive = false) => set(state => {
+    const ids = withGroups(activeObjects(state), given);
+    return { selection: additive ? [...new Set([...state.selection.filter(id => !ids.includes(id)), ...ids.filter(id => !state.selection.includes(id))])] : ids };
+  }),
+  duplicateSelected: () => {
+    const state = get();
+    const copies = copiesOf(activeObjects(state), state.selection);
+    if (copies.length === 0) return;
+    state.changeObjects(current => [...current, ...copies]);
+    set({ selection: copies.map(copy => copy.id) });
+  },
+  groupSelected: on => {
+    const { boardId, selection } = get();
+    if (!boardId || (on && selection.length < 2)) return;
+    get().change(document => updateBoard(document, boardId, board => setGroup(board, selection, on ? newId() : null)));
+  },
   setBoard: boardId => set({ boardId, frameIndex: 0, playhead: 0, playing: false, selection: [] }),
 
   change: next => {

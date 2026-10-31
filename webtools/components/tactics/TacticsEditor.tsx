@@ -6,7 +6,7 @@
 // presented on the whole screen. The board itself loads only in the browser (Konva).
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { normalizeDocument } from "../../lib/tactics/document.ts";
 import type { Project } from "../../lib/tactics/model.ts";
 import { useAccount } from "../account";
@@ -15,6 +15,10 @@ import { ObjectList } from "./panels/ObjectList.tsx";
 import { SquadPanel } from "./panels/SquadPanel.tsx";
 import { FramesPanel } from "./panels/FramesPanel.tsx";
 import { Presenter } from "./Presenter.tsx";
+import { QuickMenu } from "./QuickMenu.tsx";
+import { HelpDialog } from "./HelpDialog.tsx";
+import { ToolHint } from "./ToolHint.tsx";
+import { DrillPicker } from "./DrillPicker.tsx";
 import { SharedViewer } from "./SharedViewer.tsx";
 import { LiveBadge } from "./live/LiveBadge.tsx";
 import { LivePanel } from "./live/LivePanel.tsx";
@@ -40,12 +44,14 @@ type Panel = "properties" | "frames" | "objects" | "squad" | "live";
 export function TacticsWorkspace() {
   const [panel, setPanel] = useState<Panel>("properties");
   const [presenting, setPresenting] = useState(false);
+  const [help, setHelp] = useState(false);
+  const openHelp = useCallback(() => setHelp(true), []);
   const live = useLive(state => !!state.session);
   // On a phone the board gets the room; the panel opens from its tabs.
   const [panelOpen, setPanelOpen] = useState(() => typeof window === "undefined" || window.innerWidth > 760);
   const board = useEditor(activeBoard);
   const selectionCount = useEditor(state => state.selection.length);
-  useShortcuts(!presenting);
+  useShortcuts(!presenting && !help, openHelp);
   // Choosing something shows its properties, unless effects are being chosen
   // for it or it is chosen in the object list (where more can be added).
   useEffect(() => { if (selectionCount > 0) setPanel(current => current === "frames" || current === "objects" ? current : "properties"); }, [selectionCount]);
@@ -58,9 +64,14 @@ export function TacticsWorkspace() {
     <div className="tb-editor" data-panel={panelOpen}>
       <TopBar onPresent={() => setPresenting(true)} />
       <div className="tb-body">
-        <Toolbar homeColor={board.teams.home.color} awayColor={board.teams.away.color} />
+        <Toolbar homeColor={board.teams.home.color} awayColor={board.teams.away.color} onHelp={openHelp} />
         <div className="tb-center">
-          <ErrorBoundary label="Tavlan"><BoardStage extra={<><LiveStrokes /><LiveAnswers /></>} /></ErrorBoundary>
+          <ErrorBoundary label="Tavlan">
+            <BoardStage extra={<><LiveStrokes /><LiveAnswers /></>}
+              selectionTools={(box, frame) => <QuickMenu box={box} frame={frame} onProperties={() => { setPanel("properties"); setPanelOpen(true); }} />} />
+          </ErrorBoundary>
+          <ToolHint />
+          <DrillPicker />
           <ErrorBoundary label="Tidslinjen"><Timeline board={board} /></ErrorBoundary>
         </div>
         <aside className="tb-panel" aria-label="Panel">
@@ -83,6 +94,7 @@ export function TacticsWorkspace() {
           )}
         </aside>
       </div>
+      {help && <HelpDialog onClose={() => setHelp(false)} />}
     </div>
   );
 }

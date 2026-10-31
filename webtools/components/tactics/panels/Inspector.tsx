@@ -2,7 +2,8 @@
 
 // Properties of what is selected: one object's own fields, or what several
 // have in common. Nothing selected shows the board's settings.
-import { kindName, newId, objectLabel, stack, updateBoard, type Stacking } from "../../../lib/tactics/document.ts";
+import { kindName, objectLabel, stack, updateBoard, type Stacking } from "../../../lib/tactics/document.ts";
+import { oneGroup } from "../../../lib/tactics/grouping.ts";
 import type { AreaPattern, BallFlight, Board, TacticsObject } from "../../../lib/tactics/model.ts";
 import { effectsOf, standingFacing } from "../../../lib/tactics/timeline.ts";
 import { facings, facingToRotation, normalAngle } from "../../../lib/tactics/facing.ts";
@@ -188,18 +189,14 @@ export function Inspector({ board }: { board: Board }) {
   const selection = useEditor(state => state.selection);
   const frameIndex = useEditor(state => state.frameIndex);
   const selected = objects.filter(item => selection.includes(item.id));
-  const { patch, changeObjects, removeSelected, select } = useEditor.getState();
+  const { patch, changeObjects, removeSelected, duplicateSelected, groupSelected } = useEditor.getState();
   if (selected.length === 0) return <BoardSettings board={board} />;
   const single = selected.length === 1 ? selected[0] : null;
   const allLocked = selected.every(item => item.locked);
-  const duplicate = () => {
-    const copies = selected.map(item => ({ ...item, id: newId(), x: item.x + 3, y: item.y + 3, locked: false }) as TacticsObject);
-    changeObjects(current => [...current, ...copies]);
-    select(copies.map(copy => copy.id));
-  };
+  const grouped = oneGroup(objects, selection);
   return (
     <div className="tb-inspector">
-      <h3>{single ? objectLabel(single, board) : `${selected.length} markerade`}</h3>
+      <h3>{single ? objectLabel(single, board) : grouped ? `Grupp med ${selected.length} objekt` : `${selected.length} markerade`}</h3>
       {single && <p className="tb-hint">{kindName(single.type)}</p>}
       {single && !single.locked && <Fields item={single} board={board} />}
       {single && !single.locked && board.frames.length > 1 && <Motion item={single} frameIndex={frameIndex} />}
@@ -222,7 +219,11 @@ export function Inspector({ board }: { board: Board }) {
         <button type="button" className="wt-button secondary small" onClick={() => patch(Object.fromEntries(selected.map(item => [item.id, { locked: !allLocked }])))}>
           {allLocked ? "Lås upp" : "Lås"}
         </button>
-        <button type="button" className="wt-button secondary small" onClick={duplicate}>Kopiera</button>
+        <button type="button" className="wt-button secondary small" title="Kopiera (Ctrl+D)" onClick={duplicateSelected}>Kopiera</button>
+        {(grouped || selected.length > 1) && (
+          <button type="button" className="wt-button secondary small" title={grouped ? "Dela upp gruppen (Ctrl+Shift+G)" : "Gruppera (Ctrl+G)"}
+            onClick={() => groupSelected(!grouped)}>{grouped ? "Dela upp" : "Gruppera"}</button>
+        )}
         <button type="button" className="wt-button secondary small" disabled={allLocked} onClick={removeSelected}>Ta bort</button>
       </div>
       <CopyTo key={`${frameIndex}:${selection.join()}`} board={board} ids={selected.map(item => item.id)} />

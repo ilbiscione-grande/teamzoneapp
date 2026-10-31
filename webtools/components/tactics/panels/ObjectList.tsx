@@ -75,6 +75,7 @@ export function ObjectList({ board, onOpen }: { board: Board; onOpen: () => void
                 onDoubleClick={() => { select([item.id]); onOpen(); }}>
                 {icon(item, board)}
                 <span className="tb-object-label">{objectLabel(item, board)}</span>
+                {item.group && <span className="tb-group-tag" title="Väljs och flyttas med sin grupp">Grupp</span>}
                 {item.locked && <span className="tb-locked-tag">🔒 Låst</span>}
               </button>
               <span className="tb-object-actions">

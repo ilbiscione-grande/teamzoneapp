@@ -147,7 +147,9 @@ Det här steget rör matchmodulen och träningsmodulen. Det ska stämmas av med 
 - Övningar som redan har en tavla får "Visa tavla" för spelarna.
 - Tavlorna följer samma synlighet som övningen eller passet har för spelarna.
 
-**I Tacticsboard (senare):** "Koppla till…" i projektmenyn listar lagets kommande matcher och träningar. Det är ett alternativ till att välja tavlan från appen.
+**I Tacticsboard:** "Koppla till…" listar lagets kommande matcher och träningar. Det är ett alternativ till att välja tavlan från appen.
+- Träningar är byggda (2026-10-31). I ett träningsprojekt har övningsfälten knappen "Lägg i ett träningspass…". Den listar lagets träningar de kommande 60 dagarna (`api.list_module_trainings`). Tavlan läggs sist i det valda passet som en övning med del, minuter, organisation, coachpunkter och skede, och kopplas med `board.source = 'mine'`. Passet läses och sparas helt som appen gör (`api.get_training_session`, `api.save_training_session` med `session_roster = null`). Ingen ny SQL behövs.
+- Matcher återstår.
 
 ## Steg 5 (senare, vid behov): Förslag
 

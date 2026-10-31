@@ -1,6 +1,7 @@
 "use client";
 
-// Keyboard: undo, redo, remove the selection, Escape back to selecting;
+// Keyboard: undo, redo, copy (Ctrl D), group (Ctrl G, Ctrl Shift G parts
+// it), ? for the list of keys, remove the selection, Escape back to selecting;
 // space plays and pauses, the arrows left and right step between frames,
 // Ctrl (⌘) with the arrows nudges the selection, and Page Up, Page Down,
 // Home and End move it up and down in the drawing order. Typing in a field is
@@ -13,7 +14,8 @@ import { activeBoard, activeObjects, stepFrame, useEditor } from "./store.ts";
 /** Page Up and Down move the selection a step up or down in the drawing order, Home and End to the top or bottom. */
 const STACKING: Record<string, Stacking> = { PageUp: "up", PageDown: "down", Home: "top", End: "bottom" };
 
-export function useShortcuts(enabled = true) {
+/** onHelp: the ? key, the list of keys. */
+export function useShortcuts(enabled = true, onHelp?: () => void) {
   useEffect(() => {
     if (!enabled) return;
     const onKey = (event: KeyboardEvent) => {
@@ -29,6 +31,15 @@ export function useShortcuts(enabled = true) {
       } else if (command && event.key.toLowerCase() === "y") {
         event.preventDefault();
         state.redo();
+      } else if (command && event.key.toLowerCase() === "d") {
+        event.preventDefault();
+        state.duplicateSelected();
+      } else if (command && event.key.toLowerCase() === "g") {
+        event.preventDefault();
+        state.groupSelected(!event.shiftKey);
+      } else if (event.key === "?" && onHelp) {
+        event.preventDefault();
+        onHelp();
       } else if (event.key === "Delete" || event.key === "Backspace") {
         if (state.selection.length) { event.preventDefault(); state.removeSelected(); }
       } else if (event.key === "Escape") {
@@ -57,5 +68,5 @@ export function useShortcuts(enabled = true) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [enabled]);
+  }, [enabled, onHelp]);
 }

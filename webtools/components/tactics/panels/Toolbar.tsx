@@ -5,13 +5,27 @@
 // ruler from one point to another. A placing tool stays in hand for several taps; a drawing tool goes
 // back to select after one stroke. On a wide screen the palette can be
 // wider, a short word under each icon, two or three to a row; the choice
-// stays in this browser. A phone always has the compact row.
+// stays in this browser. A phone has them in groups (PhoneToolbar).
 import { useEffect, useState } from "react";
 import { useEditor, type Tool } from "../store.ts";
+import { PhoneToolbar } from "./PhoneToolbar.tsx";
 
-type Item = { tool: Tool; label: string; short: string; icon: string };
+/** Whether the screen is a phone's: the tools then come in groups. */
+function useNarrow() {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 760px)");
+    const update = () => setNarrow(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return narrow;
+}
 
-const groups: { title: string; items: Item[] }[] = [
+export type Item = { tool: Tool; label: string; short: string; icon: string };
+
+export const groups: { title: string; items: Item[] }[] = [
   { title: "Markera", items: [{ tool: "select", label: "Markera och flytta", short: "Markera", icon: "↖" }] },
   {
     title: "Placera",
@@ -59,11 +73,14 @@ function useToolbarSize(): [Size, (size: Size) => void] {
   return [size, choose];
 }
 
-export function Toolbar({ homeColor, awayColor }: { homeColor: string; awayColor: string }) {
+/** onHelp: the list of keys and tips. */
+export function Toolbar({ homeColor, awayColor, onHelp }: { homeColor: string; awayColor: string; onHelp?: () => void }) {
   const tool = useEditor(state => state.tool);
   const setTool = useEditor(state => state.setTool);
   const measure = useEditor(state => state.measure);
   const [size, setSize] = useToolbarSize();
+  const narrow = useNarrow();
+  if (narrow) return <PhoneToolbar homeColor={homeColor} awayColor={awayColor} />;
   return (
     <nav className="tb-tools" data-size={size} aria-label="Verktyg">
       {groups.map(group => (
@@ -86,6 +103,9 @@ export function Toolbar({ homeColor, awayColor }: { homeColor: string; awayColor
           )}
         </div>
       ))}
+      {onHelp && (
+        <button type="button" className="tb-tools-help" onClick={onHelp} aria-label="Kortkommandon och tips" title="Kortkommandon och tips (?)">?</button>
+      )}
       <button type="button" className="tb-tools-size" onClick={() => setSize(size === "labels" ? "compact" : "labels")}
         aria-label={size === "labels" ? "Smalare verktyg utan text" : "Bredare verktyg med text"}
         title={size === "labels" ? "Smalare verktyg utan text" : "Bredare verktyg med text"}>

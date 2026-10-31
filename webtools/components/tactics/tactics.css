@@ -1,6 +1,7 @@
 /* Tacticsboard's editor: dark tools around a grass board, a light side panel. */
 @import "./share.css";
 @import "./motion.css";
+@import "./assist.css";
 .tb-editor { display: flex; flex-direction: column; flex: 1; min-height: 0; background: #0f1a14; color: #e6efe9; }
 .tb-top { background: var(--wt-ink); color: white; padding: 6px 10px 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
 .tb-top-row { display: flex; align-items: flex-end; gap: 8px; }
@@ -175,6 +176,7 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
   .tb-mini-icon { display: inline; font-size: 1rem; }
   .tb-frame-tools { margin-top: 4px; }
   .tb-timeline-hint { display: none; }
+  .tb-timeline-foot .tb-timeline-hint { display: block; font-size: .78rem; }
 }
 
 /* The palette with words: wider, two or three tools to a row. */
