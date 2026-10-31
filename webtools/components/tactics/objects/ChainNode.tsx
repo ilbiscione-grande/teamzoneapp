@@ -3,15 +3,15 @@
 // A line through players (ChainObject): drawn from where they stand, so it
 // follows them through the frames and while one is dragged. Closed, it rings
 // the space between them, filled or striped if wished; a ring marks each player's feet. Picked like any object; it is
-// never dragged itself, its players are. With measuring on it shows its
-// length, or a closed one the ground inside.
+// never dragged itself, its players are. With measuring on it shows how
+// far apart its players stand, or a closed one the ground inside.
 import { useEffect, useState } from "react";
 import type { Context } from "konva/lib/Context";
 import { Circle, Group, Line } from "react-konva";
 import { PLAYER_RADIUS } from "../../../lib/tactics/ball.ts";
 import { edgeFor } from "../../../lib/tactics/ribbon.ts";
 import { AreaFill, alpha } from "./AreaFill.tsx";
-import { chainPoints, halfway, metres, pathLength, polygonArea, squareMetres } from "../../../lib/tactics/measure.ts";
+import { chainPoints, distance, halfway, metres, polygonArea, squareMetres } from "../../../lib/tactics/measure.ts";
 import type { ChainObject, Point } from "../../../lib/tactics/model.ts";
 import type { Rendered } from "../../../lib/tactics/timeline.ts";
 import { nodeRef, objectDrag, objectDrop, useStage } from "../stage/stage-context.ts";
@@ -65,10 +65,11 @@ export function ChainNode({ item, objects, selected, upright, measure }: Props) 
           <Circle radius={RING} stroke={item.color} strokeWidth={0.3} perfectDrawEnabled={false} />
         </Group>
       ))}
-      {measure && (
-        <MeasureTag at={closed ? middle : halfway(points)} upright={upright}
-          text={closed ? squareMetres(polygonArea(points)) : metres(pathLength(points, false))} />
-      )}
+      {measure && closed && <MeasureTag at={middle} upright={upright} text={squareMetres(polygonArea(points))} />}
+      {/* Open, how far apart the players stand, between each two. */}
+      {measure && !closed && points.slice(1).map((point, index) => (
+        <MeasureTag key={index} at={halfway([points[index], point])} upright={upright} text={metres(distance(points[index], point))} />
+      ))}
     </Group>
   );
 }

@@ -126,6 +126,42 @@ export function updateBoard(document: ProjectDocument, boardId: string, change: 
   return { ...document, boards: document.boards.map(board => board.id === boardId ? change(board) : board) };
 }
 
+export type Stacking = "up" | "down" | "top" | "bottom";
+
+/**
+ * Moves the chosen objects together in the drawing order, keeping their own
+ * order: a step up (drawn later, on top), a step down, or all the way to the
+ * top or the bottom. Unchanged (the same list) when they cannot go further.
+ */
+export function stack(objects: TacticsObject[], ids: string[], where: Stacking): TacticsObject[] {
+  const chosen = new Set(ids);
+  if (!objects.some(item => chosen.has(item.id))) return objects;
+  let next: TacticsObject[];
+  if (where === "top" || where === "bottom") {
+    const moved = objects.filter(item => chosen.has(item.id)), rest = objects.filter(item => !chosen.has(item.id));
+    next = where === "top" ? [...rest, ...moved] : [...moved, ...rest];
+  } else {
+    next = [...objects];
+    const up = where === "up";
+    // From the end it moves towards, so a block of chosen objects moves as one.
+    for (let index = up ? next.length - 2 : 1; up ? index >= 0 : index < next.length; index += up ? -1 : 1) {
+      const target = index + (up ? 1 : -1);
+      if (chosen.has(next[index].id) && !chosen.has(next[target].id)) [next[index], next[target]] = [next[target], next[index]];
+    }
+  }
+  return next.every((item, index) => item === objects[index]) ? objects : next;
+}
+
+/** Puts an object at a place in the drawing order (0 at the bottom): dragged there in the object list. */
+export function moveTo(objects: TacticsObject[], id: string, place: number): TacticsObject[] {
+  const item = objects.find(other => other.id === id);
+  if (!item) return objects;
+  const rest = objects.filter(other => other.id !== id);
+  const at = Math.max(0, Math.min(rest.length, place));
+  const next = [...rest.slice(0, at), item, ...rest.slice(at)];
+  return next.every((other, index) => other === objects[index]) ? objects : next;
+}
+
 /** Patches objects by id; a patch is shallow, keyed by object. */
 export function patchObjects(objects: TacticsObject[], patches: Record<string, Partial<TacticsObject>>): TacticsObject[] {
   return objects.map(item => patches[item.id] ? ({ ...item, ...patches[item.id] } as TacticsObject) : item);

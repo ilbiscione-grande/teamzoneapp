@@ -2,11 +2,16 @@
 
 // Keyboard: undo, redo, remove the selection, Escape back to selecting;
 // space plays and pauses, the arrows left and right step between frames,
-// and Ctrl (⌘) with the arrows nudges the selection. Typing in a field is
+// Ctrl (⌘) with the arrows nudges the selection, and Page Up, Page Down,
+// Home and End move it up and down in the drawing order. Typing in a field is
 // left alone, and so is a key a control has already handled (the timeline).
 // Off while presenting: the presenter has keys of its own.
 import { useEffect } from "react";
+import { stack, type Stacking } from "../../lib/tactics/document.ts";
 import { activeBoard, activeObjects, stepFrame, useEditor } from "./store.ts";
+
+/** Page Up and Down move the selection a step up or down in the drawing order, Home and End to the top or bottom. */
+const STACKING: Record<string, Stacking> = { PageUp: "up", PageDown: "down", Home: "top", End: "bottom" };
 
 export function useShortcuts(enabled = true) {
   useEffect(() => {
@@ -41,6 +46,10 @@ export function useShortcuts(enabled = true) {
         const dy = event.key === "ArrowUp" ? -step : event.key === "ArrowDown" ? step : 0;
         const moved = activeObjects(state).filter(item => state.selection.includes(item.id) && !item.locked);
         state.patch(Object.fromEntries(moved.map(item => [item.id, { x: item.x + dx, y: item.y + dy }])));
+      } else if (!command && Object.hasOwn(STACKING, event.key) && state.selection.length) {
+        event.preventDefault();
+        const selection = state.selection;
+        state.changeObjects(objects => stack(objects, selection, STACKING[event.key]));
       } else if (!command && (event.key === "ArrowLeft" || event.key === "ArrowRight") && frames > 1) {
         event.preventDefault();
         stepFrame(event.key === "ArrowRight" ? 1 : -1);

@@ -80,11 +80,23 @@
 .tb-swatches input[type="color"] { width: 28px; height: 28px; padding: 0; border: 0; background: none; cursor: pointer; }
 
 .tb-objects { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.tb-objects li { display: flex; align-items: center; gap: 4px; border-radius: 6px; }
-.tb-objects li[data-selected="true"] { background: #fff6cc; }
+.tb-objects li { position: relative; display: flex; align-items: center; gap: 2px; border-radius: 6px; border-left: 4px solid transparent; }
+.tb-objects li[data-selected="true"] { background: #fde68a; border-left-color: #ca8a04; box-shadow: inset 0 0 0 1px #eab308; }
+.tb-objects li[data-selected="true"] .tb-object-name { font-weight: 700; }
+.tb-objects li[data-locked="true"] { background: repeating-linear-gradient(135deg, #f1f5f9 0 6px, #e2e8f0 6px 12px); }
+.tb-objects li[data-locked="true"][data-selected="true"] { background: repeating-linear-gradient(135deg, #fde68a 0 6px, #fcd34d 6px 12px); }
+.tb-objects li[data-dragging="true"] { opacity: .4; }
+.tb-objects li[data-drop]::after { content: ""; position: absolute; left: 0; right: 0; height: 3px; border-radius: 2px; background: #2563eb; pointer-events: none; }
+.tb-objects li[data-drop="before"]::after { top: -2px; }
+.tb-objects li[data-drop="after"]::after { bottom: -2px; }
+.tb-grip { width: 14px; flex: none; color: var(--wt-muted); font-size: .75rem; letter-spacing: -2px; cursor: grab; user-select: none; }
+.tb-objects li:active .tb-grip { cursor: grabbing; }
+.tb-locked-tag { flex: none; margin-left: auto; padding: 1px 7px; border-radius: 999px; background: #1e293b; color: #fff; font-size: .72rem; font-weight: 700; white-space: nowrap; }
+.tb-object-actions .tb-lock { opacity: .45; }
+.tb-object-actions .tb-lock[data-on="true"] { opacity: 1; background: #1e293b; color: #fff; }
 .tb-objects li[data-hidden="true"] .tb-object-name { opacity: .45; }
 .tb-object-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 6px; border: 0; background: none; color: var(--wt-text); font: inherit; font-size: .9rem; text-align: left; cursor: pointer; }
-.tb-object-name span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-object-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tb-object-actions { display: flex; }
 .tb-object-actions button { width: 28px; height: 30px; border: 0; border-radius: 4px; background: none; color: var(--wt-muted); font-size: .85rem; cursor: pointer; }
 .tb-object-actions button:hover { background: var(--wt-line); color: var(--wt-text); }
@@ -270,3 +282,6 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
 .tb-facings { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 3px; margin-top: 4px; }
 .tb-facings button { min-height: 32px; border: 1px solid var(--wt-line); border-radius: 6px; background: white; color: var(--wt-text); font: inherit; font-size: 1rem; cursor: pointer; }
 .tb-facings button[aria-pressed="true"] { border-color: var(--wt-brand); background: #f0f9e8; }
+
+.tb-stacking { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 4px; }
+.tb-stacking .wt-button { padding-inline: 4px; white-space: nowrap; }

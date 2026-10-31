@@ -2,7 +2,7 @@
 
 // Properties of what is selected: one object's own fields, or what several
 // have in common. Nothing selected shows the board's settings.
-import { kindName, newId, objectLabel, updateBoard } from "../../../lib/tactics/document.ts";
+import { kindName, newId, objectLabel, stack, updateBoard, type Stacking } from "../../../lib/tactics/document.ts";
 import type { AreaPattern, BallFlight, Board, TacticsObject } from "../../../lib/tactics/model.ts";
 import { effectsOf, standingFacing } from "../../../lib/tactics/timeline.ts";
 import { facings, facingToRotation, normalAngle } from "../../../lib/tactics/facing.ts";
@@ -175,6 +175,14 @@ function Motion({ item, frameIndex }: { item: TacticsObject; frameIndex: number 
   );
 }
 
+/** The order buttons: where, the label, what it does, and its key. */
+const stackings: [Stacking, string, string, string][] = [
+  ["top", "⤒ Överst", "Lägg överst", "Home"],
+  ["up", "↑ Upp", "Ett steg upp", "Page Up"],
+  ["down", "↓ Ner", "Ett steg ner", "Page Down"],
+  ["bottom", "⤓ Underst", "Lägg underst", "End"],
+];
+
 export function Inspector({ board }: { board: Board }) {
   const objects = useEditor(activeObjects);
   const selection = useEditor(state => state.selection);
@@ -202,6 +210,14 @@ export function Inspector({ board }: { board: Board }) {
             onChange={event => patch({ [single.id]: { label: event.target.value || undefined } })} />
         </label>
       )}
+      <div className="tb-field">Ordning
+        <div className="tb-stacking" role="group" aria-label="Ordning">
+          {stackings.map(([where, label, hint, key]) => (
+            <button key={where} type="button" className="wt-button secondary small" title={`${hint} (${key})`}
+              onClick={() => changeObjects(current => stack(current, selection, where))}>{label}</button>
+          ))}
+        </div>
+      </div>
       <div className="tb-actions">
         <button type="button" className="wt-button secondary small" onClick={() => patch(Object.fromEntries(selected.map(item => [item.id, { locked: !allLocked }])))}>
           {allLocked ? "Lås upp" : "Lås"}
