@@ -108,6 +108,29 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
           <Swatches label="Färg" value={item.color} onChange={color => patch({ color })} />
         </>
       );
+    case "chain":
+      return (
+        <>
+          <p className="tb-hint">Går genom {item.players.length} spelare och följer dem när de flyttas.</p>
+          <label className="tb-field">Form
+            <select value={item.closed ? "closed" : "open"} onChange={event => patch({ closed: event.target.value === "closed" })}>
+              <option value="open">Öppen linje</option><option value="closed">Sluten yta mellan spelarna</option>
+            </select>
+          </label>
+          <div className="tb-row">
+            <label className="tb-field">Tjocklek
+              <input type="range" min={0.15} max={0.8} step={0.05} value={item.width} onChange={event => patch({ width: Number(event.target.value) })} />
+            </label>
+            {item.closed && (
+              <label className="tb-field">Fyllning
+                <input type="range" min={0} max={1} step={0.05} value={item.fill} onChange={event => patch({ fill: Number(event.target.value) })} />
+              </label>
+            )}
+          </div>
+          <label className="tb-check"><input type="checkbox" checked={item.dashed} onChange={event => patch({ dashed: event.target.checked })} />Streckad</label>
+          <Swatches label="Färg" value={item.color} onChange={color => patch({ color })} />
+        </>
+      );
     default:
       return (
         <>

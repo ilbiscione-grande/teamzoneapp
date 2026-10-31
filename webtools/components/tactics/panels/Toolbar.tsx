@@ -1,7 +1,8 @@
 "use client";
 
 // The tools: select, place players and equipment, draw passes, runs, dribbles and
-// areas. A placing tool stays in hand for several taps; a drawing tool goes
+// areas, and measure: sizes shown on areas and lines (on or off), and a
+// ruler from one point to another. A placing tool stays in hand for several taps; a drawing tool goes
 // back to select after one stroke. On a wide screen the palette can be
 // wider, a short word under each icon, two or three to a row; the choice
 // stays in this browser. A phone always has the compact row.
@@ -37,6 +38,7 @@ const groups: { title: string; items: Item[] }[] = [
       { tool: "ellipse", label: "Zon", short: "Zon", icon: "◯" },
     ],
   },
+  { title: "Mät", items: [{ tool: "ruler", label: "Linjal: mät från en punkt till en annan", short: "Linjal", icon: "📏" }] },
 ];
 
 type Size = "compact" | "labels";
@@ -60,6 +62,7 @@ function useToolbarSize(): [Size, (size: Size) => void] {
 export function Toolbar({ homeColor, awayColor }: { homeColor: string; awayColor: string }) {
   const tool = useEditor(state => state.tool);
   const setTool = useEditor(state => state.setTool);
+  const measure = useEditor(state => state.measure);
   const [size, setSize] = useToolbarSize();
   return (
     <nav className="tb-tools" data-size={size} aria-label="Verktyg">
@@ -74,6 +77,13 @@ export function Toolbar({ homeColor, awayColor }: { homeColor: string; awayColor
               <span className="tb-tool-label" aria-hidden="true">{item.short}</span>
             </button>
           ))}
+          {group.title === "Mät" && (
+            <button type="button" title="Visa mått på ytor och linjer" aria-label="Visa mått på ytor och linjer" aria-pressed={measure}
+              onClick={() => useEditor.getState().setMeasure(!measure)}>
+              <span className="tb-tool-icon" aria-hidden="true">m²</span>
+              <span className="tb-tool-label" aria-hidden="true">Mått</span>
+            </button>
+          )}
         </div>
       ))}
       <button type="button" className="tb-tools-size" onClick={() => setSize(size === "labels" ? "compact" : "labels")}

@@ -4,12 +4,14 @@
 // or one quickly by kind, TeamZone's library, and your projects as a grid
 // of cards with their first board small. The ones you pin come first, then
 // your folders, your projects and the team's projects other leaders made,
-// all found with one search. A project can also be imported from a file.
+// all found with one search. Your projects are dragged onto a folder to be
+// put in it, several at once when picked with shift and a click. A project
+// can also be imported from a file.
 // Come from a folder (?mapp=<id>), the new project is put in that folder.
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { removalNote } from "../../lib/tactics/folders.ts";
+import { removalNote, type FolderSummary } from "../../lib/tactics/folders.ts";
 import type { ProjectKind } from "../../lib/tactics/model.ts";
 import { noFilters } from "../../lib/tactics/library.ts";
 import type { LeaderTeam } from "../../lib/tournament";
@@ -25,6 +27,7 @@ import { HomeFilterBar } from "./home/HomeFilterBar.tsx";
 import { kindHints, NewProjectDialog } from "./home/NewProjectDialog.tsx";
 import { ProjectCard, type HomeProject } from "./home/ProjectCard.tsx";
 import { noHomeFilters, teamMatches, useHomeProjects } from "./home/use-home-projects.ts";
+import { startProjectDrag } from "./home/project-drag.ts";
 import "./tactics.css";
 import "./home/home.css";
 
@@ -39,7 +42,10 @@ export function TacticsHome() {
   const { items: favorites, search, boardsOf: sharedBoardsOf } = useSharedLibrary();
   useEffect(() => { void search(noFilters, null, true); }, [search]);
   const [filters, setFilters] = useState(noHomeFilters);
-  const { mine, team, error, pin, remove, unpublish } = useHomeProjects(filters);
+  const { mine, team, error, reload, pin, remove, unpublish } = useHomeProjects(filters);
+  // Your projects picked with shift, to drag to a folder together.
+  const [selected, setSelected] = useState<string[]>([]);
+  const [notice, setNotice] = useState("");
   // The dialog's preset kind, or "pick" to begin with the kind; null when closed.
   const [creating, setCreating] = useState<ProjectKind | "pick" | null>(null);
   const [picking, setPicking] = useState<HomeProject | null>(null);
@@ -50,6 +56,28 @@ export function TacticsHome() {
   }, [client]);
   // Come from a folder's "Nytt projekt", the dialog is open at once.
   useEffect(() => { if (folderId) setCreating("pick"); }, [folderId]);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setSelected([]); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const select = (project: HomeProject) =>
+    setSelected(ids => ids.includes(project.id) ? ids.filter(id => id !== project.id) : [...ids, project.id]);
+  // A picked card takes the others picked with it; an unpicked one goes alone.
+  const drag = (project: HomeProject, event: React.DragEvent) => {
+    const ids = selected.includes(project.id) ? selected : [project.id];
+    startProjectDrag(event.dataTransfer, ids, (mine ?? []).filter(item => ids.includes(item.id)).map(item => item.name));
+  };
+  const putInFolder = async (target: FolderSummary, ids: string[]) => {
+    setNotice("");
+    let added = 0;
+    for (const id of ids) if (await addProject(target.id, id)) added++;
+    if (added > 0) setNotice(`${added === 1 ? "1 projekt" : `${added} projekt`} lades i mappen ${target.name}.`);
+    setSelected([]);
+    void reloadFolders();
+    reload();
+  };
 
   const removeProject = async (project: HomeProject) => {
     const published = (project.published ?? []).length > 0 ? " Det du publicerat från projektet finns kvar i TeamZones bibliotek." : "";
@@ -64,10 +92,14 @@ export function TacticsHome() {
   const others = teamShown.filter(project => !project.pinned);
   const filtered = Object.values(filters).some(value => value !== "");
   const nothingYet = mine !== null && mine.length === 0 && team.length === 0 && !filtered;
-  const card = (project: HomeProject) => (
-    <ProjectCard key={project.id} project={project} onPin={pin} onFolders={setPicking}
-      onRemove={project.access === undefined ? removeProject : undefined} onUnpublish={unpublish} />
-  );
+  const card = (project: HomeProject) => {
+    const own = project.access === undefined;
+    return (
+      <ProjectCard key={project.id} project={project} onPin={pin} onFolders={setPicking}
+        onRemove={own ? removeProject : undefined} onUnpublish={unpublish}
+        selected={selected.includes(project.id)} onSelect={own ? select : undefined} onDrag={own && folders?.length ? drag : undefined} />
+    );
+  };
 
   return (
     <div className="tb-home">
@@ -113,6 +145,21 @@ export function TacticsHome() {
 
       {!nothingYet && <HomeFilterBar filters={filters} onChange={setFilters} kinds={kindLabels} />}
       {error && <p role="alert" className="wt-error">{error}</p>}
+      {notice && <p role="status" className="wt-status">{notice}</p>}
+      {selected.length > 0 && (
+        <div className="tb-selection" role="region" aria-label="Valda projekt">
+          <strong>{selected.length === 1 ? "1 projekt valt" : `${selected.length} projekt valda`}</strong>
+          <span>Dra dem till en mapp, eller välj mappen här:</span>
+          <select value="" aria-label="Lägg i mappen" onChange={event => {
+            const target = folders?.find(item => item.id === event.target.value);
+            if (target) void putInFolder(target, selected);
+          }}>
+            <option value="">Lägg i mapp…</option>
+            {(folders ?? []).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+          <button type="button" className="wt-link tb-inline-button" onClick={() => setSelected([])}>Avmarkera</button>
+        </div>
+      )}
 
       {pinned.length > 0 && (
         <section aria-labelledby="tb-pinned">
@@ -121,7 +168,7 @@ export function TacticsHome() {
         </section>
       )}
 
-      {!filtered && !nothingYet && <FolderCards folders={folders} error={folderError} create={createFolder} />}
+      {!nothingYet && <FolderCards folders={folders} error={folderError} create={createFolder} onDropProjects={putInFolder} />}
 
       {!nothingYet && (
         <section aria-labelledby="tb-mine">
@@ -129,6 +176,9 @@ export function TacticsHome() {
             <h2 id="tb-mine" className="tb-home-heading">Mina projekt</h2>
             {mine && <span className="tb-count">{mine.length}</span>}
           </div>
+          {own.length > 0 && (folders?.length ?? 0) > 0 && (
+            <p className="wt-small tb-drag-hint">Dra ett projekt till en mapp för att lägga det där. Håll in shift och klicka för att välja flera.</p>
+          )}
           {mine === null ? <p className="wt-status">Laddar…</p> : own.length === 0 ? (
             <p className="tb-empty">{filtered ? "Inget av dina projekt passar sökningen." : pinned.length > 0 ? "Alla dina projekt är fästa ovan." : "Inga egna projekt än."}</p>
           ) : (

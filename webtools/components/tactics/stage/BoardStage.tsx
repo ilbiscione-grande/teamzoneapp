@@ -18,6 +18,7 @@ import { objectsAt } from "../../../lib/tactics/timeline.ts";
 import { ObjectNode } from "../objects/ObjectNode.tsx";
 import { activeBoard, activeObjects, isBetween, useEditor } from "../store.ts";
 import { DraftNode } from "./DraftNode.tsx";
+import { RulerNode } from "./RulerNode.tsx";
 import { Ghosts } from "./Ghosts.tsx";
 import { Pitch, tiltedReach } from "./Pitch.tsx";
 import { Selection } from "./Selection.tsx";
@@ -62,6 +63,8 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
   const objects = useEditor(activeObjects);
   const selection = useEditor(state => state.selection);
   const tool = useEditor(state => state.tool);
+  const measureOn = useEditor(state => state.measure);
+  const ruler = useEditor(state => state.ruler);
   const playing = useEditor(state => state.playing);
   const playhead = useEditor(state => state.playhead);
   const frameIndex = useEditor(state => state.frameIndex);
@@ -120,6 +123,8 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
   const zoomedIn = view.viewport.scale > 1.001;
   const pannable = zoomedIn && !tilt && (tool === "select" || isPlaceTool(tool));
   const bandable = fullEdit && tool === "select" && !zoomedIn;
+  // Sizes are for editing; a shared board and a played move show none.
+  const measure = measureOn && fullEdit;
   // Hidden objects stay in the list, not on the pitch. Playing shows the moves.
   const shown = playing || between ? objectsAt(board.frames, playhead) : objects;
   const visible = shown.filter(item => !item.hidden);
@@ -215,10 +220,12 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
                   <Marks objects={visible} board={board} />
                   {visible.filter(item => isMe(item, me)).map(item => <MeMarker key={`me-${item.id}`} at={item} upright={upright} label={!tilt} />)}
                   {onGround.map(item => (
-                    <ObjectNode key={item.id} item={item} board={board} selected={selection.includes(item.id)} upright={upright} holding={holders.has(item.id)} />
+                    <ObjectNode key={item.id} item={item} board={board} selected={selection.includes(item.id)} upright={upright} holding={holders.has(item.id)}
+                      objects={visible} measure={measure} />
                   ))}
                   {fullEdit && <Selection objects={objects} selection={selection} upright={upright} facing={board.showFacing ?? false} />}
-                  {drawing.draft && <DraftNode draft={drawing.draft} ink={lookOf(board.pitch).ink} />}
+                  {drawing.draft && <DraftNode draft={drawing.draft} ink={lookOf(board.pitch).ink} measure={measure} upright={upright} />}
+                  {fullEdit && ruler && !drawing.draft && <RulerNode from={ruler.from} to={ruler.to} upright={upright} />}
                   {extra}
                 </Group>
               </Group>

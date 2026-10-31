@@ -127,6 +127,22 @@ export type TextObject = Base & {
   background: boolean;
 };
 
+/**
+ * A line through players that follows them as they move: open (a back line)
+ * or closed round them (the space they hold). It has no place of its own;
+ * the players' places draw it, in the order of `players`.
+ */
+export type ChainObject = Base & {
+  type: "chain";
+  players: string[];
+  closed: boolean;
+  color: string;
+  width: number;
+  dashed: boolean;
+  /** 0–1: how much a closed one is filled. */
+  fill: number;
+};
+
 export type TacticsObject =
   | PlayerObject
   | BallObject
@@ -134,7 +150,8 @@ export type TacticsObject =
   | LineObject
   | FreehandObject
   | ShapeObject
-  | TextObject;
+  | TextObject
+  | ChainObject;
 
 export type ObjectType = TacticsObject["type"];
 

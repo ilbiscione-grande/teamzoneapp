@@ -31,11 +31,15 @@ type Props = {
   onFolders?: (project: HomeProject) => void;
   onRemove?: (project: HomeProject) => void;
   onUnpublish?: (item: Published) => void;
+  // Your own: picked with shift, and dragged onto a folder.
+  selected?: boolean;
+  onSelect?: (project: HomeProject) => void;
+  onDrag?: (project: HomeProject, event: React.DragEvent) => void;
 };
 
 export const changedOn = (at: string) => new Date(at).toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
 
-export function ProjectCard({ project, onPin, onFolders, onRemove, onUnpublish }: Props) {
+export function ProjectCard({ project, onPin, onFolders, onRemove, onUnpublish, selected, onSelect, onDrag }: Props) {
   // The menu closes on a choice and on a press outside it.
   const menu = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
@@ -48,7 +52,10 @@ export function ProjectCard({ project, onPin, onFolders, onRemove, onUnpublish }
   const published = project.published ?? [];
   const meta = [kindLabels[project.kind], project.team_name, project.board_count === 1 ? "1 tavla" : `${project.board_count} tavlor`].filter(Boolean).join(" · ");
   return (
-    <li className="tb-card">
+    <li className={`tb-card${selected ? " selected" : ""}`} aria-selected={onSelect ? !!selected : undefined}
+      draggable={!!onDrag} onDragStart={onDrag && (event => onDrag(project, event))}
+      // Shift and a click picks the card (and others with it) instead of opening it.
+      onClickCapture={onSelect && (event => { if (event.shiftKey) { event.preventDefault(); event.stopPropagation(); onSelect(project); } })}>
       <Link className="tb-card-picture" href={href} tabIndex={-1} aria-hidden="true">
         <ProjectThumb preview={project.preview} />
         <span className={`tb-card-kind tb-kind-${project.kind}`}>{kindLabels[project.kind]}</span>

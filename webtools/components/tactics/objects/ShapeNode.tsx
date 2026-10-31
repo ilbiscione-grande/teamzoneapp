@@ -2,11 +2,14 @@
 
 // Areas and text: a rectangle or ellipse marking a zone, and a text label
 // that keeps reading upright on a turned pitch. A resized text box wraps its
-// text; the letters keep their own size.
+// text; the letters keep their own size. With measuring on, an area shows
+// its sides and the ground it covers.
 import { Ellipse, Group, Label, Rect, Tag, Text } from "react-konva";
 import type { ShapeObject, TextObject } from "../../../lib/tactics/model.ts";
 import type { Rendered } from "../../../lib/tactics/timeline.ts";
+import { shapeMeasure } from "../../../lib/tactics/measure.ts";
 import { look } from "./look.tsx";
+import { MeasureTag } from "./MeasureTag.tsx";
 import { nodeRef, useStage } from "../stage/stage-context.ts";
 import { useObjectDrag } from "../stage/use-object-drag.ts";
 
@@ -16,7 +19,7 @@ const alpha = (hex: string, opacity: number) => {
   return `rgba(${r},${g},${b},${opacity})`;
 };
 
-export function ShapeNode({ item }: { item: ShapeObject & Rendered }) {
+export function ShapeNode({ item, measure = false, upright = 0 }: { item: ShapeObject & Rendered; measure?: boolean; upright?: number }) {
   const shared = useStage();
   const drag = useObjectDrag(item);
   const style = {
@@ -28,6 +31,7 @@ export function ShapeNode({ item }: { item: ShapeObject & Rendered }) {
       {item.type === "rect"
         ? <Rect width={item.width} height={item.height} offsetX={item.width / 2} offsetY={item.height / 2} cornerRadius={0.4} {...style} />
         : <Ellipse radiusX={item.width / 2} radiusY={item.height / 2} {...style} />}
+      {measure && <MeasureTag at={{ x: 0, y: 0 }} text={shapeMeasure(item)} upright={upright} turn={item.rotation} />}
     </Group>
   );
 }

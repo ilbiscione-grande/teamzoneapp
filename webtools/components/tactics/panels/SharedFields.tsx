@@ -5,9 +5,11 @@
 // their team and facing; all lines, their style; all areas, their fill;
 // all equipment, its size. A field the selected differ in shows no value
 // until it is set. Their effects are chosen under Frames, as for one.
-import { updateBoard } from "../../../lib/tactics/document.ts";
+// Players can be joined by a line, open or closed, that follows them.
+import { newId, updateBoard } from "../../../lib/tactics/document.ts";
+import { chainOrder } from "../../../lib/tactics/measure.ts";
 import { facings, facingToRotation, normalAngle } from "../../../lib/tactics/facing.ts";
-import type { ArrowHead, Board, EquipmentObject, FreehandObject, LineObject, PlayerObject, ShapeObject, TacticsObject, TextObject } from "../../../lib/tactics/model.ts";
+import type { ArrowHead, Board, ChainObject, EquipmentObject, FreehandObject, LineObject, PlayerObject, ShapeObject, TacticsObject, TextObject } from "../../../lib/tactics/model.ts";
 import { standingFacing } from "../../../lib/tactics/timeline.ts";
 import { useEditor } from "../store.ts";
 import { Swatches } from "./Swatches.tsx";
@@ -20,6 +22,27 @@ const MIXED = "";
 function shared<T, V>(items: T[], read: (item: T) => V): V | undefined {
   const first = read(items[0]);
   return items.every(item => read(item) === first) ? first : undefined;
+}
+
+/**
+ * A line through the players, open or closed, put under them in this frame
+ * and the frames after it that have at least two of them, and chosen.
+ */
+function joinPlayers(players: PlayerObject[], closed: boolean) {
+  const { selection, boardId, frameIndex, change, select } = useEditor.getState();
+  // Open, in the order they were picked.
+  const picked = [...players].sort((a, b) => selection.indexOf(a.id) - selection.indexOf(b.id));
+  const chain: ChainObject = {
+    id: newId(), x: 0, y: 0, rotation: 0, locked: false, hidden: false, type: "chain",
+    players: chainOrder(picked, closed), closed, color: closed ? "#facc15" : "#ffffff", width: 0.3, dashed: false, fill: 0.25,
+  };
+  if (!boardId) return;
+  change(document => updateBoard(document, boardId, current => ({
+    ...current,
+    frames: current.frames.map((frame, index) => index < frameIndex
+      || frame.objects.filter(item => chain.players.includes(item.id)).length < 2 ? frame : { ...frame, objects: [chain, ...frame.objects] }),
+  })));
+  select([chain.id]);
 }
 
 export function SharedFields({ items, board }: { items: TacticsObject[]; board: Board }) {
@@ -46,6 +69,13 @@ export function SharedFields({ items, board }: { items: TacticsObject[]; board: 
               <option value="away">{board.teams.away.name}</option>
             </select>
           </label>
+          <div className="tb-field">Linje mellan spelarna
+            <div className="tb-actions">
+              <button type="button" className="wt-button secondary small" onClick={() => joinPlayers(players, false)}>Öppen linje</button>
+              <button type="button" className="wt-button secondary small" disabled={players.length < 3} onClick={() => joinPlayers(players, true)}>Sluten yta</button>
+            </div>
+            <span className="tb-hint">Följer spelarna när de flyttas. Öppen går i den ordning du markerade dem (håll in shift och klicka en i taget).</span>
+          </div>
           <div className="tb-field">Blickriktning
             <div className="tb-facings" role="group" aria-label="Blickriktning">
               {facings.map(way => (

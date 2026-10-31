@@ -3,6 +3,8 @@
 // Drawing with a finger or the mouse: a pass, a run or a line from where the
 // finger goes down to where it lifts; a freehand stroke along the way; an
 // area from corner to corner. Placing tools put an object where you tap.
+// The ruler measures from where the finger goes down to where it lifts; the
+// measure stays shown, not saved, and the ruler stays in hand.
 import { useState } from "react";
 import { createObject, createPlayer, keepOnGrass, newId } from "../../../lib/tactics/document.ts";
 import type { Point, TacticsObject } from "../../../lib/tactics/model.ts";
@@ -10,7 +12,7 @@ import { activeObjects, useEditor, type Tool } from "../store.ts";
 
 export type Draft = { tool: Tool; start: Point; current: Point; path: number[] };
 
-const DRAW_TOOLS = new Set<Tool>(["arrow", "run", "dribble", "line", "freehand", "rect", "ellipse"]);
+const DRAW_TOOLS = new Set<Tool>(["arrow", "run", "dribble", "line", "freehand", "rect", "ellipse", "ruler"]);
 export const isDrawTool = (tool: Tool) => DRAW_TOOLS.has(tool);
 export const isPlaceTool = (tool: Tool) => tool !== "select" && !DRAW_TOOLS.has(tool);
 
@@ -45,6 +47,7 @@ export function useDrawing(pointer: () => Point | null) {
     const { tool } = useEditor.getState();
     const point = pointer();
     if (!point || !isDrawTool(tool)) return false;
+    if (tool === "ruler") useEditor.getState().setRuler(null);
     setDraft({ tool, start: point, current: point, path: [0, 0] });
     return true;
   };
@@ -63,6 +66,11 @@ export function useDrawing(pointer: () => Point | null) {
   };
   const end = () => {
     if (!draft) return;
+    if (draft.tool === "ruler") {
+      setDraft(null);
+      if (Math.hypot(draft.current.x - draft.start.x, draft.current.y - draft.start.y) >= 0.3) useEditor.getState().setRuler({ from: draft.start, to: draft.current });
+      return;
+    }
     const made = draftObject(draft);
     setDraft(null);
     if (!made) return;

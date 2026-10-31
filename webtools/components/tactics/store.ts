@@ -8,12 +8,13 @@ import { create } from "zustand";
 import { patchObjects, updateFrame } from "../../lib/tactics/document.ts";
 import { emptyHistory, record, redo, undo, type History } from "../../lib/tactics/history.ts";
 import { duplicateBoard } from "../../lib/tactics/templates.ts";
-import type { Board, LeaderAccess, Project, ProjectAccess, ProjectDocument, ProjectKind, TacticsObject } from "../../lib/tactics/model.ts";
+import type { Board, LeaderAccess, Point, Project, ProjectAccess, ProjectDocument, ProjectKind, TacticsObject } from "../../lib/tactics/model.ts";
 
 export type Tool =
   | "select"
   | "player-home" | "player-away" | "ball" | "cone" | "pole" | "mannequin" | "goal" | "text"
-  | "arrow" | "run" | "dribble" | "line" | "freehand" | "rect" | "ellipse";
+  | "arrow" | "run" | "dribble" | "line" | "freehand" | "rect" | "ellipse"
+  | "ruler";
 
 export type SaveState = "saved" | "dirty" | "saving" | "error" | "conflict";
 
@@ -32,6 +33,12 @@ type EditorState = {
   tool: Tool;
   /** Whether a dropped ball sticks to a nearby player. */
   attachBall: boolean;
+  /** Sizes shown on areas, lines and lines through players while editing (lib/tactics/measure.ts). Not saved. */
+  measure: boolean;
+  setMeasure: (measure: boolean) => void;
+  /** The ruler's last measure, from one point to another; gone with the next tool. Not saved. */
+  ruler: { from: Point; to: Point } | null;
+  setRuler: (ruler: { from: Point; to: Point } | null) => void;
   history: History;
   saveState: SaveState;
   /** Playing: where the playhead is (in frames), and how. */
@@ -90,6 +97,8 @@ export const useEditor = create<EditorState>((set, get) => ({
   selection: [],
   tool: "select",
   attachBall: true,
+  measure: false,
+  ruler: null,
   history: emptyHistory(),
   saveState: "saved",
   playing: false,
@@ -143,7 +152,9 @@ export const useEditor = create<EditorState>((set, get) => ({
     document, boardId: document.boards[0]?.id ?? null, frameIndex: 0, selection: [], tool: "select", playing: false, playhead: 0, me: null,
     history: emptyHistory(), saveState: "saved",
   }),
-  setTool: tool => set({ tool, selection: tool === "select" ? get().selection : [] }),
+  setTool: tool => set({ tool, ruler: null, selection: tool === "select" ? get().selection : [] }),
+  setMeasure: measure => set({ measure }),
+  setRuler: ruler => set({ ruler }),
   setAttachBall: attachBall => set({ attachBall }),
   select: (ids, additive = false) => set(state => ({
     selection: additive ? [...new Set([...state.selection.filter(id => !ids.includes(id)), ...ids.filter(id => !state.selection.includes(id))])] : ids,
