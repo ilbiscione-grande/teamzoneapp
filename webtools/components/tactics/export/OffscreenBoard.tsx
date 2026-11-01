@@ -88,7 +88,7 @@ export default function OffscreenBoard({ board, objects, moves = [], tilted = fa
             <Group ref={content} x={fit.x} y={fit.y} scaleX={fit.scale} scaleY={fit.scale} rotation={fit.rotation}>
               <MoveArrows moves={moves} ink={lookOf(board.pitch).ink} light={lookOf(board.pitch).light} />
               {shown.filter(item => !tilted || !STANDING.has(item.type)).map(item => (
-                <ObjectNode key={item.id} item={item} board={board} selected={false} upright={-fit.rotation} holding={holders.has(item.id)} />
+                <ObjectNode key={item.id} item={item} board={board} selected={false} upright={-fit.rotation} holding={holders.has(item.id)} objects={shown} />
               ))}
             </Group>
           </Layer>
