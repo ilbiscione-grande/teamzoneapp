@@ -591,10 +591,24 @@ class _PreparationTabState extends State<_PreparationTab> {
   Widget? _focusSection(EventPreparation data) {
     final items = data.itemsOf(PreparationKind.focus);
     if (items.isEmpty && !_canTraining) return null;
+    // The day's block is the starting point, so the plan's suggestion shows
+    // before any focus is picked.
+    return FutureBuilder<TeamPlanSuggestion?>(
+      future: _planSuggestion,
+      builder: (context, snapshot) =>
+          _focusCard(data, items, _canTraining ? snapshot.data : null),
+    );
+  }
+
+  Widget _focusCard(
+    EventPreparation data,
+    List<PreparationItem> items,
+    TeamPlanSuggestion? suggestion,
+  ) {
     return _section(
       title: 'Träningsfokus',
       count: items.length,
-      isEmpty: items.isEmpty,
+      isEmpty: items.isEmpty && suggestion == null,
       onAdd: _canTraining ? () => _addLabels(PreparationKind.focus) : null,
       children: [
         Padding(
@@ -626,25 +640,19 @@ class _PreparationTabState extends State<_PreparationTab> {
             ],
           ),
         ),
-        if (_canTraining)
-          FutureBuilder<TeamPlanSuggestion?>(
-            future: _planSuggestion,
-            builder: (context, snapshot) => switch (snapshot.data) {
-              final suggestion? => _PlanSuggestionBox(
-                suggestion: suggestion,
-                taken: {for (final item in items) item.label.toLowerCase()},
-                onTake: (label) => _write(
-                  () => _services.saveItem(
-                    eventId: data.eventId,
-                    itemId: _newUuid(),
-                    kind: PreparationKind.focus,
-                    label: label,
-                    expectedRevision: 0,
-                  ),
-                ),
+        if (suggestion != null)
+          _PlanSuggestionBox(
+            suggestion: suggestion,
+            taken: {for (final item in items) item.label.toLowerCase()},
+            onTake: (label) => _write(
+              () => _services.saveItem(
+                eventId: data.eventId,
+                itemId: _newUuid(),
+                kind: PreparationKind.focus,
+                label: label,
+                expectedRevision: 0,
               ),
-              null => const SizedBox.shrink(),
-            },
+            ),
           ),
       ],
     );

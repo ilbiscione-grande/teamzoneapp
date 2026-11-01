@@ -15,6 +15,7 @@ import 'package:teamzone_app/src/features/match/match_models.dart';
 import 'package:teamzone_app/src/features/match/match_services.dart';
 import 'package:teamzone_app/src/features/overview/overview_models.dart';
 import 'package:teamzone_app/src/features/overview/overview_services.dart';
+import 'package:teamzone_app/src/features/team_development/team_development_services.dart';
 
 void main() {
   testWidgets(
@@ -399,6 +400,53 @@ void main() {
       await tester.tap(find.byTooltip('Ta bort Speluppbyggnad'));
       await tester.pumpAndSettle();
       expect(prep.labels('focus'), ['Tredje man']);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("the day's block is the starting point for the focus", (
+      tester,
+    ) async {
+      final prep = _Prep()
+        ..plan = TeamPlanSuggestion.fromJson(const {
+          'plan_title': 'Säsong 2026',
+          'period': {'name': 'Vår', 'focus': 'Spelprinciperna i match'},
+          'block': {
+            'name': 'Speluppbyggnad',
+            'focus': 'Bygga upp från målvakten',
+            'principles': [
+              {'area': 'possession', 'title': 'Spelbarhet'},
+            ],
+          },
+          'principles': [
+            {'area': 'possession', 'title': 'Spelbarhet'},
+            {'area': 'defence', 'title': 'Presspel'},
+          ],
+          'goals': ['Våga spela från målvakten'],
+        });
+      await _openPreparation(tester, _Calendar('training', prep));
+      expect(find.byKey(const Key('plan-suggestion')), findsOneWidget);
+      await tester.ensureVisible(find.byKey(const Key('plan-suggestion')));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Från lagets plan · Speluppbyggnad · Vår'),
+        findsOneWidget,
+      );
+      expect(find.text('Bygga upp från målvakten'), findsOneWidget);
+      expect(find.text('Perioden: Spelprinciperna i match'), findsOneWidget);
+      expect(find.text('Blockets principer'), findsOneWidget);
+      expect(find.text('Andra spelprinciper'), findsOneWidget);
+      expect(
+        find.text(
+          'Blocket är en utgångspunkt. Du kan alltid välja något annat.',
+        ),
+        findsOneWidget,
+      );
+      // The block's principle is shown once, among the block's.
+      expect(find.text('Spelbarhet'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(ActionChip, 'Spelbarhet'));
+      await tester.pumpAndSettle();
+      expect(prep.labels('focus'), ['Spelbarhet']);
       expect(tester.takeException(), isNull);
     });
 
@@ -1093,8 +1141,12 @@ class _PreparationOverview extends UnconfiguredOverviewServices {
       );
 }
 
-class _Prep implements EventPreparationServices {
+class _Prep implements EventPreparationServices, TeamPlanSuggestionServices {
   _Prep({this.canEdit = true, this.permissions});
+  TeamPlanSuggestion? plan;
+
+  @override
+  Future<TeamPlanSuggestion?> teamPlanSuggestion(String eventId) async => plan;
   final bool canEdit;
   final PreparationPermissions? permissions;
   List<PreparationItem> items = [];

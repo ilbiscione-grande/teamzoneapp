@@ -160,6 +160,7 @@ part '../features/team_development/team_development_editors.dart';
 part '../features/team_development/team_development_checkins.dart';
 part '../features/team_development/team_development_play.dart';
 part '../features/team_development/team_development_sharing.dart';
+part '../features/team_development/team_development_suggestion.dart';
 part '../features/team_development/team_development_shared_view.dart';
 part '../features/training/training_module.dart';
 part '../features/training/training_session_page.dart';

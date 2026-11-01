@@ -18,10 +18,10 @@ class TrainingTip {
 /// The tips for a period of the team's plan. None yet; see [TrainingTip].
 List<TrainingTip> _trainingTipsFor(TeamPlanSuggestion suggestion) => const [];
 
-/// The season plan at the top of the session: the current period, its focus,
-/// the principles and the goals ahead, and tips for the period. A tap on a
-/// principle or goal makes it the training focus (via [onTake]); without a
-/// team plan, nothing.
+/// The season plan at the top of the session: the day's block and period,
+/// their focus, the principles and the goals ahead, and tips for the period.
+/// A tap on a principle or goal makes it the training focus (via [onTake]);
+/// without a team plan, nothing.
 class _TrainingSeasonPlan extends StatelessWidget {
   const _TrainingSeasonPlan({
     required this.suggestion,

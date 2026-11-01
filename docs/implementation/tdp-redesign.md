@@ -48,6 +48,13 @@ Produktägaren vill göra om TDP från grunden. Det mesta av dagens funktion beh
      - Blockdialogen har namn, fokus och upp till åtta principer.
    - Aktivitetsraden (matcher och läger) och "Träningar i blocket" kommer med kopplingen till kalendern i steg 3–4.
 3. **Kopplingen till förberedelserna.** Blocket blir utgångspunkt både i träningsmodulen och på händelsesidan, genom att `get_team_plan_suggestion` byggs ut.
+   *Byggd lokalt 2026-11-01, inte driftsatt. Ingen ny SQL behövs, eftersom förslaget fick blocket redan i steg 1.*
+   - Förslagsrutan (`team_development_suggestion.dart`, utbruten ur delningsfilen) används på händelsesidans förberedelser, i träningsmodulens pass och i matchplanen.
+   - Rubriken visar blocket och perioden. Blockets fokus kommer först och periodens fokus under det.
+   - Rutan visar därefter blockets principer, målen framåt och planens andra principer. Ett tryck tar över en princip eller ett mål som fokus.
+   - Raden "Blocket är en utgångspunkt. Du kan alltid välja något annat." säger att ledaren kan välja ett annat fokus.
+   - Händelsesidan visar nu förslaget redan innan något träningsfokus är valt. Tidigare doldes det tills fokus fanns.
+   - Att visa vilka pass som följde blocket kommer med kalenderkopplingen i steg 4.
 4. **Årskalendern** med zoom från år till månad, vecka och dag.
 5. **Spelidén.** Vyn, mallarna och guiden.
 6. **Nyckeltal från matcherna.**
