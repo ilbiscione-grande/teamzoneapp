@@ -25,8 +25,10 @@ export type TiltedSources = {
 };
 
 /** The canvases of a Konva stage's layers, bottom first, with their sharpness. */
+// A layer that has just come or gone (a spotlight, say) can have an empty canvas: Konva empties a removed layer's.
 export const layerCanvases = (stage: Konva.Stage | null) =>
-  stage?.getLayers().map(layer => ({ canvas: layer.getNativeCanvasElement(), ratio: layer.getCanvas().getPixelRatio() })) ?? [];
+  stage?.getLayers().map(layer => ({ canvas: layer.getNativeCanvasElement(), ratio: layer.getCanvas().getPixelRatio() }))
+    .filter(({ canvas }) => canvas.width > 0 && canvas.height > 0) ?? [];
 
 /** Draws the tilted board over the whole of the context's canvas. */
 export function drawTilted(context: CanvasRenderingContext2D, { ground, offset, figures, width, height }: TiltedSources) {

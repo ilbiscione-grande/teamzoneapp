@@ -16,6 +16,9 @@ export type StageShared = {
   trash?: React.RefObject<HTMLDivElement | null>;
 };
 
+/** The editor's group in metres, for the video to find the crop on the screen. */
+export const contentHolder: { current: Konva.Group | null } = { current: null };
+
 /** Shows the bin while dragging, lit when the pointer is over it; whether it is. */
 export function trashAt(shared: StageShared, stage: Konva.Stage | null, dragging: boolean): boolean {
   const bin = shared.trash?.current;

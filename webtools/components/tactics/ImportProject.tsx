@@ -37,7 +37,7 @@ export function ImportProject({ folderId, onCreated }: { folderId?: string; onCr
       <button type="button" className="wt-button secondary small" disabled={busy} onClick={() => input.current?.click()}>
         {busy ? "Importerar…" : "Importera projekt från fil"}
       </button>
-      <span className="wt-small">En fil som exporterats från Tacticsboard (Tavlan → Exportera som fil).</span>
+      <span className="wt-small">En fil som exporterats från Tacticsboard (Dela → Spara som fil).</span>
       {error && <p role="alert" className="wt-error">{error}</p>}
     </div>
   );

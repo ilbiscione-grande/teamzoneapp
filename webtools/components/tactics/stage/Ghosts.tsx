@@ -2,7 +2,9 @@
 
 // Editing a later frame: where the moved objects stood in the frame before,
 // as faint ghosts, and the path each takes. A selected object's path has a
-// handle in the middle that bends it; a double tap straightens it.
+// handle in the middle that bends it; a double tap straightens it. The paths
+// lie under the objects, the handles over everything, so a player, a line or
+// the selection over the middle of a path never takes the drag.
 import { Circle, Group, Line } from "react-konva";
 import { PLAYER_RADIUS } from "../../../lib/tactics/ball.ts";
 import type { Point, TacticsObject } from "../../../lib/tactics/model.ts";
@@ -22,9 +24,9 @@ function pathPoints(from: Point, to: Point, control: Point | null | undefined): 
   return points;
 }
 
-/** ink: what white shows as on the board's pitch. */
-export function Ghosts({ previous, current, selection, editable, ink = "#ffffff" }: {
-  previous: TacticsObject[]; current: TacticsObject[]; selection: string[]; editable: boolean; ink?: string;
+/** ink: what white shows as on the board's pitch. part: the paths and ghosts, or the handles. */
+export function Ghosts({ previous, current, selection, editable, ink = "#ffffff", part = "paths" }: {
+  previous: TacticsObject[]; current: TacticsObject[]; selection: string[]; editable: boolean; ink?: string; part?: "paths" | "handles";
 }) {
   const shared = useStage();
   const before = new Map(previous.map(item => [item.id, item]));
@@ -46,10 +48,12 @@ export function Ghosts({ previous, current, selection, editable, ink = "#ffffff"
         const selected = selection.includes(item.id);
         return (
           <Group key={item.id}>
-            <Line points={pathPoints(from, to, item.pathControl)} stroke={ink} strokeWidth={0.18} dash={[0.6, 0.5]} opacity={0.75} listening={false} perfectDrawEnabled={false} />
-            <Circle x={from.x} y={from.y} radius={item.type === "player" ? PLAYER_RADIUS : 0.9} fill={ink} opacity={0.22}
-              stroke={ink} strokeWidth={0.12} dash={[0.4, 0.3]} listening={false} perfectDrawEnabled={false} />
-            {selected && editable && (
+            {part === "paths" && <>
+              <Line points={pathPoints(from, to, item.pathControl)} stroke={ink} strokeWidth={0.18} dash={[0.6, 0.5]} opacity={0.75} listening={false} perfectDrawEnabled={false} />
+              <Circle x={from.x} y={from.y} radius={item.type === "player" ? PLAYER_RADIUS : 0.9} fill={ink} opacity={0.22}
+                stroke={ink} strokeWidth={0.12} dash={[0.4, 0.3]} listening={false} perfectDrawEnabled={false} />
+            </>}
+            {part === "handles" && selected && editable && (
               <Circle x={middle.x} y={middle.y} radius={handle} fill={item.pathControl ? "#ffffff" : "rgba(255,255,255,0.65)"}
                 stroke="#111827" strokeWidth={handle * 0.18} draggable
                 onMouseDown={event => { event.cancelBubble = true; }} onTouchStart={event => { event.cancelBubble = true; }}

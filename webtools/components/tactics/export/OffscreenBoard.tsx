@@ -9,7 +9,7 @@ import type Konva from "konva";
 import { useEffect, useMemo, useRef } from "react";
 import { Group, Layer, Stage } from "react-konva";
 import { ballHolders } from "../../../lib/tactics/ball.ts";
-import { fitView, marginFor, viewRect } from "../../../lib/tactics/geometry.ts";
+import { fitView, marginFor, shownRect } from "../../../lib/tactics/geometry.ts";
 import { drawnGround, groundReach, projector } from "../../../lib/tactics/projection.ts";
 import type { Board, TacticsObject } from "../../../lib/tactics/model.ts";
 import type { Trail } from "../../../lib/tactics/marks.ts";
@@ -37,7 +37,8 @@ export default function OffscreenBoard({ board, objects, moves = [], tilted = fa
   const nodes = useRef(new Map<string, Konva.Node>());
   const content = useRef<Konva.Group>(null);
   const branding = useEditor(state => state.document?.branding);
-  const fit = fitView(viewRect(board.view, marginFor(board.surroundings)), PICTURE.width, PICTURE.height);
+  // The board's crop where it has one: the part of the pitch the PDF is to show.
+  const fit = fitView(shownRect(board, marginFor(board.surroundings), true), PICTURE.width, PICTURE.height, false, !!board.crop);
   const holders = ballHolders(objects);
   // In layers, as the board draws them.
   const shown = layered(objects.filter(item => !item.hidden));

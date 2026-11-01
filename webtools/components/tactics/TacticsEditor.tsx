@@ -56,7 +56,7 @@ export function TacticsWorkspace() {
   useEffect(() => { if (selectionCount > 0) setPanel(current => current === "frames" || current === "objects" ? current : "properties"); }, [selectionCount]);
   if (!board) return null;
   if (presenting) return <Presenter onClose={() => setPresenting(false)} />;
-  const tabs: [Panel, React.ReactNode][] = [["properties", selectionCount ? "Egenskaper" : "Tavlan"], ["frames", "Frames"], ["objects", "Objekt"], ["squad", "Lag"]];
+  const tabs: [Panel, React.ReactNode][] = [["properties", "Egenskaper"], ["frames", "Frames"], ["objects", "Objekt"], ["squad", "Lag"]];
   // While a live lesson runs, its chat, hands and settings have a tab first.
   if (live) tabs.unshift(["live", <LiveBadge key="live" label="Live" hands />]);
   return (

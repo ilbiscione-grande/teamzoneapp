@@ -183,7 +183,7 @@ export function NewProjectDialog({ teams, folder, templates, templateBoards, rem
               </details>
             )}
             {(templates ?? []).length === 0 && (
-              <p className="wt-small">Spara ett projekt som mall i projektet under Tavlan → Spara som mall, så finns den här nästa gång.</p>
+              <p className="wt-small">Spara ett projekt som mall i projektet under Inställningar → Projektet, så finns den här nästa gång.</p>
             )}
           </>
         )}

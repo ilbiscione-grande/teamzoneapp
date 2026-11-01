@@ -21,14 +21,35 @@ export function viewRect(view: PitchView, margin = MARGIN): Rect {
   }
 }
 
+/** The smallest crop, in metres a side: a few players and their moves. */
+export const MIN_CROP = 6;
+
+/** What a board shows: its crop where it has one and it is wanted (presenting, links, exports), else its view. */
+export function shownRect(board: { view: PitchView; crop?: Rect | null }, margin: number, cropped: boolean): Rect {
+  return cropped && board.crop ? board.crop : viewRect(board.view, margin);
+}
+
+/** The crop spanned by two corners, never smaller than MIN_CROP a side; null when barely dragged. */
+export function cropBetween(a: Point, b: Point): Rect | null {
+  const width = Math.abs(b.x - a.x), height = Math.abs(b.y - a.y);
+  if (width < 1 && height < 1) return null;
+  const w = Math.max(width, MIN_CROP), h = Math.max(height, MIN_CROP);
+  const x = Math.min(a.x, b.x) - (w - width) / 2, y = Math.min(a.y, b.y) - (h - height) / 2;
+  const round = (value: number) => Math.round(value * 10) / 10;
+  return { x: round(x), y: round(y), width: round(w), height: round(h) };
+}
+
 /** The pitch group's place, scale and turn that fit the view in the frame. */
 export type Fit = { x: number; y: number; scale: number; rotation: 0 | -90 };
 
-/** portrait: a wide view always turned upright (a phone held upright, however little room is left under its bars). */
-export function fitView(rect: Rect, frameWidth: number, frameHeight: number, portrait = false): Fit {
+/**
+ * portrait: a wide view always turned upright (a phone held upright, however little room is left under its bars).
+ * upright: never turned (a crop, shown as it was chosen).
+ */
+export function fitView(rect: Rect, frameWidth: number, frameHeight: number, portrait = false, upright = false): Fit {
   if (frameWidth <= 0 || frameHeight <= 0) return { x: 0, y: 0, scale: 1, rotation: 0 };
   // Turn when the frame is tall and the view is wide (or the other way round).
-  const turn = portrait ? rect.width > rect.height : frameHeight > frameWidth !== rect.height > rect.width;
+  const turn = !upright && (portrait ? rect.width > rect.height : frameHeight > frameWidth !== rect.height > rect.width);
   const width = turn ? rect.height : rect.width;
   const height = turn ? rect.width : rect.height;
   const scale = Math.min(frameWidth / width, frameHeight / height);

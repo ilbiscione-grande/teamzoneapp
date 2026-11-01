@@ -1,7 +1,7 @@
 /* Sharing a board: the dialog, a shared board's page and its QR code. */
 
 /* Sharing */
-.tb-share { min-height: 34px; padding: 0 14px; border: 0; border-radius: 6px; background: var(--wt-accent); color: var(--wt-accent-ink); font: inherit; font-weight: 800; font-size: .9rem; cursor: pointer; }
+.tb-icon.tb-share { background: var(--wt-accent); color: var(--wt-accent-ink); }
 .tb-modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(11, 17, 28, .6); }
 .tb-modal-card { width: min(560px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; display: grid; gap: 12px; padding: 20px; border-radius: 10px; background: white; color: var(--wt-text); box-shadow: 0 30px 80px rgba(0, 0, 0, .35); }
 .tb-modal-head { display: flex; align-items: center; justify-content: space-between; }
@@ -20,7 +20,6 @@
 
 /* PDF: the pictures are drawn off screen. */
 .tb-offscreen { position: fixed; left: -10000px; top: 0; pointer-events: none; }
-.tb-pdf { width: auto; padding: 0 10px; font-size: .78rem; font-weight: 800; letter-spacing: .04em; }
 .tb-choice { margin: 0; padding: 10px 12px; border: 1px solid var(--wt-line); border-radius: 8px; display: grid; gap: 6px; }
 .tb-choice legend { padding: 0 6px; font-weight: 700; font-size: .9rem; }
 .tb-choice label { display: flex; align-items: center; gap: 8px; font-size: .92rem; }
@@ -110,3 +109,13 @@ body:has(.tb-viewer) .wt-header { display: none; }
 .tb-version-board { margin: 0; display: grid; gap: 4px; }
 .tb-version-board svg { width: 100%; height: auto; }
 .tb-version-board figcaption { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78rem; color: var(--wt-muted); }
+
+/* Dela: every way out, as sections of rows with a button each. */
+.tb-modal-card.tb-share-card { width: min(620px, 100%); }
+.tb-share-section { display: grid; gap: 8px; }
+.tb-share-section + .tb-share-section { padding-top: 12px; border-top: 1px solid var(--wt-line); }
+.tb-share-section h3 { margin: 0; font-size: 1rem; text-transform: uppercase; }
+.tb-share-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.tb-share-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tb-share-list li > div { display: grid; gap: 2px; min-width: 0; }
+.tb-share-list li > .wt-button { flex: none; }

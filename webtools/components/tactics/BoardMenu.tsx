@@ -63,7 +63,7 @@ export function BoardMenu() {
           <span className="tb-menu-heading">Dina mallar</span>
           {error && <span className="tb-menu-note">{error}</span>}
           {templates === null ? <span className="tb-menu-note">Laddar…</span> : templates.length === 0 ? (
-            <span className="tb-menu-note">Inga mallar än. Spara en under Tavlan → Spara som mall.</span>
+            <span className="tb-menu-note">Inga mallar än. Spara en under Inställningar → Projektet.</span>
           ) : templates.map(template => (
             <button key={template.id} type="button" role="menuitem" onClick={() => void fromTemplate(template.id)}>
               {template.name}

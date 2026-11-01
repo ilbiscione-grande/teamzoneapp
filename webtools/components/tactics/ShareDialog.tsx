@@ -1,125 +1,129 @@
 "use client";
 
-// Sharing: a link to the whole project or the board in hand. Anyone with it
-// watches and plays the boards without an account, always as last saved,
-// until the link is revoked. Each link can be copied, sent through the
-// phone's own sharing, by e-mail, text or WhatsApp, or shown as a QR code.
-import { useCallback, useEffect, useState } from "react";
-import { useAccount } from "../account";
-import { BigQr, downloadQrPng, QrCode } from "./QrCode.tsx";
-import { activeBoard, useEditor, NONE } from "./store.ts";
+// Every way the boards leave the editor, in one dialog under the top bar's
+// share button: the part of the pitch to show, a link to watch them, a PDF,
+// a video of the board in hand,
+// the project as a file, publishing in a club's library and, in a training
+// project, the board put in one of the team's coming sessions.
+import { useEffect, useState, type ReactNode } from "react";
+import { exportFileName, exportProject } from "../../lib/tactics/transfer.ts";
+import { activeBoard, useEditor } from "./store.ts";
+import { ShareLinks } from "./ShareLinks.tsx";
+import { ExportDialog } from "./export/ExportDialog.tsx";
+import { PublishDialog } from "./PublishDialog.tsx";
+import { TrainingLinkDialog } from "./TrainingLinkDialog.tsx";
+import { canRecord, download, recordBoard, useRecording } from "./timeline/video-export.ts";
+import { setCrop } from "./stage/CropFrame.tsx";
 
-type Link = { token: string; board_id: string | null; created_at: string };
+type Inner = "pdf" | "publish" | "training" | null;
 
-function LinkCard({ link, title, projectName, onRevoke }: { link: Link; title: string; projectName: string; onRevoke: () => void }) {
-  const url = `${window.location.origin}/delad/${link.token}`;
-  const [copied, setCopied] = useState(false);
-  const [showQr, setShowQr] = useState(false);
-  const [bigQr, setBigQr] = useState(false);
-  const message = `${projectName}: ${title}`;
-  const text = encodeURIComponent(`${message}\n${url}`);
-  const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch { /* the field can be copied by hand */ }
-  };
-  const share = async () => {
-    try { await navigator.share({ title: message, text: message, url }); } catch { /* closed by the person */ }
-  };
-
+function Way({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
   return (
     <li>
-      {bigQr && <BigQr text={url} title={message} onClose={() => setBigQr(false)} />}
-      <strong>{title}</strong>
-      <input readOnly value={url} onFocus={event => event.target.select()} aria-label={`Länk, ${title}`} />
-      <div className="tb-actions">
-        <button type="button" className="wt-button small" onClick={() => void copy()}>{copied ? "Kopierad" : "Kopiera"}</button>
-        {canShare && <button type="button" className="wt-button small" onClick={() => void share()}>Dela…</button>}
-        <button type="button" className="wt-button secondary small" aria-expanded={showQr} onClick={() => setShowQr(!showQr)}>QR-kod</button>
-        <a className="wt-button secondary small" href={url} target="_blank" rel="noreferrer">Öppna</a>
-      </div>
-      <div className="tb-share-ways" aria-label="Skicka länken">
-        <a href={`mailto:?subject=${encodeURIComponent(message)}&body=${text}`}>E-post</a>
-        <a href={`sms:?&body=${text}`}>SMS</a>
-        <a href={`https://wa.me/?text=${text}`} target="_blank" rel="noreferrer">WhatsApp</a>
-        <button type="button" className="tb-link" onClick={onRevoke}>Återkalla länken</button>
-      </div>
-      {showQr && (
-        <div className="tb-qr-box">
-          <QrCode text={url} label={`QR-kod för ${title}`} />
-          <div className="tb-qr-actions">
-            <p className="tb-hint">Skanna med mobilens kamera. Visa den på en skärm i omklädningsrummet, eller skriv ut den.</p>
-            <button type="button" className="wt-button small" onClick={() => setBigQr(true)}>Visa stort</button>
-            <button type="button" className="wt-button secondary small" onClick={() => downloadQrPng(url, message, `QR_${message.replace(/[^\p{L}\p{N}]+/gu, "_")}.png`)}>Spara som bild</button>
-          </div>
-        </div>
-      )}
+      <div><strong>{title}</strong><p className="tb-hint">{hint}</p></div>
+      {children}
     </li>
   );
 }
 
-export function ShareDialog({ onClose }: { onClose: () => void }) {
-  const { client } = useAccount();
+/** onCrop: closes the dialog for the crop to be chosen on the board. */
+export function ShareDialog({ onClose, onCrop }: { onClose: () => void; onCrop: () => void }) {
   const meta = useEditor(state => state.meta);
   const board = useEditor(activeBoard);
-  const boards = useEditor(state => state.document?.boards ?? NONE);
-  const [links, setLinks] = useState<Link[] | null>(null);
+  const tilt = useEditor(state => state.tilt);
+  const recording = useRecording(state => state.share);
+  const [inner, setInner] = useState<Inner>(null);
   const [error, setError] = useState("");
-
-  const load = useCallback(async () => {
-    if (!client || !meta) return;
-    const { data, error: loadError } = await client.schema("api").rpc("list_tactics_share_links", { target_project_id: meta.id });
-    if (loadError) { setError("Länkarna kunde inte hämtas."); setLinks([]); return; }
-    setLinks(data as Link[]);
-  }, [client, meta]);
-  useEffect(() => { void load(); }, [load]);
+  const owner = meta?.access === "owner";
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    if (inner) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape" && recording === null) onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [inner, onClose, recording]);
+  if (!meta || !board) return null;
 
-  const create = async (boardId: string | null) => {
-    if (!client || !meta) return;
+  const animated = board.frames.length > 1;
+  const record = async () => {
     setError("");
-    const { error: createError } = await client.schema("api").rpc("create_tactics_share_link", { target_project_id: meta.id, target_board_id: boardId });
-    if (createError) { setError("Länken kunde inte skapas. Har projektet sparats?"); return; }
-    void load();
+    try {
+      const video = await recordBoard();
+      if (!video) setError("Webbläsaren kan inte spela in video här.");
+      else download(video.blob, `${(board.name || "tavla").replace(/[^\p{L}\p{N}]+/gu, "_")}.${video.extension}`);
+    } catch {
+      setError("Videon kunde inte spelas in.");
+    }
   };
-  const revoke = async (token: string) => {
-    if (!client || !window.confirm("Återkalla länken? Den slutar fungera för alla som har den.")) return;
-    const { error: revokeError } = await client.schema("api").rpc("revoke_tactics_share_link", { target_token: token });
-    if (revokeError) { setError("Länken kunde inte återkallas."); return; }
-    void load();
+  const exportFile = () => {
+    const document = useEditor.getState().document;
+    if (!document) return;
+    download(new Blob([exportProject(meta.name, meta.kind, document)], { type: "application/json" }), exportFileName(meta.name));
   };
-  const titleOf = (id: string | null) => id === null ? "Hela projektet" : boards.find(item => item.id === id)?.name ?? "Borttagen tavla";
-  const has = (id: string | null) => links?.some(link => link.board_id === id) ?? false;
 
+  if (inner === "pdf") return <ExportDialog onClose={() => setInner(null)} />;
+  if (inner === "publish") return <PublishDialog onClose={() => setInner(null)} />;
+  if (inner === "training") return <TrainingLinkDialog board={board} onClose={() => setInner(null)} />;
   return (
-    <div className="tb-modal" role="dialog" aria-modal="true" aria-label="Dela" onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
-      <div className="tb-modal-card">
+    <div className="tb-modal" role="dialog" aria-modal="true" aria-label="Dela"
+      onClick={event => { if (event.target === event.currentTarget && recording === null) onClose(); }}>
+      <div className="tb-modal-card tb-share-card">
         <div className="tb-modal-head">
           <h2>Dela</h2>
-          <button type="button" className="tb-modal-close" aria-label="Stäng" onClick={onClose}>×</button>
+          <button type="button" className="tb-modal-close" aria-label="Stäng" disabled={recording !== null} onClick={onClose}>×</button>
         </div>
-        <p className="tb-hint">Alla som har länken kan se och spela upp tavlorna, utan konto och utan att logga in. Det du ändrar syns direkt i länken. Återkalla länken när den inte ska fungera längre.</p>
-        <div className="tb-actions">
-          {!has(null) && <button type="button" className="wt-button small" onClick={() => void create(null)}>Skapa länk till hela projektet</button>}
-          {board && boards.length > 1 && !has(board.id) && (
-            <button type="button" className="wt-button secondary small" onClick={() => void create(board.id)}>Skapa länk till {board.name || "tavlan"}</button>
-          )}
-        </div>
-        {error && <p className="wt-error" role="alert">{error}</p>}
-        {links === null ? <p className="tb-hint">Laddar…</p> : links.length > 0 && (
-          <ul className="tb-links">
-            {links.map(link => (
-              <LinkCard key={link.token} link={link} title={titleOf(link.board_id)} projectName={meta?.name || "Tavla"} onRevoke={() => void revoke(link.token)} />
-            ))}
+        <section className="tb-share-section">
+          <h3>Utsnitt</h3>
+          <ul className="tb-share-list">
+            <Way title={board.crop ? "En del av planen" : "Hela planen"}
+              hint={board.crop
+                ? `Bara den del av ${board.name || "tavlan"} du valt visas i PDF, video, visningsläget och delade länkar.${tilt ? " Videon i 3D visar hela planen." : ""}`
+                : "Välj en del av planen för att bara visa det som händer där, i PDF, video, visningsläget och delade länkar."}>
+              <span className="tb-actions">
+                {board.crop && <button type="button" className="wt-button secondary small" disabled={recording !== null} onClick={() => setCrop(board.id, null)}>Hela planen</button>}
+                <button type="button" className="wt-button secondary small" disabled={recording !== null} onClick={onCrop}>{board.crop ? "Ändra…" : "Välj utsnitt…"}</button>
+              </span>
+            </Way>
           </ul>
+        </section>
+        <section className="tb-share-section">
+          <h3>Länk att titta på</h3>
+          {owner ? <ShareLinks /> : <p className="tb-hint">{meta.ownerName?.trim() || "En annan ledare"} äger projektet och delar länkar till det.</p>}
+        </section>
+        <section className="tb-share-section">
+          <h3>Spara och skicka</h3>
+          <ul className="tb-share-list">
+            <Way title="PDF" hint="Tavlorna på A4 med beskrivning och anteckningar, att skriva ut eller skicka.">
+              <button type="button" className="wt-button secondary small" disabled={recording !== null} onClick={() => setInner("pdf")}>Skapa PDF…</button>
+            </Way>
+            {canRecord() && (
+              <Way title="Video" hint={animated ? `${board.name || "Tavlan"} spelas upp från början och sparas som video.` : "Lägg till en frame till för att kunna spela in tavlan."}>
+                <button type="button" className="wt-button secondary small" disabled={!animated || recording !== null} onClick={() => void record()}>
+                  {recording !== null ? `Spelar in ${Math.round(recording * 100)} %` : "Spela in"}
+                </button>
+              </Way>
+            )}
+            <Way title="Fil" hint="Hela projektet som en fil, att importera på startsidan, även på ett annat konto.">
+              <button type="button" className="wt-button secondary small" disabled={recording !== null} onClick={exportFile}>Spara som fil</button>
+            </Way>
+          </ul>
+          {error && <p className="wt-error" role="alert">{error}</p>}
+        </section>
+        {(owner || meta.kind === "training") && (
+          <section className="tb-share-section">
+            <h3>I TeamZone</h3>
+            <ul className="tb-share-list">
+              {owner && (
+                <Way title="Klubbens bibliotek" hint="Publicera projektet eller tavlan så att klubbens ledare hittar den.">
+                  <button type="button" className="wt-button secondary small" disabled={recording !== null} onClick={() => setInner("publish")}>Publicera…</button>
+                </Way>
+              )}
+              {meta.kind === "training" && (
+                <Way title="Träningspass" hint={`${board.name || "Tavlan"} som övning i ett av lagets kommande pass.`}>
+                  <button type="button" className="wt-button secondary small" disabled={recording !== null} onClick={() => setInner("training")}>Lägg i ett pass…</button>
+                </Way>
+              )}
+            </ul>
+          </section>
         )}
       </div>
     </div>

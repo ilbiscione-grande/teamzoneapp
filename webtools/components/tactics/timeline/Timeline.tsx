@@ -2,16 +2,15 @@
 
 // Under the board: the timeline to scrub, play and pause, loop and speed,
 // the frames to choose from, a new frame copied from the one in hand, its length and how it
-// eases, moving and removing it, and recording the play as a video. Under it a slot of fixed
+// eases, moving and removing it. Under it a slot of fixed
 // height for the frame's tools or a hint, so scrubbing never changes the board's size.
-import { useState } from "react";
 import { insertFrame, moveFrame, removeFrame, setFrameDuration, setFrameEasing, updateBoard } from "../../../lib/tactics/document.ts";
 import type { Board, Easing } from "../../../lib/tactics/model.ts";
 import { easingLabels } from "../panels/effects.ts";
 import { isBetween, stepFrame, useEditor } from "../store.ts";
 import { Scrubber } from "./Scrubber.tsx";
 import { usePlayback } from "./use-playback.ts";
-import { canRecord, download, recordBoard } from "./video-export.ts";
+import { useRecording } from "./video-export.ts";
 
 const durations = [500, 750, 1000, 1500, 2000, 3000, 4000];
 const speeds = [0.5, 1, 1.5, 2];
@@ -30,8 +29,8 @@ export function Timeline({ board, readOnly = false, viewer = false }: { board: B
   const tilt = useEditor(state => state.tilt);
   const between = useEditor(isBetween);
   const { setFrame, play, pause, setLoop, setSpeed, setTilt, change } = useEditor.getState();
-  const [recording, setRecording] = useState<number | null>(null);
-  const [error, setError] = useState("");
+  // A video is recorded from the share dialog by playing the board.
+  const recording = useRecording(state => state.share);
   const frames = board.frames;
   const last = frames.length - 1;
   const changeBoard = (next: (current: Board) => Board) => change(document => updateBoard(document, board.id, next));
@@ -48,18 +47,6 @@ export function Timeline({ board, readOnly = false, viewer = false }: { board: B
   const move = (step: 1 | -1) => {
     changeBoard(current => moveFrame(current, frameIndex, step));
     setFrame(frameIndex + step);
-  };
-  const record = async () => {
-    setError("");
-    setRecording(0);
-    try {
-      const video = await recordBoard(share => setRecording(share));
-      if (!video) setError("Webbläsaren kan inte spela in video här.");
-      else download(video.blob, `${(board.name || "tavla").replace(/[^\p{L}\p{N}]+/gu, "_")}.${video.extension}`);
-    } catch {
-      setError("Videon kunde inte spelas in.");
-    }
-    setRecording(null);
   };
 
   const moving = playing || between;
@@ -95,11 +82,6 @@ export function Timeline({ board, readOnly = false, viewer = false }: { board: B
         <select className="tb-mini-select" value={speed} aria-label="Hastighet" onChange={event => setSpeed(Number(event.target.value))}>
           {speeds.map(value => <option key={value} value={value}>{value}×</option>)}
         </select>
-        {!readOnly && canRecord() && (
-          <button type="button" className="tb-mini-button" disabled={frames.length < 2 || playing || recording !== null} onClick={() => void record()}>
-            {recording !== null ? `Spelar in ${Math.round(recording * 100)} %` : "Video"}
-          </button>
-        )}
       </div>
       {!readOnly && (
         <div className="tb-timeline-foot">
@@ -129,7 +111,6 @@ export function Timeline({ board, readOnly = false, viewer = false }: { board: B
           ) : null}
         </div>
       )}
-      {error && <p className="tb-timeline-hint" role="alert">{error}</p>}
     </div>
   );
 }

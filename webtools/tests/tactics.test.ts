@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { ATTACH_DISTANCE, ballHolders, ballPosition, dropBall, settleBalls } from "../lib/tactics/ball.ts";
 import { applyFormation, createObject, createPlayer, nextNumber, normalizeDocument, objectLabel, newBoard, restack, updateFrame } from "../lib/tactics/document.ts";
 import { formationPositions, formations, parseFormation } from "../lib/tactics/formations.ts";
-import { fitView, pitchToFrame, viewRect, zoomAround } from "../lib/tactics/geometry.ts";
+import { cropBetween, fitView, MIN_CROP, pitchToFrame, shownRect, viewRect, zoomAround } from "../lib/tactics/geometry.ts";
 import { emptyHistory, HISTORY_LIMIT, record, redo, undo } from "../lib/tactics/history.ts";
 import type { BallObject, ProjectDocument, TacticsObject } from "../lib/tactics/model.ts";
 import { boardsForTemplate, boardsFromTemplate, copyBoard, starterBoard, starterSets } from "../lib/tactics/templates.ts";
@@ -198,4 +198,23 @@ test("a board saved in the library: no ties to players, its details beside it", 
   // TBL-17: a match's boards are not saved in the library.
   assert.deepEqual(libraryKindsFor.match, []);
   assert.deepEqual(libraryKindsFor.training, ["exercise", "plan"]);
+});
+
+test("a crop is spanned by two corners either way round, at least MIN_CROP a side", () => {
+  assert.deepEqual(cropBetween({ x: 40, y: 30 }, { x: 20, y: 10 }), { x: 20, y: 10, width: 20, height: 20 });
+  assert.deepEqual(cropBetween({ x: 10, y: 10 }, { x: 12, y: 30 }), { x: 11 - MIN_CROP / 2, y: 10, width: MIN_CROP, height: 20 });
+  assert.equal(cropBetween({ x: 10, y: 10 }, { x: 10.5, y: 10.5 }), null);
+});
+
+test("a board shows its crop only where cropping is wanted", () => {
+  const crop = { x: 20, y: 10, width: 30, height: 20 };
+  assert.deepEqual(shownRect({ view: "full", crop }, 4, true), crop);
+  assert.deepEqual(shownRect({ view: "full", crop }, 4, false), viewRect("full", 4));
+  assert.deepEqual(shownRect({ view: "attack", crop: null }, 4, true), viewRect("attack", 4));
+});
+
+test("a crop is fitted as chosen, never turned", () => {
+  const tall = { x: 10, y: 0, width: 30, height: 60 };
+  assert.equal(fitView(tall, 1500, 1000).rotation, -90);
+  assert.equal(fitView(tall, 1500, 1000, false, true).rotation, 0);
 });

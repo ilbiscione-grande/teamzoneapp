@@ -78,7 +78,7 @@ export function TrainingLinkDialog({ board, onClose }: { board: Board; onClose: 
             <div className="tb-actions"><button type="button" className="wt-button small" onClick={onClose}>Stäng</button></div>
           </>
         ) : !teamId ? (
-          <p>Projektet behöver ett lag. Välj laget under Tavlan, så visas lagets kommande träningar här.</p>
+          <p>Projektet behöver ett lag. Välj laget under Inställningar → Projektet, så visas lagets kommande träningar här.</p>
         ) : (
           <>
             <p className="tb-hint">

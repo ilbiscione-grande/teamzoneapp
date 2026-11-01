@@ -237,6 +237,8 @@ export type Board = {
   showFacing?: boolean;
   /** In a training project: the board as an exercise (decision package 13); its organisation is the description. */
   exercise?: ExerciseDetails;
+  /** A part of the pitch, in metres, that presenting, shared links, the PDF and the video show instead of the whole view; missing for all of it. */
+  crop?: { x: number; y: number; width: number; height: number } | null;
   frames: Frame[];
 };
 

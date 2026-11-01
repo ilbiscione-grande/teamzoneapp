@@ -10,7 +10,7 @@ import Konva from "konva";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Group, Layer, Rect, Stage } from "react-konva";
 import { ballHolders } from "../../../lib/tactics/ball.ts";
-import { blendViewport, fitView, marginFor, viewRect, zoomTo, type Viewport } from "../../../lib/tactics/geometry.ts";
+import { blendViewport, fitView, marginFor, shownRect, zoomTo, type Viewport } from "../../../lib/tactics/geometry.ts";
 import type { Point } from "../../../lib/tactics/model.ts";
 import { layered } from "../../../lib/tactics/document.ts";
 import { cameraAt, spotlightAt } from "../../../lib/tactics/marks.ts";
@@ -29,7 +29,9 @@ import { isMe } from "../../../lib/tactics/me.ts";
 import { SpotlightLayer } from "./SpotlightLayer.tsx";
 import { Figures3D, STANDING } from "./Figures3D.tsx";
 import { drawnGround, groundReach, projector, TILT, tiltOrigin, tiltTransform, unproject, type Reach } from "../../../lib/tactics/projection.ts";
-import { pitchPointer, StageContext, stageHolder, type StageShared } from "./stage-context.ts";
+import { contentHolder, pitchPointer, StageContext, stageHolder, type StageShared } from "./stage-context.ts";
+import { CropFrame, setCrop, useCropDraw, useCropping } from "./CropFrame.tsx";
+import { useRecording } from "../timeline/video-export.ts";
 import { tiltHolder } from "./tilt-picture.ts";
 import { useBand } from "./use-band.ts";
 import { useSwipe } from "./use-swipe.ts";
@@ -80,6 +82,10 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
   const canEdit = editable && !playing && !between && !tilt;
   // Everything but dragging: selecting with a band, handles, the bin, tools.
   const fullEdit = canEdit && !moveOnly;
+  // Watching (presenting, a link, a live lesson) shows the board's crop; the editor all of it.
+  const cropped = !editable || moveOnly;
+  const cropping = useCropping(state => state.on) && fullEdit;
+  const recording = useRecording(state => state.share !== null);
   const content = useRef<Konva.Group>(null);
   const nodes = useRef(new Map<string, Konva.Node>());
   const trash = useRef<HTMLDivElement>(null);
@@ -107,8 +113,9 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
     return () => observer.disconnect();
   }, []);
 
-  const fit = useMemo(() => fitView(viewRect(board?.view ?? "full", marginFor(surroundings)), size.width, size.height, portrait),
-    [board?.view, surroundings, portrait, size.width, size.height]);
+  const crop = board?.crop;
+  const fit = useMemo(() => fitView(shownRect({ view: board?.view ?? "full", crop }, marginFor(surroundings), cropped), size.width, size.height, portrait, cropped && !!crop),
+    [board?.view, crop, cropped, surroundings, portrait, size.width, size.height]);
   const shared = useMemo<StageShared>(() => ({
     nodes: nodes.current,
     content,
@@ -126,13 +133,14 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus, fit]);
   const drawing = useDrawing(() => content.current?.getRelativePointerPosition() ?? null);
+  const cropDraw = useCropDraw(() => content.current?.getRelativePointerPosition() ?? null, board?.id);
 
   if (!board) return <div ref={frame} className="tb-stage" />;
   const upright = -fit.rotation;
   // Zoomed in, the grass moves the view; with the whole view in sight it selects.
   const zoomedIn = view.viewport.scale > 1.001;
-  const pannable = zoomedIn && !tilt && (tool === "select" || isPlaceTool(tool));
-  const bandable = fullEdit && tool === "select" && !zoomedIn;
+  const pannable = zoomedIn && !tilt && !cropping && (tool === "select" || isPlaceTool(tool));
+  const bandable = fullEdit && tool === "select" && !zoomedIn && !cropping;
   // Sizes are for editing; a shared board and a played move show none.
   const measure = measureOn && fullEdit;
   // Hidden objects stay in the list, not on the pitch. Playing shows the moves.
@@ -199,22 +207,24 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
             }}
             onPointerDown={event => {
               if (view.pinch.current) return;
-              if (fullEdit && isDrawTool(tool)) drawing.start();
+              if (cropping) cropDraw.start();
+              else if (fullEdit && isDrawTool(tool)) drawing.start();
               else if (bandable && event.target.name() === "grass") band.begin(event);
             }}
             onPointerMove={event => {
+              if (cropping) { cropDraw.move(); return; }
               drawing.move();
               band.move(event);
               if (pitchPointer.size) { const at = content.current?.getRelativePointerPosition() ?? null; pitchPointer.forEach(listen => listen(at)); }
             }}
             onPointerLeave={() => pitchPointer.forEach(listen => listen(null))}
-            onPointerUp={event => { drawing.end(); band.end(event, visible.map(item => item.id)); }}
+            onPointerUp={event => { if (cropping) { cropDraw.end(); return; } drawing.end(); band.end(event, visible.map(item => item.id)); }}
             onClick={event => {
-              if (band.consumeClick() || event.evt.button !== 0 || !fullEdit) return;
+              if (cropping || band.consumeClick() || event.evt.button !== 0 || !fullEdit) return;
               tapGrass(event.target);
             }}
             onTap={event => {
-              if (band.consumeClick() || !fullEdit || view.pinch.current) return;
+              if (cropping || band.consumeClick() || !fullEdit || view.pinch.current) return;
               tapGrass(event.target);
             }}>
             <Layer {...offset}>
@@ -228,7 +238,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
             </Layer>
             <Layer {...offset}>
               <Group ref={view.objectView} {...zoomed}>
-                <Group ref={content} {...fitted}>
+                <Group ref={node => { content.current = node; if (editable && !moveOnly) contentHolder.current = node; }} {...fitted}>
                   {previous && <Ghosts previous={previous} current={objects} selection={selection} editable={canEdit} ink={lookOf(board.pitch).ink} />}
                   <Marks objects={visible} board={board} />
                   {visible.filter(item => isMe(item, me)).map(item => <MeMarker key={`me-${item.id}`} at={item} upright={upright} label={!tilt} />)}
@@ -237,6 +247,10 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
                       objects={visible} measure={measure} />
                   ))}
                   {fullEdit && <Selection objects={objects} selection={selection} upright={upright} facing={board.showFacing ?? false} />}
+                  {previous && !cropping && <Ghosts part="handles" previous={previous} current={objects} selection={selection} editable={canEdit} />}
+                  {fullEdit && !tilt && (cropping || !recording) && (
+                    <CropFrame crop={cropDraw.draft ?? board.crop ?? null} active={cropping} pixel={shared.metresPerPixel()} upright={upright} />
+                  )}
                   {drawing.draft && <DraftNode draft={drawing.draft} ink={lookOf(board.pitch).ink} measure={measure} upright={upright} />}
                   {fullEdit && ruler && !drawing.draft && <RulerNode from={ruler.from} to={ruler.to} upright={upright} />}
                   {extra}
@@ -254,6 +268,13 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
           {tilt && <Figures3D objects={visible} board={board} project={projector(fit, sight, size.width, size.height)} spotlight={spotlight} width={size.width} height={size.height} me={me}
             stageRef={node => { tiltHolder.figures = node; }} />}
         </StageContext.Provider>
+      )}
+      {cropping && (
+        <div className="tb-crop-bar" role="status">
+          <span>Dra en ruta över den del av planen som ska visas i PDF, video, visningsläget och delade länkar.</span>
+          {board.crop && <button type="button" className="wt-button secondary small" onClick={() => setCrop(board.id, null)}>Hela planen</button>}
+          <button type="button" className="wt-button small" onClick={() => useCropping.getState().stop()}>Klar</button>
+        </div>
       )}
       {fullEdit && (
         <div ref={trash} className="tb-trash" data-active="false" data-over="false" aria-hidden="true">

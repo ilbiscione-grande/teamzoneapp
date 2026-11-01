@@ -274,7 +274,7 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
 .tb-figures { position: absolute; inset: 0; pointer-events: none; }
 .tb-mini-button[aria-pressed="true"] { background: var(--wt-accent); color: var(--wt-accent-ink); border-color: var(--wt-accent); }
 
-/* The project's logo under Tavlan. */
+/* The project's logo, under Inställningar. */
 .tb-branding { display: grid; gap: 6px; }
 .tb-branding-row { display: flex; align-items: center; gap: 8px; }
 .tb-branding-logo { width: 40px; height: 40px; object-fit: contain; border: 1px solid var(--wt-line); border-radius: 6px; background: white; }
@@ -289,3 +289,24 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
 .tb-stacking .wt-button { padding-inline: 4px; white-space: nowrap; }
 .tb-objects .tb-layer { display: block; border: 0; margin-top: 8px; padding: 2px 6px; color: var(--wt-muted); font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; background: none; }
 .tb-objects .tb-layer:first-child { margin-top: 0; }
+
+/* The top bar's icon buttons as one group, apart from Live and Dela. */
+.tb-top-group { display: inline-flex; gap: 4px; }
+
+/* Inställningar: the pitch, the teams and the project as tabs in a dialog. */
+/* As tall for every tab, so the tabs stay put when switching. */
+.tb-modal-card.tb-settings { width: min(620px, 100%); min-height: min(480px, calc(100dvh - 32px)); align-content: start; }
+.tb-settings-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--wt-line); }
+.tb-settings-tabs button { padding: 8px 14px; border: 0; border-bottom: 3px solid transparent; background: none; color: var(--wt-muted); font: inherit; font-weight: 700; cursor: pointer; }
+.tb-settings-tabs button[aria-selected="true"] { color: var(--wt-text); border-bottom-color: var(--wt-brand); }
+.tb-settings .tb-inspector h3.tb-settings-heading { font-size: .9rem; }
+.tb-settings-teams { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.tb-settings-open { display: inline-flex; align-items: center; gap: 6px; }
+.tb-board-summary { display: grid; gap: 4px; padding: 10px; border: 1px solid var(--wt-line); border-radius: 6px; }
+.tb-board-summary p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+.tb-board-tab input { width: 140px; min-height: 30px; margin: 0 6px; padding: 0 8px; border: 1px solid var(--wt-accent); border-radius: 4px; background: #0f1a14; color: white; font: inherit; font-size: .9rem; }
+
+/* Choosing the crop: what to do and the way out, over the top of the board. */
+.tb-crop-bar { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 5; width: min(560px, calc(100% - 20px)); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: rgba(11, 17, 28, .92); color: white; font-size: .85rem; box-shadow: 0 10px 30px rgba(0, 0, 0, .3); }
+.tb-crop-bar span { flex: 1 1 220px; }
+.tb-share-list li > .tb-actions { flex: none; flex-wrap: nowrap; }

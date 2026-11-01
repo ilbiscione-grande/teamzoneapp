@@ -6,15 +6,12 @@
 // organisation is the board's description. Saved with the project, and
 // taken along when the board is saved in the library, or put in one of the
 // team's coming training sessions.
-import { useState } from "react";
 import { updateBoard } from "../../../lib/tactics/document.ts";
 import { ageClasses, ageClassLabels, emptyExercise, gameFormLabels, gameForms, partLabels, phaseLabels } from "../../../lib/tactics/library.ts";
 import type { Board, ExerciseDetails, ExercisePart, GamePhase } from "../../../lib/tactics/model.ts";
 import { useEditor } from "../store.ts";
-import { TrainingLinkDialog } from "../TrainingLinkDialog.tsx";
 
 export function ExerciseFields({ board }: { board: Board }) {
-  const [linking, setLinking] = useState(false);
   const details = { ...emptyExercise, ...board.exercise };
   const change = (patch: Partial<ExerciseDetails>) => useEditor.getState().change(document =>
     updateBoard(document, board.id, current => ({ ...current, exercise: { ...emptyExercise, ...current.exercise, ...patch } })));
@@ -75,8 +72,7 @@ export function ExerciseFields({ board }: { board: Board }) {
           ))}
         </div>
       </div>
-      <button type="button" className="wt-button secondary small" onClick={() => setLinking(true)}>Lägg i ett träningspass…</button>
-      {linking && <TrainingLinkDialog board={board} onClose={() => setLinking(false)} />}
+      <p className="tb-hint">Lägg tavlan i ett av lagets träningspass under Dela.</p>
     </fieldset>
   );
 }

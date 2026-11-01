@@ -1,19 +1,20 @@
 "use client";
 
 // Above the board, on one row: back to the projects (or the folder it was
-// opened from), the boards as tabs,
-// undo and redo, PDF, sharing and how saving goes. The project's name, kind
-// and team are under the board's settings.
+// opened from), the boards as tabs (renamed by a double click),
+// undo and redo, presenting, versions and settings, sharing (a link, PDF,
+// video and more, in one dialog) and how saving goes. The project's name, kind and team are under Inställningar.
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { LeaderAccess, ProjectKind } from "../../lib/tactics/model.ts";
 import { kindNames } from "../../lib/tactics/preview.ts";
+import { updateBoard } from "../../lib/tactics/document.ts";
 import type { LeaderTeam } from "../../lib/tournament";
 import { useAccount } from "../account";
 import { useEditor, type SaveState, NONE } from "./store.ts";
 import { saveAsCopy, saveNow } from "./use-autosave.ts";
 import { ShareDialog } from "./ShareDialog.tsx";
-import { ExportDialog } from "./export/ExportDialog.tsx";
+import { useCropping } from "./stage/CropFrame.tsx";
 import { BoardMenu } from "./BoardMenu.tsx";
 import { LiveButton } from "./live/LiveButton.tsx";
 import { LiveDialog } from "./live/LiveDialog.tsx";
@@ -21,6 +22,8 @@ import { TopBarMore } from "./TopBarMore.tsx";
 import { HistoryIcon, VersionsDialog } from "./VersionsDialog.tsx";
 import { useLibrary } from "./use-library.ts";
 import { PublishedIcon } from "./PublishedIcon.tsx";
+import { SettingsDialog, useSettings } from "./SettingsDialog.tsx";
+import { FullscreenIcon, SettingsIcon, ShareIcon } from "./TopBarIcons.tsx";
 
 const saveLabels: Record<SaveState, string> = {
   saved: "Sparat", dirty: "Ändrat", saving: "Sparar…", error: "Kunde inte spara", conflict: "Ändrat på annat håll",
@@ -34,6 +37,8 @@ function Boards() {
   const { setBoard, change } = useEditor.getState();
   const projectId = useEditor(state => state.meta?.id);
   const { items } = useLibrary();
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const rename = (id: string, name: string) => change(document => updateBoard(document, id, current => ({ ...current, name: name.slice(0, 60) })));
   const publishedFor = (boardId: string) => [...new Set((items ?? [])
     .filter(item => item.shared && item.source_project_id === projectId && (item.kind !== "exercise" || item.source_board_id === boardId))
     .map(item => item.shared!.club_name ?? ""))];
@@ -47,10 +52,20 @@ function Boards() {
     <div className="tb-boards" role="tablist" aria-label="Tavlor">
       {boards.map(board => (
         <span key={board.id} className="tb-board-tab" data-active={board.id === boardId}>
-          <button type="button" role="tab" aria-selected={board.id === boardId} onClick={() => setBoard(board.id)}>
-            {board.name || "Tavla"}
-            {publishedFor(board.id).map(club => <PublishedIcon key={club} clubName={club || null} />)}
-          </button>
+          {renaming === board.id ? (
+            <input autoFocus defaultValue={board.name} maxLength={60} aria-label="Tavlans namn" onFocus={event => event.target.select()}
+              onBlur={event => { rename(board.id, event.target.value.trim() || board.name); setRenaming(null); }}
+              onKeyDown={event => {
+                if (event.key === "Enter") event.currentTarget.blur();
+                if (event.key === "Escape") { event.currentTarget.value = board.name; event.currentTarget.blur(); }
+              }} />
+          ) : (
+            <button type="button" role="tab" aria-selected={board.id === boardId} onClick={() => setBoard(board.id)}
+              onDoubleClick={() => { setBoard(board.id); setRenaming(board.id); }} title="Dubbelklicka för att byta namn">
+              {board.name || "Tavla"}
+              {publishedFor(board.id).map(club => <PublishedIcon key={club} clubName={club || null} />)}
+            </button>
+          )}
           {board.id === boardId && boards.length > 1 && (
             <button type="button" className="tb-tab-close" aria-label={`Ta bort ${board.name}`} onClick={() => remove(board.id, board.name)}>×</button>
           )}
@@ -61,7 +76,7 @@ function Boards() {
   );
 }
 
-/** The project's name, kind and TeamZone team, in the board's settings. */
+/** The project's name, kind and TeamZone team, under Inställningar. */
 export function ProjectFields({ className }: { className: string }) {
   const { client } = useAccount();
   const meta = useEditor(state => state.meta);
@@ -117,9 +132,9 @@ export function TopBar({ onPresent }: { onPresent: () => void }) {
   const canRedo = useEditor(state => state.history.future.length > 0);
   const { undo, redo } = useEditor.getState();
   const [sharing, setSharing] = useState(false);
-  const [exporting, setExporting] = useState(false);
   const [living, setLiving] = useState(false);
   const [versions, setVersions] = useState(false);
+  const openSettings = useSettings(state => state.open);
   // Opened from a folder (?mapp=<id>), back goes to the folder.
   const [folderId, setFolderId] = useState<string | null>(null);
   useEffect(() => {
@@ -130,22 +145,24 @@ export function TopBar({ onPresent }: { onPresent: () => void }) {
   const owner = meta.access === "owner";
   return (
     <header className="tb-top">
-      {sharing && <ShareDialog onClose={() => setSharing(false)} />}
-      {exporting && <ExportDialog onClose={() => setExporting(false)} />}
+      {sharing && <ShareDialog onClose={() => setSharing(false)} onCrop={() => { setSharing(false); useCropping.getState().start(() => setSharing(true)); }} />}
       {living && <LiveDialog onClose={() => setLiving(false)} />}
       {versions && <VersionsDialog onClose={() => setVersions(false)} />}
+      <SettingsDialog />
       <div className="tb-top-row">
         <Link href={folderId ? `/tacticsboard/mapp/${folderId}` : "/tacticsboard"} className="tb-back"
           aria-label={folderId ? "Till mappen" : "Till projekten"} title={meta.name}>‹</Link>
         <Boards />
         <button type="button" className="tb-icon" onClick={undo} disabled={!canUndo} aria-label="Ångra" title="Ångra (Ctrl+Z)">↶</button>
         <button type="button" className="tb-icon" onClick={redo} disabled={!canRedo} aria-label="Gör om" title="Gör om (Ctrl+Y)">↷</button>
-        <button type="button" className="tb-icon tb-pdf tb-wide-only" onClick={onPresent} aria-label="Visa i helskärm" title="Visa i helskärm, utan redigering">⛶</button>
-        <button type="button" className="tb-icon tb-pdf tb-wide-only" onClick={() => setExporting(true)} aria-label="Skapa PDF" title="Skapa PDF">PDF</button>
-        <button type="button" className="tb-icon tb-wide-only tb-glyph" onClick={() => setVersions(true)} aria-label="Versioner" title="Tidigare versioner"><HistoryIcon /></button>
+        <span className="tb-top-group tb-wide-only">
+          <button type="button" className="tb-icon tb-glyph" onClick={onPresent} aria-label="Visa i helskärm" title="Visa i helskärm, utan redigering"><FullscreenIcon /></button>
+          <button type="button" className="tb-icon tb-glyph" onClick={() => setVersions(true)} aria-label="Versioner" title="Tidigare versioner"><HistoryIcon /></button>
+          <button type="button" className="tb-icon tb-glyph" onClick={() => openSettings()} aria-label="Inställningar" title="Inställningar för plan, lag och projekt"><SettingsIcon /></button>
+        </span>
         {owner && <LiveButton onClick={() => setLiving(true)} />}
-        <TopBarMore onPresent={onPresent} onPdf={() => setExporting(true)} onLive={owner ? () => setLiving(true) : undefined} onVersions={() => setVersions(true)} />
-        {owner && <button type="button" className="tb-share" onClick={() => setSharing(true)}>Dela</button>}
+        <TopBarMore onPresent={onPresent} onLive={owner ? () => setLiving(true) : undefined} onVersions={() => setVersions(true)} onSettings={() => openSettings()} />
+        <button type="button" className="tb-icon tb-glyph tb-share" onClick={() => setSharing(true)} aria-label="Dela" title="Dela: länk, PDF, video och mer"><ShareIcon /></button>
         <span className="tb-save" data-state={saveState} role="status">
           {saveLabels[saveState]}
           {saveState === "error" && client && <button type="button" className="tb-link" onClick={() => void saveNow(client)}>Försök igen</button>}
