@@ -7,9 +7,9 @@ String _tdpText(BuildContext context, String swedish, String english) =>
 /// The ISO week number of [day].
 int _tdpWeek(DateTime day) {
   final date = DateTime.utc(day.year, day.month, day.day);
-  final thursday = date.add(Duration(days: 4 - date.weekday));
+  final thursday = _tdpShift(date, 4 - date.weekday);
   final first = DateTime.utc(thursday.year);
-  return thursday.difference(first).inDays ~/ 7 + 1;
+  return _tdpDaysBetween(first, thursday) ~/ 7 + 1;
 }
 
 /// The plan's principles by id, in the order given.
@@ -57,7 +57,29 @@ class _TdpHomeBody extends StatelessWidget {
       _TdpSeasonStrip(
         plan: plan,
         onOpen: () => _ModuleShell.select(context, 1),
+        onCalendar: () =>
+            _TdpCalendar.open(context, controller: controller, plan: plan),
       ),
+      if (block != null || period != null) ...[
+        const SizedBox(height: 12),
+        _TdpBlockActivities(
+          controller: controller,
+          plan: plan,
+          from: block?.startsOn ?? period!.startsOn,
+          to: block?.endsOn ?? period!.endsOn,
+          title: block == null
+              ? _tdpText(
+                  context,
+                  'Aktiviteter i perioden',
+                  'Activities in the period',
+                )
+              : _tdpText(
+                  context,
+                  'Aktiviteter i blocket',
+                  'Activities in the block',
+                ),
+        ),
+      ],
       if (block != null) ...[
         const SizedBox(height: 12),
         _TdpGoalGroup(
@@ -166,12 +188,12 @@ class _TdpHomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final today = DateUtils.dateOnly(DateTime.now());
-    final total = plan.endsOn.difference(plan.startsOn).inDays + 1;
-    final gone = (today.difference(plan.startsOn).inDays + 1).clamp(0, total);
+    final total = _tdpDaysBetween(plan.startsOn, plan.endsOn) + 1;
+    final gone = (_tdpDaysBetween(plan.startsOn, today) + 1).clamp(0, total);
     final seasons = controller.data?.seasons ?? const <SeasonSummary>[];
     final progress = today.isBefore(plan.startsOn)
         ? AppStrings.of(context).formatFeature('Börjar om {days} dagar', {
-            'days': plan.startsOn.difference(today).inDays,
+            'days': _tdpDaysBetween(today, plan.startsOn),
           })
         : today.isAfter(plan.endsOn)
         ? AppStrings.of(context).feature('Säsongen är slut')
@@ -422,19 +444,23 @@ class _TdpNowCard extends StatelessWidget {
 /// blocks as strips under them (those passed paler), and a line at today.
 /// A tap opens the planning.
 class _TdpSeasonStrip extends StatelessWidget {
-  const _TdpSeasonStrip({required this.plan, required this.onOpen});
+  const _TdpSeasonStrip({
+    required this.plan,
+    required this.onOpen,
+    required this.onCalendar,
+  });
   final SeasonPlan plan;
-  final VoidCallback onOpen;
+  final VoidCallback onOpen, onCalendar;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final today = DateUtils.dateOnly(DateTime.now());
-    final total = plan.endsOn.difference(plan.startsOn).inDays + 1;
+    final total = _tdpDaysBetween(plan.startsOn, plan.endsOn) + 1;
     double at(DateTime day) =>
-        (day.difference(plan.startsOn).inDays / total).clamp(0.0, 1.0);
+        (_tdpDaysBetween(plan.startsOn, day) / total).clamp(0.0, 1.0);
     double span(DateTime from, DateTime to) =>
-        ((to.difference(from).inDays + 1) / total).clamp(0.0, 1.0);
+        ((_tdpDaysBetween(from, to) + 1) / total).clamp(0.0, 1.0);
     return Card(
       key: const Key('tdp-season-strip'),
       child: InkWell(
@@ -453,6 +479,28 @@ class _TdpSeasonStrip extends StatelessWidget {
                       style: theme.textTheme.titleMedium,
                     ),
                   ),
+                  // A phone has room for the icon only.
+                  if (MediaQuery.sizeOf(context).width < 600)
+                    IconButton(
+                      key: const Key('tdp-open-calendar'),
+                      tooltip: _tdpText(
+                        context,
+                        'Årskalender',
+                        'Year calendar',
+                      ),
+                      onPressed: onCalendar,
+                      icon: const Icon(Icons.calendar_month_outlined),
+                    )
+                  else
+                    TextButton.icon(
+                      key: const Key('tdp-open-calendar'),
+                      onPressed: onCalendar,
+                      icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                      label: Text(
+                        _tdpText(context, 'Årskalender', 'Year calendar'),
+                      ),
+                    ),
+                  const SizedBox(width: 8),
                   Text(
                     AppStrings.of(context).feature('Planera säsongen'),
                     style: theme.textTheme.labelLarge?.copyWith(

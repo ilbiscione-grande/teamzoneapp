@@ -11,8 +11,20 @@ abstract final class _TeamDevelopmentModule {
     BuildContext context, {
     required TeamZoneContext team,
     required TeamDevelopmentServices services,
+    required CalendarServices calendar,
+    required ValueChanged<String> onNavigate,
   }) {
-    final controller = _TdpController(services, team.teamId!);
+    final controller = _TdpController(
+      services,
+      team.teamId!,
+      calendar: calendar,
+      contextId: team.id,
+      // An activity opens on its own page: the module closes first.
+      onOpenEvent: (eventId) {
+        Navigator.of(context, rootNavigator: true).pop();
+        onNavigate(ProductRouteContract.calendarEvent(eventId));
+      },
+    );
     return _ModuleShell.open(
       context,
       _ModuleShell(
@@ -48,11 +60,61 @@ abstract final class _TeamDevelopmentModule {
 /// The plan shared by the module's sections: loaded once, and replaced by
 /// the plan each change returns.
 class _TdpController extends ChangeNotifier {
-  _TdpController(this.services, this.teamId) {
+  _TdpController(
+    this.services,
+    this.teamId, {
+    required this.calendar,
+    required this.contextId,
+    required this.onOpenEvent,
+  }) {
     unawaited(reload());
   }
   final TeamDevelopmentServices services;
   final String teamId;
+
+  /// The team's calendar, for the activities beside the plan; [contextId]
+  /// is the leader's assignment in the team.
+  final CalendarServices calendar;
+  final String contextId;
+  final ValueChanged<String> onOpenEvent;
+  DateTime? _from, _to;
+  Future<List<CalendarEventSummary>>? _activities;
+
+  /// The team's activities from [from] to [to], not cancelled, by start.
+  /// Read once for a stretch and again only for days outside it.
+  Future<List<CalendarEventSummary>> activities(DateTime from, DateTime to) {
+    final cached = _activities;
+    if (cached != null && !from.isBefore(_from!) && !to.isAfter(_to!)) {
+      return cached;
+    }
+    final start = _from == null || from.isBefore(_from!) ? from : _from!;
+    final end = _to == null || to.isAfter(_to!) ? to : _to!;
+    _from = start;
+    _to = end;
+    return _activities = _readActivities(start, end);
+  }
+
+  Future<List<CalendarEventSummary>> _readActivities(
+    DateTime from,
+    DateTime to,
+  ) async {
+    try {
+      final events = await calendar.listCalendar(
+        contextIds: [contextId],
+        from: from,
+        to: to.add(const Duration(days: 1)),
+      );
+      return [
+        for (final event in events)
+          if (event.state != 'cancelled') event,
+      ]..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+    } catch (caught) {
+      AppErrors.caught('team_development.activities', caught);
+      _activities = _from = _to = null;
+      rethrow;
+    }
+  }
+
   TeamDevelopment? data;
   Object? error;
   bool _disposed = false;
@@ -280,6 +342,18 @@ class _TdpFirstSeason extends StatelessWidget {
 
 String _tdpDate(BuildContext context, DateTime value) =>
     MaterialLocalizations.of(context).formatShortMonthDay(value);
+
+/// [day] moved [days] calendar days, at midnight: a day across a change to
+/// or from summer time is not 24 hours.
+DateTime _tdpShift(DateTime day, int days) =>
+    DateTime(day.year, day.month, day.day + days);
+
+/// The calendar days from [from] to [to].
+int _tdpDaysBetween(DateTime from, DateTime to) => DateTime.utc(
+  to.year,
+  to.month,
+  to.day,
+).difference(DateTime.utc(from.year, from.month, from.day)).inDays;
 
 String _tdpRange(BuildContext context, DateTime from, DateTime to) =>
     '${_tdpDate(context, from)} – ${_tdpDate(context, to)}';

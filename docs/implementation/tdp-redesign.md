@@ -56,6 +56,19 @@ Produktägaren vill göra om TDP från grunden. Det mesta av dagens funktion beh
    - Händelsesidan visar nu förslaget redan innan något träningsfokus är valt. Tidigare doldes det tills fokus fanns.
    - Att visa vilka pass som följde blocket kommer med kalenderkopplingen i steg 4.
 4. **Årskalendern** med zoom från år till månad, vecka och dag.
+   *Byggd lokalt 2026-11-01, inte driftsatt. Ingen ny SQL behövs, eftersom aktiviteterna hämtas med kalenderns `listCalendar` för ledarens uppdrag i laget.*
+   - **Var den öppnas:** årskalendern (`team_development_calendar.dart`, `team_development_calendar_days.dart`) öppnas från knappen Årskalender på säsongskortet i Översikt och vid tidslinjen i Planera. På dator ligger den i nästan helsida och på telefon i helskärm.
+   - **År:** säsongens månader som kort. Dagarna har periodens färg och en prick för aktiviteter (röd för match). Varje kort summerar matcher, träningar och annat och visar månadens perioder.
+   - **Månad:** ett kalenderrutnät där veckonumret har periodens färg och leder till veckan. Blocket står i dagrutan och aktiviteterna visas med tid. Ett tryck på dagen öppnar den.
+   - **Vecka:** periodens och blockets fokus och principer överst och sedan sju kolumner med aktiviteterna.
+   - **Dag:** aktiviteterna med en knapp Öppna och bredvid "Planen den här dagen". Öppna stänger modulen och går till händelsesidan, där förberedelsen görs.
+   - **Navigering:** brödsmulor, pilar och I dag.
+   - **Hovring i årsvyn:** när musen hålls över en dag med aktiviteter visas en lista med dem, och listan försvinner när musen flyttas. På telefon visas den med ett långt tryck.
+   - **Datumräkning:** tidslinjen och kalendern räknar dagar som kalenderdagar. Förut räknades de som 24 timmar, vilket gav en dag fel efter sommartidens slut.
+   - **Översikt:** kortet "Aktiviteter i blocket" (eller perioden) visar genomförda och kommande aktiviteter. Ett tryck öppnar dagen i kalendern.
+   - **Inte byggt än:**
+     - Om ett pass följde blocket kräver data från förberedelserna och är inte byggt.
+     - Skador och belastning på dagen kommer med steg 8–9.
 5. **Spelidén.** Vyn, mallarna och guiden.
 6. **Nyckeltal från matcherna.**
 7. **Övningsförslag ur biblioteket.**

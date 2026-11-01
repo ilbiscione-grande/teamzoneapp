@@ -78,20 +78,18 @@ class _TdpTimelineEditor extends StatefulWidget {
 
 class _TdpTimelineEditorState extends State<_TdpTimelineEditor> {
   _TdpDrag? _drag;
-  static const _day = Duration(days: 1);
 
   SeasonPlan get plan => widget.plan;
   DateTime get _monday =>
-      plan.startsOn.subtract(Duration(days: plan.startsOn.weekday - 1));
-  int get _days => plan.endsOn.difference(_monday).inDays + 1;
+      _tdpShift(plan.startsOn, -(plan.startsOn.weekday - 1));
+  int get _days => _tdpDaysBetween(_monday, plan.endsOn) + 1;
 
   double _x(DateTime day, double width) =>
-      day.difference(_monday).inDays / _days * width;
+      _tdpDaysBetween(_monday, day) / _days * width;
   double _dayAt(double dx, double width) =>
       (dx / width * _days).clamp(0, _days - 1).toDouble();
-  DateTime _date(double day) => _monday.add(Duration(days: day.floor()));
-  DateTime _weekStart(double day) =>
-      _monday.add(Duration(days: day.floor() ~/ 7 * 7));
+  DateTime _date(double day) => _tdpShift(_monday, day.floor());
+  DateTime _weekStart(double day) => _tdpShift(_monday, day.floor() ~/ 7 * 7);
   static DateTime _max(DateTime a, DateTime b) => a.isAfter(b) ? a : b;
   static DateTime _min(DateTime a, DateTime b) => a.isBefore(b) ? a : b;
 
@@ -105,9 +103,9 @@ class _TdpTimelineEditorState extends State<_TdpTimelineEditor> {
   ) {
     for (final other in others) {
       if (other.endsOn.isBefore(from)) {
-        low = _max(low, other.endsOn.add(_day));
+        low = _max(low, _tdpShift(other.endsOn, 1));
       } else if (other.startsOn.isAfter(to)) {
-        high = _min(high, other.startsOn.subtract(_day));
+        high = _min(high, _tdpShift(other.startsOn, -1));
       }
     }
     return (low, high);
@@ -137,12 +135,12 @@ class _TdpTimelineEditorState extends State<_TdpTimelineEditor> {
         .where(
           (item) =>
               dx >= _x(item.startsOn, width) - 2 &&
-              dx <= _x(item.endsOn.add(_day), width) + 2,
+              dx <= _x(_tdpShift(item.endsOn, 1), width) + 2,
         )
         .firstOrNull;
     if (hit != null) {
       final left = _x(hit.startsOn, width),
-          right = _x(hit.endsOn.add(_day), width);
+          right = _x(_tdpShift(hit.endsOn, 1), width);
       final edge = (right - left) < 24 ? 4.0 : 10.0;
       final mode = dx - left < edge
           ? 'left'
@@ -195,7 +193,7 @@ class _TdpTimelineEditorState extends State<_TdpTimelineEditor> {
         mode: 'create',
         anchor: day,
         start: _max(week, low),
-        end: _min(week.add(const Duration(days: 6)), high),
+        end: _min(_tdpShift(week, 6), high),
         low: low,
         high: high,
       );
@@ -208,10 +206,11 @@ class _TdpTimelineEditorState extends State<_TdpTimelineEditor> {
     if (drag == null) return;
     final day = _dayAt(dx, width);
     final weeks = ((day - drag.anchor) / 7).round();
-    final shift = Duration(days: weeks * 7);
+    final shift = weeks * 7;
     switch (drag.mode) {
       case 'move':
-        var start = drag.origStart.add(shift), end = drag.origEnd.add(shift);
+        var start = _tdpShift(drag.origStart, shift),
+            end = _tdpShift(drag.origEnd, shift);
         if (start.isBefore(drag.low)) {
           end = end.add(drag.low.difference(start));
           start = drag.low;
@@ -225,17 +224,17 @@ class _TdpTimelineEditorState extends State<_TdpTimelineEditor> {
           drag.end = end;
         }
       case 'left':
-        var start = _max(drag.origStart.add(shift), drag.low);
+        var start = _max(_tdpShift(drag.origStart, shift), drag.low);
         start = _min(start, drag.innerStart ?? drag.end);
         drag.start = _min(start, drag.end);
       case 'right':
-        var end = _min(drag.origEnd.add(shift), drag.high);
+        var end = _min(_tdpShift(drag.origEnd, shift), drag.high);
         end = _max(end, drag.innerEnd ?? drag.start);
         drag.end = _max(end, drag.start);
       default:
         final a = _weekStart(drag.anchor), b = _weekStart(day);
         drag.start = _max(_min(a, b), drag.low);
-        drag.end = _min(_max(a, b).add(const Duration(days: 6)), drag.high);
+        drag.end = _min(_tdpShift(_max(a, b), 6), drag.high);
     }
     setState(() {});
   }
@@ -260,7 +259,7 @@ class _TdpTimelineEditorState extends State<_TdpTimelineEditor> {
         .where(
           (item) =>
               dx >= _x(item.startsOn, width) &&
-              dx <= _x(item.endsOn.add(_day), width),
+              dx <= _x(_tdpShift(item.endsOn, 1), width),
         )
         .firstOrNull;
     widget.onPick(hit == null ? null : (block: block, id: hit.id));
@@ -279,8 +278,8 @@ class _TdpTimelineEditorState extends State<_TdpTimelineEditor> {
     if (drag == null) return (from, to);
     if (drag.block == block && drag.id == id) return (drag.start, drag.end);
     if (block && !drag.block && drag.mode == 'move' && drag.id == periodId) {
-      final shift = drag.start.difference(drag.origStart);
-      return (from.add(shift), to.add(shift));
+      final shift = _tdpDaysBetween(drag.origStart, drag.start);
+      return (_tdpShift(from, shift), _tdpShift(to, shift));
     }
     return (from, to);
   }
@@ -308,7 +307,8 @@ class _TdpTimelineEditorState extends State<_TdpTimelineEditor> {
             if (drag != null && drag.block == block && drag.mode == 'create')
               Positioned(
                 left: _x(drag.start, width),
-                width: _x(drag.end.add(_day), width) - _x(drag.start, width),
+                width:
+                    _x(_tdpShift(drag.end, 1), width) - _x(drag.start, width),
                 top: 4,
                 bottom: 4,
                 child: DecoratedBox(
@@ -397,7 +397,7 @@ class _TdpTimelineEditorState extends State<_TdpTimelineEditor> {
     return Positioned(
       key: ValueKey('tdp-item-$id'),
       left: _x(start, width) + 1,
-      width: (_x(end.add(_day), width) - _x(start, width) - 2).clamp(
+      width: (_x(_tdpShift(end, 1), width) - _x(start, width) - 2).clamp(
         2.0,
         width,
       ),
@@ -479,7 +479,7 @@ class _TdpTimelineEditorState extends State<_TdpTimelineEditor> {
                 width: 7 / _days * width * 2,
                 top: 18,
                 child: Text(
-                  '${_tdpWeek(_monday.add(Duration(days: week * 7)))}',
+                  '${_tdpWeek(_tdpShift(_monday, week * 7))}',
                   style: style,
                 ),
               ),

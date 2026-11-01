@@ -110,19 +110,38 @@ class _TdpPlannerState extends State<_TdpPlanner> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                controller.canEdit
-                    ? _tdpText(
-                        context,
-                        'Dra i ett tomt fält för att lägga ut en period eller ett block, dra i kanterna för att ändra datum och i mitten för att flytta. Klicka för att öppna.',
-                        'Drag on an empty stretch to lay out a period or a block, drag its edges to change the dates and its middle to move it. Click to open.',
-                      )
-                    : _tdpText(
-                        context,
-                        'Klicka på en period eller ett block för att öppna.',
-                        'Click a period or a block to open it.',
-                      ),
-                style: theme.textTheme.bodySmall,
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      controller.canEdit
+                          ? _tdpText(
+                              context,
+                              'Dra i ett tomt fält för att lägga ut en period eller ett block, dra i kanterna för att ändra datum och i mitten för att flytta. Klicka för att öppna.',
+                              'Drag on an empty stretch to lay out a period or a block, drag its edges to change the dates and its middle to move it. Click to open.',
+                            )
+                          : _tdpText(
+                              context,
+                              'Klicka på en period eller ett block för att öppna.',
+                              'Click a period or a block to open it.',
+                            ),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    key: const Key('tdp-planner-calendar'),
+                    onPressed: () => _TdpCalendar.open(
+                      context,
+                      controller: controller,
+                      plan: plan,
+                    ),
+                    icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                    label: Text(
+                      _tdpText(context, 'Årskalender', 'Year calendar'),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               _TdpTimelineEditor(

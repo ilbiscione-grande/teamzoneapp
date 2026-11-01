@@ -43,6 +43,8 @@ class _WorkspacesSurfaceState extends State<_WorkspacesSurface> {
             context,
             team: widget.contextValue,
             services: widget.modules.teamDevelopment,
+            calendar: widget.calendar,
+            onNavigate: widget.onNavigate,
           ),
         );
       });
@@ -92,6 +94,8 @@ class _WorkspacesSurfaceState extends State<_WorkspacesSurface> {
         context,
         team: widget.contextValue,
         services: widget.modules.teamDevelopment,
+        calendar: widget.calendar,
+        onNavigate: widget.onNavigate,
       ),
       _ => null,
     };

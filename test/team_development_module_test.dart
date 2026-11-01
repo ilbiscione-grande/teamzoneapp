@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teamzone_app/src/app/teamzone_app.dart';
@@ -5,6 +6,8 @@ import 'package:teamzone_app/src/core/config/app_environment.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
 import 'package:teamzone_app/src/core/identity/identity_services.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
+import 'package:teamzone_app/src/features/calendar/calendar_models.dart';
+import 'package:teamzone_app/src/features/calendar/calendar_services.dart';
 import 'package:teamzone_app/src/features/team_development/team_development_services.dart';
 import 'package:teamzone_app/src/features/workspaces/module_services.dart';
 
@@ -266,6 +269,207 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('the year calendar zooms from the season to a day', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final today = DateUtils.dateOnly(DateTime.now());
+    final monday = today.subtract(Duration(days: today.weekday - 1));
+    final services = _Plans()
+      ..plan = SeasonPlan(
+        id: 'plan',
+        title: 'Säsong 2026',
+        startsOn: today.subtract(const Duration(days: 200)),
+        endsOn: today.add(const Duration(days: 200)),
+        revision: 1,
+        periods: [
+          DevelopmentPeriod(
+            id: 'p1',
+            name: 'Seriespel',
+            phase: PeriodPhase.competition,
+            startsOn: today.subtract(const Duration(days: 30)),
+            endsOn: today.add(const Duration(days: 30)),
+          ),
+        ],
+        blocks: [
+          DevelopmentBlock(
+            id: 'b1',
+            periodId: 'p1',
+            name: 'Speluppbyggnad',
+            focus: 'Bygga upp från målvakten',
+            startsOn: monday.subtract(const Duration(days: 7)),
+            endsOn: monday.add(const Duration(days: 13)),
+          ),
+        ],
+      );
+    DateTime at(DateTime day, int hour) =>
+        DateTime(day.year, day.month, day.day, hour);
+    final calendar = _Activities([
+      _activity('t1', 'Träning A', 'training', at(today, 17)),
+      _activity(
+        'm1',
+        'Match mot Vetlanda',
+        'match',
+        at(today.add(const Duration(days: 2)), 18),
+      ),
+    ]);
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'tdp'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _Identity(),
+          modules: _Modules(services),
+          calendar: calendar,
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Arbetsytor').first);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('workspace-module-module.team_development')),
+    );
+    await tester.pumpAndSettle();
+
+    // The block's activities on the home page.
+    expect(find.text('Aktiviteter i blocket'), findsOneWidget);
+    expect(find.byKey(const Key('tdp-block-activity-t1')), findsOneWidget);
+
+    // The season's months, then the month with the activities.
+    await tester.tap(find.byKey(const Key('tdp-open-calendar')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('tdp-calendar')), findsOneWidget);
+
+    // A hover over a day lists its activities, gone when the mouse moves on.
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.moveTo(
+      tester.getCenter(
+        find.byKey(
+          Key('tdp-cal-mini-${today.year}-${today.month}-${today.day}'),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(
+      find.textContaining('17:00  Träning A', findRichText: true),
+      findsOneWidget,
+    );
+    await mouse.moveTo(const Offset(5, 5));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('17:00  Träning A', findRichText: true),
+      findsNothing,
+    );
+
+    await tester.tap(
+      find.byKey(Key('tdp-cal-month-${today.year}-${today.month}')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('tdp-calendar')),
+        matching: find.textContaining('Träning A'),
+      ),
+      findsOneWidget,
+    );
+
+    // The week with the plan for it, and the day.
+    await tester.tap(find.byKey(Key('tdp-cal-week-${_isoWeek(today)}')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('tdp-cal-plan')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('tdp-cal-plan')),
+        matching: find.text('Bygga upp från målvakten'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(
+        Key('tdp-cal-weekday-${today.year}-${today.month}-${today.day}'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Planen den här dagen'), findsOneWidget);
+    expect(find.byKey(const Key('tdp-cal-activity-t1')), findsOneWidget);
+
+    // Back up to the season by the crumbs.
+    await tester.tap(find.byKey(const Key('tdp-cal-crumb-year')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(Key('tdp-cal-month-${today.year}-${today.month}')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('tdp-cal-close')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('tdp-calendar')), findsNothing);
+
+    // A tap on an activity opens its day; Öppna leaves for its page.
+    await tester.tap(find.byKey(const Key('tdp-block-activity-m1')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('tdp-cal-activity-m1')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('tdp-cal-open-m1')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('tdp-calendar')), findsNothing);
+    expect(find.text('Lagets utveckling'), findsNothing);
+    expect(calendar.from, isNotNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a month across the end of summer time keeps its weeks', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final services = _Plans()
+      ..plan = SeasonPlan(
+        id: 'plan',
+        title: 'Säsong 2026',
+        startsOn: DateTime(2026),
+        endsOn: DateTime(2026, 12, 31),
+        revision: 1,
+      );
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'tdp'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _Identity(),
+          modules: _Modules(services),
+          calendar: _Activities(const []),
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Arbetsytor').first);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('workspace-module-module.team_development')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-open-calendar')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-cal-month-2026-10')));
+    await tester.pumpAndSettle();
+    // Summer time ends on Sunday 25 October: Monday the 26th starts week 44.
+    for (final week in [40, 41, 42, 43, 44]) {
+      expect(find.byKey(Key('tdp-cal-week-$week')), findsOneWidget);
+    }
+    expect(
+      tester.getTopLeft(find.byKey(const Key('tdp-cal-day-2026-10-26'))).dx,
+      tester.getTopLeft(find.byKey(const Key('tdp-cal-day-2026-10-19'))).dx,
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('a leader plans the season on the timeline', (tester) async {
     tester.view.physicalSize = const Size(1440, 1000);
@@ -825,4 +1029,51 @@ class _Identity implements IdentityServices {
   }) async {}
   @override
   Future<void> signOut() async {}
+}
+
+int _isoWeek(DateTime day) {
+  final date = DateTime.utc(day.year, day.month, day.day);
+  final thursday = date.add(Duration(days: 4 - date.weekday));
+  return thursday.difference(DateTime.utc(thursday.year)).inDays ~/ 7 + 1;
+}
+
+CalendarEventSummary _activity(
+  String id,
+  String title,
+  String type,
+  DateTime startsAt,
+) => CalendarEventSummary(
+  id: id,
+  clubId: 'club',
+  owningTeamId: 'team',
+  teamName: 'P2012',
+  title: title,
+  type: type,
+  state: 'published',
+  startsAt: startsAt,
+  endsAt: startsAt.add(const Duration(minutes: 90)),
+  allDay: false,
+  timezone: 'Europe/Stockholm',
+  revision: 1,
+);
+
+/// The team's calendar, for the activities beside the plan.
+class _Activities extends UnconfiguredCalendarServices {
+  _Activities(this.events);
+  final List<CalendarEventSummary> events;
+  DateTime? from;
+
+  @override
+  Future<List<CalendarEventSummary>> listCalendar({
+    required List<String> contextIds,
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    this.from = from;
+    return [
+      for (final event in events)
+        if (!event.startsAt.isBefore(from) && event.startsAt.isBefore(to))
+          event,
+    ];
+  }
 }

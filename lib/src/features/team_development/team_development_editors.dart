@@ -128,9 +128,7 @@ abstract final class _SeasonDialog {
     final year = DateTime.now().year;
     var starts =
         plan?.startsOn ??
-        (after == null
-            ? DateTime(year, 1, 1)
-            : after.add(const Duration(days: 1)));
+        (after == null ? DateTime(year, 1, 1) : _tdpShift(after, 1));
     var ends =
         plan?.endsOn ?? DateTime(starts.year + 1, starts.month, starts.day - 1);
     final initialTitle =
@@ -147,7 +145,7 @@ abstract final class _SeasonDialog {
         second: plan?.vision ?? '',
         builder: (context, title, vision) => StatefulBuilder(
           builder: (context, setState) {
-            final days = ends.difference(starts).inDays;
+            final days = _tdpDaysBetween(starts, ends);
             final valid =
                 title.text.trim().length >= 2 && days >= 28 && days <= 550;
             return AlertDialog(
@@ -271,10 +269,10 @@ abstract final class _TdpPeriodDialog {
   }) async {
     final startDefault = plan.periods.isEmpty
         ? plan.startsOn
-        : plan.periods.last.endsOn.add(const Duration(days: 1));
+        : _tdpShift(plan.periods.last.endsOn, 1);
     var starts = period?.startsOn ?? startDefault;
     if (starts.isAfter(plan.endsOn)) starts = plan.endsOn;
-    var ends = period?.endsOn ?? starts.add(const Duration(days: 55));
+    var ends = period?.endsOn ?? _tdpShift(starts, 55);
     if (ends.isAfter(plan.endsOn)) ends = plan.endsOn;
     var phase = period?.phase ?? PeriodPhase.preseason;
     final goals = period == null
@@ -487,7 +485,7 @@ abstract final class _TdpGoalDialog {
             ? plan.startsOn
             : today.isAfter(plan.endsOn)
             ? plan.endsOn
-            : today.add(const Duration(days: 14)));
+            : _tdpShift(today, 14));
     if (target.isAfter(plan.endsOn)) target = plan.endsOn;
     var state = goal?.state ?? GoalState.open;
     final result = await showDialog<(String, String, String)>(
