@@ -51,13 +51,15 @@ export function ChainNode({ item, objects, selected, upright, measure }: Props) 
   };
   const line = { points: flat, closed, lineJoin: "round" as const, lineCap: "round" as const, perfectDrawEnabled: false };
   const dash = item.dashed ? [1, 0.7] : undefined;
+  // As wide to pick as a line (LineNode), and a closed one anywhere inside, as an area.
+  const hit = Math.max(2.4, shared.metresPerPixel() * 28, item.width * 4);
   return (
     <Group ref={nodeRef(shared, item.id)} opacity={item.opacity ?? 1} {...pick}>
       {closed && <AreaFill box={box} outline={outline} color={item.color} fill={item.fill} pattern={item.pattern} />}
       {selected && <Line {...line} stroke="#facc15" strokeWidth={item.width + 0.7} opacity={0.5} listening={false} />}
       <Line {...line} dash={dash} stroke={edgeFor(item.color)} strokeWidth={item.width + 0.18} listening={false} />
       <Line {...line} dash={dash} stroke={item.color} strokeWidth={item.width} fill={closed ? "rgba(0,0,0,0)" : undefined}
-        fillEnabled={false} hitStrokeWidth={Math.max(1.6, item.width * 4)} />
+        fillEnabled={closed} hitStrokeWidth={hit} />
       {item.rings !== false && points.map((point, index) => (
         // A ring at each player's feet, under the player, as television marks those it joins.
         <Group key={index} x={point.x} y={point.y} listening={false}>
