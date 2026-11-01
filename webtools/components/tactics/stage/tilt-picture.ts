@@ -7,6 +7,7 @@
 // sky behind it and the upright figures and stands over it.
 import Konva from "konva";
 import type { Point } from "../../../lib/tactics/model.ts";
+import type { Projector } from "../../../lib/tactics/projection.ts";
 import { groundRow } from "../../../lib/tactics/projection.ts";
 
 /** The same sky as the board's in 3D (tactics.css). */
@@ -53,5 +54,5 @@ export function drawTilted(context: CanvasRenderingContext2D, { ground, offset, 
   for (const { canvas } of figures) context.drawImage(canvas, 0, 0, outWidth, outHeight);
 }
 
-/** Where the board on screen keeps what the video needs in 3D: the figures' stage and how far the ground's canvas reaches past the frame. */
-export const tiltHolder: { figures: Konva.Stage | null; offset: Point } = { figures: null, offset: { x: 0, y: 0 } };
+/** Where the board on screen keeps what the video needs in 3D: the figures' stage, how far the ground's canvas reaches past the frame and where a pitch point shows. */
+export const tiltHolder: { figures: Konva.Stage | null; offset: Point; project: Projector | null } = { figures: null, offset: { x: 0, y: 0 }, project: null };

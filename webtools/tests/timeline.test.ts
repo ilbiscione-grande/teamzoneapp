@@ -154,6 +154,27 @@ test("PDF pages: one picture a page, four frames to a page, or the last frame", 
   assert.equal(pdfFileName("??"), "tavla.pdf");
 });
 
+test("PDF pages: a tall crop stands the board's pages, its pictures at the crop's shape", async () => {
+  const { layoutPages, pageSize, pictureRatio, PICTURE_RATIO } = await import("../lib/tactics/pdf-layout.ts");
+  const { newBoard, insertFrame } = await import("../lib/tactics/document.ts");
+  const tall = { ...insertFrame(newBoard("Hörna"), 0), crop: { x: 0, y: 0, width: 20, height: 30 }, description: "Zon i straffområdet" };
+  const wide = { ...newBoard("Kant"), crop: { x: 0, y: 0, width: 60, height: 10 } };
+  assert.equal(pictureRatio(newBoard("Hel")), PICTURE_RATIO);
+  near(pictureRatio(tall), 2 / 3);
+  assert.equal(pictureRatio(wide), 2, "kept to 2:1");
+  const pages = layoutPages([tall, wide], [0, 1], "each");
+  assert.deepEqual(pages.map(page => page.portrait), [true, true, false]);
+  const size = pageSize(true);
+  assert.deepEqual([size.width, size.height], [210, 297]);
+  for (const page of pages.slice(0, 2)) for (const item of page.placements) {
+    near(item.width / item.height, 2 / 3);
+    assert.ok(item.x + item.width <= size.width - size.margin + 1e-9 && item.y + item.height <= size.height - size.margin - size.footer + 1e-9);
+    if (page.description) assert.ok(item.y + item.height <= page.description.y - 1e-9, "above the description");
+  }
+  assert.ok(pages[0].description && pages[0].description.width > 150, "a band under the pictures");
+  near(pages[2].placements[0].width / pages[2].placements[0].height, 2);
+});
+
 test("scrubbing: the playhead as time and back, each move as long as it plays", async () => {
   const { frameTimes, timeOfPlayhead, playheadOfTime, secondsLabel } = await import("../lib/tactics/scrub.ts");
   const { newFrame } = await import("../lib/tactics/document.ts");

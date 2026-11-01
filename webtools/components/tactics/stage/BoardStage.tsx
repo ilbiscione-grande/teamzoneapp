@@ -164,6 +164,8 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
   const reach = tilt ? groundReach(size.width, size.height, drawnGround(fit, sight, tiltedReach(surroundings))) : NO_REACH;
   const offset = { x: reach.left, y: reach.top };
   tiltHolder.offset = offset;
+  const project = tilt ? projector(fit, sight, size.width, size.height) : null;
+  tiltHolder.project = project;
   const spotlight = playing || between ? spotlightAt(board.frames, playhead, shown) : null;
   // 3D: the ground keeps what lies on it; what stands up is drawn upright over it.
   // Drawn in layers: lines, areas and equipment, then the players, the balls on top.
@@ -265,7 +267,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
             )}
           </Stage>
           </div>
-          {tilt && <Figures3D objects={visible} board={board} project={projector(fit, sight, size.width, size.height)} spotlight={spotlight} width={size.width} height={size.height} me={me}
+          {tilt && <Figures3D objects={visible} board={board} project={project!} spotlight={spotlight} width={size.width} height={size.height} me={me}
             stageRef={node => { tiltHolder.figures = node; }} />}
         </StageContext.Provider>
       )}

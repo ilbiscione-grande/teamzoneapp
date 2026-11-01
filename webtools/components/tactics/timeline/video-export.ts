@@ -3,7 +3,8 @@
 // The board as a video: it plays from the start while a hidden canvas copies
 // the pitch and the objects every screen frame and the browser records it.
 // MP4 where the browser makes it (Safari, newer Chrome), else WebM. With a
-// crop, only that part of the pitch is copied, at the crop's own shape.
+// crop, only that part of the pitch is copied, at the crop's own shape; in
+// 3D, the part of the tilted picture where the crop shows, players standing in it.
 import { contentHolder, stageHolder } from "../stage/stage-context.ts";
 import { drawTilted, layerCanvases, tiltHolder } from "../stage/tilt-picture.ts";
 import { create } from "zustand";
@@ -38,6 +39,21 @@ function cropOnCanvas(crop: { x: number; y: number; width: number; height: numbe
   return { x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) };
 }
 
+/** Players and goals stand this high, in metres: the top of the crop's part in 3D reaches up to them. */
+const STANDING_HEIGHT = 2.6;
+
+/** Where the crop shows in the tilted picture, in its canvas's pixels (ratio a frame pixel), within the frame; null without one. */
+function cropTilted(crop: { x: number; y: number; width: number; height: number } | null | undefined, ratio: number, width: number, height: number) {
+  const project = tiltHolder.project;
+  if (!crop || !project) return null;
+  const corners = [[crop.x, crop.y], [crop.x + crop.width, crop.y], [crop.x, crop.y + crop.height], [crop.x + crop.width, crop.y + crop.height]];
+  const points = corners.flatMap(([x, y]) => [project({ x, y }), project({ x, y }, STANDING_HEIGHT)]);
+  const left = Math.max(0, Math.min(...points.map(point => point.x))), right = Math.min(width, Math.max(...points.map(point => point.x)));
+  const top = Math.max(0, Math.min(...points.map(point => point.y))), bottom = Math.min(height, Math.max(...points.map(point => point.y)));
+  if (right - left < 8 || bottom - top < 8) return null;
+  return { x: left * ratio, y: top * ratio, width: (right - left) * ratio, height: (bottom - top) * ratio };
+}
+
 /** A crop's video size: its shape, the longer side 1280 to 1920 pixels. */
 function cropSize(width: number, height: number) {
   const long = Math.max(width, height);
@@ -55,9 +71,13 @@ async function record(): Promise<{ blob: Blob; extension: string } | null> {
   const figures = useEditor.getState().tilt ? tiltHolder.figures : null;
   const first = figures ? layerCanvases(figures)[0]?.canvas : layers()[0];
   if (!first) return null;
-  // The crop is drawn flat; in 3D the whole picture is recorded.
   const ratio = layerCanvases(stage)[0]?.ratio ?? 1;
-  const area = () => (figures ? null : cropOnCanvas(board.crop, ratio));
+  // In 3D the tilted picture is put together whole, at the figures' sharpness, and the crop's part copied from it.
+  const whole = figures ? document.createElement("canvas") : null;
+  const figureRatio = figures ? first.width / Math.max(1, figures.width()) : 1;
+  const area = () => figures
+    ? cropTilted(board.crop, figureRatio, figures.width(), figures.height())
+    : cropOnCanvas(board.crop, ratio);
   const start = area();
   const { width, height } = start ? cropSize(start.width, start.height) : first;
   const canvas = document.createElement("canvas");
@@ -67,8 +87,20 @@ async function record(): Promise<{ blob: Blob; extension: string } | null> {
   const context = canvas.getContext("2d");
   if (!context) return null;
   const copy = () => {
-    if (figures) {
-      drawTilted(context, { ground: layerCanvases(stage), offset: tiltHolder.offset, figures: layerCanvases(figures), width: figures.width(), height: figures.height() });
+    if (figures && whole) {
+      const part = area();
+      const target = part ? whole : canvas;
+      if (part) {
+        const sharp = layerCanvases(figures)[0]?.canvas;
+        // Set only when it changes: setting a canvas's size empties and remakes it.
+        const w = sharp?.width ?? canvas.width, h = sharp?.height ?? canvas.height;
+        if (whole.width !== w) whole.width = w;
+        if (whole.height !== h) whole.height = h;
+      }
+      const into = target.getContext("2d");
+      if (!into) return;
+      drawTilted(into, { ground: layerCanvases(stage), offset: tiltHolder.offset, figures: layerCanvases(figures), width: figures.width(), height: figures.height() });
+      if (part) context.drawImage(whole, part.x, part.y, part.width, part.height, 0, 0, canvas.width, canvas.height);
       return;
     }
     context.fillStyle = "#24603a";

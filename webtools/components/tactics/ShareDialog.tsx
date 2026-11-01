@@ -76,7 +76,7 @@ export function ShareDialog({ onClose, onCrop }: { onClose: () => void; onCrop: 
           <ul className="tb-share-list">
             <Way title={board.crop ? "En del av planen" : "Hela planen"}
               hint={board.crop
-                ? `Bara den del av ${board.name || "tavlan"} du valt visas i PDF, video, visningsläget och delade länkar.${tilt ? " Videon i 3D visar hela planen." : ""}`
+                ? `Bara den del av ${board.name || "tavlan"} du valt visas i PDF, video, visningsläget och delade länkar.${tilt ? " I 3D blir videon den del av den lutade planen där utsnittet syns." : ""}`
                 : "Välj en del av planen för att bara visa det som händer där, i PDF, video, visningsläget och delade länkar."}>
               <span className="tb-actions">
                 {board.crop && <button type="button" className="wt-button secondary small" disabled={recording !== null} onClick={() => setCrop(board.id, null)}>Hela planen</button>}

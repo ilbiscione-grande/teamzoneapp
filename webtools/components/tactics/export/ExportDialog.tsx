@@ -5,7 +5,7 @@
 // turn, then the pages are put together.
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
-import { layoutPages, pdfFileName, type FrameChoice } from "../../../lib/tactics/pdf-layout.ts";
+import { layoutPages, pdfFileName, pictureRatio, type FrameChoice } from "../../../lib/tactics/pdf-layout.ts";
 import { movesInto, type Trail } from "../../../lib/tactics/marks.ts";
 import type { Board, TacticsObject } from "../../../lib/tactics/model.ts";
 import { activeBoard, useEditor, NONE } from "../store.ts";
@@ -42,7 +42,9 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
   if (!meta || !board) return null;
-  const animated = (which === "all" ? boards : [board]).some(item => item.frames.length > 1);
+  const chosen = which === "all" ? boards : [board];
+  const animated = chosen.some(item => item.frames.length > 1);
+  const standing = chosen.filter(item => pictureRatio(item) < 1).length;
 
   const picture = (target: Board, objects: TacticsObject[], moves: Trail[]) =>
     new Promise<string>(resolve => setJob({ board: target, objects, moves, done: resolve }));
@@ -107,7 +109,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
           <input type="checkbox" checked={tilted} onChange={event => setTilted(event.target.checked)} />
           I 3D, planen sedd snett från läktaren
         </label>
-        <p className="tb-hint">A4 liggande, med projektets och tavlans namn, numret och anteckningen för varje frame, och tavlans beskrivning.</p>
+        <p className="tb-hint">A4 {standing === 0 ? "liggande" : standing === chosen.length ? "stående, efter utsnittet" : "liggande, stående för tavlor med ett högt utsnitt"}, med projektets och tavlans namn, numret och anteckningen för varje frame, och tavlans beskrivning.</p>
         {error && <p className="wt-error" role="alert">{error}</p>}
         <div className="tb-actions">
           <button type="button" className="wt-button" disabled={progress !== null} onClick={() => void make()}>{progress ?? "Skapa PDF"}</button>

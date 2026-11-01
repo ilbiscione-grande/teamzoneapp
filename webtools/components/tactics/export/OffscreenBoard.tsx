@@ -1,8 +1,9 @@
 "use client";
 
-// One board frame drawn off screen at a fixed landscape size, with the
+// One board frame drawn off screen at a fixed size, with the
 // editor's own pitch and objects, and how they moved there, and handed back
-// as a picture. What the screen shows (zoom, a turned phone) does not matter
+// as a picture: landscape, or with a crop at the crop's shape as the PDF
+// lays it out (pictureRatio). What the screen shows (zoom, a turned phone) does not matter
 // here; whether it is in 3D does: tilted, the ground and the upright
 // figures are put together into one picture (tilt-picture.ts).
 import type Konva from "konva";
@@ -10,6 +11,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { Group, Layer, Stage } from "react-konva";
 import { ballHolders } from "../../../lib/tactics/ball.ts";
 import { fitView, marginFor, shownRect } from "../../../lib/tactics/geometry.ts";
+import { pictureRatio } from "../../../lib/tactics/pdf-layout.ts";
 import { drawnGround, groundReach, projector } from "../../../lib/tactics/projection.ts";
 import type { Board, TacticsObject } from "../../../lib/tactics/model.ts";
 import type { Trail } from "../../../lib/tactics/marks.ts";
@@ -23,7 +25,8 @@ import { Pitch, tiltedReach } from "../stage/Pitch.tsx";
 import { drawTilted, layerCanvases } from "../stage/tilt-picture.ts";
 import { StageContext, type StageShared } from "../stage/stage-context.ts";
 
-export const PICTURE = { width: 1500, height: 1000 };
+/** The picture's longer side, in pixels. */
+const LONG_SIDE = 1500;
 
 const SHARPNESS = 1.4;
 const WHOLE = { x: 0, y: 0, scale: 1 };
@@ -37,12 +40,16 @@ export default function OffscreenBoard({ board, objects, moves = [], tilted = fa
   const nodes = useRef(new Map<string, Konva.Node>());
   const content = useRef<Konva.Group>(null);
   const branding = useEditor(state => state.document?.branding);
+  const ratio = pictureRatio(board);
+  const size = ratio >= 1
+    ? { width: LONG_SIDE, height: Math.round(LONG_SIDE / ratio) }
+    : { width: Math.round(LONG_SIDE * ratio), height: LONG_SIDE };
   // The board's crop where it has one: the part of the pitch the PDF is to show.
-  const fit = fitView(shownRect(board, marginFor(board.surroundings), true), PICTURE.width, PICTURE.height, false, !!board.crop);
+  const fit = fitView(shownRect(board, marginFor(board.surroundings), true), size.width, size.height, false, !!board.crop);
   const holders = ballHolders(objects);
   // In layers, as the board draws them.
   const shown = layered(objects.filter(item => !item.hidden));
-  const reach = tilted ? groundReach(PICTURE.width, PICTURE.height, drawnGround(fit, WHOLE, tiltedReach(board.surroundings))) : null;
+  const reach = tilted ? groundReach(size.width, size.height, drawnGround(fit, WHOLE, tiltedReach(board.surroundings))) : null;
   const offset = { x: reach?.left ?? 0, y: reach?.top ?? 0 };
   const shared = useMemo<StageShared>(() => ({ nodes: nodes.current, content, metresPerPixel: () => 1 / fit.scale, editable: false }), [fit.scale]);
 
@@ -60,18 +67,18 @@ export default function OffscreenBoard({ board, objects, moves = [], tilted = fa
 
   function tiltedPicture() {
     const canvas = document.createElement("canvas");
-    canvas.width = Math.round(PICTURE.width * SHARPNESS);
-    canvas.height = Math.round(PICTURE.height * SHARPNESS);
+    canvas.width = Math.round(size.width * SHARPNESS);
+    canvas.height = Math.round(size.height * SHARPNESS);
     const context = canvas.getContext("2d");
     if (!context || !stage.current) return null;
-    drawTilted(context, { ground: layerCanvases(stage.current), offset, figures: layerCanvases(figures.current), width: PICTURE.width, height: PICTURE.height });
+    drawTilted(context, { ground: layerCanvases(stage.current), offset, figures: layerCanvases(figures.current), width: size.width, height: size.height });
     return canvas.toDataURL("image/jpeg", 0.9);
   }
 
   return (
     <div className="tb-offscreen" aria-hidden="true">
       <StageContext.Provider value={shared}>
-        <Stage ref={stage} width={PICTURE.width + (reach ? reach.left + reach.right : 0)} height={PICTURE.height + (reach ? reach.top + reach.bottom : 0)} listening={false}>
+        <Stage ref={stage} width={size.width + (reach ? reach.left + reach.right : 0)} height={size.height + (reach ? reach.top + reach.bottom : 0)} listening={false}>
           <Layer {...offset}>
             <Group x={fit.x} y={fit.y} scaleX={fit.scale} scaleY={fit.scale} rotation={fit.rotation}>
               <Pitch view={board.view} overlay={board.overlay} style={board.pitch} surroundings={board.surroundings} branding={branding} upright={-fit.rotation} tilted={tilted} />
@@ -87,8 +94,8 @@ export default function OffscreenBoard({ board, objects, moves = [], tilted = fa
           </Layer>
         </Stage>
         {tilted && (
-          <Figures3D objects={shown} board={board} project={projector(fit, WHOLE, PICTURE.width, PICTURE.height)} spotlight={null}
-            width={PICTURE.width} height={PICTURE.height} stageRef={node => { figures.current = node; }} />
+          <Figures3D objects={shown} board={board} project={projector(fit, WHOLE, size.width, size.height)} spotlight={null}
+            width={size.width} height={size.height} stageRef={node => { figures.current = node; }} />
         )}
       </StageContext.Provider>
     </div>

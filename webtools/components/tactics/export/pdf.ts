@@ -2,12 +2,13 @@
 
 // The PDF itself: jsPDF, loaded only when a PDF is made, fills the laid-out
 // pages with the board pictures, a header and page numbers. A description
-// too long for its column goes on over pages of its own after it.
-import { PAGE, type Page } from "../../../lib/tactics/pdf-layout.ts";
+// too long for its column goes on over pages of its own after it. Each page
+// lies or stands as its layout says.
+import { pageSize, type Page } from "../../../lib/tactics/pdf-layout.ts";
 
 const LINE = 4.6;
 /** A page of the PDF: a laid-out page, or one going on with a description. */
-type Sheet = { page: Page | null; title: string; description: string[]; lines: string[] };
+type Sheet = { page: Page | null; title: string; description: string[]; lines: string[]; portrait: boolean };
 
 export type PdfInput = {
   projectName: string;
@@ -19,24 +20,27 @@ export type PdfInput = {
 
 export async function buildPdf(input: PdfInput): Promise<Blob> {
   const { jsPDF } = await import("jspdf");
-  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4", compress: true });
+  const orientation = (portrait: boolean) => portrait ? "portrait" as const : "landscape" as const;
+  const doc = new jsPDF({ orientation: orientation(input.pages[0]?.portrait ?? false), unit: "mm", format: "a4", compress: true });
   const date = new Date().toLocaleDateString("sv-SE", { day: "numeric", month: "long", year: "numeric" });
 
   // Descriptions are split first, so overflow pages count in the page numbers.
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   // Going on over a page of its own, the text keeps a width that reads well.
-  const fullWidth = 190;
-  const fullLines = Math.floor((PAGE.height - PAGE.margin * 2 - PAGE.header - PAGE.footer - 8) / LINE);
+  const fullWidth = 186;
   const sheets: Sheet[] = [];
   for (const page of input.pages) {
+    const { portrait } = page;
+    const size = pageSize(portrait);
+    const fullLines = Math.floor((size.height - size.margin * 2 - size.header - size.footer - 8) / LINE);
     const box = page.description;
-    if (!box) { sheets.push({ page, title: page.title, description: [], lines: [] }); continue; }
+    if (!box) { sheets.push({ page, title: page.title, description: [], lines: [], portrait }); continue; }
     // Each line remembers its paragraph, so the rest keeps its line breaks.
     const lines = box.text.split("\n").flatMap((paragraph, index) =>
       (paragraph.trim() ? doc.splitTextToSize(paragraph, box.width) as string[] : [""]).map(text => ({ text, paragraph: index })));
     const room = Math.floor((box.height - 8) / LINE);
-    sheets.push({ page, title: page.title, description: lines.slice(0, room).map(line => line.text), lines: [] });
+    sheets.push({ page, title: page.title, description: lines.slice(0, room).map(line => line.text), lines: [], portrait });
     if (lines.length > room) {
       const paragraphs = lines.slice(room).reduce<string[]>((all, line, index, rest) => {
         if (index > 0 && rest[index - 1].paragraph === line.paragraph) all[all.length - 1] += " " + line.text;
@@ -45,14 +49,15 @@ export async function buildPdf(input: PdfInput): Promise<Blob> {
       }, []);
       const rest = paragraphs.flatMap(paragraph => paragraph.trim() ? doc.splitTextToSize(paragraph, fullWidth) as string[] : [""]);
       for (let start = 0; start < rest.length; start += fullLines) {
-        sheets.push({ page: null, title: page.title, description: [], lines: rest.slice(start, start + fullLines) });
+        sheets.push({ page: null, title: page.title, description: [], lines: rest.slice(start, start + fullLines), portrait });
       }
     }
   }
 
   sheets.forEach((sheet, index) => {
-    if (index > 0) doc.addPage();
+    if (index > 0) doc.addPage("a4", orientation(sheet.portrait));
     const { page, title } = sheet;
+    const PAGE = pageSize(sheet.portrait);
     // Header: the project, then the board; the date to the right.
     doc.setTextColor(15, 23, 38);
     doc.setFont("helvetica", "bold");
