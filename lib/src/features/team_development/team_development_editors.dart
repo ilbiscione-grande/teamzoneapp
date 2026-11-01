@@ -136,8 +136,9 @@ abstract final class _SeasonDialog {
     final initialTitle =
         plan?.title ??
         '${AppStrings.of(context).isSwedish ? 'Säsong' : 'Season'} ${starts.year}';
-    // A new season checks its goals every other week.
-    var every = plan == null ? 14 : plan.checkinEveryDays;
+    // Goals are checked when a block, period or season ends; the old
+    // interval is kept as it is.
+    final every = plan?.checkinEveryDays;
     final first = DateTime(year - 2), last = DateTime(year + 3, 12, 31);
     return showDialog<_SeasonDraft>(
       context: context,
@@ -218,49 +219,13 @@ abstract final class _SeasonDialog {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    DropdownButtonFormField<int?>(
-                      isExpanded: true,
-                      key: const Key('tdp-season-checkins'),
-                      initialValue: every,
-                      decoration: InputDecoration(
-                        labelText: AppStrings.of(
-                          context,
-                        ).feature('Stäm av målen'),
-                        helperText: AppStrings.of(
-                          context,
-                        ).feature('Assistenten påminner när det är dags.'),
+                    Text(
+                      _tdpText(
+                        context,
+                        'Målen stäms av när blocket, perioden eller säsongen tar slut.',
+                        'Goals are reviewed when their block, period or season ends.',
                       ),
-                      items: [
-                        DropdownMenuItem(
-                          value: 7,
-                          child: Text(
-                            AppStrings.of(context).feature('Varje vecka'),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: 14,
-                          child: Text(
-                            AppStrings.of(context).feature('Varannan vecka'),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: 21,
-                          child: Text(
-                            AppStrings.of(context).feature('Var tredje vecka'),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: 28,
-                          child: Text(
-                            AppStrings.of(context).feature('Var fjärde vecka'),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: null,
-                          child: Text(AppStrings.of(context).feature('Aldrig')),
-                        ),
-                      ],
-                      onChanged: (value) => setState(() => every = value),
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                 ),
@@ -505,8 +470,11 @@ abstract final class _TdpGoalDialog {
     TeamGoal? goal,
     GoalHorizon horizon = GoalHorizon.season,
     String? periodId,
+    String? blockId,
   }) async {
     var chosen = goal?.horizon ?? horizon;
+    // A block's goal stays the block's: no other horizon to choose.
+    final block = goal?.blockId ?? blockId;
     var period =
         goal?.periodId ??
         periodId ??
@@ -543,22 +511,23 @@ abstract final class _TdpGoalDialog {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _TdpChoices<GoalHorizon>(
-                      key: const Key('tdp-goal-horizon'),
-                      values: {
-                        GoalHorizon.season: AppStrings.of(
-                          context,
-                        ).feature('Säsong'),
-                        GoalHorizon.period: AppStrings.of(
-                          context,
-                        ).feature('Period'),
-                        GoalHorizon.short: AppStrings.of(
-                          context,
-                        ).feature('Kortsiktigt'),
-                      },
-                      selected: chosen,
-                      onSelected: (value) => setState(() => chosen = value),
-                    ),
+                    if (chosen != GoalHorizon.block)
+                      _TdpChoices<GoalHorizon>(
+                        key: const Key('tdp-goal-horizon'),
+                        values: {
+                          GoalHorizon.season: AppStrings.of(
+                            context,
+                          ).feature('Säsong'),
+                          GoalHorizon.period: AppStrings.of(
+                            context,
+                          ).feature('Period'),
+                          GoalHorizon.short: AppStrings.of(
+                            context,
+                          ).feature('Kortsiktigt'),
+                        },
+                        selected: chosen,
+                        onSelected: (value) => setState(() => chosen = value),
+                      ),
                     const SizedBox(height: 12),
                     if (chosen == GoalHorizon.period)
                       plan.periods.isEmpty
@@ -700,6 +669,7 @@ abstract final class _TdpGoalDialog {
           goalId: goal?.id,
           horizon: chosen,
           periodId: chosen == GoalHorizon.period ? period : null,
+          blockId: chosen == GoalHorizon.block ? block : null,
           title: draft.title,
           description: draft.description,
           targetOn: chosen == GoalHorizon.short ? target : null,

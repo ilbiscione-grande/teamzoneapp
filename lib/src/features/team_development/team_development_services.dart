@@ -14,7 +14,9 @@ class TeamDevelopmentException implements Exception {
     'stale_revision',
     'overlapping_season',
     'overlapping_period',
+    'overlapping_block',
     'outside_season',
+    'outside_period',
     'too_many',
     'invalid_input',
     'not_allowed',
@@ -26,6 +28,9 @@ class TeamDevelopmentException implements Exception {
       'Planen har ändrats av någon annan. Den senaste visas nu.',
     'overlapping_season' => 'Datumen krockar med en annan säsong.',
     'overlapping_period' => 'Datumen krockar med en annan period.',
+    'overlapping_block' => 'Datumen krockar med ett annat block.',
+    'outside_period' =>
+      'Ett block måste ligga inom sin period, och perioden måste rymma sina block.',
     'outside_season' =>
       'Datumen måste ligga inom säsongen, och säsongen måste rymma sina perioder och mål.',
     'too_many' => 'Planen har redan så många som får plats.',
@@ -67,12 +72,27 @@ abstract interface class TeamDevelopmentServices {
   });
   Future<SeasonPlan> deletePeriod(SeasonPlan plan, String periodId);
 
+  /// A new block in [periodId] when [blockId] is null, with the plan's
+  /// principles in focus in the order given.
+  Future<SeasonPlan> saveBlock(
+    SeasonPlan plan, {
+    String? blockId,
+    required String periodId,
+    required String name,
+    required DateTime startsOn,
+    required DateTime endsOn,
+    required String focus,
+    required List<String> principleIds,
+  });
+  Future<SeasonPlan> deleteBlock(SeasonPlan plan, String blockId);
+
   /// A new goal when [goalId] is null.
   Future<SeasonPlan> saveGoal(
     SeasonPlan plan, {
     String? goalId,
     required GoalHorizon horizon,
     String? periodId,
+    String? blockId,
     required String title,
     required String description,
     DateTime? targetOn,
@@ -172,11 +192,26 @@ class UnconfiguredTeamDevelopmentServices implements TeamDevelopmentServices {
   Future<SeasonPlan> deletePeriod(SeasonPlan plan, String periodId) =>
       Future.error(_error);
   @override
+  Future<SeasonPlan> saveBlock(
+    SeasonPlan plan, {
+    String? blockId,
+    required String periodId,
+    required String name,
+    required DateTime startsOn,
+    required DateTime endsOn,
+    required String focus,
+    required List<String> principleIds,
+  }) => Future.error(_error);
+  @override
+  Future<SeasonPlan> deleteBlock(SeasonPlan plan, String blockId) =>
+      Future.error(_error);
+  @override
   Future<SeasonPlan> saveGoal(
     SeasonPlan plan, {
     String? goalId,
     required GoalHorizon horizon,
     String? periodId,
+    String? blockId,
     required String title,
     required String description,
     DateTime? targetOn,
@@ -352,11 +387,46 @@ class SupabaseTeamDevelopmentServices implements TeamDevelopmentServices {
       );
 
   @override
+  Future<SeasonPlan> saveBlock(
+    SeasonPlan plan, {
+    String? blockId,
+    required String periodId,
+    required String name,
+    required DateTime startsOn,
+    required DateTime endsOn,
+    required String focus,
+    required List<String> principleIds,
+  }) async => SeasonPlan.fromJson(
+    await _rpc('save_team_development_block', {
+      'target_plan_id': plan.id,
+      'expected_revision': plan.revision,
+      'target_block_id': blockId,
+      'target_period_id': periodId,
+      'block_name': name,
+      'starts': _day(startsOn),
+      'ends': _day(endsOn),
+      'block_focus': focus,
+      'principle_ids': principleIds,
+    }),
+  );
+
+  @override
+  Future<SeasonPlan> deleteBlock(SeasonPlan plan, String blockId) async =>
+      SeasonPlan.fromJson(
+        await _rpc('delete_team_development_block', {
+          'target_plan_id': plan.id,
+          'expected_revision': plan.revision,
+          'target_block_id': blockId,
+        }),
+      );
+
+  @override
   Future<SeasonPlan> saveGoal(
     SeasonPlan plan, {
     String? goalId,
     required GoalHorizon horizon,
     String? periodId,
+    String? blockId,
     required String title,
     required String description,
     DateTime? targetOn,
@@ -368,6 +438,7 @@ class SupabaseTeamDevelopmentServices implements TeamDevelopmentServices {
       'target_goal_id': goalId,
       'goal_horizon': horizon.name,
       'target_period_id': periodId,
+      'target_block_id': blockId,
       'goal_title': title,
       'goal_description': description,
       'goal_target_on': targetOn == null ? null : _day(targetOn),
@@ -485,6 +556,7 @@ class SupabaseTeamDevelopmentServices implements TeamDevelopmentServices {
           'periods': sharing.periods,
           'principles': sharing.principles,
           'goals': sharing.goals,
+          'blocks': sharing.blocks,
         }),
       );
 

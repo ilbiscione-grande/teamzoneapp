@@ -144,13 +144,7 @@ abstract final class _TdpGoalSheet {
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
-                    plan.checkinEveryDays == null
-                        ? AppStrings.of(
-                            context,
-                          ).feature('Inga avstämningar än.')
-                        : (AppStrings.of(context).isSwedish
-                              ? 'Inga avstämningar än. Målen stäms av var ${plan.checkinEveryDays! ~/ 7}:e vecka.'
-                              : 'No check-ins yet. Goals are reviewed every ${plan.checkinEveryDays! ~/ 7} weeks.'),
+                    AppStrings.of(context).feature('Inga avstämningar än.'),
                   ),
                 ),
               for (final checkin in history)
@@ -423,9 +417,9 @@ class _TdpDue extends StatelessWidget {
                           : 'Time to review ${due.length} goals'),
               ),
               subtitle: Text(
-                (AppStrings.of(context).isSwedish
-                    ? 'Ni stämmer av målen var ${plan.checkinEveryDays! ~/ 7}:e vecka.'
-                    : 'You review goals every ${plan.checkinEveryDays! ~/ 7} weeks.'),
+                AppStrings.of(context).isSwedish
+                    ? 'Målen stäms av när blocket, perioden eller säsongen tar slut.'
+                    : 'Goals are reviewed when their block, period or season ends.',
               ),
             ),
             for (final goal in due)

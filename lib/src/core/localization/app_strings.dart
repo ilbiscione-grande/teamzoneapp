@@ -722,6 +722,7 @@ class AppStrings {
     'Annan': 'Other',
     'Säsongsmål': 'Season goals',
     'Periodens mål': 'Period goals',
+    'Blockets mål': 'Block goals',
     'Kortsiktigt mål': 'Short-term goal',
     'Uppnått': 'Achieved',
     'Släppt': 'Dropped',
@@ -993,6 +994,7 @@ class AppStrings {
     'Planen kunde inte sparas.': 'Could not save the plan.',
     'Säsongen kunde inte skapas.': 'Could not create the season.',
     'Planera säsongen': 'Plan the season',
+    'Planera': 'Plan',
     'Skapa säsongsplan': 'Create season plan',
     'Klubben kan inte ändra planer i modulen just nu.':
         'The club cannot edit plans in this module right now.',

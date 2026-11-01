@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TDP-skiss</title>
+<style>
+:root{--bg:#f4f3ef;--card:#fff;--line:#e3e1da;--text:#1f1f1d;--muted:#6b6a65;--accent:#185FA5;--accent-bg:#E6F1FB;--ok:#3B6D11;--ok-bg:#EAF3DE;--warn:#854F0B;--warn-bg:#FAEEDA;--bad:#A32D2D;--bad-bg:#FCEBEB;--soft:#f1efe8}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1b1a;--card:#262624;--line:#3a3a37;--text:#eeede8;--muted:#a8a7a0;--accent:#85B7EB;--accent-bg:#0C447C;--ok:#C0DD97;--ok-bg:#27500A;--warn:#FAC775;--warn-bg:#633806;--bad:#F7C1C1;--bad-bg:#791F1F;--soft:#31312e}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main,#calview{max-width:1600px;margin:0 auto;padding:20px 24px}
+.layout{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;align-items:start}
+.wgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+.dayl{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.layout,.wgrid,.dayl{grid-template-columns:1fr}}
+.c{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.lbl{font-size:13px;color:var(--muted);margin:0 0 6px}
+.chip{display:inline-block;font-size:12px;padding:3px 10px;border-radius:8px;margin:0 6px 6px 0;white-space:nowrap}
+.row{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
+.bar{height:6px;border-radius:3px;background:var(--soft);flex:1;position:relative;overflow:hidden;min-width:40px}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
+button{font:inherit;font-size:13px;background:transparent;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.stat{border-radius:10px;padding:10px}
+.stat b{display:block;font-size:20px;font-weight:600}
+.name{width:120px;flex:none}
+.link{color:var(--accent);cursor:pointer}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none}
+.months{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.mini{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;font-size:10px;text-align:center}
+.mini div{border-radius:4px;padding:2px 0;line-height:1.2}
+.mgrid{display:grid;grid-template-columns:40px repeat(7,minmax(0,1fr));gap:3px}
+.cell{background:var(--card);border:1px solid var(--line);border-radius:8px;min-height:120px;padding:4px;cursor:pointer;overflow:hidden}
+.ev{font-size:11px;border-radius:4px;padding:1px 4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:600px){.cell{min-height:58px}.ev .t{display:none}}
+</style>
+</head>
+<body>
+<main id="home">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px">
+  <div><div style="font-size:21px;font-weight:600">Lagets utveckling</div><div style="font-size:13px;color:var(--muted)">P2013 · Säsong 2027</div></div>
+  <button>Planera säsongen</button>
+</div>
+
+<div class="layout">
+<div>
+<div class="c" style="border:2px solid var(--accent)">
+  <p class="lbl">Just nu · vecka 11</p>
+  <div style="font-size:18px;font-weight:600">Försäsong · block 2 av 4</div>
+  <div style="margin:2px 0 10px">Speluppbyggnad från målvakt</div>
+  <span class="chip" style="background:var(--accent-bg);color:var(--accent)">Uppbyggnad: spelbarhet</span><span class="chip" style="background:var(--accent-bg);color:var(--accent)">Omställning: direkt återerövring</span>
+  <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:var(--muted)">
+    <span>Vecka 11–12 · nästa block: Press högt (v. 13–14)</span>
+    <button style="border-color:var(--accent);color:var(--accent)">Förbered nästa träning →</button>
+  </div>
+</div>
+
+<div class="c">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><p class="lbl" style="margin:0">Säsongen</p><button onclick="openCal()">📅 Öppna årskalender</button></div>
+  <div style="display:flex;gap:3px;font-size:11px;position:relative;cursor:pointer" onclick="openCal()">
+    <div style="flex:10"><div style="background:#B5D4F4;color:#0C447C;border-radius:4px 0 0 4px;padding:4px 6px">Försäsong</div>
+      <div style="display:flex;gap:2px;margin-top:3px"><div style="flex:4;background:#0C447C;opacity:.45;height:6px;border-radius:2px"></div><div style="flex:2;background:#185FA5;height:6px;border-radius:2px"></div><div style="flex:2;background:#B5D4F4;height:6px;border-radius:2px"></div><div style="flex:2;background:#B5D4F4;height:6px;border-radius:2px"></div></div></div>
+    <div style="flex:10"><div style="background:#9FE1CB;color:#085041;padding:4px 6px">Vårsäsong</div>
+      <div style="display:flex;gap:2px;margin-top:3px"><div style="flex:5;background:#9FE1CB;height:6px;border-radius:2px"></div><div style="flex:5;background:#9FE1CB;height:6px;border-radius:2px"></div></div></div>
+    <div style="flex:5"><div style="background:#D3D1C7;color:#444441;padding:4px 6px">Uppehåll</div></div>
+    <div style="flex:13"><div style="background:#9FE1CB;color:#085041;border-radius:0 4px 4px 0;padding:4px 6px">Höstsäsong</div>
+      <div style="display:flex;gap:2px;margin-top:3px"><div style="flex:6;background:#9FE1CB;height:6px;border-radius:2px"></div><div style="flex:7;background:#9FE1CB;height:6px;border-radius:2px"></div></div></div>
+    <div style="position:absolute;left:13%;top:-4px;bottom:-4px;width:2px;background:#E24B4A"></div>
+  </div>
+  <p style="margin:8px 0 0;font-size:12px;color:var(--muted)">Tryck på en period eller ett block för att öppna det. Strecket är dagens datum.</p>
+</div>
+
+<div class="two">
+  <div class="c">
+    <p class="lbl">Periodens mål</p>
+    <div class="row" style="border-top:0"><span style="flex:1">Spela oss ur egen zon i 6 av 10 uppspel</span><span class="chip" style="background:var(--ok-bg);color:var(--ok);margin:0">På väg</span></div>
+    <div class="row"><span style="flex:1">Vinna bollen inom 5 s efter förlust</span><span class="chip" style="background:var(--warn-bg);color:var(--warn);margin:0">Kämpigt</span></div>
+    <div class="row"><span style="flex:1">Skott per match: 7 (mål 10)</span></div>
+  </div>
+  <div class="c">
+    <p class="lbl">Träningar i blocket</p>
+    <div class="row" style="border-top:0"><span style="color:var(--ok)">✓</span><span style="flex:1">Tis 16/3 · Uppspel 3 mot 2</span><span style="font-size:12px;color:var(--muted)">Blockets fokus</span></div>
+    <div class="row"><span style="color:var(--muted)">○</span><span style="flex:1">Tor 18/3 · Spelbarhet i mitten</span><span style="font-size:12px;color:var(--muted)">Blockets fokus</span></div>
+    <div class="row"><span style="color:var(--muted)">○</span><span style="flex:1">Tis 23/3 · ej planerad</span><button>Förbered</button></div>
+  </div>
+</div>
+</div>
+<div>
+<div class="c">
+  <p class="lbl">Behöver din uppmärksamhet</p>
+  <div class="grid">
+    <div class="stat" style="background:var(--bad-bg);color:var(--bad)"><b>2</b>skadade</div>
+    <div class="stat" style="background:var(--warn-bg);color:var(--warn)"><b>3</b>hög belastning</div>
+    <div class="stat" style="background:var(--soft)"><b>4 v</b><span style="color:var(--muted)">sedan målen stämdes av</span></div>
+    <div class="stat" style="background:var(--soft)"><b>2</b><span style="color:var(--muted)">har missat 3 pass i rad</span></div>
+  </div>
+</div>
+
+<div class="c">
+  <p class="lbl">Rekommendation</p>
+  <div style="font-weight:600">Leo Andersson har hög belastning</div>
+  <div style="color:var(--muted);font-size:14px;margin:2px 0 8px">5 av 5 pass och 240 speltidsminuter de senaste 14 dagarna, mot lagets snitt 140. Egen skattning: 8 av 10 efter senaste passet.</div>
+  <div style="font-size:14px;margin-bottom:10px">Överväg att låta honom vila torsdagens pass eller ta det lugnare på helgens läger.</div>
+  <button>Ta med i passet</button> <button>Avfärda</button>
+</div>
+
+<div class="c">
+  <div style="display:flex;justify-content:space-between"><p class="lbl">Spelarna</p><p class="lbl">Belastning 14 dagar</p></div>
+  <div class="row"><span class="name">Leo Andersson</span><div class="bar"><i style="width:92%;background:#BA7517"></i></div><span class="chip" style="background:var(--warn-bg);color:var(--warn);margin:0">Hög</span></div>
+  <div class="row"><span class="name">Elin Berg</span><div class="bar"><i style="width:60%;background:#639922"></i></div><span class="chip" style="background:var(--ok-bg);color:var(--ok);margin:0">Normal</span></div>
+  <div class="row"><span class="name">Omar Haddad</span><div class="bar"><i style="width:8%;background:#E24B4A"></i></div><span class="chip" style="background:var(--bad-bg);color:var(--bad);margin:0">Skadad · fot</span></div>
+  <div class="row"><span class="name">Saga Lind</span><div class="bar"><i style="width:30%;background:#888780"></i></div><span class="chip" style="background:var(--soft);color:var(--muted);margin:0">Låg närvaro</span></div>
+  <p style="margin:8px 0 0;font-size:13px;color:var(--accent)">Visa hela truppen (18) ▾</p>
+</div>
+
+</div>
+</div>
+</main>
+
+<div id="calview" hidden>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+    <button onclick="closeCal()">← Lagets utveckling</button>
+    <div style="display:flex;gap:6px;align-items:center"><button id="prev">‹</button><button onclick="go({level:'day',d:TODAY})">Idag</button><button id="next">›</button></div>
+  </div>
+  <div id="crumbs" style="font-size:14px;margin-bottom:4px"></div>
+  <div id="calbody"></div>
+  <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-top:14px" id="legend"></div>
+</div>
+
+<script>
+const TODAY=new Date(2027,2,17);
+const MONTHS=['januari','februari','mars','april','maj','juni','juli','augusti','september','oktober','november','december'];
+const DAYS=['mån','tis','ons','tor','fre','lör','sön'];
+const DAYS_LONG=['Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag','Söndag'];
+const TYPES={m:['Seriematch','#E24B4A','#FCEBEB','#791F1F'],tm:['Träningsmatch','#888780','#F1EFE8','#444441'],tr:['Träning','#378ADD','#E6F1FB','#0C447C'],camp:['Läger','#BA7517','#FAEEDA','#633806'],cup:['Cup','#BA7517','#FAEEDA','#633806'],other:['Övrigt','#7F77DD','#EEEDFE','#3C3489']};
+const periods=[
+ {from:1,to:6,name:'Vila / inomhus',bg:'#D3D1C7',fg:'#444441'},
+ {from:7,to:16,name:'Försäsong',bg:'#B5D4F4',fg:'#0C447C',blocks:[{from:7,to:10,name:'Grund: fys och passningsspel'},{from:11,to:12,name:'Speluppbyggnad från målvakt'},{from:13,to:14,name:'Press högt'},{from:15,to:16,name:'Matchförberedelse'}]},
+ {from:17,to:26,name:'Vårsäsong',bg:'#9FE1CB',fg:'#085041',blocks:[{from:17,to:21,name:'Försvarsspel i låg zon'},{from:22,to:26,name:'Kontringar'}]},
+ {from:27,to:31,name:'Uppehåll',bg:'#D3D1C7',fg:'#444441'},
+ {from:32,to:44,name:'Höstsäsong',bg:'#9FE1CB',fg:'#085041',blocks:[{from:32,to:37,name:'Fasta situationer'},{from:38,to:44,name:'Spel i sista tredjedelen'}]},
+ {from:45,to:53,name:'Vila / inomhus',bg:'#D3D1C7',fg:'#444441'}];
+const OPP=['Nordby FF','IFK Väst','Ås BK','Strands IF','Hagaby GoIF','Lunds BoIS','Östra FK','Bergs IK','Viks SK'];
+const isoWeek=d=>{const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const k=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-k);const y=new Date(Date.UTC(t.getUTCFullYear(),0,1));return Math.ceil(((t-y)/864e5+1)/7)};
+const dow=d=>d.getDay()||7;
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const monday=d=>addDays(d,1-dow(d));
+const same=(a,b)=>a.toDateString()==b.toDateString();
+const per=w=>periods.find(p=>w>=p.from&&w<=p.to)||periods[0];
+const blk=w=>(per(w).blocks||[]).find(b=>w>=b.from&&w<=b.to);
+const active=w=>(w>=7&&w<=26)||(w>=32&&w<=44);
+const league=w=>((w>=17&&w<=26)&&w!=21)||((w>=32&&w<=44)&&w!=37);
+function eventsOn(d){
+  const w=isoWeek(d),k=dow(d),o=[],key=(d.getMonth()+1)+'-'+d.getDate();
+  if(d.getFullYear()!=2027)return o;
+  const b=blk(w);
+  if(active(w)&&(k==2||k==4))o.push({t:'tr',time:'18:00–19:30',title:'Träning',place:'Konstgräset',focus:b?b.name:''});
+  if((w<=6||w>=45)&&k==3)o.push({t:'tr',time:'18:00–19:00',title:'Inomhusträning',place:'Sporthallen',focus:'Teknik och lek'});
+  if(w==12&&k>=5)o.push({t:'camp',time:'Heldag',title:'Träningsläger',place:'Halmstad',focus:b?b.name:''});
+  if([9,12,14,16].includes(w)&&k==6)o.push({t:'tm',time:'13:00',title:'Träningsmatch – '+OPP[w%OPP.length],place:w==12?'Halmstad':'Hemmaplan'});
+  if(w==28&&k>=2&&k<=5)o.push({t:'cup',time:'Heldag',title:'Sommarcupen',place:'Göteborg'});
+  if(league(w)&&k==6)o.push({t:'m',time:'11:00',title:'Seriematch – '+OPP[(w*3)%OPP.length],place:w%2?'Hemma':'Borta'});
+  if(key=='2-10')o.push({t:'other',time:'19:00',title:'Föräldramöte inför säsongen',place:'Klubbstugan'});
+  if(key=='11-20')o.push({t:'other',time:'15:00',title:'Säsongsavslutning',place:'Klubbstugan'});
+  return o;
+}
+let state={level:'year'};
+const $=id=>document.getElementById(id);
+function openCal(){$('home').hidden=true;$('calview').hidden=false;go({level:'year'});scrollTo(0,0)}
+function closeCal(){$('calview').hidden=true;$('home').hidden=false}
+function go(s){state=s;render();scrollTo(0,0)}
+function chip(e,short){const T=TYPES[e.t];return `<div class="ev" style="background:${T[2]};color:${T[3]}"><span class="t">${short&&e.t!='camp'&&e.t!='cup'?e.time.slice(0,5)+' ':''}</span>${short?(e.t=='m'?'Match':e.t=='tm'?'Tr.match':e.title):e.title}</div>`}
+function crumbs(){
+  const c=[`<span class="link" onclick="go({level:'year'})">2027</span>`];
+  const s=state;
+  if(s.level!='year'){const m=s.level=='month'?s.m:(s.level=='week'?s.w:s.d).getMonth();c.push(`<span class="link" onclick="go({level:'month',m:${m}})">${MONTHS[m]}</span>`)}
+  if(s.level=='week'||s.level=='day'){const mo=s.level=='week'?s.w:monday(s.d);c.push(`<span class="link" onclick="go({level:'week',w:new Date(${+mo})})">vecka ${isoWeek(mo)}</span>`)}
+  if(s.level=='day')c.push(`<span>${DAYS[dow(s.d)-1]} ${s.d.getDate()}/${s.d.getMonth()+1}</span>`);
+  $('crumbs').innerHTML=c.join(' <span style="color:var(--muted)">›</span> ');
+}
+function render(){
+  crumbs();const s=state;let h='';
+  if(s.level=='year'){
+    h+=`<div style="font-size:22px;font-weight:600;margin-bottom:10px">Året 2027</div><div class="months">`;
+    for(let m=0;m<12;m++){
+      const first=new Date(2027,m,1),n=new Date(2027,m+1,0).getDate();let cnt={tr:0,m:0,tm:0,x:[]};
+      let g=DAYS.map(x=>`<div style="color:var(--muted)">${x[0]}</div>`).join('')+'<div></div>'.repeat(dow(first)-1);
+      for(let i=1;i<=n;i++){const d=new Date(2027,m,i),e=eventsOn(d),p=per(isoWeek(d));
+        e.forEach(x=>{if(x.t=='tr')cnt.tr++;else if(x.t=='m')cnt.m++;else if(x.t=='tm')cnt.tm++;else if(!cnt.x.includes(x.title))cnt.x.push(x.title)});
+        const top=e.find(x=>x.t!='tr')||e[0];
+        g+=`<div style="background:${p.bg}55;${same(d,TODAY)?'outline:2px solid var(--accent);':''}">${i}<br><span class="dot" style="width:5px;height:5px;background:${top?TYPES[top.t][1]:'transparent'}"></span></div>`}
+      const ps=[...new Set(Array.from({length:n},(_,i)=>per(isoWeek(new Date(2027,m,i+1))).name))];
+      h+=`<div class="c" style="margin:0;cursor:pointer" onclick="go({level:'month',m:${m}})">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><b style="text-transform:capitalize">${MONTHS[m]}</b><span style="font-size:11px;color:var(--muted)">${ps.join(' → ')}</span></div>
+        <div class="mini" style="margin:6px 0">${g}</div>
+        <div style="font-size:12px;color:var(--muted)">${cnt.tr} träningar${cnt.m?' · '+cnt.m+' seriematcher':''}${cnt.tm?' · '+cnt.tm+' tr.matcher':''}${cnt.x.length?' · '+cnt.x.join(', '):''}</div></div>`}
+    h+='</div>';
+  }
+  if(s.level=='month'){
+    const m=s.m,first=new Date(2027,m,1),last=new Date(2027,m+1,0);
+    const ws=[];for(let d=monday(first);d<=last;d=addDays(d,7))ws.push(d);
+    const ps=[...new Set(ws.map(d=>{const w=isoWeek(d),b=blk(w);return per(w).name+(b?': '+b.name:'')}))];
+    h+=`<div style="font-size:22px;font-weight:600;text-transform:capitalize">${MONTHS[m]} 2027</div><div style="font-size:13px;color:var(--muted);margin-bottom:10px">${ps.join(' · ')}</div>`;
+    h+=`<div class="mgrid"><div></div>${DAYS.map(x=>`<div style="font-size:12px;color:var(--muted);text-align:center">${x}</div>`).join('')}`;
+    ws.forEach(mo=>{const w=isoWeek(mo),p=per(w);
+      h+=`<div onclick="go({level:'week',w:new Date(${+mo})})" title="${p.name}" style="cursor:pointer;background:${p.bg};color:${p.fg};border-radius:8px;font-size:11px;text-align:center;padding-top:6px">v${w}</div>`;
+      for(let i=0;i<7;i++){const d=addDays(mo,i),inM=d.getMonth()==m,e=eventsOn(d);
+        h+=`<div class="cell" onclick="go({level:'day',d:new Date(${+d})})" style="${inM?'':'opacity:.4;'}${same(d,TODAY)?'border:2px solid var(--accent);':''}"><div style="font-size:12px;color:var(--muted)">${d.getDate()}</div>${e.map(x=>chip(x,true)).join('')}</div>`}});
+    h+='</div>';
+  }
+  if(s.level=='week'){
+    const mo=s.w,w=isoWeek(mo),p=per(w),b=blk(w),su=addDays(mo,6);
+    h+=`<div style="font-size:22px;font-weight:600">Vecka ${w}</div><div style="font-size:13px;color:var(--muted)">${mo.getDate()} ${MONTHS[mo.getMonth()]} – ${su.getDate()} ${MONTHS[su.getMonth()]}</div>
+    <div class="c" style="margin:10px 0;background:${p.bg};color:${p.fg};border:0"><b>${p.name}</b>${b?' · block: '+b.name:''}${b?`<div style="font-size:13px">Veckans träningar utgår från blockets fokus.</div>`:''}</div>`;
+    h+='<div class="wgrid">';
+    for(let i=0;i<7;i++){const d=addDays(mo,i),e=eventsOn(d);
+      h+=`<div class="c" style="margin:0;cursor:pointer;min-height:260px;padding:10px 12px;${same(d,TODAY)?'border:2px solid var(--accent);':''}" onclick="go({level:'day',d:new Date(${+d})})">
+      <div style="border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:6px"><b>${DAYS_LONG[i]}</b> <span style="color:var(--muted)">${d.getDate()}/${d.getMonth()+1}</span></div>
+      ${e.length?e.map(x=>`<div style="border-left:3px solid ${TYPES[x.t][1]};padding:4px 8px;margin-bottom:6px;background:${TYPES[x.t][2]};color:${TYPES[x.t][3]};border-radius:0 6px 6px 0;font-size:13px"><div style="opacity:.8">${x.time}</div><div style="font-weight:600">${x.title}</div>${x.focus?`<div style="font-size:12px">Fokus: ${x.focus}</div>`:''}</div>`).join(''):'<span style="color:var(--muted);font-size:13px">Inget planerat</span>'}</div>`}
+    h+='</div>';
+  }
+  if(s.level=='day'){
+    const d=s.d,w=isoWeek(d),p=per(w),b=blk(w),e=eventsOn(d),past=d<TODAY&&!same(d,TODAY);
+    h+=`<div style="font-size:22px;font-weight:600">${DAYS_LONG[dow(d)-1]} ${d.getDate()} ${MONTHS[d.getMonth()]}</div><div style="font-size:13px;color:var(--muted);margin-bottom:10px">Vecka ${w} · ${p.name}${b?' · '+b.name:''}</div>`;
+    h+='<div class="dayl"><div>';
+    if(!e.length)h+=`<div class="c" style="color:var(--muted)">Inget planerat den här dagen.<div style="margin-top:8px"><button>+ Lägg till aktivitet</button></div></div>`;
+    e.forEach(x=>{const T=TYPES[x.t];
+      h+=`<div class="c" style="border-left:4px solid ${T[1]}"><div style="display:flex;justify-content:space-between;gap:8px"><b>${x.title}</b><span class="chip" style="background:${T[2]};color:${T[3]};margin:0">${T[0]}</span></div>
+      <div style="font-size:14px;color:var(--muted)">${x.time} · ${x.place}</div>
+      ${x.t=='tr'||x.t=='camp'?`<div style="font-size:14px;margin-top:8px">Fokus: ${x.focus||'—'} <span style="color:var(--muted)">(från blocket)</span></div>
+        <div style="font-size:14px;color:var(--muted)">${past?'Närvaro 15 av 18':'16 kommer · 1 kanske · 1 skadad'}</div>
+        <div style="margin-top:8px">${past?'<button>Öppna passet</button>':'<button>Förbered</button> <button>Välj annat fokus</button>'}</div>`:''}
+      ${x.t=='m'||x.t=='tm'?`<div style="font-size:14px;color:var(--muted);margin-top:6px">${past?'Resultat och speltid registrerade':'Kallelse: 14 ja · 2 nej · 2 inte svarat'}</div><div style="margin-top:8px"><button>${past?'Öppna matchen':'Matchplan'}</button></div>`:''}
+      </div>`});
+    h+=`</div><div><div class="c"><p class="lbl">Laget den här dagen</p>
+      <div class="row" style="border-top:0"><span class="dot" style="background:#E24B4A"></span><span style="flex:1">Omar Haddad</span><span style="font-size:12px;color:var(--muted)">Skadad · fot</span></div>
+      <div class="row"><span class="dot" style="background:#E24B4A"></span><span style="flex:1">Nils Ek</span><span style="font-size:12px;color:var(--muted)">Skadad · knä</span></div>
+      <div class="row"><span class="dot" style="background:#BA7517"></span><span style="flex:1">Leo Andersson</span><span style="font-size:12px;color:var(--muted)">Hög belastning</span></div>
+      <div class="row"><span class="dot" style="background:#BA7517"></span><span style="flex:1">Ida Sjö</span><span style="font-size:12px;color:var(--muted)">Hög belastning</span></div></div>
+      <div class="c"><p class="lbl">Blockets fokus</p><div style="font-weight:600">${b?b.name:p.name}</div><div style="font-size:13px;color:var(--muted);margin-top:4px">Principer: Uppbyggnad – spelbarhet · Omställning – direkt återerövring</div></div></div></div>`;
+  }
+  $('calbody').innerHTML=h;
+  $('legend').innerHTML=Object.entries({m:1,tm:1,tr:1,camp:1,other:1}).map(([k])=>`<span><span class="dot" style="background:${TYPES[k][1]}"></span> ${k=='camp'?'Läger / cup':TYPES[k][0]}</span>`).join('')+'<span>Färgade fält = säsongens perioder</span>';
+}
+function step(n){const s=state;
+  if(s.level=='year')return;
+  if(s.level=='month')go({level:'month',m:Math.min(11,Math.max(0,s.m+n))});
+  if(s.level=='week')go({level:'week',w:addDays(s.w,7*n)});
+  if(s.level=='day')go({level:'day',d:addDays(s.d,n)});
+}
+$('prev').onclick=()=>step(-1);$('next').onclick=()=>step(1);
+</script>
+</body>
+</html>

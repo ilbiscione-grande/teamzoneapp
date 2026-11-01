@@ -14,54 +14,50 @@ class _TdpSharingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final sharing = plan.sharing;
+    final strings = AppStrings.of(context);
     final parts = [
       (
         'vision',
-        'Inriktning',
-        'Vilket lag ni vill vara',
+        strings.feature('Inriktning'),
+        strings.feature('Vilket lag ni vill vara'),
         sharing.vision,
-        (bool on) => PlanSharing(
-          vision: on,
-          periods: sharing.periods,
-          principles: sharing.principles,
-          goals: sharing.goals,
-        ),
+        (bool on) => sharing.copyWith(vision: on),
       ),
       (
         'periods',
-        'Perioder och fokus',
-        'Vad laget arbetar med just nu',
+        strings.feature('Perioder och fokus'),
+        strings.feature('Vad laget arbetar med just nu'),
         sharing.periods,
-        (bool on) => PlanSharing(
-          vision: sharing.vision,
-          periods: on,
-          principles: sharing.principles,
-          goals: sharing.goals,
+        (bool on) => sharing.copyWith(periods: on),
+      ),
+      (
+        'blocks',
+        _tdpText(context, 'Block', 'Blocks'),
+        _tdpText(
+          context,
+          'Blockens fokus och principer',
+          "The blocks' focus and principles",
         ),
+        sharing.blocks,
+        (bool on) => sharing.copyWith(blocks: on),
       ),
       (
         'principles',
-        'Spelprinciper',
-        'Spelidén i spelets fyra skeden',
+        strings.feature('Spelprinciper'),
+        strings.feature('Spelidén i spelets fyra skeden'),
         sharing.principles,
-        (bool on) => PlanSharing(
-          vision: sharing.vision,
-          periods: sharing.periods,
-          principles: on,
-          goals: sharing.goals,
-        ),
+        (bool on) => sharing.copyWith(principles: on),
       ),
       (
         'goals',
-        'Säsongs- och periodmål',
-        'Med de länkar ni visar för spelarna',
-        sharing.goals,
-        (bool on) => PlanSharing(
-          vision: sharing.vision,
-          periods: sharing.periods,
-          principles: sharing.principles,
-          goals: on,
+        _tdpText(context, 'Mål', 'Goals'),
+        _tdpText(
+          context,
+          'Säsongens, periodernas och blockens mål, med de länkar ni visar för spelarna',
+          "The season's, periods' and blocks' goals, with the links you show the players",
         ),
+        sharing.goals,
+        (bool on) => sharing.copyWith(goals: on),
       ),
     ];
     return Card(
@@ -94,8 +90,8 @@ class _TdpSharingCard extends StatelessWidget {
             for (final (key, title, subtitle, on, next) in parts)
               SwitchListTile(
                 key: ValueKey('tdp-share-$key'),
-                title: Text(AppStrings.of(context).feature(title)),
-                subtitle: Text(AppStrings.of(context).feature(subtitle)),
+                title: Text(title),
+                subtitle: Text(subtitle),
                 value: on,
                 onChanged: controller.canEdit
                     ? (value) => _set(context, next(value))

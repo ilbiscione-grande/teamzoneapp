@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Planera säsongen</title>
+<style>
+:root{--bg:#f4f3ef;--card:#fff;--line:#e3e1da;--text:#1f1f1d;--muted:#6b6a65;--accent:#185FA5;--accent-bg:#E6F1FB;--soft:#f1efe8}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1b1a;--card:#262624;--line:#3a3a37;--text:#eeede8;--muted:#a8a7a0;--accent:#85B7EB;--accent-bg:#0C447C;--soft:#31312e}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1700px;margin:0 auto;padding:20px 24px}
+.c{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.lbl{font-size:13px;color:var(--muted);margin:0 0 6px}
+button{font:inherit;font-size:13px;background:transparent;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer}
+input,select,textarea{font:inherit;font-size:14px;width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text)}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;align-items:start}
+@media (max-width:1000px){.layout{grid-template-columns:1fr}}
+.tl{position:relative;user-select:none}
+.ruler,.lane{position:relative;height:28px}
+.lane{height:44px;background:var(--soft);border-radius:8px;margin-top:6px;cursor:crosshair}
+.lane.b{height:36px}
+.item{position:absolute;top:4px;bottom:4px;border-radius:6px;padding:0 8px;font-size:12px;display:flex;align-items:center;overflow:hidden;white-space:nowrap;cursor:grab}
+.item.sel{outline:2px solid var(--accent);outline-offset:1px}
+.h{position:absolute;top:0;bottom:0;width:8px;cursor:ew-resize}
+.h.l{left:0}.h.r{right:0}
+.lname{font-size:12px;color:var(--muted);margin-top:10px}
+.goal{display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+.pchip{display:inline-flex;gap:4px;align-items:center;font-size:12px;padding:3px 8px;border:1px solid var(--line);border-radius:8px;margin:0 6px 6px 0;cursor:pointer}
+.pchip.on{background:var(--accent-bg);color:var(--accent);border-color:var(--accent)}
+.lvl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+  <div><div style="font-size:21px;font-weight:600">Planera säsongen</div><div style="font-size:13px;color:var(--muted)">P2013 · Säsong 2027 · ändringarna sparas som en ny version av planen</div></div>
+  <div style="display:flex;gap:8px"><button>Ångra</button><button style="border-color:var(--accent);color:var(--accent)">Klar</button></div>
+</div>
+
+<div class="c">
+  <div style="display:flex;justify-content:space-between;align-items:center"><p class="lbl" style="margin:0">Säsongsmål (långsiktiga)</p><button onclick="select({kind:'season'})">Redigera</button></div>
+  <div id="seasonGoals" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div>
+</div>
+
+<div class="layout">
+  <div class="c">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <p class="lbl" style="margin:0">Dra i ett tomt fält för att skapa · dra i kanterna för att ändra datum · klicka för att öppna</p>
+      <span style="font-size:12px;color:var(--muted)">Röd prick = match, läger eller cup (från kalendern)</span>
+    </div>
+    <div class="tl" id="tl">
+      <div class="ruler" id="months"></div>
+      <div class="ruler" id="weeks" style="height:18px"></div>
+      <div class="lname">Perioder</div>
+      <div class="lane" id="laneP" data-kind="period"></div>
+      <div class="lname">Block</div>
+      <div class="lane b" id="laneB" data-kind="block"></div>
+      <div class="lname">Aktiviteter</div>
+      <div class="ruler" id="acts" style="height:20px"></div>
+      <div id="today" style="position:absolute;top:0;bottom:0;width:2px;background:#E24B4A;pointer-events:none"></div>
+    </div>
+  </div>
+  <div class="c" id="panel"></div>
+</div>
+</div>
+
+<script>
+const W=52,TODAY_W=11;
+const MONTHS=['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+const PHASES={preseason:['Försäsong','#B5D4F4','#0C447C'],competition:['Tävling','#9FE1CB','#085041'],break:['Uppehåll','#D3D1C7','#444441'],other:['Annan','#CECBF6','#3C3489']};
+const PRINCIPLES=['Uppbyggnad – spelbarhet','Uppbyggnad – djupled','Anfall – avslut i box','Omställning – direkt återerövring','Omställning – kontring','Försvar – press högt','Försvar – kompakt låg zon','Fasta situationer'];
+let id=100;
+const S={
+ seasonGoals:['Utveckla ett eget speluppbyggnadsspel från målvakt','Alla spelare ska känna sig trygga i två positioner','Hålla 80 % närvaro hela säsongen'],
+ periods:[
+  {id:1,from:1,to:6,name:'Vila / inomhus',phase:'break',focus:'Teknik och lek',goals:[]},
+  {id:2,from:7,to:16,name:'Försäsong',phase:'preseason',focus:'Grund och spelidé',goals:['Alla klarar ett uppspel under press i 3 mot 2','Gemensam bild av hur vi pressar']},
+  {id:3,from:17,to:26,name:'Vårsäsong',phase:'competition',focus:'Försvarsspel och kontringar',goals:['Max 1 insläppt mål per match i snitt']},
+  {id:4,from:27,to:31,name:'Uppehåll',phase:'break',focus:'',goals:[]},
+  {id:5,from:32,to:44,name:'Höstsäsong',phase:'competition',focus:'Fasta situationer och avslut',goals:[]}],
+ blocks:[
+  {id:11,from:7,to:10,name:'Grund: fys och passningsspel',principles:['Uppbyggnad – spelbarhet'],goals:['Passningsspel 2-touch i 5 mot 2']},
+  {id:12,from:11,to:12,name:'Speluppbyggnad från målvakt',principles:['Uppbyggnad – spelbarhet','Omställning – direkt återerövring'],goals:['Spela oss ur egen zon i 6 av 10 uppspel','Vinna bollen inom 5 s efter förlust']},
+  {id:13,from:13,to:14,name:'Press högt',principles:['Försvar – press högt'],goals:[]},
+  {id:14,from:15,to:16,name:'Matchförberedelse',principles:[],goals:[]},
+  {id:15,from:17,to:21,name:'Försvarsspel i låg zon',principles:['Försvar – kompakt låg zon'],goals:[]},
+  {id:16,from:22,to:26,name:'Kontringar',principles:['Omställning – kontring'],goals:[]}],
+};
+const acts=[9,12,14,16,17,18,19,20,22,23,24,25,26,28,32,33,34,35,36,38,39,40,41,42,43,44];
+let sel={kind:'block',id:12};
+const $=x=>document.getElementById(x);
+const wPx=()=>$('laneP').clientWidth/W;
+const periodOf=b=>S.periods.find(p=>b.from>=p.from&&b.to<=p.to);
+function ruler(){
+  $('months').innerHTML=MONTHS.map((m,i)=>`<div style="position:absolute;left:${i/12*100}%;width:${100/12}%;font-size:12px;color:var(--muted);border-left:1px solid var(--line);padding-left:4px">${m}</div>`).join('');
+  $('weeks').innerHTML=Array.from({length:W},(_,i)=>`<div style="position:absolute;left:${i/W*100}%;width:${100/W}%;font-size:10px;color:var(--muted);text-align:center">${(i+1)%2?i+1:''}</div>`).join('');
+  $('acts').innerHTML=acts.map(w=>`<div style="position:absolute;left:${(w-0.5)/W*100}%;top:6px;width:8px;height:8px;margin-left:-4px;border-radius:50%;background:#E24B4A"></div>`).join('');
+  $('today').style.left=`${(TODAY_W-0.5)/W*100}%`;
+}
+function draw(){
+  const pos=x=>`left:${(x.from-1)/W*100}%;width:${(x.to-x.from+1)/W*100}%`;
+  $('laneP').innerHTML=S.periods.map(p=>{const ph=PHASES[p.phase];return `<div class="item ${sel.kind=='period'&&sel.id==p.id?'sel':''}" data-id="${p.id}" style="${pos(p)};background:${ph[1]};color:${ph[2]}"><div class="h l"></div><b>${p.name}</b>&nbsp;· v${p.from}–${p.to}<div class="h r"></div></div>`}).join('');
+  $('laneB').innerHTML=S.blocks.map(b=>{const p=periodOf(b),ph=PHASES[p?p.phase:'other'];return `<div class="item ${sel.kind=='block'&&sel.id==b.id?'sel':''}" data-id="${b.id}" title="${b.name}" style="${pos(b)};background:var(--card);border:1px solid ${ph[2]};color:${ph[2]}"><div class="h l"></div>${b.name}<div class="h r"></div></div>`}).join('');
+  $('seasonGoals').innerHTML=S.seasonGoals.map(g=>`<span style="font-size:14px;padding:6px 10px;border-radius:8px;background:var(--soft)">🎯 ${g}</span>`).join('');
+  panel();
+}
+function goalsEditor(list,path){return list.map((g,i)=>`<div class="goal"><span>🎯</span><span style="flex:1">${g}</span><button onclick="rm('${path}',${i})">✕</button></div>`).join('')+`<div class="goal"><input id="ng" placeholder="Nytt mål, t.ex. 'Vinna bollen inom 5 s'"><button onclick="add('${path}')">Lägg till</button></div>`}
+function obj(){return sel.kind=='period'?S.periods.find(p=>p.id==sel.id):sel.kind=='block'?S.blocks.find(b=>b.id==sel.id):null}
+function panel(){
+  const o=obj();let h='';
+  if(sel.kind=='season'){h=`<div class="lvl">Säsong</div><div style="font-size:18px;font-weight:600;margin-bottom:8px">Säsongsmål</div><p class="lbl">Långsiktiga mål för hela säsongen. Periodernas och blockens mål läggs under dessa.</p>${goalsEditor(S.seasonGoals,'season')}`}
+  else if(!o){h='<p class="lbl">Klicka på en period eller ett block.</p>'}
+  else if(sel.kind=='period'){const longs=S.seasonGoals.map(g=>`<div style="font-size:13px;color:var(--muted)">↑ ${g}</div>`).join('');
+    h=`<div class="lvl">Period · v${o.from}–${o.to}</div>
+    <input value="${o.name}" style="font-size:18px;font-weight:600;margin:4px 0 10px" oninput="obj().name=this.value;drawLanes()">
+    <p class="lbl">Fas</p><select onchange="obj().phase=this.value;drawLanes()">${Object.entries(PHASES).map(([k,v])=>`<option value="${k}" ${k==o.phase?'selected':''}>${v[0]}</option>`).join('')}</select>
+    <p class="lbl" style="margin-top:10px">Fokus</p><input value="${o.focus}" oninput="obj().focus=this.value">
+    <p class="lbl" style="margin-top:14px">Periodens kortsiktiga mål</p>${goalsEditor(o.goals,'goals')}
+    <p class="lbl" style="margin-top:14px">Bidrar till säsongsmålen</p>${longs}
+    <p class="lbl" style="margin-top:14px">Block i perioden: ${S.blocks.filter(b=>periodOf(b)==o).length}</p>
+    <button onclick="del()" style="margin-top:6px">Ta bort perioden</button>`}
+  else{const p=periodOf(o);
+    h=`<div class="lvl">Block · v${o.from}–${o.to}${p?' · '+p.name:''}</div>
+    <input value="${o.name}" style="font-size:18px;font-weight:600;margin:4px 0 10px" oninput="obj().name=this.value;drawLanes()">
+    <p class="lbl">Principer i fokus</p><div>${PRINCIPLES.map(x=>`<span class="pchip ${o.principles.includes(x)?'on':''}" onclick="tog('${x}')">${x}</span>`).join('')}</div>
+    <p class="lbl" style="margin-top:14px">Blockets kortsiktiga mål</p>${goalsEditor(o.goals,'goals')}
+    ${p&&p.goals.length?`<p class="lbl" style="margin-top:14px">Periodens mål ovanför</p>${p.goals.map(g=>`<div style="font-size:13px;color:var(--muted)">↑ ${g}</div>`).join('')}`:''}
+    <p class="lbl" style="margin-top:14px">Träningar i blocket</p><div style="font-size:14px">${(o.to-o.from+1)*2} pass i kalendern utgår från det här blocket.</div>
+    <button onclick="del()" style="margin-top:10px">Ta bort blocket</button>`}
+  $('panel').innerHTML=h;
+}
+function drawLanes(){const p=panel;panel=()=>{};draw();panel=p}
+function select(s){sel=s;draw()}
+function add(path){const v=$('ng').value.trim();if(!v)return;(path=='season'?S.seasonGoals:obj().goals).push(v);draw()}
+function rm(path,i){(path=='season'?S.seasonGoals:obj().goals).splice(i,1);draw()}
+function tog(x){const o=obj(),i=o.principles.indexOf(x);i<0?o.principles.push(x):o.principles.splice(i,1);panel()}
+function del(){if(sel.kind=='period'){const p=obj();S.blocks=S.blocks.filter(b=>periodOf(b)!=p);S.periods=S.periods.filter(x=>x!=p)}else S.blocks=S.blocks.filter(b=>b.id!=sel.id);sel={kind:'none'};draw()}
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const overlaps=(list,x,skip)=>list.some(o=>o!==skip&&o.from<=x.to&&o.to>=x.from);
+let drag=null;
+function weekAt(lane,ev){const r=lane.getBoundingClientRect();return clamp(Math.floor((ev.clientX-r.left)/wPx())+1,1,W)}
+document.querySelectorAll('.lane').forEach(lane=>lane.addEventListener('pointerdown',ev=>{
+  const kind=lane.dataset.kind,list=kind=='period'?S.periods:S.blocks,w=weekAt(lane,ev);
+  const it=ev.target.closest('.item');
+  if(it){const o=list.find(x=>x.id==it.dataset.id);
+    const mode=ev.target.classList.contains('l')?'l':ev.target.classList.contains('r')?'r':'move';
+    drag={kind,list,o,mode,start:w,orig:{from:o.from,to:o.to},moved:false};
+  }else{
+    const o=kind=='period'?{id:++id,from:w,to:w,name:'Ny period',phase:'other',focus:'',goals:[]}:{id:++id,from:w,to:w,name:'Nytt block',principles:[],goals:[]};
+    if(overlaps(list,o))return;
+    if(kind=='block'&&!periodOf(o))return;
+    list.push(o);drag={kind,list,o,mode:'r',start:w,orig:{from:w,to:w},moved:true,created:true};sel={kind,id:o.id};
+  }
+  lane.setPointerCapture(ev.pointerId);draw();
+}));
+document.addEventListener('pointermove',ev=>{if(!drag)return;
+  const lane=drag.kind=='period'?$('laneP'):$('laneB'),w=weekAt(lane,ev),d=w-drag.start,o=drag.o,g=drag.orig;
+  let n={from:o.from,to:o.to};
+  if(drag.mode=='move'){const len=g.to-g.from;n.from=clamp(g.from+d,1,W-len);n.to=n.from+len}
+  if(drag.mode=='l')n.from=clamp(g.from+d,1,o.to);
+  if(drag.mode=='r')n.to=clamp(g.to+d,o.from,W);
+  if(drag.created&&w<g.from){n.from=w;n.to=g.from}
+  if(d)drag.moved=true;
+  if(overlaps(drag.list,n,o))return;
+  if(drag.kind=='block'&&!periodOf(n))return;
+  if(drag.kind=='period'){const inside=S.blocks.filter(b=>b.from>=o.from&&b.to<=o.to);if(inside.some(b=>b.from<n.from||b.to>n.to)&&drag.mode!='move')return;
+    if(drag.mode=='move'){const dd=n.from-o.from;inside.forEach(b=>{b.from+=dd;b.to+=dd})}}
+  o.from=n.from;o.to=n.to;drawLanes();
+});
+document.addEventListener('pointerup',()=>{if(!drag)return;const d=drag;drag=null;sel={kind:d.kind,id:d.o.id};draw()});
+addEventListener('resize',draw);
+ruler();draw();
+</script>
+</body>
+</html>

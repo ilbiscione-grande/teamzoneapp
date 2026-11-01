@@ -37,6 +37,10 @@ class _ModuleShell extends StatefulWidget {
         MaterialPageRoute<void>(builder: (_) => shell, fullscreenDialog: true),
       );
 
+  /// Shows the module's section at [index], as from a link on another.
+  static void select(BuildContext context, int index) =>
+      context.findAncestorStateOfType<_ModuleShellState>()?._select(index);
+
   /// The module's accent colors per module key.
   static const seeds = {
     'module.match_workspace': Color(0xFF1B5E9E),
@@ -55,6 +59,8 @@ class _ModuleShell extends StatefulWidget {
 
 class _ModuleShellState extends State<_ModuleShell> {
   int _index = 0;
+
+  void _select(int index) => setState(() => _index = index);
 
   @override
   Widget build(BuildContext context) {

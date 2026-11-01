@@ -24,11 +24,12 @@ enum PeriodPhase {
   };
 }
 
-/// Where a goal belongs: the whole season, one period, or the short term
-/// up to a date (before a match or a block of trainings).
+/// Where a goal belongs: the whole season (long-term), one period or one
+/// block (short-term), or the short term up to a date (the earlier kind).
 enum GoalHorizon {
   season('Säsongsmål'),
   period('Periodens mål'),
+  block('Blockets mål'),
   short('Kortsiktigt mål');
 
   const GoalHorizon(this.label);
@@ -36,6 +37,7 @@ enum GoalHorizon {
 
   static GoalHorizon from(Object? value) => switch (value) {
     'period' => period,
+    'block' => block,
     'short' => short,
     _ => season,
   };
@@ -84,12 +86,51 @@ class DevelopmentPeriod {
   }
 }
 
+/// A few weeks of a period with their own focus, principles and goals; the
+/// starting point when a training in it is prepared.
+class DevelopmentBlock {
+  const DevelopmentBlock({
+    required this.id,
+    required this.periodId,
+    required this.name,
+    required this.startsOn,
+    required this.endsOn,
+    this.focus = '',
+    this.principleIds = const [],
+  });
+  factory DevelopmentBlock.fromJson(Map<String, dynamic> json) =>
+      DevelopmentBlock(
+        id: json['id'] as String,
+        periodId: json['period_id'] as String,
+        name: json['name'] as String? ?? '',
+        startsOn: _date(json['starts_on']),
+        endsOn: _date(json['ends_on']),
+        focus: json['focus'] as String? ?? '',
+        principleIds: [
+          for (final row
+              in (json['principles'] as List? ?? const []).whereType<Map>())
+            row['id'] as String,
+        ],
+      );
+  final String id, periodId, name, focus;
+  final DateTime startsOn, endsOn;
+
+  /// The plan's principles in focus, in the order chosen.
+  final List<String> principleIds;
+
+  bool contains(DateTime day) {
+    final date = DateTime(day.year, day.month, day.day);
+    return !date.isBefore(startsOn) && !date.isAfter(endsOn);
+  }
+}
+
 class TeamGoal {
   const TeamGoal({
     required this.id,
     required this.horizon,
     required this.title,
     this.periodId,
+    this.blockId,
     this.description = '',
     this.targetOn,
     this.state = GoalState.open,
@@ -101,6 +142,7 @@ class TeamGoal {
     id: json['id'] as String,
     horizon: GoalHorizon.from(json['horizon']),
     periodId: json['period_id'] as String?,
+    blockId: json['block_id'] as String?,
     title: json['title'] as String? ?? '',
     description: json['description'] as String? ?? '',
     targetOn: json['target_on'] == null ? null : _date(json['target_on']),
@@ -114,7 +156,7 @@ class TeamGoal {
   );
   final String id, title, description;
   final GoalHorizon horizon;
-  final String? periodId, updatedBy;
+  final String? periodId, blockId, updatedBy;
   final DateTime? targetOn, updatedAt;
   final GoalState state;
   final List<GoalLink> links;
@@ -148,6 +190,7 @@ class SeasonPlan {
     required this.revision,
     this.vision = '',
     this.periods = const [],
+    this.blocks = const [],
     this.goals = const [],
     this.principles = const [],
     this.kpis = const [],
@@ -169,6 +212,10 @@ class SeasonPlan {
     periods: [
       for (final row in (json['periods'] as List? ?? const []).whereType<Map>())
         DevelopmentPeriod.fromJson(Map<String, dynamic>.from(row)),
+    ],
+    blocks: [
+      for (final row in (json['blocks'] as List? ?? const []).whereType<Map>())
+        DevelopmentBlock.fromJson(Map<String, dynamic>.from(row)),
     ],
     goals: [
       for (final row in (json['goals'] as List? ?? const []).whereType<Map>())
@@ -199,6 +246,9 @@ class SeasonPlan {
   final DateTime? updatedAt;
   final String? updatedBy;
   final List<DevelopmentPeriod> periods;
+
+  /// In date order.
+  final List<DevelopmentBlock> blocks;
   final List<TeamGoal> goals;
   final List<TeamPrinciple> principles;
   final List<TeamKpi> kpis;
@@ -206,7 +256,8 @@ class SeasonPlan {
   /// Newest first.
   final List<TeamCheckin> checkins;
 
-  /// How often the goals are checked; null: never.
+  /// The earlier interval between check-ins; no longer what makes goals
+  /// due (see [goalsDue]).
   final int? checkinEveryDays;
 
   /// What the team's players and guardians see.
@@ -222,42 +273,62 @@ class SeasonPlan {
       if (checkin.kpiId == kpiId) checkin,
   ];
 
-  /// The goals to check now, as the assistant counts them: open, of the
-  /// season, today's period or the short term ahead, last checked (or
-  /// changed) an interval ago.
+  /// When what [goal] belongs to ends: its block, its period, the season,
+  /// or its date.
+  DateTime? goalEnds(TeamGoal goal) => switch (goal.horizon) {
+    GoalHorizon.season => endsOn,
+    GoalHorizon.period =>
+      periods.where((period) => period.id == goal.periodId).firstOrNull?.endsOn,
+    GoalHorizon.block =>
+      blocks.where((block) => block.id == goal.blockId).firstOrNull?.endsOn,
+    GoalHorizon.short => goal.targetOn,
+  };
+
+  /// The goals to check now, as the assistant counts them: open, what they
+  /// belong to ended within four weeks, and not checked from a week before
+  /// that end.
   List<TeamGoal> goalsDue(DateTime day) {
-    final every = checkinEveryDays;
-    if (every == null) return const [];
     final today = DateTime(day.year, day.month, day.day);
-    final period = periodOn(today);
     return [
       for (final goal in goals)
-        if (goal.state == GoalState.open &&
-            switch (goal.horizon) {
-              GoalHorizon.season => true,
-              GoalHorizon.period => goal.periodId == period?.id,
-              GoalHorizon.short => !goal.targetOn!.isBefore(today),
-            } &&
-            !(checkinsOfGoal(goal.id).firstOrNull?.checkedOn ??
-                    goal.updatedAt ??
-                    today)
-                .isAfter(today.subtract(Duration(days: every))))
-          goal,
+        if (goal.state == GoalState.open)
+          if (goalEnds(goal) case final ended?)
+            if (!ended.isAfter(today) &&
+                !ended.isBefore(today.subtract(const Duration(days: 28))) &&
+                !checkinsOfGoal(goal.id).any(
+                  (checkin) => !checkin.checkedOn.isBefore(
+                    ended.subtract(const Duration(days: 7)),
+                  ),
+                ))
+              goal,
     ];
   }
 
   DevelopmentPeriod? periodOn(DateTime day) =>
       periods.where((period) => period.contains(day)).firstOrNull;
 
+  DevelopmentBlock? blockOn(DateTime day) =>
+      blocks.where((block) => block.contains(day)).firstOrNull;
+
+  List<DevelopmentBlock> blocksOf(String periodId) => [
+    for (final block in blocks)
+      if (block.periodId == periodId) block,
+  ];
+
   /// The period now, else the next one, else none.
   DevelopmentPeriod? currentOrNext(DateTime day) =>
       periodOn(day) ??
       periods.where((period) => period.startsOn.isAfter(day)).firstOrNull;
 
-  List<TeamGoal> goalsOf(GoalHorizon horizon, {String? periodId}) => [
+  List<TeamGoal> goalsOf(
+    GoalHorizon horizon, {
+    String? periodId,
+    String? blockId,
+  }) => [
     for (final goal in goals)
       if (goal.horizon == horizon &&
-          (periodId == null || goal.periodId == periodId))
+          (periodId == null || goal.periodId == periodId) &&
+          (blockId == null || goal.blockId == blockId))
         goal,
   ];
 }
@@ -444,16 +515,32 @@ class PlanSharing {
     this.periods = false,
     this.principles = false,
     this.goals = false,
+    this.blocks = false,
   });
   factory PlanSharing.fromJson(Map<String, dynamic> json) => PlanSharing(
     vision: json['vision'] == true,
     periods: json['periods'] == true,
     principles: json['principles'] == true,
     goals: json['goals'] == true,
+    blocks: json['blocks'] == true,
   );
-  final bool vision, periods, principles, goals;
+  final bool vision, periods, principles, goals, blocks;
 
-  bool get any => vision || periods || principles || goals;
+  bool get any => vision || periods || principles || goals || blocks;
+
+  PlanSharing copyWith({
+    bool? vision,
+    bool? periods,
+    bool? principles,
+    bool? goals,
+    bool? blocks,
+  }) => PlanSharing(
+    vision: vision ?? this.vision,
+    periods: periods ?? this.periods,
+    principles: principles ?? this.principles,
+    goals: goals ?? this.goals,
+    blocks: blocks ?? this.blocks,
+  );
 }
 
 /// What the players and guardians see of the season now (or next): only
@@ -465,6 +552,7 @@ class SharedTeamPlan {
     required this.endsOn,
     this.vision,
     this.periods,
+    this.blocks,
     this.principles,
     this.goals,
   });
@@ -482,6 +570,7 @@ class SharedTeamPlan {
       endsOn: _date(json['ends_on']),
       vision: json['vision'] as String?,
       periods: list('periods', DevelopmentPeriod.fromJson),
+      blocks: list('blocks', DevelopmentBlock.fromJson),
       principles: list('principles', TeamPrinciple.fromJson),
       goals: list('goals', TeamGoal.fromJson),
     );
@@ -490,49 +579,64 @@ class SharedTeamPlan {
   final DateTime startsOn, endsOn;
   final String? vision;
   final List<DevelopmentPeriod>? periods;
+  final List<DevelopmentBlock>? blocks;
   final List<TeamPrinciple>? principles;
   final List<TeamGoal>? goals;
 }
 
 /// What the team's plan says for an event's day, to prepare it with: the
-/// period's focus, the principles and the goals ahead. A suggestion only.
+/// block's and period's focus, the principles and the goals ahead. A
+/// suggestion only.
 class TeamPlanSuggestion {
   const TeamPlanSuggestion({
     required this.planTitle,
     this.periodName,
     this.periodFocus = '',
+    this.blockName,
+    this.blockFocus = '',
+    this.blockPrinciples = const [],
     this.principles = const [],
     this.goals = const [],
   });
   factory TeamPlanSuggestion.fromJson(Map<String, dynamic> json) {
-    final period = json['period'] is Map
-        ? Map<String, dynamic>.from(json['period'] as Map)
-        : null;
+    Map<String, dynamic>? part(String key) =>
+        json[key] is Map ? Map<String, dynamic>.from(json[key] as Map) : null;
+    List<({PrincipleArea area, String title})> principles(Object? rows) => [
+      for (final row in (rows as List? ?? const []).whereType<Map>())
+        (
+          area: PrincipleArea.from(row['area']),
+          title: row['title'] as String? ?? '',
+        ),
+    ];
+    final period = part('period'), block = part('block');
     return TeamPlanSuggestion(
       planTitle: json['plan_title'] as String? ?? '',
       periodName: period?['name'] as String?,
       periodFocus: period?['focus'] as String? ?? '',
-      principles: [
-        for (final row
-            in (json['principles'] as List? ?? const []).whereType<Map>())
-          (
-            area: PrincipleArea.from(row['area']),
-            title: row['title'] as String? ?? '',
-          ),
-      ],
+      blockName: block?['name'] as String?,
+      blockFocus: block?['focus'] as String? ?? '',
+      blockPrinciples: principles(block?['principles']),
+      principles: principles(json['principles']),
       goals: [
         for (final row in (json['goals'] as List? ?? const []).whereType<Map>())
           row['title'] as String? ?? '',
       ],
     );
   }
-  final String planTitle, periodFocus;
-  final String? periodName;
-  final List<({PrincipleArea area, String title})> principles;
+  final String planTitle, periodFocus, blockFocus;
+  final String? periodName, blockName;
+
+  /// The principles in focus in the day's block, and all the plan's.
+  final List<({PrincipleArea area, String title})> blockPrinciples, principles;
+
+  /// The block's goals first, then the period's and the dated ones ahead.
   final List<String> goals;
 
   bool get isEmpty =>
-      periodFocus.trim().isEmpty && principles.isEmpty && goals.isEmpty;
+      blockName == null &&
+      periodFocus.trim().isEmpty &&
+      principles.isEmpty &&
+      goals.isEmpty;
 }
 
 /// The suggestion from the team's plan for an event's preparation, read by

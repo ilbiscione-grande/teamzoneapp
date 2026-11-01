@@ -1,65 +1,11 @@
 part of '../../app/teamzone_app.dart';
 
-typedef _TdpNewGoal = ({GoalHorizon horizon, String? periodId});
-
-/// Mål: every goal of the season, the season's first, then each period's
-/// in date order, then the short-term ones by their date.
-class _TdpGoals extends StatelessWidget {
-  const _TdpGoals({required this.controller});
-  final _TdpController controller;
-
-  @override
-  Widget build(BuildContext context) => _TdpFrame(
-    controller: controller,
-    action: (plan) => FilledButton.tonalIcon(
-      key: const Key('tdp-new-goal'),
-      onPressed: () => _TdpGoalDialog.edit(context, controller, plan),
-      icon: const Icon(Icons.add),
-      label: Text(AppStrings.of(context).feature('Nytt mål')),
-    ),
-    builder: (plan) {
-      final short = plan.goalsOf(GoalHorizon.short)
-        ..sort((a, b) => a.targetOn!.compareTo(b.targetOn!));
-      return [
-        _TdpGoalGroup(
-          controller: controller,
-          plan: plan,
-          title: AppStrings.of(context).feature('Säsongsmål'),
-          goals: plan.goalsOf(GoalHorizon.season),
-          empty: AppStrings.of(
-            context,
-          ).feature('Långsiktiga mål för hela säsongen.'),
-          newGoal: (horizon: GoalHorizon.season, periodId: null),
-        ),
-        for (final period in plan.periods) ...[
-          const SizedBox(height: 16),
-          _TdpGoalGroup(
-            controller: controller,
-            plan: plan,
-            title: period.name,
-            subtitle: _tdpRange(context, period.startsOn, period.endsOn),
-            goals: plan.goalsOf(GoalHorizon.period, periodId: period.id),
-            empty: AppStrings.of(
-              context,
-            ).feature('Tillfälliga mål för perioden.'),
-            newGoal: (horizon: GoalHorizon.period, periodId: period.id),
-          ),
-        ],
-        const SizedBox(height: 16),
-        _TdpGoalGroup(
-          controller: controller,
-          plan: plan,
-          title: AppStrings.of(context).feature('Kortsiktiga mål'),
-          goals: short,
-          empty: AppStrings.of(
-            context,
-          ).feature('Mål inför en viss match eller ett block av träningar.'),
-          newGoal: (horizon: GoalHorizon.short, periodId: null),
-        ),
-      ];
-    },
-  );
-}
+/// Where a new goal goes: its horizon, and its period or block.
+typedef _TdpNewGoal = ({
+  GoalHorizon horizon,
+  String? periodId,
+  String? blockId,
+});
 
 /// A heading with its goals and a way to add one there.
 class _TdpGoalGroup extends StatelessWidget {
@@ -113,6 +59,7 @@ class _TdpGoalGroup extends StatelessWidget {
                     plan,
                     horizon: newGoal.horizon,
                     periodId: newGoal.periodId,
+                    blockId: newGoal.blockId,
                   ),
                 ),
             ],
@@ -189,6 +136,7 @@ class _TdpGoalTile extends StatelessWidget {
                   goalId: goal.id,
                   horizon: goal.horizon,
                   periodId: goal.periodId,
+                  blockId: goal.blockId,
                   title: goal.title,
                   description: goal.description,
                   targetOn: goal.targetOn,

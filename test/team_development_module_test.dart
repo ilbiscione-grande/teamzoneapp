@@ -56,6 +56,95 @@ void main() {
     expect(plan.goalsOf(GoalHorizon.short).single.state, GoalState.achieved);
   });
 
+  test('blocks, their goals, and check-ins due when things end', () {
+    final plan = SeasonPlan.fromJson(const {
+      'id': 'p',
+      'title': 'Säsong 2027',
+      'starts_on': '2027-01-01',
+      'ends_on': '2027-12-31',
+      'revision': 1,
+      'periods': [
+        {
+          'id': 'pre',
+          'name': 'Försäsong',
+          'phase': 'preseason',
+          'starts_on': '2027-02-15',
+          'ends_on': '2027-04-25',
+        },
+      ],
+      'blocks': [
+        {
+          'id': 'b1',
+          'period_id': 'pre',
+          'name': 'Grund',
+          'starts_on': '2027-02-15',
+          'ends_on': '2027-03-14',
+        },
+        {
+          'id': 'b2',
+          'period_id': 'pre',
+          'name': 'Speluppbyggnad',
+          'starts_on': '2027-03-15',
+          'ends_on': '2027-03-28',
+          'principles': [
+            {'id': 'pr', 'area': 'build_up', 'title': 'Spelbarhet'},
+          ],
+        },
+      ],
+      'goals': [
+        {
+          'id': 'g1',
+          'horizon': 'block',
+          'block_id': 'b1',
+          'title': 'Två tillslag',
+        },
+        {
+          'id': 'g2',
+          'horizon': 'block',
+          'block_id': 'b2',
+          'title': 'Ur egen zon',
+        },
+        {'id': 'g3', 'horizon': 'period', 'period_id': 'pre', 'title': 'Press'},
+      ],
+      'sharing': {'blocks': true},
+    });
+    expect(plan.blockOn(DateTime(2027, 3, 17))?.name, 'Speluppbyggnad');
+    expect(plan.blocks[1].principleIds, ['pr']);
+    expect(plan.blocksOf('pre').length, 2);
+    expect(
+      plan.goalsOf(GoalHorizon.block, blockId: 'b2').single.title,
+      'Ur egen zon',
+    );
+    expect([plan.sharing.blocks, plan.sharing.any], [true, true]);
+    // The first block ended three days ago: its goal is due; the others are not yet.
+    expect(plan.goalsDue(DateTime(2027, 3, 17)).map((g) => g.id), ['g1']);
+    // Five weeks after the end it is no longer asked for.
+    expect(plan.goalsDue(DateTime(2027, 4, 20)).map((g) => g.id), ['g2']);
+  });
+
+  test('the suggestion names the day\'s block first', () {
+    final suggestion = TeamPlanSuggestion.fromJson(const {
+      'plan_title': 'Säsong 2027',
+      'period': {'name': 'Försäsong', 'focus': 'Grund'},
+      'block': {
+        'name': 'Speluppbyggnad',
+        'focus': 'Från målvakt',
+        'principles': [
+          {'area': 'build_up', 'title': 'Spelbarhet'},
+        ],
+      },
+      'goals': [
+        {'title': 'Ur egen zon'},
+      ],
+    });
+    expect(
+      [suggestion.blockName, suggestion.blockFocus],
+      ['Speluppbyggnad', 'Från målvakt'],
+    );
+    expect(suggestion.blockPrinciples.single.area, PrincipleArea.buildUp);
+    expect(suggestion.isEmpty, isFalse);
+  });
+
   test('the players see only what is shared, and the suggestion reads', () {
     final shared = SharedTeamPlan.fromJson(const {
       'title': 'Säsong 2026',
@@ -146,12 +235,14 @@ void main() {
       );
       await tester.tap(find.byKey(const Key('tdp-season-save')));
       await tester.pumpAndSettle();
-      expect(find.text('Säsong 2026'), findsOneWidget);
+      expect(find.textContaining('Säsong 2026'), findsWidgets);
       expect(find.text('Ett modigt lag'), findsOneWidget);
+      expect(find.text('Team development'), findsOneWidget);
       expect(find.text('Season goals'), findsOneWidget);
       expect(find.textContaining('Day '), findsOneWidget);
-      await tester.tap(find.text('Season'));
+      await tester.tap(find.byKey(const Key('tdp-open-planner')));
       await tester.pumpAndSettle();
+      expect(find.text('Season goals (long-term)'), findsOneWidget);
       expect(find.text('Shared with players'), findsOneWidget);
       expect(find.textContaining('Nothing is shared yet.'), findsOneWidget);
       await tester.tap(find.text('Playing philosophy'));
@@ -164,9 +255,9 @@ void main() {
       expect(find.text('Creating chances and scoring'), findsWidgets);
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Goals'));
+      await tester.tap(find.text('Overview'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('tdp-new-goal')));
+      await tester.tap(find.byTooltip('Add goal').first);
       await tester.pumpAndSettle();
       expect(find.text('New goal'), findsWidgets);
       expect(find.text('Short term'), findsOneWidget);
@@ -176,8 +267,8 @@ void main() {
     },
   );
 
-  testWidgets('a leader plans the season in the module', (tester) async {
-    tester.view.physicalSize = const Size(390, 1400);
+  testWidgets('a leader plans the season on the timeline', (tester) async {
+    tester.view.physicalSize = const Size(1440, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final services = _Plans();
@@ -193,9 +284,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('bottom-nav-more')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Arbetsytor'));
+    await tester.tap(find.text('Arbetsytor').first);
     await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const Key('workspace-module-module.team_development')),
@@ -214,24 +303,68 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('tdp-season-card')), findsOneWidget);
     expect(find.text('Ett modigt lag'), findsOneWidget);
+    expect(find.byKey(const Key('tdp-season-strip')), findsOneWidget);
     expect(services.created?.startsOn, DateTime(DateTime.now().year));
 
-    // A period on the timeline, named after its phase.
-    await tester.tap(find.text('Säsongen'));
+    // A period dragged out on the timeline, then a block inside it.
+    await tester.tap(find.byKey(const Key('tdp-open-planner')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('tdp-new-period')));
+    final periods = find.byKey(const Key('tdp-lane-periods'));
+    await tester.dragFrom(
+      tester.getTopLeft(periods) + const Offset(20, 24),
+      const Offset(220, 0),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Använd förslag'));
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('tdp-period-save')));
+    final period = services.plan!.periods.single;
+    expect(period.name, 'Ny period');
+    expect(period.startsOn.weekday, DateTime.monday);
+    expect(period.endsOn.weekday, DateTime.sunday);
+    expect(find.byKey(ValueKey('tdp-panel-${period.id}')), findsOneWidget);
+    final blocks = find.byKey(const Key('tdp-lane-blocks'));
+    await tester.dragFrom(
+      tester.getTopLeft(blocks) + const Offset(30, 20),
+      const Offset(60, 0),
+    );
     await tester.pumpAndSettle();
-    expect(services.plan!.periods.single.name, 'Försäsong');
-    expect(services.plan!.periods.single.focus, startsWith('Grundspel'));
+    final block = services.plan!.blocks.single;
+    expect(block.periodId, period.id);
+    expect(block.startsOn.isBefore(period.startsOn), isFalse);
+    expect(block.endsOn.isAfter(period.endsOn), isFalse);
 
-    // A goal of the season, marked achieved from its row.
-    await tester.tap(find.text('Mål'));
+    // The block's name in its dialog, and a goal of its own.
+    await tester.tap(find.byKey(const Key('tdp-panel-edit')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('tdp-new-goal')));
+    await tester.enterText(
+      find.byKey(const Key('tdp-block-name')),
+      'Speluppbyggnad',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tdp-block-save')));
+    await tester.pumpAndSettle();
+    expect(services.plan!.blocks.single.name, 'Speluppbyggnad');
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(ValueKey('tdp-panel-${block.id}')),
+        matching: find.byTooltip('Lägg till mål'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('tdp-goal-horizon')), findsNothing);
+    await tester.enterText(
+      find.byKey(const Key('tdp-goal-title')),
+      'Ur egen zon i sex av tio',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tdp-goal-save')));
+    await tester.pumpAndSettle();
+    final blockGoal = services.plan!.goals.single;
+    expect(
+      [blockGoal.horizon, blockGoal.blockId],
+      [GoalHorizon.block, block.id],
+    );
+
+    // A long-term goal of the season, marked achieved from its row.
+    await tester.tap(find.byTooltip('Lägg till mål').first);
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('tdp-goal-title')),
@@ -240,10 +373,16 @@ void main() {
     await tester.pump();
     await tester.tap(find.byKey(const Key('tdp-goal-save')));
     await tester.pumpAndSettle();
-    expect(find.text('Alla spelar mycket'), findsOneWidget);
-    await tester.tap(find.byTooltip('Markera som uppnått'));
+    final seasonGoal = services.plan!.goals.last;
+    expect(seasonGoal.horizon, GoalHorizon.season);
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(ValueKey('tdp-goal-${seasonGoal.id}')),
+        matching: find.byTooltip('Markera som uppnått'),
+      ),
+    );
     await tester.pumpAndSettle();
-    expect(services.plan!.goals.single.state, GoalState.achieved);
+    expect(services.plan!.goals.last.state, GoalState.achieved);
 
     // Checking the goal from its sheet.
     await tester.tap(find.text('Alla spelar mycket'));
@@ -256,12 +395,11 @@ void main() {
     await tester.pumpAndSettle();
     final checkin = services.plan!.checkins.single;
     expect(checkin.status, CheckinStatus.atRisk);
-    expect(checkin.goalId, services.plan!.goals.single.id);
-    expect(find.byKey(ValueKey('tdp-checkin-${checkin.id}')), findsOneWidget);
-    await tester.tapAt(const Offset(195, 40));
+    expect(checkin.goalId, seasonGoal.id);
+    await tester.tapAt(const Offset(700, 40));
     await tester.pumpAndSettle();
 
-    // Spelidé: a principle and a key figure with a value.
+    // Spelidé: a principle and a key figure.
     await tester.tap(find.text('Spelidé'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('tdp-new-principle')));
@@ -283,29 +421,41 @@ void main() {
     await tester.pumpAndSettle();
     final kpi = services.plan!.kpis.single;
     expect([kpi.title, kpi.target], ['Avslut', 12]);
-    await tester.tap(find.byKey(ValueKey('tdp-kpi-${kpi.id}')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('tdp-kpi-value')));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('tdp-checkin-value')), '14,5');
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('tdp-checkin-save')));
-    await tester.pumpAndSettle();
-    expect(services.plan!.checkinsOfKpi(kpi.id).single.value, 14.5);
-    await tester.tapAt(const Offset(195, 40));
-    await tester.pumpAndSettle();
 
-    // Sharing with the players, per part, under Säsongen.
-    await tester.tap(find.text('Säsongen'));
+    // The principle in focus in the block, picked in the block's dialog.
+    await tester.tap(find.text('Planera'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const Key('tdp-share-goals')));
+    await tester.tap(find.byKey(ValueKey('tdp-item-${block.id}')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-panel-edit')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Spela framåt när det går'));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tdp-block-save')));
+    await tester.pumpAndSettle();
+    expect(services.plan!.blocks.single.principleIds, [
+      services.plan!.principles.single.id,
+    ]);
+
+    // The block on the season at a glance in the overview.
+    await tester.tap(find.text('Översikt'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Speluppbyggnad'), findsOneWidget);
+
+    // Sharing with the players, per part, with nothing picked.
+    await tester.tap(find.text('Planera'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('tdp-share-blocks')));
+    await tester.tap(find.byKey(const Key('tdp-share-blocks')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('tdp-share-goals')));
     await tester.pumpAndSettle();
+    expect(services.plan!.sharing.blocks, isTrue);
     expect(services.plan!.sharing.goals, isTrue);
     expect(services.plan!.sharing.vision, isFalse);
 
-    // A link on the goal, shown to the players.
-    await tester.tap(find.text('Mål'));
+    // A link on the season goal, shown to the players.
+    await tester.tap(find.text('Översikt'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Alla spelar mycket'));
     await tester.pumpAndSettle();
@@ -322,7 +472,7 @@ void main() {
     await tester.pump();
     await tester.tap(find.byKey(const Key('tdp-link-save')));
     await tester.pumpAndSettle();
-    final link = services.plan!.goals.single.links.single;
+    final link = services.plan!.goals.last.links.single;
     expect([link.title, link.visible], ['Film', true]);
     expect(tester.takeException(), isNull);
   });
@@ -335,6 +485,7 @@ class _Plans implements TeamDevelopmentServices {
 
   SeasonPlan _with({
     List<DevelopmentPeriod>? periods,
+    List<DevelopmentBlock>? blocks,
     List<TeamGoal>? goals,
     List<TeamPrinciple>? principles,
     List<TeamKpi>? kpis,
@@ -351,6 +502,7 @@ class _Plans implements TeamDevelopmentServices {
     checkinEveryDays: plan!.checkinEveryDays,
     sharing: sharing ?? plan!.sharing,
     periods: periods ?? plan!.periods,
+    blocks: blocks ?? plan!.blocks,
     goals: goals ?? plan!.goals,
     principles: principles ?? plan!.principles,
     kpis: kpis ?? plan!.kpis,
@@ -437,11 +589,41 @@ class _Plans implements TeamDevelopmentServices {
       _with(periods: [...plan.periods.where((p) => p.id != periodId)]);
 
   @override
+  Future<SeasonPlan> saveBlock(
+    SeasonPlan plan, {
+    String? blockId,
+    required String periodId,
+    required String name,
+    required DateTime startsOn,
+    required DateTime endsOn,
+    required String focus,
+    required List<String> principleIds,
+  }) async => _with(
+    blocks: [
+      ...plan.blocks.where((b) => b.id != blockId),
+      DevelopmentBlock(
+        id: blockId ?? 'block-${_ids++}',
+        periodId: periodId,
+        name: name,
+        startsOn: startsOn,
+        endsOn: endsOn,
+        focus: focus,
+        principleIds: principleIds,
+      ),
+    ],
+  );
+
+  @override
+  Future<SeasonPlan> deleteBlock(SeasonPlan plan, String blockId) async =>
+      _with(blocks: [...plan.blocks.where((b) => b.id != blockId)]);
+
+  @override
   Future<SeasonPlan> saveGoal(
     SeasonPlan plan, {
     String? goalId,
     required GoalHorizon horizon,
     String? periodId,
+    String? blockId,
     required String title,
     required String description,
     DateTime? targetOn,
@@ -454,6 +636,7 @@ class _Plans implements TeamDevelopmentServices {
         id: goalId ?? 'goal-${_ids++}',
         horizon: horizon,
         periodId: periodId,
+        blockId: blockId,
         title: title,
         description: description,
         targetOn: targetOn,
