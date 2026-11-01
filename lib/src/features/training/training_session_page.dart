@@ -720,6 +720,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
             ? () => _addUnnamed(selected)
             : null,
         onLinkBoard: _passes == null ? null : () => _linkBoard(selected),
+        onOpenBoard: _boardOpener(_blocks[selected]),
       ),
     );
   }
@@ -932,6 +933,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                         onLinkBoard: _passes == null
                             ? null
                             : () => _linkBoard(selected!),
+                        onOpenBoard: block == null ? null : _boardOpener(block),
                       ),
                     ),
                   ),

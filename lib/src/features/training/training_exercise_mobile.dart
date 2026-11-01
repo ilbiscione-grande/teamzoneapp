@@ -19,6 +19,7 @@ class _TrainingExerciseMobile extends StatelessWidget {
     required this.onManageRoster,
     required this.onAddUnnamed,
     this.onLinkBoard,
+    this.onOpenBoard,
   });
   final TrainingBlock block;
   final String editorKey;
@@ -33,6 +34,9 @@ class _TrainingExerciseMobile extends StatelessWidget {
 
   /// Links a board from the library; null without the library.
   final VoidCallback? onLinkBoard;
+
+  /// Opens the linked board; null when it cannot be opened from here.
+  final VoidCallback? onOpenBoard;
   final ValueChanged<TrainingBlock> onChanged;
 
   Widget _menu(BuildContext context, {Widget? icon, ButtonStyle? style}) {
@@ -152,6 +156,7 @@ class _TrainingExerciseMobile extends StatelessWidget {
                 child: _ExerciseIllustration(
                   board: block.board,
                   onLink: onLinkBoard,
+                  onOpen: onOpenBoard,
                   onUnlink: () => onChanged(block.copyWith(clearBoard: true)),
                 ),
               ),

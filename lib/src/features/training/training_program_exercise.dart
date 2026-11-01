@@ -12,11 +12,15 @@ class _TrainingExercisePanel extends StatelessWidget {
     required this.onRemove,
     required this.onGuide,
     this.onLinkBoard,
+    this.onOpenBoard,
   });
   final TrainingBlock? block;
 
   /// Links a board from the library; null without the library.
   final VoidCallback? onLinkBoard;
+
+  /// Opens the linked board; null when it cannot be opened from here.
+  final VoidCallback? onOpenBoard;
 
   /// Changes when another exercise or a new draft is shown.
   final String editorKey;
@@ -63,6 +67,7 @@ class _TrainingExercisePanel extends StatelessWidget {
     final illustration = _ExerciseIllustration(
       board: block.board,
       onLink: onLinkBoard,
+      onOpen: onOpenBoard,
       onUnlink: () => onChanged(block.copyWith(clearBoard: true)),
     );
     return ListView(
@@ -330,11 +335,16 @@ class _TrainingNotesFieldState extends State<_TrainingNotesField> {
 }
 
 /// A placeholder diagram until the app shows boards, with the board linked
-/// from Tacticsboard's library and the buttons to link or unlink one.
+/// from Tacticsboard's library and the buttons to open, link or unlink one.
 class _ExerciseIllustration extends StatelessWidget {
-  const _ExerciseIllustration({this.board, this.onLink, this.onUnlink});
+  const _ExerciseIllustration({
+    this.board,
+    this.onLink,
+    this.onUnlink,
+    this.onOpen,
+  });
   final TrainingBoardLink? board;
-  final VoidCallback? onLink, onUnlink;
+  final VoidCallback? onLink, onUnlink, onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -382,6 +392,16 @@ class _ExerciseIllustration extends StatelessWidget {
                         style: white,
                       ),
                     ),
+                    if (board != null && onOpen != null)
+                      TextButton(
+                        key: const Key('training-board-open'),
+                        onPressed: onOpen,
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        child: Text(strings.feature('Visa tavla')),
+                      ),
                     if (onLink != null)
                       TextButton(
                         key: const Key('training-board-link'),
