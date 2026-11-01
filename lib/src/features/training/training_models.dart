@@ -68,9 +68,48 @@ class TrainingBlockPlayer {
   );
 }
 
+/// A board in Tacticsboard's library linked to an exercise: saving the
+/// session as a pass puts it in the pass's project.
+class TrainingBoardLink {
+  const TrainingBoardLink({
+    required this.source,
+    required this.ref,
+    required this.boardId,
+    this.name = '',
+  });
+  static TrainingBoardLink? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final source = json['source'],
+        ref = json['ref'],
+        boardId = json['board_id'];
+    if (source is! String || ref is! String || boardId is! String) return null;
+    return TrainingBoardLink(
+      source: source,
+      ref: ref,
+      boardId: boardId,
+      name: json['name'] as String? ?? '',
+    );
+  }
+
+  /// 'mine', 'club' or 'teamzone': where the board's pass is.
+  final String source;
+
+  /// The pass's id, and the board's within it.
+  final String ref, boardId;
+  final String name;
+
+  Map<String, Object?> toJson() => {
+    'source': source,
+    'ref': ref,
+    'board_id': boardId,
+    'name': name,
+  };
+}
+
 /// One exercise in the session.
 class TrainingBlock {
   const TrainingBlock({
+    this.id,
     required this.part,
     required this.title,
     this.minutes = 0,
@@ -80,8 +119,10 @@ class TrainingBlock {
     this.sourceKind = 'own',
     this.sourceId,
     this.players = const [],
+    this.board,
   });
   factory TrainingBlock.fromJson(Map<String, dynamic> json) => TrainingBlock(
+    id: json['id'] as String?,
     part: TrainingPart.from(json['part']),
     title: json['title'] as String? ?? '',
     minutes: (json['minutes'] as num?)?.toInt() ?? 0,
@@ -95,7 +136,11 @@ class TrainingBlock {
           in (json['players'] as List? ?? const []).whereType<Map>())
         TrainingBlockPlayer.fromJson(Map<String, dynamic>.from(player)),
     ],
+    board: TrainingBoardLink.fromJson(json['board']),
   );
+
+  /// The saved block's id; null until the session is saved.
+  final String? id;
   final TrainingPart part;
   final String title, organisation, coachingPoints, sourceKind;
   final int minutes;
@@ -104,6 +149,9 @@ class TrainingBlock {
   /// The phase of the game the exercise trains, if any.
   final PrincipleArea? phase;
   final String? sourceId;
+
+  /// The board linked from the library, if any.
+  final TrainingBoardLink? board;
 
   Map<String, Object?> toJson() => {
     'part': part.name,
@@ -115,6 +163,7 @@ class TrainingBlock {
     'source_kind': sourceKind,
     'source_id': sourceId,
     'players': [for (final player in players) player.toJson()],
+    'board': board?.toJson(),
   };
 
   TrainingBlock copyWith({
@@ -126,7 +175,10 @@ class TrainingBlock {
     PrincipleArea? phase,
     bool clearPhase = false,
     List<TrainingBlockPlayer>? players,
+    TrainingBoardLink? board,
+    bool clearBoard = false,
   }) => TrainingBlock(
+    id: id,
     part: part ?? this.part,
     title: title ?? this.title,
     minutes: minutes ?? this.minutes,
@@ -136,6 +188,7 @@ class TrainingBlock {
     sourceKind: sourceKind,
     sourceId: sourceId,
     players: players ?? this.players,
+    board: clearBoard ? null : board ?? this.board,
   );
 }
 

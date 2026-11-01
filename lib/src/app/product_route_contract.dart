@@ -56,6 +56,11 @@ class ProductRouteContract {
   /// characters a raw path segment can't hold (a literal '/', say) — real
   /// event ids are server-generated UUIDs, but the identity contract
   /// shouldn't quietly depend on that.
+  /// A training pass someone shared by link (TrainingPassState.linkUri).
+  static const trainingPass = '/pass';
+  static String trainingPassLink(String token) =>
+      '$trainingPass/${Uri.encodeComponent(token)}';
+
   static String calendarEvent(String eventId) =>
       '$calendar/event/${Uri.encodeComponent(eventId)}';
 
@@ -120,6 +125,7 @@ class ProductRouteContract {
     final path = uri?.path ?? location;
     if (path.startsWith('$calendar/event/')) return uri?.toString() ?? path;
     if (path.startsWith('$team/member/')) return path;
+    if (path.startsWith('$trainingPass/')) return path;
     if (!canonicalPaths.contains(path)) return home;
     if (path == team || path == calendar || path == inbox) {
       return uri?.toString() ?? path;
@@ -130,5 +136,6 @@ class ProductRouteContract {
   static bool isCanonical(String path) =>
       canonicalPaths.contains(path) ||
       path.startsWith('$calendar/event/') ||
-      path.startsWith('$team/member/');
+      path.startsWith('$team/member/') ||
+      path.startsWith('$trainingPass/');
 }

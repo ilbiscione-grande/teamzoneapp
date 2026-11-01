@@ -1,8 +1,10 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/team_development/team_development_services.dart';
 import 'package:teamzone_app/src/features/training/training_models.dart';
+import 'package:teamzone_app/src/features/training/training_pass_services.dart';
 
 export 'package:teamzone_app/src/features/training/training_models.dart';
+export 'package:teamzone_app/src/features/training/training_pass_services.dart';
 
 /// The session changed elsewhere since it was read.
 class TrainingSessionConflict implements Exception {
@@ -85,9 +87,17 @@ class UnconfiguredTrainingServices implements TrainingServices {
 }
 
 class SupabaseTrainingServices
-    implements TrainingServices, TeamPlanSuggestionServices {
+    implements
+        TrainingServices,
+        TeamPlanSuggestionServices,
+        TrainingPassSourceServices {
   SupabaseTrainingServices(this._client);
   final SupabaseClient _client;
+
+  @override
+  late final TrainingPassServices passes = SupabaseTrainingPassServices(
+    _client,
+  );
 
   Future<Object?> _rpc(String name, Map<String, Object?> params) => _client
       .schema('api')

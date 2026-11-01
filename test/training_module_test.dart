@@ -111,7 +111,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(Tab), findsNothing);
     // It starts from the event's theme, and its plan can become a block.
-    expect(find.text('Press'), findsOneWidget);
+    expect(find.text('90 min  •  Press'), findsOneWidget);
     expect(
       find.byKey(const Key('training-session-event-plan')),
       findsOneWidget,
@@ -134,41 +134,45 @@ void main() {
     expect(find.text('Rondo 5 mot 2'), findsOneWidget);
     expect(find.text('12 av 90 min planerade'), findsOneWidget);
 
-    await tester.ensureVisible(
-      find.byKey(const Key('training-player-add-anonymous')),
+    // On a phone the exercise opens on its own page, its players on a tab:
+    // only the session squad is offered.
+    await tester.tap(find.text('Rondo 5 mot 2'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('training-exercise-mobile')), findsOneWidget);
+    await tester.tap(find.text('Spelare'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Cecilia Nekad'), findsNothing);
+    expect(find.textContaining('Dani Okallad'), findsNothing);
+    Finder teamPicker() => find.byWidgetPredicate(
+      (widget) =>
+          widget is DropdownButton<TrainingPlayerTeam> &&
+          widget.onChanged != null,
     );
-    await tester.tap(find.byKey(const Key('training-player-add-anonymous')));
+    await tester.tap(find.textContaining('Spelare 1'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Spelare 1'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('training-player-roster-confirm')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('training-player-team-0')));
+    await tester.tap(teamPicker());
     await tester.pumpAndSettle();
     await tester.tap(find.text('Rött lag').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('training-player-add-roster')));
+    await tester.tap(find.textContaining('Alex Spelare'));
     await tester.pumpAndSettle();
-    expect(find.text('Kallade – accepterat'), findsOneWidget);
-    expect(find.text('Cecilia Nekad'), findsNothing);
-    expect(find.text('Dani Okallad'), findsNothing);
-    await tester.tap(find.text('Alex Spelare'));
-    await tester.pumpAndSettle();
+    expect(find.text('Valda spelare (2)'), findsOneWidget);
     await tester.tap(
-      find.byKey(const ValueKey('training-roster-team-player-1')),
+      find.byKey(const ValueKey('training-panel-team-player-1')),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Grönt lag').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('training-player-roster-confirm')));
+    await tester.tap(find.byKey(const Key('training-exercise-close')));
     await tester.pumpAndSettle();
 
     // Published and saved.
-    await tester.ensureVisible(
-      find.byKey(const Key('training-session-published')),
-    );
+    await tester.tap(find.text('Översikt'));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('training-session-published')));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Visa passet för spelarna').last);
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('training-session-save')));
     await tester.pumpAndSettle();
     final saved = sessions.saved!;
@@ -210,6 +214,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // Cancelling the guide leaves the saved plan untouched.
+    await tester.tap(find.byKey(const Key('training-session-menu')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('training-guide-open')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Avbryt'));
@@ -218,6 +224,8 @@ void main() {
 
     // The guide replaces the local draft only after review, then uses
     // the same save contract and preserves the publication setting.
+    await tester.tap(find.byKey(const Key('training-session-menu')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('training-guide-open')));
     await tester.pumpAndSettle();
     await tester.enterText(
@@ -242,8 +250,29 @@ void main() {
     // resizing back to the mobile card sequence.
     tester.view.physicalSize = const Size(1440, 1000);
     await tester.pumpAndSettle();
-    expect(find.text('Tidslinje'), findsOneWidget);
+    expect(find.text('Tidslinje – 90 minuter'), findsOneWidget);
     expect(find.text('Passets delar'), findsOneWidget);
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('training-panel-player-player-1')),
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('training-panel-player-player-1')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('training-panel-team-player-1')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Grönt lag').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('training-session-save')));
+    await tester.pumpAndSettle();
+    expect(sessions.saved!.blocks.first.players.single.personId, 'player-1');
+    expect(
+      sessions.saved!.blocks.first.players.single.team,
+      TrainingPlayerTeam.green,
+    );
+    expect(sessions.saved!.blocks[1].players, isEmpty);
     expect(tester.takeException(), isNull);
     Finder workspaceField(String name) => find.byWidgetPredicate(
       (widget) =>
@@ -293,7 +322,7 @@ void main() {
     );
     expect(sessions.saved!.blocks[1].minutes, 63);
     expect(tester.takeException(), isNull);
-    await tester.tap(find.byTooltip('Lägg till övning').first);
+    await tester.tap(find.byKey(const ValueKey('training-program-add-warmup')));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('training-block-title')),
@@ -306,7 +335,7 @@ void main() {
     await tester.tap(find.byKey(const Key('training-block-save')));
     await tester.pumpAndSettle();
     tester
-        .widget<ReorderableListView>(find.byType(ReorderableListView))
+        .widget<ReorderableListView>(find.byType(ReorderableListView).first)
         .onReorderItem!(0, 1);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('training-session-save')));
@@ -324,7 +353,7 @@ void main() {
     expect(sessions.saved!.blocks.map((b) => b.minutes), [7, 22, 63, 9]);
     // Moving across phase boundaries is rejected; phase changes use the property field.
     tester
-        .widget<ReorderableListView>(find.byType(ReorderableListView))
+        .widget<ReorderableListView>(find.byType(ReorderableListView).first)
         .onReorderItem!(0, 3);
     await tester.pumpAndSettle();
     expect(
@@ -335,7 +364,7 @@ void main() {
     );
     tester.view.physicalSize = const Size(390, 1400);
     await tester.pumpAndSettle();
-    expect(find.text('Spelvändning'), findsOneWidget);
+    expect(find.text('90 min  •  Spelvändning'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -432,15 +461,17 @@ void main() {
       expect(find.textContaining('No session planned yet'), findsOneWidget);
       await tester.tap(find.byKey(const Key('module-next-training-open')));
       await tester.pumpAndSettle();
-      expect(find.text('Training session'), findsWidgets);
       expect(
         find.byKey(const Key('training-session-overview')),
         findsOneWidget,
       );
       await tester.tap(find.byKey(const Key('training-open-planning')));
       await tester.pumpAndSettle();
-      expect(find.text('Warm-up'), findsOneWidget);
-      expect(find.text('Press'), findsOneWidget);
+      expect(
+        find.textContaining('Warm-up', findRichText: true),
+        findsOneWidget,
+      );
+      expect(find.text('90 min  •  Press'), findsOneWidget);
       expect(find.text('12 of 90 min planned'), findsOneWidget);
 
       await tester.ensureVisible(find.byKey(const Key('training-add-main')));
@@ -465,6 +496,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(sessions.saved!.blocks.last.title, 'Återerövring');
       expect(sessions.saved!.blocks.last.phase, PrincipleArea.regaining);
+      // The evaluation is on the overview.
+      await tester.tap(find.text('Overview'));
+      await tester.pumpAndSettle();
 
       await tester.ensureVisible(
         find.byKey(const Key('training-evaluation-open')),
@@ -491,6 +525,229 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets('a leader takes a pass from the library and shares the session', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final sessions = _PassSessions();
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'training'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _Identity(),
+          modules: const _Modules(),
+          calendar: _Calendar(sessions),
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('bottom-nav-more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Arbetsytor'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('workspace-module-module.training')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('module-next-training-open')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('training-open-planning')));
+    await tester.pumpAndSettle();
+
+    // A whole pass from your own library goes in as blocks.
+    await tester.tap(find.byKey(const Key('training-session-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('training-library-open')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('training-pass-picker')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('training-pass-project-1')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Yta 30x20'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('training-pass-take')));
+    await tester.pumpAndSettle();
+    expect(find.text('Press 4 mot 4'), findsOneWidget);
+    expect(find.text('Matchspel'), findsOneWidget);
+
+    // A board from the library is linked to an exercise of your own.
+    await tester.tap(find.text('Rondo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tom tavla'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('training-board-link')));
+    await tester.pumpAndSettle();
+    expect(find.text('Länka en tavla'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('training-pass-project-1')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('training-pass-take')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('training-board-0')));
+    await tester.pumpAndSettle();
+    expect(find.text('Tavla: Press 4 mot 4'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('training-exercise-close')));
+    await tester.pumpAndSettle();
+
+    // Saving it as a pass needs the session saved first.
+    await tester.tap(find.byKey(const Key('training-session-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('training-pass-save')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('training-pass-dialog')), findsNothing);
+    await tester.tap(find.byKey(const Key('training-session-save')));
+    await tester.pumpAndSettle();
+    final blocks = sessions.saved!.blocks;
+    expect(blocks.map((block) => block.title), [
+      'Rondo',
+      'Press 4 mot 4',
+      'Matchspel',
+    ]);
+    expect(
+      [blocks[1].sourceKind, blocks[1].sourceId],
+      ['library', 'project-1'],
+    );
+    // Taken with the pass or linked, the exercises carry their board.
+    expect(blocks[0].board?.boardId, 'board-1');
+    expect(blocks[1].board?.toJson(), {
+      'source': 'mine',
+      'ref': 'project-1',
+      'board_id': 'board-1',
+      'name': 'Press 4 mot 4',
+    });
+    expect(blocks[2].board, isNull);
+
+    await tester.tap(find.byKey(const Key('training-session-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('training-pass-save')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('training-pass-dialog')), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('training-pass-title')),
+      'Presspass',
+    );
+    await tester.tap(find.byKey(const Key('training-pass-link')));
+    await tester.tap(find.byKey(const Key('training-pass-confirm')));
+    await tester.pumpAndSettle();
+    expect(sessions.passes.lastSave, (
+      title: 'Presspass',
+      club: true,
+      link: true,
+    ));
+    expect(find.text('Delat med Testklubben'), findsOneWidget);
+    expect(
+      find.text('https://app.teamzoneapp.se/pass/token-1'),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('training-pass-stop-link')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('training-pass-link-text')), findsNothing);
+    await tester.tap(find.text('Klar'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a leader opens a shared pass link and copies it', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    tester.binding.platformDispatcher.defaultRouteNameTestValue =
+        '/pass/token-9';
+    addTearDown(
+      tester.binding.platformDispatcher.clearDefaultRouteNameTestValue,
+    );
+    final sessions = _PassSessions();
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'training'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _Identity(),
+          modules: const _Modules(),
+          calendar: _Calendar(sessions),
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('training-pass-link-page')), findsOneWidget);
+    expect(find.text('Delat presspass'), findsOneWidget);
+    expect(find.textContaining('Kim Tränare'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('training-pass-copy')));
+    await tester.pumpAndSettle();
+    expect(sessions.passes.copied, 'token-9');
+    expect(find.byKey(const Key('training-pass-copied')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a player opens the board linked to an exercise', (tester) async {
+    tester.view.physicalSize = const Size(390, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final sessions = _PassSessions();
+    sessions.saved = TrainingSession(
+      eventId: 'training-1',
+      canEdit: false,
+      title: 'Träning',
+      startsAt: sessions._start,
+      endsAt: sessions._start.add(const Duration(minutes: 90)),
+      revision: 2,
+      published: true,
+      blocks: const [
+        TrainingBlock(
+          id: 'block-1',
+          part: TrainingPart.main,
+          title: 'Press 4 mot 4',
+          minutes: 20,
+          board: TrainingBoardLink(
+            source: 'mine',
+            ref: 'project-1',
+            boardId: 'board-1',
+            name: 'Press 4 mot 4',
+          ),
+        ),
+        // Library boards the players cannot see yet: no button.
+        TrainingBlock(
+          id: 'block-2',
+          part: TrainingPart.finish,
+          title: 'Matchspel',
+          minutes: 15,
+          board: TrainingBoardLink(
+            source: 'club',
+            ref: 'item-1',
+            boardId: 'board-2',
+            name: 'Matchspel',
+          ),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'training'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _Identity(),
+          modules: const _Modules(),
+          calendar: _Calendar(sessions),
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('bottom-nav-more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Arbetsytor'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('workspace-module-module.training')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('module-next-training-open')));
+    await tester.pumpAndSettle();
+    final board = find.byKey(const Key('training-block-board'));
+    expect(board, findsOneWidget);
+    await tester.ensureVisible(board);
+    await tester.tap(board);
+    await tester.pumpAndSettle();
+    expect(sessions.passes.openedBoard, 'block-1');
+  });
 }
 
 class _Sessions implements TrainingServices {
@@ -608,6 +865,97 @@ class _Sessions implements TrainingServices {
     attended: 7,
     recorded: 9,
   );
+}
+
+class _PassSessions extends _Sessions implements TrainingPassSourceServices {
+  _PassSessions() : super(started: true);
+  @override
+  final _Passes passes = _Passes();
+}
+
+class _Passes implements TrainingPassServices {
+  TrainingPassState? state;
+  ({String title, bool club, bool link})? lastSave;
+  String? copied, openedBoard;
+
+  static TrainingPass _pass(String source, String id, String title) =>
+      TrainingPass.fromJson({
+        'source': source,
+        'id': id,
+        'kind': 'plan',
+        'title': title,
+        'theme': 'Press',
+        'author': source == 'link' ? 'Kim Tränare' : null,
+        'exercises': [
+          {
+            'part': 'main',
+            'title': 'Press 4 mot 4',
+            'minutes': 20,
+            'organisation': 'Yta 30x20',
+            'phase': 'regaining',
+            'board': source == 'link'
+                ? null
+                : {
+                    'source': source,
+                    'ref': id,
+                    'board_id': 'board-1',
+                    'name': 'Press 4 mot 4',
+                  },
+          },
+          {'part': 'finish', 'title': 'Matchspel', 'minutes': 15},
+        ],
+      });
+
+  @override
+  Future<TrainingPassState?> passState(String eventId) async => state;
+
+  @override
+  Future<TrainingPassState> savePass({
+    required String eventId,
+    required String title,
+    bool club = false,
+    bool link = false,
+  }) async {
+    lastSave = (title: title, club: club, link: link);
+    return state = TrainingPassState(
+      title: title,
+      updatedAt: DateTime(2026, 10, 27),
+      clubName: club ? 'Testklubben' : null,
+      link: link ? 'token-1' : null,
+    );
+  }
+
+  @override
+  Future<TrainingPassState?> deleteLink(String eventId) async =>
+      state = TrainingPassState(
+        title: state!.title,
+        updatedAt: state!.updatedAt,
+        clubName: state!.clubName,
+      );
+
+  @override
+  Future<List<TrainingPass>> listPasses(
+    TrainingPassSource source, {
+    String search = '',
+  }) async => source == TrainingPassSource.mine
+      ? [_pass('mine', 'project-1', 'Presspass')]
+      : const [];
+
+  @override
+  Future<TrainingPass> openLink(String token) async =>
+      _pass('link', token, 'Delat presspass');
+
+  @override
+  Future<TrainingPass> copyLink(String token) async {
+    copied = token;
+    return _pass('mine', 'project-2', 'Delat presspass');
+  }
+
+  @override
+  Future<String> openBlockBoard(String blockId) async {
+    openedBoard = blockId;
+    return '/delad/$blockId';
+  }
 }
 
 class _Calendar extends UnconfiguredCalendarServices {

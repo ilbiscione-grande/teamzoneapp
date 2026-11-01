@@ -556,6 +556,13 @@ class _ProductShellState extends State<_ProductShell> {
         ),
       ),
       GoRoute(
+        path: '${ProductRouteContract.trainingPass}/:token',
+        builder: (_, state) => _TrainingPassLinkPage(
+          services: widget.calendar.trainingSessions,
+          token: state.pathParameters['token'] ?? '',
+        ),
+      ),
+      GoRoute(
         path: '${ProductRouteContract.calendar}/event/:eventId',
         builder: (_, state) {
           final requestedContext = state.uri.queryParameters['context'];

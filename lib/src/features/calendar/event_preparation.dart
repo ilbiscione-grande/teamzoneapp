@@ -19,6 +19,7 @@ class _PreparationTab extends StatefulWidget {
     this.matchPlan,
     this.trainingSession,
     this.sessionParts,
+    this.sessionLayout,
   });
 
   final EventDetails event;
@@ -49,6 +50,10 @@ class _PreparationTab extends StatefulWidget {
   /// evaluation. The event's own details (theme, focus, plan) and the focus
   /// chips are left out; the session holds its focus.
   final ({Widget head, Widget exercises, Widget tail})? sessionParts;
+
+  /// With [sessionParts], the Training module's desktop programme places
+  /// the goals and the preparation's own sections in its panels itself.
+  final Widget Function(Widget goals, List<Widget> preparation)? sessionLayout;
 
   @override
   State<_PreparationTab> createState() => _PreparationTabState();
@@ -203,6 +208,18 @@ class _PreparationTabState extends State<_PreparationTab> {
       allowEdit: widget.allowEdit,
       onChanged: widget.onChanged,
     );
+    final layout = widget.sessionLayout;
+    if (parts != null && layout != null) {
+      return layout(
+        kpiGoals,
+        <Widget?>[
+          _noteSection(data, 'Anteckningar'),
+          _materialSection(data),
+          _taskSection(data),
+          _fileSection(data),
+        ].whereType<Widget>().toList(),
+      );
+    }
     final sections = parts != null
         ? <Widget?>[
             parts.head,
@@ -349,14 +366,22 @@ class _PreparationTabState extends State<_PreparationTab> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          AppStrings.of(context).feature(title).toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: .3,
-                          ),
-                        ),
+                        child: widget.sessionLayout != null
+                            ? Text(
+                                AppStrings.of(context).feature(title),
+                                style: Theme.of(context).textTheme.titleSmall
+                                    ?.copyWith(fontWeight: FontWeight.w700),
+                              )
+                            : Text(
+                                AppStrings.of(
+                                  context,
+                                ).feature(title).toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: .3,
+                                ),
+                              ),
                       ),
                       if (count != null && count > 0)
                         Padding(
