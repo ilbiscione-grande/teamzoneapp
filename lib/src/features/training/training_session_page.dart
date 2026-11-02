@@ -67,6 +67,12 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
       builder: (_) => _TrainingPassPicker(services: passes),
     );
     if (pass == null || !mounted) return;
+    _takePass(pass);
+  }
+
+  /// Puts [pass]'s exercises in the session, each last in its part, as many
+  /// as the session has room for: from the library or the block's tips.
+  void _takePass(TrainingPass pass) {
     final strings = AppStrings.of(context);
     final room = _maxBlocks - _blocks.length;
     final taken = pass.exercises.take(max(0, room)).toList();
@@ -1046,6 +1052,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                       _theme.text = text.isEmpty ? label : '$text, $label';
                     })
                   : null,
+              onTakePass: canEdit ? (pass) async => _takePass(pass) : null,
             ),
           ),
         ),

@@ -644,6 +644,62 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets("the block's exercises go into the session with a tap", (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final sessions = _PlanSessions();
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'training'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _Identity(),
+          modules: const _Modules(),
+          calendar: _Calendar(sessions),
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('bottom-nav-more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Arbetsytor'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('workspace-module-module.training')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('module-next-training-open')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('training-open-planning')));
+    await tester.pumpAndSettle();
+
+    // The block's exercises are among the preparations.
+    await tester.tap(find.text('Förberedelser').last);
+    await tester.pumpAndSettle();
+    final tips = find.byKey(const Key('training-period-tips'));
+    await tester.ensureVisible(tips);
+    await tester.pumpAndSettle();
+    expect(find.text('Övningar för blocket Speluppbyggnad.'), findsOneWidget);
+    expect(find.textContaining('TeamZone · 12 min'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey('training-tip-take-teamzone-item1')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('övningar lades in'), findsOneWidget);
+    await tester.ensureVisible(tips);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('training-tip-take-own-own1')));
+    await tester.pumpAndSettle();
+    // Both are in the session's plan.
+    await tester.tap(find.text('Planering').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Rondo 4 mot 2'), findsWidgets);
+    expect(find.text('Fyra mot fyra'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a leader opens a shared pass link and copies it', (
     tester,
   ) async {
@@ -871,6 +927,49 @@ class _PassSessions extends _Sessions implements TrainingPassSourceServices {
   _PassSessions() : super(started: true);
   @override
   final _Passes passes = _Passes();
+}
+
+/// A session in a block of the team's plan, with the block's exercises.
+class _PlanSessions extends _PassSessions
+    implements TeamPlanSuggestionServices {
+  @override
+  Future<TeamPlanSuggestion?> teamPlanSuggestion(String eventId) async =>
+      TeamPlanSuggestion.fromJson(const {
+        'plan_title': 'Säsong 2026',
+        'block': {'name': 'Speluppbyggnad', 'focus': '', 'principles': []},
+        'exercises': {
+          'chosen': [
+            {
+              'id': 'own1',
+              'pass': {
+                'source': 'own',
+                'id': 'own1',
+                'kind': 'exercise',
+                'title': 'Fyra mot fyra',
+                'exercises': [
+                  {'title': 'Fyra mot fyra', 'organisation': 'Liten yta'},
+                ],
+              },
+            },
+          ],
+          'matched': [
+            {
+              'source': 'teamzone',
+              'id': 'item1',
+              'kind': 'exercise',
+              'title': 'Rondo 4 mot 2',
+              'exercises': [
+                {
+                  'title': 'Rondo 4 mot 2',
+                  'minutes': 12,
+                  'part': 'main',
+                  'phase': 'build_up',
+                },
+              ],
+            },
+          ],
+        },
+      });
 }
 
 class _Passes implements TrainingPassServices {

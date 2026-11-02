@@ -643,6 +643,7 @@ class _PreparationTabState extends State<_PreparationTab> {
         if (suggestion != null)
           _PlanSuggestionBox(
             suggestion: suggestion,
+            showExercises: true,
             taken: {for (final item in items) item.label.toLowerCase()},
             onTake: (label) => _write(
               () => _services.saveItem(

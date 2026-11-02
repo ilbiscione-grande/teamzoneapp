@@ -1,6 +1,6 @@
 # Team Development Plan: ny utformning – plan
 
-**Status: riktningen beslutad 2026-11-01. Steg 1–5 är driftsatta på webben 2026-11-02, och steg 6 är byggt.** Skissen som godkändes ligger i [docs/ux/tdp-skiss.html](../ux/tdp-skiss.html). Den öppnas i en webbläsare.
+**Status: riktningen beslutad 2026-11-01. Steg 1–6 är driftsatta på webben 2026-11-02, och steg 7 är byggt. Steg 8–9 väntar på beslut (PAR-METHOD-01/02).** Skissen som godkändes ligger i [docs/ux/tdp-skiss.html](../ux/tdp-skiss.html). Den öppnas i en webbläsare.
 
 Produktägaren vill göra om TDP från grunden. Det mesta av dagens funktion behålls, men sidan ska bli snyggare och lättare att använda. Modulen kändes mindre färdig än resten av appen.
 
@@ -94,6 +94,10 @@ Produktägaren vill göra om TDP från grunden. Det mesta av dagens funktion beh
    - **Inte byggt än:** speltid summerad över säsongen (punkt 10) kommer med belastningen i steg 8.
    - **Säsonger (2026-11-02):** säsongen som visas står i modulens rubrik på alla sidor, med Pågår, Kommande eller Avslutad och datumen. Där byter man säsong och skapar en ny. Visas en annan säsong än den som pågår, står det överst med en knapp tillbaka. En ny säsong kan utgå från den som visas: inriktningen fylls i och spelidén och nyckeltalen kopieras (utan värden). Mål, perioder och avstämningar stannar i sin säsong. SQL: `20270129090000_team_development_copy_season.sql`, körd och loggad.
 7. **Övningsförslag ur biblioteket.**
+   *Byggd 2026-11-02. SQL:en `20270130090000_team_development_block_exercises.sql` är körd och loggad, med testet `supabase/tests/team_development_block_exercises.local.mjs`.*
+   - **I blocket** (`team_development_block_exercises.dart`, panelen i Planera): "Övningar för blocket" visar de övningar ledarna har valt och förslag ur klubbens och TeamZones bibliotek. Förslagen är delade övningar vars spelfas är ett av skedena för blockets principer, klubbens först, högst sex. Ledaren väljer ett förslag med Välj, hämtar en övning eller ett pass med "Från biblioteket" eller skriver en egen övning. Högst tolv valda per block.
+   - **När ett pass förbereds:** förslaget till passet (`get_team_plan_suggestion`) har med dagens blocks övningar. I träningsmodulen visas de i rutan "Tips för perioden" under Förberedelser, och "Lägg in" lägger övningen i passet som när den hämtas från biblioteket. På händelsesidan visas de i förslagsrutan som en lista, eftersom förberedelserna där inte har några övningar att lägga in i.
+   - **Inte byggt än:** ledarens egna Tacticsboard-projekt ("Mina pass") går inte att välja för ett block, bara klubbens och TeamZones delade övningar och egna skrivna.
 8. **Belastning och rekommendationer**, när PAR-METHOD-01 är beslutad och speltid per spelare finns.
 9. **Skador**, när PAR-METHOD-02 är beslutad.
 

@@ -12,8 +12,13 @@ class _PlanSuggestionBox extends StatelessWidget {
     this.taken = const {},
     this.onTake,
     this.takeHint,
+    this.showExercises = false,
   });
   final TeamPlanSuggestion suggestion;
+
+  /// The block's exercises in the box, where the page has no session to
+  /// put them in (the event page's preparations).
+  final bool showExercises;
 
   /// Already taken over, in lower case: shown without the add.
   final Set<String> taken;
@@ -149,6 +154,30 @@ class _PlanSuggestionBox extends StatelessWidget {
           if (onTake != null && takeHint != null) ...[
             const SizedBox(height: 8),
             Text(takeHint!, style: theme.textTheme.bodySmall),
+          ],
+          if (showExercises && !suggestion.exercises.isEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              _tdpText(
+                context,
+                'Övningar för blocket',
+                'Exercises for the block',
+              ),
+              key: const Key('plan-suggestion-exercises'),
+              style: theme.textTheme.labelLarge,
+            ),
+            for (final exercise in suggestion.exercises.all)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                leading: Icon(_tdpExerciseIcon(exercise)),
+                title: Text(exercise.title),
+                subtitle: Text(
+                  _tdpExerciseLine(context, exercise),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
           ],
         ],
       ),

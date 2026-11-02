@@ -163,6 +163,7 @@ part '../features/team_development/team_development_goals.dart';
 part '../features/team_development/team_development_editors.dart';
 part '../features/team_development/team_development_checkins.dart';
 part '../features/team_development/team_development_play.dart';
+part '../features/team_development/team_development_block_exercises.dart';
 part '../features/team_development/team_development_kpi_matches.dart';
 part '../features/team_development/team_development_templates.dart';
 part '../features/team_development/team_development_model_start.dart';

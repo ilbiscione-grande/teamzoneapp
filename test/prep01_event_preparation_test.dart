@@ -422,6 +422,27 @@ void main() {
             {'area': 'defence', 'title': 'Presspel'},
           ],
           'goals': ['Våga spela från målvakten'],
+          'exercises': {
+            'chosen': [
+              {
+                'id': 'x1',
+                'pass': {
+                  'source': 'teamzone',
+                  'id': 'item1',
+                  'kind': 'exercise',
+                  'title': 'Rondo 4 mot 2',
+                  'exercises': [
+                    {
+                      'title': 'Rondo 4 mot 2',
+                      'minutes': 12,
+                      'phase': 'build_up',
+                    },
+                  ],
+                },
+              },
+            ],
+            'matched': [],
+          },
         });
       await _openPreparation(tester, _Calendar('training', prep));
       expect(find.byKey(const Key('plan-suggestion')), findsOneWidget);
@@ -443,6 +464,13 @@ void main() {
       );
       // The block's principle is shown once, among the block's.
       expect(find.text('Spelbarhet'), findsOneWidget);
+      // The block's exercises, to start the session from.
+      expect(
+        find.byKey(const Key('plan-suggestion-exercises')),
+        findsOneWidget,
+      );
+      expect(find.text('Rondo 4 mot 2'), findsOneWidget);
+      expect(find.textContaining('TeamZone · 12 min'), findsOneWidget);
 
       await tester.tap(find.widgetWithText(ActionChip, 'Spelbarhet'));
       await tester.pumpAndSettle();

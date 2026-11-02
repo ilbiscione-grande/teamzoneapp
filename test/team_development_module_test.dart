@@ -985,6 +985,118 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('a block suggests exercises and takes the leaders\' own', (
+    tester,
+  ) async {
+    final services = await openWithoutModel(
+      tester,
+      principles: const [
+        TeamPrinciple(
+          id: 'pr1',
+          area: PrincipleArea.buildUp,
+          title: 'Skapa spelbarhet',
+        ),
+      ],
+    );
+    BlockExercise item(String id, String source, String title, String phase) =>
+        BlockExercise(
+          pass: {
+            'source': source,
+            'id': id,
+            'kind': 'exercise',
+            'title': title,
+            'exercises': [
+              {'title': title, 'phase': phase, 'minutes': 10},
+            ],
+          },
+        );
+    services.library.addAll([
+      item('i1', 'teamzone', 'Rondo 4 mot 2', 'build_up'),
+      item('i2', 'teamzone', 'Försvar i linje', 'defending'),
+      item('i3', 'club', 'Klubbens uppbyggnad', 'build_up'),
+    ]);
+    await tester.tap(find.text('Planera'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('tdp-item-b1')));
+    await tester.pumpAndSettle();
+    final panel = find.byKey(const Key('tdp-block-exercises'));
+    await tester.ensureVisible(panel);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Välj principer för blocket'), findsOneWidget);
+
+    // A principle for the block: the exercises that train it.
+    await tester.tap(find.byKey(const Key('tdp-panel-edit')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('tdp-block-principle-pr1')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tdp-block-save')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(panel);
+    await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('tdp-block-suggested-i1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('tdp-block-suggested-i3')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('tdp-block-suggested-i2')), findsNothing);
+
+    // One chosen from the suggestions, one from the library, one own.
+    await tester.tap(find.byKey(const ValueKey('tdp-block-exercise-pick-i1')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('tdp-block-exercise-library')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-block-exercise-library')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('tdp-library-source')),
+        matching: find.text('TeamZone'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('tdp-library-item-i2')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('tdp-block-exercise-own')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-block-exercise-own')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('tdp-own-exercise-title')),
+      'Fyra mot fyra',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tdp-own-exercise-save')));
+    await tester.pumpAndSettle();
+    expect(
+      [for (final c in services.chosen) c.title],
+      ['Rondo 4 mot 2', 'Försvar i linje', 'Fyra mot fyra'],
+    );
+    expect(find.byKey(const ValueKey('tdp-block-suggested-i1')), findsNothing);
+
+    // Taken away again.
+    final first = services.chosen.first;
+    await tester.ensureVisible(
+      find.byKey(ValueKey('tdp-block-exercise-remove-${first.id}')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(ValueKey('tdp-block-exercise-remove-${first.id}')),
+    );
+    await tester.pumpAndSettle();
+    expect(services.chosen, hasLength(2));
+    expect(
+      find.byKey(const ValueKey('tdp-block-suggested-i1')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   test('a key figure counts goals, own buttons and values set by hand', () {
     final day = DateTime(2026, 10, 1);
     final plan = SeasonPlan(
@@ -1097,6 +1209,82 @@ class _Plans implements TeamDevelopmentServices {
 
   /// The season before the one [createPlan] made.
   SeasonPlan? previous;
+
+  /// The library, and the block's exercises as the server keeps them.
+  final library = <BlockExercise>[];
+  final chosen = <BlockExercise>[];
+
+  BlockExercises get _exercises => BlockExercises(
+    chosen: [...chosen],
+    matched: [
+      for (final item in library)
+        if (item.single &&
+            !chosen.any((c) => c.itemId == item.itemId) &&
+            plan!.blocks.any(
+              (b) => b.principleIds.any(
+                (p) => plan!.principles.any(
+                  (pr) => pr.id == p && pr.area == item.phase,
+                ),
+              ),
+            ))
+          item,
+    ],
+  );
+
+  @override
+  Future<BlockExercises> blockExercises(
+    SeasonPlan plan,
+    String blockId,
+  ) async => _exercises;
+
+  @override
+  Future<BlockExercises> addBlockExercise(
+    SeasonPlan plan,
+    String blockId, {
+    String? sharedItemId,
+    String title = '',
+    String description = '',
+  }) async {
+    final id = 'chosen-${_ids++}';
+    chosen.add(
+      sharedItemId == null
+          ? BlockExercise(
+              id: id,
+              pass: {
+                'source': 'own',
+                'id': id,
+                'kind': 'exercise',
+                'title': title,
+                'exercises': [
+                  {'title': title, 'organisation': description},
+                ],
+              },
+            )
+          : BlockExercise(
+              id: id,
+              pass: library.firstWhere((i) => i.itemId == sharedItemId).pass,
+            ),
+    );
+    return _exercises;
+  }
+
+  @override
+  Future<BlockExercises> deleteBlockExercise(
+    SeasonPlan plan,
+    String exerciseId,
+  ) async {
+    chosen.removeWhere((c) => c.id == exerciseId);
+    return _exercises;
+  }
+
+  @override
+  Future<List<BlockExercise>> listLibrary(
+    String source, {
+    String search = '',
+  }) async => [
+    for (final item in library)
+      if (item.source == source) item,
+  ];
 
   @override
   Future<SeasonPlan> copySeason(

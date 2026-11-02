@@ -321,6 +321,16 @@ class _TdpBlockPanel extends StatelessWidget {
                 ),
                 goals: plan.goalsOf(GoalHorizon.period, periodId: period.id),
               ),
+            const Divider(height: 24),
+            _TdpBlockExercisesView(
+              // Loaded again when the block's principles change.
+              key: ValueKey(
+                'tdp-block-exercises-${block.id}-${block.principleIds.join()}',
+              ),
+              controller: controller,
+              plan: plan,
+              block: block,
+            ),
           ],
         ),
       ),

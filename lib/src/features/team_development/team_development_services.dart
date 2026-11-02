@@ -131,6 +131,26 @@ abstract interface class TeamDevelopmentServices {
   });
   Future<SeasonPlan> deleteKpi(SeasonPlan plan, String kpiId);
 
+  /// A block's exercises: chosen, and the library's that train it.
+  Future<BlockExercises> blockExercises(SeasonPlan plan, String blockId);
+
+  /// Chooses an exercise for a block: a library item ([sharedItemId]) or
+  /// the leaders' own ([title], [description]).
+  Future<BlockExercises> addBlockExercise(
+    SeasonPlan plan,
+    String blockId, {
+    String? sharedItemId,
+    String title = '',
+    String description = '',
+  });
+  Future<BlockExercises> deleteBlockExercise(
+    SeasonPlan plan,
+    String exerciseId,
+  );
+
+  /// The club's or TeamZone's library ([source] club or teamzone).
+  Future<List<BlockExercise>> listLibrary(String source, {String search = ''});
+
   /// A key figure's value for a played match, set by hand in place of the
   /// counted one; no [value] shows the counted one again.
   Future<SeasonPlan> setKpiMatchValue(
@@ -278,6 +298,27 @@ class UnconfiguredTeamDevelopmentServices implements TeamDevelopmentServices {
     required String eventId,
     double? value,
     String note = '',
+  }) => Future.error(_error);
+  @override
+  Future<BlockExercises> blockExercises(SeasonPlan plan, String blockId) =>
+      Future.error(_error);
+  @override
+  Future<BlockExercises> addBlockExercise(
+    SeasonPlan plan,
+    String blockId, {
+    String? sharedItemId,
+    String title = '',
+    String description = '',
+  }) => Future.error(_error);
+  @override
+  Future<BlockExercises> deleteBlockExercise(
+    SeasonPlan plan,
+    String exerciseId,
+  ) => Future.error(_error);
+  @override
+  Future<List<BlockExercise>> listLibrary(
+    String source, {
+    String search = '',
   }) => Future.error(_error);
   @override
   Future<SeasonPlan> addCheckin(
@@ -559,6 +600,62 @@ class SupabaseTeamDevelopmentServices implements TeamDevelopmentServices {
       'kpi_source': source ?? '',
     }),
   );
+
+  @override
+  Future<BlockExercises> blockExercises(
+    SeasonPlan plan,
+    String blockId,
+  ) async => BlockExercises.fromJson(
+    await _rpc('get_team_development_block_exercises', {
+      'target_plan_id': plan.id,
+      'target_block_id': blockId,
+    }),
+  );
+
+  @override
+  Future<BlockExercises> addBlockExercise(
+    SeasonPlan plan,
+    String blockId, {
+    String? sharedItemId,
+    String title = '',
+    String description = '',
+  }) async => BlockExercises.fromJson(
+    await _rpc('add_team_development_block_exercise', {
+      'target_plan_id': plan.id,
+      'target_block_id': blockId,
+      'target_shared_item_id': sharedItemId,
+      'own_title': title,
+      'own_description': description,
+    }),
+  );
+
+  @override
+  Future<BlockExercises> deleteBlockExercise(
+    SeasonPlan plan,
+    String exerciseId,
+  ) async => BlockExercises.fromJson(
+    await _rpc('delete_team_development_block_exercise', {
+      'target_plan_id': plan.id,
+      'target_exercise_id': exerciseId,
+    }),
+  );
+
+  @override
+  Future<List<BlockExercise>> listLibrary(
+    String source, {
+    String search = '',
+  }) async {
+    final rows = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'list_training_passes',
+          params: {'pass_source': source, 'search_text': search},
+        );
+    return [
+      for (final row in (rows as List? ?? const []).whereType<Map>())
+        BlockExercise.fromJson(Map<String, dynamic>.from(row)),
+    ];
+  }
 
   @override
   Future<SeasonPlan> setKpiMatchValue(

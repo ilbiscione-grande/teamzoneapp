@@ -1,36 +1,40 @@
 part of '../../app/teamzone_app.dart';
 
-/// A tip for the season's current period, shown beside the session plan.
-/// Two sources are planned, neither built yet: short built-in tips per game
-/// phase and period type, and exercises from the TeamZone and club library
-/// matching the period's principles (with the Tacticsboard link, TBL step
-/// 4). A library tip carries its item, so a tap can put it in the session.
-class TrainingTip {
-  const TrainingTip({
-    required this.title,
-    this.detail = '',
-    this.libraryItemId,
-  });
-  final String title, detail;
-  final String? libraryItemId;
+/// A block's exercise (Team Development Plan step 7) as the session takes
+/// it in: a library item keeps its origin, the leaders' own is the
+/// session's own.
+TrainingPass _trainingPassOf(BlockExercise exercise) {
+  final pass = TrainingPass.fromJson(exercise.pass);
+  if (exercise.source != 'own') return pass;
+  return TrainingPass(
+    source: pass.source,
+    id: pass.id,
+    title: pass.title,
+    single: true,
+    exercises: [
+      for (final row in exercise.exercises)
+        TrainingBlock.fromJson({...row, 'source_kind': 'own'}),
+    ],
+  );
 }
 
-/// The tips for a period of the team's plan. None yet; see [TrainingTip].
-List<TrainingTip> _trainingTipsFor(TeamPlanSuggestion suggestion) => const [];
-
 /// The season plan at the top of the session: the day's block and period,
-/// their focus, the principles and the goals ahead, and tips for the period.
-/// A tap on a principle or goal makes it the training focus (via [onTake]);
-/// without a team plan, nothing.
+/// their focus, the principles and the goals ahead, and the block's
+/// exercises ("Tips för perioden"), chosen by the leaders or from the
+/// library for the block's principles. A tap on a principle or goal makes
+/// it the training focus (via [onTake]); a tap on an exercise puts it in
+/// the session (via [onTakePass]). Without a team plan, nothing.
 class _TrainingSeasonPlan extends StatelessWidget {
   const _TrainingSeasonPlan({
     required this.suggestion,
     required this.focus,
     this.onTake,
+    this.onTakePass,
   });
   final Future<TeamPlanSuggestion?> suggestion;
   final String focus;
   final Future<Object?> Function(String label)? onTake;
+  final Future<void> Function(TrainingPass pass)? onTakePass;
 
   @override
   Widget build(BuildContext context) => FutureBuilder<TeamPlanSuggestion?>(
@@ -38,7 +42,7 @@ class _TrainingSeasonPlan extends StatelessWidget {
     builder: (context, snapshot) {
       final plan = snapshot.data;
       if (plan == null) return const SizedBox.shrink();
-      final tips = _trainingTipsFor(plan);
+      final tips = plan.exercises.all;
       final theme = Theme.of(context);
       return Column(
         key: const Key('training-season-plan'),
@@ -71,11 +75,37 @@ class _TrainingSeasonPlan extends StatelessWidget {
                       style: theme.textTheme.titleSmall,
                     ),
                   ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 2, 16, 4),
+                    child: Text(
+                      _tdpText(
+                        context,
+                        'Övningar för blocket${plan.blockName == null ? '' : ' ${plan.blockName}'}.',
+                        'Exercises for the block${plan.blockName == null ? '' : ' ${plan.blockName}'}.',
+                      ),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
                   for (final tip in tips)
                     ListTile(
-                      leading: const Icon(Icons.lightbulb_outline),
+                      key: ValueKey('training-tip-${tip.source}-${tip.itemId}'),
+                      leading: Icon(_tdpExerciseIcon(tip)),
                       title: Text(tip.title),
-                      subtitle: tip.detail.isEmpty ? null : Text(tip.detail),
+                      subtitle: Text(
+                        _tdpExerciseLine(context, tip),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: onTakePass == null || tip.exercises.isEmpty
+                          ? null
+                          : TextButton(
+                              key: ValueKey(
+                                'training-tip-take-${tip.source}-${tip.itemId}',
+                              ),
+                              onPressed: () =>
+                                  onTakePass!(_trainingPassOf(tip)),
+                              child: Text(_tdpText(context, 'Lägg in', 'Add')),
+                            ),
                     ),
                 ],
               ),

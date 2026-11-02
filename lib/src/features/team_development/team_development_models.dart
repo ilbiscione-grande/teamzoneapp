@@ -3,6 +3,7 @@
 library;
 
 part 'team_development_match_values.dart';
+part 'team_development_exercises.dart';
 
 DateTime _date(Object? value) => DateTime.parse(value as String);
 
@@ -653,6 +654,7 @@ class TeamPlanSuggestion {
     this.blockPrinciples = const [],
     this.principles = const [],
     this.goals = const [],
+    this.exercises = const BlockExercises(),
   });
   factory TeamPlanSuggestion.fromJson(Map<String, dynamic> json) {
     Map<String, dynamic>? part(String key) =>
@@ -677,9 +679,13 @@ class TeamPlanSuggestion {
         for (final row in (json['goals'] as List? ?? const []).whereType<Map>())
           row['title'] as String? ?? '',
       ],
+      exercises: BlockExercises.fromJson(json['exercises']),
     );
   }
   final String planTitle, periodFocus, blockFocus;
+
+  /// The day's block's exercises, to take into the session.
+  final BlockExercises exercises;
   final String? periodName, blockName;
 
   /// The principles in focus in the day's block, and all the plan's.
