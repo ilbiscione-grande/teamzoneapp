@@ -121,7 +121,10 @@ List<PlayerMatchStats> playerStats({
       case 'card':
         if (player != null) {
           final stat = of(player)..fouls += 1;
-          if (detail['color'] == 'yellow') stat.yellow += 1;
+          // A second yellow is a red card, and a yellow one too.
+          if (detail['color'] == 'yellow' || detail['second_yellow'] == true) {
+            stat.yellow += 1;
+          }
           if (detail['color'] == 'red') stat.red += 1;
         }
       case 'penalty':
@@ -197,7 +200,9 @@ TeamTotals teamTotals(List<Map<String, dynamic>> facts, String side) {
         }
       case 'card':
         fouls += 1;
-        if (detail['color'] == 'yellow') yellow += 1;
+        if (detail['color'] == 'yellow' || detail['second_yellow'] == true) {
+          yellow += 1;
+        }
         if (detail['color'] == 'red') red += 1;
       case 'save':
         saves += 1;

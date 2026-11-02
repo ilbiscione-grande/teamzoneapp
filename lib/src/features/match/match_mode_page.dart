@@ -1449,18 +1449,22 @@ class _GoalChoice {
     this.scorerId,
     this.assistId,
     this.penalty = false,
+    this.ownGoal = false,
   });
   final int minute;
   final String? scorerId, assistId;
 
   /// Scored from the penalty spot: a penalty with no assist.
   final bool penalty;
+
+  /// Put in by an opponent: no scorer or assist of ours.
+  final bool ownGoal;
 }
 
 /// "Vem gjorde målet?" then an optional assist: tapping a name advances,
 /// so a goal takes three taps (+, scorer, assist or "Ingen assist").
 /// With [offerPenalty] the goal can be marked as a penalty, which skips the
-/// assist.
+/// assist, or as an opponent's own goal, which needs no scorer.
 class _GoalSheet extends StatefulWidget {
   const _GoalSheet({
     required this.players,
@@ -1569,14 +1573,30 @@ class _GoalSheetState extends State<_GoalSheet> {
               if (widget.offerPenalty && !_choosingAssist)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: FilterChip(
-                      key: const Key('goal-sheet-penalty'),
-                      label: Text(AppStrings.of(context).feature('Straffmål')),
-                      selected: _penalty,
-                      onSelected: (value) => setState(() => _penalty = value),
-                    ),
+                  child: Wrap(
+                    spacing: 8,
+                    children: [
+                      FilterChip(
+                        key: const Key('goal-sheet-penalty'),
+                        label: Text(
+                          AppStrings.of(context).feature('Straffmål'),
+                        ),
+                        selected: _penalty,
+                        onSelected: (value) => setState(() => _penalty = value),
+                      ),
+                      ActionChip(
+                        key: const Key('goal-sheet-own-goal'),
+                        label: Text(
+                          AppStrings.of(
+                            context,
+                          ).feature('Självmål av motståndaren'),
+                        ),
+                        onPressed: () => Navigator.pop(
+                          context,
+                          _GoalChoice(minute: _minute, ownGoal: true),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               if (scorerName != null)

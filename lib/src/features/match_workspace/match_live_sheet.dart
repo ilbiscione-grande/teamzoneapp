@@ -28,8 +28,12 @@ class _LiveEventSheet extends StatefulWidget {
     required this.name,
     this.fact,
     this.planned,
+    this.booked = const {},
   });
   final LiveEventKind kind;
+
+  /// Our players with a yellow card already: a second one is a red card.
+  final Set<String> booked;
   final List<MatchRosterMember> players;
   final List<String> onPitch;
   final int minute;
@@ -65,6 +69,15 @@ class _LiveEventSheetState extends State<_LiveEventSheet> {
   );
 
   bool get _substitution => widget.kind.type == 'substitution';
+  bool get _card => widget.kind.type == 'card';
+
+  /// A new yellow card for a player already booked: shown as red.
+  bool get _secondYellow =>
+      _card &&
+      !_editing &&
+      _side == 'us' &&
+      _result == 'yellow' &&
+      widget.booked.contains(_player);
   bool get _editing => widget.fact != null;
 
   /// Placed already (as Planläge places every kind it registers).
@@ -125,13 +138,21 @@ class _LiveEventSheetState extends State<_LiveEventSheet> {
         planned.inId == _secondary;
     final comment = _comment.text.trim();
     final us = _side == 'us';
+    final secondYellow =
+        _secondYellow || (_editing && _detail['second_yellow'] == true);
     Navigator.pop(
       context,
       _LiveEventResult(
         minute: _minute,
         side: _side,
         playerId: us ? _player : null,
-        secondaryId: us && _substitution ? _secondary : null,
+        // For a substitution who comes on; for the opponent's foul, the
+        // player of ours who was fouled.
+        secondaryId: us && _substitution
+            ? _secondary
+            : !us && _card
+            ? _secondary
+            : null,
         detail: {
           for (final entry in _detail.entries)
             if (entry.key is String &&
@@ -141,10 +162,15 @@ class _LiveEventSheetState extends State<_LiveEventSheet> {
                   'color',
                   'plan_id',
                   'location',
+                  'second_yellow',
                 ].contains(entry.key))
               entry.key as String: entry.value,
           if (_result != null && widget.kind.results.isNotEmpty)
-            widget.kind.resultKey: _result,
+            widget.kind.resultKey: secondYellow && _result == 'yellow'
+                ? 'red'
+                : _result,
+          if (secondYellow && (_result == 'yellow' || _result == 'red'))
+            'second_yellow': true,
           if (comment.isNotEmpty) 'comment': comment,
           if (_location case (
             final x,
@@ -197,9 +223,26 @@ class _LiveEventSheetState extends State<_LiveEventSheet> {
                         : null,
                     icon: const Icon(Icons.remove),
                   ),
-                  Text(
-                    "$_minute′",
-                    style: Theme.of(context).textTheme.titleMedium,
+                  InkWell(
+                    key: const Key('live-sheet-minute'),
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () async {
+                      final value = await showDialog<int>(
+                        context: context,
+                        builder: (_) => _MinuteDialog(initial: _minute),
+                      );
+                      if (value != null) setState(() => _minute = value);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 4,
+                      ),
+                      child: Text(
+                        "$_minute′",
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
                   ),
                   IconButton(
                     tooltip: AppStrings.of(context).feature('En minut senare'),
@@ -277,6 +320,26 @@ class _LiveEventSheetState extends State<_LiveEventSheet> {
                   _player,
                   widget.players,
                   (id) => setState(() => _player = id),
+                )
+              else if (_card)
+                _picker(
+                  'Fälld spelare',
+                  _secondary,
+                  widget.players,
+                  (id) => setState(() => _secondary = id),
+                ),
+              if (_secondYellow)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    AppStrings.of(context).feature(
+                      'Andra gula kortet: det registreras som rött kort.',
+                    ),
+                    key: const Key('live-sheet-second-yellow'),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
                 ),
               if (kind.locatable || _placed) ...[
                 const SizedBox(height: 10),

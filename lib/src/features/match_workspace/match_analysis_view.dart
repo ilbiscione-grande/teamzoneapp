@@ -153,9 +153,10 @@ class _MatchAnalysisViewState extends State<_MatchAnalysisView> {
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            AppStrings.of(
-              context,
-            ).feature('Efteranalysen fylls i när matchen har spelats i Live.'),
+            AppStrings.of(context).feature(
+              'Efteranalysen fylls i när matchen har spelats i Live. En match '
+              'som inte registrerades live kan fyllas i efteråt där.',
+            ),
             textAlign: TextAlign.center,
           ),
         ),

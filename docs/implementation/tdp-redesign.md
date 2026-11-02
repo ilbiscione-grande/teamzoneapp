@@ -121,7 +121,7 @@ Det finns en brödsmulestig, pilar för att bläddra och en knapp för att hoppa
 
 - **Skador är hälsodata.** [PAR-METHOD-02](../specification/source/16_open_parameter_backlog.md) spärrar data om hälsa och sanktioner tills beslut finns om minimiålder, vad vårdnadshavare ser och hur en spelare friskförklaras. Det rör sig om särskilt känsliga uppgifter om minderåriga. Skadedelen kan planeras, men byggs först när besluten finns.
 - **Belastningssignaler och rekommendationer.** Enligt PAR-METHOD-01 ska regler, tidsfönster och gränsvärden bestämmas. Fram till dess visar appen bara råa fakta och inga medicinska slutsatser. Rekommendationerna är regelbaserade. Generativ AI har egna grindar (PAR-AI-01/02).
-- **Data som saknas:** speltid per spelare och match, samt egen skattning. I dag finns närvaro och matchhändelser.
+- **Data som saknas:** egen skattning, och speltid summerad över säsongen. Speltid per match räknas fram i matchmodulens Efteranalys ur startelvan, bytena och röda kort, men sparas inte. I dag finns närvaro och matchhändelser. Matcher som inte registrerades live kan sedan 2026-11-02 fyllas i efteråt i Live.
 
 ## Ändrad modulgräns
 

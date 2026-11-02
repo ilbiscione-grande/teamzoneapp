@@ -52,7 +52,7 @@ const liveEventKinds = <LiveEventKind>[
     label: 'Foul',
     results: [('none', 'Inget kort'), ('yellow', 'Gult'), ('red', 'Rött')],
     defaultResult: 'none',
-    secondaryLabel: 'Fällde',
+    secondaryLabel: 'Fälld spelare',
     locatable: true,
   ),
   LiveEventKind(

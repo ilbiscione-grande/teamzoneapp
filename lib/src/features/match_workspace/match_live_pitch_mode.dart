@@ -676,7 +676,9 @@ class _LiveHeaderBar extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (onGoal != null && live)
+                // Goals while played and, filled in afterwards, after full
+                // time.
+                if (onGoal != null && (live || value?.state == 'completed'))
                   for (final (side, name) in [
                     ('us', sides.team),
                     ('opponent', opponentName),

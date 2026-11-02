@@ -164,6 +164,22 @@ void main() {
       );
     });
 
+    test('a second yellow is a red card and a yellow one', () {
+      final facts = [
+        _fact('card', 20, player: 'a', detail: {'color': 'yellow'}),
+        _fact(
+          'card',
+          40,
+          player: 'a',
+          detail: {'color': 'red', 'second_yellow': true},
+        ),
+      ];
+      final stats = playerStats(starters: ['a'], facts: facts, end: 60).single;
+      expect([stats.yellow, stats.red, stats.minutes], [2, 1, 40]);
+      final us = teamTotals(facts, 'us');
+      expect([us.yellow, us.red, us.fouls], [2, 1, 2]);
+    });
+
     test('a red card ends the player\'s minutes with no one on', () {
       final facts = [
         _fact('card', 25, player: 'a', detail: {'color': 'red'}),

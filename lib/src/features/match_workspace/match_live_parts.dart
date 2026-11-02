@@ -576,7 +576,15 @@ class _LiveTimeline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final shown = activeFacts(facts).toList().reversed.toList();
+    // A goal attributed to the result after full time keeps the score with
+    // an adjustment of its own, which is not an event of the match.
+    final shown = activeFacts(facts)
+        .where(
+          (fact) => (fact['detail'] as Map?)?['source'] != 'post_registration',
+        )
+        .toList()
+        .reversed
+        .toList();
     return Card(
       key: const Key('live-timeline'),
       child: Padding(
@@ -751,9 +759,13 @@ class _LiveToolbar extends StatelessWidget {
     this.trailing,
     this.publicLabel,
     this.onPublicLive,
+    this.onClock,
   });
   final VoidCallback onMyView;
   final VoidCallback? onOwnButtons, onPitchMode, onPublicLive;
+
+  /// Corrects the match clock, while the match is played.
+  final VoidCallback? onClock;
 
   /// Whether the match is reported live on the team's page, to change it.
   final String? publicLabel;
@@ -797,6 +809,13 @@ class _LiveToolbar extends StatelessWidget {
           icon: const Icon(Icons.sports_soccer, size: 18),
           label: Text(AppStrings.of(context).feature('Planläge')),
         ),
+      if (onClock != null)
+        TextButton.icon(
+          key: const Key('live-clock'),
+          onPressed: onClock,
+          icon: const Icon(Icons.timer_outlined, size: 18),
+          label: Text(AppStrings.of(context).feature('Rätta klockan')),
+        ),
       if (onPublicLive != null)
         TextButton.icon(
           key: const Key('live-public'),
@@ -837,6 +856,16 @@ String _factText(
 
   final who = them ? opponentName : (player == null ? null : name(player));
   return switch (type) {
+    'goal' when detail['own_goal'] == true =>
+      them
+          ? '${strings.isSwedish ? 'Självmål' : 'Own goal'} ${name(player)}'
+          : '${strings.isSwedish ? 'Mål, självmål av' : 'Goal, own goal by'} $opponentName',
+    'card' when detail['second_yellow'] == true => [
+      strings.isSwedish ? 'Rött kort (två gula)' : 'Red card (second yellow)',
+      ?who,
+      if (detail['comment'] case final String comment when comment.isNotEmpty)
+        comment,
+    ].join(' · '),
     'goal' =>
       them
           ? '${strings.isSwedish ? 'Mål' : 'Goal'} $opponentName'
@@ -861,6 +890,8 @@ String _factText(
       kind == null ? type ?? '' : strings.feature(kind.label),
       ?who,
       ?result(),
+      if (type == 'card' && them && second != null)
+        '${strings.isSwedish ? 'mot' : 'on'} ${name(second)}',
       if (detail['comment'] case final String comment when comment.isNotEmpty)
         comment,
     ].join(' · '),

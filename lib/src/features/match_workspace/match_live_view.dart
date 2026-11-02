@@ -51,6 +51,14 @@ class _MatchLiveViewState extends State<_MatchLiveView>
   @override
   List<Map<String, dynamic>> get _facts => _snapshot?.facts ?? const [];
   String get _state => _snapshot?.state ?? 'planning';
+
+  /// Events are recorded while the match is played and, after full time,
+  /// afterwards (the result stands).
+  bool get _recording => _state == 'live' || _state == 'completed';
+
+  /// The match event, for its kick-off and to register a result when the
+  /// match was not registered live.
+  EventDetails? _event;
   bool get _canManage => _snapshot?.canManage ?? (_lineup?.canEdit ?? false);
   String get _opponentName {
     final name = widget.sides.opponent?.trim();
@@ -73,6 +81,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
       });
     });
     unawaited(_loadLineup());
+    unawaited(_loadEvent());
     unawaited(_loadCounters());
     unawaited(_refresh());
   }
@@ -90,6 +99,62 @@ class _MatchLiveViewState extends State<_MatchLiveView>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) unawaited(_refresh());
   }
+
+  Future<void> _loadEvent() async {
+    try {
+      final event = await widget.calendar.getEventDetails(_eventId);
+      if (mounted) setState(() => _event = event);
+    } catch (error) {
+      AppErrors.caught('match_live_view._loadEvent', error);
+    }
+  }
+
+  /// A match not registered live: its final result first, then the events
+  /// afterwards, with the squad frozen so players can be chosen.
+  Future<void> _fillInAfterwards() async {
+    final event = _event;
+    if (event == null) return;
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => _RegisterResultDialog(
+        event: event,
+        match: widget.match,
+        snapshot: _snapshot,
+      ),
+    );
+    if (saved != true || !mounted) return;
+    await _refresh();
+    if ((_snapshot?.rosterRevision ?? 0) == 0) await _freezeSquad();
+    unawaited(_loadEvent());
+  }
+
+  Future<void> _freezeSquad() {
+    final key = _newUuid();
+    return _run(() => widget.match.freezeRoster(key, _eventId, 'initial'));
+  }
+
+  Future<void> _correctClock() async {
+    final snapshot = _snapshot;
+    if (snapshot == null) return;
+    final seconds = await showDialog<int>(
+      context: context,
+      builder: (_) => _ClockCorrectionDialog(
+        initialSeconds: snapshot.elapsedNow().inSeconds,
+      ),
+    );
+    if (seconds == null || !mounted) return;
+    final key = _newUuid();
+    await _run(() => widget.match.adjustClock(key, _eventId, seconds));
+  }
+
+  /// Our players with an earlier yellow card standing, for a second one.
+  Set<String> get _booked => {
+    for (final fact in activeFacts(_snapshot?.facts ?? const []))
+      if (fact['fact_type'] == 'card' &&
+          fact['side'] != 'opponent' &&
+          (fact['detail'] as Map?)?['color'] == 'yellow')
+        if (fact['club_person_id'] case final String id) id,
+  };
 
   Future<void> _loadLineup() async {
     try {
@@ -160,6 +225,11 @@ class _MatchLiveViewState extends State<_MatchLiveView>
                   'bort eller ändras så att resultatet ändras. Rätta resultatet '
                   'med orsak på matchens sida i kalendern i stället.'
             : 'Ändringen gick inte igenom. Matchen kan ha ändrats av en annan ledare.';
+        if (locked && _state == 'completed') {
+          _error =
+              'Alla mål i resultatet har redan en händelse. Ta bort ett mål '
+              'eller rätta resultatet med orsak på matchens sida i kalendern.';
+        }
         _retry = denied || locked ? null : () => _run(action);
       });
       unawaited(_refresh());
@@ -288,7 +358,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
   // --- Events ---------------------------------------------------------------
 
   Future<void> _goal(String side) async {
-    if (_state != 'live') return;
+    if (!_recording) return;
     final key = _newUuid();
     if (side == 'opponent') {
       final minute = _minuteNow;
@@ -316,6 +386,25 @@ class _MatchLiveViewState extends State<_MatchLiveView>
       ),
     );
     if (choice == null || !mounted) return;
+    if (choice.ownGoal) {
+      final ok = await _run(
+        () => widget.match.recordEvent(
+          key,
+          _eventId,
+          type: 'goal',
+          minute: choice.minute,
+          side: 'us',
+          detail: const {'own_goal': true},
+        ),
+      );
+      if (ok && mounted) {
+        _undoSnack(
+          '${AppStrings.of(context).feature('Självmål')} ${choice.minute}′',
+          key,
+        );
+      }
+      return;
+    }
     // A penalty goal is a scored penalty, which the score counts as a goal.
     if (choice.penalty) {
       final ok = await _run(
@@ -402,7 +491,11 @@ class _MatchLiveViewState extends State<_MatchLiveView>
             label: 'Ångra',
             onPressed: () {
               final fact = _snapshot?.activeFacts
-                  .where((fact) => fact['source_command_id'] == commandKey)
+                  .where(
+                    (fact) =>
+                        fact['source_command_id'] == commandKey &&
+                        fact['fact_type'] != 'score_adjustment',
+                  )
                   .firstOrNull;
               if (fact == null) return;
               final key = _newUuid();
@@ -420,7 +513,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
     Map<String, dynamic>? fact,
     PlannedSubstitution? planned,
   }) async {
-    if (_state != 'live' && fact == null) return;
+    if (!_recording && fact == null) return;
     final result = await showModalBottomSheet<_LiveEventResult>(
       context: context,
       isScrollControlled: true,
@@ -434,6 +527,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
         fact: fact,
         planned: planned ?? _nextPlanned(kind),
         name: _name,
+        booked: _booked,
       ),
     );
     if (result == null || !mounted) return;
@@ -564,6 +658,57 @@ class _MatchLiveViewState extends State<_MatchLiveView>
   }
 
   List<Widget> _banners(bool manage) => [
+    if (manage &&
+        _state == 'planning' &&
+        _event != null &&
+        _event!.startsAt.isBefore(DateTime.now()))
+      Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: MaterialBanner(
+          key: const Key('live-fill-in'),
+          leading: const Icon(Icons.edit_calendar_outlined),
+          content: Text(
+            AppStrings.of(context).feature(
+              'Matchen registrerades inte live. Fyll i slutresultatet, så kan '
+              'du sedan lägga till händelserna efteråt.',
+            ),
+          ),
+          actions: [
+            TextButton(
+              key: const Key('live-fill-in-start'),
+              onPressed: _busy ? null : _fillInAfterwards,
+              child: Text(AppStrings.of(context).feature('Fyll i efteråt')),
+            ),
+          ],
+        ),
+      ),
+    if (manage && _state == 'completed')
+      Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: MaterialBanner(
+          key: const Key('live-afterwards'),
+          leading: const Icon(Icons.history_edu_outlined),
+          content: Text(
+            AppStrings.of(context).feature(
+              'Matchen är slut. Det du registrerar nu läggs in med den minut '
+              'du väljer. Resultatet står kvar, och ett mål kopplas till ett '
+              'av resultatets mål.',
+            ),
+          ),
+          actions: [
+            if ((_snapshot?.rosterRevision ?? 0) == 0)
+              TextButton(
+                key: const Key('live-afterwards-squad'),
+                onPressed: _busy ? null : _freezeSquad,
+                child: Text(
+                  AppStrings.of(context).feature('Hämta matchtruppen'),
+                ),
+              )
+            else
+              const SizedBox.shrink(),
+          ],
+        ),
+      ),
     if (_error != null)
       Padding(
         padding: const EdgeInsets.only(top: 8),
@@ -646,7 +791,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
 
   /// A tap on the pitch in Planläge: the event at that place.
   Future<void> _logAt((double, double) place) async {
-    if (_state != 'live') return;
+    if (!_recording) return;
     final result = await showModalBottomSheet<_PitchEventResult>(
       context: context,
       isScrollControlled: true,
@@ -843,7 +988,14 @@ class _MatchLiveViewState extends State<_MatchLiveView>
                         label: 'Anteckning',
                         onTap: _note,
                       ),
-                      if (_counters.isNotEmpty)
+                      if (_state == 'live')
+                        _PitchAction(
+                          key: const Key('live-pitch-clock'),
+                          icon: Icons.timer_outlined,
+                          label: 'Klockan',
+                          onTap: _correctClock,
+                        ),
+                      if (_state == 'live' && _counters.isNotEmpty)
                         _PitchAction(
                           key: const Key('live-pitch-counters'),
                           icon: Icons.exposure_plus_1,
@@ -882,7 +1034,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
     final manage = _canManage;
     // On a tablet or desktop the shot map stands beside the event buttons.
     final wide = MediaQuery.sizeOf(context).width >= 720;
-    final buttons = manage && live;
+    final buttons = manage && _recording;
     // On a lying tablet the score moves up into one header bar, as in
     // Planläge, to give the buttons and the shot map the height.
     final size = MediaQuery.sizeOf(context);
@@ -909,7 +1061,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
             onPrimary: _primaryAction,
             onEndPeriod: _endPeriod,
             onFinish: _finish,
-            onGoal: live && manage ? _goal : null,
+            onGoal: buttons ? _goal : null,
             inline: wide,
           ),
         ..._banners(manage),
@@ -918,6 +1070,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
             publicLabel: _publicLiveLabel,
             onPublicLive: _choosePublicLive,
             onMyView: _openMyView,
+            onClock: live ? _correctClock : null,
             onOwnButtons: (_buttons?.canEdit ?? false) ? _editButtons : null,
             onPitchMode: buttons
                 ? () => setState(() => _pitchChoice = true)
@@ -952,7 +1105,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
                         onKind: (kind) => _log(kind),
                         onNote: _note,
                       ),
-                      if (_counters.isNotEmpty) ...[
+                      if (live && _counters.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         _LiveCounters(
                           counters: _counters,
@@ -994,7 +1147,7 @@ class _MatchLiveViewState extends State<_MatchLiveView>
               onNote: _note,
             ),
         ],
-        if (buttons && !wide && _counters.isNotEmpty) ...[
+        if (buttons && live && !wide && _counters.isNotEmpty) ...[
           const SizedBox(height: 12),
           _LiveCounters(counters: _counters, onDelta: _count, onEnter: _enter),
         ],

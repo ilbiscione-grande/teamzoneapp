@@ -803,6 +803,18 @@ class AppStrings {
     'Frisparkar': 'Free kicks',
     'Straffar': 'Penalties',
     'Straffmål': 'Penalty goals',
+    'Självmål': 'Own goal',
+    'Självmål av motståndaren': 'Opponent own goal',
+    'Fälld spelare': 'Fouled player',
+    'Andra gula kortet: det registreras som rött kort.':
+        'Second yellow card: it is recorded as a red card.',
+    'Rätta klockan': 'Correct the clock',
+    'Fyll i efteråt': 'Fill in afterwards',
+    'Hämta matchtruppen': 'Get the match squad',
+    'Matchen registrerades inte live. Fyll i slutresultatet, så kan du sedan lägga till händelserna efteråt.':
+        'The match was not recorded live. Enter the final result, and you can then add the events afterwards.',
+    'Matchen är slut. Det du registrerar nu läggs in med den minut du väljer. Resultatet står kvar, och ett mål kopplas till ett av resultatets mål.':
+        'The match is over. What you record now is added at the minute you choose. The result stands, and a goal is linked to one of the result\'s goals.',
     'Mål ({count} på straff)': 'Goals ({count} from penalties)',
     'Fouls': 'Fouls',
     'Gula kort': 'Yellow cards',
@@ -823,8 +835,8 @@ class AppStrings {
     'Ingen speltid än. Den räknas fram ur startelvan och bytena i Live.':
         'No playing time yet. It is calculated from the starting line-up and substitutions in Live.',
     'Skapa från händelserna': 'Generate from events',
-    'Efteranalysen fylls i när matchen har spelats i Live.':
-        'Post-match analysis is completed after the match has been played in Live.',
+    'Efteranalysen fylls i när matchen har spelats i Live. En match som inte registrerades live kan fyllas i efteråt där.':
+        'Post-match analysis is completed after the match has been played in Live. A match that was not recorded live can be filled in afterwards there.',
     'Räknare': 'Counters',
     'Min vy': 'My view',
     'Välj vilka knappar du vill se under matchen. Valet gäller bara dig.':
