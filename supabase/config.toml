@@ -414,6 +414,11 @@ verify_jwt = false
 [functions.push-message-reply]
 verify_jwt = false
 
+# An answer 1–10 from the effort notification after a training; the token
+# from the push is the credential, as for push-callup-response.
+[functions.push-effort-response]
+verify_jwt = false
+
 # PUB-14: answers to club-site messages (worker token) and the senders'
 # e-mail replies (Resend inbound, Svix signature).
 [functions.contact-email-worker]

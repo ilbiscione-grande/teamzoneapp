@@ -20,6 +20,7 @@ class LoadSettings {
     this.loadIncreasePercent = 130,
     this.attendanceMinPercent = 50,
     this.matchMinutesMax = 180,
+    this.effortPush = false,
   });
   factory LoadSettings.fromJson(Object? json) {
     final map = json is Map ? json : const {};
@@ -27,6 +28,7 @@ class LoadSettings {
       loadIncreasePercent: (map['load_increase_percent'] as num?)?.toInt(),
       attendanceMinPercent: (map['attendance_min_percent'] as num?)?.toInt(),
       matchMinutesMax: (map['match_minutes_max'] as num?)?.toInt(),
+      effortPush: map['effort_push'] == true,
     );
   }
 
@@ -38,6 +40,10 @@ class LoadSettings {
 
   /// Match minutes in the last 7 days.
   final int? matchMinutesMax;
+
+  /// Whether the players get the effort question as a notification when a
+  /// training ends; off until the leaders turn it on.
+  final bool effortPush;
 }
 
 /// One player's load: the last 7 days and the last 4 weeks.

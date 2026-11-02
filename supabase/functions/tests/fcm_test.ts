@@ -74,6 +74,28 @@ Deno.test("a message one can reply to is a data message on Android only", () => 
   assertEquals((ios.data as Record<string, string>).reply_token, undefined);
 });
 
+Deno.test("the effort question is a data message on Android only", () => {
+  const question = {
+    title: "Hur kändes träningen?",
+    body: "Träning · P2012 · 17:30",
+    route: "/calendar/event/30000000-0000-4000-8000-000000000001",
+    effort: { event_id: "30000000-0000-4000-8000-000000000001", token: "c".repeat(64) },
+  };
+  const android = fcmMessage("device-token", question, "android").message as Record<string, unknown>;
+  assertEquals(android.notification, undefined);
+  assertEquals(android.data, {
+    kind: "effort",
+    title: "Hur kändes träningen?",
+    body: "Träning · P2012 · 17:30",
+    route: "/calendar/event/30000000-0000-4000-8000-000000000001",
+    event_id: "30000000-0000-4000-8000-000000000001",
+    effort_token: "c".repeat(64),
+    language: "sv",
+  });
+  const ios = fcmMessage("device-token", question, "ios").message as Record<string, unknown>;
+  assertEquals((ios.data as Record<string, string>).effort_token, undefined);
+});
+
 Deno.test("routes outside the app's own paths fall back to the inbox", () => {
   assertEquals(safeRoute("/inbox?thread=40000000-0000-4000-8000-000000000001"),
     "/inbox?thread=40000000-0000-4000-8000-000000000001");

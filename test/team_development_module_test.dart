@@ -671,6 +671,8 @@ void main() {
     // A link on the season goal, shown to the players.
     await tester.tap(find.text('Översikt'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Alla spelar mycket'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Alla spelar mycket'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const Key('tdp-goal-add-link')));
@@ -1025,6 +1027,16 @@ void main() {
       findsNothing,
     );
     expect(find.textContaining('Ingen spelare sticker ut'), findsOneWidget);
+
+    // The leaders turn the effort question after trainings on.
+    final effortPush = find.byKey(const Key('tdp-effort-push'));
+    await tester.ensureVisible(effortPush);
+    await tester.pumpAndSettle();
+    expect(tester.widget<SwitchListTile>(effortPush).value, isFalse);
+    await tester.tap(effortPush);
+    await tester.pumpAndSettle();
+    expect(services.teamLoad.settings.effortPush, isTrue);
+    expect(tester.widget<SwitchListTile>(effortPush).value, isTrue);
     expect(tester.takeException(), isNull);
   });
 
@@ -1342,6 +1354,14 @@ class _Plans implements TeamDevelopmentServices {
 
   @override
   Future<TeamLoad> load(SeasonPlan plan, {DateTime? day}) async => teamLoad;
+
+  @override
+  Future<TeamLoad> setEffortPush(SeasonPlan plan, bool on) async =>
+      teamLoad = TeamLoad(
+        day: teamLoad.day,
+        settings: LoadSettings(effortPush: on),
+        players: teamLoad.players,
+      );
 
   @override
   Future<TeamLoad> saveLoadSettings(

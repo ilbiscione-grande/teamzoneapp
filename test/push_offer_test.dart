@@ -140,6 +140,35 @@ void main() {
     }
   });
 
+  test('the effort question push needs every field well-formed', () {
+    const eventId = '30000000-0000-4000-8000-000000000001';
+    final data = <String, dynamic>{
+      'kind': 'effort',
+      'title': 'Hur kändes träningen?',
+      'body': 'Träning · P2012 · 17:30',
+      'route': '/calendar/event/$eventId',
+      'event_id': eventId,
+      'effort_token': 'c' * 64,
+      'language': 'sv',
+    };
+    final push = EffortPush.parse(data)!;
+    expect(push.texts.sent.replaceAll('{rating}', '7'), 'Tack! Du svarade 7');
+    expect(push.eventId, eventId);
+    expect(
+      EffortPush.parse({...data, 'language': 'en'})!.texts.locked,
+      'Unlock the phone to answer',
+    );
+    for (final broken in [
+      {...data, 'kind': 'callup'},
+      {...data, 'effort_token': 'c' * 63},
+      {...data, 'event_id': 'x'},
+      {...data, 'route': '/inbox'},
+      {...data, 'title': null},
+    ]) {
+      expect(EffortPush.parse(broken), isNull, reason: '$broken');
+    }
+  });
+
   test('an answerable callup push needs every field well-formed', () {
     final data = <String, dynamic>{
       'kind': 'callup',

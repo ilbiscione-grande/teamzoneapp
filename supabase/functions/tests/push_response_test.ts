@@ -1,5 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1.0.14";
 import {
+  parsePushEffortRequest,
   parsePushReplyRequest,
   parsePushResponseRequest,
   pushResponseStatus,
@@ -31,6 +32,18 @@ Deno.test("a reply needs 1–4000 characters besides the token", () => {
   assertEquals(parsePushReplyRequest({ token, idempotency_key: key, body: "x".repeat(4001) }), null);
   assertEquals(parsePushReplyRequest({ token, idempotency_key: key, body: 42 }), null);
   assertEquals(parsePushReplyRequest({ token: "nope", idempotency_key: key, body: "hej" }), null);
+});
+
+Deno.test("an effort answer needs a whole number 1–10 besides the token", () => {
+  assertEquals(parsePushEffortRequest({ token, idempotency_key: key, rating: 7 }), {
+    token,
+    idempotencyKey: key,
+    rating: 7,
+  });
+  for (const rating of [0, 11, 6.5, "7", null]) {
+    assertEquals(parsePushEffortRequest({ token, idempotency_key: key, rating }), null, String(rating));
+  }
+  assertEquals(parsePushEffortRequest({ token: "nope", idempotency_key: key, rating: 5 }), null);
 });
 
 Deno.test("refusals map to what the app does next", () => {

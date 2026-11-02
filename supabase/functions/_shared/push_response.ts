@@ -1,4 +1,5 @@
-// Helpers for push-callup-response and push-message-reply: the request
+// Helpers for push-callup-response, push-message-reply and
+// push-effort-response: the request
 // shapes and how database refusals map to answers the app understands.
 
 export type PushResponseRequest = { token: string; idempotencyKey: string };
@@ -25,6 +26,17 @@ export function parsePushReplyRequest(body: unknown): PushReplyRequest | null {
   const trimmed = text.trim();
   if (trimmed.length < 1 || trimmed.length > 4000) return null;
   return { ...parsed, body: text };
+}
+
+export type PushEffortRequest = PushResponseRequest & { rating: number };
+
+/// The effort question also needs a whole number 1–10.
+export function parsePushEffortRequest(body: unknown): PushEffortRequest | null {
+  const parsed = parsePushResponseRequest(body);
+  const rating = (body as Record<string, unknown> | null)?.rating;
+  if (!parsed || typeof rating !== "number" || !Number.isInteger(rating)) return null;
+  if (rating < 1 || rating > 10) return null;
+  return { ...parsed, rating };
 }
 
 /// 410: the notification can no longer answer (expired, cancelled, already

@@ -157,6 +157,9 @@ abstract interface class TeamDevelopmentServices {
   /// The team's values for the signals; null turns one off.
   Future<TeamLoad> saveLoadSettings(SeasonPlan plan, LoadSettings settings);
 
+  /// Turns the effort notification after trainings on or off for the team.
+  Future<TeamLoad> setEffortPush(SeasonPlan plan, bool on);
+
   /// A key figure's value for a played match, set by hand in place of the
   /// counted one; no [value] shows the counted one again.
   Future<SeasonPlan> setKpiMatchValue(
@@ -331,6 +334,9 @@ class UnconfiguredTeamDevelopmentServices implements TeamDevelopmentServices {
       Future.error(_error);
   @override
   Future<TeamLoad> saveLoadSettings(SeasonPlan plan, LoadSettings settings) =>
+      Future.error(_error);
+  @override
+  Future<TeamLoad> setEffortPush(SeasonPlan plan, bool on) =>
       Future.error(_error);
   @override
   Future<SeasonPlan> addCheckin(
@@ -690,6 +696,15 @@ class SupabaseTeamDevelopmentServices implements TeamDevelopmentServices {
       'match_minutes': settings.matchMinutesMax,
     }),
   );
+
+  @override
+  Future<TeamLoad> setEffortPush(SeasonPlan plan, bool on) async =>
+      TeamLoad.fromJson(
+        await _rpc('set_team_development_effort_push', {
+          'target_plan_id': plan.id,
+          'turn_on': on,
+        }),
+      );
 
   @override
   Future<SeasonPlan> setKpiMatchValue(

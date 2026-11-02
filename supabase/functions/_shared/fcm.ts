@@ -17,6 +17,9 @@ export type PushContent = {
   response?: { callup_id: string; token: string } | null;
   /// The single-use token for replying to a message from its notification.
   reply?: { thread_id: string; token: string } | null;
+  /// The token for answering the effort question (1–10) from the
+  /// notification after a training.
+  effort?: { event_id: string; token: string } | null;
   language?: string;
 };
 
@@ -66,13 +69,34 @@ export function safeRoute(route: unknown): string {
 const CALLUP_ID = /^[0-9a-fA-F-]{36}$/;
 const RESPONSE_TOKEN = /^[0-9a-f]{64}$/;
 
-/// An answerable callup or a message one can reply to is a data message on
-/// Android: the app draws it with its buttons ("Kommer" / "Kan inte…",
-/// "Svara"). Everything else (and iOS, until its actions exist) is a plain
-/// notification.
+/// An answerable callup, a message one can reply to or the effort question
+/// is a data message on Android: the app draws it with its buttons
+/// ("Kommer" / "Kan inte…", "Svara", 1–10). Everything else (and iOS,
+/// until its actions exist) is a plain notification.
 export function fcmMessage(token: string, content: PushContent, platform = "android") {
   const response = content.response;
   const reply = content.reply;
+  const effort = content.effort;
+  if (
+    platform === "android" && effort &&
+    CALLUP_ID.test(effort.event_id) && RESPONSE_TOKEN.test(effort.token)
+  ) {
+    return {
+      message: {
+        token,
+        data: {
+          kind: "effort",
+          title: content.title,
+          body: content.body,
+          route: safeRoute(content.route),
+          event_id: effort.event_id,
+          effort_token: effort.token,
+          language: content.language === "en" ? "en" : "sv",
+        },
+        android: { priority: "HIGH" },
+      },
+    };
+  }
   if (
     platform === "android" && reply &&
     CALLUP_ID.test(reply.thread_id) && RESPONSE_TOKEN.test(reply.token)

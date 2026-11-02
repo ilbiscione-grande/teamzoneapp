@@ -122,6 +122,70 @@ class CallupPush {
         );
 }
 
+/// The effort question after a training (a data message, see
+/// notification-worker): the app draws it with the answers 1–10. Null for
+/// anything else.
+class EffortPush {
+  const EffortPush._({
+    required this.title,
+    required this.body,
+    required this.route,
+    required this.eventId,
+    required this.token,
+    required this.english,
+  });
+
+  static final _eventId = RegExp(r'^[0-9a-fA-F-]{36}$');
+  static final _token = RegExp(r'^[0-9a-f]{64}$');
+
+  static EffortPush? parse(Map<String, dynamic> data) {
+    final route = PushRoutes.safe(data['route']);
+    final eventId = data['event_id'], token = data['effort_token'];
+    final title = data['title'], body = data['body'];
+    if (data['kind'] != 'effort' ||
+        route == null ||
+        !route.startsWith('/calendar/event/') ||
+        eventId is! String ||
+        !_eventId.hasMatch(eventId) ||
+        token is! String ||
+        !_token.hasMatch(token) ||
+        title is! String ||
+        body is! String) {
+      return null;
+    }
+    return EffortPush._(
+      title: title,
+      body: body,
+      route: route,
+      eventId: eventId,
+      token: token,
+      english: data['language'] == 'en',
+    );
+  }
+
+  final String title, body, route, eventId, token;
+  final bool english;
+
+  /// Stable per training.
+  int get notificationId => _stableId('effort:$eventId');
+
+  EffortNotificationTexts get texts => english
+      ? const EffortNotificationTexts(
+          hint: '1 = very easy · 10 = as hard as it gets',
+          sent: 'Thanks! You answered {rating}',
+          gone: "This question can't be answered here any more",
+          failed: "The answer wasn't sent – open the training",
+          locked: 'Unlock the phone to answer',
+        )
+      : const EffortNotificationTexts(
+          hint: '1 = mycket lätt · 10 = så hårt det går',
+          sent: 'Tack! Du svarade {rating}',
+          gone: 'Frågan kan inte besvaras här längre',
+          failed: 'Svaret skickades inte – öppna träningen',
+          locked: 'Lås upp telefonen för att svara',
+        );
+}
+
 /// A message push one can reply to (a data message, see notification-worker):
 /// the app draws it with "Svara". Null for anything else.
 class MessagePush {
@@ -262,6 +326,21 @@ Future<void> _showPush(
       endpoint: '${environment.supabaseUrl}/functions/v1/push-callup-response',
       apiKey: environment.supabasePublishableKey,
       texts: callup.texts,
+    );
+    return;
+  }
+  final effort = EffortPush.parse(message.data);
+  if (effort != null && environment.supabaseUrl.isNotEmpty) {
+    await TeamzoneNotifications.showEffort(
+      id: effort.notificationId,
+      title: effort.title,
+      body: effort.body,
+      route: effort.route,
+      token: effort.token,
+      idempotencyKey: _randomUuid(),
+      endpoint: '${environment.supabaseUrl}/functions/v1/push-effort-response',
+      apiKey: environment.supabasePublishableKey,
+      texts: effort.texts,
     );
     return;
   }

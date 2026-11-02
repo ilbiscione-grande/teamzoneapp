@@ -64,6 +64,10 @@ public final class TeamzoneNotificationsPlugin
             call.argument("replyHint"));
         result.success(null);
         break;
+      case "showEffort":
+        CallupNotifications.showEffort(context, actionValues(call), call.argument("hint"));
+        result.success(null);
+        break;
       case "takeLaunchRoute":
         String route = launchRoute;
         launchRoute = null;

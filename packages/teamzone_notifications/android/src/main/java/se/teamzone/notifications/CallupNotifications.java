@@ -8,21 +8,25 @@ import android.app.RemoteInput;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.drawable.Icon;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.widget.RemoteViews;
 
 /**
  * Builds TeamZone's notifications. Lock-screen text is what the server sent
  * (type + activity, never names or free text). A callup that can be answered
  * gets "Kommer" (answered here, after unlock) and "Kan inte…" (opens the
  * event, since a decline needs a reason); a message one can reply to gets
- * "Svara" with a text field (sent after unlock).
+ * "Svara" with a text field (sent after unlock); the effort question after
+ * a training gets the answers 1–10 (sent after unlock).
  */
 final class CallupNotifications {
   static final String CHANNEL_ID = "teamzone_push";
   static final String EXTRA_ROUTE = "se.teamzone.notifications.ROUTE";
   static final String KIND_CALLUP = "callup";
   static final String KIND_REPLY = "reply";
+  static final String KIND_EFFORT = "effort";
 
   // Keys of the action broadcast; everything the receiver needs to send and
   // to replace the notification afterwards.
@@ -40,6 +44,12 @@ final class CallupNotifications {
   static final String KEY_FAILED = "failedTitle";
   static final String KEY_LOCKED = "lockedTitle";
   static final String KEY_REPLY = "reply";
+  static final String KEY_RATING = "rating";
+
+  /** The answer buttons 1–10 of the effort question, in both layouts. */
+  private static final int[] EFFORT_BUTTONS = {
+      R.id.effort_1, R.id.effort_2, R.id.effort_3, R.id.effort_4, R.id.effort_5,
+      R.id.effort_6, R.id.effort_7, R.id.effort_8, R.id.effort_9, R.id.effort_10};
 
   private CallupNotifications() {}
 
@@ -94,6 +104,40 @@ final class CallupNotifications {
         .addRemoteInput(new RemoteInput.Builder(KEY_REPLY).setLabel(replyHint).build());
     requireUnlock(reply);
     builder.addAction(reply.build());
+    manager(context).notify(id, builder.build());
+  }
+
+  /**
+   * The effort question after a training: the answers 1–10 as buttons in
+   * the notification's own layout (one row collapsed, two expanded), since
+   * standard actions stop at three. A tap sends the answer (after unlock).
+   */
+  static void showEffort(Context context, Bundle values, String hint) {
+    int id = values.getInt(KEY_ID);
+    values.putString(KEY_KIND, KIND_EFFORT);
+    String title = values.getString(KEY_TITLE);
+    String body = values.getString(KEY_BODY);
+    RemoteViews small = new RemoteViews(context.getPackageName(), R.layout.teamzone_effort_small);
+    RemoteViews big = new RemoteViews(context.getPackageName(), R.layout.teamzone_effort);
+    small.setTextViewText(R.id.effort_title, title);
+    big.setTextViewText(R.id.effort_title, title);
+    big.setTextViewText(R.id.effort_body, body);
+    big.setTextViewText(R.id.effort_hint, hint);
+    for (int rating = 1; rating <= EFFORT_BUTTONS.length; rating++) {
+      Bundle answer = new Bundle(values);
+      answer.putInt(KEY_RATING, rating);
+      Intent intent = new Intent(context, PushActionReceiver.class).putExtras(answer)
+          // Its own data per answer, so the ten intents never replace each other.
+          .setData(Uri.parse("teamzone-effort://" + id + "/" + rating));
+      PendingIntent tap = PendingIntent.getBroadcast(context, id * 4 + 3, intent,
+          PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+      small.setOnClickPendingIntent(EFFORT_BUTTONS[rating - 1], tap);
+      big.setOnClickPendingIntent(EFFORT_BUTTONS[rating - 1], tap);
+    }
+    Notification.Builder builder = base(context, id, title, body, values.getString(KEY_ROUTE))
+        .setStyle(new Notification.DecoratedCustomViewStyle())
+        .setCustomContentView(small)
+        .setCustomBigContentView(big);
     manager(context).notify(id, builder.build());
   }
 

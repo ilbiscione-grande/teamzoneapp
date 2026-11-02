@@ -297,6 +297,34 @@ class _TdpTeamLoadState extends State<_TdpTeamLoad> {
                           ),
                         ),
                       ),
+                    if (widget.controller.canEdit) ...[
+                      const Divider(),
+                      SwitchListTile(
+                        key: const Key('tdp-effort-push'),
+                        contentPadding: const EdgeInsets.only(right: 8),
+                        value: load.settings.effortPush,
+                        onChanged: (on) => setState(() {
+                          _load = widget.controller.services.setEffortPush(
+                            widget.plan,
+                            on,
+                          );
+                        }),
+                        title: Text(
+                          _tdpText(
+                            context,
+                            'Fråga spelarna efter träningen',
+                            'Ask the players after training',
+                          ),
+                        ),
+                        subtitle: Text(
+                          _tdpText(
+                            context,
+                            'När passet slutar får spelare från 13 år som var med en notis: hur ansträngande var det, 1–10. Svaren syns här.',
+                            'When the session ends, players from 13 who were there get a notification: how hard was it, 1–10. The answers show here.',
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -29,6 +29,20 @@ class MessageNotificationTexts {
   final String reply, hint, sent, gone, failed, locked;
 }
 
+/// Texts for the effort question after a training, in the recipient's
+/// language; [sent] may name the answer as `{rating}`.
+class EffortNotificationTexts {
+  const EffortNotificationTexts({
+    required this.hint,
+    required this.sent,
+    required this.gone,
+    required this.failed,
+    required this.locked,
+  });
+
+  final String hint, sent, gone, failed, locked;
+}
+
 /// TeamZone's Android notifications (the plugin in android/): plain ones,
 /// callups with "Kommer" (answered in the notification after unlock) and
 /// "Kan inte…" (opens the event), and messages with "Svara" (a text field,
@@ -110,6 +124,34 @@ abstract final class TeamzoneNotifications {
     'apiKey': apiKey,
     'replyLabel': texts.reply,
     'replyHint': texts.hint,
+    'sentTitle': texts.sent,
+    'goneTitle': texts.gone,
+    'failedTitle': texts.failed,
+    'lockedTitle': texts.locked,
+  });
+
+  /// The effort question with the answers 1–10 as buttons; [endpoint] is
+  /// push-effort-response and [token] the token for this training.
+  static Future<void> showEffort({
+    required int id,
+    required String title,
+    required String body,
+    required String route,
+    required String token,
+    required String idempotencyKey,
+    required String endpoint,
+    required String apiKey,
+    required EffortNotificationTexts texts,
+  }) => _methods.invokeMethod<void>('showEffort', {
+    'id': id,
+    'title': title,
+    'body': body,
+    'route': route,
+    'token': token,
+    'idempotencyKey': idempotencyKey,
+    'endpoint': endpoint,
+    'apiKey': apiKey,
+    'hint': texts.hint,
     'sentTitle': texts.sent,
     'goneTitle': texts.gone,
     'failedTitle': texts.failed,
