@@ -842,6 +842,12 @@ String _factText(
           ? '${strings.isSwedish ? 'Mål' : 'Goal'} $opponentName'
           : '${strings.isSwedish ? 'Mål' : 'Goal'} ${player == null ? '' : name(player)}'
                 '${second == null ? '' : ' (assist ${name(second)})'}',
+    'penalty' when (detail['result'] ?? 'scored') == 'scored' => [
+      strings.isSwedish ? 'Straffmål' : 'Penalty goal',
+      ?who,
+      if (detail['comment'] case final String comment when comment.isNotEmpty)
+        comment,
+    ].join(' · '),
     'substitution' =>
       '${name(player)} ${strings.isSwedish ? 'ut' : 'off'} · ${name(second)} ${strings.isSwedish ? 'in' : 'on'}',
     'note' => detail['text'] as String? ?? strings.feature('Anteckning'),

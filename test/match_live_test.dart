@@ -34,6 +34,16 @@ void main() {
       expect(onPitch(['a', 'b'], const []), ['a', 'b']);
     });
 
+    test('a red card takes the player off with no one on', () {
+      final facts = [
+        _fact('card', 20, player: 'a', detail: {'color': 'red'}),
+        _fact('card', 25, player: 'b', detail: {'color': 'yellow'}),
+        _fact('card', 30, side: 'opponent', detail: {'color': 'red'}),
+        _fact('substitution', 40, player: 'b', second: 'c'),
+      ];
+      expect(onPitch(['a', 'b'], facts), ['c']);
+    });
+
     test('a planned substitution is done once a substitution carries it', () {
       final facts = [
         _fact('substitution', 30, detail: {'plan_id': 'p1'}),

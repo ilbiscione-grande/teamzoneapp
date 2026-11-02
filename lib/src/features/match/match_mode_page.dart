@@ -1444,17 +1444,32 @@ class _MatchModePageState extends State<_MatchModePage>
 }
 
 class _GoalChoice {
-  const _GoalChoice({required this.minute, this.scorerId, this.assistId});
+  const _GoalChoice({
+    required this.minute,
+    this.scorerId,
+    this.assistId,
+    this.penalty = false,
+  });
   final int minute;
   final String? scorerId, assistId;
+
+  /// Scored from the penalty spot: a penalty with no assist.
+  final bool penalty;
 }
 
 /// "Vem gjorde målet?" then an optional assist: tapping a name advances,
 /// so a goal takes three taps (+, scorer, assist or "Ingen assist").
+/// With [offerPenalty] the goal can be marked as a penalty, which skips the
+/// assist.
 class _GoalSheet extends StatefulWidget {
-  const _GoalSheet({required this.players, required this.initialMinute});
+  const _GoalSheet({
+    required this.players,
+    required this.initialMinute,
+    this.offerPenalty = false,
+  });
   final List<MatchRosterMember> players;
   final int initialMinute;
+  final bool offerPenalty;
 
   @override
   State<_GoalSheet> createState() => _GoalSheetState();
@@ -1463,7 +1478,7 @@ class _GoalSheet extends StatefulWidget {
 class _GoalSheetState extends State<_GoalSheet> {
   late int _minute = widget.initialMinute;
   String _query = '';
-  bool _choosingAssist = false;
+  bool _choosingAssist = false, _penalty = false;
   String? _scorerId;
 
   Future<void> _editMinute() async {
@@ -1476,8 +1491,11 @@ class _GoalSheetState extends State<_GoalSheet> {
 
   void _pick(String? id) {
     if (!_choosingAssist) {
-      if (id == null) {
-        Navigator.pop(context, _GoalChoice(minute: _minute));
+      if (id == null || _penalty) {
+        Navigator.pop(
+          context,
+          _GoalChoice(minute: _minute, scorerId: id, penalty: _penalty),
+        );
         return;
       }
       setState(() {
@@ -1548,6 +1566,19 @@ class _GoalSheetState extends State<_GoalSheet> {
                   ],
                 ),
               ),
+              if (widget.offerPenalty && !_choosingAssist)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilterChip(
+                      key: const Key('goal-sheet-penalty'),
+                      label: Text(AppStrings.of(context).feature('Straffmål')),
+                      selected: _penalty,
+                      onSelected: (value) => setState(() => _penalty = value),
+                    ),
+                  ),
+                ),
               if (scorerName != null)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),

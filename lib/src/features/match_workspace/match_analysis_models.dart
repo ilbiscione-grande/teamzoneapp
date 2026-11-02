@@ -34,7 +34,8 @@ int periodOf(int minute, List<int> periodMinutes) {
 }
 
 /// Minutes on the pitch per player: the starters from 0, each of our
-/// substitutions ending one spell and starting another, up to [end].
+/// substitutions ending one spell and starting another, and a red card
+/// ending one, up to [end].
 Map<String, int> playingMinutes(
   List<String> starters,
   List<Map<String, dynamic>> facts,
@@ -42,23 +43,12 @@ Map<String, int> playingMinutes(
 ) {
   final since = <String, int>{for (final id in starters) id: 0};
   final minutes = <String, int>{};
-  final subs =
-      activeFacts(facts)
-          .where(
-            (fact) =>
-                fact['fact_type'] == 'substitution' &&
-                fact['side'] != 'opponent',
-          )
-          .toList()
-        ..sort(
-          (a, b) => ((a['minute'] as num?) ?? 0).compareTo(
-            (b['minute'] as num?) ?? 0,
-          ),
-        );
-  for (final sub in subs) {
+  for (final sub in pitchChanges(facts)) {
     final at = ((sub['minute'] as num?)?.toInt() ?? 0).clamp(0, end);
     final off = sub['club_person_id'] as String?;
-    final on = sub['secondary_club_person_id'] as String?;
+    final on = isSendingOff(sub)
+        ? null
+        : sub['secondary_club_person_id'] as String?;
     if (off != null && since.containsKey(off)) {
       minutes[off] = (minutes[off] ?? 0) + at - since.remove(off)!;
     }
@@ -83,6 +73,9 @@ class PlayerMatchStats {
       yellow = 0,
       red = 0,
       saves = 0;
+
+  /// Of [goals], those scored from the penalty spot.
+  int penaltyGoals = 0;
 
   bool get started => _started;
   bool _started = false;
@@ -131,6 +124,19 @@ List<PlayerMatchStats> playerStats({
           if (detail['color'] == 'yellow') stat.yellow += 1;
           if (detail['color'] == 'red') stat.red += 1;
         }
+      case 'penalty':
+        if (player != null) {
+          final stat = of(player)..shots += 1;
+          switch (detail['result'] ?? 'scored') {
+            case 'scored':
+              stat
+                ..goals += 1
+                ..penaltyGoals += 1
+                ..onTarget += 1;
+            case 'saved':
+              stat.onTarget += 1;
+          }
+        }
       case 'save':
         if (player != null) of(player).saves += 1;
     }
@@ -153,11 +159,15 @@ typedef TeamTotals = ({
   int yellow,
   int red,
   int saves,
+
+  /// Of [goals], those scored from the penalty spot.
+  int penaltyGoals,
 });
 
 TeamTotals teamTotals(List<Map<String, dynamic>> facts, String side) {
   var goals = 0, shots = 0, onTarget = 0, corners = 0, freeKicks = 0;
   var penalties = 0, fouls = 0, yellow = 0, red = 0, saves = 0;
+  var penaltyGoals = 0;
   for (final fact in activeFacts(facts)) {
     if ((fact['side'] ?? 'us') != side) continue;
     final detail = (fact['detail'] as Map?) ?? const {};
@@ -174,7 +184,17 @@ TeamTotals teamTotals(List<Map<String, dynamic>> facts, String side) {
       case 'free_kick':
         freeKicks += 1;
       case 'penalty':
+        // A penalty is a shot: scored counts as a goal, as in the score.
         penalties += 1;
+        shots += 1;
+        switch (detail['result'] ?? 'scored') {
+          case 'scored':
+            goals += 1;
+            penaltyGoals += 1;
+            onTarget += 1;
+          case 'saved':
+            onTarget += 1;
+        }
       case 'card':
         fouls += 1;
         if (detail['color'] == 'yellow') yellow += 1;
@@ -194,5 +214,6 @@ TeamTotals teamTotals(List<Map<String, dynamic>> facts, String side) {
     yellow: yellow,
     red: red,
     saves: saves,
+    penaltyGoals: penaltyGoals,
   );
 }

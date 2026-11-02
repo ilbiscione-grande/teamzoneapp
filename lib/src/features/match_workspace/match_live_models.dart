@@ -97,25 +97,39 @@ LiveEventKind? liveEventKind(String? type) =>
 Iterable<Map<String, dynamic>> activeFacts(List<Map<String, dynamic>> facts) =>
     facts.where((fact) => fact['state'] != 'voided');
 
+/// Whether [fact] sends one of our players off: a red card.
+bool isSendingOff(Map<String, dynamic> fact) =>
+    fact['fact_type'] == 'card' &&
+    fact['side'] != 'opponent' &&
+    (fact['detail'] as Map?)?['color'] == 'red';
+
+/// Our substitutions and sendings-off, by minute: what changes who is on
+/// the pitch.
+List<Map<String, dynamic>> pitchChanges(List<Map<String, dynamic>> facts) =>
+    activeFacts(facts)
+        .where(
+          (fact) =>
+              (fact['fact_type'] == 'substitution' &&
+                  fact['side'] != 'opponent') ||
+              isSendingOff(fact),
+        )
+        .toList()
+      ..sort(
+        (a, b) =>
+            ((a['minute'] as num?) ?? 0).compareTo((b['minute'] as num?) ?? 0),
+      );
+
 /// Who is on the pitch now: the starters, then each substitution in order
-/// (player_id off, secondary player on).
+/// (player_id off, secondary player on); a red card takes the player off
+/// with no one on.
 List<String> onPitch(List<String> starters, List<Map<String, dynamic>> facts) {
   final pitch = [...starters];
-  final subs =
-      activeFacts(facts)
-          .where(
-            (fact) =>
-                fact['fact_type'] == 'substitution' &&
-                fact['side'] != 'opponent',
-          )
-          .toList()
-        ..sort(
-          (a, b) => ((a['minute'] as num?) ?? 0).compareTo(
-            (b['minute'] as num?) ?? 0,
-          ),
-        );
-  for (final sub in subs) {
+  for (final sub in pitchChanges(facts)) {
     final off = sub['club_person_id'] as String?;
+    if (isSendingOff(sub)) {
+      pitch.remove(off);
+      continue;
+    }
     final on = sub['secondary_club_person_id'] as String?;
     final at = off == null ? -1 : pitch.indexOf(off);
     if (on != null && pitch.contains(on)) continue;

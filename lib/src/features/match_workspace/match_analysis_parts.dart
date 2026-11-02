@@ -27,6 +27,7 @@ class _AnalysisSummary extends StatelessWidget {
       ('Hörnor', us.corners, them.corners),
       ('Frisparkar', us.freeKicks, them.freeKicks),
       ('Straffar', us.penalties, them.penalties),
+      ('Straffmål', us.penaltyGoals, them.penaltyGoals),
       ('Fouls', us.fouls, them.fouls),
       ('Gula kort', us.yellow, them.yellow),
       ('Röda kort', us.red, them.red),
@@ -367,7 +368,12 @@ class _AnalysisPlayers extends StatelessWidget {
                       chip(
                         Icons.sports_soccer,
                         stat.goals,
-                        AppStrings.of(context).feature('Mål'),
+                        stat.penaltyGoals == 0
+                            ? AppStrings.of(context).feature('Mål')
+                            : AppStrings.of(context).formatFeature(
+                                'Mål ({count} på straff)',
+                                {'count': stat.penaltyGoals},
+                              ),
                       ),
                     if (stat.assists > 0)
                       chip(

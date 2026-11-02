@@ -802,6 +802,8 @@ class AppStrings {
     'Hörnor': 'Corners',
     'Frisparkar': 'Free kicks',
     'Straffar': 'Penalties',
+    'Straffmål': 'Penalty goals',
+    'Mål ({count} på straff)': 'Goals ({count} from penalties)',
     'Fouls': 'Fouls',
     'Gula kort': 'Yellow cards',
     'Röda kort': 'Red cards',

@@ -130,5 +130,47 @@ void main() {
       );
       expect([them.corners, them.fouls, them.red], [1, 1, 1]);
     });
+
+    test('a scored penalty is a goal, told apart as a penalty goal', () {
+      final facts = [
+        _fact('goal', 10, player: 'a'),
+        _fact('penalty', 20, player: 'a', detail: {'result': 'scored'}),
+        _fact('penalty', 30, player: 'b', detail: {'result': 'saved'}),
+        _fact('penalty', 40, player: 'b', detail: {'result': 'missed'}),
+        _fact('penalty', 50, side: 'opponent', detail: {'result': 'scored'}),
+      ];
+      final us = teamTotals(facts, 'us');
+      final them = teamTotals(facts, 'opponent');
+      expect(
+        [us.goals, us.penaltyGoals, us.penalties, us.shots, us.onTarget],
+        [2, 1, 3, 4, 3],
+      );
+      expect([them.goals, them.penaltyGoals], [1, 1]);
+      final stats = {
+        for (final s in playerStats(
+          starters: ['a', 'b'],
+          facts: facts,
+          end: 60,
+        ))
+          s.personId: s,
+      };
+      expect(
+        [stats['a']!.goals, stats['a']!.penaltyGoals, stats['a']!.shots],
+        [2, 1, 2],
+      );
+      expect(
+        [stats['b']!.goals, stats['b']!.shots, stats['b']!.onTarget],
+        [0, 2, 1],
+      );
+    });
+
+    test('a red card ends the player\'s minutes with no one on', () {
+      final facts = [
+        _fact('card', 25, player: 'a', detail: {'color': 'red'}),
+        _fact('card', 30, player: 'b', detail: {'color': 'yellow'}),
+        _fact('card', 35, side: 'opponent', detail: {'color': 'red'}),
+      ];
+      expect(playingMinutes(['a', 'b'], facts, 60), {'a': 25, 'b': 60});
+    });
   });
 }

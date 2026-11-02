@@ -150,12 +150,17 @@ class _MatchLiveViewState extends State<_MatchLiveView>
           text.contains('42501') ||
           text.contains('not_found') ||
           text.contains('permission denied');
+      final locked = text.contains('result_locked');
       setState(() {
         _busy = false;
         _error = denied
             ? 'Du saknar behörighet att ändra matchen.'
+            : locked
+            ? 'Resultatet är fastställt efter slutsignal. Ett mål kan inte tas '
+                  'bort eller ändras så att resultatet ändras. Rätta resultatet '
+                  'med orsak på matchens sida i kalendern i stället.'
             : 'Ändringen gick inte igenom. Matchen kan ha ändrats av en annan ledare.';
-        _retry = denied ? null : () => _run(action);
+        _retry = denied || locked ? null : () => _run(action);
       });
       unawaited(_refresh());
       return false;
@@ -304,9 +309,34 @@ class _MatchLiveViewState extends State<_MatchLiveView>
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => _GoalSheet(players: players, initialMinute: _minuteNow),
+      builder: (_) => _GoalSheet(
+        players: players,
+        initialMinute: _minuteNow,
+        offerPenalty: true,
+      ),
     );
     if (choice == null || !mounted) return;
+    // A penalty goal is a scored penalty, which the score counts as a goal.
+    if (choice.penalty) {
+      final ok = await _run(
+        () => widget.match.recordEvent(
+          key,
+          _eventId,
+          type: 'penalty',
+          minute: choice.minute,
+          side: 'us',
+          playerId: choice.scorerId,
+          detail: const {'result': 'scored'},
+        ),
+      );
+      if (ok && mounted) {
+        _undoSnack(
+          '${AppStrings.of(context).feature('Straffmål')} ${choice.minute}′',
+          key,
+        );
+      }
+      return;
+    }
     final placed = await showDialog<((double, double)?, bool)>(
       context: context,
       builder: (_) => const _GoalLocationDialog(),
@@ -511,7 +541,9 @@ class _MatchLiveViewState extends State<_MatchLiveView>
               ? _opponentName
               : widget.sides.team,
           personName: _name,
-          canDelete: true,
+          // After full time a goal stays: the result is corrected with a
+          // reason instead.
+          canDelete: _state == 'live' || fact['fact_type'] != 'goal',
         ),
       );
       if (edit == null || !mounted) return;
