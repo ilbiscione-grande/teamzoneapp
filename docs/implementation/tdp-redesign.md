@@ -1,6 +1,6 @@
 # Team Development Plan: ny utformning – plan
 
-**Status: riktningen beslutad 2026-11-01. Steg 1–4 är driftsatta på webben 2026-11-02, och steg 5 är byggt lokalt.** Skissen som godkändes ligger i [docs/ux/tdp-skiss.html](../ux/tdp-skiss.html). Den öppnas i en webbläsare.
+**Status: riktningen beslutad 2026-11-01. Steg 1–5 är driftsatta på webben 2026-11-02, och steg 6 är byggt.** Skissen som godkändes ligger i [docs/ux/tdp-skiss.html](../ux/tdp-skiss.html). Den öppnas i en webbläsare.
 
 Produktägaren vill göra om TDP från grunden. Det mesta av dagens funktion behålls, men sidan ska bli snyggare och lättare att använda. Modulen kändes mindre färdig än resten av appen.
 
@@ -85,6 +85,14 @@ Produktägaren vill göra om TDP från grunden. Det mesta av dagens funktion beh
    - **Granskning:** mallarnas och guidens texter är ett utkast som behöver granskas av någon med sportmetodisk kunskap innan de släpps till fler lag. Texterna är på svenska även när appen visas på engelska, eftersom de blir lagets egna texter.
    - **Inte byggt än:** bilder och länkar till Tacticsboard på en princip. Det kräver nya fält i databasen.
 6. **Nyckeltal från matcherna.**
+   *Byggd 2026-11-02. SQL:en `20270128090000_team_development_match_kpis.sql` är körd och loggad, med testet `supabase/tests/team_development_match_kpis.local.mjs`. Appkoden är inte driftsatt.*
+   - **Före steget** gjordes matchregistreringen klar: straffmål, rött kort, rättning och efterregistrering efter slutsignal, rättning av klockan, fälld spelare, andra gula kortet och självmål.
+   - **Källa:** ett nyckeltal kan hämta sina värden från matcherna i stället för att fyllas i för hand. Källorna är gjorda och insläppta mål, poäng, hållen nolla, avslut, avslut på mål, motståndarens avslut, hörnor, räddningar, gula kort och lagets egna Live-knappar.
+   - **Matcherna:** planen har med säsongens spelade matcher för laget (avslutade, inte inställda) och vad de räknar till. Resultatet räknas för alla, även matcher med bara slutresultat. Det som räknas ur händelserna kräver att händelserna registrerades, live eller i efterhand.
+   - **Rätta för hand:** ett tryck på en match i nyckeltalets lista sätter värdet för hand i stället för det räknade, och "Använd matchens värde" tar bort det igen. En match utan registrerade händelser kan få sitt värde för hand. Värden utan match läggs till för hand som tidigare.
+   - **Beslut om räknarna (punkt 11 i genomgången av matchläget):** TDP:s nyckeltal utgår från matchernas händelser och lagets egna knappar. Nyckeltalsmålen per match från Förberedelser är kvar på händelsen och kopplas inte in.
+   - **Inte byggt än:** speltid summerad över säsongen (punkt 10) kommer med belastningen i steg 8.
+   - **Säsonger (2026-11-02):** säsongen som visas står i modulens rubrik på alla sidor, med Pågår, Kommande eller Avslutad och datumen. Där byter man säsong och skapar en ny. Visas en annan säsong än den som pågår, står det överst med en knapp tillbaka. En ny säsong kan utgå från den som visas: inriktningen fylls i och spelidén och nyckeltalen kopieras (utan värden). Mål, perioder och avstämningar stannar i sin säsong. SQL: `20270129090000_team_development_copy_season.sql`, körd och loggad.
 7. **Övningsförslag ur biblioteket.**
 8. **Belastning och rekommendationer**, när PAR-METHOD-01 är beslutad och speltid per spelare finns.
 9. **Skador**, när PAR-METHOD-02 är beslutad.

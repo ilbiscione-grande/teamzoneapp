@@ -190,7 +190,6 @@ class _TdpHomeHeader extends StatelessWidget {
     final today = DateUtils.dateOnly(DateTime.now());
     final total = _tdpDaysBetween(plan.startsOn, plan.endsOn) + 1;
     final gone = (_tdpDaysBetween(plan.startsOn, today) + 1).clamp(0, total);
-    final seasons = controller.data?.seasons ?? const <SeasonSummary>[];
     final progress = today.isBefore(plan.startsOn)
         ? AppStrings.of(context).formatFeature('Börjar om {days} dagar', {
             'days': _tdpDaysBetween(today, plan.startsOn),
@@ -234,32 +233,6 @@ class _TdpHomeHeader extends StatelessWidget {
                         ),
                       ],
                     ),
-                  ),
-                  PopupMenuButton<String>(
-                    key: const Key('tdp-season-menu'),
-                    tooltip: AppStrings.of(context).feature('Säsonger'),
-                    icon: const Icon(Icons.expand_more),
-                    onSelected: (value) => switch (value) {
-                      '_new' => controller.createSeason(context),
-                      _ => controller.reload(planId: value),
-                    },
-                    itemBuilder: (_) => [
-                      for (final season in seasons)
-                        CheckedPopupMenuItem(
-                          value: season.id,
-                          checked: season.id == plan.id,
-                          child: Text(season.title),
-                        ),
-                      if (controller.canEdit) ...[
-                        const PopupMenuDivider(),
-                        PopupMenuItem(
-                          value: '_new',
-                          child: Text(
-                            AppStrings.of(context).feature('Ny säsong'),
-                          ),
-                        ),
-                      ],
-                    ],
                   ),
                 ],
               ),

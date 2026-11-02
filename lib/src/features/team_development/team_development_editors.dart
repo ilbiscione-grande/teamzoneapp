@@ -6,6 +6,10 @@ typedef _SeasonDraft = ({
   DateTime endsOn,
   String vision,
   int? checkinEveryDays,
+  // A new season started from an earlier one: what follows along.
+  String? fromPlanId,
+  bool copyPrinciples,
+  bool copyKpis,
 });
 
 /// A focus to start from for each phase, as the old app's period templates.
@@ -124,6 +128,7 @@ abstract final class _SeasonDialog {
     BuildContext context, {
     SeasonPlan? plan,
     DateTime? after,
+    SeasonPlan? from,
   }) {
     final year = DateTime.now().year;
     var starts =
@@ -138,11 +143,25 @@ abstract final class _SeasonDialog {
     // interval is kept as it is.
     final every = plan?.checkinEveryDays;
     final first = DateTime(year - 2), last = DateTime(year + 3, 12, 31);
+    // A new season starts from [from] unless the leader says otherwise;
+    // a season with nothing to bring along offers nothing.
+    final source =
+        plan == null &&
+            from != null &&
+            (from.vision.trim().isNotEmpty ||
+                from.principles.isNotEmpty ||
+                from.kpis.isNotEmpty)
+        ? from
+        : null;
+    var useSource = source != null;
+    var copyVision = source?.vision.trim().isNotEmpty ?? false;
+    var copyPrinciples = source?.principles.isNotEmpty ?? false;
+    var copyKpis = source?.kpis.isNotEmpty ?? false;
     return showDialog<_SeasonDraft>(
       context: context,
       builder: (context) => _TdpTexts(
         first: initialTitle,
-        second: plan?.vision ?? '',
+        second: plan?.vision ?? (copyVision ? source!.vision : ''),
         builder: (context, title, vision) => StatefulBuilder(
           builder: (context, setState) {
             final days = _tdpDaysBetween(starts, ends);
@@ -201,6 +220,99 @@ abstract final class _SeasonDialog {
                           ),
                         ),
                       ),
+                    if (source != null) ...[
+                      const SizedBox(height: 12),
+                      CheckboxListTile(
+                        key: const Key('tdp-season-from'),
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        value: useSource,
+                        title: Text(
+                          _tdpText(
+                            context,
+                            'Utgå från ${source.title}',
+                            'Start from ${source.title}',
+                          ),
+                        ),
+                        subtitle: Text(
+                          _tdpText(
+                            context,
+                            'Det du väljer följer med och kan ändras. Mål, perioder och värden stannar i sin säsong.',
+                            'What you pick comes along and can be changed. Goals, periods and values stay in their season.',
+                          ),
+                        ),
+                        onChanged: (on) => setState(() {
+                          useSource = on ?? false;
+                          if (!useSource && vision.text == source.vision) {
+                            vision.clear();
+                          }
+                        }),
+                      ),
+                      if (useSource)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 32),
+                          child: Column(
+                            children: [
+                              for (final (key, label, count, value, set) in [
+                                (
+                                  'vision',
+                                  _tdpText(
+                                    context,
+                                    'Inriktningen',
+                                    'The vision',
+                                  ),
+                                  null,
+                                  copyVision,
+                                  (bool on) {
+                                    copyVision = on;
+                                    vision.text = on ? source.vision : '';
+                                  },
+                                ),
+                                (
+                                  'principles',
+                                  _tdpText(
+                                    context,
+                                    'Spelidén',
+                                    'The game model',
+                                  ),
+                                  source.principles.length,
+                                  copyPrinciples,
+                                  (bool on) => copyPrinciples = on,
+                                ),
+                                (
+                                  'kpis',
+                                  _tdpText(
+                                    context,
+                                    'Nyckeltalen',
+                                    'The key figures',
+                                  ),
+                                  source.kpis.length,
+                                  copyKpis,
+                                  (bool on) => copyKpis = on,
+                                ),
+                              ])
+                                CheckboxListTile(
+                                  key: ValueKey('tdp-season-from-$key'),
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  controlAffinity:
+                                      ListTileControlAffinity.leading,
+                                  value: value,
+                                  title: Text(
+                                    count == null ? label : '$label ($count)',
+                                  ),
+                                  onChanged:
+                                      key == 'vision' &&
+                                              source.vision.trim().isEmpty ||
+                                          count == 0
+                                      ? null
+                                      : (on) =>
+                                            setState(() => set(on ?? false)),
+                                ),
+                            ],
+                          ),
+                        ),
+                    ],
                     const SizedBox(height: 16),
                     TextField(
                       key: const Key('tdp-season-vision'),
@@ -242,6 +354,9 @@ abstract final class _SeasonDialog {
                           endsOn: ends,
                           vision: vision.text.trim(),
                           checkinEveryDays: every,
+                          fromPlanId: useSource ? source?.id : null,
+                          copyPrinciples: useSource && copyPrinciples,
+                          copyKpis: useSource && copyKpis,
                         ))
                       : null,
                   child: Text(

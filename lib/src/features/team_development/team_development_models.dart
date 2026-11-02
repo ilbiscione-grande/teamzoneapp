@@ -2,6 +2,8 @@
 /// a season, its periods and its goals.
 library;
 
+part 'team_development_match_values.dart';
+
 DateTime _date(Object? value) => DateTime.parse(value as String);
 
 /// A period's phase of the season.
@@ -199,6 +201,8 @@ class SeasonPlan {
     this.sharing = const PlanSharing(),
     this.updatedAt,
     this.updatedBy,
+    this.matches = const [],
+    this.matchButtons = const [],
   });
   factory SeasonPlan.fromJson(Map<String, dynamic> json) => SeasonPlan(
     id: json['id'] as String,
@@ -239,6 +243,15 @@ class SeasonPlan {
     sharing: PlanSharing.fromJson(
       Map<String, dynamic>.from(json['sharing'] as Map? ?? const {}),
     ),
+    matches: [
+      for (final row in (json['matches'] as List? ?? const []).whereType<Map>())
+        PlanMatch.fromJson(Map<String, dynamic>.from(row)),
+    ],
+    matchButtons: [
+      for (final row
+          in (json['match_buttons'] as List? ?? const []).whereType<Map>())
+        (id: row['id'] as String? ?? '', label: row['label'] as String? ?? ''),
+    ],
   );
   final String id, title, vision;
   final DateTime startsOn, endsOn;
@@ -262,6 +275,38 @@ class SeasonPlan {
 
   /// What the team's players and guardians see.
   final PlanSharing sharing;
+
+  /// The season's played matches, oldest first, with what they add up to.
+  final List<PlanMatch> matches;
+
+  /// The team's own Live buttons, which a key figure can count.
+  final List<({String id, String label})> matchButtons;
+
+  /// A key figure's values, newest first: with a source, one per played
+  /// match (the counted value, or the one set by hand for the match), and
+  /// the values added by hand.
+  List<KpiValue> valuesOfKpi(TeamKpi kpi) {
+    final source = kpi.source;
+    final own = checkinsOfKpi(kpi.id);
+    if (source == null) {
+      return [for (final checkin in own) KpiValue.of(checkin)];
+    }
+    return [
+      for (final match in matches)
+        if (own.where((c) => c.eventId == match.eventId).firstOrNull
+            case final set?)
+          KpiValue.of(set, match: match)
+        else if (match.valueOf(source) case final counted?)
+          KpiValue(
+            on: match.playedOn,
+            value: counted,
+            match: match,
+            counted: true,
+          ),
+      for (final checkin in own)
+        if (checkin.eventId == null) KpiValue.of(checkin),
+    ]..sort((a, b) => b.on.compareTo(a.on));
+  }
 
   List<TeamCheckin> checkinsOfGoal(String goalId) => [
     for (final checkin in checkins)
@@ -440,6 +485,7 @@ class TeamKpi {
     this.unit = '',
     this.target,
     this.higherIsBetter = true,
+    this.source,
   });
   factory TeamKpi.fromJson(Map<String, dynamic> json) => TeamKpi(
     id: json['id'] as String,
@@ -447,10 +493,15 @@ class TeamKpi {
     unit: json['unit'] as String? ?? '',
     target: (json['target'] as num?)?.toDouble(),
     higherIsBetter: json['higher_is_better'] != false,
+    source: json['source'] as String?,
   );
   final String id, title, unit;
   final double? target;
   final bool higherIsBetter;
+
+  /// What the matches count for it ([kpiSources], or `button:<id>`); null
+  /// when its values are added by hand.
+  final String? source;
 
   /// Whether [value] reaches the target; null without a target.
   bool? reaches(double value) => target == null
@@ -490,11 +541,13 @@ class TeamCheckin {
     this.value,
     this.note = '',
     this.createdBy,
+    this.eventId,
   });
   factory TeamCheckin.fromJson(Map<String, dynamic> json) => TeamCheckin(
     id: json['id'] as String,
     goalId: json['goal_id'] as String?,
     kpiId: json['kpi_id'] as String?,
+    eventId: json['event_id'] as String?,
     checkedOn: _date(json['checked_on']),
     status: CheckinStatus.from(json['status']),
     value: (json['value'] as num?)?.toDouble(),
@@ -503,6 +556,9 @@ class TeamCheckin {
   );
   final String id, note;
   final String? goalId, kpiId, createdBy;
+
+  /// The match a key figure's value was set for by hand.
+  final String? eventId;
   final DateTime checkedOn;
   final CheckinStatus? status;
   final double? value;

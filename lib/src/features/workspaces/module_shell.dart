@@ -24,12 +24,16 @@ class _ModuleShell extends StatefulWidget {
     required this.seed,
     required this.sections,
     this.subtitle,
+    this.actions = const [],
   });
   final String title;
   final String? subtitle;
   final IconData icon;
   final Color seed;
   final List<_ModuleSection> sections;
+
+  /// In the header, on every section: as which season the plan shows.
+  final List<Widget> actions;
 
   /// Opens a module over the whole app, above TeamZone's shell.
   static Future<void> open(BuildContext context, _ModuleShell shell) =>
@@ -84,6 +88,7 @@ class _ModuleShellState extends State<_ModuleShell> {
             subtitle: widget.subtitle,
             icon: widget.icon,
             seed: widget.seed,
+            actions: widget.actions,
           ),
           body: wide && sections.length > 1
               ? Row(
@@ -135,11 +140,13 @@ class _ModuleHeader extends StatelessWidget implements PreferredSizeWidget {
     required this.icon,
     required this.seed,
     this.subtitle,
+    this.actions = const [],
   });
   final String title;
   final String? subtitle;
   final IconData icon;
   final Color seed;
+  final List<Widget> actions;
 
   @override
   Size get preferredSize => const Size.fromHeight(64);
@@ -165,6 +172,7 @@ class _ModuleHeader extends StatelessWidget implements PreferredSizeWidget {
         onPressed: () => Navigator.of(context).maybePop(),
       ),
       titleSpacing: 0,
+      actions: actions,
       title: Row(
         children: [
           Icon(icon),

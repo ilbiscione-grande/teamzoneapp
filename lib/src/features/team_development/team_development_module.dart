@@ -30,6 +30,7 @@ abstract final class _TeamDevelopmentModule {
       _ModuleShell(
         title: 'Team Development Plan',
         subtitle: team.teamName,
+        actions: [_TdpSeasonSwitcher(controller: controller)],
         icon: Icons.event_note,
         seed: _ModuleShell.seeds[_key]!,
         sections: [
@@ -179,7 +180,11 @@ class _TdpController extends ChangeNotifier {
 
   Future<void> createSeason(BuildContext context) async {
     final last = data?.seasons.firstOrNull;
-    final draft = await _SeasonDialog.show(context, after: last?.endsOn);
+    final draft = await _SeasonDialog.show(
+      context,
+      after: last?.endsOn,
+      from: plan,
+    );
     if (draft == null || !context.mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     final strings = AppStrings.of(context);
@@ -191,6 +196,15 @@ class _TdpController extends ChangeNotifier {
         endsOn: draft.endsOn,
         vision: draft.vision,
       );
+      if (draft.fromPlanId case final from?
+          when draft.copyPrinciples || draft.copyKpis) {
+        await services.copySeason(
+          created,
+          fromPlanId: from,
+          principles: draft.copyPrinciples,
+          kpis: draft.copyKpis,
+        );
+      }
       await reload(planId: created.id);
       messenger.showSnackBar(
         SnackBar(
@@ -275,11 +289,15 @@ class _TdpFrame extends StatelessWidget {
           ? [_TdpFirstSeason(controller: controller)]
           : builder(plan);
       final first = plan == null ? null : top?.call(plan);
+      final elsewhere = plan == null
+          ? null
+          : _TdpOtherSeason(controller: controller, plan: plan);
       return RefreshIndicator(
         onRefresh: controller.reload,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           children: [
+            ?elsewhere,
             if (first != null) ...[first, const SizedBox(height: 16)],
             for (final child in children)
               Center(

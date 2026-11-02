@@ -51,6 +51,15 @@ abstract interface class TeamDevelopmentServices {
     required DateTime endsOn,
     required String vision,
   });
+
+  /// [plan] takes the principles and key figures (not their values) of
+  /// the team's season [fromPlanId], keeping what it has.
+  Future<SeasonPlan> copySeason(
+    SeasonPlan plan, {
+    required String fromPlanId,
+    required bool principles,
+    required bool kpis,
+  });
   Future<SeasonPlan> savePlan(
     SeasonPlan plan, {
     required String title,
@@ -118,8 +127,19 @@ abstract interface class TeamDevelopmentServices {
     required String unit,
     double? target,
     required bool higherIsBetter,
+    String? source,
   });
   Future<SeasonPlan> deleteKpi(SeasonPlan plan, String kpiId);
+
+  /// A key figure's value for a played match, set by hand in place of the
+  /// counted one; no [value] shows the counted one again.
+  Future<SeasonPlan> setKpiMatchValue(
+    SeasonPlan plan, {
+    required String kpiId,
+    required String eventId,
+    double? value,
+    String note = '',
+  });
 
   /// A check-in on a goal ([status]) or a key figure ([value]).
   Future<SeasonPlan> addCheckin(
@@ -168,6 +188,13 @@ class UnconfiguredTeamDevelopmentServices implements TeamDevelopmentServices {
     required DateTime startsOn,
     required DateTime endsOn,
     required String vision,
+  }) => Future.error(_error);
+  @override
+  Future<SeasonPlan> copySeason(
+    SeasonPlan plan, {
+    required String fromPlanId,
+    required bool principles,
+    required bool kpis,
   }) => Future.error(_error);
   @override
   Future<SeasonPlan> savePlan(
@@ -239,10 +266,19 @@ class UnconfiguredTeamDevelopmentServices implements TeamDevelopmentServices {
     required String unit,
     double? target,
     required bool higherIsBetter,
+    String? source,
   }) => Future.error(_error);
   @override
   Future<SeasonPlan> deleteKpi(SeasonPlan plan, String kpiId) =>
       Future.error(_error);
+  @override
+  Future<SeasonPlan> setKpiMatchValue(
+    SeasonPlan plan, {
+    required String kpiId,
+    required String eventId,
+    double? value,
+    String note = '',
+  }) => Future.error(_error);
   @override
   Future<SeasonPlan> addCheckin(
     SeasonPlan plan, {
@@ -331,6 +367,22 @@ class SupabaseTeamDevelopmentServices implements TeamDevelopmentServices {
       'starts': _day(startsOn),
       'ends': _day(endsOn),
       'vision': vision,
+    }),
+  );
+
+  @override
+  Future<SeasonPlan> copySeason(
+    SeasonPlan plan, {
+    required String fromPlanId,
+    required bool principles,
+    required bool kpis,
+  }) async => SeasonPlan.fromJson(
+    await _rpc('copy_team_development_season', {
+      'target_plan_id': plan.id,
+      'expected_revision': plan.revision,
+      'source_plan_id': fromPlanId,
+      'copy_principles': principles,
+      'copy_kpis': kpis,
     }),
   );
 
@@ -494,6 +546,7 @@ class SupabaseTeamDevelopmentServices implements TeamDevelopmentServices {
     required String unit,
     double? target,
     required bool higherIsBetter,
+    String? source,
   }) async => SeasonPlan.fromJson(
     await _rpc('save_team_development_kpi', {
       'target_plan_id': plan.id,
@@ -503,6 +556,24 @@ class SupabaseTeamDevelopmentServices implements TeamDevelopmentServices {
       'kpi_unit': unit,
       'kpi_target': target,
       'higher_better': higherIsBetter,
+      'kpi_source': source ?? '',
+    }),
+  );
+
+  @override
+  Future<SeasonPlan> setKpiMatchValue(
+    SeasonPlan plan, {
+    required String kpiId,
+    required String eventId,
+    double? value,
+    String note = '',
+  }) async => SeasonPlan.fromJson(
+    await _rpc('set_team_development_kpi_match_value', {
+      'target_plan_id': plan.id,
+      'target_kpi_id': kpiId,
+      'target_event_id': eventId,
+      'kpi_value': value,
+      'value_note': note,
     }),
   );
 

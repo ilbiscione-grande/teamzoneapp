@@ -690,7 +690,12 @@ void main() {
   });
 
   /// The module opened on a season with a block and no principles.
-  Future<_Plans> openWithoutModel(WidgetTester tester) async {
+  Future<_Plans> openWithoutModel(
+    WidgetTester tester, {
+    List<PlanMatch> matches = const [],
+    List<TeamPrinciple> principles = const [],
+    List<TeamKpi> kpis = const [],
+  }) async {
     tester.view.physicalSize = const Size(1440, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -702,6 +707,11 @@ void main() {
         startsOn: today.subtract(const Duration(days: 100)),
         endsOn: today.add(const Duration(days: 100)),
         revision: 1,
+        matches: matches,
+        principles: principles,
+        kpis: kpis,
+        vision: principles.isEmpty ? '' : 'Ett modigt lag',
+        matchButtons: const [(id: 'ballwin', label: 'Bollvinst')],
         periods: [
           DevelopmentPeriod(
             id: 'p1',
@@ -829,6 +839,204 @@ void main() {
     ]);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('a key figure takes its values from the matches', (tester) async {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final services = await openWithoutModel(
+      tester,
+      matches: [
+        PlanMatch(
+          eventId: 'm1',
+          playedOn: today.subtract(const Duration(days: 14)),
+          title: 'P2012 – Vetlanda IF',
+          registered: true,
+          metrics: const {'goals_for': 3, 'shots': 9},
+          buttons: const {'ballwin': 4},
+        ),
+        PlanMatch(
+          eventId: 'm2',
+          playedOn: today.subtract(const Duration(days: 7)),
+          title: 'Eksjö BK – P2012',
+          metrics: const {'goals_for': 1},
+        ),
+      ],
+    );
+    await tester.tap(find.text('Spelidé'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-new-kpi')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-kpi-source')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Från matcherna: Avslut').last);
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('tdp-kpi-title')))
+          .controller!
+          .text,
+      'Avslut',
+    );
+    await tester.enterText(find.byKey(const Key('tdp-kpi-target')), '8');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tdp-kpi-save')));
+    await tester.pumpAndSettle();
+    final kpi = services.plan!.kpis.single;
+    expect([kpi.source, kpi.unit], ['shots', 'st']);
+    // Only the registered match tells its shots.
+    expect([for (final v in services.plan!.valuesOfKpi(kpi)) v.value], [9]);
+
+    // The registered match's value corrected by hand.
+    await tester.ensureVisible(find.byKey(ValueKey('tdp-kpi-${kpi.id}')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(ValueKey('tdp-kpi-${kpi.id}')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('tdp-kpi-match-m2')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('tdp-kpi-match-m1')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('tdp-kpi-match-value')), '11');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tdp-kpi-match-save')));
+    await tester.pumpAndSettle();
+    var values = services.plan!.valuesOfKpi(kpi);
+    expect([values.single.value, values.single.counted], [11, false]);
+    expect(find.textContaining('satt för hand'), findsOneWidget);
+
+    // The match's own value again.
+    await tester.tap(find.byKey(const ValueKey('tdp-kpi-match-m1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-kpi-match-reset')));
+    await tester.pumpAndSettle();
+    values = services.plan!.valuesOfKpi(kpi);
+    expect([values.single.value, values.single.counted], [9, true]);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a new season starts from this one, and the header tells which', (
+    tester,
+  ) async {
+    final services = await openWithoutModel(
+      tester,
+      principles: const [
+        TeamPrinciple(
+          id: 'pr1',
+          area: PrincipleArea.buildUp,
+          title: 'Skapa spelbarhet',
+        ),
+      ],
+      kpis: const [
+        TeamKpi(id: 'k1', title: 'Avslut', unit: 'st', source: 'shots'),
+      ],
+    );
+    final first = services.plan!;
+    final switcher = find.byKey(const Key('tdp-season-switcher'));
+    expect(
+      find.descendant(of: switcher, matching: find.text('Säsong')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: switcher, matching: find.textContaining('Pågår')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('tdp-season-banner')), findsNothing);
+
+    // A new season from the switcher, starting from this one.
+    await tester.tap(switcher);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-season-new')));
+    await tester.pumpAndSettle();
+    for (final part in ['vision', 'principles', 'kpis']) {
+      expect(
+        tester
+            .widget<CheckboxListTile>(
+              find.byKey(ValueKey('tdp-season-from-$part')),
+            )
+            .value,
+        isTrue,
+      );
+    }
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('tdp-season-vision')))
+          .controller!
+          .text,
+      'Ett modigt lag',
+    );
+    await tester.tap(find.byKey(const ValueKey('tdp-season-from-kpis')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tdp-season-save')));
+    await tester.pumpAndSettle();
+    final next = services.plan!;
+    expect(next.id, isNot(first.id));
+    expect(next.vision, 'Ett modigt lag');
+    expect([for (final p in next.principles) p.title], ['Skapa spelbarhet']);
+    expect(next.kpis, isEmpty);
+    expect(next.startsOn, first.endsOn.add(const Duration(days: 1)));
+
+    // The new season is upcoming: the header and a banner say so.
+    expect(
+      find.descendant(of: switcher, matching: find.textContaining('Kommande')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('tdp-season-banner')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('tdp-season-to-current')));
+    await tester.pumpAndSettle();
+    expect(services.plan!.id, first.id);
+    expect(find.byKey(const Key('tdp-season-banner')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  test('a key figure counts goals, own buttons and values set by hand', () {
+    final day = DateTime(2026, 10, 1);
+    final plan = SeasonPlan(
+      id: 'plan',
+      title: 'Säsong',
+      startsOn: DateTime(2026),
+      endsOn: DateTime(2026, 12, 31),
+      revision: 1,
+      matches: [
+        PlanMatch(
+          eventId: 'm1',
+          playedOn: day,
+          title: 'A',
+          registered: true,
+          metrics: const {'goals_for': 2},
+          buttons: const {'ballwin': 5},
+        ),
+        PlanMatch(
+          eventId: 'm2',
+          playedOn: day.add(const Duration(days: 7)),
+          title: 'B',
+          metrics: const {'goals_for': 0},
+        ),
+      ],
+      checkins: [
+        TeamCheckin(
+          id: 'c1',
+          kpiId: 'goals',
+          eventId: 'm2',
+          checkedOn: day.add(const Duration(days: 7)),
+          value: 1,
+        ),
+        TeamCheckin(
+          id: 'c2',
+          kpiId: 'goals',
+          checkedOn: day.add(const Duration(days: 9)),
+          value: 4,
+        ),
+      ],
+    );
+    const goals = TeamKpi(id: 'goals', title: 'Mål', source: 'goals_for');
+    expect(
+      [for (final v in plan.valuesOfKpi(goals)) (v.value, v.counted)],
+      [(4.0, false), (1.0, false), (2.0, true)],
+    );
+    const wins = TeamKpi(
+      id: 'w',
+      title: 'Bollvinster',
+      source: 'button:ballwin',
+    );
+    expect([for (final v in plan.valuesOfKpi(wins)) v.value], [5]);
+  });
 }
 
 class _Plans implements TeamDevelopmentServices {
@@ -846,6 +1054,8 @@ class _Plans implements TeamDevelopmentServices {
     PlanSharing? sharing,
     bool revise = true,
   }) => plan = SeasonPlan(
+    matches: plan!.matches,
+    matchButtons: plan!.matchButtons,
     id: plan!.id,
     title: plan!.title,
     vision: plan!.vision,
@@ -863,20 +1073,41 @@ class _Plans implements TeamDevelopmentServices {
   );
 
   @override
-  Future<TeamDevelopment> get(String teamId, {String? planId}) async =>
-      TeamDevelopment(
-        canEdit: true,
-        seasons: [
-          if (plan != null)
-            SeasonSummary(
-              id: plan!.id,
-              title: plan!.title,
-              startsOn: plan!.startsOn,
-              endsOn: plan!.endsOn,
-            ),
-        ],
-        plan: plan,
-      );
+  Future<TeamDevelopment> get(String teamId, {String? planId}) async {
+    // Another season asked for: the two swap places.
+    if (planId != null && planId == previous?.id) {
+      final shown = plan;
+      plan = previous;
+      previous = shown;
+    }
+    return TeamDevelopment(
+      canEdit: true,
+      seasons: [
+        for (final season in [?plan, ?previous])
+          SeasonSummary(
+            id: season.id,
+            title: season.title,
+            startsOn: season.startsOn,
+            endsOn: season.endsOn,
+          ),
+      ],
+      plan: plan,
+    );
+  }
+
+  /// The season before the one [createPlan] made.
+  SeasonPlan? previous;
+
+  @override
+  Future<SeasonPlan> copySeason(
+    SeasonPlan plan, {
+    required String fromPlanId,
+    required bool principles,
+    required bool kpis,
+  }) async => _with(
+    principles: [...plan.principles, if (principles) ...previous!.principles],
+    kpis: [...plan.kpis, if (kpis) ...previous!.kpis],
+  );
 
   @override
   Future<SeasonPlan> createPlan({
@@ -886,7 +1117,7 @@ class _Plans implements TeamDevelopmentServices {
     required DateTime endsOn,
     required String vision,
   }) async => created = plan = SeasonPlan(
-    id: 'plan',
+    id: (previous = plan) == null ? 'plan' : 'plan-${_ids++}',
     title: title,
     vision: vision,
     startsOn: startsOn,
@@ -1033,6 +1264,7 @@ class _Plans implements TeamDevelopmentServices {
     required String unit,
     double? target,
     required bool higherIsBetter,
+    String? source,
   }) async => _with(
     kpis: [
       ...plan.kpis.where((k) => k.id != kpiId),
@@ -1042,7 +1274,34 @@ class _Plans implements TeamDevelopmentServices {
         unit: unit,
         target: target,
         higherIsBetter: higherIsBetter,
+        source: source == null || source.isEmpty ? null : source,
       ),
+    ],
+  );
+
+  @override
+  Future<SeasonPlan> setKpiMatchValue(
+    SeasonPlan plan, {
+    required String kpiId,
+    required String eventId,
+    double? value,
+    String note = '',
+  }) async => _with(
+    revise: false,
+    checkins: [
+      if (value != null)
+        TeamCheckin(
+          id: 'checkin-${_ids++}',
+          kpiId: kpiId,
+          eventId: eventId,
+          checkedOn: plan.matches
+              .firstWhere((m) => m.eventId == eventId)
+              .playedOn,
+          value: value,
+          note: note,
+        ),
+      for (final checkin in plan.checkins)
+        if (checkin.kpiId != kpiId || checkin.eventId != eventId) checkin,
     ],
   );
 

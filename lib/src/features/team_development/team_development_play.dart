@@ -230,7 +230,7 @@ class _TdpKpiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final values = plan.checkinsOfKpi(kpi.id);
+    final values = plan.valuesOfKpi(kpi);
     final latest = values.firstOrNull?.value;
     final reached = latest == null ? null : kpi.reaches(latest);
     return Card(
@@ -248,7 +248,15 @@ class _TdpKpiCard extends StatelessWidget {
                   children: [
                     Text(kpi.title, style: theme.textTheme.titleMedium),
                     Text(
-                      _tdpKpiTarget(context, kpi),
+                      [
+                        _tdpKpiTarget(context, kpi),
+                        if (kpi.source case final source?)
+                          _tdpText(
+                            context,
+                            'från matcherna: ${_tdpKpiSourceLabel(context, plan, source).toLowerCase()}',
+                            'from the matches: ${_tdpKpiSourceLabel(context, plan, source).toLowerCase()}',
+                          ),
+                      ].join(' · '),
                       style: theme.textTheme.bodySmall,
                     ),
                     const SizedBox(height: 8),
@@ -288,7 +296,7 @@ class _TdpKpiCard extends StatelessWidget {
 class _TdpBars extends StatelessWidget {
   const _TdpBars({required this.kpi, required this.values});
   final TeamKpi kpi;
-  final List<TeamCheckin> values;
+  final List<KpiValue> values;
 
   @override
   Widget build(BuildContext context) {
@@ -300,7 +308,7 @@ class _TdpBars extends StatelessWidget {
         style: Theme.of(context).textTheme.bodySmall,
       );
     }
-    final numbers = [for (final v in shown) v.value!];
+    final numbers = [for (final v in shown) v.value];
     final top = [...numbers, kpi.target ?? 0].reduce(max);
     final bottom = min(0.0, [...numbers, kpi.target ?? 0].reduce(min));
     final span = top - bottom == 0 ? 1.0 : top - bottom;
@@ -316,6 +324,7 @@ class _TdpBars extends StatelessWidget {
                   Expanded(
                     child: Tooltip(
                       message: _tdpNumber(value),
+                      waitDuration: const Duration(milliseconds: 150),
                       child: Container(
                         margin: const EdgeInsets.symmetric(horizontal: 2),
                         height: max(3, 36 * (value - bottom) / span),
@@ -367,7 +376,7 @@ abstract final class _TdpKpiSheet {
         final kpi = plan?.kpis.where((k) => k.id == kpiId).firstOrNull;
         if (plan == null || kpi == null) return const SizedBox(height: 120);
         final theme = Theme.of(sheetContext);
-        final values = plan.checkinsOfKpi(kpi.id);
+        final values = plan.valuesOfKpi(kpi);
         return DraggableScrollableSheet(
           expand: false,
           initialChildSize: 0.7,
@@ -378,6 +387,15 @@ abstract final class _TdpKpiSheet {
             children: [
               Text(kpi.title, style: theme.textTheme.titleLarge),
               Text(_tdpKpiTarget(context, kpi)),
+              if (kpi.source case final source?)
+                Text(
+                  _tdpText(
+                    sheetContext,
+                    'Från matcherna: ${_tdpKpiSourceLabel(sheetContext, plan, source)}. Tryck på en match för att rätta värdet.',
+                    'From the matches: ${_tdpKpiSourceLabel(sheetContext, plan, source)}. Tap a match to correct its value.',
+                  ),
+                  style: theme.textTheme.bodySmall,
+                ),
               const SizedBox(height: 12),
               _TdpBars(kpi: kpi, values: values),
               if (controller.canEdit) ...[
@@ -392,7 +410,13 @@ abstract final class _TdpKpiSheet {
                           _TdpCheckinDialog.kpi(sheetContext, controller, kpi),
                       icon: const Icon(Icons.add_chart),
                       label: Text(
-                        AppStrings.of(context).feature('Registrera värde'),
+                        kpi.source == null
+                            ? AppStrings.of(context).feature('Registrera värde')
+                            : _tdpText(
+                                sheetContext,
+                                'Lägg till värde för hand',
+                                'Add a value by hand',
+                              ),
                       ),
                     ),
                     OutlinedButton.icon(
@@ -422,16 +446,35 @@ abstract final class _TdpKpiSheet {
                 Padding(
                   padding: EdgeInsets.only(top: 4),
                   child: Text(
-                    AppStrings.of(context).feature('Inga värden än.'),
+                    kpi.source == null
+                        ? AppStrings.of(context).feature('Inga värden än.')
+                        : _tdpText(
+                            sheetContext,
+                            'Inga spelade matcher med värden än.',
+                            'No played matches with values yet.',
+                          ),
                   ),
                 ),
-              for (final checkin in values)
-                _TdpCheckinTile(
-                  controller: controller,
-                  plan: plan,
-                  checkin: checkin,
-                  unit: kpi.unit,
-                ),
+              // With a source every played match, a value or not, so one
+              // that tells nothing can get its value by hand.
+              if (kpi.source != null)
+                for (final match in plan.matches.reversed)
+                  _TdpKpiMatchTile(
+                    controller: controller,
+                    kpi: kpi,
+                    match: match,
+                    value: values
+                        .where((v) => v.match?.eventId == match.eventId)
+                        .firstOrNull,
+                  ),
+              for (final value in values)
+                if (value.match == null)
+                  _TdpCheckinTile(
+                    controller: controller,
+                    plan: plan,
+                    checkin: value.checkin!,
+                    unit: kpi.unit,
+                  ),
             ],
           ),
         );
@@ -579,6 +622,7 @@ abstract final class _TdpKpiDialog {
   }) async {
     var higher = kpi?.higherIsBetter ?? true;
     var unitText = kpi?.unit ?? '';
+    var source = kpi?.source;
     final result = await showDialog<(String, String, String)>(
       context: context,
       builder: (context) => _TdpTexts(
@@ -601,6 +645,31 @@ abstract final class _TdpKpiDialog {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    _TdpKpiSourceField(
+                      plan: plan,
+                      value: source,
+                      onChanged: (value) => setState(() {
+                        source = value;
+                        // A new figure takes the source's name, unit and
+                        // direction to start from.
+                        if (value == null || kpi != null) return;
+                        if (title.text.trim().isEmpty) {
+                          title.text = _tdpKpiSourceLabel(context, plan, value)
+                              .replaceFirst(
+                                RegExp(r'^(Egen knapp|Own button): '),
+                                '',
+                              );
+                        }
+                        if (unitText.trim().isEmpty) unitText = 'st';
+                        higher =
+                            kpiSources
+                                .where((s) => s.$1 == value)
+                                .firstOrNull
+                                ?.$4 ??
+                            true;
+                      }),
+                    ),
+                    const SizedBox(height: 8),
                     TextField(
                       key: const Key('tdp-kpi-title'),
                       controller: title,
@@ -635,7 +704,8 @@ abstract final class _TdpKpiDialog {
                         SizedBox(
                           width: 90,
                           child: TextFormField(
-                            key: const Key('tdp-kpi-unit'),
+                            // Rebuilt when a source fills in the unit.
+                            key: ValueKey('tdp-kpi-unit-${source ?? ''}'),
                             initialValue: unitText,
                             onChanged: (value) => unitText = value,
                             maxLength: 20,
@@ -717,6 +787,7 @@ abstract final class _TdpKpiDialog {
           unit: unitText.trim(),
           target: result.$3.isEmpty ? null : double.parse(result.$3),
           higherIsBetter: higher,
+          source: source,
         ),
         done: AppStrings.of(context).feature('Nyckeltalet är sparat.'),
       );
