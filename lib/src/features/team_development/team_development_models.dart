@@ -5,6 +5,7 @@ library;
 part 'team_development_match_values.dart';
 part 'team_development_exercises.dart';
 part 'team_development_load_models.dart';
+part 'team_development_injury_models.dart';
 
 DateTime _date(Object? value) => DateTime.parse(value as String);
 

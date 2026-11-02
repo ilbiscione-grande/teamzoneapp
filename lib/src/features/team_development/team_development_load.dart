@@ -84,6 +84,36 @@ class _TdpTeamLoadState extends State<_TdpTeamLoad> {
   late Future<TeamLoad> _load = widget.controller.services.load(widget.plan);
   bool _all = false;
 
+  /// The players' injuries (step 9); none shown until read.
+  TeamInjuries _injuries = const TeamInjuries();
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_readInjuries());
+  }
+
+  Future<void> _readInjuries() async {
+    try {
+      final injuries = await widget.controller.services.injuries(widget.plan);
+      if (mounted) setState(() => _injuries = injuries);
+    } catch (error) {
+      AppErrors.caught('tdp_team_load._readInjuries', error);
+    }
+  }
+
+  Future<void> _openInjuries(String personId, String name) async {
+    final player =
+        _injuries.of(personId) ?? InjuryPlayer(personId: personId, name: name);
+    final changed = await _TdpInjurySheet.open(
+      context,
+      controller: widget.controller,
+      plan: widget.plan,
+      player: player,
+    );
+    if (changed != null && mounted) setState(() => _injuries = changed);
+  }
+
   Future<void> _settings(LoadSettings current) async {
     final chosen = await showDialog<LoadSettings>(
       context: context,
@@ -123,6 +153,11 @@ class _TdpTeamLoadState extends State<_TdpTeamLoad> {
             for (final signal in player.signals) (player, signal),
         ];
         final players = _all ? load.players : load.players.take(_shown);
+        final today = DateUtils.dateOnly(DateTime.now());
+        final injured = [
+          for (final player in _injuries.players)
+            if (player.currentOn(today) case final injury?) (player, injury),
+        ];
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -141,7 +176,30 @@ class _TdpTeamLoadState extends State<_TdpTeamLoad> {
                       ),
                       style: theme.textTheme.titleMedium,
                     ),
-                    if (flagged.isEmpty)
+                    for (final (player, injury) in injured)
+                      ListTile(
+                        key: ValueKey(
+                          'tdp-attention-injury-${player.personId}',
+                        ),
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          Icons.healing,
+                          color: theme.colorScheme.error,
+                        ),
+                        title: Text(
+                          '${player.name} · ${_tdpText(context, 'Skadad', 'Injured')}',
+                        ),
+                        subtitle: Text(
+                          _tdpText(
+                            context,
+                            '${injury.what}, sedan ${_tdpDate(context, injury.startedOn)}.',
+                            '${injury.what}, since ${_tdpDate(context, injury.startedOn)}.',
+                          ),
+                        ),
+                        onTap: () =>
+                            _openInjuries(player.personId, player.name),
+                      ),
+                    if (flagged.isEmpty && injured.isEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         child: Text(
@@ -248,9 +306,23 @@ class _TdpTeamLoadState extends State<_TdpTeamLoad> {
                         key: ValueKey('tdp-player-load-${player.personId}'),
                         contentPadding: const EdgeInsets.only(right: 8),
                         dense: true,
+                        onTap: () =>
+                            _openInjuries(player.personId, player.name),
                         title: Row(
                           children: [
                             Flexible(child: Text(player.name)),
+                            if (_injuries.of(player.personId)?.currentOn(today)
+                                case final injury?) ...[
+                              const SizedBox(width: 6),
+                              Tooltip(
+                                message: injury.what,
+                                child: Icon(
+                                  Icons.healing,
+                                  size: 14,
+                                  color: theme.colorScheme.error,
+                                ),
+                              ),
+                            ],
                             for (final signal in player.signals) ...[
                               const SizedBox(width: 6),
                               Tooltip(

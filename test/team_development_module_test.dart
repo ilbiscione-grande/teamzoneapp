@@ -8,6 +8,8 @@ import 'package:teamzone_app/src/core/identity/identity_services.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_models.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_services.dart';
+import 'package:teamzone_app/src/features/roster/roster_models.dart';
+import 'package:teamzone_app/src/features/roster/roster_services.dart';
 import 'package:teamzone_app/src/features/team_development/team_development_services.dart';
 import 'package:teamzone_app/src/features/workspaces/module_services.dart';
 
@@ -1152,6 +1154,119 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('the leaders register an injury and note the player back', (
+    tester,
+  ) async {
+    final services = await openWithoutModel(tester);
+    final ada = find.byKey(const ValueKey('tdp-player-load-ada'));
+    await tester.ensureVisible(ada);
+    await tester.pumpAndSettle();
+    await tester.tap(ada);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-injury-new')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('tdp-injury-what')),
+      'Stukad fot',
+    );
+    await tester.enterText(
+      find.byKey(const Key('tdp-injury-note')),
+      'Undvik hopp en vecka',
+    );
+    await tester.tap(find.byKey(const Key('tdp-injury-save')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('tdp-injury-current')), findsOneWidget);
+    expect(find.textContaining('Undvik hopp en vecka'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('tdp-injury-close')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('tdp-attention-injury-ada')),
+      findsOneWidget,
+      reason: 'the injured player needs attention',
+    );
+
+    // Back in training: no longer in the attention list.
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('tdp-attention-injury-ada')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('tdp-attention-injury-ada')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-injury-back')));
+    await tester.pumpAndSettle();
+    expect(services.injuryList['ada']!.single.backOn, isNotNull);
+    await tester.tap(find.byKey(const Key('tdp-injury-close')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('tdp-attention-injury-ada')),
+      findsNothing,
+    );
+
+    // Under 15: blocked until the consents; the club's is given here.
+    final bo = find.byKey(const ValueKey('tdp-player-load-bo'));
+    await tester.ensureVisible(bo);
+    await tester.pumpAndSettle();
+    await tester.tap(bo);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('tdp-injury-blocked')), findsOneWidget);
+    expect(find.byKey(const Key('tdp-injury-new')), findsNothing);
+    await tester.tap(find.byKey(const Key('tdp-injury-club-consent')));
+    await tester.pumpAndSettle();
+    expect(services.clubConsents, {'bo'});
+
+    // Turned off: the injuries are deleted.
+    await tester.tap(find.byKey(const Key('tdp-injury-registration')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-injury-turn-off-confirm')));
+    await tester.pumpAndSettle();
+    expect(services.turnedOff, {'bo'});
+    expect(find.textContaining('avstängd för spelaren'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the player sees their injuries and consents under 15', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final services = _Plans();
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'tdp'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _Identity(),
+          modules: _Modules(services),
+          calendar: _Activities(const []),
+          roster: _Overview(),
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Laget').first);
+    await tester.pumpAndSettle();
+    final card = find.byKey(const Key('player-injury-card'));
+    await tester.ensureVisible(card);
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: card, matching: find.text('Ont i knät')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: card,
+        matching: find.textContaining('tillbaka i träning'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('player-injury-consent-bo')));
+    await tester.pumpAndSettle();
+    expect(services.boConsents, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
   test('a key figure counts goals, own buttons and values set by hand', () {
     final day = DateTime(2026, 10, 1);
     final plan = SeasonPlan(
@@ -1354,6 +1469,116 @@ class _Plans implements TeamDevelopmentServices {
 
   @override
   Future<TeamLoad> load(SeasonPlan plan, {DateTime? day}) async => teamLoad;
+
+  /// The players' injuries as the server keeps them: Ada 15+, Bo under 15.
+  final injuryList = <String, List<PlayerInjury>>{'ada': [], 'bo': []};
+  final turnedOff = <String>{};
+  final clubConsents = <String>{};
+  TeamInjuries get _injuries => TeamInjuries(
+    players: [
+      for (final (id, name, adult) in [
+        ('ada', 'Ada', true),
+        ('bo', 'Bo', false),
+      ])
+        InjuryPlayer(
+          personId: id,
+          name: name,
+          adult: adult,
+          turnedOff: turnedOff.contains(id),
+          clubConsent: clubConsents.contains(id),
+          allowed: !turnedOff.contains(id) && adult,
+          injuries: injuryList[id]!,
+        ),
+    ],
+  );
+
+  @override
+  Future<TeamInjuries> injuries(SeasonPlan plan) async => _injuries;
+
+  @override
+  Future<TeamInjuries> saveInjury(
+    SeasonPlan plan, {
+    String? injuryId,
+    required String personId,
+    required DateTime startedOn,
+    required String what,
+    String note = '',
+    DateTime? backOn,
+  }) async {
+    final list = injuryList[personId]!;
+    list.removeWhere((injury) => injury.id == injuryId);
+    list.insert(
+      0,
+      PlayerInjury(
+        id: injuryId ?? 'inj${_ids++}',
+        startedOn: startedOn,
+        what: what,
+        note: note,
+        backOn: backOn,
+      ),
+    );
+    return _injuries;
+  }
+
+  @override
+  Future<TeamInjuries> deleteInjury(SeasonPlan plan, String injuryId) async {
+    for (final list in injuryList.values) {
+      list.removeWhere((injury) => injury.id == injuryId);
+    }
+    return _injuries;
+  }
+
+  @override
+  Future<TeamInjuries> setInjuryRegistration(
+    SeasonPlan plan,
+    String personId, {
+    bool? turnOff,
+    bool? clubConsent,
+  }) async {
+    if (turnOff == true) {
+      turnedOff.add(personId);
+      injuryList[personId]!.clear();
+    } else if (turnOff == false) {
+      turnedOff.remove(personId);
+    }
+    if (clubConsent == true) clubConsents.add(personId);
+    if (clubConsent == false) clubConsents.remove(personId);
+    return _injuries;
+  }
+
+  /// The player's own view: Bo, under 15, with an injury from before.
+  bool boConsents = false;
+  TeamInjuries get _mine => TeamInjuries(
+    players: [
+      InjuryPlayer(
+        personId: 'bo',
+        name: 'Bo',
+        self: true,
+        playerConsent: boConsents,
+        injuries: [
+          PlayerInjury(
+            id: 'old',
+            startedOn: DateTime(2026, 9, 1),
+            what: 'Ont i knät',
+            backOn: DateTime(2026, 9, 14),
+          ),
+        ],
+      ),
+    ],
+  );
+
+  @override
+  Future<TeamInjuries> myInjuries(String teamId) async => _mine;
+
+  @override
+  Future<TeamInjuries> setInjuryConsent(
+    String teamId,
+    String personId,
+    bool give,
+  ) async {
+    boConsents = give;
+    return _mine;
+  }
 
   @override
   Future<TeamLoad> setEffortPush(SeasonPlan plan, bool on) async =>
@@ -1787,4 +2012,21 @@ class _Activities extends UnconfiguredCalendarServices {
           event,
     ];
   }
+}
+
+/// The team overview under Laget, for the player's injury card.
+class _Overview extends UnconfiguredRosterServices {
+  @override
+  Future<TeamOverview> getTeamOverview({required String teamId}) async =>
+      const TeamOverview(
+        teamId: 'team',
+        clubId: 'club',
+        teamName: 'P2012',
+        clubName: 'Testklubben',
+        leaders: [],
+        memberCount: 0,
+        canManage: false,
+        activeInvitationCount: 0,
+        pendingApplicationCount: 0,
+      );
 }

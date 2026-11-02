@@ -160,6 +160,42 @@ abstract interface class TeamDevelopmentServices {
   /// Turns the effort notification after trainings on or off for the team.
   Future<TeamLoad> setEffortPush(SeasonPlan plan, bool on);
 
+  /// The team's players with their injury registration and injuries
+  /// (step 9), for the leaders.
+  Future<TeamInjuries> injuries(SeasonPlan plan);
+
+  /// Registers an injury ([injuryId] null) or changes one.
+  Future<TeamInjuries> saveInjury(
+    SeasonPlan plan, {
+    String? injuryId,
+    required String personId,
+    required DateTime startedOn,
+    required String what,
+    String note = '',
+    DateTime? backOn,
+  });
+  Future<TeamInjuries> deleteInjury(SeasonPlan plan, String injuryId);
+
+  /// Turns a player's registration off (deleting the injuries) or on, and
+  /// gives or withdraws the club's consent under 15; null leaves either.
+  Future<TeamInjuries> setInjuryRegistration(
+    SeasonPlan plan,
+    String personId, {
+    bool? turnOff,
+    bool? clubConsent,
+  });
+
+  /// The player's own and their children's injuries in a team, without
+  /// the leaders' notes.
+  Future<TeamInjuries> myInjuries(String teamId);
+
+  /// The player's or a guardian's consent under 15.
+  Future<TeamInjuries> setInjuryConsent(
+    String teamId,
+    String personId,
+    bool give,
+  );
+
   /// A key figure's value for a played match, set by hand in place of the
   /// counted one; no [value] shows the counted one again.
   Future<SeasonPlan> setKpiMatchValue(
@@ -338,6 +374,36 @@ class UnconfiguredTeamDevelopmentServices implements TeamDevelopmentServices {
   @override
   Future<TeamLoad> setEffortPush(SeasonPlan plan, bool on) =>
       Future.error(_error);
+  @override
+  Future<TeamInjuries> injuries(SeasonPlan plan) => Future.error(_error);
+  @override
+  Future<TeamInjuries> saveInjury(
+    SeasonPlan plan, {
+    String? injuryId,
+    required String personId,
+    required DateTime startedOn,
+    required String what,
+    String note = '',
+    DateTime? backOn,
+  }) => Future.error(_error);
+  @override
+  Future<TeamInjuries> deleteInjury(SeasonPlan plan, String injuryId) =>
+      Future.error(_error);
+  @override
+  Future<TeamInjuries> setInjuryRegistration(
+    SeasonPlan plan,
+    String personId, {
+    bool? turnOff,
+    bool? clubConsent,
+  }) => Future.error(_error);
+  @override
+  Future<TeamInjuries> myInjuries(String teamId) async => const TeamInjuries();
+  @override
+  Future<TeamInjuries> setInjuryConsent(
+    String teamId,
+    String personId,
+    bool give,
+  ) => Future.error(_error);
   @override
   Future<SeasonPlan> addCheckin(
     SeasonPlan plan, {
@@ -705,6 +771,74 @@ class SupabaseTeamDevelopmentServices implements TeamDevelopmentServices {
           'turn_on': on,
         }),
       );
+
+  @override
+  Future<TeamInjuries> injuries(SeasonPlan plan) async => TeamInjuries.fromJson(
+    await _rpc('get_team_development_injuries', {'target_plan_id': plan.id}),
+  );
+
+  @override
+  Future<TeamInjuries> saveInjury(
+    SeasonPlan plan, {
+    String? injuryId,
+    required String personId,
+    required DateTime startedOn,
+    required String what,
+    String note = '',
+    DateTime? backOn,
+  }) async => TeamInjuries.fromJson(
+    await _rpc('save_team_development_injury', {
+      'target_plan_id': plan.id,
+      'target_injury_id': injuryId,
+      'target_person_id': personId,
+      'new_started_on': _day(startedOn),
+      'new_what': what,
+      'new_note': note,
+      'new_back_on': backOn == null ? null : _day(backOn),
+    }),
+  );
+
+  @override
+  Future<TeamInjuries> deleteInjury(SeasonPlan plan, String injuryId) async =>
+      TeamInjuries.fromJson(
+        await _rpc('delete_team_development_injury', {
+          'target_plan_id': plan.id,
+          'target_injury_id': injuryId,
+        }),
+      );
+
+  @override
+  Future<TeamInjuries> setInjuryRegistration(
+    SeasonPlan plan,
+    String personId, {
+    bool? turnOff,
+    bool? clubConsent,
+  }) async => TeamInjuries.fromJson(
+    await _rpc('set_team_development_injury_registration', {
+      'target_plan_id': plan.id,
+      'target_person_id': personId,
+      'turn_off': turnOff,
+      'club_consent': clubConsent,
+    }),
+  );
+
+  @override
+  Future<TeamInjuries> myInjuries(String teamId) async => TeamInjuries.fromJson(
+    await _rpc('get_my_injuries', {'target_team_id': teamId}),
+  );
+
+  @override
+  Future<TeamInjuries> setInjuryConsent(
+    String teamId,
+    String personId,
+    bool give,
+  ) async => TeamInjuries.fromJson(
+    await _rpc('set_injury_consent', {
+      'target_team_id': teamId,
+      'target_person_id': personId,
+      'give': give,
+    }),
+  );
 
   @override
   Future<SeasonPlan> setKpiMatchValue(

@@ -5347,6 +5347,11 @@ class _TeamOverviewSurfaceState extends State<_TeamOverviewSurface> {
             ),
             if (widget.contextValue.teamId case final teamId?)
               _TeamPlanCard(teamId: teamId, services: widget.teamDevelopment),
+            if (widget.contextValue.teamId case final teamId?)
+              _PlayerInjuryCard(
+                teamId: teamId,
+                services: widget.teamDevelopment,
+              ),
             _TeamSectionHeader(title: strings.feature('Om laget')),
             Text(
               value.summary ??

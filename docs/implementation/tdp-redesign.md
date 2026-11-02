@@ -1,6 +1,6 @@
 # Team Development Plan: ny utformning – plan
 
-**Status: riktningen beslutad 2026-11-01. Steg 1–7 är driftsatta på webben 2026-11-02, och steg 8 är byggt. Besluten för steg 8–9 (PAR-METHOD-01/02) togs 2026-11-02, men några detaljer om skador är öppna.** Skissen som godkändes ligger i [docs/ux/tdp-skiss.html](../ux/tdp-skiss.html). Den öppnas i en webbläsare.
+**Status: riktningen beslutad 2026-11-01. Steg 1–8 är driftsatta på webben 2026-11-02, och steg 9 är byggt. Besluten för steg 8–9 (PAR-METHOD-01/02) togs 2026-11-02.** Skissen som godkändes ligger i [docs/ux/tdp-skiss.html](../ux/tdp-skiss.html). Den öppnas i en webbläsare.
 
 Produktägaren vill göra om TDP från grunden. Det mesta av dagens funktion behålls, men sidan ska bli snyggare och lättare att använda. Modulen kändes mindre färdig än resten av appen.
 
@@ -107,7 +107,13 @@ Produktägaren vill göra om TDP från grunden. Det mesta av dagens funktion beh
    - **Egen skattning** (byggd 2026-11-02, SQL `20270201090000_session_effort.sql` körd och loggad, testet `supabase/tests/session_effort.local.mjs`): efter en träning får spelaren frågan "Hur ansträngande var passet?" 1–10 under Uppföljning (`session_effort_card.dart`), i sju dagar. Den ställs till lagets aktiva spelare från 13 år, räknat på födelsedatumet eller annars det år spelaren fyller 13, och bara när klubben har TDP. Okänd ålder ger ingen fråga. Vårdnadshavare ser barnets svar men svarar inte. Spelaren kan sluta svara, och då tas spelarens svar bort. Svaren raderas 24 månader efter passet av ett nattligt jobb (`session-effort-retention`). Ledarna ser snittet och antalet svar de senaste 7 dagarna i "Spelarna". Ansträngningen ger ingen signal.
    - **Frågan som notis** (byggd 2026-11-02, SQL `20270202090000_session_effort_push.sql` körd och loggad, testet `supabase/tests/session_effort_push.local.mjs`): ledarna slår på "Fråga spelarna efter träningen" i "Spelarna". Den är avstängd tills någon slår på den. När passet slutar köas en notis (pg_cron varje minut, `session-effort-push`) till de spelare från 13 år som var med. Det avgörs av närvaron om den är tagen, annars av en accepterad kallelse när aktiviteten har kallelser, och annars av att ingen frånvaro är anmäld. Notisen skickas inte till den som redan svarat eller valt att avstå. På Android har notisen knapparna 1–10 i en egen layout, en rad hopfälld och två rader utfälld. Svaret går via en token (`push-effort-response`) och kräver upplåst telefon. På iOS och andra enheter öppnar notisen aktiviteten. Frågan, både i appen och som notis, finns bara när klubben har TDP eller IDP.
    - **Inte byggt än:** belastningen på dagsvyn i årskalendern.
-9. **Skador.** PAR-METHOD-02 är beslutad, men några detaljer är öppna.
+9. **Skador.**
+   *Byggd 2026-11-02. SQL:en `20270203090000_player_injuries.sql` är körd och loggad, med testet `supabase/tests/player_injuries.local.mjs`.*
+   - **Ledarna** (`team_development_injuries.dart`) trycker på en spelare i "Spelarna" och registrerar en skada: vad, från vilket datum, och en anteckning som bara ledarna ser. "Tillbaka i träning i dag" stänger skadan, och tidigare skador kan ändras eller tas bort. Skadade spelare visas först under "Behöver din uppmärksamhet".
+   - **Registreringen** är påslagen från 15 år. Under 15 år krävs godkännande från klubben, spelaren och en vårdnadshavare. Ledaren ger klubbens godkännande i dialogen, och klubben kan också ge det med `club.memberships.manage` via `api.set_club_injury_registration`. Ledarna och klubben kan stänga av registreringen för en spelare, och då tas spelarens skador bort. Tar spelaren eller vårdnadshavaren tillbaka sitt godkännande under 15 år tas skadorna också bort.
+   - **Spelaren och vårdnadshavare** (`player_injury_card.dart`, under Laget → Översikt) ser spelarens skador utan ledarnas anteckningar, och under 15 år ger de sitt godkännande där.
+   - **Lagring:** en skada raderas 24 månader efter att spelaren var tillbaka, eller efter att den började om den aldrig stängdes. Raderingen görs av ett nattligt jobb (`player-injury-retention`).
+   - **Inte med:** sanktioner (avstängning, uteslutning). Skador visas inte heller i årskalenderns dagsvy än.
 
 IDP tas efter detta.
 
@@ -155,7 +161,10 @@ Det finns en brödsmulestig, pilar för att bläddra och en knapp för att hoppa
 - **Avstängning:** från 15 år är skaderegistreringen automatiskt godkänd. Den som inte vill ha den måste stänga av den aktivt (beslutat 2026-11-02).
 - **Vårdnadshavare:** ser samma sak som barnet ser.
 - **Tillbaka:** ingen friskförklaring. En ledare konstaterar att spelaren är tillbaka i träning.
-- **Öppet:** vem som stänger av efter 15 år (spelaren, ledaren eller klubben), vad spelaren själv ser om sin skada, och hur länge skadeuppgifterna sparas. Kolumnen för ägare i parameterlistan nämner också integritet och juridik, så en sådan genomgång rekommenderas innan skadedelen släpps.
+- **Vem som stänger av** (beslutat 2026-11-02): ledaren och klubben.
+- **Spelarens vy** (beslutat 2026-11-02): spelaren ser sin skada, men inte ledarnas anteckningar. Vårdnadshavare ser samma sak.
+- **Lagringstid** (beslutat 2026-11-02): 24 månader, som självskattningen.
+- **Juridisk genomgång:** produktägaren beslutade 2026-11-02 att skadedelen byggs och släpps utan juridisk genomgång.
 - **Data som saknas:** egen skattning, och speltid summerad över säsongen. Speltid per match räknas fram i matchmodulens Efteranalys ur startelvan, bytena och röda kort, men sparas inte. I dag finns närvaro och matchhändelser. Matcher som inte registrerades live kan sedan 2026-11-02 fyllas i efteråt i Live.
 
 ## Ändrad modulgräns

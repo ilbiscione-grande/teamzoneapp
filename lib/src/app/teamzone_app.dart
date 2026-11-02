@@ -167,6 +167,8 @@ part '../features/team_development/team_development_play.dart';
 part '../features/team_development/team_development_block_exercises.dart';
 part '../features/team_development/team_development_load.dart';
 part '../features/team_development/session_effort_card.dart';
+part '../features/team_development/team_development_injuries.dart';
+part '../features/team_development/player_injury_card.dart';
 part '../features/team_development/team_development_kpi_matches.dart';
 part '../features/team_development/team_development_templates.dart';
 part '../features/team_development/team_development_model_start.dart';
