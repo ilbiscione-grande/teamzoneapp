@@ -225,9 +225,13 @@ class _TdpFrame extends StatelessWidget {
     required this.controller,
     required this.builder,
     this.maxWidth = 820,
+    this.top,
   });
   final _TdpController controller;
   final List<Widget> Function(SeasonPlan plan) builder;
+
+  /// Above the content, across the whole width: the season's timeline.
+  final Widget Function(SeasonPlan plan)? top;
 
   /// How wide the content grows: readable text, or the whole screen for
   /// the overview and the planning.
@@ -270,11 +274,13 @@ class _TdpFrame extends StatelessWidget {
       final children = plan == null
           ? [_TdpFirstSeason(controller: controller)]
           : builder(plan);
+      final first = plan == null ? null : top?.call(plan);
       return RefreshIndicator(
         onRefresh: controller.reload,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           children: [
+            if (first != null) ...[first, const SizedBox(height: 16)],
             for (final child in children)
               Center(
                 child: ConstrainedBox(

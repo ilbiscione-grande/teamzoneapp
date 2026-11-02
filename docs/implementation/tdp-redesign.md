@@ -47,6 +47,7 @@ Produktägaren vill göra om TDP från grunden. Det mesta av dagens funktion beh
      - Sidopanelen visar den period eller det block som är valt, med mål, och delningen när inget är valt.
      - Blockdialogen har namn, fokus och upp till åtta principer.
    - Aktivitetsraden (matcher och läger) och "Träningar i blocket" kommer med kopplingen till kalendern i steg 3–4.
+   - **Ändrat 2026-11-02:** säsongens tidslinje ligger överst och över hela bredden både i Översikt och Planera. I Översikt visar den månaderna och blocken med namn. I Planera ligger panelen för det valda under tidslinjen, bredvid säsongsmålen. Aktiviteterna i blocket är en lista med kommande och genomförda, där matcher visar resultatet (`team_development_activities.dart`).
 3. **Kopplingen till förberedelserna.** Blocket blir utgångspunkt både i träningsmodulen och på händelsesidan, genom att `get_team_plan_suggestion` byggs ut.
    *Byggd lokalt 2026-11-01, inte driftsatt. Ingen ny SQL behövs, eftersom förslaget fick blocket redan i steg 1.*
    - Förslagsrutan (`team_development_suggestion.dart`, utbruten ur delningsfilen) används på händelsesidans förberedelser, i träningsmodulens pass och i matchplanen.

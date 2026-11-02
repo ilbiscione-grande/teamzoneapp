@@ -339,6 +339,14 @@ void main() {
     // The block's activities on the home page.
     expect(find.text('Aktiviteter i blocket'), findsOneWidget);
     expect(find.byKey(const Key('tdp-block-activity-t1')), findsOneWidget);
+    expect(find.textContaining('Kommande ('), findsOneWidget);
+    // The season's timeline across the top, the block now under it.
+    final strip = tester.getRect(find.byKey(const Key('tdp-season-strip')));
+    expect(
+      strip.bottom,
+      lessThan(tester.getTopLeft(find.byKey(const Key('tdp-now'))).dy),
+    );
+    expect(strip.width, greaterThan(1250));
 
     // The season's months, then the month with the activities.
     await tester.tap(find.byKey(const Key('tdp-open-calendar')));
@@ -567,8 +575,8 @@ void main() {
       [GoalHorizon.block, block.id],
     );
 
-    // A long-term goal of the season, marked achieved from its row.
-    await tester.tap(find.byTooltip('Lägg till mål').first);
+    // A long-term goal of the season, beside the panel, marked achieved from its row.
+    await tester.tap(find.byTooltip('Lägg till mål').last);
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('tdp-goal-title')),

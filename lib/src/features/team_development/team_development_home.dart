@@ -18,10 +18,11 @@ List<TeamPrinciple> _tdpPrinciples(SeasonPlan plan, List<String> ids) => [
     ?plan.principles.where((principle) => principle.id == id).firstOrNull,
 ];
 
-/// Översikt (the new design, 2026-11-01): the team's development page, two
-/// columns on a wide screen. The plan on the left: the block now, the
-/// season's periods and blocks, and their goals. The team on the right: the
-/// goals due for a check-in, the season's goals and the dated ones.
+/// Översikt (the new design, 2026-11-01): the team's development page. The
+/// season's periods and blocks across the whole width on top (2026-11-02),
+/// then two columns on a wide screen. The plan on the left: the block now,
+/// its activities and goals. The team on the right: the goals due for a
+/// check-in, the season's goals and the dated ones.
 class _TdpHome extends StatelessWidget {
   const _TdpHome({required this.controller});
   final _TdpController controller;
@@ -30,6 +31,12 @@ class _TdpHome extends StatelessWidget {
   Widget build(BuildContext context) => _TdpFrame(
     controller: controller,
     maxWidth: 1400,
+    top: (plan) => _TdpSeasonStrip(
+      plan: plan,
+      onOpen: () => _ModuleShell.select(context, 1),
+      onCalendar: () =>
+          _TdpCalendar.open(context, controller: controller, plan: plan),
+    ),
     builder: (plan) => [_TdpHomeBody(controller: controller, plan: plan)],
   );
 }
@@ -53,13 +60,6 @@ class _TdpHomeBody extends StatelessWidget {
     ]..sort((a, b) => a.targetOn!.compareTo(b.targetOn!));
     final left = [
       _TdpNowCard(plan: plan, period: period, block: block),
-      const SizedBox(height: 12),
-      _TdpSeasonStrip(
-        plan: plan,
-        onOpen: () => _ModuleShell.select(context, 1),
-        onCalendar: () =>
-            _TdpCalendar.open(context, controller: controller, plan: plan),
-      ),
       if (block != null || period != null) ...[
         const SizedBox(height: 12),
         _TdpBlockActivities(
@@ -452,6 +452,12 @@ class _TdpSeasonStrip extends StatelessWidget {
   final SeasonPlan plan;
   final VoidCallback onOpen, onCalendar;
 
+  /// A block in its period's phase color.
+  Color _blockColor(DevelopmentBlock block) => _tdpPhaseColor(
+    plan.periods.where((p) => p.id == block.periodId).firstOrNull?.phase ??
+        PeriodPhase.other,
+  );
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -518,16 +524,59 @@ class _TdpSeasonStrip extends StatelessWidget {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final width = constraints.maxWidth;
+                  final months = [
+                    for (
+                      var month = DateTime(
+                        plan.startsOn.year,
+                        plan.startsOn.month,
+                      );
+                      !month.isAfter(plan.endsOn);
+                      month = DateTime(month.year, month.month + 1)
+                    )
+                      month,
+                  ];
+                  final monthNames = MaterialLocalizations.of(context);
                   return SizedBox(
-                    height: 40,
+                    height: 82,
                     child: Stack(
                       children: [
+                        for (final month in months)
+                          Positioned(
+                            left:
+                                at(
+                                  month.isBefore(plan.startsOn)
+                                      ? plan.startsOn
+                                      : month,
+                                ) *
+                                width,
+                            top: 0,
+                            bottom: 0,
+                            child: Container(
+                              padding: const EdgeInsets.only(left: 4),
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  left: BorderSide(
+                                    color: theme.colorScheme.outlineVariant,
+                                  ),
+                                ),
+                              ),
+                              child: Text(
+                                monthNames
+                                    .formatMonthYear(month)
+                                    .split(' ')
+                                    .first,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ),
                         for (final period in plan.periods)
                           Positioned(
                             left: at(period.startsOn) * width,
                             width: span(period.startsOn, period.endsOn) * width,
-                            top: 0,
-                            height: 24,
+                            top: 20,
+                            height: 30,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 6,
@@ -556,27 +605,34 @@ class _TdpSeasonStrip extends StatelessWidget {
                             width:
                                 (span(block.startsOn, block.endsOn) * width - 2)
                                     .clamp(1.0, width),
-                            top: 28,
-                            height: 6,
+                            top: 54,
+                            height: 24,
                             child: Tooltip(
                               message: block.name,
-                              child: DecoratedBox(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                alignment: Alignment.centerLeft,
                                 decoration: BoxDecoration(
-                                  color:
-                                      _tdpPhaseColor(
-                                        plan.periods
-                                                .where(
-                                                  (p) => p.id == block.periodId,
-                                                )
-                                                .firstOrNull
-                                                ?.phase ??
-                                            PeriodPhase.other,
-                                      ).withValues(
-                                        alpha: block.endsOn.isBefore(today)
-                                            ? 0.35
-                                            : 0.9,
-                                      ),
-                                  borderRadius: BorderRadius.circular(3),
+                                  color: _blockColor(block).withValues(
+                                    alpha: block.endsOn.isBefore(today)
+                                        ? 0.25
+                                        : 0.9,
+                                  ),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  block.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.clip,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    // Passed blocks are pale, so dark text.
+                                    color: block.endsOn.isBefore(today)
+                                        ? _blockColor(block)
+                                        : Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ),
@@ -585,7 +641,7 @@ class _TdpSeasonStrip extends StatelessWidget {
                             !today.isAfter(plan.endsOn))
                           Positioned(
                             left: at(today) * width,
-                            top: 0,
+                            top: 16,
                             bottom: 0,
                             width: 2,
                             child: ColoredBox(color: theme.colorScheme.error),

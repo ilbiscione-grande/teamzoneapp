@@ -1,9 +1,10 @@
 part of '../../app/teamzone_app.dart';
 
-/// Planera (decisions 10–11, 2026-11-01): the season's long-term goals on
-/// top, then the timeline of periods and blocks beside a panel for the one
-/// picked: its focus, principles and short-term goals. Nothing picked, the
-/// panel tells how to plan and what is shared with the players.
+/// Planera (decisions 10–11, 2026-11-01): the timeline of periods and blocks
+/// across the whole width on top (2026-11-02), then the panel for the one
+/// picked (its focus, principles and short-term goals) beside the season's
+/// long-term goals. Nothing picked, the panel tells how to plan and what is
+/// shared with the players.
 class _TdpPlanner extends StatefulWidget {
   const _TdpPlanner({required this.controller});
   final _TdpController controller;
@@ -89,21 +90,22 @@ class _TdpPlannerState extends State<_TdpPlanner> {
     );
   }
 
+  /// A pick that is gone (deleted, or another season) is let go.
+  _TdpPick? _pickIn(SeasonPlan plan) => switch (_picked) {
+    (block: true, :final id) when plan.blocks.any((b) => b.id == id) => _picked,
+    (block: false, :final id) when plan.periods.any((p) => p.id == id) =>
+      _picked,
+    _ => null,
+  };
+
   @override
   Widget build(BuildContext context) => _TdpFrame(
     controller: controller,
     maxWidth: 1600,
-    builder: (plan) {
+    top: (plan) {
       final theme = Theme.of(context);
-      // A pick that is gone (deleted, or another season) is let go.
-      final picked = switch (_picked) {
-        (block: true, :final id) when plan.blocks.any((b) => b.id == id) =>
-          _picked,
-        (block: false, :final id) when plan.periods.any((p) => p.id == id) =>
-          _picked,
-        _ => null,
-      };
-      final timeline = Card(
+      final picked = _pickIn(plan);
+      return Card(
         key: const Key('tdp-timeline'),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -155,11 +157,29 @@ class _TdpPlannerState extends State<_TdpPlanner> {
           ),
         ),
       );
+    },
+    builder: (plan) {
+      final theme = Theme.of(context);
+      final picked = _pickIn(plan);
       final panel = _TdpPlanPanel(
         controller: controller,
         plan: plan,
         picked: picked,
         onPick: (pick) => setState(() => _picked = pick),
+      );
+      final goals = _TdpGoalGroup(
+        controller: controller,
+        plan: plan,
+        title: _tdpText(
+          context,
+          'Säsongsmål (långsiktiga)',
+          'Season goals (long-term)',
+        ),
+        goals: plan.goalsOf(GoalHorizon.season),
+        empty: AppStrings.of(
+          context,
+        ).feature('Långsiktiga mål för hela säsongen.'),
+        newGoal: (horizon: GoalHorizon.season, periodId: null, blockId: null),
       );
       return [
         Row(
@@ -191,34 +211,19 @@ class _TdpPlannerState extends State<_TdpPlanner> {
           ],
         ),
         const SizedBox(height: 12),
-        _TdpGoalGroup(
-          controller: controller,
-          plan: plan,
-          title: _tdpText(
-            context,
-            'Säsongsmål (långsiktiga)',
-            'Season goals (long-term)',
-          ),
-          goals: plan.goalsOf(GoalHorizon.season),
-          empty: AppStrings.of(
-            context,
-          ).feature('Långsiktiga mål för hela säsongen.'),
-          newGoal: (horizon: GoalHorizon.season, periodId: null, blockId: null),
-        ),
-        const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) => constraints.maxWidth >= 1000
               ? Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: timeline),
+                    Expanded(flex: 3, child: panel),
                     const SizedBox(width: 16),
-                    SizedBox(width: 400, child: panel),
+                    Expanded(flex: 2, child: goals),
                   ],
                 )
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [timeline, const SizedBox(height: 12), panel],
+                  children: [panel, const SizedBox(height: 12), goals],
                 ),
         ),
       ];

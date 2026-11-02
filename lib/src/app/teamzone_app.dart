@@ -157,6 +157,7 @@ part '../features/team_development/team_development_plan_panel.dart';
 part '../features/team_development/team_development_timeline.dart';
 part '../features/team_development/team_development_calendar.dart';
 part '../features/team_development/team_development_calendar_days.dart';
+part '../features/team_development/team_development_activities.dart';
 part '../features/team_development/team_development_goals.dart';
 part '../features/team_development/team_development_editors.dart';
 part '../features/team_development/team_development_checkins.dart';
