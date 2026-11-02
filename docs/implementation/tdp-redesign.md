@@ -1,6 +1,6 @@
 # Team Development Plan: ny utformning – plan
 
-**Status: riktningen beslutad 2026-11-01. Steg 1–2 är byggda och committade, men inte driftsatta.** Skissen som godkändes ligger i [docs/ux/tdp-skiss.html](../ux/tdp-skiss.html). Den öppnas i en webbläsare.
+**Status: riktningen beslutad 2026-11-01. Steg 1–4 är driftsatta på webben 2026-11-02, och steg 5 är byggt lokalt.** Skissen som godkändes ligger i [docs/ux/tdp-skiss.html](../ux/tdp-skiss.html). Den öppnas i en webbläsare.
 
 Produktägaren vill göra om TDP från grunden. Det mesta av dagens funktion behålls, men sidan ska bli snyggare och lättare att använda. Modulen kändes mindre färdig än resten av appen.
 
@@ -70,6 +70,19 @@ Produktägaren vill göra om TDP från grunden. Det mesta av dagens funktion beh
      - Om ett pass följde blocket kräver data från förberedelserna och är inte byggt.
      - Skador och belastning på dagen kommer med steg 8–9.
 5. **Spelidén.** Vyn, mallarna och guiden.
+   *Byggd lokalt 2026-11-02, inte driftsatt. Ingen ny SQL behövs, eftersom principerna sparas en och en med `save_team_development_principle`, som har ett tak på 40 principer per plan.*
+   - **Var:** under Spelidé. Vyn med principer per skede och nyckeltal fanns redan.
+   - **Kom igång:** när laget saknar principer visar vyn kortet "Kom igång med spelidén" (`team_development_model_start.dart`) med två vägar, Utgå från en mall och Svara på frågor. När principer finns nås samma vägar från en meny bredvid Ny princip.
+   - **Mallar** (`team_development_templates.dart`):
+     - Grund i alla spelfaser: en princip per skede.
+     - Bollinnehav.
+     - Omställningar.
+     - Högt presspel.
+   - **Guiden** ställer sju frågor, en per skede utom anfallsspel och försvar som delar en. Varje svar ger bestämda mallprinciper. Inga svar är obligatoriska, och ingen AI används.
+   - **Urvalet:** både mallen och guiden visar förslagen per skede med kryssrutor. Principer som redan finns i spelidén visas som "Finns redan" och läggs inte in igen. Allt kan ändras efteråt.
+   - **Utan spelidé:** blockdialogen visar grundlistan (mallen Grund i alla spelfaser) när planen saknar principer. De principer som väljs läggs in i planen när blocket sparas.
+   - **Granskning:** mallarnas och guidens texter är ett utkast som behöver granskas av någon med sportmetodisk kunskap innan de släpps till fler lag. Texterna är på svenska även när appen visas på engelska, eftersom de blir lagets egna texter.
+   - **Inte byggt än:** bilder och länkar till Tacticsboard på en princip. Det kräver nya fält i databasen.
 6. **Nyckeltal från matcherna.**
 7. **Övningsförslag ur biblioteket.**
 8. **Belastning och rekommendationer**, när PAR-METHOD-01 är beslutad och speltid per spelare finns.
@@ -116,6 +129,6 @@ Tidigare beslut (2026-10-07) lade lagets och spelarnas utveckling i träningsmod
 
 ## Öppna frågor
 
-- Vilka mallar för spelidén som ska finnas från start, och vem som skriver dem.
+- Vem som granskar mallarna för spelidén innan de släpps. Fyra mallar finns som utkast (2026-11-02).
 - Hur IDP kopplas in. Beslutat att ta det senare (2026-11-01).
-- Guidens frågor och hur svaren översätts till principer.
+- Om guidens frågor och regler (i `team_development_templates.dart`) behöver justeras efter granskningen.

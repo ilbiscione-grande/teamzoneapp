@@ -161,6 +161,8 @@ part '../features/team_development/team_development_goals.dart';
 part '../features/team_development/team_development_editors.dart';
 part '../features/team_development/team_development_checkins.dart';
 part '../features/team_development/team_development_play.dart';
+part '../features/team_development/team_development_templates.dart';
+part '../features/team_development/team_development_model_start.dart';
 part '../features/team_development/team_development_sharing.dart';
 part '../features/team_development/team_development_suggestion.dart';
 part '../features/team_development/team_development_shared_view.dart';

@@ -388,6 +388,9 @@ abstract final class _TdpBlockDialog {
     DevelopmentBlock block,
   ) async {
     final chosen = [...block.principleIds];
+    // Without a game model the block picks from the base list, and the
+    // picked ones become the plan's principles when the block is saved.
+    final standard = <_TdpIdea>[];
     final result = await showDialog<(String, String)>(
       context: context,
       builder: (context) => _TdpTexts(
@@ -433,15 +436,40 @@ abstract final class _TdpBlockDialog {
                       style: Theme.of(context).textTheme.labelLarge,
                     ),
                     const SizedBox(height: 6),
-                    if (plan.principles.isEmpty)
+                    if (plan.principles.isEmpty) ...[
                       Text(
                         _tdpText(
                           context,
-                          'Lagets principer skrivs under Spelidé.',
-                          'The team\'s principles are written under Game model.',
+                          'Laget har ingen spelidé än, så välj ur grundlistan. '
+                              'Spelidén skrivs under Spelidé.',
+                          'The team has no game model yet, so pick from the '
+                              'base list. The game model is written under '
+                              'Game model.',
                         ),
-                      )
-                    else
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final (i, idea) in _tdpStandardIdeas.indexed)
+                            FilterChip(
+                              key: ValueKey('tdp-block-standard-$i'),
+                              label: Text(idea.title),
+                              tooltip: AppStrings.of(
+                                context,
+                              ).feature(idea.area.label),
+                              selected: standard.contains(idea),
+                              onSelected: (on) => setState(
+                                () => on
+                                    ? standard.add(idea)
+                                    : standard.remove(idea),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ] else
                       Wrap(
                         spacing: 6,
                         runSpacing: 6,
@@ -493,19 +521,23 @@ abstract final class _TdpBlockDialog {
       ),
     );
     if (result == null || !context.mounted) return;
-    await controller.change(
-      context,
-      () => controller.services.saveBlock(
-        plan,
+    await controller.change(context, () async {
+      final saved = await _tdpAddIdeas(controller.services, plan, standard);
+      return controller.services.saveBlock(
+        saved,
         blockId: block.id,
         periodId: block.periodId,
         name: result.$1,
         startsOn: block.startsOn,
         endsOn: block.endsOn,
         focus: result.$2,
-        principleIds: chosen,
-      ),
-      done: _tdpText(context, 'Blocket är sparat.', 'The block is saved.'),
-    );
+        principleIds: [
+          ...chosen,
+          for (final idea in standard)
+            if (_tdpPrincipleOf(saved, idea) case final principle?)
+              principle.id,
+        ],
+      );
+    }, done: _tdpText(context, 'Blocket är sparat.', 'The block is saved.'));
   }
 }

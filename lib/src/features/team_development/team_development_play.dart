@@ -29,6 +29,8 @@ class _TdpPlay extends StatelessWidget {
                 style: theme.textTheme.titleLarge,
               ),
             ),
+            if (controller.canEdit && plan.principles.isNotEmpty)
+              _TdpModelMenu(controller: controller),
             if (controller.canEdit)
               TextButton.icon(
                 key: const Key('tdp-new-principle'),
@@ -49,6 +51,7 @@ class _TdpPlay extends StatelessWidget {
             style: theme.textTheme.bodySmall,
           ),
         ),
+        if (plan.principles.isEmpty) _TdpModelStart(controller: controller),
         for (final (withBall, without) in PrincipleArea.pairs)
           _TdpPhasePair(
             controller: controller,

@@ -680,6 +680,147 @@ void main() {
     expect([link.title, link.visible], ['Film', true]);
     expect(tester.takeException(), isNull);
   });
+
+  /// The module opened on a season with a block and no principles.
+  Future<_Plans> openWithoutModel(WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1440, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final today = DateUtils.dateOnly(DateTime.now());
+    final services = _Plans()
+      ..plan = SeasonPlan(
+        id: 'plan',
+        title: 'Säsong',
+        startsOn: today.subtract(const Duration(days: 100)),
+        endsOn: today.add(const Duration(days: 100)),
+        revision: 1,
+        periods: [
+          DevelopmentPeriod(
+            id: 'p1',
+            name: 'Seriespel',
+            phase: PeriodPhase.competition,
+            startsOn: today.subtract(const Duration(days: 30)),
+            endsOn: today.add(const Duration(days: 30)),
+          ),
+        ],
+        blocks: [
+          DevelopmentBlock(
+            id: 'b1',
+            periodId: 'p1',
+            name: 'Speluppbyggnad',
+            startsOn: today.subtract(const Duration(days: 7)),
+            endsOn: today.add(const Duration(days: 7)),
+          ),
+        ],
+      );
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'tdp'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _Identity(),
+          modules: _Modules(services),
+          calendar: _Activities(const []),
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Arbetsytor').first);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('workspace-module-module.team_development')),
+    );
+    await tester.pumpAndSettle();
+    return services;
+  }
+
+  testWidgets('the game model starts from a template and the guide', (
+    tester,
+  ) async {
+    final services = await openWithoutModel(tester);
+    await tester.tap(find.text('Spelidé'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('tdp-model-start')), findsOneWidget);
+
+    // A template, with one of its principles left out.
+    await tester.tap(find.byKey(const Key('tdp-model-templates')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-template-possession')));
+    await tester.pumpAndSettle();
+    expect(find.text('Lägg till 10 principer'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('tdp-idea-0')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tdp-model-add')));
+    await tester.pumpAndSettle();
+    var titles = [for (final p in services.plan!.principles) p.title];
+    expect(titles, hasLength(9));
+    expect(titles, contains('Kort uppbyggnad från målvakten'));
+    expect(titles, isNot(contains('Spela in i straffområdet')));
+    expect(find.byKey(const Key('tdp-model-start')), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('tdp-area-build_up')),
+        matching: find.text('Spela runt pressen'),
+      ),
+      findsOneWidget,
+    );
+
+    // The guide: an answer the plan already has and one it lacks.
+    await tester.tap(find.byKey(const Key('tdp-model-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-model-menu-guide')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const Key('tdp-guide-next')))
+          .onPressed,
+      isNull,
+    );
+    await tester.tap(find.byKey(const Key('tdp-guide-build_up-0')));
+    await tester.ensureVisible(find.byKey(const Key('tdp-guide-regaining-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-guide-regaining-1')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tdp-guide-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('Finns redan i spelidén'), findsOneWidget);
+    expect(find.text('Lägg till 1 princip'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('tdp-model-add')));
+    await tester.pumpAndSettle();
+    titles = [for (final p in services.plan!.principles) p.title];
+    expect(titles, hasLength(10));
+    expect(services.plan!.principles.last.area, PrincipleArea.regaining);
+    expect(titles.last, 'Falla hem tillsammans');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a block without a game model picks from the base list', (
+    tester,
+  ) async {
+    final services = await openWithoutModel(tester);
+    await tester.tap(find.text('Planera'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('tdp-item-b1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-panel-edit')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-block-standard-1')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tdp-block-standard-6')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tdp-block-save')));
+    await tester.pumpAndSettle();
+    final principles = services.plan!.principles;
+    expect(
+      [for (final p in principles) p.title],
+      ['Skapa spelbarhet', 'Reagera direkt'],
+    );
+    expect(services.plan!.blocks.single.principleIds, [
+      for (final p in principles) p.id,
+    ]);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _Plans implements TeamDevelopmentServices {
