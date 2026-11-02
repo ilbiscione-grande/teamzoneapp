@@ -21,7 +21,8 @@ List<TeamPrinciple> _tdpPrinciples(SeasonPlan plan, List<String> ids) => [
 /// Översikt (the new design, 2026-11-01): the team's development page. The
 /// season's periods and blocks across the whole width on top (2026-11-02),
 /// then two columns on a wide screen. The plan on the left: the block now,
-/// its activities and goals. The team on the right: the goals due for a
+/// its activities and goals. The team on the right: the players a load
+/// signal points at and every player's load (step 8), the goals due for a
 /// check-in, the season's goals and the dated ones.
 class _TdpHome extends StatelessWidget {
   const _TdpHome({required this.controller});
@@ -118,6 +119,12 @@ class _TdpHomeBody extends StatelessWidget {
       ],
     ];
     final right = [
+      _TdpTeamLoad(
+        key: ValueKey('tdp-team-load-${plan.id}'),
+        controller: controller,
+        plan: plan,
+      ),
+      const SizedBox(height: 12),
       _TdpDue(controller: controller, plan: plan),
       _TdpGoalGroup(
         controller: controller,

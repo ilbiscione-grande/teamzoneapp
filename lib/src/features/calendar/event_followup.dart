@@ -725,6 +725,12 @@ class _FollowupTabState extends State<_FollowupTab> {
           _assistantUsesFab(context) ? 96 : 24,
         ),
         children: [
+          // The player's own effort after a training (PAR-PRIV-04).
+          if (data.ended && widget.event.type == 'training')
+            _SessionEffortCard(
+              key: ValueKey('session-effort-${widget.event.id}'),
+              eventId: widget.event.id,
+            ),
           if (data.isLeader && data.ended) ...[
             _todos(context, data),
             const SizedBox(height: 16),

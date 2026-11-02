@@ -260,6 +260,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Overview'));
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byTooltip('Add goal').first);
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Add goal').first);
       await tester.pumpAndSettle();
       expect(find.text('New goal'), findsWidgets);
@@ -985,6 +987,47 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('the players\' load and the signals the leaders set', (
+    tester,
+  ) async {
+    final services = await openWithoutModel(tester);
+    expect(find.byKey(const Key('tdp-attention')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('tdp-attention-ada-load_increase')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('360 min de senaste 7 dagarna'), findsOneWidget);
+    expect(find.textContaining('Överväg ett lugnare pass'), findsOneWidget);
+    expect(find.byKey(const ValueKey('tdp-player-load-bo')), findsOneWidget);
+    expect(
+      find.textContaining('ansträngning 6,5 av 10 (2 svar)'),
+      findsOneWidget,
+    );
+
+    // The leaders turn the increase off and set the match minutes.
+    await tester.ensureVisible(find.byKey(const Key('tdp-load-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-load-settings')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('tdp-load-increase')), '');
+    await tester.enterText(find.byKey(const Key('tdp-load-match')), '5000');
+    await tester.tap(find.byKey(const Key('tdp-load-save')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Ett tal från 1 till 1000'), findsOneWidget);
+    await tester.enterText(find.byKey(const Key('tdp-load-match')), '150');
+    await tester.tap(find.byKey(const Key('tdp-load-save')));
+    await tester.pumpAndSettle();
+    expect(services.savedLoad!.loadIncreasePercent, isNull);
+    expect(services.savedLoad!.attendanceMinPercent, 50);
+    expect(services.savedLoad!.matchMinutesMax, 150);
+    expect(
+      find.byKey(const ValueKey('tdp-attention-ada-load_increase')),
+      findsNothing,
+    );
+    expect(find.textContaining('Ingen spelare sticker ut'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a block suggests exercises and takes the leaders\' own', (
     tester,
   ) async {
@@ -1210,6 +1253,26 @@ class _Plans implements TeamDevelopmentServices {
   /// The season before the one [createPlan] made.
   SeasonPlan? previous;
 
+  /// The players' load, and the values the leaders saved last.
+  LoadSettings? savedLoad;
+  TeamLoad teamLoad = TeamLoad(
+    day: DateTime(2026, 11, 2),
+    players: const [
+      PlayerLoad(
+        personId: 'ada',
+        name: 'Ada',
+        sessions7: 3,
+        trainingMinutes7: 270,
+        matchMinutes7: 90,
+        loadPercent: 180,
+        effort7: 6.5,
+        efforts7: 2,
+        signals: [LoadSignal.loadIncrease],
+      ),
+      PlayerLoad(personId: 'bo', name: 'Bo', sessions7: 2),
+    ],
+  );
+
   /// The library, and the block's exercises as the server keeps them.
   final library = <BlockExercise>[];
   final chosen = <BlockExercise>[];
@@ -1275,6 +1338,38 @@ class _Plans implements TeamDevelopmentServices {
   ) async {
     chosen.removeWhere((c) => c.id == exerciseId);
     return _exercises;
+  }
+
+  @override
+  Future<TeamLoad> load(SeasonPlan plan, {DateTime? day}) async => teamLoad;
+
+  @override
+  Future<TeamLoad> saveLoadSettings(
+    SeasonPlan plan,
+    LoadSettings settings,
+  ) async {
+    savedLoad = settings;
+    return teamLoad = TeamLoad(
+      day: teamLoad.day,
+      settings: settings,
+      players: [
+        for (final p in teamLoad.players)
+          PlayerLoad(
+            personId: p.personId,
+            name: p.name,
+            sessions7: p.sessions7,
+            trainingMinutes7: p.trainingMinutes7,
+            matchMinutes7: p.matchMinutes7,
+            loadPercent: p.loadPercent,
+            signals: [
+              for (final s in p.signals)
+                if (s != LoadSignal.loadIncrease ||
+                    settings.loadIncreasePercent != null)
+                  s,
+            ],
+          ),
+      ],
+    );
   }
 
   @override

@@ -23,6 +23,7 @@ import 'package:teamzone_app/src/features/overview/overview_services.dart';
 import 'package:teamzone_app/src/features/publication/editorial_services.dart';
 // attendance-export:hook (temporary laget.se export)
 import 'package:teamzone_app/src/features/attendance_export/attendance_export.dart';
+import 'package:teamzone_app/src/features/team_development/session_effort_services.dart';
 import 'package:teamzone_app/src/features/messaging/messaging_services.dart';
 import 'package:teamzone_app/src/features/match/match_services.dart';
 import 'package:teamzone_app/src/features/membership/membership_services.dart';
@@ -127,6 +128,7 @@ class SupabaseBootstrap {
     );
     // attendance-export:hook (temporary laget.se export)
     AttendanceExportFeature.configure(Supabase.instance.client);
+    SessionEffortFeature.configure(Supabase.instance.client);
     return AppServices(
       identity: identity,
       authEntry: identity,

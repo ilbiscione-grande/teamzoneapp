@@ -1,6 +1,6 @@
 # Team Development Plan: ny utformning – plan
 
-**Status: riktningen beslutad 2026-11-01. Steg 1–6 är driftsatta på webben 2026-11-02, och steg 7 är byggt. Steg 8–9 väntar på beslut (PAR-METHOD-01/02).** Skissen som godkändes ligger i [docs/ux/tdp-skiss.html](../ux/tdp-skiss.html). Den öppnas i en webbläsare.
+**Status: riktningen beslutad 2026-11-01. Steg 1–7 är driftsatta på webben 2026-11-02, och steg 8 är byggt. Besluten för steg 8–9 (PAR-METHOD-01/02) togs 2026-11-02, men några detaljer om skador är öppna.** Skissen som godkändes ligger i [docs/ux/tdp-skiss.html](../ux/tdp-skiss.html). Den öppnas i en webbläsare.
 
 Produktägaren vill göra om TDP från grunden. Det mesta av dagens funktion behålls, men sidan ska bli snyggare och lättare att använda. Modulen kändes mindre färdig än resten av appen.
 
@@ -98,8 +98,15 @@ Produktägaren vill göra om TDP från grunden. Det mesta av dagens funktion beh
    - **I blocket** (`team_development_block_exercises.dart`, panelen i Planera): "Övningar för blocket" visar de övningar ledarna har valt och förslag ur klubbens och TeamZones bibliotek. Förslagen är delade övningar vars spelfas är ett av skedena för blockets principer, klubbens först, högst sex. Ledaren väljer ett förslag med Välj, hämtar en övning eller ett pass med "Från biblioteket" eller skriver en egen övning. Högst tolv valda per block.
    - **När ett pass förbereds:** förslaget till passet (`get_team_plan_suggestion`) har med dagens blocks övningar. I träningsmodulen visas de i rutan "Tips för perioden" under Förberedelser, och "Lägg in" lägger övningen i passet som när den hämtas från biblioteket. På händelsesidan visas de i förslagsrutan som en lista, eftersom förberedelserna där inte har några övningar att lägga in i.
    - **Inte byggt än:** ledarens egna Tacticsboard-projekt ("Mina pass") går inte att välja för ett block, bara klubbens och TeamZones delade övningar och egna skrivna.
-8. **Belastning och rekommendationer**, när PAR-METHOD-01 är beslutad och speltid per spelare finns.
-9. **Skador**, när PAR-METHOD-02 är beslutad.
+8. **Belastning och rekommendationer.**
+   *Byggd 2026-11-02. SQL:en `20270131090000_team_development_load.sql` är körd och loggad, med testet `supabase/tests/team_development_load.local.mjs`.*
+   - **Det som räknas** per spelare, senaste 7 dagarna och 4 veckorna: träningar där spelaren var med, träningsminuter och matchminuter. Träningsminuterna kommer ur närvaron: närvarande ger hela passet, sen ger passet minus minuterna sen, delvis ger minuterna närvarande. Matchminuterna räknas i SQL som Efteranalysen räknar dem, ur startelvan, bytena, röda kort och slutsignalen. Speltiden behöver alltså inte sparas för sig.
+   - **Signalerna** (`team_development_load.dart`) visas under "Behöver din uppmärksamhet" i högra kolumnen på Översikt, med fakta och ett regelbaserat råd. *Ökad belastning:* de senaste 7 dagarnas minuter är minst N % av en snittvecka under 4 veckor (förval 130). *Låg närvaro:* färre än N % av lagets träningar med registrerad närvaro under 4 veckor, minst tre träningar (förval 50). *Mycket speltid:* fler än N matchminuter på 7 dagar (förval 180).
+   - **Gränsvärdena** ställer ledarna in för laget med knappen i "Spelarna". Ett tomt fält stänger av signalen.
+   - **Spelarna** listar alla aktiva spelare med pass, minuter och närvaro.
+   - **Egen skattning** (byggd 2026-11-02, SQL `20270201090000_session_effort.sql` körd och loggad, testet `supabase/tests/session_effort.local.mjs`): efter en träning får spelaren frågan "Hur ansträngande var passet?" 1–10 under Uppföljning (`session_effort_card.dart`), i sju dagar. Den ställs till lagets aktiva spelare från 13 år, räknat på födelsedatumet eller annars det år spelaren fyller 13, och bara när klubben har TDP. Okänd ålder ger ingen fråga. Vårdnadshavare ser barnets svar men svarar inte. Spelaren kan sluta svara, och då tas spelarens svar bort. Svaren raderas 24 månader efter passet av ett nattligt jobb (`session-effort-retention`). Ledarna ser snittet och antalet svar de senaste 7 dagarna i "Spelarna". Ansträngningen ger ingen signal.
+   - **Inte byggt än:** belastningen på dagsvyn i årskalendern.
+9. **Skador.** PAR-METHOD-02 är beslutad, men några detaljer är öppna.
 
 IDP tas efter detta.
 
@@ -132,8 +139,22 @@ Det finns en brödsmulestig, pilar för att bläddra och en knapp för att hoppa
 
 ## Grindar som påverkar bygget
 
-- **Skador är hälsodata.** [PAR-METHOD-02](../specification/source/16_open_parameter_backlog.md) spärrar data om hälsa och sanktioner tills beslut finns om minimiålder, vad vårdnadshavare ser och hur en spelare friskförklaras. Det rör sig om särskilt känsliga uppgifter om minderåriga. Skadedelen kan planeras, men byggs först när besluten finns.
-- **Belastningssignaler och rekommendationer.** Enligt PAR-METHOD-01 ska regler, tidsfönster och gränsvärden bestämmas. Fram till dess visar appen bara råa fakta och inga medicinska slutsatser. Rekommendationerna är regelbaserade. Generativ AI har egna grindar (PAR-AI-01/02).
+- **Skador är hälsodata.** [PAR-METHOD-02](../specification/source/16_open_parameter_backlog.md) spärrade data om hälsa tills beslut fanns om minimiålder, vad vårdnadshavare ser och hur en spelare kommer tillbaka. Produktägaren beslutade det 2026-11-02 (se nedan). Sanktioner (avstängning, uteslutning) är inte beslutade och ingår inte.
+- **Belastningssignaler och rekommendationer.** PAR-METHOD-01 beslutades av produktägaren 2026-11-02 (se nedan). Appen drar inga medicinska slutsatser, och rekommendationerna är regelbaserade. Generativ AI har egna grindar (PAR-AI-01/02).
+
+### Belastning, PAR-METHOD-01 (beslutat 2026-11-02)
+
+- **Det som räknas:** antal pass, träningsminuter och speltid i match. Självskattad ansträngning kommer till enligt PAR-PRIV-04, som beslutades 2026-11-02: från 13 år, svaren ses bara av ledarna och spelaren själv, vårdnadshavare har insyn, spelaren kan avstå och svaren sparas i 24 månader. Svaren används aldrig till automatisk rangordning eller uttagning.
+- **Tidsfönster:** senaste 7 dagarna jämförs med de senaste 4 veckorna.
+- **Gränsvärden:** ledarna ställer in dem för sitt lag, eftersom de beror på bland annat årskull. Appen har förvalda värden som utgångspunkt: 130 % för ökad belastning, 50 % för låg närvaro och 180 matchminuter på 7 dagar. Förvalen är satta i bygget och kan ändras.
+
+### Skador, PAR-METHOD-02 (beslutat 2026-11-02)
+
+- **Ålder:** skador registreras från 15 år. Under 15 år krävs godkännande från klubben, spelaren och vårdnadshavaren.
+- **Avstängning:** från 15 år är skaderegistreringen automatiskt godkänd. Den som inte vill ha den måste stänga av den aktivt (beslutat 2026-11-02).
+- **Vårdnadshavare:** ser samma sak som barnet ser.
+- **Tillbaka:** ingen friskförklaring. En ledare konstaterar att spelaren är tillbaka i träning.
+- **Öppet:** vem som stänger av efter 15 år (spelaren, ledaren eller klubben), vad spelaren själv ser om sin skada, och hur länge skadeuppgifterna sparas. Kolumnen för ägare i parameterlistan nämner också integritet och juridik, så en sådan genomgång rekommenderas innan skadedelen släpps.
 - **Data som saknas:** egen skattning, och speltid summerad över säsongen. Speltid per match räknas fram i matchmodulens Efteranalys ur startelvan, bytena och röda kort, men sparas inte. I dag finns närvaro och matchhändelser. Matcher som inte registrerades live kan sedan 2026-11-02 fyllas i efteråt i Live.
 
 ## Ändrad modulgräns

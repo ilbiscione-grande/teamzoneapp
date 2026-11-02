@@ -151,6 +151,12 @@ abstract interface class TeamDevelopmentServices {
   /// The club's or TeamZone's library ([source] club or teamzone).
   Future<List<BlockExercise>> listLibrary(String source, {String search = ''});
 
+  /// The players' load up to [day] (today when none), with the signals.
+  Future<TeamLoad> load(SeasonPlan plan, {DateTime? day});
+
+  /// The team's values for the signals; null turns one off.
+  Future<TeamLoad> saveLoadSettings(SeasonPlan plan, LoadSettings settings);
+
   /// A key figure's value for a played match, set by hand in place of the
   /// counted one; no [value] shows the counted one again.
   Future<SeasonPlan> setKpiMatchValue(
@@ -320,6 +326,12 @@ class UnconfiguredTeamDevelopmentServices implements TeamDevelopmentServices {
     String source, {
     String search = '',
   }) => Future.error(_error);
+  @override
+  Future<TeamLoad> load(SeasonPlan plan, {DateTime? day}) =>
+      Future.error(_error);
+  @override
+  Future<TeamLoad> saveLoadSettings(SeasonPlan plan, LoadSettings settings) =>
+      Future.error(_error);
   @override
   Future<SeasonPlan> addCheckin(
     SeasonPlan plan, {
@@ -656,6 +668,28 @@ class SupabaseTeamDevelopmentServices implements TeamDevelopmentServices {
         BlockExercise.fromJson(Map<String, dynamic>.from(row)),
     ];
   }
+
+  @override
+  Future<TeamLoad> load(SeasonPlan plan, {DateTime? day}) async =>
+      TeamLoad.fromJson(
+        await _rpc('get_team_development_load', {
+          'target_plan_id': plan.id,
+          'target_day': day == null ? null : _day(day),
+        }),
+      );
+
+  @override
+  Future<TeamLoad> saveLoadSettings(
+    SeasonPlan plan,
+    LoadSettings settings,
+  ) async => TeamLoad.fromJson(
+    await _rpc('set_team_development_load_settings', {
+      'target_plan_id': plan.id,
+      'load_increase': settings.loadIncreasePercent,
+      'attendance_min': settings.attendanceMinPercent,
+      'match_minutes': settings.matchMinutesMax,
+    }),
+  );
 
   @override
   Future<SeasonPlan> setKpiMatchValue(

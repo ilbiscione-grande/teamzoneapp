@@ -15,6 +15,7 @@ import 'package:teamzone_app/src/features/match/match_models.dart';
 import 'package:teamzone_app/src/features/match/match_services.dart';
 import 'package:teamzone_app/src/features/overview/overview_models.dart';
 import 'package:teamzone_app/src/features/overview/overview_services.dart';
+import 'package:teamzone_app/src/features/team_development/session_effort_services.dart';
 import 'package:teamzone_app/src/features/team_development/team_development_services.dart';
 
 void main() {
@@ -369,6 +370,46 @@ void main() {
       expect(find.byKey(const ValueKey('followup-goals')), findsNothing);
     });
   });
+  testWidgets('the player rates the training and can opt out', (tester) async {
+    final effort = _Effort();
+    SessionEffortFeature.services = effort;
+    addTearDown(
+      () => SessionEffortFeature.services =
+          const UnconfiguredSessionEffortServices(),
+    );
+    await _openPreparation(
+      tester,
+      _Calendar('training', _Prep(canEdit: false)..ended = true),
+    );
+    await tester.ensureVisible(find.text('Uppföljning'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Uppföljning'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hur ansträngande var passet?'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('session-effort-7')));
+    await tester.pumpAndSettle();
+    expect(effort.rating, 7);
+    expect(
+      tester
+          .widget<ChoiceChip>(find.byKey(const ValueKey('session-effort-7')))
+          .selected,
+      isTrue,
+    );
+
+    await tester.tap(find.byKey(const Key('session-effort-opt-out')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('session-effort-opt-out-confirm')));
+    await tester.pumpAndSettle();
+    expect(effort.optedOut, isTrue);
+    expect(effort.rating, isNull);
+    expect(find.text('Du har valt att inte svara på frågan.'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('session-effort-opt-in')));
+    await tester.pumpAndSettle();
+    expect(effort.optedOut, isFalse);
+    expect(find.byKey(const ValueKey('session-effort-7')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   group('Träning', () {
     testWidgets('focus from earlier use, custom focus and removal', (
       tester,
@@ -1917,4 +1958,40 @@ class _SharedTeamIdentity extends _Identity {
       capabilities: {'event.manage'},
     ),
   ];
+}
+
+/// The player's own effort as the server keeps it.
+class _Effort implements SessionEffortServices {
+  int? rating;
+  bool optedOut = false;
+
+  SessionEffort get _now => SessionEffort(
+    open: true,
+    people: [
+      SessionEffortPerson(
+        personId: 'me',
+        name: 'Ada',
+        self: true,
+        rating: rating,
+        optedOut: optedOut,
+        canAnswer: !optedOut,
+      ),
+    ],
+  );
+
+  @override
+  Future<SessionEffort> get(String eventId) async => _now;
+
+  @override
+  Future<SessionEffort> rate(String eventId, int? rating) async {
+    this.rating = rating;
+    return _now;
+  }
+
+  @override
+  Future<SessionEffort> setOptOut(String eventId, bool optOut) async {
+    optedOut = optOut;
+    if (optOut) rating = null;
+    return _now;
+  }
 }

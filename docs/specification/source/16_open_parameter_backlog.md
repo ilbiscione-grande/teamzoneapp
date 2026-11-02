@@ -50,6 +50,12 @@ Varje parameterbeslut ska dokumentera:
 | PAR-AI-01 | Modell-/tjänsteleverantör, region, DPA, dataallowlist, prompt-/outputretention och incidentflöde | Produktägare + privacy/security | P1 | Generativ AC-aktivering | Regelbaserad AC; ingen känslig person-, hälso- eller minderårigdata till modell | ND-01/02, ACD-01–03 |
 | PAR-AI-02 | Modellkvalitetsgrind, provenancekrav, utvärderingsdataset, kostnadstak och kill-switchansvar | Produktägare + tech lead + security | P1 | Generativ pilot/release | Generativ funktion avstängd | ACD-08/09 |
 
+**Beslutat 2026-11-02 av produktägaren** (detaljer i [tdp-redesign.md](../../implementation/tdp-redesign.md)):
+
+- **PAR-METHOD-01:** antal pass, träningsminuter och speltid räknas; 7 dagar mot 4 veckor; gränsvärdena ställs in av ledarna per lag, med förvalda värden. Självskattning enligt PAR-PRIV-04 nedan.
+- **PAR-METHOD-02 (skador):** registrering från 15 år, automatiskt godkänd från 15-årsdagen och avstängd först om någon stänger av den; under 15 år krävs godkännande från klubb, spelare och vårdnadshavare; vårdnadshavare ser det barnet ser; ingen friskförklaring, ledaren konstaterar att spelaren är tillbaka i träning. Öppet: vem som stänger av, vad spelaren ser, lagringstid. Sanktioner är inte beslutade.
+- **PAR-PRIV-04 (självskattning):** från 13 år; svaren ses bara av lagets ledare och spelaren själv; vårdnadshavare har insyn; spelaren kan avstå; svaren sparas i 24 månader. Svaren används aldrig till automatisk rangordning eller uttagning.
+
 ## Ekonomi, billing och kommersiella värden
 
 | ID | Parameter som återstår | Ägare/godkännare | Prioritet | Grind | Säker standard tills beslutad | Källa |
