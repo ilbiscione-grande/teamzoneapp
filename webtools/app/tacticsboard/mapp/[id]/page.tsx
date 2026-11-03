@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { RequireAccount } from "../../../../components/shell";
+import { RequireTacticsboard } from "../../../../components/tactics/RequireTacticsboard.tsx";
 import { FolderPage } from "../../../../components/tactics/FolderPage.tsx";
 
 export const metadata = { title: "Tacticsboard" };
@@ -16,7 +17,7 @@ export default async function TacticsFolderPage({ params }: Props) {
       <h1 className="wt-page-title">Mapp</h1>
       <Suspense fallback={<p className="wt-status">Laddar…</p>}>
         <RequireAccount returnTo={`/tacticsboard/mapp/${id}`}>
-          <FolderPage id={id} />
+          <RequireTacticsboard><FolderPage id={id} /></RequireTacticsboard>
         </RequireAccount>
       </Suspense>
     </div>

@@ -56,7 +56,7 @@ Set when the service is ready (the function stays closed until then):
 | `RESEND_INBOUND_WEBHOOK_SECRET` | from the inbound webhook in Resend, when club-site replies go live |
 | `FCM_SERVICE_ACCOUNT_JSON` | a service account for the production Firebase app, when push goes live |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SIGNING_SECRET` | live keys, when Tacticsboard billing is built (a restricted key is enough) |
-| `BILLING_WEB_ORIGIN` | when Tacticsboard billing is built: it holds one origin, and the club billing uses it today |
+| `BILLING_WEB_ORIGIN` | only for the clubs' `billing-checkout`. Tacticsboard's `tacticsboard-billing` allows `https://webtools.teamzoneapp.se` in code and needs nothing here |
 | `OBSERVABILITY_BRIDGE_URL`, `OBSERVABILITY_BRIDGE_TOKEN` | when the production monitor is set up |
 
 Never set on production:

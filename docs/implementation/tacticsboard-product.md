@@ -33,7 +33,7 @@
 - **Vault, Edge-hemligheter och funktioner i produktionen (2026-11-03):** Vault har sex namn. Edge har `TEAMZONE_ENV`, de två arbetartokens, `SUPPORT_PORTAL_URL`, `CONTACT_REPLY_SECRET` och `CONTACT_EMAIL_FROM_ADDRESS`. Alla 16 funktioner är driftsatta. Support- och notifieringsarbetaren svarar 200 varje minut. Kvar: Resend/SMTP och `SUPPORT_EMAIL_FROM`, Firebase för push, Stripe, övervakning, och en längre support-token (i dag 14 tecken). Instruktion: `docs/operations/production_secrets.md`.
 - **Alla migrationer är körda i produktionen (2026-11-03):** alla 430 kördes med `db push --remote=zfxcblgnemuenaqjkaic --skip-vault`, och det kopplade projektet är fortfarande test. Historiken stämmer med alla 430. Det finns 0 klubbar och 0 användare, 5 moduler, 15 delade övningar, 11 cron-jobb och 1 Vault-hemlighet (`push_token_key`). Cron-jobben misslyckas tills Vault-hemligheterna är skapade, vilket är fas 3, punkt 4.
 - **Kontrollen mot en tom databas är gjord (2026-11-03):** alla 430 migrationer och `seed.sql` gick igenom lokalt efter nollställningen. Bokningsmigrationerna är ännu inte committade men följer med i en `db push` från arbetskopian.
-- **Två committade migrationer saknas i testprojektets historik:** `20261022090000_sign_in_attempt_limits` och `20261128090000_tactics_live_idle`. Deras tabeller, funktioner och triggrar finns där (kontrollerat 2026-11-03), så de kördes för hand. Raderna kan läggas till med `supabase migration repair --status applied 20261022090000 20261128090000 --remote`. Det påverkar inte produktionen.
+- **Två handkörda migrationer i testprojektet är nu markerade som körda (2026-11-03):** `20261022090000_sign_in_attempt_limits` och `20261128090000_tactics_live_idle`. Deras objekt fanns redan där. Det påverkar inte produktionen.
 - **Lösenordslängd: minst 8 tecken (beslut 2026-11-03).** `supabase/config.toml`, `s01_auth_policy.md` och `production_provisioning.md` är ändrade från 12 till 8, så att de stämmer med webtools och Flutter-appen. Produktionen och testprojektet ställs in på 8 i Supabase under Authentication → Providers → Email. Alla teckentyper krävs (beslut 2026-11-03): liten och stor bokstav, siffra och specialtecken. `config.toml` har `password_requirements = "lower_upper_letters_digits_symbols"`, och webtools och appen kontrollerar samma regel med samma specialtecken som Supabase godkänner. I panelen: Authentication → Providers → Email → Password requirements → "Lowercase, uppercase letters, digits and symbols", både i test och produktion. Befintliga konton med svagare lösenord kan fortfarande logga in. Kravet gäller bara nya och bytta lösenord.
 
 Följdfrågor om lanseringspriset (besvarade, se ovan): hur länge kampanjen pågår, och om halva priset gäller bara första året eller även när abonnemanget förnyas. I Stripe blir det enklast en kupong ("50 % första året") på årspriset.
@@ -97,6 +97,74 @@ Det som behöver byggas:
 4. **Webhooken** uppdaterar prenumerationen och räknar om entitlementen. Den befintliga funktionen byggs ut, den skrivs inte om.
 5. **Kontrollen görs på servern.** Varje skrivande RPC i Tacticsboard (`create_tactics_project`, `save_tactics_project`, publicera, starta livelektion) kontrollerar entitlementen. Gränssnittet visar en tydlig ruta när prenumerationen saknas, men gränssnittet är aldrig skyddet.
 6. **Provperioden** startas en gång per konto och kan inte startas igen.
+
+**Byggt för punkt 6 (2026-11-03), migration `20270204090000_tacticsboard_personal_billing`:**
+- `core.personal_billing_accounts`, en rad per person. Raden skapas när provperioden startar och sparar start och slut (7 dagar). Den tas aldrig bort, så provperioden kan inte startas igen.
+- `core.personal_billing_subscriptions`, personens prenumeration. Den skrivs bara av webhooken (punkt 7), och Stripes referenser sparas som hash som i S10A. Tillstånden är `active`, `grace`, `ended` och `unknown`.
+- `internal.personal_entitlement_status` ger `write` eller `denied`. `write` gäller vid aktiv prenumeration, under grace tills `grace_ends_at` och under provperioden. Annars är kontot helt låst. Inget raderas.
+- `internal.actor_has_tacticsboard()` är spärren som de skrivande RPC:erna ska anropa i punkt 8.
+- `api.get_my_tacticsboard_access()` och `api.start_tacticsboard_trial()` finns för webtools. Starten är idempotent och loggas i `audit.command_events`. Gäster i livelektioner (anonym inloggning) får ingen provperiod.
+- Provperioden startar första gången personen öppnar Tacticsboard, inte när kontot skapas. Då förbrukar inte ett konto som bara används i TeamZone-appen sin provperiod. Webtools anropar starten i punkt 8 och 9.
+- Tabellerna är stängda för klienter. Allt går via RPC:erna.
+
+**Byggt för punkt 7 (2026-11-03), migration `20270205090000_tacticsboard_personal_checkout`:**
+- **Flödet:** webtools anropar Edge-funktionen `tacticsboard-billing` med `{action: "checkout", interval: "month"|"year", idempotencyKey}` eller `{action: "portal"}`. Svaret är `{url}` till Stripes sida.
+  - Funktionen förbereder köpet som personen själv (`api.prepare_tacticsboard_checkout`). Därefter hämtar den pris, kupong och kund som server (`api.claim_tacticsboard_checkout`). Begäran innehåller aldrig något pris.
+  - Ett andra köp nekas med `already_subscribed` medan prenumerationen eller grace gäller.
+- **Stripe Checkout:**
+  - svenska, Stripe Tax (`automatic_tax`) och momsnummer för företag
+  - adressen krävs
+  - kunden återanvänds, och annars förifylls e-postadressen
+  - kupongen läggs på så länge `coupon_ends_at` inte har passerat
+  - Återstår mer än 48 timmar av provperioden, sätts den som `trial_end`, så att den som köper tidigt inte betalar för de dagarna.
+  - Tillbaka till `/konto?betalning=klar` eller `/konto?betalning=avbruten`.
+- **Customer Portal** öppnas för personens egen Stripe-kund. Därifrån kommer man tillbaka till `/konto`.
+- **Live eller test** avgörs av Stripe-nyckeln (`sk_live_`/`rk_live_` eller `sk_test_`/`rk_test_`). Ett testpris kan aldrig användas med en skarp nyckel.
+- **Webhooken:** `stripe-webhook` skickar händelser med `metadata.teamzone_product = webtool.tacticsboard` till `api.ingest_tacticsboard_stripe_event`. Övriga händelser går till klubbarnas S10A som förut.
+  - Hanteras: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated` och `customer.subscription.deleted`. De kan komma i vilken ordning som helst.
+  - Dubbletter, äldre händelser och främmande händelser (utan köp, med okänt pris eller fel läge) tas bort.
+  - En äldre prenumeration ersätter aldrig en nyare som fortfarande ger åtkomst.
+- **Tillstånden från Stripe:**
+  - `active` och `trialing` ger `active`.
+  - `past_due` och `unpaid` ger `grace` i 14 dagar, räknat från första misslyckandet.
+  - `canceled`, `incomplete_expired`, `paused` och borttagen ger `ended`.
+  - Allt annat ger `unknown`, utan åtkomst.
+- **Provperioden:** den som köpt utan provperiod får ingen provperiod senare.
+- **Ursprung:** Edge-funktionen godkänner `https://webtools.teamzoneapp.se` och de adresser som `TEAMZONE_EXTRA_WEB_ORIGINS` listar. I test måste den listan innehålla Webtools hosted.app-adress.
+- **Det här gör du i Stripe (testläge först):**
+  1. Produkten "Tacticsboard" med två återkommande priser: 79 kr/mån och 790 kr/år, med moms inräknad (tax behavior: inclusive).
+  2. Kupongen: 50 %, gäller en gång, går att lösa in till och med 2026-12-31.
+  3. Slå på Stripe Tax.
+  4. Lägg till de fyra händelserna ovan på webhooken som pekar på `stripe-webhook`.
+  5. Customer Portal: tillåt byte av kort, kvitton och uppsägning vid periodens slut.
+- **Priserna i testprojektet är inlagda (2026-11-03):** månadspriset `price_1UXkSR4Skh2WBbLCRSPTcGdy` och årspriset `price_1UXkTK4Skh2WBbLCfJ3SDRW2` med kupongen `LANSERING50` till och med 2026-12-31. Båda är i testläge (`livemode = false`). Produktionen får de skarpa priserna i punkt 15.
+- **Så läggs priserna in** (bara id:n, inga hemligheter):
+  ```sql
+  insert into internal.personal_billing_prices (billing_interval, livemode, provider_price_ref, provider_coupon_ref, coupon_ends_at)
+  values ('month', false, 'price_…', null, null),
+         ('year', false, 'price_…', '<kupongens id>', '2027-01-01 00:00+01');
+  ```
+
+**Byggt för punkt 8 (2026-11-03), migration `20270206090000_tacticsboard_write_gate`:**
+- **Spärren i databasen:** `internal.require_tacticsboard()` stoppar med `tacticsboard_locked` när personen varken har provperiod, prenumeration eller grace. Den utloggade får den inre funktionens eget svar.
+  - 44 api-funktioner anropar den först. Det gäller allt ägaren gör med sina egna projekt, mappar, mallar, versioner och sitt bibliotek, och även läsningar.
+  - Inne i funktionerna är inget ändrat.
+- **Det som fortsätter att fungera för en låst ägare och för andra:**
+  - delade länkar och mappar (`get_shared_tactics*`)
+  - livelektioner som redan har startat: att gå med, frågor, chatt, ritning, ordet och att avsluta. Att starta en ny är spärrat.
+  - att ta tillbaka: återkalla en länk och ta bort något ur biblioteket
+  - granskningen av anmälningar
+  - TeamZones egna flöden för matchplaner och träningspass. De anropar internal-funktionerna och påverkas inte.
+- **Testet** `supabase/tests/tacticsboard_write_gate.local.mjs` kontrollerar två saker:
+  - Den senaste definitionen av varje spärrad funktion, i alla migrationer, anropar fortfarande spärren.
+  - En ny api-funktion för Tacticsboard måste placeras antingen bland de spärrade eller i listan över öppna.
+- **I webtools:**
+  - `RequireTacticsboard` ligger runt startsidan, biblioteket, mappen och editorn.
+  - Första besöket startar provperioden.
+  - Utan åtkomst visas "Provperioden är slut" eller "Prenumerationen har upphört", med knapparna för månad och år, som går till Stripe Checkout.
+  - En rad visar provperiodens dagar, en misslyckad betalning (med "Uppdatera kortet", som öppnar kundportalen) eller en uppsägning.
+  - Reglerna finns i `lib/tactics/access.ts` och testas i `tests/tactics-access.test.ts`.
+- **Ordningen vid driftsättning:** migrationen och webtools måste ut tillsammans. Kommer migrationen först, låses den driftsatta Tacticsboard, eftersom den gamla webtools aldrig startar någon provperiod.
 
 **Förslag på vad som gäller utan betalning** (följer PAR-BILL-02):
 - Under provperioden och med aktiv prenumeration: allt.
@@ -210,9 +278,9 @@ Genomgången gjordes 2026-11-02 i koden och i förhandsvisningen av `/tacticsboa
 | 3 | Stripe-kontot aktiverat med bolagsuppgifterna, produkt och pris i testläge | Du (jag får inte skapa konton eller hantera riktiga uppgifter) | Dag 1–3 |
 | 4 | Rätta `safeReturnTo` för biblioteket och mappar, med test (klart 2026-11-02) | Jag | Timmar |
 | 5 | Glömt lösenord och byte av lösenord i webtools (byggt 2026-11-02: `components/password.tsx`, länken går till `/logga-in?losenord=nytt`. Hela flödet med mejl är inte provat) | Jag | 1 dag |
-| 6 | Betalkonto per person, entitlementen `webtool.tacticsboard` och provperioden (migration som du kör) | Jag skriver, du kör SQL | 2 dagar |
-| 7 | Checkout, Customer Portal och webhooken (bygger på S10A) | Jag | 2 dagar |
-| 8 | Kontroll i servern på alla skrivande RPC:er, och läsläget i gränssnittet | Jag | 1–2 dagar |
+| 6 | Betalkonto per person, entitlementen `webtool.tacticsboard` och provperioden (migration som du kör). Skrivet 2026-11-03: `20270204090000_tacticsboard_personal_billing.sql`, provat i PGlite (`supabase/tests/tacticsboard_personal_billing.local.mjs`) och lokalt. Kört i test 2026-11-03 (tabeller, RLS, funktioner och rättigheter kontrollerade). Inte kört i produktion | Jag skriver, du kör SQL | 2 dagar |
+| 7 | Checkout, Customer Portal och webhooken (bygger på S10A). Skrivet 2026-11-03: migrationen `20270205090000_tacticsboard_personal_checkout.sql` (körd lokalt och i test), Edge-funktionen `tacticsboard-billing` och vägvalet i `stripe-webhook` (ingen av dem driftsatt). Kvar: priserna i Stripe och raderna i `internal.personal_billing_prices`, händelserna på webhooken och inställningarna för Customer Portal, se "Byggt för punkt 7" | Jag | 2 dagar |
+| 8 | Kontroll i servern på alla skrivande RPC:er, och läsläget i gränssnittet. Skrivet 2026-11-03: migrationen `20270206090000_tacticsboard_write_gate.sql` (körd lokalt, inte i test), `RequireTacticsboard` på de fyra sidorna i webtools. Ska köras i test samtidigt som webtools driftsätts, annars låses den driftsatta Tacticsboard för alla | Jag | 1–2 dagar |
 | 9 | Kontosidan: prenumerationens status, provperiodens dagar kvar, hantera betalning, avsluta kontot | Jag | 1 dag |
 | 10 | Produktsida med pris och "Prova gratis" | Jag bygger, du ger bilder, texter och pris | 1–2 dagar |
 | 11 | Villkor, prenumerationsvillkor, ångerrätt och integritetspolicy med riktiga bolagsuppgifter | Du (gärna med juridisk granskning), jag lägger in dem | Parallellt |

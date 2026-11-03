@@ -58,6 +58,7 @@ void main() {
       for (final name in <String>[
         'billing-checkout',
         'stripe-webhook',
+        'tacticsboard-billing',
         'notification-worker',
         'message-retention-worker',
         'critical-flow-monitor',

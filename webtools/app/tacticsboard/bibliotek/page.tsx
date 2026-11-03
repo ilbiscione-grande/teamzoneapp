@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { RequireAccount } from "../../../components/shell";
+import { RequireTacticsboard } from "../../../components/tactics/RequireTacticsboard.tsx";
 import { SharedLibrary } from "../../../components/tactics/SharedLibrary.tsx";
 
 export const metadata = { title: "TeamZones bibliotek · Tacticsboard" };
@@ -11,7 +12,7 @@ export default function SharedLibraryPage() {
       <h1 className="wt-page-title">TeamZones bibliotek</h1>
       <Suspense fallback={<p className="wt-status">Laddar…</p>}>
         <RequireAccount returnTo="/tacticsboard/bibliotek">
-          <SharedLibrary />
+          <RequireTacticsboard><SharedLibrary /></RequireTacticsboard>
         </RequireAccount>
       </Suspense>
     </div>

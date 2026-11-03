@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import Stripe from "npm:stripe@22.0.0";
 import { billingRuntimeEnabled, json } from "../_shared/billing_http.ts";
+import { isTacticsboardEvent } from "../_shared/tacticsboard_billing.ts";
 import {
   correlationId,
   sanitizedLog,
@@ -51,7 +52,10 @@ Deno.serve(async (request) => {
     return respond(json(503, { error: "billing_unavailable" }));
   }
   const client = createClient(url, secret, { auth: { persistSession: false } });
-  const { error } = await client.schema("api").rpc("ingest_stripe_event", {
+  // Tacticsboard's per-person events carry the product in their metadata;
+  // everything else is the clubs' S10A flow.
+  const ingest = isTacticsboardEvent(event) ? "ingest_tacticsboard_stripe_event" : "ingest_stripe_event";
+  const { error } = await client.schema("api").rpc(ingest, {
     provider_event_id: event.id,
     provider_created_at: event.created,
     event_type: event.type,

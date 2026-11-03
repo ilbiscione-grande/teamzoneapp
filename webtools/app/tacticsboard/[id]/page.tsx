@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { RequireAccount } from "../../../components/shell";
+import { RequireTacticsboard } from "../../../components/tactics/RequireTacticsboard.tsx";
 import { TacticsEditor } from "../../../components/tactics/TacticsEditor.tsx";
 
 export const metadata = { title: "Tacticsboard" };
@@ -13,7 +14,9 @@ export default async function TacticsProjectPage({ params }: Props) {
   return (
     <Suspense fallback={<p className="wt-status">Laddar…</p>}>
       <RequireAccount returnTo={`/tacticsboard/${id}`}>
-        <TacticsEditor id={id} />
+        <RequireTacticsboard note={false} lockedFrame>
+          <TacticsEditor id={id} />
+        </RequireTacticsboard>
       </RequireAccount>
     </Suspense>
   );

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { RequireAccount } from "../../components/shell";
+import { RequireTacticsboard } from "../../components/tactics/RequireTacticsboard.tsx";
 import { TacticsHome } from "../../components/tactics/TacticsHome.tsx";
 
 export const metadata = { title: "Tacticsboard" };
@@ -11,7 +12,7 @@ export default function TacticsboardPage() {
       <h1 className="wt-page-title">Taktiktavla</h1>
       <Suspense fallback={<p className="wt-status">Laddar…</p>}>
         <RequireAccount returnTo="/tacticsboard">
-          <TacticsHome />
+          <RequireTacticsboard><TacticsHome /></RequireTacticsboard>
         </RequireAccount>
       </Suspense>
     </div>
