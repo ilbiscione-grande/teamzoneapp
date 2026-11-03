@@ -3,6 +3,7 @@
 // /appar/tacticsboard and, for the signed-out, at /tacticsboard.
 import Link from "next/link";
 import { launchOfferOpen, prices } from "../../lib/tactics/access.ts";
+import { ProductVideo } from "./ProductVideo.tsx";
 import "./product.css";
 
 const signUp = "/logga-in?skapa=1&returnTo=%2Ftacticsboard";
@@ -15,6 +16,13 @@ const points = [
   ["Dela", "Skicka en länk till spelare och föräldrar. De behöver inget konto för att titta."],
   ["Spara och ordna", "Projekt, mappar, mallar och versioner. Hämta och dela övningar i biblioteket."],
   ["Exportera", "Som PDF eller video, till träningsplanen eller gruppchatten."],
+] as const;
+
+// Screenshots in public/tacticsboard: file, size, and what they show.
+const shots = [
+  ["verktyg.png", 1291, 882, "Verktygen: spelare, boll, utrustning, pilar, ytor och mått."],
+  ["editor.png", 1521, 1045, "Tavlorna i ett projekt, med beskrivning och tidslinje."],
+  ["ytor.png", 1360, 846, "Markera ytor och de spelare laget ska titta på."],
 ] as const;
 
 const questions = [
@@ -38,6 +46,7 @@ export function TacticsProduct() {
             <Link className="wt-button secondary" href={signIn}>Logga in</Link>
           </div>
           <p className="tb-product-small">Inget kort behövs. Därefter {prices.month.label}.</p>
+          <ProductVideo src="/tacticsboard/demo.mp4" poster="/tacticsboard/editor.png" end={7.5} />
         </div>
       </section>
 
@@ -45,6 +54,14 @@ export function TacticsProduct() {
         <div className="wt-points">
           {points.map(([title, text]) => (
             <article key={title}><h3>{title}</h3><p>{text}</p></article>
+          ))}
+        </div>
+        <div className="tb-shots">
+          {shots.map(([file, width, height, caption]) => (
+            <figure key={file}>
+              <img src={`/tacticsboard/${file}`} width={width} height={height} alt={caption} loading="lazy" />
+              <figcaption>{caption}</figcaption>
+            </figure>
           ))}
         </div>
       </section>
