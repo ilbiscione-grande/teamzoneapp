@@ -121,10 +121,13 @@ except the Vault secrets listed below.
    a generated database password kept in the password manager.
 2. **Auth** (Dashboard → Authentication), as in `docs/security/s01_auth_policy.md`:
    - Site URL `https://app.teamzoneapp.se`; redirect URLs
-     `https://app.teamzoneapp.se/auth/callback` and
-     `teamzone://app/auth/callback`.
-   - Minimum password length 12, leaked-password protection on, e-mail
-     confirmation on, secure e-mail change on.
+     `https://app.teamzoneapp.se/auth/callback`,
+     `teamzone://app/auth/callback` and Webtools'
+     `https://webtools.teamzoneapp.se/logga-in` (with `**` after it, so the
+     `?konto=bekraftat` and `?losenord=nytt` returns are allowed).
+   - Minimum password length 8 with lowercase, uppercase, digits and symbols
+     required, leaked-password protection on, e-mail confirmation on, secure
+     e-mail change on.
    - Custom SMTP through Resend with a production API key and sender.
    - Review rate limits (sign-in is additionally limited per e-mail and
      address by `auth-password-sign-in`).
