@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { groupConnections } from "../lib/account";
 import { useAccount } from "./account";
 import { RequireAccount } from "./shell";
+import { AccountDeletion } from "./account-deletion";
 import { NewPasswordForm } from "./password";
+import { TacticsboardSubscription } from "./tactics/TacticsboardSubscription.tsx";
 
 function PasswordSection() {
   const [open, setOpen] = useState(false);
@@ -38,7 +40,9 @@ function AccountDetails() {
       <PasswordSection />
       <section className="wt-panel" aria-labelledby="subscriptions-title">
         <h2 id="subscriptions-title">Abonnemang</h2>
-        <p>Du har inga abonnemang än. När apparna öppnar kan du köpa dem en och en, i paket eller få dem via din klubb i TeamZone.</p>
+        <Suspense fallback={<p className="wt-status">Laddar…</p>}>
+          <TacticsboardSubscription />
+        </Suspense>
       </section>
       <section className="wt-panel" aria-labelledby="connections-title">
         <h2 id="connections-title">Lag och klubbar</h2>
@@ -61,6 +65,7 @@ function AccountDetails() {
           </>
         )}
       </section>
+      <AccountDeletion />
     </div>
   );
 }

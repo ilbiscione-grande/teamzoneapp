@@ -91,3 +91,19 @@ export function validNewPassword(password: string, repeated: string): string | n
   if (password !== repeated) return "Lösenorden är inte likadana.";
   return null;
 }
+
+/** The word that confirms ending the account (supabase/functions/account-deletion). */
+export const deletionWord = "AVSLUTA";
+
+/** The person's message when the account cannot be ended from Webtools. */
+export function accountDeletionErrorText(code: string): string {
+  if (code === "club_linked") {
+    return "Ditt konto är kopplat till en klubb i TeamZone. Be om att få kontot raderat i TeamZone-appen, eller mejla support@teamzoneapp.se.";
+  }
+  if (code === "needs_support") {
+    return "Kontot har uppgifter som behöver tas bort för hand. Mejla support@teamzoneapp.se så hjälper vi dig.";
+  }
+  if (code === "billing_cancel_failed") return "Prenumerationen gick inte att avsluta just nu. Inget är borttaget. Försök igen om en stund.";
+  if (code === "not_signed_in") return "Logga in igen och försök på nytt.";
+  return "Kontot går inte att avsluta just nu. Försök igen om en stund.";
+}

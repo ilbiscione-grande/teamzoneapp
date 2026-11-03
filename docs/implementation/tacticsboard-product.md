@@ -138,6 +138,9 @@ Det som behöver byggas:
   4. Lägg till de fyra händelserna ovan på webhooken som pekar på `stripe-webhook`.
   5. Customer Portal: tillåt byte av kort, kvitton och uppsägning vid periodens slut.
 - **Priserna i testprojektet är inlagda (2026-11-03):** månadspriset `price_1UXkSR4Skh2WBbLCRSPTcGdy` och årspriset `price_1UXkTK4Skh2WBbLCfJ3SDRW2` med kupongen `LANSERING50` till och med 2026-12-31. Båda är i testläge (`livemode = false`). Produktionen får de skarpa priserna i punkt 15.
+- **Ett köp är provat hela vägen i test (2026-11-03):** månadspriset med testkort, sedan `checkout.session.completed` och `customer.subscription.created` hanterade. Prenumerationen blev `active`, och provperiodens rest fördes över (perioden slutar 2026-11-10). Två fel fanns först:
+  - Stripe-nyckeln i test hörde till klubbarnas gamla sandlåda och byttes.
+  - Signing secret hörde till en annan endpoint, så webhooken svarade 400 `invalid_signature`. Den byttes, och händelserna skickades igen.
 - **Så läggs priserna in** (bara id:n, inga hemligheter):
   ```sql
   insert into internal.personal_billing_prices (billing_interval, livemode, provider_price_ref, provider_coupon_ref, coupon_ends_at)
@@ -165,6 +168,23 @@ Det som behöver byggas:
   - En rad visar provperiodens dagar, en misslyckad betalning (med "Uppdatera kortet", som öppnar kundportalen) eller en uppsägning.
   - Reglerna finns i `lib/tactics/access.ts` och testas i `tests/tactics-access.test.ts`.
 - **Ordningen vid driftsättning:** migrationen och webtools måste ut tillsammans. Kommer migrationen först, låses den driftsatta Tacticsboard, eftersom den gamla webtools aldrig startar någon provperiod.
+
+**Byggt för punkt 9 (2026-11-03), avsluta kontot (beslut: en egen knapp, automatiskt):**
+- **Kontosidan** har avsnittet "Avsluta kontot". Personen skriver AVSLUTA för att bekräfta. Texten säger tre saker: vad som tas bort, att prenumerationen avslutas direkt utan återbetalning och att kvittona finns kvar hos Stripe.
+- **Edge-funktionen `account-deletion`** gör så här:
+  1. Kontrollerar med en provkörning i databasen att raderingen går igenom. Provkörningen gör allt och rullar sedan tillbaka.
+  2. Avslutar personens Stripe-prenumerationer direkt.
+  3. Raderar datan (`api.erase_own_account`).
+  4. Tar bort Auth-användaren.
+
+  Misslyckas steg 4 kan personen försöka igen. Datan är redan borta, och då tas bara användaren bort.
+- **Raderingen** (migration `20270207090000_account_self_erasure`):
+  - Tacticsboards projekt, versioner, länkar, livelektioner, mappar, mallar, biblioteket och det som publicerats, med deras val och favoriter.
+  - Betalkontot, kunden, godkännandena av villkoren och inställningarna, som följer med genom cascade.
+  - Loggraderna blir anonyma.
+- **Konton som är kopplade till en klubb** får `club_linked` och hänvisas till den granskade raderingen (TEAM-08) i appen.
+- **Om andra uppgifter blockerar** raderingen får personen `needs_support` och hänvisas till support. Ingenting ändras då.
+- **Provat lokalt i Postgres:** provkörningen ändrar inget, den riktiga raderingen lämnar 0 rader kvar, en andra körning fungerar, Auth-användaren går att ta bort efteråt, och ett blockerat konto lämnas orört.
 
 **Förslag på vad som gäller utan betalning** (följer PAR-BILL-02):
 - Under provperioden och med aktiv prenumeration: allt.
@@ -280,8 +300,8 @@ Genomgången gjordes 2026-11-02 i koden och i förhandsvisningen av `/tacticsboa
 | 5 | Glömt lösenord och byte av lösenord i webtools (byggt 2026-11-02: `components/password.tsx`, länken går till `/logga-in?losenord=nytt`. Hela flödet med mejl är inte provat) | Jag | 1 dag |
 | 6 | Betalkonto per person, entitlementen `webtool.tacticsboard` och provperioden (migration som du kör). Skrivet 2026-11-03: `20270204090000_tacticsboard_personal_billing.sql`, provat i PGlite (`supabase/tests/tacticsboard_personal_billing.local.mjs`) och lokalt. Kört i test 2026-11-03 (tabeller, RLS, funktioner och rättigheter kontrollerade). Inte kört i produktion | Jag skriver, du kör SQL | 2 dagar |
 | 7 | Checkout, Customer Portal och webhooken (bygger på S10A). Skrivet 2026-11-03: migrationen `20270205090000_tacticsboard_personal_checkout.sql` (körd lokalt och i test), Edge-funktionen `tacticsboard-billing` och vägvalet i `stripe-webhook` (ingen av dem driftsatt). Kvar: priserna i Stripe och raderna i `internal.personal_billing_prices`, händelserna på webhooken och inställningarna för Customer Portal, se "Byggt för punkt 7" | Jag | 2 dagar |
-| 8 | Kontroll i servern på alla skrivande RPC:er, och läsläget i gränssnittet. Skrivet 2026-11-03: migrationen `20270206090000_tacticsboard_write_gate.sql` (körd lokalt, inte i test), `RequireTacticsboard` på de fyra sidorna i webtools. Ska köras i test samtidigt som webtools driftsätts, annars låses den driftsatta Tacticsboard för alla | Jag | 1–2 dagar |
-| 9 | Kontosidan: prenumerationens status, provperiodens dagar kvar, hantera betalning, avsluta kontot | Jag | 1 dag |
+| 8 | Kontroll i servern på alla skrivande RPC:er, och läsläget i gränssnittet. Skrivet 2026-11-03: migrationen `20270206090000_tacticsboard_write_gate.sql` och `RequireTacticsboard` på de fyra sidorna i webtools. Committat som `00cf210`. Driftsatt i test 2026-11-03: webtools först, sedan migrationen (44 spärrade funktioner, 31 öppna). Inte i produktion | Jag | 1–2 dagar |
+| 9 | Kontosidan: prenumerationens status, provperiodens dagar kvar, hantera betalning, avsluta kontot. Skrivet 2026-11-03 (inte driftsatt): `TacticsboardSubscription` under Abonnemang visar prenumerationen och nästa betalning, uppsägningen, en misslyckad betalning, provperiodens dagar eller "Prova gratis", med knapparna för Stripes portal och köp. Efter köpet väntar sidan på webhooken i upp till 20 sekunder. Avsluta kontot är byggt samma dag, se "Byggt för punkt 9". Migrationen är körd lokalt och i test. Funktionen `account-deletion` och webtools är inte driftsatta | Jag | 1 dag |
 | 10 | Produktsida med pris och "Prova gratis" | Jag bygger, du ger bilder, texter och pris | 1–2 dagar |
 | 11 | Villkor, prenumerationsvillkor, ångerrätt och integritetspolicy med riktiga bolagsuppgifter | Du (gärna med juridisk granskning), jag lägger in dem | Parallellt |
 | 12 | Texter utan TeamZone, dölj det som inte går att använda, toppraden i mobil | Jag | 1 dag |

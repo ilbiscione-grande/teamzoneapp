@@ -391,6 +391,9 @@ verify_jwt = false
 [functions.tacticsboard-billing]
 verify_jwt = true
 
+[functions.account-deletion]
+verify_jwt = true
+
 [functions.auth-password-sign-in]
 verify_jwt = false
 

@@ -59,6 +59,7 @@ void main() {
         'billing-checkout',
         'stripe-webhook',
         'tacticsboard-billing',
+        'account-deletion',
         'notification-worker',
         'message-retention-worker',
         'critical-flow-monitor',

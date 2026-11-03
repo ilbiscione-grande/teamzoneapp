@@ -7,6 +7,7 @@ import {
   isLockedError,
   launchOfferOpen,
   lockedText,
+  subscriptionSummary,
   type TacticsAccess,
 } from "../lib/tactics/access.ts";
 
@@ -45,6 +46,27 @@ test("the locked page says why", () => {
 test("the launch offer ends with 2026", () => {
   assert.equal(launchOfferOpen(new Date("2026-12-31T22:59:00Z")), true);
   assert.equal(launchOfferOpen(new Date("2026-12-31T23:00:00Z")), false);
+});
+
+test("the account page: subscription, cancelled, failed payment, trial, never tried, ended", () => {
+  const paid = { ...base, source: "subscription" as const, subscription_state: "active" as const,
+    billing_interval: "month" as const, current_period_ends_at: "2026-11-10T16:52:11Z" };
+  assert.deepEqual(subscriptionSummary(paid, now),
+    { lines: ["Månadsabonnemang, 79 kr/mån.", "Nästa betalning 10 november."], subscribe: false, manage: "manage", tryIt: false });
+  assert.deepEqual(subscriptionSummary({ ...paid, billing_interval: "year", cancel_at_period_end: true }, now).lines,
+    ["Årsabonnemang, 790 kr/år.", "Uppsagt. Gäller till och med 10 november."]);
+  const grace = subscriptionSummary({ ...paid, source: "grace", subscription_state: "grace", grace_ends_at: "2026-11-17T12:00:00Z" }, now);
+  assert.equal(grace.manage, "card");
+  assert.match(grace.lines[0], /Betalningen gick inte igenom/);
+  const trial = subscriptionSummary(base, now);
+  assert.deepEqual([trial.subscribe, trial.manage], [true, null]);
+  assert.equal(trial.lines[0], "Provperiod (till och med 10 november). 7 dagar kvar av provperioden.");
+  const fresh = { ...base, access_mode: "denied" as const, source: "none" as const, trial_available: true, trial_ends_at: null };
+  assert.deepEqual([subscriptionSummary(fresh, now).tryIt, subscriptionSummary(fresh, now).subscribe], [true, false]);
+  const ended = subscriptionSummary({ ...fresh, trial_available: false, subscription_state: "ended" }, now);
+  assert.deepEqual([ended.subscribe, ended.manage, ended.lines[0]], [true, "manage", "Prenumerationen har upphört. Dina projekt finns kvar."]);
+  const trialOver = subscriptionSummary({ ...fresh, trial_available: false, trial_ends_at: "2026-11-01T12:00:00Z" }, now);
+  assert.deepEqual([trialOver.subscribe, trialOver.manage], [true, null]);
 });
 
 test("errors", () => {

@@ -62,6 +62,42 @@ export function lockedText(access: TacticsAccess): { title: string; text: string
   return { title: "Prenumerera på Tacticsboard", text: "Börja prenumerera för att använda Tacticsboard." };
 }
 
+/** What the account page says about Tacticsboard, and which actions it offers. */
+export function subscriptionSummary(access: TacticsAccess, now = Date.now()): {
+  lines: string[];
+  subscribe: boolean;
+  manage: "card" | "manage" | null;
+  tryIt: boolean;
+} {
+  const interval = access.billing_interval === "year" ? "Årsabonnemang" : "Månadsabonnemang";
+  const price = access.billing_interval === "year" ? prices.year.label : prices.month.label;
+  if (access.source === "subscription") {
+    const end = access.current_period_ends_at ? swedishDate(access.current_period_ends_at) : null;
+    return {
+      lines: [`${interval}, ${price}.`,
+        access.cancel_at_period_end
+          ? `Uppsagt. Gäller till och med ${end}.`
+          : end ? `Nästa betalning ${end}.` : ""].filter(Boolean),
+      subscribe: false, manage: "manage", tryIt: false,
+    };
+  }
+  if (access.source === "grace") {
+    return { lines: [accessNote(access, now)], subscribe: false, manage: "card", tryIt: false };
+  }
+  if (access.source === "trial") {
+    const end = access.trial_ends_at ? ` (till och med ${swedishDate(access.trial_ends_at)})` : "";
+    return { lines: [`Provperiod${end}. ${accessNote(access, now)}`], subscribe: true, manage: null, tryIt: false };
+  }
+  if (access.trial_available) {
+    return { lines: ["Prova Tacticsboard gratis i 7 dagar. Inget kort behövs."], subscribe: false, manage: null, tryIt: true };
+  }
+  const ended = access.subscription_state === "ended" || access.subscription_state === "grace";
+  return {
+    lines: [ended ? "Prenumerationen har upphört. Dina projekt finns kvar." : "Provperioden är slut. Dina projekt finns kvar."],
+    subscribe: true, manage: ended ? "manage" : null, tryIt: false,
+  };
+}
+
 /** Whether an RPC failed because the account is locked. */
 export const isLockedError = (message: string | undefined) => (message ?? "").includes("tacticsboard_locked");
 

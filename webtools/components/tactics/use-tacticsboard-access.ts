@@ -7,7 +7,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useAccount } from "../account";
 import { billingErrorText, type Interval, type TacticsAccess } from "../../lib/tactics/access.ts";
 
-export function useTacticsboardAccess() {
+/** `startTrial` is false where only the status is shown, such as the account page. */
+export function useTacticsboardAccess({ startTrial = true }: { startTrial?: boolean } = {}) {
   const { client } = useAccount();
   const [access, setAccess] = useState<TacticsAccess | null>(null);
   const [error, setError] = useState("");
@@ -17,13 +18,13 @@ export function useTacticsboardAccess() {
     setError("");
     const read = await client.schema("api").rpc("get_my_tacticsboard_access");
     let next = read.data as TacticsAccess | null;
-    if (!read.error && next?.trial_available) {
+    if (startTrial && !read.error && next?.trial_available) {
       const started = await client.schema("api").rpc("start_tacticsboard_trial");
       next = started.error ? next : (started.data as TacticsAccess);
     }
     if (read.error || !next) { setError("Tacticsboard går inte att öppna just nu. Försök igen om en stund."); return; }
     setAccess(next);
-  }, [client]);
+  }, [client, startTrial]);
 
   useEffect(() => { void load(); }, [load]);
 
