@@ -19,7 +19,7 @@ create table audit.command_events(id uuid primary key default gen_random_uuid(),
   aggregate_type text, aggregate_id uuid, aggregate_revision bigint, reason text, metadata jsonb, occurred_at timestamptz default now());
 create function internal.actor_is_support_admin() returns boolean language sql stable as $$ select auth.uid() = '${support}'::uuid $$;
 grant usage on schema api, internal, core, auth to authenticated;`);
-for (const name of ['20261213090000_tactics_library', '20261214090000_tactics_shared_library']) {
+for (const name of ['20261213090000_tactics_library', '20261214090000_tactics_shared_library', '20270208090000_tactics_shared_report_review']) {
   await db.exec(read(`supabase/migrations/${name}.sql`));
 }
 const call = async (who, sql, params = []) => {
@@ -78,6 +78,11 @@ assert.equal((await search(anna, 'rondo', { form: '5v5' }))[0].hidden, true, 'th
 await fails(bo, 'select api.list_tactics_shared_reports(true)', [], /not_found/);
 const reports = await call(support, 'select api.list_tactics_shared_reports(true)');
 assert.deepEqual([reports.length, reports[0].reports.length], [1, 3]);
+// Support sees it whole while hidden (20270208090000); nobody else does.
+const whole = await call(support, 'select api.get_tactics_shared_report_item($1)', [shared.id]);
+assert.deepEqual([whole.hidden, whole.reports.length, whole.document.boards.length, whole.author], [true, 3, 1, 'Anna Tränare']);
+await fails(bo, 'select api.get_tactics_shared_report_item($1)', [shared.id], /not_found/);
+await fails(support, 'select api.get_tactics_shared_report_item($1)', [project], /not_found/);
 await call(support, "select api.decide_tactics_shared_reports($1,false,'Inget olämpligt')", [shared.id]);
 assert.equal((await search(bo, 'rondo', { form: '5v5' })).length, 1, 'shown again');
 assert.equal((await call(support, 'select api.list_tactics_shared_reports(true)')).length, 0);

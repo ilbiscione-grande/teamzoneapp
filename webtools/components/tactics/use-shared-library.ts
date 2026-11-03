@@ -74,7 +74,7 @@ export function useSharedLibrary() {
     const { error: reportError } = await client.schema("api").rpc("report_tactics_shared_item", {
       target_shared_id: sharedId, report_reason: reason.trim().slice(0, 500),
     });
-    if (reportError) { setError("Rapporten kunde inte skickas."); return false; }
+    if (reportError) { setError("Anmälan kunde inte skickas. Försök igen."); return false; }
     setError("");
     return true;
   };

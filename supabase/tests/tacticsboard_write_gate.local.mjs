@@ -31,7 +31,7 @@ for (const name of gated) {
 }
 // A new Tacticsboard API function must be placed on one side or the other.
 const known = new Set([...gated, 'get_shared_tactics', 'get_shared_tactics_folder', 'get_shared_tactics_folder_project',
-  'decide_tactics_shared_reports', 'list_tactics_shared_reports', 'revoke_tactics_share_link', 'revoke_tactics_folder_share_link',
+  'decide_tactics_shared_reports', 'list_tactics_shared_reports', 'get_tactics_shared_report_item', 'revoke_tactics_share_link', 'revoke_tactics_folder_share_link',
   'unshare_tactics_item']);
 for (const name of latest.keys()) {
   if (!/tactics/.test(name) || /tacticsboard/.test(name) || (/live/.test(name) && name !== 'start_tactics_live')) continue;

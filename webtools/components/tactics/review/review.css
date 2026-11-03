@@ -1,0 +1,19 @@
+/* Support's review of the library's reports (plan item 16). */
+.tb-review { display: grid; gap: 16px; }
+.tb-review-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.tb-review-list > li { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 16px; align-items: start; }
+.tb-review-list .tb-thumb, .tb-review-boards .tb-thumb { width: 100%; height: auto; border-radius: 6px; }
+.tb-review-list p { margin: 2px 0 8px; }
+.tb-review-status { font-weight: 700; }
+.tb-review-status[data-hidden="true"] { color: #b42318; }
+.tb-review-reports { display: grid; gap: 6px; margin: 0 0 12px; padding: 0; list-style: none; }
+.tb-review-reports li { display: grid; gap: 2px; padding: 8px 10px; border-radius: 6px; background: var(--wt-bg-alt); }
+.tb-review-reports li[data-open="false"] { opacity: .65; }
+.tb-review-reports small { color: var(--wt-muted, #5b6575); }
+.tb-modal-card.tb-review-card { width: min(720px, 100%); }
+.tb-review-boards { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.tb-review-boards > li { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 12px; align-items: start; }
+.tb-review-boards ul { margin: 0; padding-left: 18px; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 560px) {
+  .tb-review-list > li, .tb-review-boards > li { grid-template-columns: minmax(0, 1fr); }
+}

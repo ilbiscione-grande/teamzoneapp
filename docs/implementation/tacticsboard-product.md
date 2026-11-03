@@ -308,7 +308,7 @@ Genomgången gjordes 2026-11-02 i koden och i förhandsvisningen av `/tacticsboa
 | 13 | Supportadress och vanliga frågor | Du ger adressen, jag lägger in den | Timmar |
 | 14 | Prov från början till slut i Stripes testläge: registrering, provperiod, köp, misslyckad betalning, läsläge, uppsägning, kontoavslut | Jag, och du på riktig telefon och iPad | 1 dag |
 | 15 | Byte till Stripes skarpa läge, domänen, deploy | Du säger ja per steg | Sista dagarna |
-| 16 | Anmäla innehåll i biblioteket, och en lista där du granskar anmälningarna | Jag skriver, du kör SQL | 1 dag |
+| 16 | Anmäla innehåll i biblioteket, och en lista där du granskar anmälningarna. Byggt 2026-11-03 (inte committat eller driftsatt i webtools): anmälan, att tre anmälningar döljer innehållet och supportens beslut fanns sedan `20261214090000`. Nytt: migrationen `20270208090000_tactics_shared_report_review.sql` (supporten ser innehållet helt, även när det är dolt; körd i test 2026-11-03), dialogen "Anmäl" med skäl i biblioteket, och sidan `/tacticsboard/granska` för supportkonton med beslutet "Dölj ur biblioteket" eller "Behåll" och en motivering till loggen. I test är `coach.emilson@gmail.com` support. Produktionen har inget supportkonto än, det läggs in i `internal.support_admins` i punkt 15. Inget mejl skickas till supporten när något anmäls | Jag skriver, du kör SQL | 1 dag |
 
 **Förslag på ordning:**
 - **Vecka 1 (3–9 nov):** 1, 3, 4, 5, 6, 7 och 2 parallellt. Allt i Stripes testläge.

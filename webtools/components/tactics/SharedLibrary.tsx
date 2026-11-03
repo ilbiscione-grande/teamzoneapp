@@ -18,6 +18,8 @@ import { useAccount } from "../account";
 import { useSharedLibrary } from "./use-shared-library.ts";
 import { HomeFilterBar } from "./home/HomeFilterBar.tsx";
 import { LibraryCard } from "./home/LibraryCard.tsx";
+import { ReportDialog } from "./ReportDialog.tsx";
+import { useSupportAdmin } from "./review/use-report-review.ts";
 import "./tactics.css";
 import "./home/home.css";
 
@@ -32,6 +34,8 @@ export function SharedLibrary() {
   const [filters, setFilters] = useState<SharedFilters>(noFilters);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const [reporting, setReporting] = useState<SharedItemSummary | null>(null);
+  const support = useSupportAdmin();
 
   // Searches as the filters change, a moment after typing stops.
   useEffect(() => {
@@ -63,11 +67,6 @@ export function SharedLibrary() {
     router.push(`/tacticsboard/${(data as ProjectSummary).id}`);
   };
 
-  const sendReport = async (item: SharedItemSummary) => {
-    const reason = window.prompt(`Vad är fel med ${item.title}? Supporten tittar på rapporten.`);
-    if (!reason?.trim()) return;
-    if (await report(item.id, reason)) setNotice("Tack, rapporten är skickad.");
-  };
 
   const remove = async (item: SharedItemSummary) => {
     if (!window.confirm(item.mine
@@ -81,8 +80,10 @@ export function SharedLibrary() {
   const filtered = Object.values(filters).some(value => value !== "");
   return (
     <div className="tb-home">
+      {reporting && <ReportDialog title={reporting.title} send={text => report(reporting.id, text)} onClose={() => setReporting(null)} />}
       <div className="tb-home-actions tb-library-top">
         <Link className="wt-link" href="/tacticsboard">← Dina projekt</Link>
+        {support && <Link className="wt-link" href="/tacticsboard/granska">Granska anmälningar</Link>}
         <div className="tb-segments" role="group" aria-label="Visa">
           {sources.map(([value, label]) => (
             <button key={value} type="button" aria-pressed={source === value} onClick={() => setSource(value)}>{label}</button>
@@ -103,7 +104,7 @@ export function SharedLibrary() {
             {items.map(item => (
               <LibraryCard key={item.id} item={item} keeping={keeping} busy={busy === item.id} onUse={() => void start(item)}
                 onFavorite={() => void mark(item)} onPick={(clubId, picked) => void toggle(item, clubId, picked)}
-                onRemove={() => void remove(item)} onReport={() => void sendReport(item)} />
+                onRemove={() => void remove(item)} onReport={() => setReporting(item)} />
             ))}
           </ul>
         )}

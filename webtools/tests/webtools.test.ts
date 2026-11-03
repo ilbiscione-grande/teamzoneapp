@@ -16,6 +16,7 @@ test("only Webtools' own pages are returned to after sign-in", () => {
   assert.equal(safeReturnTo("/konto"), "/konto");
   assert.equal(safeReturnTo("/live/K7P2QX"), "/live/K7P2QX");
   assert.equal(safeReturnTo("/tacticsboard/bibliotek"), "/tacticsboard/bibliotek");
+  assert.equal(safeReturnTo("/tacticsboard/granska"), "/tacticsboard/granska");
   assert.equal(safeReturnTo("/tacticsboard/mapp/3f2b8c1e-5a4d-4e6f-9b7a-0c1d2e3f4a5b"), "/tacticsboard/mapp/3f2b8c1e-5a4d-4e6f-9b7a-0c1d2e3f4a5b");
   assert.equal(safeReturnTo("/tacticsboard/mapp/x"), "/");
   assert.equal(safeReturnTo("/live/k7p2qx"), "/");

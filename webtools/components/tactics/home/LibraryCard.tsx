@@ -3,7 +3,7 @@
 // An item in TeamZone's library, as a card like a project on the start
 // page: its first board small, what it is and who shared it, a star to mark
 // it a favourite, "Använd" to start a project from it, and a menu with the
-// club list, removing and reporting.
+// club list, removing and reporting it.
 import { useEffect, useRef } from "react";
 import { libraryKindLabels, librarySummaryLine, type SharedItemSummary, type TacticsClub } from "../../../lib/tactics/library.ts";
 import { ProjectThumb, type BoardPreview } from "./ProjectThumb.tsx";
@@ -60,7 +60,7 @@ export function LibraryCard({ item, keeping, busy, onUse, onFavorite, onPick, on
                 {keeping.length > 1 ? `${label}: ${club.club_name}` : label}</button>;
             })}
             {item.can_remove && <button type="button" role="menuitem" className="danger" onClick={onRemove}>{item.mine ? "Sluta dela" : "Ta bort ur klubbens bibliotek"}</button>}
-            {!item.mine && !item.hidden && <button type="button" role="menuitem" onClick={onReport}>Rapportera</button>}
+            {!item.mine && !item.hidden && <button type="button" role="menuitem" onClick={onReport}>Anmäl</button>}
           </div>
         </details>
       )}
