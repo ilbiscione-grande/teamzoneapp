@@ -1,7 +1,7 @@
 "use client";
 
-// The product page's film: muted, looping, and only its first `end`
-// seconds (the recording's last second shows the desktop).
+// The product page's film, behind the hero's text: muted, looping, and only
+// its first `end` seconds (the recording's last second shows the desktop).
 import { useRef } from "react";
 
 export function ProductVideo({ src, poster, end }: { src: string; poster: string; end: number }) {
@@ -17,7 +17,8 @@ export function ProductVideo({ src, poster, end }: { src: string; poster: string
       loop
       playsInline
       preload="metadata"
-      aria-label="Tacticsboard i användning: spelare och boll rör sig över planen"
+      aria-hidden="true"
+      tabIndex={-1}
       onTimeUpdate={() => {
         const element = video.current;
         if (element && element.currentTime >= end) { element.currentTime = 0; void element.play(); }

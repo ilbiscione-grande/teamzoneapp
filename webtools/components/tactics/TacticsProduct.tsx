@@ -36,7 +36,8 @@ export function TacticsProduct() {
   const offer = launchOfferOpen();
   return (
     <div className="tb-product">
-      <section className="wt-hero">
+      <section className="wt-hero tb-product-hero">
+        <ProductVideo src="/tacticsboard/demo.mp4" poster="/tacticsboard/editor.png" end={7.5} />
         <div className="wt-wrap">
           <p className="tb-product-brand">Teamzone Webtools</p>
           <h1>Tacticsboard</h1>
@@ -46,7 +47,6 @@ export function TacticsProduct() {
             <Link className="wt-button secondary" href={signIn}>Logga in</Link>
           </div>
           <p className="tb-product-small">Inget kort behövs. Därefter {prices.month.label}.</p>
-          <ProductVideo src="/tacticsboard/demo.mp4" poster="/tacticsboard/editor.png" end={7.5} />
         </div>
       </section>
 
