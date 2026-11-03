@@ -79,6 +79,15 @@ post.
 Resends domänverifieringsposter ska lämnas kvar. MX-poster för ImprovMX och
 Resends sändningsposter har olika syften och kan finnas samtidigt.
 
+## Svara som support@ från Gmail
+
+Sedan 2026-11-03 kan `teamzone.mobileapp@gmail.com` skicka som
+`support@teamzoneapp.se` (Gmail → Konton och import → Skicka e-post som). Gmail
+skickar via Resends SMTP: `smtp.resend.com`, port 465 med SSL, användarnamnet
+`resend` och en egen API-nyckel i Resend som bara får skicka. Den nyckeln är
+inte samma som Supabase använder. Mejlen signeras av Resend (DKIM
+`resend._domainkey`, SPF på `send.teamzoneapp.se`). DMARC är `p=none`.
+
 ## Supabasekomponenter
 
 ### Databas

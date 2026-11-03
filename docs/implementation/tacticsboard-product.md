@@ -22,7 +22,7 @@
   - Momsregistreringsnumret är SE + organisationsnumret + 01. Kontrollera hos Skatteverket att firman är registrerad för moms och F-skatt.
   - 2026-11-02 kunde Supabase inte verifiera momsnumret. Kontrollera numret i EU:s VIES. Är firman inte momsregistrerad, eller har den momsbefrielse, behöver det lösas innan Tacticsboard säljs med moms och OSS.
   - Firmans verksamhetsbeskrivning nämner i dag bilvård och folie. SNI-koden 58290 (utgivning av programvara) finns redan. Se över om verksamhetsbeskrivningen behöver ändras hos Bolagsverket.
-- **Support:** `support@teamzoneapp.se`. Adressen är inte aktiv än och måste ta emot mejl före lanseringen. Hur snabbt du lovar svar är inte bestämt.
+- **Support:** `support@teamzoneapp.se`. Adressen tar emot mejl via ImprovMX, som vidarebefordrar till `teamzone.mobileapp@gmail.com` (`docs/operations/support_email_runbook.md`, MX kontrollerat 2026-11-03). Kvar: att svara som support@ från Gmail via Resends SMTP. Hur snabbt du lovar svar är inte bestämt.
 
 - **Produktionen får ett nytt Supabase-projekt**, `TeamzoneApp Production` i eu-north-1, enligt fas 3. Testprojektet `hgcshgunvooyudvrcpig` (eu-west-1) förblir testmiljö.
 
