@@ -476,11 +476,7 @@ class _SignInScreenState extends State<_SignInScreen> {
           },
           validator: (value) {
             if (value?.isEmpty ?? true) return strings.passwordRequired;
-            if (creating && value!.length < 8) {
-              return strings.feature(
-                'Lösenordet måste innehålla minst 8 tecken.',
-              );
-            }
+            if (creating) return _newPasswordProblem(strings, value!);
             return null;
           },
         ),
@@ -669,7 +665,7 @@ class _ResetPasswordScreenState extends State<_ResetPasswordScreen> {
                     _AuthHero(
                       title: strings.feature('Välj ett nytt lösenord'),
                       message: strings.feature(
-                        'Minst 8 tecken. Välj ett lösenord du inte använder någon annanstans.',
+                        'Minst 8 tecken med liten och stor bokstav, siffra och specialtecken. Välj ett lösenord du inte använder någon annanstans.',
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -686,11 +682,8 @@ class _ResetPasswordScreenState extends State<_ResetPasswordScreen> {
                               enabled: !_submission.isPending,
                               autofillHints: const [AutofillHints.newPassword],
                               textInputAction: TextInputAction.next,
-                              validator: (value) => (value?.length ?? 0) < 8
-                                  ? strings.feature(
-                                      'Lösenordet måste innehålla minst 8 tecken.',
-                                    )
-                                  : null,
+                              validator: (value) =>
+                                  _newPasswordProblem(strings, value ?? ''),
                             ),
                             const SizedBox(height: 12),
                             _AuthPasswordField(
@@ -1857,4 +1850,26 @@ class _ContextSelectorState extends State<_ContextSelector> {
       modules: widget.modules,
     );
   }
+}
+
+// Supabase Auth's lower_upper_letters_digits_symbols: only these count as
+// symbols, so the form never passes a password the server turns down.
+const _passwordSymbols = r'''!@#$%^&*()_+-=[]{};'\:"|<>?,./`~''';
+
+String? _newPasswordProblem(AppStrings strings, String value) {
+  if (value.length < 8) {
+    return strings.feature('Lösenordet måste innehålla minst 8 tecken.');
+  }
+  final kinds = [
+    RegExp('[a-z]').hasMatch(value),
+    RegExp('[A-Z]').hasMatch(value),
+    RegExp('[0-9]').hasMatch(value),
+    value.split('').any(_passwordSymbols.contains),
+  ];
+  if (kinds.contains(false)) {
+    return strings.feature(
+      'Lösenordet måste innehålla liten och stor bokstav, siffra och specialtecken, till exempel ! ? # %.',
+    );
+  }
+  return null;
 }

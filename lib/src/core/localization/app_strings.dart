@@ -2195,6 +2195,8 @@ class AppStrings {
     'Spara lösenord': 'Save password',
     'Lösenordet måste innehålla minst 8 tecken.':
         'The password must contain at least 8 characters.',
+    'Lösenordet måste innehålla liten och stor bokstav, siffra och specialtecken, till exempel ! ? # %.':
+        'The password must contain lower and upper case letters, a digit and a symbol, for example ! ? # %.',
     'Lösenorden måste vara identiska.': 'The passwords must match.',
     'Kontrollera din e-post och verifiera adressen innan du loggar in.':
         'Check your email and verify the address before signing in.',
@@ -2446,8 +2448,8 @@ class AppStrings {
     'Dölj lösenord': 'Hide password',
     'Visa lösenord': 'Show password',
     'Välj ett nytt lösenord': 'Choose a new password',
-    'Minst 8 tecken. Välj ett lösenord du inte använder någon annanstans.':
-        'At least 8 characters. Choose a password you do not use anywhere else.',
+    'Minst 8 tecken med liten och stor bokstav, siffra och specialtecken. Välj ett lösenord du inte använder någon annanstans.':
+        'At least 8 characters with lower and upper case letters, a digit and a symbol. Choose a password you do not use anywhere else.',
     'Har du fått en inbjudan?': 'Have you received an invitation?',
     'Klistra in koden från din ledare eller klubb.':
         'Paste the code from your leader or club.',

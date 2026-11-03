@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { groupConnections, requiresAcceptance, validCredentials, type Connection } from "../lib/account.ts";
+import { groupConnections, requiresAcceptance, validCredentials, validNewPassword, type Connection } from "../lib/account.ts";
 import { findApp, safeReturnTo, webtoolApps } from "../lib/apps.ts";
 
 test("the catalog has the four planned apps with unique slugs", () => {
@@ -15,6 +15,9 @@ test("only Webtools' own pages are returned to after sign-in", () => {
   assert.equal(safeReturnTo("/appar/tacticsboard"), "/appar/tacticsboard");
   assert.equal(safeReturnTo("/konto"), "/konto");
   assert.equal(safeReturnTo("/live/K7P2QX"), "/live/K7P2QX");
+  assert.equal(safeReturnTo("/tacticsboard/bibliotek"), "/tacticsboard/bibliotek");
+  assert.equal(safeReturnTo("/tacticsboard/mapp/3f2b8c1e-5a4d-4e6f-9b7a-0c1d2e3f4a5b"), "/tacticsboard/mapp/3f2b8c1e-5a4d-4e6f-9b7a-0c1d2e3f4a5b");
+  assert.equal(safeReturnTo("/tacticsboard/mapp/x"), "/");
   assert.equal(safeReturnTo("/live/k7p2qx"), "/");
   assert.equal(safeReturnTo(null), "/");
   assert.equal(safeReturnTo("/appar/okand"), "/");
@@ -27,7 +30,16 @@ test("credentials are checked before they are sent", () => {
   assert.equal(validCredentials("a@b.se", "x", false), null);
   assert.match(validCredentials("nope", "secret12", false) ?? "", /e-postadress/);
   assert.match(validCredentials("a@b.se", "kort", true) ?? "", /8 tecken/);
+  assert.match(validCredentials("a@b.se", "hemligt123", true) ?? "", /specialtecken/);
+  assert.equal(validCredentials("a@b.se", "Hemligt12!", true), null);
   assert.match(validCredentials("a@b.se", "", false) ?? "", /lösenord/);
+});
+
+test("a new password is long enough and written the same twice", () => {
+  assert.equal(validNewPassword("Hemligt12!", "Hemligt12!"), null);
+  assert.match(validNewPassword("Kort1!", "Kort1!") ?? "", /8 tecken/);
+  for (const weak of ["HEMLIGT12!", "hemligt12!", "Hemligtxx!", "Hemligt123", "Hemligt12§"]) assert.match(validNewPassword(weak, weak) ?? "", /specialtecken/);
+  assert.match(validNewPassword("Hemligt12!", "Hemligt12?") ?? "", /likadana/);
 });
 
 test("terms must both be accepted", () => {

@@ -62,10 +62,32 @@ export function groupConnections(rows: Connection[]): { club: string; clubId: st
 
 const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** What a new password needs, said under the field. */
+export const passwordRule = "Minst 8 tecken med liten och stor bokstav, siffra och specialtecken, till exempel ! ? # %.";
+
+// Supabase Auth's lower_upper_letters_digits_symbols: only these count as symbols.
+const symbols = "!@#$%^&*()_+-=[]{};'\\:\"|<>?,./`~";
+
+/** A new password against the auth rule, so the server never turns it down. */
+function passwordProblem(password: string): string | null {
+  if (password.length < 8 || password.length > 128) return "Lösenordet behöver vara minst 8 tecken.";
+  const kinds = [/[a-z]/.test(password), /[A-Z]/.test(password), /[0-9]/.test(password), [...password].some(c => symbols.includes(c))];
+  if (kinds.includes(false)) return "Lösenordet behöver liten och stor bokstav, siffra och specialtecken, till exempel ! ? # %.";
+  return null;
+}
+
 /** Sign-in and sign-up input, checked before anything is sent. */
 export function validCredentials(address: string, password: string, signUp: boolean): string | null {
   if (!email.test(address.trim())) return "Skriv en giltig e-postadress.";
-  if (signUp && (password.length < 8 || password.length > 128)) return "Lösenordet behöver vara minst 8 tecken.";
-  if (!signUp && password.length === 0) return "Skriv ditt lösenord.";
+  if (signUp) return passwordProblem(password);
+  if (password.length === 0) return "Skriv ditt lösenord.";
+  return null;
+}
+
+/** A new password, written twice: the same rule as when the account is made. */
+export function validNewPassword(password: string, repeated: string): string | null {
+  const problem = passwordProblem(password);
+  if (problem) return problem;
+  if (password !== repeated) return "Lösenorden är inte likadana.";
   return null;
 }

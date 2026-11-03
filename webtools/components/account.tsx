@@ -25,6 +25,9 @@ type Account = {
   signUp: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
   acceptLegal: () => Promise<string | null>;
+  /** Mails a link that signs in and opens the page for a new password. */
+  requestPasswordReset: (email: string) => Promise<string | null>;
+  updatePassword: (password: string) => Promise<string | null>;
 };
 
 const defaultLinks: Links = { siteUrl: "https://teamzoneapp.se", appUrl: "https://app.teamzoneapp.se" };
@@ -110,6 +113,24 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => { await client?.auth.signOut({ scope: "local" }); }, [client]);
 
+  // The same answer whether the address has an account or not.
+  const requestPasswordReset = useCallback(async (email: string) => {
+    if (!client) return "Kontotjänsten är inte tillgänglig just nu.";
+    const { error: resetError } = await client.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/logga-in?losenord=nytt`,
+    });
+    return resetError && resetError.status === 429 ? "För många försök. Vänta en stund och försök igen." : null;
+  }, [client]);
+
+  const updatePassword = useCallback(async (password: string) => {
+    if (!client) return "Kontotjänsten är inte tillgänglig just nu.";
+    const { error: updateError } = await client.auth.updateUser({ password });
+    if (!updateError) return null;
+    if (updateError.code === "same_password") return "Välj ett annat lösenord än det du har nu.";
+    if (updateError.code === "weak_password") return "Lösenordet är för svagt eller har läckt tidigare. Välj ett annat.";
+    return "Lösenordet kunde inte sparas. Försök igen.";
+  }, [client]);
+
   const acceptLegal = useCallback(async () => {
     if (!client || !legal) return "Villkoren kunde inte läsas.";
     const { error: acceptError } = await client.schema("api").rpc("accept_current_legal", {
@@ -125,7 +146,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
 
   const accepted = !!legal && !requiresAcceptance(legal);
   return (
-    <Context.Provider value={{ client, ready, available, session, legal, accepted, displayName, connections, links, error, signIn, signUp, signOut, acceptLegal }}>
+    <Context.Provider value={{ client, ready, available, session, legal, accepted, displayName, connections, links, error, signIn, signUp, signOut, acceptLegal, requestPasswordReset, updatePassword }}>
       {children}
     </Context.Provider>
   );

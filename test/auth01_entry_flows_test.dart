@@ -35,8 +35,8 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(_field('E-post'), 'new@example.com');
-      await tester.enterText(_field('Lösenord'), 'correct-horse');
-      await tester.enterText(_field('Bekräfta lösenord'), 'correct-horse');
+      await tester.enterText(_field('Lösenord'), 'Correct-horse1');
+      await tester.enterText(_field('Bekräfta lösenord'), 'Correct-horse1');
       await _tapVisible(
         tester,
         find.widgetWithText(FilledButton, 'Skapa konto'),
@@ -66,8 +66,8 @@ void main() {
     await _tapVisible(tester, find.text('Skapa konto'));
     await tester.pumpAndSettle();
     await tester.enterText(_field('E-post'), 'new@example.com');
-    await tester.enterText(_field('Lösenord'), 'correct-horse');
-    await tester.enterText(_field('Bekräfta lösenord'), 'correct-horse');
+    await tester.enterText(_field('Lösenord'), 'Correct-horse1');
+    await tester.enterText(_field('Bekräfta lösenord'), 'Correct-horse1');
     await _tapVisible(tester, find.widgetWithText(FilledButton, 'Skapa konto'));
     await tester.pumpAndSettle();
 

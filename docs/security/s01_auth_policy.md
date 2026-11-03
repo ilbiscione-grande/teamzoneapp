@@ -8,7 +8,7 @@ or describe any change to Teamzone6.
 ## Password baseline
 
 - Email confirmation remains required before first sign-in.
-- Minimum password length is 12 characters.
+- Minimum password length is 8 characters (lowered from 12 on 2026-11-03 to match the clients and Webtools sign-up).
 - Lowercase, uppercase, digit and symbol are all required.
 - Password changes require both a recently created session and the current
   password.

@@ -2,17 +2,20 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { validCredentials } from "../lib/account";
+import { passwordRule, validCredentials } from "../lib/account";
 import { safeReturnTo } from "../lib/apps";
 import { useAccount } from "./account";
+import { ForgotPassword, NewPasswordForm } from "./password";
 
 export function SignIn() {
-  const { ready, available, session, signIn, signUp, links } = useAccount();
+  const { ready, available, session, signIn, signUp } = useAccount();
   const params = useSearchParams();
   const router = useRouter();
   const returnTo = safeReturnTo(params.get("returnTo"));
   const confirmed = params.get("konto") === "bekraftat";
-  const [mode, setMode] = useState<"in" | "up">(params.get("skapa") === "1" ? "up" : "in");
+  // Come from the mail's link for a new password: signed in by it, the password is chosen here.
+  const recovering = params.get("losenord") === "nytt";
+  const [mode, setMode] = useState<"in" | "up" | "forgot">(params.get("skapa") === "1" ? "up" : "in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -20,11 +23,27 @@ export function SignIn() {
   const [sent, setSent] = useState(false);
 
   // Signed in (also straight from the confirmation link): on to the page.
-  useEffect(() => { if (session) router.replace(returnTo); }, [session, returnTo, router]);
+  useEffect(() => { if (session && !recovering) router.replace(returnTo); }, [session, recovering, returnTo, router]);
 
   if (!ready) return <p className="wt-status">Laddar…</p>;
   if (!available) return <p className="wt-status" role="alert">Inloggningen är inte tillgänglig just nu. Försök igen senare.</p>;
+  if (recovering && session) {
+    return (
+      <section className="wt-panel wt-signin" aria-labelledby="signin-title">
+        <h1 id="signin-title">Välj ett nytt lösenord</h1>
+        <NewPasswordForm submitLabel="Spara lösenordet" onDone={() => router.replace(returnTo)} />
+      </section>
+    );
+  }
   if (session) return <p className="wt-status">Du är inloggad. Skickar dig vidare…</p>;
+  if (mode === "forgot" || recovering) {
+    return (
+      <section className="wt-panel wt-signin" aria-labelledby="signin-title">
+        {recovering && <p className="wt-note" role="alert">Länken gäller inte längre. Be om en ny här.</p>}
+        <ForgotPassword initialEmail={email} onBack={() => { setMode("in"); setError(""); if (recovering) router.replace("/logga-in"); }} />
+      </section>
+    );
+  }
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -54,10 +73,11 @@ export function SignIn() {
         <form onSubmit={submit} className="wt-form" noValidate>
           <label>E-post<input type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} required /></label>
           <label>Lösenord<input type="password" autoComplete={mode === "in" ? "current-password" : "new-password"} value={password} onChange={event => setPassword(event.target.value)} required minLength={mode === "up" ? 8 : undefined} /></label>
+          {mode === "up" && <p className="wt-small">{passwordRule}</p>}
           {mode === "up" && <p className="wt-small">Kontot är ett vanligt TeamZone-konto och fungerar även i appen. Du behöver inte vara med i något lag.</p>}
           {error && <p role="alert" className="wt-error">{error}</p>}
           <button type="submit" className="wt-button" disabled={busy}>{mode === "in" ? "Logga in" : "Skapa konto"}</button>
-          {mode === "in" && <p className="wt-small">Glömt lösenordet? <a href={links.appUrl}>Återställ det i TeamZone-appen</a>.</p>}
+          {mode === "in" && <p className="wt-small"><button type="button" className="wt-link-button" onClick={() => { setMode("forgot"); setError(""); }}>Glömt lösenordet?</button></p>}
         </form>
       )}
     </section>
