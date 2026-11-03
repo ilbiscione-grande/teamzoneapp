@@ -66,7 +66,7 @@ export function PublishDialog({ onClose }: { onClose: () => void }) {
         </div>
         {!signedIn ? (
           <>
-            <p>Logga in med ditt TeamZone-konto för att publicera övningar, pass och sessioner i TeamZones bibliotek.</p>
+            <p>Logga in för att publicera övningar, pass och sessioner i biblioteket.</p>
             <div className="tb-actions"><button type="button" className="wt-button small" onClick={onClose}>Stäng</button></div>
           </>
         ) : kinds.length === 0 ? (
@@ -77,7 +77,7 @@ export function PublishDialog({ onClose }: { onClose: () => void }) {
           </>
         ) : done ? (
           <>
-            <p>{title.trim()} är publicerad {done} i TeamZones bibliotek.</p>
+            <p>{title.trim()} är publicerad {done} i biblioteket.</p>
             <div className="tb-actions"><button type="button" className="wt-button small" onClick={onClose}>Stäng</button></div>
           </>
         ) : (

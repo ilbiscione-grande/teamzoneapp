@@ -62,7 +62,7 @@ export function LegalStep() {
   return (
     <section className="wt-panel wt-legal" aria-labelledby="legal-title">
       <h2 id="legal-title">Godkänn villkoren</h2>
-      <p>Ditt TeamZone-konto behöver godkänna de aktuella villkoren innan du använder Webtools. De gäller hela TeamZone.</p>
+      <p>Godkänn de aktuella villkoren innan du fortsätter. De gäller ditt konto, i alla appar i Webtools och i TeamZone-appen om du använder den.</p>
       <label className="wt-check">
         <input type="checkbox" checked={checked} onChange={event => setChecked(event.target.checked)} />
         <span>Jag godkänner <a href={legal.terms_url} target="_blank" rel="noreferrer">användarvillkoren</a> och har läst <a href={legal.privacy_url} target="_blank" rel="noreferrer">integritetspolicyn</a>.</span>
@@ -85,8 +85,8 @@ export function RequireAccount({ returnTo, children }: { returnTo: string; child
   if (!session) {
     return (
       <section className="wt-panel">
-        <h2>Logga in med ditt TeamZone-konto</h2>
-        <p>Webtools använder samma konto som TeamZone-appen. Du behöver inte vara kopplad till något lag eller någon klubb.</p>
+        <h2>Logga in</h2>
+        <p>Samma konto fungerar i alla appar i Webtools. Du behöver inte vara med i något lag eller någon klubb.</p>
         <Link className="wt-button" href={`/logga-in?returnTo=${encodeURIComponent(returnTo)}`}>Logga in eller skapa konto</Link>
       </section>
     );

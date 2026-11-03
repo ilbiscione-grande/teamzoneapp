@@ -6,6 +6,7 @@ import { useState } from "react";
 import { applyFormation, createPlayer } from "../../../lib/tactics/document.ts";
 import { formations, parseFormation } from "../../../lib/tactics/formations.ts";
 import type { Board, Side, SquadPlayer } from "../../../lib/tactics/model.ts";
+import { useAccount } from "../../account";
 import { activeObjects, useEditor, NONE } from "../store.ts";
 import { useSquadFetch } from "../use-squad.ts";
 
@@ -18,6 +19,8 @@ export function SquadPanel({ board }: { board: Board }) {
   const [custom, setCustom] = useState("");
   const { fetchSquad, busy, error } = useSquadFetch();
   const { changeObjects } = useEditor.getState();
+  // The squad comes from a team in TeamZone; without one only the formations show.
+  const hasTeams = (useAccount().connections?.length ?? 0) > 0;
   const placed = new Set(objects.flatMap(item => item.type === "player" && item.personId ? [item.personId] : []));
 
   const lines = custom.trim() ? parseFormation(custom) : formations[formation];
@@ -55,9 +58,9 @@ export function SquadPanel({ board }: { board: Board }) {
       <button type="button" className="wt-button small" disabled={!lines} onClick={place}>Ställ upp laget</button>
       <p className="tb-hint">Lagets spelare flyttas till formationen, och saknade läggs till.</p>
 
-      <h3>Trupp</h3>
+      {(meta?.teamId || hasTeams) && <h3>Trupp</h3>}
       {!meta?.teamId ? (
-        <p className="tb-hint">Koppla projektet till ett av dina lag i TeamZone (under projektets namn) så kan du hämta truppen.</p>
+        hasTeams && <p className="tb-hint">Koppla projektet till ett av dina lag i TeamZone under Inställningar, så kan du hämta truppen.</p>
       ) : (
         <>
           <button type="button" className="wt-button secondary small" disabled={busy} onClick={() => void fetchSquad()}>

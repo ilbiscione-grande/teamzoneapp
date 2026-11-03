@@ -28,7 +28,7 @@ export function useSharedLibrary() {
       item_kind: filters.kind || null, exercise_part: filters.part || null, game_phase: filters.phase || null,
       age_class: filters.age || null, game_form: filters.form || null, target_club_id: clubId, only_favorites: onlyFavorites, page: 0,
     });
-    if (searchError) { setError("TeamZones bibliotek kunde inte hämtas."); setItems([]); return; }
+    if (searchError) { setError("Biblioteket kunde inte hämtas."); setItems([]); return; }
     setError("");
     setItems(data as SharedItemSummary[]);
   }, [client, session]);
@@ -37,7 +37,7 @@ export function useSharedLibrary() {
   const boardsOf = async (id: string): Promise<Board[] | null> => {
     if (!client) return null;
     const { data, error: loadError } = await client.schema("api").rpc("get_tactics_shared_item", { target_shared_id: id });
-    if (loadError) { setError("Det kunde inte hämtas ur TeamZones bibliotek."); return null; }
+    if (loadError) { setError("Det kunde inte hämtas ur biblioteket."); return null; }
     const boards = (data as { document: { boards?: Board[] } }).document.boards;
     return Array.isArray(boards) ? boards : null;
   };
@@ -50,10 +50,10 @@ export function useSharedLibrary() {
     });
     if (shareError) {
       setError(shareError.message.includes("hidden_by_support")
-        ? "TeamZones support har tagit bort den ur TeamZones bibliotek, så den kan inte delas igen."
+        ? "Supporten har tagit bort den ur biblioteket, så den kan inte delas igen."
         : shareError.message.includes("too_many_shared")
         ? "Du har redan delat 200 övningar, pass och sessioner."
-        : "Det kunde inte delas i TeamZones bibliotek.");
+        : "Det kunde inte delas i biblioteket.");
       return false;
     }
     setError("");
@@ -63,7 +63,7 @@ export function useSharedLibrary() {
   const unshare = async (sharedId: string) => {
     if (!client) return false;
     const { error: removeError } = await client.schema("api").rpc("unshare_tactics_item", { target_shared_id: sharedId });
-    if (removeError) { setError("Det kunde inte tas bort ur TeamZones bibliotek."); return false; }
+    if (removeError) { setError("Det kunde inte tas bort ur biblioteket."); return false; }
     setError("");
     window.dispatchEvent(new Event(LIBRARY_CHANGED));
     return true;
@@ -88,7 +88,7 @@ export function useSharedLibrary() {
     });
     if (publishError) {
       setError(publishError.message.includes("hidden_by_support")
-        ? "TeamZones support har tagit bort den ur biblioteket, så den kan inte publiceras igen."
+        ? "Supporten har tagit bort den ur biblioteket, så den kan inte publiceras igen."
         : publishError.message.includes("too_many")
         ? "Du har redan publicerat så många som får plats."
         : "Det kunde inte publiceras.");

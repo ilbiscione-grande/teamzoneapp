@@ -3,13 +3,13 @@ import { RequireAccount } from "../../../components/shell";
 import { RequireTacticsboard } from "../../../components/tactics/RequireTacticsboard.tsx";
 import { SharedLibrary } from "../../../components/tactics/SharedLibrary.tsx";
 
-export const metadata = { title: "TeamZones bibliotek · Tacticsboard" };
+export const metadata = { title: "Biblioteket · Tacticsboard" };
 
 export default function SharedLibraryPage() {
   return (
     <div className="wt-wrap wt-section bk-page">
       <p className="wt-kicker dark">Tacticsboard</p>
-      <h1 className="wt-page-title">TeamZones bibliotek</h1>
+      <h1 className="wt-page-title">Biblioteket</h1>
       <Suspense fallback={<p className="wt-status">Laddar…</p>}>
         <RequireAccount returnTo="/tacticsboard/bibliotek">
           <RequireTacticsboard><SharedLibrary /></RequireTacticsboard>

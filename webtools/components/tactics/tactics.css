@@ -159,6 +159,7 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
   /* The board keeps room for itself; the panel scrolls instead. */
   .tb-center { order: 1; min-height: 240px; }
   .tb-timeline { padding: 0 6px 4px; }
+  .tb-progress { margin: 0 -6px 6px; }
 }
 
 /* A part that failed says what went wrong. */
@@ -219,6 +220,8 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
   .tb-top .tb-wide-only { display: none; }
   .tb-narrow-only { display: inline-flex; }
   .tb-save[data-state="saved"] { display: none; }
+  /* "+ Tavla" as only "+", so the board tabs keep the room. */
+  .tb-wide-text { display: none; }  .tb-board-add { min-width: 40px; padding: 0 10px; font-size: 1.1rem; }
 }
 
 /* TeamZone's library: its five filters in as many columns as fit. */

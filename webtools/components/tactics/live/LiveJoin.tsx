@@ -62,7 +62,7 @@ export function LiveJoin({ initialCode }: { initialCode: string | null }) {
           <button type="submit" className="wt-button" disabled={busy}>{busy ? "Går med…" : "Gå med"}</button>
           {error && <p className="wt-error" role="alert">{error}</p>}
           {loginNeeded && !signedIn && <Link className="wt-button secondary" href={`/logga-in?returnTo=${encodeURIComponent(returnTo)}`}>Logga in</Link>}
-          {signedIn ? <p className="wt-small">Du går med som inloggad.</p> : <p className="wt-small">Har du ett TeamZone-konto? <Link className="wt-link" href={`/logga-in?returnTo=${encodeURIComponent(returnTo)}`}>Logga in</Link> först.</p>}
+          {signedIn ? <p className="wt-small">Du går med som inloggad.</p> : <p className="wt-small">Har du ett konto? <Link className="wt-link" href={`/logga-in?returnTo=${encodeURIComponent(returnTo)}`}>Logga in</Link> först.</p>}
         </form>
       </section>
     </div>

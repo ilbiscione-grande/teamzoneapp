@@ -3,10 +3,11 @@
 // Every way the boards leave the editor, in one dialog under the top bar's
 // share button: the part of the pitch to show, a link to watch them, a PDF,
 // a video of the board in hand,
-// the project as a file, publishing in a club's library and, in a training
-// project, the board put in one of the team's coming sessions.
+// the project as a file, publishing in the library and, in a training
+// project with a team, the board put in one of the team's coming sessions.
 import { useEffect, useState, type ReactNode } from "react";
 import { exportFileName, exportProject } from "../../lib/tactics/transfer.ts";
+import { useAccount } from "../account";
 import { activeBoard, useEditor } from "./store.ts";
 import { ShareLinks } from "./ShareLinks.tsx";
 import { ExportDialog } from "./export/ExportDialog.tsx";
@@ -35,6 +36,9 @@ export function ShareDialog({ onClose, onCrop }: { onClose: () => void; onCrop: 
   const [inner, setInner] = useState<Inner>(null);
   const [error, setError] = useState("");
   const owner = meta?.access === "owner";
+  // A training session needs a team in TeamZone; without one the way is not shown.
+  const { connections } = useAccount();
+  const toTraining = meta?.kind === "training" && (!!meta.teamId || (connections?.length ?? 0) > 0);
   useEffect(() => {
     if (inner) return;
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape" && recording === null) onClose(); };
@@ -108,16 +112,16 @@ export function ShareDialog({ onClose, onCrop }: { onClose: () => void; onCrop: 
           </ul>
           {error && <p className="wt-error" role="alert">{error}</p>}
         </section>
-        {(owner || meta.kind === "training") && (
+        {(owner || toTraining) && (
           <section className="tb-share-section">
-            <h3>I TeamZone</h3>
+            <h3>Publicera</h3>
             <ul className="tb-share-list">
               {owner && (
-                <Way title="Klubbens bibliotek" hint="Publicera projektet eller tavlan så att klubbens ledare hittar den.">
+                <Way title="Biblioteket" hint="Publicera projektet eller tavlan så att andra tränare hittar den.">
                   <button type="button" className="wt-button secondary small" disabled={recording !== null} onClick={() => setInner("publish")}>Publicera…</button>
                 </Way>
               )}
-              {meta.kind === "training" && (
+              {toTraining && (
                 <Way title="Träningspass" hint={`${board.name || "Tavlan"} som övning i ett av lagets kommande pass.`}>
                   <button type="button" className="wt-button secondary small" disabled={recording !== null} onClick={() => setInner("training")}>Lägg i ett pass…</button>
                 </Way>

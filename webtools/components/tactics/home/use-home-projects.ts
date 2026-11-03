@@ -65,7 +65,7 @@ export function useHomeProjects(filters: HomeFilters) {
   const unpublish = async (item: Published) => {
     if (!client || !window.confirm(`Sluta publicera ${item.title}? De som redan använt den behåller sina kopior.`)) return;
     const { error: removeError } = await client.schema("api").rpc("unshare_tactics_item", { target_shared_id: item.shared_id });
-    if (removeError) { setError("Det kunde inte tas bort ur TeamZones bibliotek."); return; }
+    if (removeError) { setError("Det kunde inte tas bort ur biblioteket."); return; }
     void load(filters);
   };
 

@@ -64,7 +64,7 @@ export function SharedLibrary() {
   };
 
   const sendReport = async (item: SharedItemSummary) => {
-    const reason = window.prompt(`Vad är fel med ${item.title}? TeamZones support tittar på rapporten.`);
+    const reason = window.prompt(`Vad är fel med ${item.title}? Supporten tittar på rapporten.`);
     if (!reason?.trim()) return;
     if (await report(item.id, reason)) setNotice("Tack, rapporten är skickad.");
   };
@@ -92,7 +92,7 @@ export function SharedLibrary() {
       <p className="wt-small tb-library-intro">{listClub
         ? "Det klubben erbjuder sina lag: övningar utvalda ur hela biblioteket, och det som delats bara med klubben."
         : source === "favorites" ? "Det du har markerat med stjärnan. Du börjar också nya projekt från dem på startsidan."
-        : "Övningar, pass och sessioner som tränare delar med hela communityn eller med din klubb, och TeamZones egna."} Det du använder blir en kopia i ett eget projekt.</p>
+        : "Övningar, pass och sessioner som tränare delar med hela communityn eller med din klubb, och färdiga från oss."} Det du använder blir en kopia i ett eget projekt.</p>
       <HomeFilterBar filters={filters} onChange={setFilters} kinds={libraryKindLabels} placeholder="Sök, t.ex. rondo eller press" />
       {(error || notice) && <p role="alert" className={error ? "wt-error" : "wt-status"}>{error || notice}</p>}
       <section aria-label="Träffar">

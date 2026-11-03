@@ -63,7 +63,7 @@ export function SignIn() {
         <button type="button" role="tab" aria-selected={mode === "in"} onClick={() => { setMode("in"); setError(""); setSent(false); }}>Logga in</button>
         <button type="button" role="tab" aria-selected={mode === "up"} onClick={() => { setMode("up"); setError(""); }}>Skapa konto</button>
       </div>
-      <h1 id="signin-title">{mode === "in" ? "Logga in med ditt TeamZone-konto" : "Skapa ett TeamZone-konto"}</h1>
+      <h1 id="signin-title">{mode === "in" ? "Logga in" : "Skapa ett konto"}</h1>
       {confirmed && mode === "in" && <p className="wt-note">Din e-postadress är bekräftad. Logga in för att fortsätta.</p>}
       {sent ? (
         <p className="wt-note" role="status">
@@ -74,7 +74,7 @@ export function SignIn() {
           <label>E-post<input type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} required /></label>
           <label>Lösenord<input type="password" autoComplete={mode === "in" ? "current-password" : "new-password"} value={password} onChange={event => setPassword(event.target.value)} required minLength={mode === "up" ? 8 : undefined} /></label>
           {mode === "up" && <p className="wt-small">{passwordRule}</p>}
-          {mode === "up" && <p className="wt-small">Kontot är ett vanligt TeamZone-konto och fungerar även i appen. Du behöver inte vara med i något lag.</p>}
+          {mode === "up" && <p className="wt-small">Med kontot använder du Tacticsboard och de andra apparna i Teamzone Webtools. Du behöver inte vara med i något lag eller någon klubb.</p>}
           {error && <p role="alert" className="wt-error">{error}</p>}
           <button type="submit" className="wt-button" disabled={busy}>{mode === "in" ? "Logga in" : "Skapa konto"}</button>
           {mode === "in" && <p className="wt-small"><button type="button" className="wt-link-button" onClick={() => { setMode("forgot"); setError(""); }}>Glömt lösenordet?</button></p>}

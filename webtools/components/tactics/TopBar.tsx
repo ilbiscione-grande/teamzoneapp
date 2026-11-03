@@ -38,6 +38,14 @@ function Boards() {
   const projectId = useEditor(state => state.meta?.id);
   const { items } = useLibrary();
   const [renaming, setRenaming] = useState<string | null>(null);
+  // On a phone the tabs scroll sideways; the board you are on stays in view,
+  // and on the last one so does "+" after it.
+  useEffect(() => {
+    const tab = document.querySelector(".tb-board-tab[data-active='true']");
+    if (!tab?.parentElement) return;
+    if (tab.nextElementSibling?.classList.contains("tb-board-tab")) tab.scrollIntoView({ block: "nearest", inline: "nearest" });
+    else tab.parentElement.scrollLeft = tab.parentElement.scrollWidth;
+  }, [boardId, boards.length]);
   const rename = (id: string, name: string) => change(document => updateBoard(document, id, current => ({ ...current, name: name.slice(0, 60) })));
   const publishedFor = (boardId: string) => [...new Set((items ?? [])
     .filter(item => item.shared && item.source_project_id === projectId && (item.kind !== "exercise" || item.source_board_id === boardId))

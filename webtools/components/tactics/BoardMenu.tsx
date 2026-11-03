@@ -51,7 +51,7 @@ export function BoardMenu() {
 
   return (
     <>
-      <button ref={button} type="button" className="tb-board-add" onClick={toggle} aria-haspopup="menu" aria-expanded={open}>+ Tavla</button>
+      <button ref={button} type="button" className="tb-board-add" onClick={toggle} aria-haspopup="menu" aria-expanded={open} aria-label="Ny tavla">+<span className="tb-wide-text"> Tavla</span></button>
       {open && (
         <div ref={menu} className="tb-menu" role="menu" style={{ left: at.left, top: at.top }}>
           <button type="button" role="menuitem" onClick={() => add([newBoard(`Tavla ${boards.length + 1}`, home, away)])}>Tom tavla</button>

@@ -80,7 +80,7 @@ export function TacticsHome() {
   };
 
   const removeProject = async (project: HomeProject) => {
-    const published = (project.published ?? []).length > 0 ? " Det du publicerat från projektet finns kvar i TeamZones bibliotek." : "";
+    const published = (project.published ?? []).length > 0 ? " Det du publicerat från projektet finns kvar i biblioteket." : "";
     if (await remove(project, `Ta bort ${project.name}? Det går inte att ångra.${published}${removalNote(project.folders ?? [])}`) && project.folders?.length) {
       void reloadFolders();
     }
@@ -107,7 +107,7 @@ export function TacticsHome() {
         <button type="button" className="wt-button" onClick={() => setCreating("pick")}>
           <span aria-hidden="true">+</span> Nytt projekt
         </button>
-        <Link className="wt-button secondary" href="/tacticsboard/bibliotek">TeamZones bibliotek</Link>
+        <Link className="wt-button secondary" href="/tacticsboard/bibliotek">Biblioteket</Link>
         <button type="button" className="wt-button secondary" aria-expanded={importing} onClick={() => setImporting(!importing)}>Importera</button>
       </div>
       {importing && <ImportProject folderId={folder?.id} onCreated={folder ? id => addProject(folder.id, id) : undefined} />}
@@ -128,7 +128,7 @@ export function TacticsHome() {
             <Link className="tb-quick-card" href="/tacticsboard/bibliotek">
               <span className="tb-choice-icon tb-kind-library" aria-hidden="true">B</span>
               <strong>Hämta från biblioteket</strong>
-              <span>Övningar, pass och sessioner som andra tränare och TeamZone delar.</span>
+              <span>Övningar, pass och sessioner som andra tränare delar, och färdiga från oss.</span>
             </Link>
           </div>
         </section>

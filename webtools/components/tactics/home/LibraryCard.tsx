@@ -44,7 +44,7 @@ export function LibraryCard({ item, keeping, busy, onUse, onFavorite, onPick, on
       <div className="tb-card-body">
         <strong className="tb-card-title">{item.title}</strong>
         <span className="tb-card-meta">{librarySummaryLine(item) || `${item.board_count} ${item.board_count === 1 ? "tavla" : "tavlor"}`}</span>
-        <span className="tb-card-meta">{[item.starter ? "TeamZone" : `av ${item.author}`, item.club_name && `bara ${item.club_name}`,
+        <span className="tb-card-meta">{[item.starter ? "Tacticsboard" : `av ${item.author}`, item.club_name && `bara ${item.club_name}`,
           item.version > 1 && `version ${item.version}`, item.hidden && "dold efter rapporter",
           item.picked_by_clubs.length > 0 && "i klubbens lista"].filter(Boolean).join(" · ")}</span>
         <button type="button" className="wt-button small tb-card-use" disabled={busy} onClick={onUse}>{busy ? "Skapar…" : "Använd"}</button>
