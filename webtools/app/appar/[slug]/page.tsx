@@ -2,9 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RequireAccount } from "../../../components/shell";
+import { TacticsProduct } from "../../../components/tactics/TacticsProduct.tsx";
 import { findApp, statusLabel, webtoolApps } from "../../../lib/apps";
 
 type Props = { params: Promise<{ slug: string }> };
+
+// Rebuilt hourly, so Tacticsboard's launch offer leaves the page when it ends.
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return webtoolApps.map(app => ({ slug: app.slug }));
@@ -18,6 +22,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function AppPage({ params }: Props) {
   const app = findApp((await params).slug);
   if (!app) notFound();
+  // Tacticsboard is sold on its own, with its own product page.
+  if (app.slug === "tacticsboard") return <TacticsProduct />;
   return (
     <>
       <section className="wt-hero compact">

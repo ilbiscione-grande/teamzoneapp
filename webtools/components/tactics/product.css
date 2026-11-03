@@ -1,0 +1,12 @@
+/* Tacticsboard's product page. */
+.tb-product .wt-hero h1 { font-size: clamp(2.8rem, 9vw, 5rem); margin-bottom: 14px; }
+.tb-product-brand { margin: 0 0 4px; color: #d3dae5; font-size: .95rem; letter-spacing: .04em; }
+.tb-product-small { margin: 14px 0 0; color: #d3dae5; font-size: .95rem; }
+.tb-product .wt-hero .wt-actions { margin-top: 24px; }
+.tb-prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 16px; margin-bottom: 16px; }
+.tb-prices h3 { font-size: 1.35rem; text-transform: uppercase; }
+.tb-price { margin: 0 0 8px; font-size: 2.4rem; font-weight: 800; line-height: 1; }
+.tb-price span { font-size: 1rem; font-weight: 500; }
+.tb-faq { display: grid; gap: 16px; margin: 0; padding-bottom: 48px; }
+.tb-faq dt { font-weight: 700; }
+.tb-faq dd { margin: 4px 0 0; }
