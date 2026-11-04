@@ -12,7 +12,7 @@ const sections = [
     title: "1. Om TeamZone och avtalet",
     paragraphs: [
       "TeamZone är en digital tjänst för idrottsklubbar, lag, ledare, spelare, vårdnadshavare och klubbfunktionärer. Dessa villkor reglerar användningen av tjänsten.",
-      "Tjänsteleverantör: [JURIDISKT NAMN], organisationsnummer [ORG.NR], adress [POSTADRESS]. Dessa uppgifter är placeholders och ska ersättas före produktionsbruk.",
+      "Tjänsteleverantör: Tre 60 Grader, enskild näringsidkare, organisationsnummer 19790531-2471, Plangränd 15, 574 34 Vetlanda.",
     ],
   },
   {
@@ -63,20 +63,22 @@ const sections = [
   {
     title: "8. Avgifter och betalning",
     paragraphs: [
-      "[PLACEHOLDER: kommersiella villkor, pris, betalning, uppsägning och återbetalning införs innan betalfunktioner aktiveras. Den nuvarande testversionen utgör inte ett betalningserbjudande.]",
+      "Tacticsboard säljs som prenumeration till enskilda personer. Pris, provperiod, betalning, uppsägning och ångerrätt står i Villkor för Tacticsboard, som du godkänner när du köper.",
+      "[PLACEHOLDER: avgifter för klubbar avtalas separat och införs här innan de aktiveras.]",
     ],
   },
   {
     title: "9. Ansvar och tillämplig lag",
     paragraphs: [
       "TeamZone ersätter inte professionell medicinsk, juridisk eller ekonomisk rådgivning. Användare och klubbar ansvarar för sina verksamhetsbeslut.",
-      "[PLACEHOLDER: ansvarsbegränsning, tillämplig lag, tvistlösning och obligatoriska konsumenträttigheter fastställs vid juridisk granskning.]",
+      "Svensk lag gäller för villkoren. Som konsument kan du vända dig till Allmänna reklamationsnämnden (ARN), arn.se, om vi inte kommer överens. Tvister kan också prövas av allmän domstol.",
+      "[PLACEHOLDER: ansvarsbegränsningen fastställs vid juridisk granskning.]",
     ],
   },
   {
     title: "10. Kontakt",
     paragraphs: [
-      "Frågor om villkoren skickas tills vidare genom TeamZones interna supportflöde. [PLACEHOLDER: offentlig juridisk kontaktväg.]",
+      "Frågor om villkoren mejlar du till support@teamzoneapp.se. Vi svarar inom två vardagar.",
     ],
   },
 ] as const;
@@ -86,7 +88,8 @@ export default function TermsPage() {
     <LegalDocument
       eyebrow="Juridik"
       title="Användarvillkor"
-      version="2026-09-11-draft"
+      version="2026-11-04-draft"
+      updated="4 november 2026"
       introduction="Läs villkoren innan du skapar eller använder ett TeamZone-konto. Detta dokument är ett tekniskt komplett placeholderutkast och är ännu inte juridiskt godkänt."
       sections={sections}
     />

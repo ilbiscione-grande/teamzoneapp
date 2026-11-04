@@ -79,6 +79,15 @@ export function remainingTrialEnd(
     : null;
 }
 
+export const tacticsboardTermsUrl =
+  "https://public.teamzoneapp.se/villkor/tacticsboard";
+
+/// The required box in Checkout: the terms, and the consent to start at once
+/// that the right of withdrawal asks for. Stripe also needs a terms URL
+/// under its public business details.
+export const tacticsboardConsentText =
+  `Jag godkänner [villkoren för Tacticsboard](${tacticsboardTermsUrl}) och vill att prenumerationen börjar direkt. Ångrar jag mig inom 14 dagar betalar jag för den tid jag har använt.`;
+
 export function checkoutSessionParams(
   claimed: ClaimedCheckout,
   origin: string,
@@ -100,6 +109,10 @@ export function checkoutSessionParams(
     automatic_tax: { enabled: true },
     tax_id_collection: { enabled: true },
     billing_address_collection: "required",
+    consent_collection: { terms_of_service: "required" },
+    custom_text: {
+      terms_of_service_acceptance: { message: tacticsboardConsentText },
+    },
     metadata,
     subscription_data: {
       metadata,

@@ -121,6 +121,17 @@ Deno.test("checkout: a new customer, tax, Swedish, metadata on both", () => {
   assertEquals(params.subscription_data, { metadata });
 });
 
+Deno.test("checkout: the terms and the consent to start at once are required", () => {
+  const params = checkoutSessionParams(claimed, "https://webtools.teamzoneapp.se", null, now);
+  assertEquals(params.consent_collection, { terms_of_service: "required" });
+  const message = (params.custom_text as {
+    terms_of_service_acceptance: { message: string };
+  }).terms_of_service_acceptance.message;
+  assertEquals(message.includes("https://public.teamzoneapp.se/villkor/tacticsboard"), true);
+  assertEquals(message.includes("börjar direkt"), true);
+  assertEquals(message.length <= 1200, true);
+});
+
 Deno.test("checkout: a known customer, the launch coupon and the rest of the trial", () => {
   const params = checkoutSessionParams(
     {

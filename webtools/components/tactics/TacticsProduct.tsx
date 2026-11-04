@@ -3,7 +3,7 @@
 // /appar/tacticsboard and, for the signed-out, at /tacticsboard.
 import Link from "next/link";
 import { launchOfferOpen, prices } from "../../lib/tactics/access.ts";
-import { supportEmail, supportReply } from "../../lib/support.ts";
+import { supportEmail, supportReply, tacticsboardTermsUrl } from "../../lib/support.ts";
 import { ProductVideo } from "./ProductVideo.tsx";
 import "./product.css";
 
@@ -91,7 +91,7 @@ export function TacticsProduct() {
             )}
           </article>
         </div>
-        <p className="wt-small">Priserna är inklusive moms. Du betalar med kort, Apple Pay eller Google Pay hos Stripe.</p>
+        <p className="wt-small">Priserna är inklusive moms. Du betalar med kort, Apple Pay eller Google Pay hos Stripe. Läs <a href={tacticsboardTermsUrl}>villkoren för Tacticsboard</a>.</p>
         <Link className="wt-button" href={signUp}>Prova gratis i 7 dagar</Link>
       </section>
 

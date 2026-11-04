@@ -11,7 +11,7 @@ const sections = [
   {
     title: "1. Personuppgiftsansvar",
     paragraphs: [
-      "För konto, säkerhet och central plattformsdrift är [JURIDISKT NAMN], organisationsnummer [ORG.NR], adress [POSTADRESS], avsedd personuppgiftsansvarig.",
+      "För konto, säkerhet, central plattformsdrift och Tacticsboard är Tre 60 Grader, enskild näringsidkare, organisationsnummer 19790531-2471, Plangränd 15, 574 34 Vetlanda, personuppgiftsansvarig.",
       "Varje klubb kan vara separat personuppgiftsansvarig för de medlems-, lag- och verksamhetsuppgifter som klubben bestämmer ändamål och medel för. Den exakta ansvarsfördelningen ska fastställas juridiskt före produktionsbruk.",
     ],
   },
@@ -39,7 +39,23 @@ const sections = [
     title: "4. Behörighet och delning",
     paragraphs: [
       "Uppgifter visas enligt aktiva klubb-, lag- och rollkopplingar. TeamZone säljer inte personuppgifter. Uppgifter kan behandlas av avtalade leverantörer för exempelvis hosting, databas, autentisering, filhantering, e-post och driftövervakning.",
-      "[PLACEHOLDER: aktuell lista över personuppgiftsbiträden, behandlingsplatser och eventuella tredjelandsöverföringar.]",
+    ],
+    items: [
+      "Supabase: databas, inloggning och filer. Uppgifterna lagras inom EU.",
+      "Google Firebase: drift av webbplatserna och aviseringar i appen.",
+      "Resend: utskick av e-post, till exempel bekräftelser och aviseringar.",
+      "ImprovMX och Google Gmail: mottagning av mejl till supporten.",
+      "Stripe: betalning för Tacticsboard. Stripe är självständigt personuppgiftsansvarig för kort- och betaluppgifterna.",
+      "[PLACEHOLDER: behandlingsplatser, tredjelandsöverföringar och skyddsåtgärder per leverantör kontrolleras och anges före lansering.]",
+    ],
+  },
+  {
+    title: "4 a. Tacticsboard",
+    items: [
+      "Vi sparar dina projekt, tavlor, mallar och mappar, det du publicerar i biblioteket, dina delade länkar och livegenomgångar, och anmälningar du gör.",
+      "Om prenumerationen sparar vi provperiodens datum, prenumerationens status och period samt en hänvisning till din kund hos Stripe. Vi sparar inga kortuppgifter.",
+      "Namn på spelare som du skriver på tavlorna är personuppgifter som du själv ansvarar för.",
+      "Kvitton och fakturor sparas hos Stripe i sju år, eftersom bokföringslagen kräver det. Det gäller även om du avslutar kontot.",
     ],
   },
   {
@@ -81,7 +97,7 @@ const sections = [
   {
     title: "10. Kontakt och ändringar",
     paragraphs: [
-      "Integritetsfrågor och rättighetsbegäranden skickas tills vidare genom TeamZones interna supportflöde. [PLACEHOLDER: offentlig dataskyddskontakt och eventuell dataskyddsansvarig.]",
+      "Integritetsfrågor och begäranden om dina rättigheter mejlar du till support@teamzoneapp.se. Vi svarar inom två vardagar.",
       "Väsentliga ändringar versionssätts och kan kräva att användaren läser och bekräftar den nya versionen i appen.",
     ],
   },
@@ -92,7 +108,8 @@ export default function PrivacyPage() {
     <LegalDocument
       eyebrow="Din integritet"
       title="Integritetspolicy"
-      version="2026-09-11-draft"
+      version="2026-11-04-draft"
+      updated="4 november 2026"
       introduction="Här beskriver vi hur TeamZone avser att behandla personuppgifter. Dokumentet är ett tekniskt komplett placeholderutkast och måste juridiskt granskas före produktionsbruk."
       sections={sections}
     />

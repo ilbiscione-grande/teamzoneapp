@@ -11,12 +11,15 @@ export function LegalDocument({
   eyebrow,
   title,
   version,
+  updated,
   introduction,
   sections,
 }: Readonly<{
   eyebrow: string;
   title: string;
   version: string;
+  /** The date the text last changed, in words. */
+  updated: string;
   introduction: string;
   sections: readonly LegalSection[];
 }>) {
@@ -28,6 +31,7 @@ export function LegalDocument({
         <nav className="legal-nav" aria-label="Juridiska dokument">
           <Link href="/villkor">Användarvillkor</Link>
           <Link href="/integritet">Integritetspolicy</Link>
+          <Link href="/villkor/tacticsboard">Villkor för Tacticsboard</Link>
         </nav>
       </header>
 
@@ -38,7 +42,7 @@ export function LegalDocument({
         </div>
         <p className="eyebrow">{eyebrow}</p>
         <h1>{title}</h1>
-        <p className="legal-version">Version {version} · Senast uppdaterad 11 september 2026</p>
+        <p className="legal-version">Version {version} · Senast uppdaterad {updated}</p>
         <p className="legal-introduction">{introduction}</p>
         <div className="legal-sections">
           {sections.map((section) => (

@@ -1,0 +1,115 @@
+import type { Metadata } from "next";
+import { LegalDocument } from "../../../components/legal-document";
+
+export const metadata: Metadata = {
+  title: "Villkor för Tacticsboard",
+  description: "Villkor för prenumerationen på Tacticsboard.",
+  robots: { index: false, follow: false },
+};
+
+const sections = [
+  {
+    title: "1. Säljaren och avtalet",
+    paragraphs: [
+      "Tacticsboard säljs av Tre 60 Grader, enskild näringsidkare, organisationsnummer 19790531-2471, momsregistreringsnummer SE790531247101, Plangränd 15, 574 34 Vetlanda. E-post: support@teamzoneapp.se.",
+      "Villkoren gäller när du använder Tacticsboard, under provperioden och med en prenumeration. De gäller tillsammans med användarvillkoren för TeamZone. Säger villkoren olika saker gäller dessa för Tacticsboard.",
+    ],
+  },
+  {
+    title: "2. Tjänsten",
+    paragraphs: [
+      "Tacticsboard är en webbtjänst där du ritar, animerar och presenterar taktik och övningar. Du behöver ett konto men inget lag eller klubb i TeamZone. Tjänsten används i en uppdaterad webbläsare på dator, surfplatta eller telefon.",
+    ],
+  },
+  {
+    title: "3. Provperioden",
+    items: [
+      "Provperioden är 7 dagar och kostar ingenting. Den startar första gången du öppnar Tacticsboard och ges en gång per konto.",
+      "Du behöver inte lämna några betaluppgifter för att prova.",
+      "När provperioden är slut låses Tacticsboard tills du prenumererar. Inget av det du har gjort tas bort.",
+    ],
+  },
+  {
+    title: "4. Pris och betalning",
+    items: [
+      "Prenumerationen kostar 79 kronor per månad eller 790 kronor per år. Priserna är inklusive moms.",
+      "Lanseringserbjudande: köper du årsprenumerationen senast den 31 december 2026 betalar du halva priset det första året. Därefter gäller ordinarie pris.",
+      "Betalningen sköts av Stripe. Du betalar med kort, Apple Pay eller Google Pay. Vi tar inte del av dina kortuppgifter.",
+      "Köper du med mer än två dygn kvar av provperioden dras den första betalningen när provperioden är slut. Annars dras den direkt.",
+      "Kvitton skickas med e-post och finns under Hantera betalning på kontosidan.",
+    ],
+  },
+  {
+    title: "5. Förnyelse och uppsägning",
+    items: [
+      "Prenumerationen förnyas automatiskt varje månad eller år tills du säger upp den.",
+      "Du säger upp när du vill under Hantera betalning på kontosidan. Prenumerationen gäller perioden ut och förnyas sedan inte. Betalt för en påbörjad period återbetalas inte, utom vid ånger enligt avsnitt 6.",
+      "Avslutar du ditt konto avslutas prenumerationen direkt, utan återbetalning.",
+      "Misslyckas en betalning har du 14 dagar på dig att uppdatera betalningen. Under den tiden fungerar allt. Därefter låses Tacticsboard tills betalningen är ordnad. Inget tas bort.",
+    ],
+  },
+  {
+    title: "6. Ångerrätt",
+    paragraphs: [
+      "Är du konsument har du 14 dagars ångerrätt från köpet enligt lagen om distansavtal och avtal utanför affärslokaler.",
+      "Vid köpet ber vi dig samtycka till att prenumerationen börjar direkt. Ångrar du dig inom 14 dagar betalar vi tillbaka det du har betalat, med avdrag för den tid du har haft tillgång till tjänsten efter köpet.",
+      "Du ångrar dig genom att mejla support@teamzoneapp.se inom 14 dagar. Skriv att du ångrar köpet och vilken e-postadress kontot har. Du kan använda Konsumentverkets standardformulär för ånger, men det behövs inte. Återbetalningen görs till samma betalsätt inom 14 dagar från att vi fick ditt besked.",
+      "[PLACEHOLDER: texten om ångerrätten granskas juridiskt före lansering.]",
+    ],
+  },
+  {
+    title: "7. Ditt innehåll och biblioteket",
+    items: [
+      "Projekt, tavlor och mallar du skapar är dina. Vi lagrar och visar dem bara för att tjänsten ska fungera.",
+      "Publicerar du något i biblioteket kan andra användare av Tacticsboard se och kopiera det. Du ger dem rätt att använda kopian i sin egen verksamhet. Du kan ta bort det du har publicerat, men kopior som redan har gjorts finns kvar.",
+      "Du ansvarar för det du publicerar. Det får inte vara kränkande, olagligt eller kopierat från någon annan utan lov.",
+      "Innehåll i biblioteket kan anmälas. Supporten kan dölja innehåll som bryter mot villkoren.",
+      "Namn på spelare är personuppgifter. Skriv inte ut namn på andra, särskilt inte barn, i det du publicerar eller delar öppet.",
+    ],
+  },
+  {
+    title: "8. Delade länkar och livegenomgångar",
+    paragraphs: [
+      "Länkar och mappar du har delat fortsätter att fungera även om din prenumeration upphör, tills du tar bort delningen. Den som tar del av en länk eller en livegenomgång behöver ingen prenumeration.",
+    ],
+  },
+  {
+    title: "9. Drift och ändringar",
+    items: [
+      "Vi arbetar för att Tacticsboard ska fungera hela tiden men kan inte lova oavbruten drift. Underhåll och fel hos leverantörer kan påverka tjänsten tillfälligt.",
+      "Ändras priset eller villkoren till din nackdel meddelar vi det med e-post minst 30 dagar innan ändringen gäller för dig. Vill du inte fortsätta kan du säga upp prenumerationen innan dess.",
+    ],
+  },
+  {
+    title: "10. Ansvar",
+    paragraphs: [
+      "Vårt ansvar är begränsat till det du har betalat för Tacticsboard de senaste 12 månaderna, utom vid uppsåt eller grov vårdslöshet. Begränsningen gäller inte rättigheter du har som konsument enligt lag.",
+      "Spara gärna kopior av viktiga projekt med exporten. [PLACEHOLDER: ansvarsbegränsningen granskas juridiskt före lansering.]",
+    ],
+  },
+  {
+    title: "11. Support",
+    paragraphs: [
+      "Frågor och problem mejlar du till support@teamzoneapp.se. Vi svarar inom två vardagar.",
+    ],
+  },
+  {
+    title: "12. Tvister",
+    paragraphs: [
+      "Svensk lag gäller för avtalet. Kontakta oss först om du är missnöjd. Kommer vi inte överens kan du som konsument vända dig till Allmänna reklamationsnämnden (ARN), arn.se. Tvister kan också prövas av allmän domstol.",
+    ],
+  },
+] as const;
+
+export default function TacticsboardTermsPage() {
+  return (
+    <LegalDocument
+      eyebrow="Juridik"
+      title="Villkor för Tacticsboard"
+      version="2026-11-04"
+      updated="4 november 2026"
+      introduction="Här står vad som gäller när du provar och prenumererar på Tacticsboard: pris, betalning, uppsägning och ångerrätt."
+      sections={sections}
+    />
+  );
+}

@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { accessNote, launchOfferOpen, lockedText, prices } from "../../lib/tactics/access.ts";
 import { useBilling, useTacticsboardAccess } from "./use-tacticsboard-access.ts";
+import { tacticsboardTermsUrl } from "../../lib/support.ts";
 
 export function SubscribeButtons() {
   const { busy, error, subscribe } = useBilling();
@@ -22,7 +23,7 @@ export function SubscribeButtons() {
         </button>
       </div>
       {offer && <p className="wt-small">Halva priset första året gäller årsabonnemang som tecknas senast 31 december 2026.</p>}
-      <p className="wt-small">Priserna är inklusive moms. Du betalar hos Stripe och kan säga upp när du vill.</p>
+      <p className="wt-small">Priserna är inklusive moms. Du betalar hos Stripe och kan säga upp när du vill. Läs <a href={tacticsboardTermsUrl}>villkoren för Tacticsboard</a>.</p>
       {error && <p className="wt-error" role="alert">{error}</p>}
     </>
   );
