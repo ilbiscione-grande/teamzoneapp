@@ -70,3 +70,16 @@ test("secondary TeamZone origins send pages to teamzoneapp.se", async () => {
   // Without configuration nothing is redirected.
   assert.equal(canonicalOriginRedirect({ ...base, siteOrigins: undefined, hostname: "public.teamzoneapp.se", path: "/" }), null);
 });
+
+test("the legal pages skip the database only on the canonical origin", async () => {
+  const { isCanonicalLegalPage } = await import("../lib/domain-routing.ts");
+  const origin = "https://teamzoneapp.se";
+  for (const path of ["/villkor", "/villkor/tacticsboard", "/integritet"]) {
+    assert.equal(isCanonicalLegalPage("teamzoneapp.se", path, origin), true, path);
+    assert.equal(isCanonicalLegalPage("www.minklubb.se", path, origin), false, path);
+  }
+  assert.equal(isCanonicalLegalPage("TEAMZONEAPP.se:443", "/villkor", origin), true);
+  assert.equal(isCanonicalLegalPage("teamzoneapp.se", "/", origin), false);
+  assert.equal(isCanonicalLegalPage("teamzoneapp.se", "/villkor/annat", origin), false);
+  assert.equal(isCanonicalLegalPage("teamzoneapp.se", "/villkor", undefined), false);
+});

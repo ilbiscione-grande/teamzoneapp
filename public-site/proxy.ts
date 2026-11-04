@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { serverConfig } from "./lib/config";
-import { canonicalOriginRedirect, safeDomainDecision, requestHostname, validRoutingInput } from "./lib/domain-routing";
+import { canonicalOriginRedirect, isCanonicalLegalPage, safeDomainDecision, requestHostname, validRoutingInput } from "./lib/domain-routing";
 import { publicRpc } from "./lib/public-rpc";
 import { createServerSupabase } from "./lib/supabase-admin";
 import { isLocalPublicView } from "./lib/local-public-view";
@@ -49,6 +49,11 @@ export async function proxy(request: NextRequest) {
   const hostname = requestHostname(request.headers, request.nextUrl.hostname);
   if (!validRoutingInput(hostname, path)) {
     return new NextResponse("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+  }
+  if (isCanonicalLegalPage(hostname, path, process.env.PUBLIC_ORIGIN)) {
+    const response = NextResponse.next();
+    response.headers.set("Cache-Control", pageCache);
+    return response;
   }
   try {
     const config = serverConfig();

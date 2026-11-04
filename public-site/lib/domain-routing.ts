@@ -61,6 +61,22 @@ export function canonicalOriginRedirect(input: {
   return `${canonical.origin}${input.path}${input.search}`;
 }
 
+const legalPaths = new Set(["/villkor", "/villkor/tacticsboard", "/integritet"]);
+
+/**
+ * The terms and the privacy policy on the canonical origin are fixed texts,
+ * and Stripe Checkout links to them, so they must not depend on the database.
+ * A club's own domain keeps its lookup: it may have a page on the same path.
+ */
+export function isCanonicalLegalPage(hostname: string, path: string, publicOrigin?: string): boolean {
+  if (!publicOrigin || !legalPaths.has(path)) return false;
+  try {
+    return normalizedHostname(hostname) === new URL(publicOrigin).hostname;
+  } catch {
+    return false;
+  }
+}
+
 export function validRoutingInput(hostname: string, path: string): boolean {
   return hostnamePattern.test(hostname) && path.startsWith("/") && !/[?#]/.test(path) && path.length <= 2048;
 }
