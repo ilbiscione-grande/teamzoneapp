@@ -3,6 +3,7 @@
 // /appar/tacticsboard and, for the signed-out, at /tacticsboard.
 import Link from "next/link";
 import { launchOfferOpen, prices } from "../../lib/tactics/access.ts";
+import { supportEmail, supportReply } from "../../lib/support.ts";
 import { ProductVideo } from "./ProductVideo.tsx";
 import "./product.css";
 
@@ -30,6 +31,7 @@ const questions = [
   ["Behöver jag ange kort för att prova?", "Nej. Provperioden är 7 dagar och kräver inget kort. Köper du under provperioden betalar du först när den är slut."],
   ["Vad händer när provperioden är slut?", "Tacticsboard låses tills du prenumererar. Inget tas bort, och länkar du har delat fortsätter att fungera för andra."],
   ["Hur säger jag upp?", "Från kontosidan, när du vill. Prenumerationen gäller perioden ut."],
+  ["Hur når jag supporten?", `Mejla ${supportEmail}. ${supportReply}`],
 ] as const;
 
 export function TacticsProduct() {

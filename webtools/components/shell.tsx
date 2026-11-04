@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAccount } from "./account";
 import { NotificationBell } from "./notifications";
+import { supportEmail } from "../lib/support";
 
 export function Header() {
   const { session, links, signOut } = useAccount();
@@ -46,6 +47,7 @@ export function Footer() {
           <li><a href={links.appUrl}>TeamZone-appen</a></li>
           <li><a href={`${links.siteUrl}/integritet`}>Integritetspolicy</a></li>
           <li><a href={`${links.siteUrl}/villkor`}>Användarvillkor</a></li>
+          <li><a href={`mailto:${supportEmail}`}>Support</a></li>
         </ul>
       </div>
     </footer>

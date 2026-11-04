@@ -4,6 +4,7 @@
 // button under the tools.
 import { useEffect, useState } from "react";
 import { resetTips } from "./ToolHint.tsx";
+import { supportEmail, supportReply } from "../../lib/support.ts";
 
 const sections: { title: string; rows: [string, string][] }[] = [
   {
@@ -77,6 +78,7 @@ export function HelpDialog({ onClose }: { onClose: () => void }) {
           </section>
         ))}
         <p className="tb-hint">På Mac används ⌘ i stället för Ctrl.</p>
+        <p className="tb-hint">Frågor eller problem? Mejla <a href={`mailto:${supportEmail}`}>{supportEmail}</a>. {supportReply}</p>
         <div className="tb-actions">
           <button type="button" className="wt-button secondary small" disabled={reset} onClick={() => { resetTips(); setReset(true); }}>
             {reset ? "Tipsen visas igen" : "Visa verktygstipsen igen"}

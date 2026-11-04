@@ -22,7 +22,7 @@
   - Momsregistreringsnumret är SE + organisationsnumret + 01. Kontrollera hos Skatteverket att firman är registrerad för moms och F-skatt.
   - 2026-11-02 kunde Supabase inte verifiera momsnumret. Kontrollera numret i EU:s VIES. Är firman inte momsregistrerad, eller har den momsbefrielse, behöver det lösas innan Tacticsboard säljs med moms och OSS.
   - Firmans verksamhetsbeskrivning nämner i dag bilvård och folie. SNI-koden 58290 (utgivning av programvara) finns redan. Se över om verksamhetsbeskrivningen behöver ändras hos Bolagsverket.
-- **Support:** `support@teamzoneapp.se`. Adressen tar emot mejl via ImprovMX, som vidarebefordrar till `teamzone.mobileapp@gmail.com` (`docs/operations/support_email_runbook.md`, MX kontrollerat 2026-11-03). Kvar: att svara som support@ från Gmail via Resends SMTP. Hur snabbt du lovar svar är inte bestämt.
+- **Support:** `support@teamzoneapp.se`. Adressen tar emot mejl via ImprovMX, som vidarebefordrar till `teamzone.mobileapp@gmail.com` (`docs/operations/support_email_runbook.md`, MX kontrollerat 2026-11-03). Svar skickas som support@ från Gmail via Resends SMTP (sedan 2026-11-03). Löftet är svar inom två vardagar (beslutat 2026-11-04).
 
 - **Produktionen får ett nytt Supabase-projekt**, `TeamzoneApp Production` i eu-north-1, enligt fas 3. Testprojektet `hgcshgunvooyudvrcpig` (eu-west-1) förblir testmiljö.
 
@@ -248,7 +248,7 @@ Det som saknas:
 Det finns en `support-email-worker` och en `contact-inbound` i Supabase, men ingen kontaktväg från webtools.
 - **Vid lansering räcker:** en supportadress (till exempel `support@…`) i sidfoten, i hjälpdialogen och i kvittot, och en enkel sida med vanliga frågor.
 - **Kan vänta:** ett kontaktformulär i appen, chatt, statussida.
-- Bestäm hur snabbt du lovar svar (till exempel inom två vardagar). Det skrivs i villkoren.
+- Löftet är svar inom två vardagar (beslutat 2026-11-04). Det står i `webtools/lib/support.ts` och ska också stå i villkoren (punkt 11).
 
 ## Fråga 2: Vad behöver putsas och fixas?
 
@@ -305,7 +305,7 @@ Genomgången gjordes 2026-11-02 i koden och i förhandsvisningen av `/tacticsboa
 | 10 | Produktsida med pris och "Prova gratis". Byggt 2026-11-03 (inte committat eller driftsatt): `TacticsProduct` renderas på servern på `/appar/tacticsboard` och visas för utloggade på `/tacticsboard`, där inloggade kommer direkt till sina projekt. Den har rubriken med "Teamzone Webtools" ovanför "TACTICSBOARD", sex punkter om funktionerna, priserna med lanseringskampanjen (försvinner efter 2026-12-31, sidan byggs om varje timme) och fyra vanliga frågor. "Prova gratis i 7 dagar" går till registreringen och tillbaka till Tacticsboard. Filmen och tre skärmbilder ligger i `webtools/public/tacticsboard/` sedan 2026-11-03. Filmen spelas i rubriken, bara de första 7,5 sekunderna, eftersom inspelningens sista sekund visar en flik från webbläsaren. Bilderna visas under punkterna. Kvar: en inspelning som är klippt, fiktiva spelarnamn i stället för riktiga spelares, och din granskning av texterna | Jag bygger, du ger bilder, texter och pris | 1–2 dagar |
 | 11 | Villkor, prenumerationsvillkor, ångerrätt och integritetspolicy med riktiga bolagsuppgifter | Du (gärna med juridisk granskning), jag lägger in dem | Parallellt |
 | 12 | Texter utan TeamZone, dölj det som inte går att använda, toppraden i mobil. Byggt 2026-11-03 (inte committat eller driftsatt): inloggningen, villkorssteget och kontosidan säger "konto" i stället för "TeamZone-konto", och "TeamZones bibliotek" heter "Biblioteket". Truppen i panelen Lag och "Lägg i ett pass" visas bara för den som är med i ett lag. I mobil är "+ Tavla" bara "+", tavlan du är på scrollas fram, och förloppsstapeln sticker inte längre ut. Webtools startsida och sidorna för de andra apparna är inte ändrade | Jag | 1 dag |
-| 13 | Supportadress och vanliga frågor | Du ger adressen, jag lägger in den | Timmar |
+| 13 | Supportadress och vanliga frågor. Byggt 2026-11-04 (inte committat eller driftsatt): `webtools/lib/support.ts` har adressen och löftet om svar inom två vardagar. De visas i sidfoten ("Support"), i hjälpdialogen i Tacticsboard och som en femte vanlig fråga på produktsidan. Kvar: löftet i villkoren, som du skriver i punkt 11 | Du ger adressen, jag lägger in den | Timmar |
 | 14 | Prov från början till slut i Stripes testläge: registrering, provperiod, köp, misslyckad betalning, läsläge, uppsägning, kontoavslut | Jag, och du på riktig telefon och iPad | 1 dag |
 | 15 | Byte till Stripes skarpa läge, domänen, deploy | Du säger ja per steg | Sista dagarna |
 | 16 | Anmäla innehåll i biblioteket, och en lista där du granskar anmälningarna. Byggt 2026-11-03 (inte committat eller driftsatt i webtools): anmälan, att tre anmälningar döljer innehållet och supportens beslut fanns sedan `20261214090000`. Nytt: migrationen `20270208090000_tactics_shared_report_review.sql` (supporten ser innehållet helt, även när det är dolt; körd i test 2026-11-03), dialogen "Anmäl" med skäl i biblioteket, och sidan `/tacticsboard/granska` för supportkonton med beslutet "Dölj ur biblioteket" eller "Behåll" och en motivering till loggen. I test är `coach.emilson@gmail.com` support. Produktionen har inget supportkonto än, det läggs in i `internal.support_admins` i punkt 15. Inget mejl skickas till supporten när något anmäls | Jag skriver, du kör SQL | 1 dag |
