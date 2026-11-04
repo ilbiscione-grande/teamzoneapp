@@ -1,0 +1,25 @@
+# Production overrides for Webtools (App Hosting merges this file over
+# apphosting.yaml for a backend whose environment name is "production"; see
+# docs/implementation/tacticsboard-production.md). Values not listed here are
+# inherited. Firebase is shared with the test environment, so the production
+# secret has its own name and never reuses the test project's value.
+
+runConfig:
+  minInstances: 0
+  maxInstances: 4
+  concurrency: 40
+
+env:
+  - variable: SUPABASE_URL
+    value: https://zfxcblgnemuenaqjkaic.supabase.co
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: SUPABASE_PUBLISHABLE_KEY
+    value: sb_publishable_ee93wzcJc65uepVKi6WLww_zf-YdwmK
+    availability:
+      - RUNTIME
+  - variable: SUPABASE_SECRET_KEY
+    secret: teamzoneapp-production-webtools-supabase-secret-key
+    availability:
+      - RUNTIME

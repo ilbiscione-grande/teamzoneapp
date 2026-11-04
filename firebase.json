@@ -33,6 +33,16 @@
         ".next",
         "*.log"
       ]
+    },
+    {
+      "backendId": "teamzoneapp-webtools-prod",
+      "rootDir": "/webtools",
+      "ignore": [
+        "node_modules",
+        ".git",
+        ".next",
+        "*.log"
+      ]
     }
   ],
   "hosting": [
