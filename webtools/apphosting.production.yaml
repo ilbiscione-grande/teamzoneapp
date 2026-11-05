@@ -23,6 +23,12 @@ env:
     secret: teamzoneapp-production-webtools-supabase-secret-key
     availability:
       - RUNTIME
+  # Production sells Tacticsboard only: the other apps lead there.
+  - variable: WEBTOOLS_SCOPE
+    value: tacticsboard
+    availability:
+      - BUILD
+      - RUNTIME
   # app.teamzoneapp.se is the test app, so production does not link to it.
   - variable: TEAMZONE_APP_URL
     value: "off"

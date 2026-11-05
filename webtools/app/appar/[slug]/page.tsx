@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RequireAccount } from "../../../components/shell";
 import { TacticsProduct } from "../../../components/tactics/TacticsProduct.tsx";
+import { TacticsProductPage } from "../../../components/tactics/TacticsProductPage.tsx";
 import { findApp, statusLabel, webtoolApps } from "../../../lib/apps";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -23,7 +24,7 @@ export default async function AppPage({ params }: Props) {
   const app = findApp((await params).slug);
   if (!app) notFound();
   // Tacticsboard is sold on its own, with its own product page.
-  if (app.slug === "tacticsboard") return <TacticsProduct />;
+  if (app.slug === "tacticsboard") return <TacticsProductPage><TacticsProduct /></TacticsProductPage>;
   return (
     <>
       <section className="wt-hero compact">

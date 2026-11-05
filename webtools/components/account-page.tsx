@@ -44,7 +44,7 @@ function AccountDetails() {
           <TacticsboardSubscription />
         </Suspense>
       </section>
-      <section className="wt-panel" aria-labelledby="connections-title">
+      {(links.appUrl || groups.length > 0) && <section className="wt-panel" aria-labelledby="connections-title">
         <h2 id="connections-title">Lag och klubbar</h2>
         {connections === null ? <p className="wt-status">Laddar…</p> : groups.length === 0 ? (
           <>
@@ -64,7 +64,7 @@ function AccountDetails() {
             </ul>
           </>
         )}
-      </section>
+      </section>}
       <AccountDeletion />
     </div>
   );

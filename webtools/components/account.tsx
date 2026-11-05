@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import type { Connection, LegalStatus } from "../lib/account";
 import { requiresAcceptance } from "../lib/account";
 
-type Links = { siteUrl: string; appUrl: string | null };
+type Links = { siteUrl: string; appUrl: string | null; tacticsboardOnly: boolean };
 
 type Account = {
   /** The signed-in Supabase client for the apps' own API calls. */
@@ -30,7 +30,7 @@ type Account = {
   updatePassword: (password: string) => Promise<string | null>;
 };
 
-const defaultLinks: Links = { siteUrl: "https://teamzoneapp.se", appUrl: null };
+const defaultLinks: Links = { siteUrl: "https://teamzoneapp.se", appUrl: null, tacticsboardOnly: true };
 const Context = createContext<Account | null>(null);
 
 export function AccountProvider({ children }: { children: React.ReactNode }) {
@@ -51,7 +51,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       const config = await response.json().catch(() => ({ available: false }));
       if (disposed) return;
       if (!config.available) { setReady(true); return; }
-      setLinks({ siteUrl: config.siteUrl, appUrl: config.appUrl });
+      setLinks({ siteUrl: config.siteUrl, appUrl: config.appUrl, tacticsboardOnly: config.tacticsboardOnly === true });
       const authClient = createClient(config.url, config.publishableKey, {
         // Its own storage key: the session is Webtools' own sign-in.
         auth: { storageKey: "teamzone-webtools", detectSessionInUrl: true, flowType: "pkce" },

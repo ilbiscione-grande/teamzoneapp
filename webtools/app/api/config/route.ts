@@ -20,5 +20,6 @@ export function GET() {
     publishableKey,
     siteUrl: process.env.TEAMZONE_SITE_URL ?? "https://teamzoneapp.se",
     appUrl: teamzoneAppUrl(),
+    tacticsboardOnly: process.env.WEBTOOLS_SCOPE === "tacticsboard",
   });
 }

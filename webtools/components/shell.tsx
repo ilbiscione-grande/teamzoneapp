@@ -19,7 +19,9 @@ export function Header() {
           <span>Webtools</span>
         </Link>
         <nav className="wt-nav" aria-label="Huvudmeny">
-          <Link href="/" aria-current={path === "/" ? "page" : undefined}>Appar</Link>
+          {links.tacticsboardOnly
+            ? <Link href="/tacticsboard" aria-current={path === "/tacticsboard" ? "page" : undefined}>Tacticsboard</Link>
+            : <Link href="/" aria-current={path === "/" ? "page" : undefined}>Appar</Link>}
           {session ? (
             <>
               <Link href="/konto" aria-current={path === "/konto" ? "page" : undefined}>Konto</Link>
@@ -28,8 +30,8 @@ export function Header() {
           ) : (
             <Link href={`/logga-in?returnTo=${encodeURIComponent(path ?? "/")}`} aria-current={path === "/logga-in" ? "page" : undefined}>Logga in</Link>
           )}
-          <NotificationBell />
-          <a href={links.siteUrl} className="wt-nav-out">teamzoneapp.se</a>
+          {!links.tacticsboardOnly && <NotificationBell />}
+          {!links.tacticsboardOnly && <a href={links.siteUrl} className="wt-nav-out">teamzoneapp.se</a>}
         </nav>
       </div>
     </header>
@@ -43,7 +45,7 @@ export function Footer() {
       <div className="wt-wrap wt-footer-row">
         <div className="wt-footer-brand"><span className="wt-mark" aria-hidden="true">TZ</span><div><strong>TeamZone Webtools</strong><span>Verktyg för lag och klubbar</span></div></div>
         <ul>
-          <li><a href={links.siteUrl}>teamzoneapp.se</a></li>
+          {!links.tacticsboardOnly && <li><a href={links.siteUrl}>teamzoneapp.se</a></li>}
           {links.appUrl && <li><a href={links.appUrl}>TeamZone-appen</a></li>}
           <li><a href={`${links.siteUrl}/integritet`}>Integritetspolicy</a></li>
           <li><a href={`${links.siteUrl}/villkor`}>Användarvillkor</a></li>

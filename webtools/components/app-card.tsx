@@ -4,7 +4,7 @@ import { statusLabel } from "../lib/apps";
 
 export function AppCard({ app }: { app: WebtoolApp }) {
   return (
-    <Link href={`/appar/${app.slug}`} className="wt-card" data-status={app.status}>
+    <Link href={app.slug === "tacticsboard" ? "/tacticsboard" : `/appar/${app.slug}`} className="wt-card" data-status={app.status}>
       <span className="wt-card-mark" aria-hidden="true">{app.mark}</span>
       <span className="wt-card-body">
         <span className="wt-card-title">{app.name}</span>
