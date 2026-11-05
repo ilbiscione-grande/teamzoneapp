@@ -8,7 +8,7 @@ datumen sätts när texterna publiceras (steg 14 i
 
 ## Krav före lansering
 
-**Ångerfunktionen** är byggd men inte driftsatt (2026-11-05). Sedan 19 juni 2026 kräver 2 kap. 10 a §
+**Ångerfunktionen** är driftsatt i produktionen 2026-11-05, men inte provad med ett riktigt köp. Sedan 19 juni 2026 kräver 2 kap. 10 a §
 distansavtalslagen en funktion för ånger på sajten när avtalet ingås online:
 
 - lätt att hitta under hela ångerfristen och tydligt märkt
@@ -19,7 +19,7 @@ distansavtalslagen en funktion för ånger på sajten när avtalet ingås online
 
 Saknas informationen börjar ångerfristen inte löpa (2 kap. 12 §). Brott mot
 10 a § prövas enligt marknadsföringslagen (2 kap. 10 b §). Villkoren beskriver
-knappen "Ångra köpet" under Abonnemang på kontosidan, så den måste driftsättas
+knappen "Ångra köpet" under Abonnemang på kontosidan, så den måste vara provad
 innan villkoren publiceras.
 
 Knappen läser köpet och fristen från Stripe, sparar beskedet i
