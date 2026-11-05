@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import type { Connection, LegalStatus } from "../lib/account";
 import { requiresAcceptance } from "../lib/account";
 
-type Links = { siteUrl: string; appUrl: string };
+type Links = { siteUrl: string; appUrl: string | null };
 
 type Account = {
   /** The signed-in Supabase client for the apps' own API calls. */
@@ -30,7 +30,7 @@ type Account = {
   updatePassword: (password: string) => Promise<string | null>;
 };
 
-const defaultLinks: Links = { siteUrl: "https://teamzoneapp.se", appUrl: "https://app.teamzoneapp.se" };
+const defaultLinks: Links = { siteUrl: "https://teamzoneapp.se", appUrl: null };
 const Context = createContext<Account | null>(null);
 
 export function AccountProvider({ children }: { children: React.ReactNode }) {

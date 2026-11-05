@@ -44,7 +44,7 @@ export function Footer() {
         <div className="wt-footer-brand"><span className="wt-mark" aria-hidden="true">TZ</span><div><strong>TeamZone Webtools</strong><span>Verktyg för lag och klubbar</span></div></div>
         <ul>
           <li><a href={links.siteUrl}>teamzoneapp.se</a></li>
-          <li><a href={links.appUrl}>TeamZone-appen</a></li>
+          {links.appUrl && <li><a href={links.appUrl}>TeamZone-appen</a></li>}
           <li><a href={`${links.siteUrl}/integritet`}>Integritetspolicy</a></li>
           <li><a href={`${links.siteUrl}/villkor`}>Användarvillkor</a></li>
           <li><a href={`mailto:${supportEmail}`}>Support</a></li>

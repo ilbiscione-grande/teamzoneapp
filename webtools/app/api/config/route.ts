@@ -2,6 +2,12 @@
 // any environment. Only the publishable key is ever handed out.
 export const dynamic = "force-dynamic";
 
+/** "off" hides the link: production has no TeamZone app of its own yet. */
+function teamzoneAppUrl() {
+  const value = process.env.TEAMZONE_APP_URL ?? "https://app.teamzoneapp.se";
+  return value === "off" ? null : value;
+}
+
 export function GET() {
   const url = process.env.SUPABASE_URL;
   const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
@@ -13,6 +19,6 @@ export function GET() {
     url,
     publishableKey,
     siteUrl: process.env.TEAMZONE_SITE_URL ?? "https://teamzoneapp.se",
-    appUrl: process.env.TEAMZONE_APP_URL ?? "https://app.teamzoneapp.se",
+    appUrl: teamzoneAppUrl(),
   });
 }

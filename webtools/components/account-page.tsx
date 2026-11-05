@@ -35,7 +35,7 @@ function AccountDetails() {
           {displayName && <><dt>Namn</dt><dd>{displayName}</dd></>}
           <dt>E-post</dt><dd>{session?.user.email}</dd>
         </dl>
-        <p className="wt-small">Samma konto fungerar i alla appar i Webtools.{displayName && <> Namnet ändrar du i <a href={links.appUrl}>TeamZone-appen</a>.</>}</p>
+        <p className="wt-small">Samma konto fungerar i alla appar i Webtools.{displayName && links.appUrl && <> Namnet ändrar du i <a href={links.appUrl}>TeamZone-appen</a>.</>}</p>
       </section>
       <PasswordSection />
       <section className="wt-panel" aria-labelledby="subscriptions-title">
@@ -49,7 +49,7 @@ function AccountDetails() {
         {connections === null ? <p className="wt-status">Laddar…</p> : groups.length === 0 ? (
           <>
             <p>Du är inte med i något lag eller någon klubb. Det behövs inte för att använda Webtools.</p>
-            <p className="wt-small">Har din klubb TeamZone och du har fått en lagkod eller en inbjudan, använder du den i <a href={links.appUrl}>TeamZone-appen</a>. Då kan apparna här också använda laget, till exempel truppen i Tacticsboard.</p>
+            {links.appUrl && <p className="wt-small">Har din klubb TeamZone och du har fått en lagkod eller en inbjudan, använder du den i <a href={links.appUrl}>TeamZone-appen</a>. Då kan apparna här också använda laget, till exempel truppen i Tacticsboard.</p>}
           </>
         ) : (
           <>
