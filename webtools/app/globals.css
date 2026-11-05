@@ -136,6 +136,7 @@ a { color: var(--wt-brand); }
 .wt-footer-brand span { font-size: .9rem; }
 .wt-footer ul { display: flex; flex-wrap: wrap; gap: 8px 20px; list-style: none; margin: 0; padding: 0; }
 .wt-footer a { color: #c9d1de; }
+.wt-footer .wt-link-button { padding: 0; border: 0; background: none; color: #c9d1de; font: inherit; text-decoration: underline; cursor: pointer; }
 
 @media (max-width: 760px) {
   .wt-app-body, .wt-account { grid-template-columns: 1fr; }

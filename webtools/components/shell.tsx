@@ -4,29 +4,31 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAccount } from "./account";
+import { LanguageSwitch, useT } from "./language";
 import { NotificationBell } from "./notifications";
 import { supportEmail } from "../lib/support";
 
 export function Header() {
   const { session, links, signOut } = useAccount();
+  const t = useT();
   const path = usePathname();
   const router = useRouter();
   return (
     <header className="wt-header">
       <div className="wt-wrap wt-header-row">
-        <Link href="/" className="wt-brand" aria-label="TeamZone Webtools, start">
+        <Link href="/" className="wt-brand" aria-label={t("TeamZone Webtools, start")}>
           <span className="wt-mark" aria-hidden="true">TZ</span>
           <span>Webtools</span>
         </Link>
-        <nav className="wt-nav" aria-label="Huvudmeny">
-          <Link href="/" aria-current={path === "/" ? "page" : undefined}>Appar</Link>
+        <nav className="wt-nav" aria-label={t("Huvudmeny")}>
+          <Link href="/" aria-current={path === "/" ? "page" : undefined}>{t("Appar")}</Link>
           {session ? (
             <>
-              <Link href="/konto" aria-current={path === "/konto" ? "page" : undefined}>Konto</Link>
-              <button type="button" className="wt-nav-button" onClick={async () => { await signOut(); router.push("/"); }}>Logga ut</button>
+              <Link href="/konto" aria-current={path === "/konto" ? "page" : undefined}>{t("Konto")}</Link>
+              <button type="button" className="wt-nav-button" onClick={async () => { await signOut(); router.push("/"); }}>{t("Logga ut")}</button>
             </>
           ) : (
-            <Link href={`/logga-in?returnTo=${encodeURIComponent(path ?? "/")}`} aria-current={path === "/logga-in" ? "page" : undefined}>Logga in</Link>
+            <Link href={`/logga-in?returnTo=${encodeURIComponent(path ?? "/")}`} aria-current={path === "/logga-in" ? "page" : undefined}>{t("Logga in")}</Link>
           )}
           {!links.tacticsboardOnly && <NotificationBell />}
           {!links.tacticsboardOnly && <a href={links.siteUrl} className="wt-nav-out">teamzoneapp.se</a>}
@@ -38,16 +40,18 @@ export function Header() {
 
 export function Footer() {
   const { links } = useAccount();
+  const t = useT();
   return (
     <footer className="wt-footer">
       <div className="wt-wrap wt-footer-row">
-        <div className="wt-footer-brand"><span className="wt-mark" aria-hidden="true">TZ</span><div><strong>TeamZone Webtools</strong><span>Verktyg för lag och klubbar</span></div></div>
+        <div className="wt-footer-brand"><span className="wt-mark" aria-hidden="true">TZ</span><div><strong>TeamZone Webtools</strong><span>{t("Verktyg för lag och klubbar")}</span></div></div>
         <ul>
           {!links.tacticsboardOnly && <li><a href={links.siteUrl}>teamzoneapp.se</a></li>}
-          {links.appUrl && <li><a href={links.appUrl}>TeamZone-appen</a></li>}
-          <li><a href={`${links.siteUrl}/integritet`}>Integritetspolicy</a></li>
-          <li><a href={`${links.siteUrl}/villkor`}>Användarvillkor</a></li>
-          <li><a href={`mailto:${supportEmail}`}>Support</a></li>
+          {links.appUrl && <li><a href={links.appUrl}>{t("TeamZone-appen")}</a></li>}
+          <li><a href={`${links.siteUrl}/integritet`}>{t("Integritetspolicy")}</a></li>
+          <li><a href={`${links.siteUrl}/villkor`}>{t("Användarvillkor")}</a></li>
+          <li><a href={`mailto:${supportEmail}`}>{t("Support")}</a></li>
+          <li><LanguageSwitch /></li>
         </ul>
       </div>
     </footer>
@@ -57,24 +61,25 @@ export function Footer() {
 /** First sign-in: the account's terms, accepted once for all of TeamZone. */
 export function LegalStep() {
   const { legal, acceptLegal } = useAccount();
+  const t = useT();
   const [checked, setChecked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   if (!legal) return null;
   return (
     <section className="wt-panel wt-legal" aria-labelledby="legal-title">
-      <h2 id="legal-title">Godkänn villkoren</h2>
-      <p>Godkänn de aktuella villkoren innan du fortsätter. De gäller ditt konto, i alla appar i Webtools och i TeamZone-appen om du använder den.</p>
+      <h2 id="legal-title">{t("Godkänn villkoren")}</h2>
+      <p>{t("Godkänn de aktuella villkoren innan du fortsätter. De gäller ditt konto, i alla appar i Webtools och i TeamZone-appen om du använder den.")}</p>
       <label className="wt-check">
         <input type="checkbox" checked={checked} onChange={event => setChecked(event.target.checked)} />
-        <span>Jag godkänner <a href={legal.terms_url} target="_blank" rel="noreferrer">användarvillkoren</a> och har läst <a href={legal.privacy_url} target="_blank" rel="noreferrer">integritetspolicyn</a>.</span>
+        <span>{t("Jag godkänner")} <a href={legal.terms_url} target="_blank" rel="noreferrer">{t("användarvillkoren")}</a> {t("och har läst")} <a href={legal.privacy_url} target="_blank" rel="noreferrer">{t("integritetspolicyn")}</a>.</span>
       </label>
       {error && <p role="alert" className="wt-error">{error}</p>}
       <button type="button" className="wt-button" disabled={!checked || busy} onClick={async () => {
         setBusy(true);
         setError((await acceptLegal()) ?? "");
         setBusy(false);
-      }}>Godkänn och fortsätt</button>
+      }}>{t("Godkänn och fortsätt")}</button>
     </section>
   );
 }
@@ -82,14 +87,15 @@ export function LegalStep() {
 /** Pages for signed-in accounts: sign-in first, then the terms. */
 export function RequireAccount({ returnTo, children }: { returnTo: string; children: React.ReactNode }) {
   const { ready, available, session, legal, accepted, error } = useAccount();
-  if (!ready || (session && !legal && !error)) return <p className="wt-status">Laddar…</p>;
-  if (!available) return <p className="wt-status" role="alert">Inloggningen är inte tillgänglig just nu. Försök igen senare.</p>;
+  const t = useT();
+  if (!ready || (session && !legal && !error)) return <p className="wt-status">{t("Laddar…")}</p>;
+  if (!available) return <p className="wt-status" role="alert">{t("Inloggningen är inte tillgänglig just nu. Försök igen senare.")}</p>;
   if (!session) {
     return (
       <section className="wt-panel">
-        <h2>Logga in</h2>
-        <p>Samma konto fungerar i alla appar i Webtools. Du behöver inte vara med i något lag eller någon klubb.</p>
-        <Link className="wt-button" href={`/logga-in?returnTo=${encodeURIComponent(returnTo)}`}>Logga in eller skapa konto</Link>
+        <h2>{t("Logga in")}</h2>
+        <p>{t("Samma konto fungerar i alla appar i Webtools. Du behöver inte vara med i något lag eller någon klubb.")}</p>
+        <Link className="wt-button" href={`/logga-in?returnTo=${encodeURIComponent(returnTo)}`}>{t("Logga in eller skapa konto")}</Link>
       </section>
     );
   }

@@ -1,0 +1,25 @@
+// The frame around every page: header, footer and the terms step.
+
+export const shell: Record<string, string> = {
+  "Huvudmeny": "Main menu",
+  "Appar": "Apps",
+  "Konto": "Account",
+  "Logga ut": "Sign out",
+  "Logga in": "Sign in",
+  "TeamZone-appen": "The TeamZone app",
+  "Integritetspolicy": "Privacy policy",
+  "Användarvillkor": "Terms of use",
+  "Support": "Support",
+  "TeamZone Webtools, start": "TeamZone Webtools, home",
+  "Godkänn villkoren": "Accept the terms",
+  "Godkänn de aktuella villkoren innan du fortsätter. De gäller ditt konto, i alla appar i Webtools och i TeamZone-appen om du använder den.": "Accept the current terms before you continue. They apply to your account, in every Webtools app and in the TeamZone app if you use it.",
+  "Jag godkänner": "I accept the",
+  "användarvillkoren": "terms of use",
+  "och har läst": "and have read the",
+  "integritetspolicyn": "privacy policy",
+  "Godkänn och fortsätt": "Accept and continue",
+  "Laddar…": "Loading…",
+  "Inloggningen är inte tillgänglig just nu. Försök igen senare.": "Sign-in is not available right now. Please try again later.",
+  "Samma konto fungerar i alla appar i Webtools. Du behöver inte vara med i något lag eller någon klubb.": "The same account works in every Webtools app. You do not need to belong to a team or club.",
+  "Logga in eller skapa konto": "Sign in or create an account",
+};

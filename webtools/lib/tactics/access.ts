@@ -2,6 +2,8 @@
 // page says about it (api.get_my_tacticsboard_access). The lock itself is
 // in the database; this only explains it.
 
+import { swedishLanguage, type Language } from "../i18n/translate.ts";
+
 export type TacticsAccess = {
   access_mode: "write" | "denied";
   source: "subscription" | "grace" | "trial" | "none";
@@ -34,20 +36,20 @@ export function daysLeft(until: string | null, now = Date.now()): number {
   return Math.max(0, Math.ceil((Date.parse(until) - now) / 86_400_000));
 }
 
-const swedishDate = (value: string) =>
-  new Date(value).toLocaleDateString("sv-SE", { day: "numeric", month: "long", timeZone: "Europe/Stockholm" });
+const longDate = (value: string, intl: string) =>
+  new Date(value).toLocaleDateString(intl, { day: "numeric", month: "long", timeZone: "Europe/Stockholm" });
 
 /** The line above Tacticsboard while it is open; empty when nothing needs saying. */
-export function accessNote(access: TacticsAccess, now = Date.now()): string {
+export function accessNote(access: TacticsAccess, now = Date.now(), { t, intl }: Language = swedishLanguage): string {
   if (access.source === "trial") {
     const days = daysLeft(access.trial_ends_at, now);
-    return days <= 1 ? "Sista dagen av provperioden." : `${days} dagar kvar av provperioden.`;
+    return days <= 1 ? t("Sista dagen av provperioden.") : t("{days} dagar kvar av provperioden.", { days });
   }
   if (access.source === "grace" && access.grace_ends_at) {
-    return `Betalningen gick inte igenom. Uppdatera kortet senast ${swedishDate(access.grace_ends_at)} så fortsätter allt att fungera.`;
+    return t("Betalningen gick inte igenom. Uppdatera kortet senast {date} så fortsätter allt att fungera.", { date: longDate(access.grace_ends_at, intl) });
   }
   if (access.source === "subscription" && access.cancel_at_period_end && access.current_period_ends_at) {
-    return `Prenumerationen avslutas ${swedishDate(access.current_period_ends_at)}.`;
+    return t("Prenumerationen avslutas {date}.", { date: longDate(access.current_period_ends_at, intl) });
   }
   return "";
 }
@@ -63,37 +65,40 @@ export function lockedText(access: TacticsAccess): { title: string; text: string
 }
 
 /** What the account page says about Tacticsboard, and which actions it offers. */
-export function subscriptionSummary(access: TacticsAccess, now = Date.now()): {
+export function subscriptionSummary(access: TacticsAccess, now = Date.now(), language: Language = swedishLanguage): {
   lines: string[];
   subscribe: boolean;
   manage: "card" | "manage" | null;
   tryIt: boolean;
 } {
-  const interval = access.billing_interval === "year" ? "Årsabonnemang" : "Månadsabonnemang";
-  const price = access.billing_interval === "year" ? prices.year.label : prices.month.label;
+  const { t, intl } = language;
+  const interval = t(access.billing_interval === "year" ? "Årsabonnemang" : "Månadsabonnemang");
+  const price = t(access.billing_interval === "year" ? prices.year.label : prices.month.label);
   if (access.source === "subscription") {
-    const end = access.current_period_ends_at ? swedishDate(access.current_period_ends_at) : null;
+    const end = access.current_period_ends_at ? longDate(access.current_period_ends_at, intl) : null;
     return {
       lines: [`${interval}, ${price}.`,
         access.cancel_at_period_end
-          ? `Uppsagt. Gäller till och med ${end}.`
-          : end ? `Nästa betalning ${end}.` : ""].filter(Boolean),
+          ? t("Uppsagt. Gäller till och med {date}.", { date: end ?? "" })
+          : end ? t("Nästa betalning {date}.", { date: end }) : ""].filter(Boolean),
       subscribe: false, manage: "manage", tryIt: false,
     };
   }
   if (access.source === "grace") {
-    return { lines: [accessNote(access, now)], subscribe: false, manage: "card", tryIt: false };
+    return { lines: [accessNote(access, now, language)], subscribe: false, manage: "card", tryIt: false };
   }
   if (access.source === "trial") {
-    const end = access.trial_ends_at ? ` (till och med ${swedishDate(access.trial_ends_at)})` : "";
-    return { lines: [`Provperiod${end}. ${accessNote(access, now)}`], subscribe: true, manage: null, tryIt: false };
+    const trial = access.trial_ends_at
+      ? t("Provperiod (till och med {date})", { date: longDate(access.trial_ends_at, intl) })
+      : t("Provperiod");
+    return { lines: [`${trial}. ${accessNote(access, now, language)}`], subscribe: true, manage: null, tryIt: false };
   }
   if (access.trial_available) {
-    return { lines: ["Prova Tacticsboard gratis i 7 dagar. Inget kort behövs."], subscribe: false, manage: null, tryIt: true };
+    return { lines: [t("Prova Tacticsboard gratis i 7 dagar. Inget kort behövs.")], subscribe: false, manage: null, tryIt: true };
   }
   const ended = access.subscription_state === "ended" || access.subscription_state === "grace";
   return {
-    lines: [ended ? "Prenumerationen har upphört. Dina projekt finns kvar." : "Provperioden är slut. Dina projekt finns kvar."],
+    lines: [t(ended ? "Prenumerationen har upphört. Dina projekt finns kvar." : "Provperioden är slut. Dina projekt finns kvar.")],
     subscribe: true, manage: ended ? "manage" : null, tryIt: false,
   };
 }

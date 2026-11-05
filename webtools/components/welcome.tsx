@@ -2,22 +2,24 @@
 
 import Link from "next/link";
 import { useAccount } from "./account";
+import { Bold, useT } from "./language";
 import { LegalStep } from "./shell";
 
 /** The start page's account line: who you are, or how to sign in. */
 export function Welcome() {
   const { ready, available, session, legal, accepted, displayName, connections, links, error } = useAccount();
+  const t = useT();
   if (!ready) return <div className="wt-welcome" aria-busy="true" />;
   if (!available) return null;
   if (!session) {
     return (
       <div className="wt-welcome">
         <p>{links.tacticsboardOnly
-          ? "Skapa ett konto och prova Tacticsboard gratis, eller logga in."
-          : "Logga in med ditt TeamZone-konto för att använda apparna. Du behöver inte vara kopplad till något lag."}</p>
+          ? t("Skapa ett konto och prova Tacticsboard gratis, eller logga in.")
+          : t("Logga in med ditt TeamZone-konto för att använda apparna. Du behöver inte vara kopplad till något lag.")}</p>
         <div className="wt-actions">
-          <Link className="wt-button" href="/logga-in">Logga in</Link>
-          <Link className="wt-button secondary" href="/logga-in?skapa=1">Skapa konto</Link>
+          <Link className="wt-button" href="/logga-in">{t("Logga in")}</Link>
+          <Link className="wt-button secondary" href="/logga-in?skapa=1">{t("Skapa konto")}</Link>
         </div>
       </div>
     );
@@ -29,12 +31,12 @@ export function Welcome() {
   return (
     <div className="wt-welcome">
       <p>
-        Inloggad som <strong>{name}</strong>
+        <Bold text={t("Inloggad som {value}")} value={name} />
         {connections && (count > 0
-          ? <> · {count === 1 ? "en koppling" : `${count} kopplingar`} till lag och klubbar i TeamZone</>
-          : !links.tacticsboardOnly && <> · inte kopplad till något lag, och det behövs inte</>)}
+          ? <> · {count === 1 ? t("en koppling till lag och klubbar i TeamZone") : t("{count} kopplingar till lag och klubbar i TeamZone", { count })}</>
+          : !links.tacticsboardOnly && <> · {t("inte kopplad till något lag, och det behövs inte")}</>)}
       </p>
-      <Link className="wt-link" href="/konto">{links.tacticsboardOnly ? "Ditt konto" : "Ditt konto och dina kopplingar"}</Link>
+      <Link className="wt-link" href="/konto">{links.tacticsboardOnly ? t("Ditt konto") : t("Ditt konto och dina kopplingar")}</Link>
     </div>
   );
 }

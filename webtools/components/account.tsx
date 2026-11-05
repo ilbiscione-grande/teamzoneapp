@@ -4,6 +4,7 @@ import { createClient, type Session, type SupabaseClient } from "@supabase/supab
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { Connection, LegalStatus } from "../lib/account";
 import { requiresAcceptance } from "../lib/account";
+import { useT } from "./language";
 
 type Links = { siteUrl: string; appUrl: string | null; tacticsboardOnly: boolean };
 
@@ -43,6 +44,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   const [connections, setConnections] = useState<Connection[] | null>(null);
   const [links, setLinks] = useState<Links>(defaultLinks);
   const [error, setError] = useState("");
+  const t = useT();
 
   useEffect(() => {
     let disposed = false;
@@ -67,16 +69,16 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       });
       unsubscribe = () => data.subscription.unsubscribe();
     }).catch(() => {
-      if (!disposed) { setError("Kontotjänsten kunde inte nås. Ladda om sidan och försök igen."); setReady(true); }
+      if (!disposed) { setError(t("Kontotjänsten kunde inte nås. Ladda om sidan och försök igen.")); setReady(true); }
     });
     return () => { disposed = true; unsubscribe(); };
-  }, []);
+  }, [t]);
 
   // The account's terms first; name and connections once they are accepted.
   const loadAccount = useCallback(async (authClient: SupabaseClient) => {
     const api = authClient.schema("api");
     const status = await api.rpc("get_legal_status");
-    if (status.error || !status.data) { setError("Kontot kunde inte läsas. Försök igen."); return; }
+    if (status.error || !status.data) { setError(t("Kontot kunde inte läsas. Försök igen.")); return; }
     const value = status.data as LegalStatus;
     setLegal(value);
     if (requiresAcceptance(value)) return;
@@ -84,65 +86,65 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     const row = Array.isArray(profile.data) ? profile.data[0] : profile.data;
     setDisplayName(typeof row?.display_name === "string" ? row.display_name.trim() : "");
     setConnections(contexts.error ? [] : (contexts.data as Connection[]) ?? []);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!client || !session) return;
     setError("");
-    loadAccount(client).catch(() => setError("Kontot kunde inte läsas. Försök igen."));
-  }, [client, session, loadAccount]);
+    loadAccount(client).catch(() => setError(t("Kontot kunde inte läsas. Försök igen.")));
+  }, [client, session, loadAccount, t]);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    if (!client) return "Kontotjänsten är inte tillgänglig just nu.";
+    if (!client) return t("Kontotjänsten är inte tillgänglig just nu.");
     const { error: signInError } = await client.auth.signInWithPassword({ email: email.trim(), password });
     if (!signInError) return null;
     return signInError.message.toLowerCase().includes("not confirmed")
-      ? "Bekräfta din e-postadress via länken i mejlet först."
-      : "Fel e-post eller lösenord.";
-  }, [client]);
+      ? t("Bekräfta din e-postadress via länken i mejlet först.")
+      : t("Fel e-post eller lösenord.");
+  }, [client, t]);
 
   const signUp = useCallback(async (email: string, password: string) => {
-    if (!client) return "Kontotjänsten är inte tillgänglig just nu.";
+    if (!client) return t("Kontotjänsten är inte tillgänglig just nu.");
     const { error: signUpError } = await client.auth.signUp({
       email: email.trim(),
       password,
       options: { emailRedirectTo: `${window.location.origin}/logga-in?konto=bekraftat` },
     });
     return signUpError ? "Kontot kunde inte skapas. Kontrollera adressen eller logga in om du redan har ett konto." : null;
-  }, [client]);
+  }, [client, t]);
 
   const signOut = useCallback(async () => { await client?.auth.signOut({ scope: "local" }); }, [client]);
 
   // The same answer whether the address has an account or not.
   const requestPasswordReset = useCallback(async (email: string) => {
-    if (!client) return "Kontotjänsten är inte tillgänglig just nu.";
+    if (!client) return t("Kontotjänsten är inte tillgänglig just nu.");
     const { error: resetError } = await client.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${window.location.origin}/logga-in?losenord=nytt`,
     });
-    return resetError && resetError.status === 429 ? "För många försök. Vänta en stund och försök igen." : null;
-  }, [client]);
+    return resetError && resetError.status === 429 ? t("För många försök. Vänta en stund och försök igen.") : null;
+  }, [client, t]);
 
   const updatePassword = useCallback(async (password: string) => {
-    if (!client) return "Kontotjänsten är inte tillgänglig just nu.";
+    if (!client) return t("Kontotjänsten är inte tillgänglig just nu.");
     const { error: updateError } = await client.auth.updateUser({ password });
     if (!updateError) return null;
-    if (updateError.code === "same_password") return "Välj ett annat lösenord än det du har nu.";
-    if (updateError.code === "weak_password") return "Lösenordet är för svagt eller har läckt tidigare. Välj ett annat.";
-    return "Lösenordet kunde inte sparas. Försök igen.";
-  }, [client]);
+    if (updateError.code === "same_password") return t("Välj ett annat lösenord än det du har nu.");
+    if (updateError.code === "weak_password") return t("Lösenordet är för svagt eller har läckt tidigare. Välj ett annat.");
+    return t("Lösenordet kunde inte sparas. Försök igen.");
+  }, [client, t]);
 
   const acceptLegal = useCallback(async () => {
-    if (!client || !legal) return "Villkoren kunde inte läsas.";
+    if (!client || !legal) return t("Villkoren kunde inte läsas.");
     const { error: acceptError } = await client.schema("api").rpc("accept_current_legal", {
       terms_version: legal.terms_version,
       privacy_version: legal.privacy_version,
       marketing_opt_in: false,
       idempotency_key: crypto.randomUUID(),
     });
-    if (acceptError) return "Godkännandet kunde inte sparas. Försök igen.";
+    if (acceptError) return t("Godkännandet kunde inte sparas. Försök igen.");
     await loadAccount(client);
     return null;
-  }, [client, legal, loadAccount]);
+  }, [client, legal, loadAccount, t]);
 
   const accepted = !!legal && !requiresAcceptance(legal);
   return (

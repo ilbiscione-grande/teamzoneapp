@@ -324,7 +324,7 @@ Det mesta av risken ligger i 2, 3 och 11, som kräver dig och utomstående (Supa
 - Egen trupp utan TeamZone (skriva in namn och nummer)
 - Anmälan av innehåll i biblioteket, om publicering till alla stängs av för konton utan lag vid lansering
 - Kontaktformulär i appen, chatt och statussida
-- Andra språk än svenska
+- Andra språk än svenska och engelska (engelska: se [tacticsboard-english.md](tacticsboard-english.md))
 - Steg 5 i kopplingen till TeamZone, och AI-funktionen
 - Mer djupgående prestandaarbete efter mätningarna
 

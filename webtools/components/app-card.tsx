@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { WebtoolApp } from "../lib/apps";
 import { statusLabel } from "../lib/apps";
+import { serverT } from "../lib/i18n/server";
 
 type Props = {
   app: WebtoolApp;
@@ -8,17 +9,18 @@ type Props = {
   tacticsboardOnly?: boolean;
 };
 
-export function AppCard({ app, tacticsboardOnly = false }: Props) {
+export async function AppCard({ app, tacticsboardOnly = false }: Props) {
+  const t = await serverT();
   const tacticsboard = app.slug === "tacticsboard";
   const status = !tacticsboardOnly ? app.status : tacticsboard ? "live" : "planned";
   const content = (
     <>
       <span className="wt-card-mark" aria-hidden="true">{app.mark}</span>
       <span className="wt-card-body">
-        <span className="wt-card-title">{app.name}</span>
-        <span className="wt-card-tagline">{app.tagline}</span>
+        <span className="wt-card-title">{t(app.name)}</span>
+        <span className="wt-card-tagline">{t(app.tagline)}</span>
       </span>
-      <span className="wt-tag">{statusLabel[status]}</span>
+      <span className="wt-tag">{t(statusLabel[status])}</span>
     </>
   );
   if (tacticsboardOnly && !tacticsboard) {

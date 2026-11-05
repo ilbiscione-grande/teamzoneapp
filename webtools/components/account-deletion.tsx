@@ -6,9 +6,13 @@
 import { useState } from "react";
 import { accountDeletionErrorText, deletionWord } from "../lib/account";
 import { useAccount } from "./account";
+import { useT } from "./language";
 
 export function AccountDeletion() {
   const { client, signOut } = useAccount();
+  const t = useT();
+  // People type the word in their language; the function gets its own.
+  const typed = t(deletionWord);
   const [open, setOpen] = useState(false);
   const [word, setWord] = useState("");
   const [busy, setBusy] = useState(false);
@@ -16,7 +20,7 @@ export function AccountDeletion() {
 
   async function endAccount(event: React.FormEvent) {
     event.preventDefault();
-    if (!client || busy || word.trim().toUpperCase() !== deletionWord) return;
+    if (!client || busy || word.trim().toUpperCase() !== typed) return;
     setBusy(true);
     setError("");
     const { error: invokeError } = await client.functions.invoke("account-deletion", { body: { confirm: deletionWord } });
@@ -26,31 +30,31 @@ export function AccountDeletion() {
       return;
     }
     const answer = await (invokeError as { context?: Response }).context?.json?.().catch(() => null);
-    setError(accountDeletionErrorText(answer?.error ?? ""));
+    setError(t(accountDeletionErrorText(answer?.error ?? "")));
     setBusy(false);
   }
 
   return (
     <section className="wt-panel" aria-labelledby="delete-title">
-      <h2 id="delete-title">Avsluta kontot</h2>
+      <h2 id="delete-title">{t("Avsluta kontot")}</h2>
       {!open ? (
-        <button type="button" className="wt-button secondary" onClick={() => setOpen(true)}>Avsluta kontot</button>
+        <button type="button" className="wt-button secondary" onClick={() => setOpen(true)}>{t("Avsluta kontot")}</button>
       ) : (
         <form className="wt-form" onSubmit={endAccount}>
-          <p>Kontot och allt du har gjort i Tacticsboard tas bort: projekt, mappar, mallar, delade länkar och det du har publicerat i biblioteket.</p>
-          <p>Har du en prenumeration avslutas den direkt, utan återbetalning för resten av perioden. Dina kvitton finns kvar hos Stripe.</p>
-          <p><strong>Det går inte att ångra.</strong></p>
+          <p>{t("Kontot och allt du har gjort i Tacticsboard tas bort: projekt, mappar, mallar, delade länkar och det du har publicerat i biblioteket.")}</p>
+          <p>{t("Har du en prenumeration avslutas den direkt, utan återbetalning för resten av perioden. Dina kvitton finns kvar hos Stripe.")}</p>
+          <p><strong>{t("Det går inte att ångra.")}</strong></p>
           <label>
-            Skriv {deletionWord} för att bekräfta
+            {t("Skriv {word} för att bekräfta", { word: typed })}
             <input value={word} onChange={event => setWord(event.target.value)} autoComplete="off" disabled={busy} />
           </label>
           {error && <p className="wt-error" role="alert">{error}</p>}
           <div className="wt-actions">
-            <button type="submit" className="wt-button" disabled={busy || word.trim().toUpperCase() !== deletionWord}>
-              {busy ? "Avslutar…" : "Avsluta kontot för gott"}
+            <button type="submit" className="wt-button" disabled={busy || word.trim().toUpperCase() !== typed}>
+              {busy ? "Avslutar…" : t("Avsluta kontot för gott")}
             </button>
             <button type="button" className="wt-button secondary" disabled={busy}
-              onClick={() => { setOpen(false); setWord(""); setError(""); }}>Avbryt</button>
+              onClick={() => { setOpen(false); setWord(""); setError(""); }}>{t("Avbryt")}</button>
           </div>
         </form>
       )}
