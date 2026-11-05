@@ -110,7 +110,7 @@ Det är det **högsta** en användare med 15 genereringar per månad kan kosta. 
 - **Sonnet 5.5 i stället för Opus 5.5** halverar kostnaden. Kvaliteten för just tavlor behöver provas med testsetet (fas 3) innan beslut.
 - **Lägre effort** för enkla förfrågningar (en tavla) ger mindre tänkande och därmed lägre utdatakostnad.
 - **Kvot per användare** och ett tak för hela tjänsten per månad i Anthropics konsol.
-- **AI-generering i abonnemanget.** När webtools-apparna blir abonnemang kan AI-genereringen ingå i Tacticsboard-abonnemanget. Kostnaden per användare ovan är golvet för vad den delen behöver kosta.
+- **AI som tillägg (beslut 2026-11-05).** AI-genereringen ingår inte i Tacticsboard-abonnemanget på 39 kr/mån, utan säljs senare som ett tillägg. Kostnaden per användare ovan är golvet för vad tillägget behöver kosta.
 
 ## Kvot per användare
 

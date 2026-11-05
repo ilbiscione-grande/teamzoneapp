@@ -22,7 +22,7 @@ export function SubscribeButtons() {
           {prices.year.label}{offer ? ` – ${prices.launch.label}` : ""}
         </button>
       </div>
-      {offer && <p className="wt-small">Halva priset första året gäller årsabonnemang som tecknas senast 31 december 2026.</p>}
+      {offer && <p className="wt-small">25 % rabatt första året gäller årsabonnemang som tecknas senast 31 december 2026.</p>}
       <p className="wt-small">Priserna är inklusive moms. Du betalar hos Stripe och kan säga upp när du vill. Läs <a href={tacticsboardTermsUrl}>villkoren för Tacticsboard</a>.</p>
       {error && <p className="wt-error" role="alert">{error}</p>}
     </>

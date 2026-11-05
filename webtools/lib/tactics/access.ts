@@ -18,9 +18,9 @@ export type Interval = "month" | "year";
 
 /** The prices as Stripe charges them, VAT included. */
 export const prices = {
-  month: { label: "79 kr/mån", amount: 79 },
-  year: { label: "790 kr/år", amount: 790 },
-  launch: { label: "395 kr första året", until: "2026-12-31" },
+  month: { label: "39 kr/mån", amount: 39 },
+  year: { label: "390 kr/år", amount: 390 },
+  launch: { label: "292,50 kr första året", amount: "292,50", until: "2026-12-31" },
 };
 
 /** Whether the launch offer on the yearly price still applies (Swedish time). */

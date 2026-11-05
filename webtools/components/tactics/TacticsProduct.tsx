@@ -80,8 +80,8 @@ export function TacticsProduct() {
             <h3>År</h3>
             {offer ? (
               <>
-                <p className="tb-price">{prices.year.amount / 2} kr<span> första året</span></p>
-                <p>Halva priset vid köp senast 31 december 2026. Därefter {prices.year.label}.</p>
+                <p className="tb-price">{prices.launch.amount} kr<span> första året</span></p>
+                <p>25 % rabatt vid köp senast 31 december 2026. Därefter {prices.year.label}.</p>
               </>
             ) : (
               <>

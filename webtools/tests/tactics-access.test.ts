@@ -52,9 +52,9 @@ test("the account page: subscription, cancelled, failed payment, trial, never tr
   const paid = { ...base, source: "subscription" as const, subscription_state: "active" as const,
     billing_interval: "month" as const, current_period_ends_at: "2026-11-10T16:52:11Z" };
   assert.deepEqual(subscriptionSummary(paid, now),
-    { lines: ["Månadsabonnemang, 79 kr/mån.", "Nästa betalning 10 november."], subscribe: false, manage: "manage", tryIt: false });
+    { lines: ["Månadsabonnemang, 39 kr/mån.", "Nästa betalning 10 november."], subscribe: false, manage: "manage", tryIt: false });
   assert.deepEqual(subscriptionSummary({ ...paid, billing_interval: "year", cancel_at_period_end: true }, now).lines,
-    ["Årsabonnemang, 790 kr/år.", "Uppsagt. Gäller till och med 10 november."]);
+    ["Årsabonnemang, 390 kr/år.", "Uppsagt. Gäller till och med 10 november."]);
   const grace = subscriptionSummary({ ...paid, source: "grace", subscription_state: "grace", grace_ends_at: "2026-11-17T12:00:00Z" }, now);
   assert.equal(grace.manage, "card");
   assert.match(grace.lines[0], /Betalningen gick inte igenom/);

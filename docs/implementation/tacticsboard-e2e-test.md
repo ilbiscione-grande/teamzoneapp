@@ -26,15 +26,15 @@ med SQL på ditt testkonto, när du säger till.
 
 | # | Du gör | Förväntat i gränssnittet | Jag kontrollerar | Resultat |
 |---|---|---|---|---|
-| 1 | Öppna `/appar/tacticsboard` utloggad, tryck "Prova gratis i 7 dagar" och skapa kontot `+tb1` | Registreringen, villkorssteget, sedan Tacticsboards startsida | Profilen finns, villkoren godkända | |
-| 2 | Skapa ett projekt och en tavla, rita något | Raden "7 dagar kvar av provperioden" | `personal_billing_accounts` har en rad med slut om 7 dagar, `audit.command_events` har starten | |
+| 1 | Öppna `/appar/tacticsboard` utloggad, tryck "Prova gratis i 7 dagar" och skapa kontot `+tb1` | Registreringen, villkorssteget, sedan Tacticsboards startsida | Profilen finns, villkoren godkända | Godkänt 2026-11-04. Bekräftelselänken landade på `localhost:3000` (Site URL i testprojektet), men kontot bekräftades. Villkoren 2026-08-24 godkända 07:19 |
+| 2 | Skapa ett projekt och en tavla, rita något | Raden "7 dagar kvar av provperioden" | `personal_billing_accounts` har en rad med slut om 7 dagar, `audit.command_events` har starten | Godkänt 2026-11-04. Provperioden 07:31 till 11 nov 07:31, starten loggad. Projektet "Testtavla" med 3 tavlor sparat 4 gånger, en länk till hela projektet |
 | 3 | Logga ut, välj "Glömt lösenord" och byt lösenord via mejlet | Mejlet kommer, nytt lösenord fungerar | Inget (Auth) | |
-| 4 | Konto → Abonnemang → köp månad med `4000 0025 0000 3155` | Stripe Checkout på svenska, 79 kr, 3-D Secure, tillbaka till `/konto?betalning=klar` | Prenumerationen `active`, provperiodens rest som `trial_end` | |
+| 4 | Konto → Abonnemang → köp månad med `4000 0025 0000 3155` | Stripe Checkout på svenska, 39 kr, 3-D Secure, tillbaka till `/konto?betalning=klar` | Prenumerationen `active`, provperiodens rest som `trial_end` | |
 | 5 | "Hantera betalning" → byt kortet till `4000 0000 0000 0341`. Säg till mig. I Stripes dashboard: prenumerationen → avsluta provperioden nu | Raden om misslyckad betalning, "Uppdatera kortet" | Tillståndet `grace` med `grace_ends_at` 14 dagar fram, allt går fortfarande att spara | |
 | 6 | Säg till. Jag flyttar `grace_ends_at` bakåt. Ladda om | "Prenumerationen har upphört" med knapparna för månad och år. Tacticsboard är helt låst (spärren gäller även läsningar), men inget är borttaget | `internal.personal_entitlement_status` = `denied`, en sparning ger `tacticsboard_locked` | |
 | 7 | Byt tillbaka till `4242…` i portalen och betala fakturan, sedan säg upp prenumerationen | Allt fungerar igen, sedan raden "Prenumerationen avslutas …" | `active`, sedan `cancel_at_period_end` | |
 | 8 | Skapa kontot `+tb2`, öppna Tacticsboard en gång. Säg till, så sätter jag provperioden som slut | "Provperioden är slut" med knapparna för månad och år | `denied`, ingen ny provperiod startar | |
-| 9 | På `+tb2`: köp år, se att lanseringspriset 395 kr visas. Avsluta sedan kontot (skriv AVSLUTA) | Kontot borta, utloggad | Stripe-prenumerationen avslutad, inga rader kvar, loggraden `account.self_erased.v1` | |
+| 9 | På `+tb2`: köp år, se att lanseringspriset 292,50 kr visas. Avsluta sedan kontot (skriv AVSLUTA) | Kontot borta, utloggad | Stripe-prenumerationen avslutad, inga rader kvar, loggraden `account.self_erased.v1` | |
 | 10 | Upprepa 1, 2 och 4 på riktig telefon (Safari eller Chrome) och iPad, med Apple Pay eller Google Pay om det finns | Inget klipps, knapparna går att nå | | |
 
 **Delade länkar under läsläget:** i steg 6, öppna en länk som delades i steg 2

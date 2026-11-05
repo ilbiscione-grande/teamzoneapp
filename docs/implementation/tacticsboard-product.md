@@ -6,7 +6,7 @@
 
 - **Miljö:** produktionsmiljön sätts upp nu (fas 3–6), och Tacticsboard lanseras där.
 - **Betalmodell:** prenumeration per person. TeamZone som helhet lanseras inte publikt än, så det finns inga TeamZone-ledare att ge särskilda villkor. Klubbarnas abonnemang väntar.
-- **Pris:** 79 kr/mån inklusive moms. Årspriset är 790 kr (tio månadspriser), och under lanseringen kostar årsabonnemanget halva priset, 395 kr.
+- **Pris (ändrat 2026-11-05):** 39 kr/mån inklusive moms. Årspriset är 390 kr (tio månadspriser), och under lanseringen ger årsabonnemanget 25 % rabatt första året, 292,50 kr. Priset gäller enskilda användare. Klubbar får ett högre pris senare, eftersom flera användare får tillgång samtidigt. AI blir ett tillägg senare och ingår inte i priset.
 - **Provperiod:** 7 dagar utan kort. Därefter gäller läsläget tills man börjar betala.
 
 - **Utan betalning:** helt låst. Man ser bara kontosidan och knappen för att börja betala. Inget tas bort, och allt fungerar igen så fort man betalar. Det ersätter läsläget som föreslås i avsnitt 3. Följdfråga: ska delade länkar och mappar som redan är delade sluta att fungera, eller bara projekten i editorn?
@@ -16,7 +16,7 @@
 
 - **Låst konto och delningar:** när ett konto är låst fortsätter de länkar och mappar det har delat att fungera för andra. Det som stängs är ägarens egen åtkomst till Tacticsboard.
 - **Namn:** "Teamzone Webtools" står med mindre bokstäver ovanför "TACTICSBOARD", som skrivs med versaler och med tydligt större text.
-- **Lanseringskampanjen** gäller till och med 2026-12-31. Halva priset på årsabonnemanget gäller bara första året. I Stripe blir det en kupong på 50 % som gäller en gång och som går att lösa in till och med 2026-12-31.
+- **Lanseringskampanjen** gäller till och med 2026-12-31. Rabatten på 25 % på årsabonnemanget gäller bara första året. I Stripe blir det en kupong på 25 % som gäller en gång och som går att lösa in till och med 2026-12-31.
 - **Säljare:** Tre 60 Grader, enskild näringsidkare, Plangränd 15, 574 34 Vetlanda. Stripe-kontot finns.
   - Organisationsnumret för en enskild firma är innehavarens personnummer. Det ska stå i villkoren och på kvittona, så det blir offentligt där. Du fyller i det själv.
   - Momsregistreringsnumret är SE + organisationsnumret + 01. Kontrollera hos Skatteverket att firman är registrerad för moms och F-skatt.
@@ -132,12 +132,12 @@ Det som behöver byggas:
 - **Provperioden:** den som köpt utan provperiod får ingen provperiod senare.
 - **Ursprung:** Edge-funktionen godkänner `https://webtools.teamzoneapp.se` och de adresser som `TEAMZONE_EXTRA_WEB_ORIGINS` listar. I test måste den listan innehålla Webtools hosted.app-adress.
 - **Det här gör du i Stripe (testläge först):**
-  1. Produkten "Tacticsboard" med två återkommande priser: 79 kr/mån och 790 kr/år, med moms inräknad (tax behavior: inclusive).
-  2. Kupongen: 50 %, gäller en gång, går att lösa in till och med 2026-12-31.
+  1. Produkten "Tacticsboard" med två återkommande priser: 39 kr/mån och 390 kr/år, med moms inräknad (tax behavior: inclusive).
+  2. Kupongen: 25 %, gäller en gång, går att lösa in till och med 2026-12-31.
   3. Slå på Stripe Tax.
   4. Lägg till de fyra händelserna ovan på webhooken som pekar på `stripe-webhook`.
   5. Customer Portal: tillåt byte av kort, kvitton och uppsägning vid periodens slut.
-- **Priserna i testprojektet är inlagda (2026-11-03):** månadspriset `price_1UXkSR4Skh2WBbLCRSPTcGdy` och årspriset `price_1UXkTK4Skh2WBbLCfJ3SDRW2` med kupongen `LANSERING50` till och med 2026-12-31. Båda är i testläge (`livemode = false`). Produktionen får de skarpa priserna i punkt 15.
+- **Priserna i testprojektet är inlagda (2026-11-03):** månadspriset `price_1UXkSR4Skh2WBbLCRSPTcGdy` och årspriset `price_1UXkTK4Skh2WBbLCfJ3SDRW2` med kupongen `LANSERING50` till och med 2026-12-31. Båda är i testläge (`livemode = false`).  Det är de gamla priserna (79 och 790 kr, 50 %) och de behöver bytas i testläget innan e2e-testet fortsätter. Produktionen får de skarpa priserna i punkt 15.
 - **Ett köp är provat hela vägen i test (2026-11-03):** månadspriset med testkort, sedan `checkout.session.completed` och `customer.subscription.created` hanterade. Prenumerationen blev `active`, och provperiodens rest fördes över (perioden slutar 2026-11-10). Två fel fanns först:
   - Stripe-nyckeln i test hörde till klubbarnas gamla sandlåda och byttes.
   - Signing secret hörde till en annan endpoint, så webhooken svarade 400 `invalid_signature`. Den byttes, och händelserna skickades igen.
@@ -307,7 +307,7 @@ Genomgången gjordes 2026-11-02 i koden och i förhandsvisningen av `/tacticsboa
 | 12 | Texter utan TeamZone, dölj det som inte går att använda, toppraden i mobil. Byggt 2026-11-03 (inte committat eller driftsatt): inloggningen, villkorssteget och kontosidan säger "konto" i stället för "TeamZone-konto", och "TeamZones bibliotek" heter "Biblioteket". Truppen i panelen Lag och "Lägg i ett pass" visas bara för den som är med i ett lag. I mobil är "+ Tavla" bara "+", tavlan du är på scrollas fram, och förloppsstapeln sticker inte längre ut. Webtools startsida och sidorna för de andra apparna är inte ändrade | Jag | 1 dag |
 | 13 | Supportadress och vanliga frågor. Byggt 2026-11-04 (inte committat eller driftsatt): `webtools/lib/support.ts` har adressen och löftet om svar inom två vardagar. De visas i sidfoten ("Support"), i hjälpdialogen i Tacticsboard och som en femte vanlig fråga på produktsidan. Kvar: löftet i villkoren, som du skriver i punkt 11 | Du ger adressen, jag lägger in den | Timmar |
 | 14 | Prov från början till slut i Stripes testläge: registrering, provperiod, köp, misslyckad betalning, läsläge, uppsägning, kontoavslut. Provschemat finns i `tacticsboard-e2e-test.md` (2026-11-04), inte genomfört | Jag, och du på riktig telefon och iPad | 1 dag |
-| 15 | Byte till Stripes skarpa läge, domänen, deploy | Du säger ja per steg | Sista dagarna |
+| 15 | Byte till Stripes skarpa läge, domänen, deploy. Checklistan och läget i produktionen finns i `tacticsboard-production.md` (2026-11-04) | Du säger ja per steg | Sista dagarna |
 | 16 | Anmäla innehåll i biblioteket, och en lista där du granskar anmälningarna. Byggt 2026-11-03 (inte committat eller driftsatt i webtools): anmälan, att tre anmälningar döljer innehållet och supportens beslut fanns sedan `20261214090000`. Nytt: migrationen `20270208090000_tactics_shared_report_review.sql` (supporten ser innehållet helt, även när det är dolt; körd i test 2026-11-03), dialogen "Anmäl" med skäl i biblioteket, och sidan `/tacticsboard/granska` för supportkonton med beslutet "Dölj ur biblioteket" eller "Behåll" och en motivering till loggen. I test är `coach.emilson@gmail.com` support. Produktionen har inget supportkonto än, det läggs in i `internal.support_admins` i punkt 15. Inget mejl skickas till supporten när något anmäls | Jag skriver, du kör SQL | 1 dag |
 
 **Förslag på ordning:**

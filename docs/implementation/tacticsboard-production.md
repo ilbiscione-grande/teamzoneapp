@@ -18,11 +18,11 @@ kontrollerar varje steg.
 |---|---|
 | Migrationer | Alla 435 körda. De fem sista kördes 2026-11-04: tabellerna har RLS, 44 funktioner är spärrade som i test, prislistan är tom tills steg 9 |
 | Edge-funktioner | Alla 18 driftsatta. `tacticsboard-billing`, `account-deletion` och `stripe-webhook` kom 2026-11-04. Webhooken svarar `billing_unavailable` tills Stripe-nycklarna finns |
-| Edge-hemligheter | 13 namn. Saknas: `RESEND_API_KEY`, `SUPPORT_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SIGNING_SECRET` |
+| Edge-hemligheter | 15 namn. Saknas: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SIGNING_SECRET`, `OBSERVABILITY_BRIDGE_URL`, `OBSERVABILITY_BRIDGE_TOKEN` |
 | Vault | Alla sex namn finns |
 | Villkor | `terms` och `privacy` version 2026-08-24 är aktiva, som i test |
-| Konton | 0 användare, 0 supportkonton |
-| Webtools | Har ingen produktionsbackend. `teamzoneapp-webtools` pekar på testprojektet |
+| Konton | 1 användare, 1 supportkonto |
+| Webtools | `teamzoneapp-webtools-prod` på `webtools.teamzoneapp.se` pekar på produktionen. `teamzoneapp-webtools` pekar på testprojektet |
 
 ## Fel i produktionens inställningar
 
@@ -48,19 +48,19 @@ TOTP stämmer redan.
 
 | # | Steg | Vem | Klart |
 |---|---|---|---|
-| 1 | Organisationen på Pro, tvåfaktorsinloggning krävs, Supabases DPA godkänt, skydd mot läckta lösenord på (Authentication → Providers → Email) | Du | |
+| 1 | Organisationen på Pro, tvåfaktorsinloggning krävs, skydd mot läckta lösenord på (Authentication → Providers → Email). Supabases DPA ingår numera i deras villkor och behöver inte signeras separat (Legal Documents, 2026-11-04). Spend cap är på | Du | Klart 2026-11-04 enligt dig. Tvåfaktor, läckta lösenord och säkerhetskopior kan jag inte läsa av |
 | 2 | Rätta inställningarna ovan: Extra search path till bara `extensions`, och Site URL till `https://webtools.teamzoneapp.se` (se Beslut) | Du | Klart 2026-11-04 |
-| 3 | SMTP via Resend med en egen nyckel för produktionen: smtp.resend.com, port 465, användaren `resend`, avsändaren `noreply@teamzoneapp.se` med namnet "TeamZone". Samma nyckel som `RESEND_API_KEY`, och `SUPPORT_EMAIL_FROM` = `TeamZone <support@teamzoneapp.se>` | Du | |
-| 4 | Svenska mejlmallar i `supabase/templates/`, att klistra in under Authentication → Emails, i test och produktion. Ämnesrader: Confirm signup "Bekräfta din e-postadress", Magic link "Din kod för att logga in", Reset password "Välj ett nytt lösenord", Change email "Bekräfta din nya e-postadress". Appen loggar in med kod, så de två första visar både länk och kod. Mallarna är inte provade i en riktig inkorg | Du klistrar in | |
+| 3 | SMTP via Resend med en egen nyckel för produktionen: smtp.resend.com, port 465, användaren `resend`, avsändaren `noreply@teamzoneapp.se` med namnet "Teamzone App", eftersom Auth-mejlen inte ska besvaras. Samma nyckel som `RESEND_API_KEY`, och `SUPPORT_EMAIL_FROM` = `TeamZone <support@teamzoneapp.se>` | Du | Klart 2026-11-04. Avsändaren kontrollerad i inställningarna. Ett mejl med `noreply@` är inte provat |
+| 4 | Svenska mejlmallar i `supabase/templates/`, att klistra in under Authentication → Emails, i test och produktion. Ämnesrader: Confirm signup "Bekräfta din e-postadress", Magic link "Din kod för att logga in", Reset password "Välj ett nytt lösenord", Change email "Bekräfta din nya e-postadress". Appen loggar in med kod, så de två första visar både länk och kod | Du klistrar in | Produktionen klar 2026-11-04. Confirm signup är provad i en riktig inkorg, med länk och kod. De andra tre är inte provade, och test väntar på att Auth fungerar |
 | 5 | De fem migrationerna: `npx supabase db push --remote=zfxcblgnemuenaqjkaic --skip-vault`, sedan `migration list` och kontroll av tabeller, RLS och spärren (44 spärrade funktioner) | Jag, efter ditt ja | Klart 2026-11-04 |
-| 6 | Stripe i skarpt läge: kontot aktiverat, produkten Tacticsboard med 79 kr/mån och 790 kr/år inklusive moms, kupongen `LANSERING50` (50 %, en gång, går att lösa in till och med 2026-12-31), Stripe Tax för Sverige, Customer Portal som i test. Public details är gemensamma för test och skarpt läge och är redan ifyllda | Du | |
+| 6 | Stripe i skarpt läge: kontot aktiverat, produkten Tacticsboard med 39 kr/mån och 390 kr/år inklusive moms, kupongen `LANSERING25` (25 %, en gång, går att lösa in till och med 2026-12-31), Stripe Tax för Sverige, Customer Portal som i test. Public details är gemensamma för test och skarpt läge och är redan ifyllda | Du | |
 | 7 | Webhooken i skarpt läge till `https://zfxcblgnemuenaqjkaic.supabase.co/functions/v1/stripe-webhook` med `checkout.session.completed` och `customer.subscription.created`, `.updated` och `.deleted`, plus de händelser som klubbarnas betalning redan använder | Du | |
 | 8 | Hemligheterna `STRIPE_SECRET_KEY` (en begränsad nyckel räcker) och `STRIPE_WEBHOOK_SIGNING_SECRET` | Du | |
 | 9 | Raderna i `internal.personal_billing_prices` med de skarpa pris- och kupong-id:na | Jag skriver SQL, du ger id:na (de är inte hemliga) | |
 | 10 | Driftsätt `tacticsboard-billing`, `account-deletion` och `stripe-webhook`. Obs: funktionerna byggs från arbetskopian, så andras ocommittade ändringar i `_shared` följer med. Kontrollera diffen först | Jag, efter ditt ja | Klart 2026-11-04 |
-| 11 | Webtools i produktionen: en ny App Hosting-backend `teamzoneapp-webtools-prod` (rot `/webtools`, miljön `production`) och en `webtools/apphosting.production.yaml` med produktionens `SUPABASE_URL`, den publicerbara nyckeln och en egen secret för `SUPABASE_SECRET_KEY` | Filen är skriven. Du skapar backend och secreten `teamzoneapp-production-webtools-supabase-secret-key` | Backend, miljönamn och secret klara 2026-11-04. Driftsättning kvar |
-| 12 | Domänen `webtools.teamzoneapp.se` till produktionsbackenden (DNS i Netlify). Adressen visar i dag den gamla sajten, som ersätts. Testets Webtools ligger kvar på hosted.app-adressen | Du | |
-| 13 | Ditt konto som support: en rad i `internal.support_admins` när du har registrerat dig i produktionen | Jag skriver SQL | |
+| 11 | Webtools i produktionen: en ny App Hosting-backend `teamzoneapp-webtools-prod` (rot `/webtools`, miljön `production`) och en `webtools/apphosting.production.yaml` med produktionens `SUPABASE_URL`, den publicerbara nyckeln och en egen secret för `SUPABASE_SECRET_KEY` | Filen är skriven. Du skapar backend och secreten `teamzoneapp-production-webtools-supabase-secret-key` | Klart 2026-11-04. Driftsatt från en export av commit `211119d`, utan arbetskopians ocommittade bokningsarbete |
+| 12 | Domänen `webtools.teamzoneapp.se` till produktionsbackenden (DNS i Netlify). Testets Webtools ligger kvar på hosted.app-adressen. Domänen är borttagen från Vercel | Du | Klart 2026-11-04. `/`, `/appar/tacticsboard`, `/logga-in` och `/api/config` svarar 200 med giltigt certifikat, och `/api/config` pekar på produktionen |
+| 13 | Ditt konto som support: en rad i `internal.support_admins` när du har registrerat dig i produktionen | Jag skriver SQL | Klart 2026-11-04 |
 | 14 | Nya versioner av villkoren i `internal.legal_document_versions` när texterna är granskade, i test och produktion | Jag, efter punkt 11 | |
 | 15 | Provet i produktionen: registrering, provperiod, ett riktigt köp av månaden, sedan återbetalning och uppsägning i Stripe | Du köper, jag kontrollerar | |
 | 16 | Firebase-hemligheten `TEAMZONE_PRODUCTION_SUPABASE_ANON_KEY` med produktionens publicerbara nyckel. Edge-hemligheterna `OBSERVABILITY_BRIDGE_URL` = `https://europe-west1-teamzoneapp-b02a2.cloudfunctions.net/criticalFlowAlertBridge` och `OBSERVABILITY_BRIDGE_TOKEN`, samma värde som Firebase-hemligheten `TEAMZONE_OBSERVABILITY_BRIDGE_TOKEN`, eftersom båda miljöerna larmar till samma brygga | Du | |

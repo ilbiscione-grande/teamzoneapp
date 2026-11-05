@@ -32,8 +32,8 @@ const sections = [
   {
     title: "4. Pris och betalning",
     items: [
-      "Prenumerationen kostar 79 kronor per månad eller 790 kronor per år. Priserna är inklusive moms.",
-      "Lanseringserbjudande: köper du årsprenumerationen senast den 31 december 2026 betalar du halva priset det första året. Därefter gäller ordinarie pris.",
+      "Prenumerationen kostar 39 kronor per månad eller 390 kronor per år. Priserna är inklusive moms.",
+      "Lanseringserbjudande: köper du årsprenumerationen senast den 31 december 2026 får du 25 % rabatt det första året och betalar 292,50 kronor. Därefter gäller ordinarie pris.",
       "Betalningen sköts av Stripe. Du betalar med kort, Apple Pay eller Google Pay. Vi tar inte del av dina kortuppgifter.",
       "Köper du med mer än två dygn kvar av provperioden dras den första betalningen när provperioden är slut. Annars dras den direkt.",
       "Kvitton skickas med e-post och finns under Hantera betalning på kontosidan.",
@@ -106,7 +106,7 @@ export default function TacticsboardTermsPage() {
     <LegalDocument
       eyebrow="Juridik"
       title="Villkor för Tacticsboard"
-      version="2026-11-04"
+      version="2026-11-05"
       updated="4 november 2026"
       introduction="Här står vad som gäller när du provar och prenumererar på Tacticsboard: pris, betalning, uppsägning och ångerrätt."
       sections={sections}
