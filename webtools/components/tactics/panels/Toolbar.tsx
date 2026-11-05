@@ -46,7 +46,7 @@ export const groups: { title: string; items: Item[] }[] = [
   {
     title: "Rita",
     items: [
-      { tool: "arrow", label: "Passning", short: "Pass", icon: "→" },
+      { tool: "arrow", label: "Passning", short: "Pass|verktyg", icon: "→" },
       { tool: "run", label: "Löpning", short: "Löpning", icon: "⇢" },
       { tool: "dribble", label: "Dribbling", short: "Dribbling", icon: "⤳" },
       { tool: "line", label: "Linje", short: "Linje", icon: "／" },

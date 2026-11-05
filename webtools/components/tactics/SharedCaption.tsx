@@ -5,8 +5,10 @@
 // none at all for a board without notes, whose pitch gets the room.
 import type { Board } from "../../lib/tactics/model.ts";
 import { useEditor } from "./store.ts";
+import { useT } from "../language";
 
 export function SharedCaption({ board }: { board: Board }) {
+  const t = useT();
   // While playing: the frame being moved into.
   const index = useEditor(state => Math.min(board.frames.length - 1, state.playing ? Math.ceil(state.playhead - 1e-6) : Math.round(state.playhead)));
   const frames = board.frames.length;
@@ -15,8 +17,8 @@ export function SharedCaption({ board }: { board: Board }) {
   return (
     <div className="tb-caption">
       <div className="tb-caption-text">
-        {frames > 1 && <strong>Frame {index + 1} av {frames}{note ? ": " : " · "}</strong>}
-        {note || (frames > 1 ? <span className="tb-caption-hint">Svep eller ‹ › byter frame, tryck på planen för att spela.</span> : null)}
+        {frames > 1 && <strong>{t("Frame {number} av {count}", { number: index + 1, count: frames })}{note ? ": " : " · "}</strong>}
+        {note || (frames > 1 ? <span className="tb-caption-hint">{t("Svep eller ‹ › byter frame, tryck på planen för att spela.")}</span> : null)}
       </div>
     </div>
   );

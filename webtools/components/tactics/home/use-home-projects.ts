@@ -7,10 +7,12 @@ import { useCallback, useEffect, useState } from "react";
 import type { HomeFilters } from "../../../lib/tactics/home.ts";
 import { useAccount } from "../../account";
 import type { HomeProject, Published } from "./ProjectCard.tsx";
+import { useT } from "../../language";
 
 export { noHomeFilters, teamMatches, type HomeFilters } from "../../../lib/tactics/home.ts";
 
 export function useHomeProjects(filters: HomeFilters) {
+  const t = useT();
   const { client } = useAccount();
   const [mine, setMine] = useState<HomeProject[] | null>(null);
   const [team, setTeam] = useState<HomeProject[]>([]);
@@ -22,7 +24,7 @@ export function useHomeProjects(filters: HomeFilters) {
       search_text: current.text.trim().slice(0, 100), project_kind: current.kind || null, exercise_part: current.part || null,
       game_phase: current.phase || null, age_class: current.age || null, game_form: current.form || null,
     });
-    if (loadError) { setError("Dina projekt kunde inte hämtas."); setMine([]); return; }
+    if (loadError) { setError(t("Dina projekt kunde inte hämtas.")); setMine([]); return; }
     setError("");
     setMine(data as HomeProject[]);
   }, [client]);
@@ -46,7 +48,7 @@ export function useHomeProjects(filters: HomeFilters) {
     setTeam(mark);
     const { error: pinError } = await client.schema("api").rpc("set_tactics_project_pinned", { target_project_id: project.id, pin: pinned });
     if (pinError) {
-      setError("Projektet kunde inte fästas.");
+      setError(t("Projektet kunde inte fästas."));
       const undo = (list: HomeProject[]) => list.map(item => item.id === project.id ? { ...item, pinned: !pinned } : item);
       setMine(list => list && undo(list));
       setTeam(undo);
@@ -57,15 +59,15 @@ export function useHomeProjects(filters: HomeFilters) {
   const remove = async (project: HomeProject, confirmText: string) => {
     if (!client || !window.confirm(confirmText)) return false;
     const { error: removeError } = await client.schema("api").rpc("delete_tactics_project", { target_project_id: project.id });
-    if (removeError) { setError("Projektet kunde inte tas bort."); return false; }
+    if (removeError) { setError(t("Projektet kunde inte tas bort.")); return false; }
     void load(filters);
     return true;
   };
 
   const unpublish = async (item: Published) => {
-    if (!client || !window.confirm(`Sluta publicera ${item.title}? De som redan använt den behåller sina kopior.`)) return;
+    if (!client || !window.confirm(t("Sluta publicera {title}? De som redan använt den behåller sina kopior.", { title: item.title }))) return;
     const { error: removeError } = await client.schema("api").rpc("unshare_tactics_item", { target_shared_id: item.shared_id });
-    if (removeError) { setError("Det kunde inte tas bort ur biblioteket."); return; }
+    if (removeError) { setError(t("Det kunde inte tas bort ur biblioteket.")); return; }
     void load(filters);
   };
 

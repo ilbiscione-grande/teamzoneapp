@@ -18,7 +18,7 @@ export const editorTools: Record<string, string> = {
   "Docka": "Mannequin",
   "Mål": "Goal",
   "Passning": "Pass",
-  "Pass": "Pass",
+  "Pass|verktyg": "Pass",
   "Löpning": "Run",
   "Dribbling": "Dribble",
   "Frihand": "Freehand",

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { FolderSummary } from "../../lib/tactics/folders.ts";
 import { DRAGGED_PROJECTS, draggedProjects } from "./home/project-drag.ts";
+import { useT } from "../language";
 
 type Props = {
   folders: FolderSummary[] | null;
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export function FolderCards({ folders, error, create, onDropProjects }: Props) {
+  const t = useT();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -49,23 +51,23 @@ export function FolderCards({ folders, error, create, onDropProjects }: Props) {
   };
 
   return (
-    <div className="tb-folders" aria-label="Mappar">
+    <div className="tb-folders" aria-label={t("Mappar")}>
       <div className="tb-folders-head">
-        <h3>Mappar</h3>
-        {!adding && <button type="button" className="wt-button secondary small" onClick={() => setAdding(true)}>Ny mapp</button>}
+        <h3>{t("Mappar")}</h3>
+        {!adding && <button type="button" className="wt-button secondary small" onClick={() => setAdding(true)}>{t("Ny mapp")}</button>}
       </div>
       {adding && (
         <form className="tb-folder-new" onSubmit={submit}>
-          <label className="tb-field">Mappens namn
-            <input autoFocus value={name} maxLength={120} placeholder="T.ex. Spelidé 2026" onChange={event => setName(event.target.value)} />
+          <label className="tb-field">{t("Mappens namn")}
+            <input autoFocus value={name} maxLength={120} placeholder={t("T.ex. Spelidé 2026")} onChange={event => setName(event.target.value)} />
           </label>
-          <button type="submit" className="wt-button small" disabled={busy || !name.trim()}>Skapa</button>
-          <button type="button" className="wt-button secondary small" onClick={() => { setAdding(false); setName(""); }}>Avbryt</button>
+          <button type="submit" className="wt-button small" disabled={busy || !name.trim()}>{t("Skapa")}</button>
+          <button type="button" className="wt-button secondary small" onClick={() => { setAdding(false); setName(""); }}>{t("Avbryt")}</button>
         </form>
       )}
       {error && <p role="alert" className="wt-error">{error}</p>}
       {folders && folders.length === 0 && !adding && (
-        <p className="wt-small">Samla projekt som hör ihop i en mapp, till exempel delarna av en spelidé. Samma projekt kan ligga i flera mappar.</p>
+        <p className="wt-small">{t("Samla projekt som hör ihop i en mapp, till exempel delarna av en spelidé. Samma projekt kan ligga i flera mappar.")}</p>
       )}
       {folders && folders.length > 0 && (
         <ul className="tb-folder-cards">
@@ -73,7 +75,7 @@ export function FolderCards({ folders, error, create, onDropProjects }: Props) {
             <li key={folder.id} className={over === folder.id ? "drop" : undefined} {...dropHandlers(folder)}>
               <Link href={`/tacticsboard/mapp/${folder.id}`}>
                 <strong>{folder.name}</strong>
-                <span>{over === folder.id ? "Släpp för att lägga i mappen" : `${folder.project_count} projekt`}</span>
+                <span>{over === folder.id ? t("Släpp för att lägga i mappen") : folder.project_count === 1 ? t("1 projekt") : t("{count} projekt", { count: folder.project_count })}</span>
               </Link>
             </li>
           ))}

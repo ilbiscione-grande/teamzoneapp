@@ -4,10 +4,13 @@
 // project's boards in order. The boards go as in a template: no squad and no
 // ties to TeamZone players. The details travel in the library as the server
 // checks them (snake case); on a board they are ExerciseDetails.
+import { translator, type Translate } from "../i18n/translate.ts";
 import { boardsForTemplate } from "./templates.ts";
 import type { AgeClass, Board, ExerciseDetails, ExercisePart, GameForm, GamePhase, ProjectKind } from "./model.ts";
 
 export type LibraryKind = "exercise" | "plan" | "lesson";
+
+const same: Translate = translator("sv");
 
 /** Sent on window when something is published or taken back. */
 export const LIBRARY_CHANGED = "tactics-library-changed";
@@ -137,19 +140,19 @@ export function boardsFromLibrary(item: Pick<LibraryItemSummary, "kind" | "detai
 }
 
 /** A short line about an item: its part, minutes, phase and boards. */
-export function librarySummaryLine(item: Pick<LibraryItemSummary, "kind" | "details" | "board_count">): string {
+export function librarySummaryLine(item: Pick<LibraryItemSummary, "kind" | "details" | "board_count">, t: Translate = same): string {
   if (item.kind === "exercise") {
     return [
-      item.details.part && partLabels[item.details.part],
+      item.details.part && t(partLabels[item.details.part]),
       item.details.minutes != null && `${item.details.minutes} min`,
-      item.details.phase && phaseLabels[item.details.phase],
+      item.details.phase && t(phaseLabels[item.details.phase]),
     ].filter(Boolean).join(" · ");
   }
   if (item.kind === "plan") {
     const minutes = (item.details.exercises ?? []).reduce((sum, exercise) => sum + (exercise.minutes ?? 0), 0);
-    return [item.details.theme, `${item.board_count} övningar`, minutes > 0 && `${minutes} min`].filter(Boolean).join(" · ");
+    return [item.details.theme, t("{count} övningar", { count: item.board_count }), minutes > 0 && `${minutes} min`].filter(Boolean).join(" · ");
   }
-  return `${item.board_count} ${item.board_count === 1 ? "tavla" : "tavlor"}`;
+  return item.board_count === 1 ? t("1 tavla") : t("{count} tavlor", { count: item.board_count });
 }
 
 /** An item of TeamZone's library: the writer by name, yours or TeamZone's own. */

@@ -9,6 +9,7 @@ import { useEffect, useRef } from "react";
 import type { FolderRef } from "../../../lib/tactics/folders.ts";
 import { libraryKindLabels } from "../../../lib/tactics/library.ts";
 import type { ProjectAccess, ProjectSummary } from "../../../lib/tactics/model.ts";
+import { useLanguage } from "../../language";
 import { kindLabels } from "../TopBar.tsx";
 import { PublishedIcon } from "../PublishedIcon.tsx";
 import { ProjectThumb, type BoardPreview } from "./ProjectThumb.tsx";
@@ -37,9 +38,10 @@ type Props = {
   onDrag?: (project: HomeProject, event: React.DragEvent) => void;
 };
 
-export const changedOn = (at: string) => new Date(at).toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
+export const changedOn = (at: string, intl: string) => new Date(at).toLocaleDateString(intl, { day: "numeric", month: "short" });
 
 export function ProjectCard({ project, onPin, onFolders, onRemove, onUnpublish, selected, onSelect, onDrag }: Props) {
+  const { t, intl } = useLanguage();
   // The menu closes on a choice and on a press outside it.
   const menu = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
@@ -50,7 +52,7 @@ export function ProjectCard({ project, onPin, onFolders, onRemove, onUnpublish, 
   const href = `/tacticsboard/${project.id}`;
   const team = project.access !== undefined;
   const published = project.published ?? [];
-  const meta = [kindLabels[project.kind], project.team_name, project.board_count === 1 ? "1 tavla" : `${project.board_count} tavlor`].filter(Boolean).join(" · ");
+  const meta = [t(kindLabels[project.kind]), project.team_name, project.board_count === 1 ? t("1 tavla") : t("{count} tavlor", { count: project.board_count })].filter(Boolean).join(" · ");
   return (
     <li className={`tb-card${selected ? " selected" : ""}`} aria-selected={onSelect ? !!selected : undefined}
       draggable={!!onDrag} onDragStart={onDrag && (event => onDrag(project, event))}
@@ -58,11 +60,11 @@ export function ProjectCard({ project, onPin, onFolders, onRemove, onUnpublish, 
       onClickCapture={onSelect && (event => { if (event.shiftKey) { event.preventDefault(); event.stopPropagation(); onSelect(project); } })}>
       <Link className="tb-card-picture" href={href} tabIndex={-1} aria-hidden="true">
         <ProjectThumb preview={project.preview} />
-        <span className={`tb-card-kind tb-kind-${project.kind}`}>{kindLabels[project.kind]}</span>
+        <span className={`tb-card-kind tb-kind-${project.kind}`}>{t(kindLabels[project.kind])}</span>
       </Link>
       <button type="button" className={`tb-pin${project.pinned ? " on" : ""}`} onClick={() => onPin(project)}
-        aria-pressed={!!project.pinned} title={project.pinned ? "Ta bort från fästa" : "Fäst överst"}
-        aria-label={project.pinned ? `Ta bort ${project.name} från fästa` : `Fäst ${project.name} överst`}>
+        aria-pressed={!!project.pinned} title={project.pinned ? t("Ta bort från fästa") : t("Fäst överst")}
+        aria-label={project.pinned ? t("Ta bort {name} från fästa", { name: project.name }) : t("Fäst {name} överst", { name: project.name })}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" /></svg>
       </button>
       <div className="tb-card-body">
@@ -72,27 +74,27 @@ export function ProjectCard({ project, onPin, onFolders, onRemove, onUnpublish, 
         </Link>
         <span className="tb-card-meta">{meta}</span>
         <span className="tb-card-meta">
-          {team ? `av ${project.owner_name?.trim() || "en annan ledare"} · ${project.access === "edit" ? "du kan redigera" : "du kan titta"}` : `ändrat ${changedOn(project.updated_at)}`}
+          {team ? `${t("av {name}", { name: project.owner_name?.trim() || t("en annan ledare") })} · ${project.access === "edit" ? t("du kan redigera") : t("du kan titta")}` : t("ändrat {date}", { date: changedOn(project.updated_at, intl) })}
         </span>
         {project.folders && project.folders.length > 0 && (
-          <span className="tb-folder-tags" aria-label="Mappar">
+          <span className="tb-folder-tags" aria-label={t("Mappar")}>
             {project.folders.map(folder => <Link key={folder.id} className="tb-folder-tag" href={`/tacticsboard/mapp/${folder.id}`}>{folder.name}</Link>)}
           </span>
         )}
       </div>
       {!team && (
         <details ref={menu} className="tb-card-menu">
-          <summary aria-label={`Mer för ${project.name}`} title="Mer">⋯</summary>
+          <summary aria-label={t("Mer för {name}", { name: project.name })} title={t("Mer")}>⋯</summary>
           <div role="menu" onClick={() => { if (menu.current) menu.current.open = false; }}>
-            <Link role="menuitem" href={href}>Öppna</Link>
-            {onFolders && <button type="button" role="menuitem" onClick={() => onFolders(project)}>Mappar…</button>}
+            <Link role="menuitem" href={href}>{t("Öppna")}</Link>
+            {onFolders && <button type="button" role="menuitem" onClick={() => onFolders(project)}>{t("Mappar…")}</button>}
             {published.map(item => onUnpublish && (
               <button key={item.item_id} type="button" role="menuitem" onClick={() => onUnpublish(item)}
-                title={item.hidden ? "Dold efter rapporter" : item.current ? `Version ${item.version}` : "Ändrad sedan den publicerades"}>
-                Sluta publicera {libraryKindLabels[item.kind].toLowerCase()}: {item.title}
+                title={item.hidden ? t("Dold efter rapporter") : item.current ? t("Version {number}", { number: item.version }) : t("Ändrad sedan den publicerades")}>
+                {t("Sluta publicera {kind}: {title}", { kind: t(libraryKindLabels[item.kind]).toLowerCase(), title: item.title })}
               </button>
             ))}
-            {onRemove && <button type="button" role="menuitem" className="danger" onClick={() => onRemove(project)}>Ta bort</button>}
+            {onRemove && <button type="button" role="menuitem" className="danger" onClick={() => onRemove(project)}>{t("Ta bort")}</button>}
           </div>
         </details>
       )}

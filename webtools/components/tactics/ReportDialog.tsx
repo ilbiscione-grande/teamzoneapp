@@ -5,10 +5,12 @@
 // until support has decided.
 import { useEffect, useState } from "react";
 import { reportReady, reportReasons, reportText, type ReportReason } from "../../lib/tactics/reports.ts";
+import { Bold, useT } from "../language";
 import "./share.css";
 
 /** send: true when the report reached the server. */
 export function ReportDialog({ title, send, onClose }: { title: string; send: (text: string) => Promise<boolean>; onClose: () => void }) {
+  const t = useT();
   const [reason, setReason] = useState<ReportReason | "">("");
   const [words, setWords] = useState("");
   const [busy, setBusy] = useState(false);
@@ -29,34 +31,34 @@ export function ReportDialog({ title, send, onClose }: { title: string; send: (t
   };
 
   return (
-    <div className="tb-modal" role="dialog" aria-modal="true" aria-label={`Anmäl ${title}`} onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <div className="tb-modal" role="dialog" aria-modal="true" aria-label={t("Anmäl {name}", { name: title })} onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
       <form className="tb-modal-card" onSubmit={submit}>
         <div className="tb-modal-head">
-          <h2>Anmäl</h2>
-          <button type="button" className="tb-modal-close" aria-label="Stäng" onClick={onClose}>×</button>
+          <h2>{t("Anmäl")}</h2>
+          <button type="button" className="tb-modal-close" aria-label={t("Stäng")} onClick={onClose}>×</button>
         </div>
         {done ? (
           <>
-            <p>Tack. Supporten tittar på {title}. Får den flera anmälningar döljs den tills supporten har bestämt.</p>
-            <div className="tb-actions"><button type="button" className="wt-button small" onClick={onClose}>Stäng</button></div>
+            <p>{t("Tack. Supporten tittar på {name}. Får den flera anmälningar döljs den tills supporten har bestämt.", { name: title })}</p>
+            <div className="tb-actions"><button type="button" className="wt-button small" onClick={onClose}>{t("Stäng")}</button></div>
           </>
         ) : (
           <>
-            <p>Vad är fel med <strong>{title}</strong>?</p>
-            <div className="tb-field" role="radiogroup" aria-label="Skäl">
+            <p><Bold text={t("Vad är fel med {value}?")} value={title} /></p>
+            <div className="tb-field" role="radiogroup" aria-label={t("Skäl")}>
               {reportReasons.map(([value, label]) => (
                 <label key={value} className="tb-check">
-                  <input type="radio" name="reason" checked={reason === value} onChange={() => setReason(value)} />{label}
+                  <input type="radio" name="reason" checked={reason === value} onChange={() => setReason(value)} />{t(label)}
                 </label>
               ))}
             </div>
-            <label className="tb-field">{reason === "other" ? "Beskriv vad som är fel" : "Mer om det (frivilligt)"}
+            <label className="tb-field">{reason === "other" ? t("Beskriv vad som är fel") : t("Mer om det (frivilligt)")}
               <textarea value={words} maxLength={400} rows={3} onChange={event => setWords(event.target.value)} />
             </label>
-            <p className="tb-hint">Den som delat det får inte veta vem som anmält.</p>
+            <p className="tb-hint">{t("Den som delat det får inte veta vem som anmält.")}</p>
             <div className="tb-actions">
-              <button type="button" className="wt-button secondary small" onClick={onClose}>Avbryt</button>
-              <button type="submit" className="wt-button small" disabled={busy || !reportReady(reason, words)}>{busy ? "Skickar…" : "Skicka anmälan"}</button>
+              <button type="button" className="wt-button secondary small" onClick={onClose}>{t("Avbryt")}</button>
+              <button type="submit" className="wt-button small" disabled={busy || !reportReady(reason, words)}>{busy ? t("Skickar…") : t("Skicka anmälan")}</button>
             </div>
           </>
         )}

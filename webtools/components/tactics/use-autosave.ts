@@ -6,17 +6,21 @@
 // conflict: nothing is overwritten.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useEffect } from "react";
+import { translator } from "../../lib/i18n/translate.ts";
 import { useEditor } from "./store.ts";
 
 const DELAY_MS = 1200;
 export const backupKey = (projectId: string) => `teamzone:tactics:${projectId}`;
+
+/** Saved outside any component, so the page's own language tells. */
+const pageT = () => translator(globalThis.document?.documentElement.lang === "en" ? "en" : "sv");
 
 export async function saveNow(client: SupabaseClient): Promise<void> {
   const { meta, document, setSaveState, saved } = useEditor.getState();
   if (!meta || !document) return;
   setSaveState("saving");
   const { data, error } = await client.schema("api").rpc("save_tactics_project", {
-    target_project_id: meta.id, expected_revision: meta.revision, project_name: meta.name.trim() || "Namnlöst projekt",
+    target_project_id: meta.id, expected_revision: meta.revision, project_name: meta.name.trim() || pageT()("Namnlöst projekt"),
     project_kind: meta.kind, target_team_id: meta.teamId, project_document: document,
   });
   if (error) {
@@ -32,7 +36,7 @@ export async function saveAsCopy(client: SupabaseClient): Promise<boolean> {
   const { meta, document } = useEditor.getState();
   if (!meta || !document) return false;
   const { data, error } = await client.schema("api").rpc("create_tactics_project", {
-    project_name: `${meta.name.trim() || "Namnlöst projekt"} (din kopia)`.slice(0, 120), project_kind: meta.kind,
+    project_name: pageT()("{name} (din kopia)", { name: meta.name.trim() || pageT()("Namnlöst projekt") }).slice(0, 120), project_kind: meta.kind,
     target_team_id: meta.teamId, project_document: document,
   });
   if (error) return false;

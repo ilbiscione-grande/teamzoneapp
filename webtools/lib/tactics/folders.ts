@@ -2,7 +2,10 @@
 // together, such as the parts of a game idea. A project is linked into a
 // folder, not moved: the same project may be in several folders, and the
 // folder keeps its projects in the order the owner sets.
+import { translator, type Translate } from "../i18n/translate.ts";
 import type { ProjectSummary } from "./model.ts";
+
+const same: Translate = translator("sv");
 
 export type FolderRef = { id: string; name: string };
 export type FolderSummary = FolderRef & { description: string; project_count: number; created_at: string; updated_at: string };
@@ -18,15 +21,16 @@ export function moveInOrder(ids: string[], index: number, step: -1 | 1): string[
 }
 
 /** "Spelidé 2026", "Spelidé 2026 och Spelidé 2027", "A, B och C". */
-export function joinNames(names: string[]): string {
+export function joinNames(names: string[], t: Translate = same): string {
   if (names.length <= 1) return names[0] ?? "";
-  return `${names.slice(0, -1).join(", ")} och ${names[names.length - 1]}`;
+  return t("{first} och {last}", { first: names.slice(0, -1).join(", "), last: names[names.length - 1] });
 }
 
 /** What removing a project says about the folders it is in; empty when in none. */
-export function removalNote(folders: FolderRef[]): string {
+export function removalNote(folders: FolderRef[], t: Translate = same): string {
   if (folders.length === 0) return "";
-  return ` Det tas också bort ur ${folders.length === 1 ? "mappen" : "mapparna"} ${joinNames(folders.map(folder => folder.name))}.`;
+  const names = joinNames(folders.map(folder => folder.name), t);
+  return folders.length === 1 ? t(" Det tas också bort ur mappen {names}.", { names }) : t(" Det tas också bort ur mapparna {names}.", { names });
 }
 
 /** The folders a project ends up in when one is ticked or unticked. */
@@ -35,8 +39,8 @@ export function toggleFolder(ids: string[], id: string, on: boolean): string[] {
 }
 
 /** The person's message for a folder RPC's error. */
-export function folderErrorText(message: string, fallback: string): string {
-  if (message.includes("too_many_folders")) return "Du har redan 200 mappar. Ta bort någon först.";
-  if (message.includes("too_many_projects")) return "En mapp rymmer högst 100 projekt.";
+export function folderErrorText(message: string, fallback: string, t: Translate = same): string {
+  if (message.includes("too_many_folders")) return t("Du har redan 200 mappar. Ta bort någon först.");
+  if (message.includes("too_many_projects")) return t("En mapp rymmer högst 100 projekt.");
   return fallback;
 }

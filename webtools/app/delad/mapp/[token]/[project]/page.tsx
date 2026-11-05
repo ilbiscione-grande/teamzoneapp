@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SharedViewer } from "../../../../../components/tactics/SharedViewer.tsx";
 import { sharedMetadata } from "../../../../../components/tactics/share-preview.tsx";
+import { serverT } from "../../../../../lib/i18n/server.ts";
 import { loadSharedFolderProject } from "../../../../../lib/tactics/shared.ts";
 
 // Always the board as last saved.
@@ -19,5 +20,6 @@ export default async function SharedFolderProjectRoute({ params }: Props) {
   const { token, project } = await params;
   const shared = await loadSharedFolderProject(token, project);
   if (!shared) notFound();
-  return <SharedViewer shared={shared} back={{ href: `/delad/mapp/${token}`, label: `Till ${shared.folder_name ?? "mappen"}` }} />;
+  const t = await serverT();
+  return <SharedViewer shared={shared} back={{ href: `/delad/mapp/${token}`, label: t("Till {name}", { name: shared.folder_name ?? t("mappen") }) }} />;
 }

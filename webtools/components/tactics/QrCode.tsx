@@ -4,6 +4,7 @@
 // scan, or saved as a picture for a printout or a slide.
 import { useMemo } from "react";
 import { qrModules, qrPath } from "../../lib/tactics/qr.ts";
+import { useT } from "../language";
 
 const QUIET = 4;
 
@@ -52,11 +53,12 @@ export function downloadQrPng(text: string, title: string, fileName: string) {
 
 /** The QR code filling the screen, for a room to scan from a TV or projector. */
 export function BigQr({ text, title, onClose }: { text: string; title: string; onClose: () => void }) {
+  const t = useT();
   return (
-    <div className="tb-bigqr" role="dialog" aria-modal="true" aria-label="QR-kod" onClick={onClose}>
+    <div className="tb-bigqr" role="dialog" aria-modal="true" aria-label={t("QR-kod")} onClick={onClose}>
       <strong>{title}</strong>
-      <QrCode text={text} label={`QR-kod för ${title}`} size={Math.min(720, typeof window === "undefined" ? 480 : Math.min(window.innerWidth, window.innerHeight) - 160)} />
-      <span>Skanna med mobilens kamera för att se tavlan. Tryck var som helst för att stänga.</span>
+      <QrCode text={text} label={t("QR-kod för {name}", { name: title })} size={Math.min(720, typeof window === "undefined" ? 480 : Math.min(window.innerWidth, window.innerHeight) - 160)} />
+      <span>{t("Skanna med mobilens kamera för att se tavlan. Tryck var som helst för att stänga.")}</span>
     </div>
   );
 }

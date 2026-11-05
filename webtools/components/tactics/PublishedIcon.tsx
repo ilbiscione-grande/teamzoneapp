@@ -1,7 +1,12 @@
+"use client";
+
 // Whether something is published, and for whom: a globe for the whole
 // community, people for one club. Named for screen readers and on hover.
+import { useT } from "../language";
+
 export function PublishedIcon({ clubName }: { clubName: string | null }) {
-  const label = clubName ? `Publicerad för ${clubName}` : "Publicerad för hela communityn";
+  const t = useT();
+  const label = clubName ? t("Publicerad för {name}", { name: clubName }) : t("Publicerad för hela communityn");
   return (
     <span className="tb-published-icon" role="img" aria-label={label} title={label}>
       {clubName ? (

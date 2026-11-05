@@ -22,8 +22,10 @@ import { ReportDialog } from "./ReportDialog.tsx";
 import { useSupportAdmin } from "./review/use-report-review.ts";
 import "./tactics.css";
 import "./home/home.css";
+import { useT } from "../language";
 
 export function SharedLibrary() {
+  const t = useT();
   const { client } = useAccount();
   const router = useRouter();
   const { items, error, clubs, search, boardsOf, unshare, report, pick, favorite } = useSharedLibrary();
@@ -63,42 +65,42 @@ export function SharedLibrary() {
       project_document: { ...newDocument(), boards: boardsFromTemplate(boardsFromLibrary(item, boards)) },
     });
     setBusy(null);
-    if (createError) { setNotice("Projektet kunde inte skapas. Försök igen."); return; }
+    if (createError) { setNotice(t("Projektet kunde inte skapas. Försök igen.")); return; }
     router.push(`/tacticsboard/${(data as ProjectSummary).id}`);
   };
 
 
   const remove = async (item: SharedItemSummary) => {
     if (!window.confirm(item.mine
-      ? `Sluta dela ${item.title}? Den finns kvar i ditt bibliotek, och de som redan använt den behåller sina kopior.`
-      : `Ta bort ${item.title} ur klubbens bibliotek? De som redan använt den behåller sina kopior.`)) return;
+      ? t("Sluta dela {name}? Den finns kvar i ditt bibliotek, och de som redan använt den behåller sina kopior.", { name: item.title })
+      : t("Ta bort {name} ur klubbens bibliotek? De som redan använt den behåller sina kopior.", { name: item.title }))) return;
     if (await unshare(item.id)) void refresh();
   };
 
-  const sources: [string, string][] = [["all", "Hela biblioteket"], ["favorites", "Mina favoriter"],
-    ...clubs.map(club => [club.club_id, clubs.length > 1 ? `Klubbens lista: ${club.club_name}` : "Klubbens lista"] as [string, string])];
+  const sources: [string, string][] = [["all", t("Hela biblioteket")], ["favorites", t("Mina favoriter")],
+    ...clubs.map(club => [club.club_id, clubs.length > 1 ? t("Klubbens lista: {name}", { name: club.club_name }) : t("Klubbens lista")] as [string, string])];
   const filtered = Object.values(filters).some(value => value !== "");
   return (
     <div className="tb-home">
       {reporting && <ReportDialog title={reporting.title} send={text => report(reporting.id, text)} onClose={() => setReporting(null)} />}
       <div className="tb-home-actions tb-library-top">
-        <Link className="wt-link" href="/tacticsboard">← Dina projekt</Link>
-        {support && <Link className="wt-link" href="/tacticsboard/granska">Granska anmälningar</Link>}
-        <div className="tb-segments" role="group" aria-label="Visa">
+        <Link className="wt-link" href="/tacticsboard">{t("← Dina projekt")}</Link>
+        {support && <Link className="wt-link" href="/tacticsboard/granska">{t("Granska anmälningar")}</Link>}
+        <div className="tb-segments" role="group" aria-label={t("Visa")}>
           {sources.map(([value, label]) => (
             <button key={value} type="button" aria-pressed={source === value} onClick={() => setSource(value)}>{label}</button>
           ))}
         </div>
       </div>
       <p className="wt-small tb-library-intro">{listClub
-        ? "Det klubben erbjuder sina lag: övningar utvalda ur hela biblioteket, och det som delats bara med klubben."
-        : source === "favorites" ? "Det du har markerat med stjärnan. Du börjar också nya projekt från dem på startsidan."
-        : "Övningar, pass och sessioner som tränare delar med hela communityn eller med din klubb, och färdiga från oss."} Det du använder blir en kopia i ett eget projekt.</p>
-      <HomeFilterBar filters={filters} onChange={setFilters} kinds={libraryKindLabels} placeholder="Sök, t.ex. rondo eller press" />
+        ? t("Det klubben erbjuder sina lag: övningar utvalda ur hela biblioteket, och det som delats bara med klubben.")
+        : source === "favorites" ? t("Det du har markerat med stjärnan. Du börjar också nya projekt från dem på startsidan.")
+        : t("Övningar, pass och sessioner som tränare delar med hela communityn eller med din klubb, och färdiga från oss.")}{t(" Det du använder blir en kopia i ett eget projekt.")}</p>
+      <HomeFilterBar filters={filters} onChange={setFilters} kinds={libraryKindLabels} placeholder={t("Sök, t.ex. rondo eller press")} />
       {(error || notice) && <p role="alert" className={error ? "wt-error" : "wt-status"}>{error || notice}</p>}
-      <section aria-label="Träffar">
-        {items === null ? <p className="wt-status">Laddar…</p> : items.length === 0 ? (
-          <p className="tb-empty">{source === "favorites" && !filtered ? "Inga favoriter än. Tryck på stjärnan på det du vill hitta igen." : "Inget hittades. Prova med andra ord eller färre filter."}</p>
+      <section aria-label={t("Träffar")}>
+        {items === null ? <p className="wt-status">{t("Laddar…")}</p> : items.length === 0 ? (
+          <p className="tb-empty">{source === "favorites" && !filtered ? t("Inga favoriter än. Tryck på stjärnan på det du vill hitta igen.") : t("Inget hittades. Prova med andra ord eller färre filter.")}</p>
         ) : (
           <ul className="tb-grid">
             {items.map(item => (

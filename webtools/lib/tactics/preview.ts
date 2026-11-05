@@ -3,6 +3,7 @@
 // picture, for the server to draw without the board's own canvas. The
 // lines of the pitch and its players and ball; nothing else.
 import { viewRect } from "./geometry.ts";
+import { translator, type Translate } from "../i18n/translate.ts";
 import { PITCH_LENGTH as L, PITCH_WIDTH as W, type Board, type ProjectKind } from "./model.ts";
 
 /** A project's kind in words; here so the server can use them too. */
@@ -45,6 +46,6 @@ export function previewOf(board: Board): Preview {
 }
 
 /** The line under the title: what it is and how much. */
-export function previewSummary(kindLabel: string, boardCount: number, teamName: string | null): string {
-  return [kindLabel, boardCount === 1 ? "1 tavla" : `${boardCount} tavlor`, teamName].filter(Boolean).join(" · ");
+export function previewSummary(kindLabel: string, boardCount: number, teamName: string | null, t: Translate = translator("sv")): string {
+  return [kindLabel, boardCount === 1 ? t("1 tavla") : t("{count} tavlor", { count: boardCount }), teamName].filter(Boolean).join(" · ");
 }

@@ -14,11 +14,11 @@ const finished = ["components/shell.tsx", "components/welcome.tsx", "components/
   "app/page.tsx", "app/not-found.tsx", "app/logga-in/page.tsx", "app/konto/page.tsx",
   "components/tactics/TacticsProduct.tsx", "components/tactics/RequireTacticsboard.tsx", "components/tactics/TacticsboardSubscription.tsx",
   "components/tactics/WithdrawPurchase.tsx", "components/tactics/use-tacticsboard-access.ts", "app/tacticsboard/page.tsx",
-  ...["panels/BoardSettings","panels/BrandingFields","panels/CopyTo","panels/ExerciseFields","panels/FramesPanel","panels/Inspector","panels/ObjectList","panels/PhoneToolbar","panels/PlayerLink","panels/SharedFields","panels/SquadPanel","panels/Swatches","panels/TextLook","timeline/Timeline","timeline/Scrubber","export/ExportDialog","stage/BoardStage","stage/CropFrame","TopBar","TopBarMore","TacticsEditor","HelpDialog","ToolHint","SettingsDialog","BoardMenu","VersionsDialog","TemplateDialog","DrillPicker","MyNumber","ViewerTools","ErrorBoundary","Presenter","BoardText"].map(name => `components/tactics/${name}.tsx`)];
+  ...["panels/BoardSettings","panels/BrandingFields","panels/CopyTo","panels/ExerciseFields","panels/FramesPanel","panels/Inspector","panels/ObjectList","panels/PhoneToolbar","panels/PlayerLink","panels/SharedFields","panels/SquadPanel","panels/Swatches","panels/TextLook","timeline/Timeline","timeline/Scrubber","export/ExportDialog","stage/BoardStage","stage/CropFrame","TopBar","TopBarMore","TacticsEditor","HelpDialog","ToolHint","SettingsDialog","BoardMenu","VersionsDialog","TemplateDialog","DrillPicker","MyNumber","ViewerTools","ErrorBoundary","Presenter","BoardText","TacticsHome","home/NewProjectDialog","home/NewProjectDetails","home/HomeFilterBar","home/LibraryCard","home/ProjectCard","FolderCards","FolderPage","FolderPicker","FolderShare","ImportProject","SharedLibrary","ShareDialog","ShareLinks","PublishDialog","PublishedIcon","ReportDialog","SharedViewer","SharedCaption","TrainingLinkDialog","QrCode","SharedGone","SharedFolderPage","share-preview"].map(name => `components/tactics/${name}.tsx`)];
 
 // Data shown through t(variable): its Swedish needs English too.
 const shownAsData = ["lib/account.ts", "lib/tactics/access.ts", "lib/tactics/withdrawal.ts", "lib/tactics/facing.ts", "lib/tactics/pitch-style.ts",
-  "lib/tactics/preview.ts", "lib/tactics/templates.ts", "lib/tactics/transfer.ts", "components/tactics/panels/effects.ts", "components/tactics/panels/Toolbar.tsx"];
+  "lib/tactics/library.ts", "lib/tactics/preview.ts", "lib/tactics/templates.ts", "lib/tactics/transfer.ts", "components/tactics/panels/effects.ts", "components/tactics/panels/Toolbar.tsx"];
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap(name => {
@@ -55,6 +55,12 @@ test("text is translated and values are filled in", () => {
   assert.equal(translator("sv")("Hej {name}", { name: "Kim" }), "Hej Kim");
   assert.equal(translator("en")("Saknas {name}", { name: "Kim" }), "Saknas Kim");
   assert.equal(translator("en")("Hej {name}"), "Hej {name}");
+});
+
+test("one Swedish word can mean two things", () => {
+  assert.equal(translator("sv")("Pass|verktyg"), "Pass");
+  assert.equal(translator("en")("Pass|verktyg"), "Pass");
+  assert.equal(translator("en")("Pass"), "Session");
 });
 
 test("every t() has its English, with the same values", () => {

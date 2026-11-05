@@ -4,6 +4,7 @@
 import type { Metadata } from "next";
 import { ImageResponse } from "next/og";
 import { headers } from "next/headers";
+import { previewT } from "../../lib/i18n/server.ts";
 import { kindNames, previewOf, previewSummary } from "../../lib/tactics/preview.ts";
 import type { SharedTactics } from "../../lib/tactics/shared.ts";
 
@@ -20,10 +21,11 @@ async function base(): Promise<URL | undefined> {
 }
 
 /** The page's title and the text and picture a chat shows for the link. */
-export async function sharedMetadata(shared: SharedTactics | null, fallback = "Delad tavla"): Promise<Metadata> {
-  if (!shared) return { title: fallback };
-  const summary = previewSummary(kindNames[shared.kind], shared.boards.length, shared.team_name);
-  const description = `${summary}. Titta och spela upp i mobilen, inget konto behövs.`;
+export async function sharedMetadata(shared: SharedTactics | null): Promise<Metadata> {
+  const t = await previewT();
+  if (!shared) return { title: t("Delad tavla") };
+  const summary = previewSummary(t(kindNames[shared.kind]), shared.boards.length, shared.team_name, t);
+  const description = t("{summary}. Titta och spela upp i mobilen, inget konto behövs.", { summary });
   return {
     metadataBase: await base(),
     title: shared.name,
@@ -34,7 +36,8 @@ export async function sharedMetadata(shared: SharedTactics | null, fallback = "D
 }
 
 /** The picture: the first board's first frame, the name and what it is. */
-export function previewImage(shared: SharedTactics | null): ImageResponse {
+export async function previewImage(shared: SharedTactics | null): Promise<ImageResponse> {
+  const t = await previewT();
   const board = shared?.boards[0];
   const preview = board ? previewOf(board) : null;
   // The pitch as large as fits above the text.
@@ -72,8 +75,8 @@ export function previewImage(shared: SharedTactics | null): ImageResponse {
         </div>
         <div style={{ display: "flex", width: "100%", alignItems: "flex-end", justifyContent: "space-between", marginTop: 24 }}>
           <div style={{ display: "flex", flexDirection: "column", maxWidth: 820 }}>
-            <div style={{ display: "flex", fontSize: 48, fontWeight: 700, color: "#ffffff", lineHeight: 1.1 }}>{shared?.name ?? "Delad tavla"}</div>
-            {shared && <div style={{ display: "flex", fontSize: 26, color: "#a9b4c4", marginTop: 8 }}>{previewSummary(kindNames[shared.kind], shared.boards.length, shared.team_name)}</div>}
+            <div style={{ display: "flex", fontSize: 48, fontWeight: 700, color: "#ffffff", lineHeight: 1.1 }}>{shared?.name ?? t("Delad tavla")}</div>
+            {shared && <div style={{ display: "flex", fontSize: 26, color: "#a9b4c4", marginTop: 8 }}>{previewSummary(t(kindNames[shared.kind]), shared.boards.length, shared.team_name, t)}</div>}
           </div>
           <div style={{ display: "flex", alignItems: "center", fontSize: 24, color: "#ffffff" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 44, height: 44, borderRadius: 10, background: ACCENT, color: "#0b1424", fontWeight: 800, marginRight: 12 }}>TZ</div>
@@ -88,9 +91,12 @@ export function previewImage(shared: SharedTactics | null): ImageResponse {
 
 /** A shared folder's title and the text a chat shows for its link. */
 export async function folderMetadata(folder: { name: string; projects: unknown[] } | null): Promise<Metadata> {
-  if (!folder) return { title: "Delad mapp" };
+  const t = await previewT();
+  if (!folder) return { title: t("Delad mapp") };
   const count = folder.projects.length;
-  const description = `Mapp med ${count === 1 ? "1 projekt" : `${count} projekt`} från TeamZone Tacticsboard. Titta och spela upp i mobilen, inget konto behövs.`;
+  const description = count === 1
+    ? t("Mapp med 1 projekt från TeamZone Tacticsboard. Titta och spela upp i mobilen, inget konto behövs.")
+    : t("Mapp med {count} projekt från TeamZone Tacticsboard. Titta och spela upp i mobilen, inget konto behövs.", { count });
   return {
     metadataBase: await base(),
     title: folder.name,

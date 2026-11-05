@@ -16,6 +16,7 @@ import type { Board, ExercisePart, ProjectKind, ProjectSummary } from "../../../
 import { boardsFromTemplate, defaultStarterKeys, starterBoard, starterSets, type TemplateSummary } from "../../../lib/tactics/templates.ts";
 import type { LeaderTeam } from "../../../lib/tournament";
 import { useAccount } from "../../account";
+import { useT } from "../../language";
 import { kindLabels } from "../TopBar.tsx";
 import { detailsText, NewProjectDetailsFields } from "./NewProjectDetails.tsx";
 import "../share.css";
@@ -43,6 +44,7 @@ type Props = {
 type Start = string;
 
 export function NewProjectDialog({ teams, folder, templates, templateBoards, removeTemplate, favorites, favoriteBoards, addToFolder, kind: preset, onClose }: Props) {
+  const t = useT();
   const { client } = useAccount();
   const router = useRouter();
   const [step, setStep] = useState(preset ? 2 : 1);
@@ -76,9 +78,9 @@ export function NewProjectDialog({ teams, folder, templates, templateBoards, rem
     if (chosenFavorite) { setKind(projectKindOf[chosenFavorite.kind]); if (!name) setName(chosenFavorite.title); }
   };
   const startLabel = start === "ready"
-    ? `Färdiga tavlor: ${starterSets[kind].filter(item => picked.includes(item.key)).map(item => item.name).join(", ") || "en tom tavla"}`
-    : start === "empty" ? "En tom tavla"
-    : template ? `Mallen ${template.name}` : favorite ? `Favoriten ${favorite.title}` : "";
+    ? t("Färdiga tavlor: {names}", { names: starterSets[kind].filter(item => picked.includes(item.key)).map(item => t(item.name)).join(", ") || t("en tom tavla") })
+    : start === "empty" ? t("En tom tavla")
+    : template ? t("Mallen {name}", { name: template.name }) : favorite ? t("Favoriten {name}", { name: favorite.title }) : "";
 
   const create = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -89,7 +91,7 @@ export function NewProjectDialog({ teams, folder, templates, templateBoards, rem
     let parts: (ExercisePart | undefined)[] = [];
     if (start === "ready" || start === "empty") {
       const chosen = start === "ready" ? starterSets[kind].filter(item => picked.includes(item.key)) : [];
-      boards = chosen.length > 0 ? chosen.map(item => starterBoard(item, team?.team_name)) : newDocument("Tavla 1", team?.team_name).boards;
+      boards = chosen.length > 0 ? chosen.map(item => starterBoard({ ...item, name: t(item.name) }, team?.team_name)) : newDocument(t("Tavla 1"), team?.team_name).boards;
       parts = chosen.map(item => item.part);
     } else if (favorite) {
       const found = await favoriteBoards(favorite.id);
@@ -98,12 +100,12 @@ export function NewProjectDialog({ teams, folder, templates, templateBoards, rem
       const found = await templateBoards(template.id);
       boards = found && boardsFromTemplate(found, team?.team_name);
     } else boards = null;
-    if (!boards) { setBusy(false); setError("Det du valde att börja från kunde inte hämtas. Försök igen."); return; }
+    if (!boards) { setBusy(false); setError(t("Det du valde att börja från kunde inte hämtas. Försök igen.")); return; }
     const { data, error: createError } = await client.schema("api").rpc("create_tactics_project", {
-      project_name: name.trim() || "Namnlöst projekt", project_kind: kind, target_team_id: team?.team_id ?? null,
+      project_name: name.trim() || t("Namnlöst projekt"), project_kind: kind, target_team_id: team?.team_id ?? null,
       project_document: { ...newDocument(), boards: withDetails(boards, details, parts) },
     });
-    if (createError) { setBusy(false); setError("Projektet kunde inte skapas. Försök igen."); return; }
+    if (createError) { setBusy(false); setError(t("Projektet kunde inte skapas. Försök igen.")); return; }
     const created = (data as ProjectSummary).id;
     // Not put in the folder, the project is still made; the folder page tells.
     if (folder) await addToFolder(folder.id, created);
@@ -112,15 +114,15 @@ export function NewProjectDialog({ teams, folder, templates, templateBoards, rem
 
   const ownTemplates = (templates ?? []).filter(item => item.kind === kind);
   const otherTemplates = (templates ?? []).filter(item => item.kind !== kind);
-  const steps = ["Typ", "Börja från", "Namn och lag"];
+  const steps = [t("Typ"), t("Börja från"), t("Namn och lag")];
   return (
-    <div className="tb-modal" role="dialog" aria-modal="true" aria-label="Nytt projekt" onClick={event => { if (event.target === event.currentTarget && !busy) onClose(); }}>
+    <div className="tb-modal" role="dialog" aria-modal="true" aria-label={t("Nytt projekt")} onClick={event => { if (event.target === event.currentTarget && !busy) onClose(); }}>
       <form className="tb-modal-card tb-new" onSubmit={create}>
         <div className="tb-modal-head">
-          <h2>Nytt projekt</h2>
-          <button type="button" className="tb-modal-close" aria-label="Stäng" onClick={onClose} disabled={busy}>×</button>
+          <h2>{t("Nytt projekt")}</h2>
+          <button type="button" className="tb-modal-close" aria-label={t("Stäng")} onClick={onClose} disabled={busy}>×</button>
         </div>
-        <ol className="tb-steps" aria-label="Steg">
+        <ol className="tb-steps" aria-label={t("Steg")}>
           {steps.map((label, index) => (
             <li key={label} className={index + 1 === step ? "now" : index + 1 < step ? "done" : ""} aria-current={index + 1 === step ? "step" : undefined}>
               <button type="button" disabled={index + 1 > step || busy} onClick={() => setStep(index + 1)}>
@@ -134,9 +136,9 @@ export function NewProjectDialog({ teams, folder, templates, templateBoards, rem
           <div className="tb-choices tb-kinds">
             {(Object.keys(kindLabels) as ProjectKind[]).map(value => (
               <button key={value} type="button" className={`tb-choice${kind === value ? " on" : ""}`} onClick={() => pickKind(value)}>
-                <span className={`tb-choice-icon tb-kind-${value}`} aria-hidden="true">{kindLabels[value].slice(0, 1)}</span>
-                <strong>{kindLabels[value]}</strong>
-                <span>{kindHints[value]}</span>
+                <span className={`tb-choice-icon tb-kind-${value}`} aria-hidden="true">{t(kindLabels[value]).slice(0, 1)}</span>
+                <strong>{t(kindLabels[value])}</strong>
+                <span>{t(kindHints[value])}</span>
               </button>
             ))}
           </div>
@@ -144,80 +146,80 @@ export function NewProjectDialog({ teams, folder, templates, templateBoards, rem
 
         {step === 2 && (
           <>
-            <p className="tb-hint">Börja från något färdigt så slipper du rita allt själv. Allt går att ändra sedan.</p>
-            <div className="tb-choices" role="radiogroup" aria-label="Börja från">
-              <StartChoice value="ready" start={start} onPick={pickStart} title={`Färdiga tavlor för ${kindLabels[kind].toLowerCase()}`}
-                text="Välj vilka tavlor projektet börjar med." />
-              <StartChoice value="empty" start={start} onPick={pickStart} title="Tom tavla" text="En plan att rita på från början." />
+            <p className="tb-hint">{t("Börja från något färdigt så slipper du rita allt själv. Allt går att ändra sedan.")}</p>
+            <div className="tb-choices" role="radiogroup" aria-label={t("Börja från")}>
+              <StartChoice value="ready" start={start} onPick={pickStart} title={t("Färdiga tavlor för {kind}", { kind: t(kindLabels[kind]).toLowerCase() })}
+                text={t("Välj vilka tavlor projektet börjar med.")} />
+              <StartChoice value="empty" start={start} onPick={pickStart} title={t("Tom tavla")} text={t("En plan att rita på från början.")} />
               {ownTemplates.map(item => (
                 <StartChoice key={item.id} value={`template:${item.id}`} start={start} onPick={pickStart} title={item.name}
-                  badge="Din mall" text={item.boards.map(board => board.name).join(", ")}
-                  onRemove={() => { if (window.confirm(`Ta bort mallen ${item.name}?`)) { if (start === `template:${item.id}`) setStart("ready"); removeTemplate(item.id); } }} />
+                  badge={t("Din mall")} text={item.boards.map(board => board.name).join(", ")}
+                  onRemove={() => { if (window.confirm(t("Ta bort mallen {name}?", { name: item.name }))) { if (start === `template:${item.id}`) setStart("ready"); removeTemplate(item.id); } }} />
               ))}
               {(favorites ?? []).filter(item => projectKindOf[item.kind] === kind).map(item => (
                 <StartChoice key={item.id} value={`favorite:${item.id}`} start={start} onPick={pickStart} title={item.title}
-                  badge={`Favorit · ${libraryKindLabels[item.kind]}`} text={item.boards.map(board => board.name).join(", ")} />
+                  badge={t("Favorit · {kind}", { kind: t(libraryKindLabels[item.kind]) })} text={item.boards.map(board => board.name).join(", ")} />
               ))}
             </div>
             {start === "ready" && (
               <fieldset className="tb-starters">
-                <legend>Tavlor att börja med</legend>
+                <legend>{t("Tavlor att börja med")}</legend>
                 {starterSets[kind].map(item => (
                   <label key={item.key}>
                     <input type="checkbox" checked={picked.includes(item.key)}
                       onChange={event => setPicked(event.target.checked ? [...picked, item.key] : picked.filter(key => key !== item.key))} />
-                    {item.name}
+                    {t(item.name)}
                   </label>
                 ))}
               </fieldset>
             )}
             {otherTemplates.length > 0 && (
               <details className="tb-more-starts">
-                <summary>Mallar för andra typer ({otherTemplates.length})</summary>
+                <summary>{t("Mallar för andra typer ({count})", { count: otherTemplates.length })}</summary>
                 <div className="tb-choices">
                   {otherTemplates.map(item => (
                     <StartChoice key={item.id} value={`template:${item.id}`} start={start} onPick={pickStart} title={item.name}
-                      badge={`Din mall · ${kindLabels[item.kind]}`} text={item.boards.map(board => board.name).join(", ")} />
+                      badge={t("Din mall · {kind}", { kind: t(kindLabels[item.kind]) })} text={item.boards.map(board => board.name).join(", ")} />
                   ))}
                 </div>
               </details>
             )}
             {(templates ?? []).length === 0 && (
-              <p className="wt-small">Spara ett projekt som mall i projektet under Inställningar → Projektet, så finns den här nästa gång.</p>
+              <p className="wt-small">{t("Spara ett projekt som mall i projektet under Inställningar → Projektet, så finns den här nästa gång.")}</p>
             )}
           </>
         )}
 
         {step === 3 && (
           <div className="wt-form">
-            <label>Namn
+            <label>{t("Namn")}
               <input autoFocus value={name} onChange={event => setName(event.target.value)} maxLength={120}
-                placeholder={kind === "match" ? "T.ex. Match mot Aneby SK" : kind === "training" ? "T.ex. Passning och spelvändning" : "T.ex. Spelidé: speluppbyggnad"} />
+                placeholder={kind === "match" ? t("T.ex. Match mot Aneby SK") : kind === "training" ? t("T.ex. Passning och spelvändning") : t("T.ex. Spelidé: speluppbyggnad")} />
             </label>
             {teams.length > 0 && (
-              <label>Lag i TeamZone
+              <label>{t("Lag i TeamZone")}
                 <select value={teamId} onChange={event => setTeamId(event.target.value)}>
-                  <option value="">Inget lag</option>
+                  <option value="">{t("Inget lag")}</option>
                   {teams.map(team => <option key={team.team_id} value={team.team_id}>{team.team_name} · {team.club_name}</option>)}
                 </select>
-                <span className="wt-small">Med ett lag hämtar du truppen till tavlan, och lagets andra ledare kan se projektet.</span>
+                <span className="wt-small">{t("Med ett lag hämtar du truppen till tavlan, och lagets andra ledare kan se projektet.")}</span>
               </label>
             )}
             <NewProjectDetailsFields value={details} onChange={setDetails} />
             <dl className="tb-new-summary">
-              <dt>Typ</dt><dd>{kindLabels[kind]}</dd>
-              <dt>Börjar från</dt><dd>{startLabel}</dd>
-              {detailsText(details) && <><dt>Inställningar</dt><dd>{detailsText(details)}</dd></>}
-              {folder && <><dt>Mapp</dt><dd>{folder.name}</dd></>}
+              <dt>{t("Typ")}</dt><dd>{t(kindLabels[kind])}</dd>
+              <dt>{t("Börjar från")}</dt><dd>{startLabel}</dd>
+              {detailsText(details, t) && <><dt>{t("Inställningar")}</dt><dd>{detailsText(details, t)}</dd></>}
+              {folder && <><dt>{t("Mapp")}</dt><dd>{folder.name}</dd></>}
             </dl>
           </div>
         )}
 
         {error && <p role="alert" className="wt-error">{error}</p>}
         <div className="tb-actions tb-new-actions">
-          {step > 1 && <button type="button" className="wt-button secondary small" disabled={busy} onClick={() => setStep(step - 1)}>Tillbaka</button>}
-          {step === 2 && <button type="button" className="wt-button small" onClick={() => setStep(3)}>Nästa</button>}
-          {step === 3 && <button type="submit" className="wt-button small" disabled={busy}>{busy ? "Skapar…" : "Skapa och öppna"}</button>}
+          {step > 1 && <button type="button" className="wt-button secondary small" disabled={busy} onClick={() => setStep(step - 1)}>{t("Tillbaka")}</button>}
+          {step === 2 && <button type="button" className="wt-button small" onClick={() => setStep(3)}>{t("Nästa")}</button>}
+          {step === 3 && <button type="submit" className="wt-button small" disabled={busy}>{busy ? t("Skapar…") : t("Skapa och öppna")}</button>}
         </div>
       </form>
     </div>
@@ -227,6 +229,7 @@ export function NewProjectDialog({ teams, folder, templates, templateBoards, rem
 type ChoiceProps = { value: Start; start: Start; onPick: (value: Start) => void; title: string; text: string; badge?: string; onRemove?: () => void };
 
 function StartChoice({ value, start, onPick, title, text, badge, onRemove }: ChoiceProps) {
+  const t = useT();
   return (
     <div className={`tb-choice${start === value ? " on" : ""}`}>
       <button type="button" role="radio" aria-checked={start === value} className="tb-choice-main" onClick={() => onPick(value)}>
@@ -234,7 +237,7 @@ function StartChoice({ value, start, onPick, title, text, badge, onRemove }: Cho
         <strong>{title}</strong>
         {text && <span>{text}</span>}
       </button>
-      {onRemove && <button type="button" className="tb-choice-remove" aria-label={`Ta bort mallen ${title}`} title="Ta bort mallen" onClick={onRemove}>×</button>}
+      {onRemove && <button type="button" className="tb-choice-remove" aria-label={t("Ta bort mallen {name}", { name: title })} title={t("Ta bort mallen")} onClick={onRemove}>×</button>}
     </div>
   );
 }

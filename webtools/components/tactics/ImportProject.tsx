@@ -8,8 +8,10 @@ import { useRef, useState } from "react";
 import type { ProjectSummary } from "../../lib/tactics/model.ts";
 import { parseImport } from "../../lib/tactics/transfer.ts";
 import { useAccount } from "../account";
+import { useT } from "../language";
 
 export function ImportProject({ folderId, onCreated }: { folderId?: string; onCreated?: (projectId: string) => Promise<unknown> }) {
+  const t = useT();
   const { client } = useAccount();
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
@@ -19,12 +21,12 @@ export function ImportProject({ folderId, onCreated }: { folderId?: string; onCr
   const read = async (file: File) => {
     if (!client) return;
     setBusy(true); setError("");
-    const parsed = parseImport(await file.text(), file.name);
-    if ("error" in parsed) { setBusy(false); setError(parsed.error); return; }
+    const parsed = parseImport(await file.text(), file.name || t("Importerat projekt"));
+    if ("error" in parsed) { setBusy(false); setError(t(parsed.error)); return; }
     const { data, error: createError } = await client.schema("api").rpc("create_tactics_project", {
       project_name: parsed.name, project_kind: parsed.kind, target_team_id: null, project_document: parsed.document,
     });
-    if (createError) { setBusy(false); setError("Projektet kunde inte skapas. Försök igen."); return; }
+    if (createError) { setBusy(false); setError(t("Projektet kunde inte skapas. Försök igen.")); return; }
     const id = (data as ProjectSummary).id;
     await onCreated?.(id);
     router.push(folderId ? `/tacticsboard/${id}?mapp=${folderId}` : `/tacticsboard/${id}`);
@@ -35,9 +37,9 @@ export function ImportProject({ folderId, onCreated }: { folderId?: string; onCr
       <input ref={input} type="file" accept=".json,application/json" hidden
         onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void read(file); }} />
       <button type="button" className="wt-button secondary small" disabled={busy} onClick={() => input.current?.click()}>
-        {busy ? "Importerar…" : "Importera projekt från fil"}
+        {busy ? t("Importerar…") : t("Importera projekt från fil")}
       </button>
-      <span className="wt-small">En fil som exporterats från Tacticsboard (Dela → Spara som fil).</span>
+      <span className="wt-small">{t("En fil som exporterats från Tacticsboard (Dela → Spara som fil).")}</span>
       {error && <p role="alert" className="wt-error">{error}</p>}
     </div>
   );

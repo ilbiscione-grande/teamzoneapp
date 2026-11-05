@@ -30,8 +30,10 @@ import { noHomeFilters, teamMatches, useHomeProjects } from "./home/use-home-pro
 import { startProjectDrag } from "./home/project-drag.ts";
 import "./tactics.css";
 import "./home/home.css";
+import { useT } from "../language";
 
 export function TacticsHome() {
+  const t = useT();
   const { client } = useAccount();
   const { folders, error: folderError, create: createFolder, addProject, reload: reloadFolders } = useFolders();
   const folderId = useSearchParams().get("mapp");
@@ -54,7 +56,7 @@ export function TacticsHome() {
   useEffect(() => {
     client?.schema("api").rpc("list_tournament_leader_teams").then(({ data }) => setTeams((data as LeaderTeam[] | null) ?? []));
   }, [client]);
-  // Come from a folder's "Nytt projekt", the dialog is open at once.
+  // Come from a folder's t("Nytt projekt"), the dialog is open at once.
   useEffect(() => { if (folderId) setCreating("pick"); }, [folderId]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setSelected([]); };
@@ -73,15 +75,15 @@ export function TacticsHome() {
     setNotice("");
     let added = 0;
     for (const id of ids) if (await addProject(target.id, id)) added++;
-    if (added > 0) setNotice(`${added === 1 ? "1 projekt" : `${added} projekt`} lades i mappen ${target.name}.`);
+    if (added > 0) setNotice(added === 1 ? t("1 projekt lades i mappen {name}.", { name: target.name }) : t("{count} projekt lades i mappen {name}.", { count: added, name: target.name }));
     setSelected([]);
     void reloadFolders();
     reload();
   };
 
   const removeProject = async (project: HomeProject) => {
-    const published = (project.published ?? []).length > 0 ? " Det du publicerat från projektet finns kvar i biblioteket." : "";
-    if (await remove(project, `Ta bort ${project.name}? Det går inte att ångra.${published}${removalNote(project.folders ?? [])}`) && project.folders?.length) {
+    const published = (project.published ?? []).length > 0 ? t(" Det du publicerat från projektet finns kvar i biblioteket.") : "";
+    if (await remove(project, `${t("Ta bort {name}? Det går inte att ångra.", { name: project.name })}${published}${removalNote(project.folders ?? [], t)}`) && project.folders?.length) {
       void reloadFolders();
     }
   };
@@ -105,39 +107,39 @@ export function TacticsHome() {
     <div className="tb-home">
       <div className="tb-home-actions">
         <button type="button" className="wt-button" onClick={() => setCreating("pick")}>
-          <span aria-hidden="true">+</span> Nytt projekt
+          <span aria-hidden="true">+</span> {t("Nytt projekt")}
         </button>
-        <Link className="wt-button secondary" href="/tacticsboard/bibliotek">Biblioteket</Link>
-        <button type="button" className="wt-button secondary" aria-expanded={importing} onClick={() => setImporting(!importing)}>Importera</button>
+        <Link className="wt-button secondary" href="/tacticsboard/bibliotek">{t("Biblioteket")}</Link>
+        <button type="button" className="wt-button secondary" aria-expanded={importing} onClick={() => setImporting(!importing)}>{t("Importera")}</button>
       </div>
       {importing && <ImportProject folderId={folder?.id} onCreated={folder ? id => addProject(folder.id, id) : undefined} />}
       {templateError && <p role="alert" className="wt-error">{templateError}</p>}
 
       {nothingYet ? (
-        <section className="tb-welcome" aria-label="Kom igång">
-          <h2>Kom igång</h2>
-          <p>Vad vill du göra först? Du väljer sedan vad projektet börjar från, så du slipper rita allt själv.</p>
+        <section className="tb-welcome" aria-label={t("Kom igång")}>
+          <h2>{t("Kom igång")}</h2>
+          <p>{t("Vad vill du göra först? Du väljer sedan vad projektet börjar från, så du slipper rita allt själv.")}</p>
           <div className="tb-quick big">
             {(Object.keys(kindLabels) as ProjectKind[]).map(kind => (
               <button key={kind} type="button" className="tb-quick-card" onClick={() => setCreating(kind)}>
-                <span className={`tb-choice-icon tb-kind-${kind}`} aria-hidden="true">{kindLabels[kind].slice(0, 1)}</span>
-                <strong>Ny {kindLabels[kind].toLowerCase()}</strong>
-                <span>{kindHints[kind]}</span>
+                <span className={`tb-choice-icon tb-kind-${kind}`} aria-hidden="true">{t(kindLabels[kind]).slice(0, 1)}</span>
+                <strong>{t("Ny {kind}", { kind: t(kindLabels[kind]).toLowerCase() })}</strong>
+                <span>{t(kindHints[kind])}</span>
               </button>
             ))}
             <Link className="tb-quick-card" href="/tacticsboard/bibliotek">
               <span className="tb-choice-icon tb-kind-library" aria-hidden="true">B</span>
-              <strong>Hämta från biblioteket</strong>
-              <span>Övningar, pass och sessioner som andra tränare delar, och färdiga från oss.</span>
+              <strong>{t("Hämta från biblioteket")}</strong>
+              <span>{t("Övningar, pass och sessioner som andra tränare delar, och färdiga från oss.")}</span>
             </Link>
           </div>
         </section>
       ) : (
-        <div className="tb-quick" aria-label="Snabbstart">
-          <span className="tb-quick-label">Snabbstart:</span>
+        <div className="tb-quick" aria-label={t("Snabbstart")}>
+          <span className="tb-quick-label">{t("Snabbstart:")}</span>
           {(Object.keys(kindLabels) as ProjectKind[]).map(kind => (
             <button key={kind} type="button" className="tb-chip" onClick={() => setCreating(kind)}>
-              <span className={`tb-dot tb-kind-${kind}`} aria-hidden="true" />Ny {kindLabels[kind].toLowerCase()}
+              <span className={`tb-dot tb-kind-${kind}`} aria-hidden="true" />{t("Ny {kind}", { kind: t(kindLabels[kind]).toLowerCase() })}
             </button>
           ))}
         </div>
@@ -147,23 +149,23 @@ export function TacticsHome() {
       {error && <p role="alert" className="wt-error">{error}</p>}
       {notice && <p role="status" className="wt-status">{notice}</p>}
       {selected.length > 0 && (
-        <div className="tb-selection" role="region" aria-label="Valda projekt">
-          <strong>{selected.length === 1 ? "1 projekt valt" : `${selected.length} projekt valda`}</strong>
-          <span>Dra dem till en mapp, eller välj mappen här:</span>
-          <select value="" aria-label="Lägg i mappen" onChange={event => {
+        <div className="tb-selection" role="region" aria-label={t("Valda projekt")}>
+          <strong>{selected.length === 1 ? t("1 projekt valt") : t("{count} projekt valda", { count: selected.length })}</strong>
+          <span>{t("Dra dem till en mapp, eller välj mappen här:")}</span>
+          <select value="" aria-label={t("Lägg i mappen")} onChange={event => {
             const target = folders?.find(item => item.id === event.target.value);
             if (target) void putInFolder(target, selected);
           }}>
-            <option value="">Lägg i mapp…</option>
+            <option value="">{t("Lägg i mapp…")}</option>
             {(folders ?? []).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
-          <button type="button" className="wt-link tb-inline-button" onClick={() => setSelected([])}>Avmarkera</button>
+          <button type="button" className="wt-link tb-inline-button" onClick={() => setSelected([])}>{t("Avmarkera")}</button>
         </div>
       )}
 
       {pinned.length > 0 && (
         <section aria-labelledby="tb-pinned">
-          <h2 id="tb-pinned" className="tb-home-heading">Fästa</h2>
+          <h2 id="tb-pinned" className="tb-home-heading">{t("Fästa")}</h2>
           <ul className="tb-grid">{pinned.map(card)}</ul>
         </section>
       )}
@@ -173,14 +175,14 @@ export function TacticsHome() {
       {!nothingYet && (
         <section aria-labelledby="tb-mine">
           <div className="tb-home-head">
-            <h2 id="tb-mine" className="tb-home-heading">Mina projekt</h2>
+            <h2 id="tb-mine" className="tb-home-heading">{t("Mina projekt")}</h2>
             {mine && <span className="tb-count">{mine.length}</span>}
           </div>
           {own.length > 0 && (folders?.length ?? 0) > 0 && (
-            <p className="wt-small tb-drag-hint">Dra ett projekt till en mapp för att lägga det där. Håll in shift och klicka för att välja flera.</p>
+            <p className="wt-small tb-drag-hint">{t("Dra ett projekt till en mapp för att lägga det där. Håll in shift och klicka för att välja flera.")}</p>
           )}
-          {mine === null ? <p className="wt-status">Laddar…</p> : own.length === 0 ? (
-            <p className="tb-empty">{filtered ? "Inget av dina projekt passar sökningen." : pinned.length > 0 ? "Alla dina projekt är fästa ovan." : "Inga egna projekt än."}</p>
+          {mine === null ? <p className="wt-status">{t("Laddar…")}</p> : own.length === 0 ? (
+            <p className="tb-empty">{filtered ? t("Inget av dina projekt passar sökningen.") : pinned.length > 0 ? t("Alla dina projekt är fästa ovan.") : t("Inga egna projekt än.")}</p>
           ) : (
             <ul className="tb-grid">{own.map(card)}</ul>
           )}
@@ -190,10 +192,10 @@ export function TacticsHome() {
       {others.length > 0 && (
         <section aria-labelledby="tb-team">
           <div className="tb-home-head">
-            <h2 id="tb-team" className="tb-home-heading">Lagets tavlor</h2>
+            <h2 id="tb-team" className="tb-home-heading">{t("Lagets tavlor")}</h2>
             <span className="tb-count">{teamShown.length}</span>
           </div>
-          <p className="wt-small">Projekt som andra ledare har gjort för dina lag. Ägaren bestämmer om du kan redigera dem; annars kan du titta och göra en egen kopia.</p>
+          <p className="wt-small">{t("Projekt som andra ledare har gjort för dina lag. Ägaren bestämmer om du kan redigera dem; annars kan du titta och göra en egen kopia.")}</p>
           <ul className="tb-grid">{others.map(card)}</ul>
         </section>
       )}

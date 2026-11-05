@@ -5,8 +5,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { folderErrorText, type FolderSummary } from "../../lib/tactics/folders.ts";
 import { useAccount } from "../account";
+import { useT } from "../language";
 
 export function useFolders() {
+  const t = useT();
   const { client } = useAccount();
   const [folders, setFolders] = useState<FolderSummary[] | null>(null);
   const [error, setError] = useState("");
@@ -14,7 +16,7 @@ export function useFolders() {
   const reload = useCallback(async () => {
     if (!client) return;
     const { data, error: loadError } = await client.schema("api").rpc("list_my_tactics_folders");
-    if (loadError) { setError("Mapparna kunde inte hämtas."); setFolders([]); return; }
+    if (loadError) { setError(t("Mapparna kunde inte hämtas.")); setFolders([]); return; }
     setError("");
     setFolders(data as FolderSummary[]);
   }, [client]);
@@ -26,7 +28,7 @@ export function useFolders() {
     const { data, error: createError } = await client.schema("api").rpc("create_tactics_folder", {
       folder_name: name.trim(), folder_description: description.trim(),
     });
-    if (createError) { setError(folderErrorText(createError.message, "Mappen kunde inte skapas.")); return null; }
+    if (createError) { setError(folderErrorText(createError.message, t("Mappen kunde inte skapas."), t)); return null; }
     void reload();
     return data as FolderSummary;
   };
@@ -37,7 +39,7 @@ export function useFolders() {
     const { error: saveError } = await client.schema("api").rpc("set_tactics_project_folders", {
       target_project_id: projectId, folder_ids: folderIds,
     });
-    if (saveError) { setError(folderErrorText(saveError.message, "Mapparna kunde inte sparas.")); return false; }
+    if (saveError) { setError(folderErrorText(saveError.message, t("Mapparna kunde inte sparas."), t)); return false; }
     void reload();
     return true;
   };
@@ -48,7 +50,7 @@ export function useFolders() {
     const { error: addError } = await client.schema("api").rpc("add_tactics_folder_project", {
       target_folder_id: folderId, target_project_id: projectId,
     });
-    if (addError) { setError(folderErrorText(addError.message, "Projektet kunde inte läggas i mappen.")); return false; }
+    if (addError) { setError(folderErrorText(addError.message, t("Projektet kunde inte läggas i mappen."), t)); return false; }
     return true;
   };
 

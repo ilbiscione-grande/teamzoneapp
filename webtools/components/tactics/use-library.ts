@@ -7,8 +7,10 @@ import { useCallback, useEffect, useState } from "react";
 import type { Board } from "../../lib/tactics/model.ts";
 import { LIBRARY_CHANGED, type LibraryItemSummary, type LibrarySave } from "../../lib/tactics/library.ts";
 import { useAccount } from "../account";
+import { useT } from "../language";
 
 export function useLibrary(enabled = true) {
+  const t = useT();
   const { client, session } = useAccount();
   const [items, setItems] = useState<LibraryItemSummary[] | null>(null);
   const [error, setError] = useState("");
@@ -17,7 +19,7 @@ export function useLibrary(enabled = true) {
     // Signed out (the demo board) there are none.
     if (!client || !session) { setItems([]); return; }
     const { data, error: loadError } = await client.schema("api").rpc("list_my_tactics_library");
-    if (loadError) { setError("Biblioteket kunde inte hämtas."); setItems([]); return; }
+    if (loadError) { setError(t("Biblioteket kunde inte hämtas.")); setItems([]); return; }
     setError("");
     setItems(data as LibraryItemSummary[]);
   }, [client, session]);
@@ -33,7 +35,7 @@ export function useLibrary(enabled = true) {
   const boardsOf = async (id: string): Promise<Board[] | null> => {
     if (!client) return null;
     const { data, error: loadError } = await client.schema("api").rpc("get_tactics_library_item", { target_item_id: id });
-    if (loadError) { setError("Övningen kunde inte hämtas."); return null; }
+    if (loadError) { setError(t("Övningen kunde inte hämtas.")); return null; }
     const boards = (data as { document: { boards?: Board[] } }).document.boards;
     return Array.isArray(boards) ? boards : null;
   };
@@ -47,8 +49,8 @@ export function useLibrary(enabled = true) {
     });
     if (saveError) {
       setError(saveError.message.includes("too_many_items")
-        ? "Ditt bibliotek har redan 500 övningar, pass och sessioner. Ta bort något först."
-        : "Det kunde inte sparas i biblioteket.");
+        ? t("Ditt bibliotek har redan 500 övningar, pass och sessioner. Ta bort något först.")
+        : t("Det kunde inte sparas i biblioteket."));
       return null;
     }
     void reload();
@@ -58,7 +60,7 @@ export function useLibrary(enabled = true) {
   const remove = async (id: string) => {
     if (!client) return;
     const { error: removeError } = await client.schema("api").rpc("delete_tactics_library_item", { target_item_id: id });
-    if (removeError) { setError("Det kunde inte tas bort ur biblioteket."); return; }
+    if (removeError) { setError(t("Det kunde inte tas bort ur biblioteket.")); return; }
     void reload();
   };
 

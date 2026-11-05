@@ -73,16 +73,20 @@ Brittisk engelska, som i fotbollen.
 
 | # | Vad | Status |
 | --- | --- | --- |
-| 1 | Språkgrunden: val, kaka, `t`, vakten, språkväljaren | Klart lokalt |
-| 2 | Skal, start, inloggning, konto | Klart lokalt |
-| 3 | Produktsidan och köpet, med priser och ångerfunktion | Klart lokalt |
-| 4 | Editorn, inklusive export och pdf | Klart lokalt |
-| 5 | Hem, bibliotek, mappar, delade sidor och OG-bilder | Nästa |
-| 6 | Livegenomgångar | |
+| 1 | Språkgrunden: val, kaka, `t`, vakten, språkväljaren | Klart |
+| 2 | Skal, start, inloggning, konto | Klart |
+| 3 | Produktsidan och köpet, med priser och ångerfunktion | Klart |
+| 4 | Editorn, inklusive export och pdf | Klart |
+| 5 | Hem, bibliotek, mappar, delade sidor och OG-bilder | Klart lokalt |
+| 6 | Livegenomgångar | Nästa |
 | 7 | Backend: Stripe `locale` från språket, språk på kontot, ångerkvitto, Auth-mejl med `{{ if eq .Data.locale "en" }}` | |
 | 8 | Publika sajten och juridiken, efter att de svenska texterna är granskade | |
 | 9 | Skärmbilder och demofilm på engelska | |
 | 10 | Hela köpflödet på engelska, flaggan på i produktionen | |
+
+En delad länks titel och bild i en chatt följer språket i begäran. Chatttjänster anger
+oftast inget språk, och då blir det svenska. När språket finns på kontot (steg 7) bör
+förhandsvisningen följa ägarens språk.
 
 Steg 8 beror på den juridiska granskningen. Engelska villkor är en översättning av
 den text som godkänns, så de kan inte bli klara förrän den svenska texten är det.
@@ -105,6 +109,7 @@ den text som godkänns, så de kan inte bli klara förrän den svenska texten ä
 ## Inte med
 
 - TeamZone-appen, bokningar och turneringar.
+- Supportens granskning av anmälningar. Anmälningar sparas på svenska, och supporten läser dem på svenska.
 - Text som användarna själva skrivit, till exempel namn på tavlor och innehåll i
   delade bibliotek.
 - Fler språk än två. Lösningen kan bära fler, men de ingår inte.

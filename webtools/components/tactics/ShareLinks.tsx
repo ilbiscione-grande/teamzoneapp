@@ -9,10 +9,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useAccount } from "../account";
 import { BigQr, downloadQrPng, QrCode } from "./QrCode.tsx";
 import { activeBoard, useEditor, NONE } from "./store.ts";
+import { useT } from "../language";
 
 type Link = { token: string; board_id: string | null; created_at: string };
 
 function LinkCard({ link, title, projectName, onRevoke }: { link: Link; title: string; projectName: string; onRevoke: () => void }) {
+  const t = useT();
   const url = `${window.location.origin}/delad/${link.token}`;
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
@@ -36,26 +38,26 @@ function LinkCard({ link, title, projectName, onRevoke }: { link: Link; title: s
     <li>
       {bigQr && <BigQr text={url} title={message} onClose={() => setBigQr(false)} />}
       <strong>{title}</strong>
-      <input readOnly value={url} onFocus={event => event.target.select()} aria-label={`Länk, ${title}`} />
+      <input readOnly value={url} onFocus={event => event.target.select()} aria-label={t("Länk, {name}", { name: title })} />
       <div className="tb-actions">
-        <button type="button" className="wt-button small" onClick={() => void copy()}>{copied ? "Kopierad" : "Kopiera"}</button>
-        {canShare && <button type="button" className="wt-button small" onClick={() => void share()}>Dela…</button>}
-        <button type="button" className="wt-button secondary small" aria-expanded={showQr} onClick={() => setShowQr(!showQr)}>QR-kod</button>
-        <a className="wt-button secondary small" href={url} target="_blank" rel="noreferrer">Öppna</a>
+        <button type="button" className="wt-button small" onClick={() => void copy()}>{copied ? t("Kopierad") : t("Kopiera")}</button>
+        {canShare && <button type="button" className="wt-button small" onClick={() => void share()}>{t("Dela…")}</button>}
+        <button type="button" className="wt-button secondary small" aria-expanded={showQr} onClick={() => setShowQr(!showQr)}>{t("QR-kod")}</button>
+        <a className="wt-button secondary small" href={url} target="_blank" rel="noreferrer">{t("Öppna")}</a>
       </div>
-      <div className="tb-share-ways" aria-label="Skicka länken">
-        <a href={`mailto:?subject=${encodeURIComponent(message)}&body=${text}`}>E-post</a>
-        <a href={`sms:?&body=${text}`}>SMS</a>
+      <div className="tb-share-ways" aria-label={t("Skicka länken")}>
+        <a href={`mailto:?subject=${encodeURIComponent(message)}&body=${text}`}>{t("E-post")}</a>
+        <a href={`sms:?&body=${text}`}>{t("SMS")}</a>
         <a href={`https://wa.me/?text=${text}`} target="_blank" rel="noreferrer">WhatsApp</a>
-        <button type="button" className="tb-link" onClick={onRevoke}>Återkalla länken</button>
+        <button type="button" className="tb-link" onClick={onRevoke}>{t("Återkalla länken")}</button>
       </div>
       {showQr && (
         <div className="tb-qr-box">
-          <QrCode text={url} label={`QR-kod för ${title}`} />
+          <QrCode text={url} label={t("QR-kod för {name}", { name: title })} />
           <div className="tb-qr-actions">
-            <p className="tb-hint">Skanna med mobilens kamera. Visa den på en skärm i omklädningsrummet, eller skriv ut den.</p>
-            <button type="button" className="wt-button small" onClick={() => setBigQr(true)}>Visa stort</button>
-            <button type="button" className="wt-button secondary small" onClick={() => downloadQrPng(url, message, `QR_${message.replace(/[^\p{L}\p{N}]+/gu, "_")}.png`)}>Spara som bild</button>
+            <p className="tb-hint">{t("Skanna med mobilens kamera. Visa den på en skärm i omklädningsrummet, eller skriv ut den.")}</p>
+            <button type="button" className="wt-button small" onClick={() => setBigQr(true)}>{t("Visa stort")}</button>
+            <button type="button" className="wt-button secondary small" onClick={() => downloadQrPng(url, message, `QR_${message.replace(/[^\p{L}\p{N}]+/gu, "_")}.png`)}>{t("Spara som bild")}</button>
           </div>
         </div>
       )}
@@ -64,6 +66,7 @@ function LinkCard({ link, title, projectName, onRevoke }: { link: Link; title: s
 }
 
 export function ShareLinks() {
+  const t = useT();
   const { client } = useAccount();
   const meta = useEditor(state => state.meta);
   const board = useEditor(activeBoard);
@@ -74,7 +77,7 @@ export function ShareLinks() {
   const load = useCallback(async () => {
     if (!client || !meta) return;
     const { data, error: loadError } = await client.schema("api").rpc("list_tactics_share_links", { target_project_id: meta.id });
-    if (loadError) { setError("Länkarna kunde inte hämtas."); setLinks([]); return; }
+    if (loadError) { setError(t("Länkarna kunde inte hämtas.")); setLinks([]); return; }
     setLinks(data as Link[]);
   }, [client, meta]);
   useEffect(() => { void load(); }, [load]);
@@ -83,32 +86,32 @@ export function ShareLinks() {
     if (!client || !meta) return;
     setError("");
     const { error: createError } = await client.schema("api").rpc("create_tactics_share_link", { target_project_id: meta.id, target_board_id: boardId });
-    if (createError) { setError("Länken kunde inte skapas. Har projektet sparats?"); return; }
+    if (createError) { setError(t("Länken kunde inte skapas. Har projektet sparats?")); return; }
     void load();
   };
   const revoke = async (token: string) => {
-    if (!client || !window.confirm("Återkalla länken? Den slutar fungera för alla som har den.")) return;
+    if (!client || !window.confirm(t("Återkalla länken? Den slutar fungera för alla som har den."))) return;
     const { error: revokeError } = await client.schema("api").rpc("revoke_tactics_share_link", { target_token: token });
-    if (revokeError) { setError("Länken kunde inte återkallas."); return; }
+    if (revokeError) { setError(t("Länken kunde inte återkallas.")); return; }
     void load();
   };
-  const titleOf = (id: string | null) => id === null ? "Hela projektet" : boards.find(item => item.id === id)?.name ?? "Borttagen tavla";
+  const titleOf = (id: string | null) => id === null ? t("Hela projektet") : boards.find(item => item.id === id)?.name ?? t("Borttagen tavla");
   const has = (id: string | null) => links?.some(link => link.board_id === id) ?? false;
 
   return (
     <>
-      <p className="tb-hint">Alla som har länken kan se och spela upp tavlorna, utan konto och utan att logga in. Det du ändrar syns direkt i länken. Återkalla länken när den inte ska fungera längre.</p>
+      <p className="tb-hint">{t("Alla som har länken kan se och spela upp tavlorna, utan konto och utan att logga in. Det du ändrar syns direkt i länken. Återkalla länken när den inte ska fungera längre.")}</p>
       <div className="tb-actions">
-        {!has(null) && <button type="button" className="wt-button small" onClick={() => void create(null)}>Skapa länk till hela projektet</button>}
+        {!has(null) && <button type="button" className="wt-button small" onClick={() => void create(null)}>{t("Skapa länk till hela projektet")}</button>}
         {board && boards.length > 1 && !has(board.id) && (
-          <button type="button" className="wt-button secondary small" onClick={() => void create(board.id)}>Skapa länk till {board.name || "tavlan"}</button>
+          <button type="button" className="wt-button secondary small" onClick={() => void create(board.id)}>{t("Skapa länk till {name}", { name: board.name || t("tavlan") })}</button>
         )}
       </div>
       {error && <p className="wt-error" role="alert">{error}</p>}
-      {links === null ? <p className="tb-hint">Laddar…</p> : links.length > 0 && (
+      {links === null ? <p className="tb-hint">{t("Laddar…")}</p> : links.length > 0 && (
         <ul className="tb-links">
           {links.map(link => (
-            <LinkCard key={link.token} link={link} title={titleOf(link.board_id)} projectName={meta?.name || "Tavla"} onRevoke={() => void revoke(link.token)} />
+            <LinkCard key={link.token} link={link} title={titleOf(link.board_id)} projectName={meta?.name || t("Tavla")} onRevoke={() => void revoke(link.token)} />
           ))}
         </ul>
       )}

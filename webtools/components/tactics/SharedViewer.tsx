@@ -21,6 +21,7 @@ import { Timeline } from "./timeline/Timeline.tsx";
 import { kindLabels } from "./TopBar.tsx";
 import { AboutSheet, FullScreenIcon, InfoIcon, isPhone, shareLink, ShareIcon, SurroundingsButton, usePhone } from "./ViewerTools.tsx";
 import "./tactics.css";
+import { useT } from "../language";
 
 const BoardStage = dynamic(() => import("./stage/BoardStage.tsx"), { ssr: false, loading: () => <div className="tb-stage" /> });
 
@@ -30,6 +31,7 @@ const BoardStage = dynamic(() => import("./stage/BoardStage.tsx"), { ssr: false,
  * which is no link to share on.
  */
 export function SharedViewer({ shared, back, actions }: { shared: SharedTactics; back?: { href: string; label: string }; actions?: React.ReactNode }) {
+  const t = useT();
   const [ready, setReady] = useState(false);
   const [qr, setQr] = useState(false);
   const [presenting, setPresenting] = useState(false);
@@ -61,25 +63,25 @@ export function SharedViewer({ shared, back, actions }: { shared: SharedTactics;
           {back && <Link href={back.href} className="tb-back" aria-label={back.label} title={back.label}>‹</Link>}
           <div className="tb-viewer-title">
             <strong>{shared.name}</strong>
-            <span>{[kindLabels[shared.kind], shared.team_name].filter(Boolean).join(" · ")}</span>
+            <span>{[t(kindLabels[shared.kind]), shared.team_name].filter(Boolean).join(" · ")}</span>
           </div>
           <span className="tb-spacer" />
           {actions}
           <MyNumber boards={boards} />
-          {board.description?.trim() && <button type="button" className="tb-icon tb-glyph" onClick={() => setAbout(true)} aria-label="Om tavlan" title="Om tavlan"><InfoIcon /></button>}
-          {!actions && <button type="button" className="tb-icon tb-glyph" onClick={() => void shareLink(shared.name, () => setQr(true))} aria-label="Dela" title="Dela länken"><ShareIcon /></button>}
+          {board.description?.trim() && <button type="button" className="tb-icon tb-glyph" onClick={() => setAbout(true)} aria-label={t("Om tavlan")} title={t("Om tavlan")}><InfoIcon /></button>}
+          {!actions && <button type="button" className="tb-icon tb-glyph" onClick={() => void shareLink(shared.name, () => setQr(true))} aria-label={t("Dela")} title={t("Dela länken")}><ShareIcon /></button>}
         </div>
         {/* A phone chooses the board from a list, not a row of tabs to scroll. */}
         {boards.length > 1 && (
-          <select className="tb-viewer-boards" aria-label="Tavla" value={boardId ?? ""} onChange={event => useEditor.getState().setBoard(event.target.value)}>
-            {boards.map((item, index) => <option key={item.id} value={item.id}>{item.name || `Tavla ${index + 1}`}</option>)}
+          <select className="tb-viewer-boards" aria-label={t("Tavla")} value={boardId ?? ""} onChange={event => useEditor.getState().setBoard(event.target.value)}>
+            {boards.map((item, index) => <option key={item.id} value={item.id}>{item.name || t("Tavla {number}", { number: index + 1 })}</option>)}
           </select>
         )}
         {boards.length > 1 && (
-          <div className="tb-boards" role="tablist" aria-label="Tavlor">
+          <div className="tb-boards" role="tablist" aria-label={t("Tavlor")}>
             {boards.map(item => (
               <span key={item.id} className="tb-board-tab" data-active={item.id === boardId}>
-                <button type="button" role="tab" aria-selected={item.id === boardId} onClick={() => useEditor.getState().setBoard(item.id)}>{item.name || "Tavla"}</button>
+                <button type="button" role="tab" aria-selected={item.id === boardId} onClick={() => useEditor.getState().setBoard(item.id)}>{item.name || t("Tavla")}</button>
               </span>
             ))}
           </div>
@@ -89,19 +91,19 @@ export function SharedViewer({ shared, back, actions }: { shared: SharedTactics;
       {qr && <BigQr text={window.location.href} title={shared.name} onClose={() => setQr(false)} />}
       <div className="tb-center">
         <div className="tb-viewer-board">
-          <ErrorBoundary label="Tavlan">
+          <ErrorBoundary label={t("Tavlan")}>
             <BoardStage editable={false} onSwipe={stepFrame} onTap={togglePlay} tiltButton portrait={phone} tools={<>
-              <button type="button" onClick={() => setPresenting(true)} aria-label="Visa i helskärm" title="Visa i helskärm med beskrivning"><FullScreenIcon /></button>
+              <button type="button" onClick={() => setPresenting(true)} aria-label={t("Visa i helskärm")} title={t("Visa i helskärm med beskrivning")}><FullScreenIcon /></button>
               <SurroundingsButton board={board} />
             </>} />
           </ErrorBoundary>
           <span className="tb-viewer-mark" aria-hidden="true">TZ</span>
           {board.frames.length > 1 && startedOn !== boardId && (
-            <button type="button" className="tb-viewer-start" aria-label="Spela upp" onClick={() => useEditor.getState().play()}>▶</button>
+            <button type="button" className="tb-viewer-start" aria-label={t("Spela upp")} onClick={() => useEditor.getState().play()}>▶</button>
           )}
         </div>
         <SharedCaption board={board} />
-        <ErrorBoundary label="Tidslinjen"><Timeline board={board} readOnly viewer /></ErrorBoundary>
+        <ErrorBoundary label={t("Tidslinjen")}><Timeline board={board} readOnly viewer /></ErrorBoundary>
       </div>
     </div>
   );
