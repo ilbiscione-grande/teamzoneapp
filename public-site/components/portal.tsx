@@ -13,6 +13,11 @@ export function webtoolsUrl(): string | null {
   return value && /^https:\/\/[a-z0-9.-]+$/.test(value) ? value : null;
 }
 
+/** Tacticsboard is on sale and the app is not: only fixed pages are linked. */
+export function tacticsboardLaunch(): boolean {
+  return process.env.NEXT_PUBLIC_TACTICSBOARD_LAUNCH === "1";
+}
+
 export function PortalHeader({ active }: { active?: "home" | "search" | "legal" | "matchpool" }) {
   return (
     <header className="cs-header">
@@ -20,10 +25,10 @@ export function PortalHeader({ active }: { active?: "home" | "search" | "legal" 
         <Link href="/" className="cs-brand pz-brand"><span className="pz-mark" aria-hidden="true">TZ</span><span>TeamZone</span></Link>
         <nav className="cs-nav" aria-label="Huvudmeny">
           <Link href="/" aria-current={active === "home" ? "page" : undefined}>Start</Link>
-          <Link href="/klubbar" aria-current={active === "search" ? "page" : undefined}>Hitta klubb</Link>
-          <Link href="/matchpool" aria-current={active === "matchpool" ? "page" : undefined}>Matchpool</Link>
+          {!tacticsboardLaunch() && <Link href="/klubbar" aria-current={active === "search" ? "page" : undefined}>Hitta klubb</Link>}
+          {!tacticsboardLaunch() && <Link href="/matchpool" aria-current={active === "matchpool" ? "page" : undefined}>Matchpool</Link>}
           {webtoolsUrl() && <a href={webtoolsUrl()!}>Webtools</a>}
-          <a href="https://app.teamzoneapp.se">Öppna appen</a>
+          {!tacticsboardLaunch() && <a href="https://app.teamzoneapp.se">Öppna appen</a>}
         </nav>
       </div></div>
     </header>
@@ -35,8 +40,8 @@ export function PortalFooter() {
     <footer className="cs-footer">
       <div className="cs-wrap cs-footer-grid">
         <div className="cs-footer-club"><span className="pz-mark large" aria-hidden="true">TZ</span><div><strong>TeamZone</strong><span>Klubbar, lag och gemenskap</span></div></div>
-        <div><h2>Upptäck</h2><ul><li><Link href="/klubbar">Hitta klubb eller lag</Link></li><li><Link href="/">Min startsida</Link></li><li><Link href="/matchpool">Matchpoolen</Link></li>{webtoolsUrl() && <li><a href={webtoolsUrl()!}>Webtools</a></li>}</ul></div>
-        <div><h2>Konto</h2><ul><li><a href="https://app.teamzoneapp.se">Öppna TeamZone-appen</a></li><li><a href="https://app.teamzoneapp.se">Skapa konto</a></li></ul></div>
+        <div><h2>Upptäck</h2><ul>{!tacticsboardLaunch() && <li><Link href="/klubbar">Hitta klubb eller lag</Link></li>}<li><Link href="/">{tacticsboardLaunch() ? "Start" : "Min startsida"}</Link></li>{!tacticsboardLaunch() && <li><Link href="/matchpool">Matchpoolen</Link></li>}{webtoolsUrl() && <li><a href={webtoolsUrl()!}>Webtools</a></li>}</ul></div>
+        {!tacticsboardLaunch() && <div><h2>Konto</h2><ul><li><a href="https://app.teamzoneapp.se">Öppna TeamZone-appen</a></li><li><a href="https://app.teamzoneapp.se">Skapa konto</a></li></ul></div>}
         <div><h2>Juridik</h2><ul><li><Link href="/integritet">Integritetspolicy</Link></li><li><Link href="/villkor">Användarvillkor</Link></li></ul></div>
       </div>
       <div className="cs-wrap cs-footer-base"><span>© {new Date().getFullYear()} TeamZone</span><span>Byggt för föreningslivet</span></div>

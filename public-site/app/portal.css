@@ -136,6 +136,10 @@
 .pz-choices { display: grid; gap: 14px; }
 .pz-choice { display: grid; gap: 6px; padding: 22px 24px; border-radius: 8px; background: white; color: var(--cs-text); text-decoration: none; border-left: 5px solid var(--cs-ink); box-shadow: 0 24px 60px rgba(0,0,0,.3); transition: transform .15s ease; }
 .pz-choice.primary { border-left-color: var(--cs-accent); }
+.pz-choice-coming { opacity: .8; }
+.pz-choice-coming:hover { transform: none; }
+.pz-choice.pz-choice-coming strong::after { content: none; }
+.pz-launch-shot { display: block; width: 100%; height: auto; margin-bottom: 24px; border-radius: 8px; border: 1px solid rgba(11, 17, 28, .12); }
 .pz-choice:hover, .pz-choice:focus-visible { transform: translateY(-2px); }
 .pz-choice .cs-kicker { margin: 0; color: var(--cs-brand); font-size: .8rem; }
 .pz-choice strong { color: var(--cs-text); font-family: var(--cs-display), sans-serif; font-size: 1.9rem; line-height: 1; font-weight: 800; text-transform: uppercase; }

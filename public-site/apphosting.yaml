@@ -36,10 +36,15 @@ env:
     value: sb_publishable_lOnfOqPc-jBxRE28IXmEhQ_sRKFNw8O
     availability:
       - RUNTIME
-  # TeamZone Webtools on its temporary address until webtools.teamzoneapp.se
-  # moves over; the header and footer link to it.
+  # TeamZone Webtools in production; the header and footer link to it.
   - variable: NEXT_PUBLIC_WEBTOOLS_URL
-    value: https://teamzoneapp-webtools--teamzoneapp-b02a2.europe-west4.hosted.app
+    value: https://webtools.teamzoneapp.se
+    availability:
+      - BUILD
+      - RUNTIME
+  # The fixed start page that sells Tacticsboard. Remove when the app launches.
+  - variable: NEXT_PUBLIC_TACTICSBOARD_LAUNCH
+    value: "1"
     availability:
       - BUILD
       - RUNTIME

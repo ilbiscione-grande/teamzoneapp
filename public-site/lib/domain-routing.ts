@@ -77,6 +77,16 @@ export function isCanonicalLegalPage(hostname: string, path: string, publicOrigi
   }
 }
 
+/** The start page on the canonical origin, when it is the fixed launch page. */
+export function isCanonicalHome(hostname: string, path: string, publicOrigin?: string): boolean {
+  if (!publicOrigin || path !== "/") return false;
+  try {
+    return normalizedHostname(hostname) === new URL(publicOrigin).hostname;
+  } catch {
+    return false;
+  }
+}
+
 export function validRoutingInput(hostname: string, path: string): boolean {
   return hostnamePattern.test(hostname) && path.startsWith("/") && !/[?#]/.test(path) && path.length <= 2048;
 }

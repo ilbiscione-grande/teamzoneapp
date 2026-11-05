@@ -7,7 +7,7 @@ const appUrl = "https://app.teamzoneapp.se";
 /** How the visitor arrived: from the follower account's confirmation link. */
 export type Arrival = "confirmed" | "link_error" | null;
 
-const features = [
+export const features = [
   { title: "Kallelser och svar", text: "Kalla till träning och match, se vem som kommer och påminn den som inte svarat. Spelare och föräldrar svarar med ett tryck, även direkt i notisen på Android." },
   { title: "Närvaro", text: "Registrera närvaro efter aktiviteten, med sen ankomst och delvis närvaro. Närvaron följer spelaren över säsongen." },
   { title: "Inkorg för laget", text: "Lagchatt och ledarchatt skapas automatiskt. Skriv direkt till en spelare eller förälder, starta en grupp eller skicka ett utskick till hela laget." },

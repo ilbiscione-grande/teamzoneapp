@@ -129,7 +129,7 @@ test("the map groups listings by their rounded place and allows only OpenStreetM
   const groups = groupByPlace([at("a", 59.24, 17.85, true), at("b", 59.24, 17.85, false), at("c", 59.51, 17.64, true), { id: "d" } as Listing]);
   assert.deepEqual(groups.map(g => [g.key, g.listings.map(l => l.id)]), [["59.24,17.85", ["a", "b"]], ["59.51,17.64", ["c"]]]);
   const config = readFileSync(new URL("../next.config.ts", import.meta.url), "utf8");
-  assert.match(config, /img-src 'self' data: https:\/\/tile\.openstreetmap\.org;/);
+  assert.match(config, /img-src 'self' data: https:\/\/tile\.openstreetmap\.org https:\/\/webtools\.teamzoneapp\.se;/);
   const map = readFileSync(new URL("../components/match-pool-map.tsx", import.meta.url), "utf8");
   assert.match(map, /html: count > 1 \? String\(count\) : ""/, "nothing from a listing goes into marker markup");
 });
