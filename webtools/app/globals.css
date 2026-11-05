@@ -76,6 +76,8 @@ a { color: var(--wt-brand); }
 .wt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 16px; }
 .wt-card { position: relative; display: flex; flex-direction: column; gap: 14px; min-height: 190px; padding: 22px; border: 1px solid var(--wt-line); border-top: 4px solid var(--wt-ink); border-radius: 6px; background: white; color: var(--wt-text); text-decoration: none; transition: transform .15s ease, box-shadow .15s ease; }
 .wt-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(11, 17, 28, .1); }
+.wt-card-coming { opacity: .72; }
+.wt-card-coming:hover { transform: none; box-shadow: none; }
 .wt-card-mark { display: inline-grid; place-items: center; width: 52px; height: 52px; border-radius: 10px; background: var(--wt-ink); color: var(--wt-accent); font-size: 1.35rem; font-weight: 800; }
 .wt-card-mark.large { width: 72px; height: 72px; font-size: 1.8rem; flex: 0 0 auto; }
 .wt-card-body { display: grid; gap: 4px; flex: 1; }

@@ -1,8 +1,10 @@
 import { AppCard } from "../components/app-card";
 import { Welcome } from "../components/welcome";
 import { webtoolApps } from "../lib/apps";
+import { tacticsboardOnly } from "../lib/site-scope";
 
 export default function HomePage() {
+  const onlyTacticsboard = tacticsboardOnly();
   return (
     <>
       <section className="wt-hero">
@@ -10,8 +12,9 @@ export default function HomePage() {
           <p className="wt-kicker">TeamZone Webtools</p>
           <h1>Verktyg för lag och klubbar</h1>
           <p className="wt-lead">
-            Fristående appar för tränare, ledare och klubbar. Varje app fungerar för sig, och med ditt
-            TeamZone-konto hänger de ihop med dina lag när du vill.
+            {onlyTacticsboard
+              ? "Börja med Tacticsboard. Fler appar för tränare, ledare och klubbar är på väg."
+              : "Fristående appar för tränare, ledare och klubbar. Varje app fungerar för sig, och med ditt TeamZone-konto hänger de ihop med dina lag när du vill."}
           </p>
           <Welcome />
         </div>
@@ -19,7 +22,7 @@ export default function HomePage() {
       <section className="wt-wrap wt-section" aria-labelledby="apps-title">
         <h2 id="apps-title">Appar</h2>
         <div className="wt-grid">
-          {webtoolApps.map(app => <AppCard key={app.slug} app={app} />)}
+          {webtoolApps.map(app => <AppCard key={app.slug} app={app} tacticsboardOnly={onlyTacticsboard} />)}
         </div>
       </section>
       <section className="wt-wrap wt-section wt-points" aria-label="Så fungerar Webtools">

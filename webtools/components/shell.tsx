@@ -19,9 +19,7 @@ export function Header() {
           <span>Webtools</span>
         </Link>
         <nav className="wt-nav" aria-label="Huvudmeny">
-          {links.tacticsboardOnly
-            ? <Link href="/tacticsboard" aria-current={path === "/tacticsboard" ? "page" : undefined}>Tacticsboard</Link>
-            : <Link href="/" aria-current={path === "/" ? "page" : undefined}>Appar</Link>}
+          <Link href="/" aria-current={path === "/" ? "page" : undefined}>Appar</Link>
           {session ? (
             <>
               <Link href="/konto" aria-current={path === "/konto" ? "page" : undefined}>Konto</Link>
