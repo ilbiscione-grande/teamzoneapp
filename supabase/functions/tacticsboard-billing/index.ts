@@ -1,6 +1,6 @@
 // Tacticsboard sold per person (plan item 7): starts Stripe Checkout for
-// webtool.tacticsboard, or opens the Customer Portal, for the signed-in
-// person. Prices, coupon and customer come from the database, never from
+// webtool.tacticsboard, opens the Customer Portal, or takes a withdrawal from
+// the purchase, for the signed-in person. Prices, coupon and customer come from the database, never from
 // the request.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
@@ -20,6 +20,7 @@ import {
   sanitizedLog,
   withCorrelation,
 } from "../_shared/observability.ts";
+import { withdraw, withdrawalStatus } from "./withdrawal.ts";
 
 const origins = allowedWebOrigins(
   Deno.env.get("TEAMZONE_EXTRA_WEB_ORIGINS"),
@@ -93,9 +94,24 @@ Deno.serve(async (request) => {
   const flow = "checkout";
   const step = body.action === "checkout"
     ? "tacticsboard_checkout"
-    : "tacticsboard_portal";
+    : body.action === "portal"
+    ? "tacticsboard_portal"
+    : "tacticsboard_withdrawal";
 
   try {
+    if (body.action === "withdrawal_status" || body.action === "withdraw") {
+      const context = {
+        admin,
+        stripe,
+        livemode,
+        profileId: user.user.id,
+        email: user.user.email ?? "",
+      };
+      const answer = body.action === "withdraw"
+        ? await withdraw(context, body.name)
+        : await withdrawalStatus(context);
+      return respond(json(200, answer, headers));
+    }
     if (body.action === "portal") {
       const { data: customer } = await admin.schema("api").rpc(
         "tacticsboard_billing_customer",

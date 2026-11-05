@@ -11,7 +11,9 @@ export const tacticsboardProductionOrigins = [
 
 export type TacticsboardBillingRequest =
   | { action: "checkout"; interval: "month" | "year"; idempotencyKey: string }
-  | { action: "portal" };
+  | { action: "portal" }
+  | { action: "withdrawal_status" }
+  | { action: "withdraw"; name: string };
 
 const uuid =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -22,8 +24,14 @@ export function parseTacticsboardBillingRequest(
   if (!value || typeof value !== "object") return null;
   const body = value as Record<string, unknown>;
   const keys = Object.keys(body).sort().join(",");
-  if (body.action === "portal") {
-    return keys === "action" ? { action: "portal" } : null;
+  if (body.action === "portal" || body.action === "withdrawal_status") {
+    return keys === "action" ? { action: body.action } : null;
+  }
+  if (body.action === "withdraw") {
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    return keys === "action,name" && name.length >= 1 && name.length <= 200
+      ? { action: "withdraw", name }
+      : null;
   }
   if (body.action !== "checkout" || keys !== "action,idempotencyKey,interval") {
     return null;
@@ -86,7 +94,7 @@ export const tacticsboardTermsUrl =
 /// that the right of withdrawal asks for. Stripe also needs a terms URL
 /// under its public business details.
 export const tacticsboardConsentText =
-  `Jag godkänner [villkoren för Tacticsboard](${tacticsboardTermsUrl}) och vill att prenumerationen börjar direkt. Ångrar jag mig inom 14 dagar betalar jag för den tid jag har använt.`;
+  `Jag godkänner [villkoren för Tacticsboard](${tacticsboardTermsUrl}) och vill att prenumerationen börjar direkt. Jag kan ångra köpet inom 14 dagar med knappen Ångra köpet på kontosidan och betalar då en proportionell del av priset för den betalda tiden.`;
 
 export function checkoutSessionParams(
   claimed: ClaimedCheckout,

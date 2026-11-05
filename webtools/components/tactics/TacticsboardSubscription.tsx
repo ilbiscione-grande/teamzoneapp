@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { subscriptionSummary } from "../../lib/tactics/access.ts";
 import { SubscribeButtons } from "./RequireTacticsboard.tsx";
 import { useBilling, useTacticsboardAccess } from "./use-tacticsboard-access.ts";
+import { WithdrawPurchase } from "./WithdrawPurchase.tsx";
 
 export function TacticsboardSubscription() {
   const { access, error, reload } = useTacticsboardAccess({ startTrial: false });
@@ -52,6 +53,7 @@ export function TacticsboardSubscription() {
           {billing.error && <p className="wt-error" role="alert">{billing.error}</p>}
         </>
       )}
+      {access.subscription_state && <WithdrawPurchase onReceived={() => void reload()} />}
       {summary.subscribe && <SubscribeButtons />}
     </div>
   );

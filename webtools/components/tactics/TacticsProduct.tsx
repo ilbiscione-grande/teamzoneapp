@@ -31,6 +31,7 @@ const questions = [
   ["Behöver jag ange kort för att prova?", "Nej. Provperioden är 7 dagar och kräver inget kort. Köper du under provperioden betalar du först när den är slut."],
   ["Vad händer när provperioden är slut?", "Tacticsboard låses tills du prenumererar. Inget tas bort, och länkar du har delat fortsätter att fungera för andra."],
   ["Hur säger jag upp?", "Från kontosidan, när du vill. Prenumerationen gäller perioden ut."],
+  ["Kan jag ångra köpet?", "Ja, i 14 dagar från köpet med knappen Ångra köpet på kontosidan. Prenumerationen avslutas direkt, och du får tillbaka det du har betalat, med avdrag för en proportionell del för den betalda tiden."],
   ["Hur når jag supporten?", `Mejla ${supportEmail}. ${supportReply}`],
 ] as const;
 
@@ -91,7 +92,7 @@ export function TacticsProduct() {
             )}
           </article>
         </div>
-        <p className="wt-small">Priserna är inklusive moms. Du betalar med kort, Apple Pay eller Google Pay hos Stripe. Läs <a href={tacticsboardTermsUrl}>villkoren för Tacticsboard</a>.</p>
+        <p className="wt-small">Priserna är inklusive moms. Du betalar med kort, Apple Pay eller Google Pay hos Stripe. I 14 dagar från köpet kan du ångra det med knappen Ångra köpet på kontosidan. Läs <a href={tacticsboardTermsUrl}>villkoren för Tacticsboard</a>.</p>
         <Link className="wt-button" href={signUp}>Prova gratis i 7 dagar</Link>
       </section>
 
