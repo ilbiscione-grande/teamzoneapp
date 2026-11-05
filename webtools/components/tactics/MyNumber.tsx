@@ -10,6 +10,7 @@ import { myNumberKey, numbersOn } from "../../lib/tactics/me.ts";
 import type { Board } from "../../lib/tactics/model.ts";
 import { useEditor } from "./store.ts";
 import { PersonIcon } from "./ViewerTools.tsx";
+import { useT } from "../language";
 
 const read = (key: string) => { try { return window.localStorage.getItem(key); } catch { return null; } };
 const write = (key: string, value: string | null) => {
@@ -17,6 +18,7 @@ const write = (key: string, value: string | null) => {
 };
 
 export function MyNumber({ boards }: { boards: Board[] }) {
+  const t = useT();
   const me = useEditor(state => state.me);
   const [open, setOpen] = useState(false);
   const choices = numbersOn(boards);
@@ -37,17 +39,17 @@ export function MyNumber({ boards }: { boards: Board[] }) {
   return (
     <>
       <button type="button" className="tb-icon tb-glyph tb-me" data-on={me !== null} onClick={() => setOpen(true)}
-        aria-label={me !== null ? `Du är nummer ${me}` : "Välj ditt nummer"} title="Välj ditt nummer så syns du på alla tavlor">
+        aria-label={me !== null ? t("Du är nummer {number}", { number: me }) : t("Välj ditt nummer")} title={t("Välj ditt nummer så syns du på alla tavlor")}>
         <PersonIcon />{me !== null && <strong>{me}</strong>}
       </button>
       {open && createPortal(
-        <div className="tb-caption-sheet" role="dialog" aria-label="Ditt nummer" onClick={() => setOpen(false)}>
+        <div className="tb-caption-sheet" role="dialog" aria-label={t("Ditt nummer")} onClick={() => setOpen(false)}>
           <div onClick={event => event.stopPropagation()}>
             <div className="tb-modal-head">
-              <h2>Vilket nummer är du?</h2>
-              <button type="button" className="tb-modal-close" aria-label="Stäng" onClick={() => setOpen(false)}>×</button>
+              <h2>{t("Vilket nummer är du?")}</h2>
+              <button type="button" className="tb-modal-close" aria-label={t("Stäng")} onClick={() => setOpen(false)}>×</button>
             </div>
-            <p className="tb-me-hint">Du markeras med en gul ring på alla tavlor. Valet sparas bara i den här telefonen.</p>
+            <p className="tb-me-hint">{t("Du markeras med en gul ring på alla tavlor. Valet sparas bara i den här telefonen.")}</p>
             <div className="tb-me-grid">
               {choices.map(choice => (
                 <button key={choice.number} type="button" aria-pressed={me === choice.number} onClick={() => pick(choice.number)}>
@@ -55,7 +57,7 @@ export function MyNumber({ boards }: { boards: Board[] }) {
                 </button>
               ))}
             </div>
-            {me !== null && <button type="button" className="tb-link" onClick={() => pick(null)}>Visa ingen</button>}
+            {me !== null && <button type="button" className="tb-link" onClick={() => pick(null)}>{t("Visa ingen")}</button>}
           </div>
         </div>,
         document.body,

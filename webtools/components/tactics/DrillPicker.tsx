@@ -8,8 +8,10 @@ import { drills } from "../../lib/tactics/drills.ts";
 import { updateBoard } from "../../lib/tactics/document.ts";
 import { PITCH_LENGTH, PITCH_WIDTH } from "../../lib/tactics/model.ts";
 import { activeBoard, activeObjects, useEditor } from "./store.ts";
+import { useT } from "../language";
 
 export function DrillPicker() {
+  const t = useT();
   const board = useEditor(activeBoard);
   const objects = useEditor(activeObjects);
   const tool = useEditor(state => state.tool);
@@ -26,20 +28,20 @@ export function DrillPicker() {
     useEditor.getState().setFocus(drill.zoom ? { at: { x: PITCH_LENGTH / 2, y: PITCH_WIDTH / 2 }, scale: drill.zoom } : null);
   };
   return (
-    <div className="tb-drills" role="dialog" aria-label="Börja från en övning">
+    <div className="tb-drills" role="dialog" aria-label={t("Börja från en övning")}>
       <div className="tb-drills-head">
-        <strong>Börja från en färdig övning</strong>
-        <button type="button" className="tb-link" onClick={() => setDeclined([...declined, board.id])}>Börja med tom tavla</button>
+        <strong>{t("Börja från en färdig övning")}</strong>
+        <button type="button" className="tb-link" onClick={() => setDeclined([...declined, board.id])}>{t("Börja med tom tavla")}</button>
       </div>
       <div className="tb-drills-grid">
         {drills.map(drill => (
           <button key={drill.key} type="button" onClick={() => choose(drill.key)}>
-            <span>{drill.name}</span>
-            <small>{drill.about}</small>
+            <span>{t(drill.name)}</span>
+            <small>{t(drill.about)}</small>
           </button>
         ))}
       </div>
-      <p className="tb-drills-note">Allt går att flytta, ändra och ta bort efteråt. Eller välj ett verktyg till vänster och rita själv.</p>
+      <p className="tb-drills-note">{t("Allt går att flytta, ändra och ta bort efteråt. Eller välj ett verktyg till vänster och rita själv.")}</p>
     </div>
   );
 }

@@ -6,6 +6,7 @@
 import { textBackground, type TextAlign, type TextObject } from "../../../lib/tactics/model.ts";
 import { useEditor } from "../store.ts";
 import { Swatches } from "./Swatches.tsx";
+import { useT } from "../../language";
 
 const aligns: [TextAlign, string, string][] = [
   ["left", "Vänster", "Vänsterställd"],
@@ -14,6 +15,7 @@ const aligns: [TextAlign, string, string][] = [
 ];
 
 export function TextLook({ texts }: { texts: TextObject[] }) {
+  const t = useT();
   const patch = (changes: Partial<TextObject>) => useEditor.getState().patch(Object.fromEntries(texts.map(item => [item.id, changes])));
   const same = <V,>(read: (item: TextObject) => V) => texts.every(item => read(item) === read(texts[0])) ? read(texts[0]) : undefined;
   const align = same(item => item.align ?? "left");
@@ -22,18 +24,18 @@ export function TextLook({ texts }: { texts: TextObject[] }) {
   const opacity = same(item => item.backgroundOpacity ?? textBackground.opacity);
   return (
     <>
-      <div className="tb-field">Placering av texten
-        <div className="tb-aligns" role="group" aria-label="Placering av texten">
+      <div className="tb-field">{t("Placering av texten")}
+        <div className="tb-aligns" role="group" aria-label={t("Placering av texten")}>
           {aligns.map(([value, label, hint]) => (
-            <button key={value} type="button" title={hint} aria-pressed={align === value} onClick={() => patch({ align: value })}>{label}</button>
+            <button key={value} type="button" title={t(hint)} aria-pressed={align === value} onClick={() => patch({ align: value })}>{t(label)}</button>
           ))}
         </div>
       </div>
-      <label className="tb-check"><input type="checkbox" checked={background} onChange={event => patch({ background: event.target.checked })} />Bakgrund</label>
+      <label className="tb-check"><input type="checkbox" checked={background} onChange={event => patch({ background: event.target.checked })} />{t("Bakgrund")}</label>
       {background && (
         <>
-          <Swatches label="Bakgrundsfärg" value={colour ?? null} onChange={value => patch({ backgroundColor: value })} />
-          <label className="tb-field">Bakgrundens täckning {opacity === undefined ? "" : `${Math.round(opacity * 100)} %`}
+          <Swatches label={t("Bakgrundsfärg")} value={colour ?? null} onChange={value => patch({ backgroundColor: value })} />
+          <label className="tb-field">{t("Bakgrundens täckning")} {opacity === undefined ? "" : `${Math.round(opacity * 100)} %`}
             <input type="range" min={0.1} max={1} step={0.05} value={opacity ?? textBackground.opacity}
               onChange={event => patch({ backgroundOpacity: Number(event.target.value) })} />
           </label>

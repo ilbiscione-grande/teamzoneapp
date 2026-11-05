@@ -11,6 +11,7 @@ import { cropBetween, type Rect as Area } from "../../../lib/tactics/geometry.ts
 import type { Point } from "../../../lib/tactics/model.ts";
 import { updateBoard } from "../../../lib/tactics/document.ts";
 import { useEditor } from "../store.ts";
+import { useT } from "../../language";
 
 /** after: run when the crop is done, such as opening Dela again. */
 export const useCropping = create<{ on: boolean; after: (() => void) | null; start: (after?: () => void) => void; stop: () => void }>((set, get) => ({
@@ -43,12 +44,13 @@ const FAR = 400;
 
 /** active: choosing, dimming all but the crop and catching every press. Drawn in metres; pixel: metres per screen pixel. */
 export function CropFrame({ crop, active, pixel, upright }: { crop: Area | null; active: boolean; pixel: number; upright: number }) {
+  const t = useT();
   if (!active) {
     if (!crop) return null;
     return (
       <Group listening={false}>
         <Rect {...crop} stroke="#facc15" strokeWidth={pixel * 1.5} dash={[pixel * 8, pixel * 6]} opacity={0.7} />
-        <Text x={crop.x + pixel * 6} y={crop.y + pixel * 6} text="Utsnitt" fontSize={pixel * 12} fontStyle="bold" fill="#facc15" opacity={0.8} rotation={upright} />
+        <Text x={crop.x + pixel * 6} y={crop.y + pixel * 6} text={t("Utsnitt")} fontSize={pixel * 12} fontStyle="bold" fill="#facc15" opacity={0.8} rotation={upright} />
       </Group>
     );
   }

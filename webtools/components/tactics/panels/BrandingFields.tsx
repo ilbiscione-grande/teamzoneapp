@@ -9,6 +9,7 @@ import type { TacticsClub } from "../../../lib/tactics/library.ts";
 import type { Branding } from "../../../lib/tactics/model.ts";
 import { useAccount } from "../../account";
 import { useEditor } from "../store.ts";
+import { useT } from "../../language";
 
 const places: Record<Branding["place"], string> = { centre: "I mittcirkeln", corner: "Vid hörnflaggan", none: "Visas inte" };
 
@@ -49,6 +50,7 @@ function useClubs() {
 }
 
 export function BrandingFields() {
+  const t = useT();
   const branding = useEditor(state => state.document?.branding);
   const input = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
@@ -64,11 +66,11 @@ export function BrandingFields() {
   const place = branding?.place && branding.place !== "none" ? branding.place : "centre";
   const pick = async (file: File) => {
     setError("");
-    if (!file.type.startsWith("image/")) { setError("Välj en bild, till exempel PNG eller JPG."); return; }
+    if (!file.type.startsWith("image/")) { setError(t("Välj en bild, till exempel PNG eller JPG.")); return; }
     try {
       set({ logo: await shrink(file), place });
     } catch {
-      setError("Bilden kunde inte läsas.");
+      setError(t("Bilden kunde inte läsas."));
     }
   };
   /** The badge on the club's profile: where it is stored, read with your own sign-in. */
@@ -80,12 +82,12 @@ export function BrandingFields() {
       const { data, error: denied } = await client.schema("api").rpc("authorize_club_badge", { target_club_id: club.club_id });
       const badge = data as { bucket_id: string; object_key: string } | null;
       if (denied) throw denied;
-      if (!badge) { setError(`${club.club_name} har inget klubbmärke i TeamZone än.`); return; }
+      if (!badge) { setError(t("{club} har inget klubbmärke i TeamZone än.", { club: club.club_name })); return; }
       const { data: file, error: missing } = await client.storage.from(badge.bucket_id).download(badge.object_key);
       if (missing || !file) throw missing ?? new Error("no badge");
       set({ logo: await shrink(file), place });
     } catch {
-      setError("Klubbmärket kunde inte hämtas.");
+      setError(t("Klubbmärket kunde inte hämtas."));
     } finally {
       setFetching(false);
     }
@@ -93,34 +95,34 @@ export function BrandingFields() {
   const fromTeamZone = club && (
     <div className="tb-branding-row">
       {clubs.length > 1 && (
-        <select className="tb-panel-select" value={club.club_id} aria-label="Klubb" onChange={event => setClubId(event.target.value)}>
+        <select className="tb-panel-select" value={club.club_id} aria-label={t("Klubb")} onChange={event => setClubId(event.target.value)}>
           {clubs.map(item => <option key={item.club_id} value={item.club_id}>{item.club_name}</option>)}
         </select>
       )}
       <button type="button" className="wt-button secondary small" disabled={fetching} onClick={() => void fetchBadge()}
-        title={`Klubbmärket från ${club.club_name} i TeamZone`}>
-        {fetching ? "Hämtar…" : clubs.length > 1 ? "Hämta klubbmärket" : `Klubbmärket från ${club.club_name}`}
+        title={t("Klubbmärket från {club} i TeamZone", { club: club.club_name })}>
+        {fetching ? t("Hämtar…") : clubs.length > 1 ? t("Hämta klubbmärket") : t("Klubbmärket från {club}", { club: club.club_name })}
       </button>
     </div>
   );
 
   return (
     <div className="tb-branding">
-      <span className="tb-field">Klubbens logga</span>
+      <span className="tb-field">{t("Klubbens logga")}</span>
       <input ref={input} type="file" accept="image/*" hidden onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void pick(file); }} />
       {branding?.logo ? (
         <div className="tb-branding-row">
           <img src={branding.logo} alt="Loggan" className="tb-branding-logo" />
-          <select className="tb-panel-select" value={branding.place} aria-label="Var loggan visas"
+          <select className="tb-panel-select" value={branding.place} aria-label={t("Var loggan visas")}
             onChange={event => set({ ...branding, place: event.target.value as Branding["place"] })}>
-            {Object.entries(places).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            {Object.entries(places).map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
           </select>
-          <button type="button" className="tb-link" onClick={() => set(undefined)}>Ta bort</button>
+          <button type="button" className="tb-link" onClick={() => set(undefined)}>{t("Ta bort")}</button>
         </div>
       ) : (
         <>
           {fromTeamZone}
-          <button type="button" className="wt-button secondary small" onClick={() => input.current?.click()}>{club ? "Annan bild…" : "Lägg till logga…"}</button>
+          <button type="button" className="wt-button secondary small" onClick={() => input.current?.click()}>{club ? t("Annan bild…") : t("Lägg till logga…")}</button>
         </>
       )}
       {error && <p className="wt-error" role="alert">{error}</p>}

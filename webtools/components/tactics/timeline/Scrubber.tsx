@@ -9,12 +9,14 @@ import { useRef } from "react";
 import type { Frame } from "../../../lib/tactics/model.ts";
 import { frameTimes, playheadOfTime, secondsLabel, timeOfPlayhead } from "../../../lib/tactics/scrub.ts";
 import { useEditor } from "../store.ts";
+import { useT } from "../../language";
 
 /** Half a dot's width: a press on a dot lands on its frame. */
 const SNAP_PX = 11;
 
 /** time: the seconds beside it; a shared board leaves them out for a longer line. */
 export function Scrubber({ frames, time = true }: { frames: Frame[]; time?: boolean }) {
+  const t = useT();
   const track = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const playhead = useEditor(state => state.playhead);
@@ -37,7 +39,7 @@ export function Scrubber({ frames, time = true }: { frames: Frame[]; time?: bool
 
   return (
     <div className="tb-scrub-row">
-      <div ref={track} className="tb-scrub" role="slider" tabIndex={0} aria-label="Tidslinje"
+      <div ref={track} className="tb-scrub" role="slider" tabIndex={0} aria-label={t("Tidslinje")}
         aria-valuemin={0} aria-valuemax={frames.length - 1} aria-valuenow={Math.round(playhead * 10) / 10}
         aria-valuetext={`${secondsLabel(now)} av ${secondsLabel(total)}`}
         onPointerDown={event => {

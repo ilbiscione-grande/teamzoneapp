@@ -6,8 +6,10 @@ import { useCallback, useEffect, useState } from "react";
 import type { Board, ProjectKind } from "../../lib/tactics/model.ts";
 import type { TemplateSummary } from "../../lib/tactics/templates.ts";
 import { useAccount } from "../account";
+import { useT } from "../language";
 
 export function useTemplates(enabled = true) {
+  const t = useT();
   const { client } = useAccount();
   const [templates, setTemplates] = useState<TemplateSummary[] | null>(null);
   const [error, setError] = useState("");
@@ -16,7 +18,7 @@ export function useTemplates(enabled = true) {
     // Signed out (the demo board) there are none.
     if (!client) { setTemplates([]); return; }
     const { data, error: loadError } = await client.schema("api").rpc("list_my_tactics_templates");
-    if (loadError) { setError("Mallarna kunde inte hämtas."); setTemplates([]); return; }
+    if (loadError) { setError(t("Mallarna kunde inte hämtas.")); setTemplates([]); return; }
     setError("");
     setTemplates(data as TemplateSummary[]);
   }, [client]);
@@ -26,7 +28,7 @@ export function useTemplates(enabled = true) {
   const boardsOf = async (id: string): Promise<Board[] | null> => {
     if (!client) return null;
     const { data, error: loadError } = await client.schema("api").rpc("get_tactics_template", { target_template_id: id });
-    if (loadError) { setError("Mallen kunde inte hämtas."); return null; }
+    if (loadError) { setError(t("Mallen kunde inte hämtas.")); return null; }
     const boards = (data as { document: { boards?: Board[] } }).document.boards;
     return Array.isArray(boards) ? boards : null;
   };
@@ -37,7 +39,7 @@ export function useTemplates(enabled = true) {
       template_name: name, template_kind: kind, template_document: { schemaVersion: 1, boards },
     });
     if (saveError) {
-      setError(saveError.message.includes("too_many_templates") ? "Du har redan 100 mallar. Ta bort någon först." : "Mallen kunde inte sparas.");
+      setError(saveError.message.includes("too_many_templates") ? t("Du har redan 100 mallar. Ta bort någon först.") : t("Mallen kunde inte sparas."));
       return false;
     }
     void reload();
@@ -47,7 +49,7 @@ export function useTemplates(enabled = true) {
   const remove = async (id: string) => {
     if (!client) return;
     const { error: removeError } = await client.schema("api").rpc("delete_tactics_template", { target_template_id: id });
-    if (removeError) { setError("Mallen kunde inte tas bort."); return; }
+    if (removeError) { setError(t("Mallen kunde inte tas bort.")); return; }
     void reload();
   };
 

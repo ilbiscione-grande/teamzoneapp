@@ -4,6 +4,7 @@
 // pages with the board pictures, a header and page numbers. A description
 // too long for its column goes on over pages of its own after it. Each page
 // lies or stands as its layout says.
+import type { Language } from "../../../lib/i18n/translate.ts";
 import { pageSize, type Page } from "../../../lib/tactics/pdf-layout.ts";
 
 const LINE = 4.6;
@@ -11,6 +12,8 @@ const LINE = 4.6;
 type Sheet = { page: Page | null; title: string; description: string[]; lines: string[]; portrait: boolean };
 
 export type PdfInput = {
+  /** The language of the page's own words. */
+  language: Language;
   projectName: string;
   subtitle: string | null;
   pages: Page[];
@@ -22,7 +25,7 @@ export async function buildPdf(input: PdfInput): Promise<Blob> {
   const { jsPDF } = await import("jspdf");
   const orientation = (portrait: boolean) => portrait ? "portrait" as const : "landscape" as const;
   const doc = new jsPDF({ orientation: orientation(input.pages[0]?.portrait ?? false), unit: "mm", format: "a4", compress: true });
-  const date = new Date().toLocaleDateString("sv-SE", { day: "numeric", month: "long", year: "numeric" });
+  const date = new Date().toLocaleDateString(input.language.intl, { day: "numeric", month: "long", year: "numeric" });
 
   // Descriptions are split first, so overflow pages count in the page numbers.
   doc.setFont("helvetica", "normal");
@@ -76,7 +79,7 @@ export async function buildPdf(input: PdfInput): Promise<Blob> {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
       doc.setTextColor(15, 23, 38);
-      doc.text("Beskrivning (forts.)", PAGE.margin, top + 4);
+      doc.text(input.language.t("Beskrivning (forts.)"), PAGE.margin, top + 4);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(40, 48, 62);
       doc.text(sheet.lines, PAGE.margin, top + 4 + 6, { lineHeightFactor: LINE / (10 * 0.3528) });
@@ -119,7 +122,7 @@ export async function buildPdf(input: PdfInput): Promise<Blob> {
     doc.setFontSize(8);
     doc.setTextColor(148, 160, 178);
     doc.text("TeamZone Webtools · Tacticsboard", PAGE.margin, PAGE.height - PAGE.margin + 2);
-    doc.text(`Sida ${index + 1} av ${sheets.length}`, PAGE.width - PAGE.margin, PAGE.height - PAGE.margin + 2, { align: "right" });
+    doc.text(input.language.t("Sida {page} av {pages}", { page: index + 1, pages: sheets.length }), PAGE.width - PAGE.margin, PAGE.height - PAGE.margin + 2, { align: "right" });
   });
   return doc.output("blob");
 }

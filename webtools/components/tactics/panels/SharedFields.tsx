@@ -14,6 +14,7 @@ import { standingFacing } from "../../../lib/tactics/timeline.ts";
 import { useEditor } from "../store.ts";
 import { Swatches } from "./Swatches.tsx";
 import { TextLook } from "./TextLook.tsx";
+import { useT } from "../../language";
 
 const EQUIPMENT = new Set(["cone", "pole", "mannequin", "goal"]);
 /** "" when the selected differ, so a select shows its blank choice. */
@@ -47,6 +48,7 @@ function joinPlayers(players: PlayerObject[], closed: boolean) {
 }
 
 export function SharedFields({ items, board }: { items: TacticsObject[]; board: Board }) {
+  const t = useT();
   const open = items.filter(item => !item.locked);
   if (open.length < 2) return null;
   /** The same change to each, worked out per object. */
@@ -63,24 +65,24 @@ export function SharedFields({ items, board }: { items: TacticsObject[]; board: 
     <>
       {players && (
         <>
-          <label className="tb-field">Lag
+          <label className="tb-field">{t("Lag")}
             <select value={shared(players, item => item.side) ?? MIXED} onChange={event => patchEach(players, () => ({ side: event.target.value as PlayerObject["side"] }))}>
-              <option value={MIXED} disabled>Olika</option>
-              <option value="home">{board.teams.home.name}</option>
-              <option value="away">{board.teams.away.name}</option>
+              <option value={MIXED} disabled>{t("Olika")}</option>
+              <option value="home">{t(board.teams.home.name)}</option>
+              <option value="away">{t(board.teams.away.name)}</option>
             </select>
           </label>
-          <div className="tb-field">Linje mellan spelarna
+          <div className="tb-field">{t("Linje mellan spelarna")}
             <div className="tb-actions">
-              <button type="button" className="wt-button secondary small" onClick={() => joinPlayers(players, false)}>Öppen linje</button>
-              <button type="button" className="wt-button secondary small" disabled={players.length < 3} onClick={() => joinPlayers(players, true)}>Sluten yta</button>
+              <button type="button" className="wt-button secondary small" onClick={() => joinPlayers(players, false)}>{t("Öppen linje")}</button>
+              <button type="button" className="wt-button secondary small" disabled={players.length < 3} onClick={() => joinPlayers(players, true)}>{t("Sluten yta")}</button>
             </div>
-            <span className="tb-hint">Följer spelarna när de flyttas. Öppen går i den ordning du markerade dem (håll in shift och klicka en i taget).</span>
+            <span className="tb-hint">{t("Följer spelarna när de flyttas. Öppen går i den ordning du markerade dem (håll in shift och klicka en i taget).")}</span>
           </div>
-          <div className="tb-field">Blickriktning
-            <div className="tb-facings" role="group" aria-label="Blickriktning">
+          <div className="tb-field">{t("Blickriktning")}
+            <div className="tb-facings" role="group" aria-label={t("Blickriktning")}>
               {facings.map(way => (
-                <button key={way.angle} type="button" aria-label={way.label} title={way.label}
+                <button key={way.angle} type="button" aria-label={t(way.label)} title={t(way.label)}
                   aria-pressed={players.every(item => Math.round(normalAngle(standingFacing(item))) === way.angle)}
                   onClick={() => {
                     if (!board.showFacing) useEditor.getState().change(document => updateBoard(document, board.id, current => ({ ...current, showFacing: true })));
@@ -94,46 +96,46 @@ export function SharedFields({ items, board }: { items: TacticsObject[]; board: 
       {lines && (
         <>
           <div className="tb-row">
-            <label className="tb-field">Pilspets
+            <label className="tb-field">{t("Pilspets")}
               <select value={shared(lines, item => item.arrow) ?? MIXED} onChange={event => patchEach(lines, () => ({ arrow: event.target.value as ArrowHead }))}>
-                <option value={MIXED} disabled>Olika</option>
-                <option value="none">Ingen</option><option value="end">I slutet</option><option value="both">Båda ändar</option>
+                <option value={MIXED} disabled>{t("Olika")}</option>
+                <option value="none">{t("Ingen")}</option><option value="end">{t("I slutet")}</option><option value="both">{t("Båda ändar")}</option>
               </select>
             </label>
-            <label className="tb-field">Tjocklek
+            <label className="tb-field">{t("Tjocklek")}
               <input type="range" min={0.15} max={0.8} step={0.05} value={shared(lines, item => item.width) ?? lines[0].width}
                 onChange={event => patchEach(lines, () => ({ width: Number(event.target.value) }))} />
             </label>
           </div>
-          <label className="tb-field">Linje
+          <label className="tb-field">{t("Linje")}
             <select value={shared(lines, item => (item.wavy ? "wavy" : item.dashed ? "dashed" : "solid")) ?? MIXED}
               onChange={event => patchEach(lines, () => ({ dashed: event.target.value === "dashed", wavy: event.target.value === "wavy" }))}>
-              <option value={MIXED} disabled>Olika</option>
-              <option value="solid">Heldragen (passning)</option><option value="dashed">Streckad (löpning)</option><option value="wavy">Vågig (dribbling)</option>
+              <option value={MIXED} disabled>{t("Olika")}</option>
+              <option value="solid">{t("Heldragen (passning)")}</option><option value="dashed">{t("Streckad (löpning)")}</option><option value="wavy">{t("Vågig (dribbling)")}</option>
             </select>
           </label>
         </>
       )}
       {areas && (
         <>
-          <label className="tb-field">Fyllning
+          <label className="tb-field">{t("Fyllning")}
             <input type="range" min={0} max={1} step={0.05} value={shared(areas, item => item.fill) ?? areas[0].fill}
               onChange={event => patchEach(areas, () => ({ fill: Number(event.target.value) }))} />
           </label>
           <label className="tb-check">
-            <input type="checkbox" checked={areas.every(item => item.dashed)} onChange={event => patchEach(areas, () => ({ dashed: event.target.checked }))} />Streckad kant
+            <input type="checkbox" checked={areas.every(item => item.dashed)} onChange={event => patchEach(areas, () => ({ dashed: event.target.checked }))} />{t("Streckad kant")}
           </label>
         </>
       )}
       {equipment && (
-        <label className="tb-field">Storlek
+        <label className="tb-field">{t("Storlek")}
           <input type="range" min={0.4} max={3} step={0.1} value={shared(equipment, item => item.scale) ?? equipment[0].scale}
             onChange={event => patchEach(equipment, () => ({ scale: Number(event.target.value) }))} />
         </label>
       )}
       {texts && (
         <>
-          <label className="tb-field">Textstorlek
+          <label className="tb-field">{t("Textstorlek")}
             <input type="range" min={0.8} max={8} step={0.2} value={shared(texts, item => item.size) ?? texts[0].size}
               onChange={event => patchEach(texts, () => ({ size: Number(event.target.value) }))} />
           </label>
@@ -142,14 +144,14 @@ export function SharedFields({ items, board }: { items: TacticsObject[]; board: 
       )}
       {coloured.length > 0 && (
         <>
-          <Swatches label={players ? "Egen färg" : "Färg"} value={shared(coloured, item => item.color) ?? null} onChange={color => patchEach(coloured, () => ({ color }))} />
+          <Swatches label={players ? t("Egen färg") : t("Färg")} value={shared(coloured, item => item.color) ?? null} onChange={color => patchEach(coloured, () => ({ color }))} />
           {coloured.some(item => item.type === "player" && item.color) && (
-            <button type="button" className="tb-link" onClick={() => patchEach(coloured.filter(item => item.type === "player"), () => ({ color: null }))}>Lagets färg</button>
+            <button type="button" className="tb-link" onClick={() => patchEach(coloured.filter(item => item.type === "player"), () => ({ color: null }))}>{t("Lagets färg")}</button>
           )}
-          {!players && coloured.length < open.length && <p className="tb-hint">Färgen gäller allt markerat utom bollen.</p>}
+          {!players && coloured.length < open.length && <p className="tb-hint">{t("Färgen gäller allt markerat utom bollen.")}</p>}
         </>
       )}
-      {board.frames.length > 1 && <p className="tb-hint">Effekter för alla markerade väljer du under Frames.</p>}
+      {board.frames.length > 1 && <p className="tb-hint">{t("Effekter för alla markerade väljer du under Frames.")}</p>}
     </>
   );
 }

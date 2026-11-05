@@ -7,8 +7,10 @@
 import type { PlayerObject } from "../../../lib/tactics/model.ts";
 import { activeObjects, useEditor, NONE } from "../store.ts";
 import { useSquadFetch } from "../use-squad.ts";
+import { useT } from "../../language";
 
 export function PlayerLink({ item }: { item: PlayerObject }) {
+  const t = useT();
   const meta = useEditor(state => state.meta);
   const squad = useEditor(state => state.document?.squad ?? NONE);
   const objects = useEditor(activeObjects);
@@ -19,9 +21,9 @@ export function PlayerLink({ item }: { item: PlayerObject }) {
     if (!meta?.teamId) return null;
     return (
       <div className="tb-field">
-        <span>Spelare i laget</span>
+        <span>{t("Spelare i laget")}</span>
         <button type="button" className="wt-button secondary small" disabled={busy} onClick={() => void fetchSquad()}>
-          Hämta truppen från {meta.teamName ?? "laget"}
+          {t("Hämta truppen från {team}", { team: meta.teamName ?? t("laget") })}
         </button>
         {error && <span className="wt-error" role="alert">{error}</span>}
       </div>
@@ -36,12 +38,12 @@ export function PlayerLink({ item }: { item: PlayerObject }) {
     useEditor.getState().patch({ [item.id]: changes });
   };
   return (
-    <label className="tb-field">Spelare i laget
+    <label className="tb-field">{t("Spelare i laget")}
       <select value={item.personId ?? ""} onChange={event => choose(event.target.value)}>
-        <option value="">Ingen koppling</option>
+        <option value="">{t("Ingen koppling")}</option>
         {squad.map(player => (
           <option key={player.personId} value={player.personId}>
-            {[player.number !== null ? `#${player.number}` : null, player.name, player.position, placed.has(player.personId) ? "(på planen)" : null].filter(Boolean).join(" · ")}
+            {[player.number !== null ? `#${player.number}` : null, player.name, player.position, placed.has(player.personId) ? t("(på planen)") : null].filter(Boolean).join(" · ")}
           </option>
         ))}
       </select>

@@ -9,8 +9,10 @@ import type { Board } from "../../lib/tactics/model.ts";
 import { boardsFromTemplate, starterBoard, starterSets } from "../../lib/tactics/templates.ts";
 import { activeBoard, useEditor, NONE } from "./store.ts";
 import { useTemplates } from "./use-templates.ts";
+import { useT } from "../language";
 
 export function BoardMenu() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [at, setAt] = useState({ left: 0, top: 0 });
   const button = useRef<HTMLButtonElement>(null);
@@ -51,19 +53,19 @@ export function BoardMenu() {
 
   return (
     <>
-      <button ref={button} type="button" className="tb-board-add" onClick={toggle} aria-haspopup="menu" aria-expanded={open} aria-label="Ny tavla">+<span className="tb-wide-text"> Tavla</span></button>
+      <button ref={button} type="button" className="tb-board-add" onClick={toggle} aria-haspopup="menu" aria-expanded={open} aria-label={t("Ny tavla")}>+<span className="tb-wide-text"> {t("Tavla")}</span></button>
       {open && (
         <div ref={menu} className="tb-menu" role="menu" style={{ left: at.left, top: at.top }}>
-          <button type="button" role="menuitem" onClick={() => add([newBoard(`Tavla ${boards.length + 1}`, home, away)])}>Tom tavla</button>
-          {current && <button type="button" role="menuitem" onClick={() => { useEditor.getState().duplicateBoard(current.id); setOpen(false); }}>Kopia av {current.name || "tavlan"}</button>}
-          <span className="tb-menu-heading">Färdiga tavlor</span>
+          <button type="button" role="menuitem" onClick={() => add([newBoard(t("Tavla {number}", { number: boards.length + 1 }), home, away)])}>{t("Tom tavla")}</button>
+          {current && <button type="button" role="menuitem" onClick={() => { useEditor.getState().duplicateBoard(current.id); setOpen(false); }}>{t("Kopia av {name}", { name: current.name || t("tavlan") })}</button>}
+          <span className="tb-menu-heading">{t("Färdiga tavlor")}</span>
           {starterSets[meta?.kind ?? "match"].map(item => (
-            <button key={item.key} type="button" role="menuitem" onClick={() => add([starterBoard(item, home, away)])}>{item.name}</button>
+            <button key={item.key} type="button" role="menuitem" onClick={() => add([starterBoard({ ...item, name: t(item.name) }, home, away)])}>{t(item.name)}</button>
           ))}
-          <span className="tb-menu-heading">Dina mallar</span>
+          <span className="tb-menu-heading">{t("Dina mallar")}</span>
           {error && <span className="tb-menu-note">{error}</span>}
-          {templates === null ? <span className="tb-menu-note">Laddar…</span> : templates.length === 0 ? (
-            <span className="tb-menu-note">Inga mallar än. Spara en under Inställningar → Projektet.</span>
+          {templates === null ? <span className="tb-menu-note">{t("Laddar…")}</span> : templates.length === 0 ? (
+            <span className="tb-menu-note">{t("Inga mallar än. Spara en under Inställningar → Projektet.")}</span>
           ) : templates.map(template => (
             <button key={template.id} type="button" role="menuitem" onClick={() => void fromTemplate(template.id)}>
               {template.name}

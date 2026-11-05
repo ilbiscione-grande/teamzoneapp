@@ -3,12 +3,15 @@
 // editor makes. Pure, so the store and the tests share them.
 import { settleBalls } from "./ball.ts";
 import { formationPositions } from "./formations.ts";
+import type { Translate } from "../i18n/translate.ts";
 import {
   PITCH_LENGTH, PITCH_WIDTH, SCHEMA_VERSION,
   type Board, type Easing, type Effect, type EquipmentKind, type Frame, type ObjectType, type PlayerObject, type Point,
   type ProjectDocument, type Side, type SquadPlayer, type TacticsObject,
 } from "./model.ts";
 import { effectsOf } from "./timeline.ts";
+
+const same: Translate = text => text;
 
 export const newId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -92,20 +95,20 @@ const kindNames: Record<ObjectType, string> = {
 };
 
 /** The object as the object list names it. */
-export function objectLabel(item: TacticsObject, board: Board): string {
+export function objectLabel(item: TacticsObject, board: Board, t: Translate = same): string {
   if (item.label) return item.label;
   if (item.type === "player") {
-    const team = board.teams[item.side].name;
+    const team = t(board.teams[item.side].name);
     return [item.number !== null ? `#${item.number}` : null, item.name ?? team, item.position ? `(${item.position})` : null].filter(Boolean).join(" ");
   }
-  if (item.type === "line") return item.arrow === "none" ? "Linje" : item.dashed ? "Löpning" : "Pil";
-  if (item.type === "text") return `Text: ${item.text.slice(0, 24)}`;
-  if (item.type === "chain") return item.closed ? "Yta mellan spelare" : "Linje mellan spelare";
-  return kindNames[item.type];
+  if (item.type === "line") return t(item.arrow === "none" ? "Linje" : item.dashed ? "Löpning" : "Pil");
+  if (item.type === "text") return t("Text: {text}", { text: item.text.slice(0, 24) });
+  if (item.type === "chain") return t(item.closed ? "Yta mellan spelare" : "Linje mellan spelare");
+  return t(kindNames[item.type]);
 }
 
-export function kindName(type: ObjectType): string {
-  return kindNames[type];
+export function kindName(type: ObjectType, t: Translate = same): string {
+  return t(kindNames[type]);
 }
 
 /** The document with one board's frame changed; the balls follow. */

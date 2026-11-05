@@ -9,16 +9,19 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { kindName, LAYERS, layered, layerOf, moveNextTo, objectLabel } from "../../../lib/tactics/document.ts";
 import type { Board, TacticsObject } from "../../../lib/tactics/model.ts";
 import { activeObjects, useEditor } from "../store.ts";
+import { useT } from "../../language";
+import type { Translate } from "../../../lib/i18n/translate.ts";
 
-const icon = (item: TacticsObject, board: Board) => {
+const icon = (item: TacticsObject, board: Board, t: Translate) => {
   if (item.type === "player") return <span className="tb-dot" style={{ background: item.color ?? board.teams[item.side].color }} />;
-  return <span className="tb-kind" aria-hidden="true">{kindName(item.type).slice(0, 1)}</span>;
+  return <span className="tb-kind" aria-hidden="true">{kindName(item.type, t).slice(0, 1)}</span>;
 };
 
 /** Where a dragged row would go: before (above) or after (below) a row. */
 type Drop = { id: string; after: boolean };
 
 export function ObjectList({ board, onOpen }: { board: Board; onOpen: () => void }) {
+  const t = useT();
   const objects = useEditor(activeObjects);
   const selection = useEditor(state => state.selection);
   const { select, patch, changeObjects } = useEditor.getState();
@@ -33,7 +36,7 @@ export function ObjectList({ board, onOpen }: { board: Board; onOpen: () => void
   const listed = [...layered(objects)].reverse();
   const layerOfDragged = dragged ? layerOf(objects.find(item => item.id === dragged) ?? { type: "" }) : null;
   if (listed.length === 0) {
-    return <p className="tb-empty">Tavlan är tom. Välj ett verktyg och tryck på planen, eller lägg ut en formation.</p>;
+    return <p className="tb-empty">{t("Tavlan är tom. Välj ett verktyg och tryck på planen, eller lägg ut en formation.")}</p>;
   }
   const end = () => { setDragged(null); setDrop(null); };
   const place = (target: Drop) => {
@@ -44,8 +47,8 @@ export function ObjectList({ board, onOpen }: { board: Board; onOpen: () => void
   };
   return (
     <>
-      <p className="tb-hint">Bollar ligger alltid överst, sedan spelarna och underst allt annat. Dra en rad upp eller ner för att ändra ordningen i sin grupp.</p>
-      <ul ref={list} className="tb-objects" aria-label="Objekt på tavlan" onDragLeave={event => {
+      <p className="tb-hint">{t("Bollar ligger alltid överst, sedan spelarna och underst allt annat. Dra en rad upp eller ner för att ändra ordningen i sin grupp.")}</p>
+      <ul ref={list} className="tb-objects" aria-label={t("Objekt på tavlan")} onDragLeave={event => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDrop(null);
       }}>
         {listed.map((item, index) => {
@@ -55,7 +58,7 @@ export function ObjectList({ board, onOpen }: { board: Board; onOpen: () => void
           const marker = drop?.id === item.id && dragged !== item.id ? (drop.after ? "after" : "before") : undefined;
           return (
             <Fragment key={item.id}>
-            {heading && <li className="tb-layer" aria-hidden="true">{LAYERS[layer]}</li>}
+            {heading && <li className="tb-layer" aria-hidden="true">{t(LAYERS[layer])}</li>}
             <li data-selected={selected} data-hidden={item.hidden} data-locked={item.locked} data-drop={marker}
               data-dragging={dragged === item.id} draggable
               onDragStart={event => { setDragged(item.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", item.id); }}
@@ -73,18 +76,18 @@ export function ObjectList({ board, onOpen }: { board: Board; onOpen: () => void
               <button type="button" className="tb-object-name" aria-current={selected || undefined}
                 onClick={event => select([item.id], event.shiftKey || event.metaKey || event.ctrlKey)}
                 onDoubleClick={() => { select([item.id]); onOpen(); }}>
-                {icon(item, board)}
-                <span className="tb-object-label">{objectLabel(item, board)}</span>
-                {item.group && <span className="tb-group-tag" title="Väljs och flyttas med sin grupp">Grupp</span>}
-                {item.locked && <span className="tb-locked-tag">🔒 Låst</span>}
+                {icon(item, board, t)}
+                <span className="tb-object-label">{objectLabel(item, board, t)}</span>
+                {item.group && <span className="tb-group-tag" title={t("Väljs och flyttas med sin grupp")}>{t("Grupp")}</span>}
+                {item.locked && <span className="tb-locked-tag">{t("🔒 Låst")}</span>}
               </button>
               <span className="tb-object-actions">
-                <button type="button" title={item.hidden ? "Visa" : "Dölj"} aria-label={item.hidden ? "Visa" : "Dölj"} aria-pressed={item.hidden}
+                <button type="button" title={item.hidden ? t("Visa") : t("Dölj")} aria-label={item.hidden ? t("Visa") : t("Dölj")} aria-pressed={item.hidden}
                   onClick={() => patch({ [item.id]: { hidden: !item.hidden } })}>{item.hidden ? "◌" : "◉"}</button>
-                <button type="button" className="tb-lock" data-on={item.locked} title={item.locked ? "Lås upp" : "Lås"}
-                  aria-label={item.locked ? "Lås upp" : "Lås"} aria-pressed={item.locked}
+                <button type="button" className="tb-lock" data-on={item.locked} title={item.locked ? t("Lås upp") : t("Lås")}
+                  aria-label={item.locked ? t("Lås upp") : t("Lås")} aria-pressed={item.locked}
                   onClick={() => patch({ [item.id]: { locked: !item.locked } })}>{item.locked ? "🔒" : "🔓"}</button>
-                <button type="button" title="Ta bort" aria-label="Ta bort" disabled={item.locked}
+                <button type="button" title={t("Ta bort")} aria-label={t("Ta bort")} disabled={item.locked}
                   onClick={() => changeObjects(current => current.filter(other => other.id !== item.id))}>✕</button>
               </span>
             </li>

@@ -17,6 +17,7 @@ import { ProjectFields } from "./TopBar.tsx";
 import { TemplateDialog } from "./TemplateDialog.tsx";
 import { HostNotes } from "./live/HostNotes.tsx";
 import { ExerciseFields } from "./panels/ExerciseFields.tsx";
+import { useT } from "../language";
 
 type Tab = "board" | "pitch" | "teams" | "project";
 const tabs: Record<Tab, string> = { board: "Tavlan", pitch: "Planen", teams: "Lagen", project: "Projektet" };
@@ -36,18 +37,19 @@ function change(board: Board, next: (current: Board) => Board) {
 }
 
 function BoardFields({ board }: { board: Board }) {
+  const t = useT();
   const kind = useEditor(state => state.meta?.kind);
   // The notes are the owner's; another leader of the team changes the boards only.
   const owner = useEditor(state => state.meta?.access === "owner");
   const set = (next: (current: Board) => Board) => change(board, next);
   return (
     <>
-      <label className="tb-field">Namn<input value={board.name} maxLength={60} onChange={event => set(current => ({ ...current, name: event.target.value }))} /></label>
-      <label className="tb-field">Beskrivning
-        <textarea rows={4} maxLength={2000} value={board.description ?? ""} placeholder="T.ex. organisation, anvisningar och coachpunkter. Visas bredvid tavlan i visningsläget."
+      <label className="tb-field">{t("Namn")}<input value={board.name} maxLength={60} onChange={event => set(current => ({ ...current, name: event.target.value }))} /></label>
+      <label className="tb-field">{t("Beskrivning")}
+        <textarea rows={4} maxLength={2000} value={board.description ?? ""} placeholder={t("T.ex. organisation, anvisningar och coachpunkter. Visas bredvid tavlan i visningsläget.")}
           onChange={event => set(current => ({ ...current, description: event.target.value }))} />
       </label>
-      <p className="tb-hint">Anteckningar för varje frame skriver du under Frames.</p>
+      <p className="tb-hint">{t("Anteckningar för varje frame skriver du under Frames.")}</p>
       {kind === "training" && <ExerciseFields board={board} />}
       {owner && <HostNotes compact />}
     </>
@@ -55,6 +57,7 @@ function BoardFields({ board }: { board: Board }) {
 }
 
 function PitchFields({ board }: { board: Board }) {
+  const t = useT();
   const attachBall = useEditor(state => state.attachBall);
   const setAttachBall = useEditor(state => state.setAttachBall);
   const boards = useEditor(state => state.document?.boards ?? NONE);
@@ -62,63 +65,64 @@ function PitchFields({ board }: { board: Board }) {
   const set = (next: (current: Board) => Board) => change(board, next);
   return (
     <>
-      <p className="tb-hint">Gäller tavlan {board.name || "Tavla"}.</p>
+      <p className="tb-hint">{t("Gäller tavlan {name}.", { name: board.name || t("Tavla") })}</p>
       <div className="tb-row">
-        <label className="tb-field">Plan
+        <label className="tb-field">{t("Plan")}
           <select value={board.view} onChange={event => set(current => ({ ...current, view: event.target.value as PitchView }))}>
-            {Object.entries(views).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            {Object.entries(views).map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
           </select>
         </label>
-        <label className="tb-field">Rutnät
+        <label className="tb-field">{t("Rutnät")}
           <select value={board.overlay} onChange={event => set(current => ({ ...current, overlay: event.target.value as PitchOverlay }))}>
-            {Object.entries(overlays).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            {Object.entries(overlays).map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
           </select>
         </label>
       </div>
       <div className="tb-row">
-        <label className="tb-field">Planstil
+        <label className="tb-field">{t("Planstil")}
           <select value={style.theme} onChange={event => set(current => ({ ...current, pitch: { ...styleOf(current.pitch), theme: event.target.value as PitchTheme } }))}>
-            {Object.entries(themes).map(([value, theme]) => <option key={value} value={value}>{theme.label}</option>)}
+            {Object.entries(themes).map(([value, theme]) => <option key={value} value={value}>{t(theme.label)}</option>)}
           </select>
         </label>
-        <label className="tb-field">Mönster
+        <label className="tb-field">{t("Mönster")}
           <select value={style.pattern} onChange={event => set(current => ({ ...current, pitch: { ...styleOf(current.pitch), pattern: event.target.value as PitchPattern } }))}>
-            {Object.entries(patternLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            {Object.entries(patternLabels).map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
           </select>
         </label>
       </div>
-      <label className="tb-field">Omgivning
+      <label className="tb-field">{t("Omgivning")}
         <select value={board.surroundings ?? "none"} onChange={event => set(current => ({ ...current, surroundings: event.target.value as Surroundings }))}>
-          <option value="none">Ingen</option><option value="arena">Arena med läktare</option><option value="training">Träningsplan</option>
+          <option value="none">{t("Ingen")}</option><option value="arena">{t("Arena med läktare")}</option><option value="training">{t("Träningsplan")}</option>
         </select>
       </label>
       {boards.length > 1 && (
         <button type="button" className="tb-link" onClick={() => useEditor.getState().change(document => ({ ...document, boards: document.boards.map(item => ({ ...item, pitch: style, surroundings: board.surroundings })) }))}>
-          Använd planstil och omgivning på alla tavlor
+          {t("Använd planstil och omgivning på alla tavlor")}
         </button>
       )}
-      <h3 className="tb-settings-heading">På planen</h3>
-      <label className="tb-check"><input type="checkbox" checked={board.showNames} onChange={event => set(current => ({ ...current, showNames: event.target.checked }))} />Visa spelarnas namn</label>
-      <label className="tb-check"><input type="checkbox" checked={board.showPositions ?? false} onChange={event => set(current => ({ ...current, showPositions: event.target.checked }))} />Visa spelarnas positioner</label>
-      <label className="tb-check"><input type="checkbox" checked={board.showFacing ?? false} onChange={event => set(current => ({ ...current, showFacing: event.target.checked }))} />Visa blickriktning (vrid spelaren med ramen)</label>
-      <label className="tb-check"><input type="checkbox" checked={attachBall} onChange={event => setAttachBall(event.target.checked)} />Bollen fäster vid spelare</label>
+      <h3 className="tb-settings-heading">{t("På planen")}</h3>
+      <label className="tb-check"><input type="checkbox" checked={board.showNames} onChange={event => set(current => ({ ...current, showNames: event.target.checked }))} />{t("Visa spelarnas namn")}</label>
+      <label className="tb-check"><input type="checkbox" checked={board.showPositions ?? false} onChange={event => set(current => ({ ...current, showPositions: event.target.checked }))} />{t("Visa spelarnas positioner")}</label>
+      <label className="tb-check"><input type="checkbox" checked={board.showFacing ?? false} onChange={event => set(current => ({ ...current, showFacing: event.target.checked }))} />{t("Visa blickriktning (vrid spelaren med ramen)")}</label>
+      <label className="tb-check"><input type="checkbox" checked={attachBall} onChange={event => setAttachBall(event.target.checked)} />{t("Bollen fäster vid spelare")}</label>
     </>
   );
 }
 
 function TeamFields({ board }: { board: Board }) {
+  const t = useT();
   const team = (side: Side, changes: Partial<Board["teams"][Side]>) =>
     change(board, current => ({ ...current, teams: { ...current.teams, [side]: { ...current.teams[side], ...changes } } }));
   return (
     <>
-      <p className="tb-hint">Gäller tavlan {board.name || "Tavla"}.</p>
+      <p className="tb-hint">{t("Gäller tavlan {name}.", { name: board.name || t("Tavla") })}</p>
       <div className="tb-settings-teams">
         {(["home", "away"] as Side[]).map(side => (
           <fieldset key={side} className="tb-team">
-            <legend>{side === "home" ? "Hemmalag" : "Bortalag"}</legend>
-            <label className="tb-field">Namn<input value={board.teams[side].name} maxLength={40} onChange={event => team(side, { name: event.target.value })} /></label>
-            <Swatches label="Färg" value={board.teams[side].color} onChange={color => team(side, { color })} />
-            <Swatches label="Nummerfärg" value={board.teams[side].numberColor} onChange={numberColor => team(side, { numberColor })} />
+            <legend>{side === "home" ? t("Hemmalag") : t("Bortalag")}</legend>
+            <label className="tb-field">{t("Namn")}<input value={board.teams[side].name} maxLength={40} onChange={event => team(side, { name: event.target.value })} /></label>
+            <Swatches label={t("Färg")} value={board.teams[side].color} onChange={color => team(side, { color })} />
+            <Swatches label={t("Nummerfärg")} value={board.teams[side].numberColor} onChange={numberColor => team(side, { numberColor })} />
           </fieldset>
         ))}
       </div>
@@ -127,21 +131,23 @@ function TeamFields({ board }: { board: Board }) {
 }
 
 function ProjectSettings() {
+  const t = useT();
   const [savingTemplate, setSavingTemplate] = useState(false);
   return (
     <>
       <ProjectFields className="tb-panel-select" />
       <BrandingFields />
       <div className="tb-actions">
-        <button type="button" className="wt-button secondary small" onClick={() => setSavingTemplate(true)}>Spara som mall…</button>
+        <button type="button" className="wt-button secondary small" onClick={() => setSavingTemplate(true)}>{t("Spara som mall…")}</button>
       </div>
-      <p className="tb-hint">Publicera i klubbens bibliotek och spara projektet som fil gör du under Dela.</p>
+      <p className="tb-hint">{t("Publicera i klubbens bibliotek och spara projektet som fil gör du under Dela.")}</p>
       {savingTemplate && <TemplateDialog onClose={() => setSavingTemplate(false)} />}
     </>
   );
 }
 
 export function SettingsDialog() {
+  const t = useT();
   const tab = useSettings(state => state.tab);
   const { open, close } = useSettings.getState();
   const board = useEditor(activeBoard);
@@ -153,16 +159,16 @@ export function SettingsDialog() {
   }, [tab, close]);
   if (!tab || !board) return null;
   return (
-    <div className="tb-modal" role="dialog" aria-modal="true" aria-label="Inställningar"
+    <div className="tb-modal" role="dialog" aria-modal="true" aria-label={t("Inställningar")}
       onClick={event => { if (event.target === event.currentTarget) close(); }}>
       <div className="tb-modal-card tb-settings">
         <div className="tb-modal-head">
-          <h2>Inställningar</h2>
-          <button type="button" className="tb-modal-close" aria-label="Stäng" onClick={close}>×</button>
+          <h2>{t("Inställningar")}</h2>
+          <button type="button" className="tb-modal-close" aria-label={t("Stäng")} onClick={close}>×</button>
         </div>
         <div className="tb-settings-tabs" role="tablist">
           {(Object.entries(tabs) as [Tab, string][]).map(([value, label]) => (
-            <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => open(value)}>{label}</button>
+            <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => open(value)}>{t(label)}</button>
           ))}
         </div>
         <div className="tb-inspector" role="tabpanel">

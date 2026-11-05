@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import type { Board } from "../../lib/tactics/model.ts";
 import { useEditor } from "./store.ts";
+import { useT } from "../language";
 
 const PHONE = "(max-width: 760px)";
 
@@ -25,12 +26,14 @@ export function usePhone(): boolean {
 
 /** The arena or training ground on or off; only for a board that has one. */
 export function SurroundingsButton({ board }: { board: Board }) {
+  const t = useT();
   const plain = useEditor(state => state.plain);
   if (!board.surroundings || board.surroundings === "none") return null;
-  const label = board.surroundings === "arena" ? "arenan" : "träningsplanen runt";
+  const arena = board.surroundings === "arena";
+  const label = plain ? (arena ? t("Visa arenan") : t("Visa träningsplanen runt")) : (arena ? t("Dölj arenan") : t("Dölj träningsplanen runt"));
   return (
     <button type="button" aria-pressed={!plain} onClick={() => useEditor.getState().setPlain(!plain)}
-      aria-label={plain ? `Visa ${label}` : `Dölj ${label}`} title={plain ? `Visa ${label}` : `Dölj ${label}`}>
+      aria-label={label} title={label}>
       <StandsIcon />
     </button>
   );
@@ -44,12 +47,13 @@ export async function shareLink(title: string, onFallback: () => void) {
 }
 
 export function AboutSheet({ board, onClose }: { board: Board; onClose: () => void }) {
+  const t = useT();
   return (
-    <div className="tb-caption-sheet" role="dialog" aria-label="Om tavlan" onClick={onClose}>
+    <div className="tb-caption-sheet" role="dialog" aria-label={t("Om tavlan")} onClick={onClose}>
       <div onClick={event => event.stopPropagation()}>
         <div className="tb-modal-head">
-          <h2>{board.name || "Om tavlan"}</h2>
-          <button type="button" className="tb-modal-close" aria-label="Stäng" onClick={onClose}>×</button>
+          <h2>{board.name || t("Om tavlan")}</h2>
+          <button type="button" className="tb-modal-close" aria-label={t("Stäng")} onClick={onClose}>×</button>
         </div>
         <p>{board.description?.trim()}</p>
       </div>

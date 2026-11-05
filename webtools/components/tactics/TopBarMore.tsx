@@ -4,11 +4,13 @@
 // lesson, the versions and the settings move into a "more" menu under one button.
 import { useEffect, useRef, useState } from "react";
 import { useLive } from "./live/live-store.ts";
+import { useT } from "../language";
 
 type Item = { label: string; run: () => void };
 
 /** onLive: none for another leader of the team, whose project it is not. */
 export function TopBarMore({ onPresent, onLive, onVersions, onSettings }: { onPresent: () => void; onLive?: () => void; onVersions: () => void; onSettings: () => void }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [at, setAt] = useState({ right: 8, top: 0 });
   const button = useRef<HTMLButtonElement>(null);
@@ -25,10 +27,10 @@ export function TopBarMore({ onPresent, onLive, onVersions, onSettings }: { onPr
   }, [open]);
 
   const items: Item[] = [
-    { label: "Visa i helskärm", run: onPresent },
-    ...(onLive ? [{ label: live ? "Livelektion pågår" : "Livelektion", run: onLive }] : []),
-    { label: "Versioner", run: onVersions },
-    { label: "Inställningar", run: onSettings },
+    { label: t("Visa i helskärm"), run: onPresent },
+    ...(onLive ? [{ label: live ? t("Livelektion pågår") : t("Livelektion"), run: onLive }] : []),
+    { label: t("Versioner"), run: onVersions },
+    { label: t("Inställningar"), run: onSettings },
   ];
   const toggle = () => {
     const rect = button.current?.getBoundingClientRect();
@@ -37,7 +39,7 @@ export function TopBarMore({ onPresent, onLive, onVersions, onSettings }: { onPr
   };
   return (
     <span className="tb-narrow-only">
-      <button ref={button} type="button" className="tb-icon" data-live={live} onClick={toggle} aria-haspopup="menu" aria-expanded={open} aria-label="Mer">⋯</button>
+      <button ref={button} type="button" className="tb-icon" data-live={live} onClick={toggle} aria-haspopup="menu" aria-expanded={open} aria-label={t("Mer")}>⋯</button>
       {open && (
         <div ref={menu} className="tb-menu tb-more-menu" role="menu" style={{ right: at.right, top: at.top }}>
           {items.map(item => (

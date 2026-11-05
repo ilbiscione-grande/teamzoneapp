@@ -13,10 +13,12 @@ const finished = ["components/shell.tsx", "components/welcome.tsx", "components/
   "components/account.tsx", "components/account-page.tsx", "components/account-deletion.tsx", "components/app-card.tsx",
   "app/page.tsx", "app/not-found.tsx", "app/logga-in/page.tsx", "app/konto/page.tsx",
   "components/tactics/TacticsProduct.tsx", "components/tactics/RequireTacticsboard.tsx", "components/tactics/TacticsboardSubscription.tsx",
-  "components/tactics/WithdrawPurchase.tsx", "components/tactics/use-tacticsboard-access.ts", "app/tacticsboard/page.tsx"];
+  "components/tactics/WithdrawPurchase.tsx", "components/tactics/use-tacticsboard-access.ts", "app/tacticsboard/page.tsx",
+  ...["panels/BoardSettings","panels/BrandingFields","panels/CopyTo","panels/ExerciseFields","panels/FramesPanel","panels/Inspector","panels/ObjectList","panels/PhoneToolbar","panels/PlayerLink","panels/SharedFields","panels/SquadPanel","panels/Swatches","panels/TextLook","timeline/Timeline","timeline/Scrubber","export/ExportDialog","stage/BoardStage","stage/CropFrame","TopBar","TopBarMore","TacticsEditor","HelpDialog","ToolHint","SettingsDialog","BoardMenu","VersionsDialog","TemplateDialog","DrillPicker","MyNumber","ViewerTools","ErrorBoundary","Presenter","BoardText"].map(name => `components/tactics/${name}.tsx`)];
 
 // Data shown through t(variable): its Swedish needs English too.
-const shownAsData = ["lib/account.ts", "lib/tactics/access.ts", "lib/tactics/withdrawal.ts"];
+const shownAsData = ["lib/account.ts", "lib/tactics/access.ts", "lib/tactics/withdrawal.ts", "lib/tactics/facing.ts", "lib/tactics/pitch-style.ts",
+  "lib/tactics/preview.ts", "lib/tactics/templates.ts", "lib/tactics/transfer.ts", "components/tactics/panels/effects.ts", "components/tactics/panels/Toolbar.tsx"];
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap(name => {
@@ -82,7 +84,8 @@ test("finished parts keep their Swedish inside t()", () => {
       .replace(/\bt\(\s*"(?:[^"\\]|\\.)*"/g, "");
     // A constant above the components, shown through t(variable), only needs its English.
     const start = Math.max(0, code.search(/^(export )?(default )?(async )?function /m));
-    const constants = code.slice(0, start).replace(/"((?:[^"\\]|\\.)*)"/g, (whole, text: string) => english[text] ? '""' : whole);
-    assert.deepEqual((constants + code.slice(start)).split("\n").filter(line => /[åäöÅÄÖ]/.test(line)), [], file);
+    const known = (text: string) => text.replace(/"((?:[^"\\]|\\.)*)"/g, (whole, inner: string) => english[inner] ? '""' : whole);
+    const rest = code.slice(start).replace(/^  \[".*\],$/gm, known);
+    assert.deepEqual((known(code.slice(0, start)) + rest).split("\n").filter(line => /[åäöÅÄÖ]/.test(line)), [], file);
   }
 });

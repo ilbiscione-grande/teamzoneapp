@@ -4,6 +4,7 @@
 // tip shows once in this browser, and all can be turned off.
 import { useEffect, useState } from "react";
 import { useEditor, type Tool } from "./store.ts";
+import { useT } from "../language";
 
 const KEY = "teamzone:tactics:tips";
 
@@ -38,6 +39,7 @@ function writeSeen(seen: Seen) {
 }
 
 export function ToolHint() {
+  const t = useT();
   const tool = useEditor(state => state.tool);
   const [shown, setShown] = useState<Tool | null>(null);
   useEffect(() => {
@@ -52,10 +54,10 @@ export function ToolHint() {
   if (!shown) return null;
   return (
     <div className="tb-tip" role="status">
-      <span>{tips[shown]}</span>
+      <span>{t(tips[shown] ?? "")}</span>
       <span className="tb-tip-actions">
-        <button type="button" className="tb-tip-off" onClick={() => { writeSeen({ ...readSeen(), off: true }); setShown(null); }}>Visa inga fler tips</button>
-        <button type="button" className="tb-tip-close" aria-label="Stäng tipset" onClick={() => setShown(null)}>×</button>
+        <button type="button" className="tb-tip-off" onClick={() => { writeSeen({ ...readSeen(), off: true }); setShown(null); }}>{t("Visa inga fler tips")}</button>
+        <button type="button" className="tb-tip-close" aria-label={t("Stäng tipset")} onClick={() => setShown(null)}>×</button>
       </span>
     </div>
   );

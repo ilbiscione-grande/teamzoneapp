@@ -7,8 +7,10 @@ import { useState } from "react";
 import { copyObjects, type FramePlace } from "../../../lib/tactics/copy.ts";
 import type { Board } from "../../../lib/tactics/model.ts";
 import { useEditor, NONE } from "../store.ts";
+import { useT } from "../../language";
 
 export function CopyTo({ board, ids }: { board: Board; ids: string[] }) {
+  const t = useT();
   const frameIndex = useEditor(state => state.frameIndex);
   const boards = useEditor(state => state.document?.boards ?? NONE);
   const [done, setDone] = useState("");
@@ -23,16 +25,18 @@ export function CopyTo({ board, ids }: { board: Board; ids: string[] }) {
     const result = copyObjects(document, { boardId: board.id, frameIndex }, ids, to);
     if (result.ids.length === 0) return;
     change(() => result.document);
-    const count = result.ids.length === 1 ? "Objektet" : `${result.ids.length} objekt`;
-    setDone(`${count} kopierat till ${where}${result.replaced > 0 ? ` (${result.replaced} fanns redan där och fick samma läge)` : ""}.`);
+    const what = result.ids.length === 1 ? t("Objektet") : t("{count} objekt", { count: result.ids.length });
+    setDone(result.replaced > 0
+      ? t("{what} kopierat till {where} ({count} fanns redan där och fick samma läge).", { what, where, count: result.replaced })
+      : t("{what} kopierat till {where}.", { what, where }));
   };
   const choose = (value: string) => {
     if (value.startsWith("frame:")) {
       const index = Number(value.slice(6));
-      copy({ boardId: board.id, frameIndex: index }, `frame ${index + 1}`);
+      copy({ boardId: board.id, frameIndex: index }, t("frame {number}", { number: index + 1 }));
     } else if (value.startsWith("board:")) {
       const other = others.find(item => item.id === value.slice(6));
-      if (other) copy({ boardId: other.id, frameIndex: 0 }, `${other.name || "tavlan"}, frame 1`);
+      if (other) copy({ boardId: other.id, frameIndex: 0 }, t("{name}, frame 1", { name: other.name || t("tavlan") }));
     }
   };
 
@@ -41,19 +45,19 @@ export function CopyTo({ board, ids }: { board: Board; ids: string[] }) {
       <div className="tb-actions">
         {next !== null && (
           <button type="button" className="wt-button secondary small" onClick={() => copy({ boardId: board.id, frameIndex: next }, `frame ${next + 1}`)}>
-            Kopiera till nästa frame
+            {t("Kopiera till nästa frame")}
           </button>
         )}
-        <select className="tb-panel-select" value="" aria-label="Kopiera till" onChange={event => choose(event.target.value)}>
-          <option value="">Kopiera till…</option>
+        <select className="tb-panel-select" value="" aria-label={t("Kopiera till")} onChange={event => choose(event.target.value)}>
+          <option value="">{t("Kopiera till…")}</option>
           {frames.length > 0 && (
-            <optgroup label="Den här tavlan">
-              {frames.map(index => <option key={index} value={`frame:${index}`}>Frame {index + 1}{index === next ? " (nästa)" : ""}</option>)}
+            <optgroup label={t("Den här tavlan")}>
+              {frames.map(index => <option key={index} value={`frame:${index}`}>{t("Frame {number}", { number: index + 1 })}{index === next ? ` ${t("(nästa)")}` : ""}</option>)}
             </optgroup>
           )}
           {others.length > 0 && (
-            <optgroup label="Annan tavla, första frame">
-              {others.map(other => <option key={other.id} value={`board:${other.id}`}>{other.name || "Tavla"}</option>)}
+            <optgroup label={t("Annan tavla, första frame")}>
+              {others.map(other => <option key={other.id} value={`board:${other.id}`}>{other.name || t("Tavla")}</option>)}
             </optgroup>
           )}
         </select>

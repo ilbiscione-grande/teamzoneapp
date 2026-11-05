@@ -13,10 +13,12 @@ import type { LineObject, Point, ShapeObject, TacticsObject } from "../../../lib
 import { useEditor } from "../store.ts";
 import { FacingHandle } from "./FacingHandle.tsx";
 import { useStage } from "./stage-context.ts";
+import { useT } from "../../language";
 
 const TRANSFORMABLE = new Set(["cone", "pole", "mannequin", "goal", "rect", "ellipse", "text"]);
 
 function Transform({ items, upright }: { items: TacticsObject[]; upright: number }) {
+  const t = useT();
   const shared = useStage();
   const ref = useRef<Konva.Transformer>(null);
   const ids = items.map(item => item.id).join(",");
@@ -49,7 +51,7 @@ function Transform({ items, upright }: { items: TacticsObject[]; upright: number
             node.scale({ x: 1, y: 1 });
           } else if (item.type === "text") {
             // The box changes; the letters keep their size.
-            const text = (node as Konva.Group).findOne("Text");
+            const text = (node as Konva.Group).findOne(t("Text"));
             const width = item.width ?? text?.width() ?? 1, height = item.height ?? text?.height() ?? 1;
             // Text is drawn turned upright on a turned pitch; that turn is not its own.
             patches[item.id] = { ...common, rotation: common.rotation - upright, width: Math.max(item.size, width * sx), height: Math.max(item.size, height * sy) };

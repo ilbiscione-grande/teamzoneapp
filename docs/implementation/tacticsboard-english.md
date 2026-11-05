@@ -76,8 +76,8 @@ Brittisk engelska, som i fotbollen.
 | 1 | Språkgrunden: val, kaka, `t`, vakten, språkväljaren | Klart lokalt |
 | 2 | Skal, start, inloggning, konto | Klart lokalt |
 | 3 | Produktsidan och köpet, med priser och ångerfunktion | Klart lokalt |
-| 4 | Editorn, inklusive export och pdf | Nästa |
-| 5 | Hem, bibliotek, mappar, delade sidor och OG-bilder | |
+| 4 | Editorn, inklusive export och pdf | Klart lokalt |
+| 5 | Hem, bibliotek, mappar, delade sidor och OG-bilder | Nästa |
 | 6 | Livegenomgångar | |
 | 7 | Backend: Stripe `locale` från språket, språk på kontot, ångerkvitto, Auth-mejl med `{{ if eq .Data.locale "en" }}` | |
 | 8 | Publika sajten och juridiken, efter att de svenska texterna är granskade | |

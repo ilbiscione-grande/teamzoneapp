@@ -34,6 +34,7 @@ import { useShortcuts } from "./use-shortcuts.ts";
 import { Timeline } from "./timeline/Timeline.tsx";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import "./tactics.css";
+import { useT } from "../language";
 
 const BoardStage = dynamic(() => import("./stage/BoardStage.tsx"), { ssr: false, loading: () => <div className="tb-stage" /> });
 
@@ -41,6 +42,7 @@ type Panel = "properties" | "frames" | "objects" | "squad" | "live";
 
 /** The loaded project's workspace. */
 export function TacticsWorkspace() {
+  const t = useT();
   const [panel, setPanel] = useState<Panel>("properties");
   const [presenting, setPresenting] = useState(false);
   const [help, setHelp] = useState(false);
@@ -56,7 +58,7 @@ export function TacticsWorkspace() {
   useEffect(() => { if (selectionCount > 0) setPanel(current => current === "frames" || current === "objects" ? current : "properties"); }, [selectionCount]);
   if (!board) return null;
   if (presenting) return <Presenter onClose={() => setPresenting(false)} />;
-  const tabs: [Panel, React.ReactNode][] = [["properties", "Egenskaper"], ["frames", "Frames"], ["objects", "Objekt"], ["squad", "Lag"]];
+  const tabs: [Panel, React.ReactNode][] = [["properties", t("Egenskaper")], ["frames", t("Frames")], ["objects", t("Objekt")], ["squad", t("Lag")]];
   // While a live lesson runs, its chat, hands and settings have a tab first.
   if (live) tabs.unshift(["live", <LiveBadge key="live" label="Live" hands />]);
   return (
@@ -65,14 +67,14 @@ export function TacticsWorkspace() {
       <div className="tb-body">
         <Toolbar homeColor={board.teams.home.color} awayColor={board.teams.away.color} onHelp={openHelp} />
         <div className="tb-center">
-          <ErrorBoundary label="Tavlan">
+          <ErrorBoundary label={t("Tavlan")}>
             <BoardStage extra={<><LiveStrokes /><LiveAnswers /></>} />
           </ErrorBoundary>
           <ToolHint />
           <DrillPicker />
           <ErrorBoundary label="Tidslinjen"><Timeline board={board} /></ErrorBoundary>
         </div>
-        <aside className="tb-panel" aria-label="Panel">
+        <aside className="tb-panel" aria-label={t("Panel")}>
           <div className="tb-panel-tabs" role="tablist">
             {tabs.map(([value, label]) => (
               <button key={value} type="button" role="tab" aria-selected={panelOpen && panel === value}
@@ -99,6 +101,7 @@ export function TacticsWorkspace() {
 
 /** A team's project another leader may watch, not edit: as a shared link shows it, with a copy to make your own. */
 function WatchProject({ project }: { project: Project }) {
+  const t = useT();
   const { client } = useAccount();
   const [busy, setBusy] = useState(false);
   const copy = async () => {
@@ -108,19 +111,20 @@ function WatchProject({ project }: { project: Project }) {
       project_name: `${project.name} (kopia)`.slice(0, 120), project_kind: project.kind,
       target_team_id: project.teamzone_team_id, project_document: project.document,
     });
-    if (error) { setBusy(false); window.alert("Kopian kunde inte skapas. Försök igen."); return; }
+    if (error) { setBusy(false); window.alert(t("Kopian kunde inte skapas. Försök igen.")); return; }
     window.location.href = `/tacticsboard/${(data as { id: string }).id}`;
   };
   const document = normalizeDocument(project.document);
   return (
-    <SharedViewer back={{ href: "/tacticsboard", label: "Till projekten" }}
+    <SharedViewer back={{ href: "/tacticsboard", label: t("Till projekten") }}
       shared={{ name: project.name, kind: project.kind, updated_at: project.updated_at, team_name: project.team_name, board_id: null, boards: document.boards, branding: document.branding }}
       actions={<button type="button" className="tb-icon tb-me" disabled={busy} onClick={() => void copy()}
-        title={`${project.owner_name?.trim() || "En annan ledare"} äger projektet. Gör en egen kopia att ändra i.`}>Gör en kopia</button>} />
+        title={t("{name} äger projektet. Gör en egen kopia att ändra i.", { name: project.owner_name?.trim() || t("En annan ledare") })}>{t("Gör en kopia")}</button>} />
   );
 }
 
 export function TacticsEditor({ id }: { id: string }) {
+  const t = useT();
   const { client } = useAccount();
   const [error, setError] = useState("");
   const [watching, setWatching] = useState<Project | null>(null);
@@ -133,7 +137,7 @@ export function TacticsEditor({ id }: { id: string }) {
     let cancelled = false;
     void client.schema("api").rpc("get_tactics_project", { target_project_id: id }).then(({ data, error: loadError }) => {
       if (cancelled) return;
-      if (loadError) { setError("Projektet hittades inte, eller så har du inte tillgång till det."); return; }
+      if (loadError) { setError(t("Projektet hittades inte, eller så har du inte tillgång till det.")); return; }
       const project = data as Project;
       if (project.access === "view") { setWatching(project); return; }
       useEditor.getState().load(project, normalizeDocument(project.document));
@@ -142,8 +146,8 @@ export function TacticsEditor({ id }: { id: string }) {
     return () => { cancelled = true; };
   }, [client, id]);
 
-  if (error) return <div className="wt-wrap wt-section"><p className="wt-error" role="alert">{error}</p><Link className="wt-link" href="/tacticsboard">Till projekten</Link></div>;
+  if (error) return <div className="wt-wrap wt-section"><p className="wt-error" role="alert">{error}</p><Link className="wt-link" href="/tacticsboard">{t("Till projekten")}</Link></div>;
   if (watching) return <WatchProject project={watching} />;
-  if (!loaded) return <p className="wt-wrap wt-section wt-status">Laddar…</p>;
+  if (!loaded) return <p className="wt-wrap wt-section wt-status">{t("Laddar…")}</p>;
   return <TacticsWorkspace />;
 }

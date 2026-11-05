@@ -12,6 +12,7 @@ import { activeBoard, useEditor, NONE } from "../store.ts";
 import { kindLabels } from "../TopBar.tsx";
 import { download } from "../timeline/video-export.ts";
 import { buildPdf } from "./pdf.ts";
+import { useLanguage } from "../../language";
 
 const OffscreenBoard = dynamic(() => import("./OffscreenBoard.tsx"), { ssr: false });
 
@@ -24,6 +25,8 @@ function movesFor(board: Board, frameIndex: number, choice: FrameChoice): Trail[
 }
 
 export function ExportDialog({ onClose }: { onClose: () => void }) {
+  const language = useLanguage();
+  const { t } = language;
   const meta = useEditor(state => state.meta);
   const boards = useEditor(state => state.document?.boards ?? NONE);
   const board = useEditor(activeBoard);
@@ -64,12 +67,12 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
         pictures.set(key, await picture(target, target.frames[frameIndex].objects, showMoves ? movesFor(target, frameIndex, frames) : []));
       }
       setJob(null);
-      setProgress("Skapar PDF…");
-      const blob = await buildPdf({ projectName: meta.name || "Tacticsboard", subtitle: [kindLabels[meta.kind], meta.teamName].filter(Boolean).join(" · "), pages, pictures });
+      setProgress(t("Skapar PDF…"));
+      const blob = await buildPdf({ projectName: meta.name || "Tacticsboard", subtitle: [t(kindLabels[meta.kind]), meta.teamName].filter(Boolean).join(" · "), pages, pictures, language });
       download(blob, pdfFileName(meta.name));
       onClose();
     } catch {
-      setError("PDF:en kunde inte skapas. Försök igen.");
+      setError(t("PDF:en kunde inte skapas. Försök igen."));
     } finally {
       working.current = false;
       setProgress(null);
@@ -78,38 +81,40 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="tb-modal" role="dialog" aria-modal="true" aria-label="PDF" onClick={event => { if (event.target === event.currentTarget && !working.current) onClose(); }}>
+    <div className="tb-modal" role="dialog" aria-modal="true" aria-label={t("PDF")} onClick={event => { if (event.target === event.currentTarget && !working.current) onClose(); }}>
       <div className="tb-modal-card">
         <div className="tb-modal-head">
-          <h2>PDF</h2>
-          <button type="button" className="tb-modal-close" aria-label="Stäng" disabled={progress !== null} onClick={onClose}>×</button>
+          <h2>{t("PDF")}</h2>
+          <button type="button" className="tb-modal-close" aria-label={t("Stäng")} disabled={progress !== null} onClick={onClose}>×</button>
         </div>
         {boards.length > 1 && (
           <fieldset className="tb-choice">
-            <legend>Tavlor</legend>
-            <label><input type="radio" checked={which === "this"} onChange={() => setWhich("this")} />{board.name || "Den här tavlan"}</label>
+            <legend>{t("Tavlor")}</legend>
+            <label><input type="radio" checked={which === "this"} onChange={() => setWhich("this")} />{board.name || t("Den här tavlan")}</label>
             <label><input type="radio" checked={which === "all"} onChange={() => setWhich("all")} />Alla {boards.length} tavlor</label>
           </fieldset>
         )}
         {animated && (
           <fieldset className="tb-choice">
-            <legend>Frames</legend>
-            <label><input type="radio" checked={frames === "grid"} onChange={() => setFrames("grid")} />Alla frames, fyra per sida</label>
-            <label><input type="radio" checked={frames === "each"} onChange={() => setFrames("each")} />Alla frames, en per sida</label>
-            <label><input type="radio" checked={frames === "last"} onChange={() => setFrames("last")} />Bara sista framen</label>
+            <legend>{t("Frames")}</legend>
+            <label><input type="radio" checked={frames === "grid"} onChange={() => setFrames("grid")} />{t("Alla frames, fyra per sida")}</label>
+            <label><input type="radio" checked={frames === "each"} onChange={() => setFrames("each")} />{t("Alla frames, en per sida")}</label>
+            <label><input type="radio" checked={frames === "last"} onChange={() => setFrames("last")} />{t("Bara sista framen")}</label>
           </fieldset>
         )}
         {animated && (
           <label className="tb-check">
             <input type="checkbox" checked={showMoves} onChange={event => setShowMoves(event.target.checked)} />
-            Visa rörelser med pilar{frames === "last" ? " (hela förloppet på en bild)" : ""}
+            {t("Visa rörelser med pilar")}{frames === "last" ? t(" (hela förloppet på en bild)") : ""}
           </label>
         )}
         <label className="tb-check">
           <input type="checkbox" checked={tilted} onChange={event => setTilted(event.target.checked)} />
-          I 3D, planen sedd snett från läktaren
+          {t("I 3D, planen sedd snett från läktaren")}
         </label>
-        <p className="tb-hint">A4 {standing === 0 ? "liggande" : standing === chosen.length ? "stående, efter utsnittet" : "liggande, stående för tavlor med ett högt utsnitt"}, med projektets och tavlans namn, numret och anteckningen för varje frame, och tavlans beskrivning.</p>
+        <p className="tb-hint">{standing === 0 ? t("A4 liggande, med projektets och tavlans namn, numret och anteckningen för varje frame, och tavlans beskrivning.")
+          : standing === chosen.length ? t("A4 stående, efter utsnittet, med projektets och tavlans namn, numret och anteckningen för varje frame, och tavlans beskrivning.")
+          : t("A4 liggande, stående för tavlor med ett högt utsnitt, med projektets och tavlans namn, numret och anteckningen för varje frame, och tavlans beskrivning.")}</p>
         {error && <p className="wt-error" role="alert">{error}</p>}
         <div className="tb-actions">
           <button type="button" className="wt-button" disabled={progress !== null} onClick={() => void make()}>{progress ?? "Skapa PDF"}</button>

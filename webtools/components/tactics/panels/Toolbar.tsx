@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 import { useEditor, type Tool } from "../store.ts";
 import { PhoneToolbar } from "./PhoneToolbar.tsx";
+import { useT } from "../../language";
 
 /** Whether the screen is a phone's: the tools then come in groups. */
 function useNarrow() {
@@ -24,6 +25,8 @@ function useNarrow() {
 }
 
 export type Item = { tool: Tool; label: string; short: string; icon: string };
+
+export const measureGroup = "Mät";
 
 export const groups: { title: string; items: Item[] }[] = [
   { title: "Markera", items: [{ tool: "select", label: "Markera och flytta", short: "Markera", icon: "↖" }] },
@@ -75,6 +78,7 @@ function useToolbarSize(): [Size, (size: Size) => void] {
 
 /** onHelp: the list of keys and tips. */
 export function Toolbar({ homeColor, awayColor, onHelp }: { homeColor: string; awayColor: string; onHelp?: () => void }) {
+  const t = useT();
   const tool = useEditor(state => state.tool);
   const setTool = useEditor(state => state.setTool);
   const measure = useEditor(state => state.measure);
@@ -82,33 +86,33 @@ export function Toolbar({ homeColor, awayColor, onHelp }: { homeColor: string; a
   const narrow = useNarrow();
   if (narrow) return <PhoneToolbar homeColor={homeColor} awayColor={awayColor} />;
   return (
-    <nav className="tb-tools" data-size={size} aria-label="Verktyg">
+    <nav className="tb-tools" data-size={size} aria-label={t("Verktyg")}>
       {groups.map(group => (
-        <div key={group.title} className="tb-tool-group" role="group" aria-label={group.title}>
-          {size === "labels" && <span className="tb-tool-heading">{group.title}</span>}
+        <div key={group.title} className="tb-tool-group" role="group" aria-label={t(group.title)}>
+          {size === "labels" && <span className="tb-tool-heading">{t(group.title)}</span>}
           {group.items.map(item => (
-            <button key={item.tool} type="button" title={item.label} aria-label={item.label} aria-pressed={tool === item.tool}
+            <button key={item.tool} type="button" title={t(item.label)} aria-label={t(item.label)} aria-pressed={tool === item.tool}
               onClick={() => setTool(tool === item.tool ? "select" : item.tool)}
               style={item.tool === "player-home" ? { color: homeColor } : item.tool === "player-away" ? { color: awayColor } : undefined}>
               <span className="tb-tool-icon" aria-hidden="true">{item.icon}</span>
-              <span className="tb-tool-label" aria-hidden="true">{item.short}</span>
+              <span className="tb-tool-label" aria-hidden="true">{t(item.short)}</span>
             </button>
           ))}
-          {group.title === "Mät" && (
-            <button type="button" title="Visa mått på ytor och linjer" aria-label="Visa mått på ytor och linjer" aria-pressed={measure}
+          {group.title === measureGroup && (
+            <button type="button" title={t("Visa mått på ytor och linjer")} aria-label={t("Visa mått på ytor och linjer")} aria-pressed={measure}
               onClick={() => useEditor.getState().setMeasure(!measure)}>
               <span className="tb-tool-icon" aria-hidden="true">m²</span>
-              <span className="tb-tool-label" aria-hidden="true">Mått</span>
+              <span className="tb-tool-label" aria-hidden="true">{t("Mått")}</span>
             </button>
           )}
         </div>
       ))}
       {onHelp && (
-        <button type="button" className="tb-tools-help" onClick={onHelp} aria-label="Kortkommandon och tips" title="Kortkommandon och tips (?)">?</button>
+        <button type="button" className="tb-tools-help" onClick={onHelp} aria-label={t("Kortkommandon och tips")} title={t("Kortkommandon och tips (?)")}>?</button>
       )}
       <button type="button" className="tb-tools-size" onClick={() => setSize(size === "labels" ? "compact" : "labels")}
-        aria-label={size === "labels" ? "Smalare verktyg utan text" : "Bredare verktyg med text"}
-        title={size === "labels" ? "Smalare verktyg utan text" : "Bredare verktyg med text"}>
+        aria-label={size === "labels" ? t("Smalare verktyg utan text") : t("Bredare verktyg med text")}
+        title={size === "labels" ? t("Smalare verktyg utan text") : t("Bredare verktyg med text")}>
         {size === "labels" ? "«" : "»"}
       </button>
     </nav>

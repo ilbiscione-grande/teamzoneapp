@@ -24,6 +24,7 @@ import { useLibrary } from "./use-library.ts";
 import { PublishedIcon } from "./PublishedIcon.tsx";
 import { SettingsDialog, useSettings } from "./SettingsDialog.tsx";
 import { FullscreenIcon, SettingsIcon, ShareIcon } from "./TopBarIcons.tsx";
+import { useT } from "../language";
 
 const saveLabels: Record<SaveState, string> = {
   saved: "Sparat", dirty: "Ändrat", saving: "Sparar…", error: "Kunde inte spara", conflict: "Ändrat på annat håll",
@@ -32,6 +33,7 @@ const saveLabels: Record<SaveState, string> = {
 export const kindLabels = kindNames;
 
 function Boards() {
+  const t = useT();
   const boards = useEditor(state => state.document?.boards ?? NONE);
   const boardId = useEditor(state => state.boardId);
   const { setBoard, change } = useEditor.getState();
@@ -57,11 +59,11 @@ function Boards() {
     setBoard(next.id);
   };
   return (
-    <div className="tb-boards" role="tablist" aria-label="Tavlor">
+    <div className="tb-boards" role="tablist" aria-label={t("Tavlor")}>
       {boards.map(board => (
         <span key={board.id} className="tb-board-tab" data-active={board.id === boardId}>
           {renaming === board.id ? (
-            <input autoFocus defaultValue={board.name} maxLength={60} aria-label="Tavlans namn" onFocus={event => event.target.select()}
+            <input autoFocus defaultValue={board.name} maxLength={60} aria-label={t("Tavlans namn")} onFocus={event => event.target.select()}
               onBlur={event => { rename(board.id, event.target.value.trim() || board.name); setRenaming(null); }}
               onKeyDown={event => {
                 if (event.key === "Enter") event.currentTarget.blur();
@@ -69,13 +71,13 @@ function Boards() {
               }} />
           ) : (
             <button type="button" role="tab" aria-selected={board.id === boardId} onClick={() => setBoard(board.id)}
-              onDoubleClick={() => { setBoard(board.id); setRenaming(board.id); }} title="Dubbelklicka för att byta namn">
-              {board.name || "Tavla"}
+              onDoubleClick={() => { setBoard(board.id); setRenaming(board.id); }} title={t("Dubbelklicka för att byta namn")}>
+              {board.name || t("Tavla")}
               {publishedFor(board.id).map(club => <PublishedIcon key={club} clubName={club || null} />)}
             </button>
           )}
           {board.id === boardId && boards.length > 1 && (
-            <button type="button" className="tb-tab-close" aria-label={`Ta bort ${board.name}`} onClick={() => remove(board.id, board.name)}>×</button>
+            <button type="button" className="tb-tab-close" aria-label={t("Ta bort {name}", { name: board.name })} onClick={() => remove(board.id, board.name)}>×</button>
           )}
         </span>
       ))}
@@ -86,6 +88,7 @@ function Boards() {
 
 /** The project's name, kind and TeamZone team, under Inställningar. */
 export function ProjectFields({ className }: { className: string }) {
+  const t = useT();
   const { client } = useAccount();
   const meta = useEditor(state => state.meta);
   const { setMeta } = useEditor.getState();
@@ -96,35 +99,35 @@ export function ProjectFields({ className }: { className: string }) {
   if (!meta) return null;
   // Another leader of the team changes the boards; the project itself is the owner's.
   if (meta.access !== "owner") {
-    return <p className="tb-hint">{meta.ownerName?.trim() || "En annan ledare"} äger projektet. Du kan ändra tavlorna; namn, lag, delning och versioner sköter ägaren.</p>;
+    return <p className="tb-hint">{t("{name} äger projektet. Du kan ändra tavlorna; namn, lag, delning och versioner sköter ägaren.", { name: meta.ownerName?.trim() || t("En annan ledare") })}</p>;
   }
   const setAccess = async (leaderAccess: LeaderAccess) => {
     const { error } = await client?.schema("api").rpc("set_tactics_leader_access", { target_project_id: meta.id, access: leaderAccess }) ?? { error: true };
-    if (error) { window.alert("Det gick inte att ändra. Försök igen."); return; }
+    if (error) { window.alert(t("Det gick inte att ändra. Försök igen.")); return; }
     useEditor.setState(state => state.meta ? { meta: { ...state.meta, leaderAccess } } : {});
   };
   return (
     <>
-      <label className="tb-field">Namn<input value={meta.name} maxLength={120} onChange={event => setMeta({ name: event.target.value })} /></label>
-      <select className={className} value={meta.kind} aria-label="Typ" onChange={event => setMeta({ kind: event.target.value as ProjectKind })}>
-          {Object.entries(kindLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+      <label className="tb-field">{t("Namn")}<input value={meta.name} maxLength={120} onChange={event => setMeta({ name: event.target.value })} /></label>
+      <select className={className} value={meta.kind} aria-label={t("Typ")} onChange={event => setMeta({ kind: event.target.value as ProjectKind })}>
+          {Object.entries(kindLabels).map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
         </select>
         {(teams.length > 0 || meta.teamId) && (
-          <select className={className} value={meta.teamId ?? ""} aria-label="Lag i TeamZone"
+          <select className={className} value={meta.teamId ?? ""} aria-label={t("Lag i TeamZone")}
             onChange={event => {
               const team = teams.find(item => item.team_id === event.target.value);
               setMeta({ teamId: team?.team_id ?? null, teamName: team?.team_name ?? null });
             }}>
-            <option value="">Inget lag</option>
-            {meta.teamId && !teams.some(team => team.team_id === meta.teamId) && <option value={meta.teamId}>{meta.teamName ?? "Laget"}</option>}
+            <option value="">{t("Inget lag")}</option>
+            {meta.teamId && !teams.some(team => team.team_id === meta.teamId) && <option value={meta.teamId}>{meta.teamName ?? t("Laget")}</option>}
             {teams.map(team => <option key={team.team_id} value={team.team_id}>{team.team_name} · {team.club_name}</option>)}
           </select>
         )}
         {meta.teamId && (
-          <label className="tb-field">Lagets andra ledare
+          <label className="tb-field">{t("Lagets andra ledare")}
             <select className={className} value={meta.leaderAccess} onChange={event => void setAccess(event.target.value as LeaderAccess)}>
-              <option value="view">kan titta och kopiera</option>
-              <option value="edit">kan redigera tavlorna</option>
+              <option value="view">{t("kan titta och kopiera")}</option>
+              <option value="edit">{t("kan redigera tavlorna")}</option>
             </select>
           </label>
         )}
@@ -133,6 +136,7 @@ export function ProjectFields({ className }: { className: string }) {
 }
 
 export function TopBar({ onPresent }: { onPresent: () => void }) {
+  const t = useT();
   const { client } = useAccount();
   const meta = useEditor(state => state.meta);
   const saveState = useEditor(state => state.saveState);
@@ -159,23 +163,23 @@ export function TopBar({ onPresent }: { onPresent: () => void }) {
       <SettingsDialog />
       <div className="tb-top-row">
         <Link href={folderId ? `/tacticsboard/mapp/${folderId}` : "/tacticsboard"} className="tb-back"
-          aria-label={folderId ? "Till mappen" : "Till projekten"} title={meta.name}>‹</Link>
+          aria-label={folderId ? t("Till mappen") : t("Till projekten")} title={meta.name}>‹</Link>
         <Boards />
-        <button type="button" className="tb-icon" onClick={undo} disabled={!canUndo} aria-label="Ångra" title="Ångra (Ctrl+Z)">↶</button>
-        <button type="button" className="tb-icon" onClick={redo} disabled={!canRedo} aria-label="Gör om" title="Gör om (Ctrl+Y)">↷</button>
+        <button type="button" className="tb-icon" onClick={undo} disabled={!canUndo} aria-label={t("Ångra")} title={t("Ångra (Ctrl+Z)")}>↶</button>
+        <button type="button" className="tb-icon" onClick={redo} disabled={!canRedo} aria-label={t("Gör om")} title={t("Gör om (Ctrl+Y)")}>↷</button>
         <span className="tb-top-group tb-wide-only">
-          <button type="button" className="tb-icon tb-glyph" onClick={onPresent} aria-label="Visa i helskärm" title="Visa i helskärm, utan redigering"><FullscreenIcon /></button>
-          <button type="button" className="tb-icon tb-glyph" onClick={() => setVersions(true)} aria-label="Versioner" title="Tidigare versioner"><HistoryIcon /></button>
-          <button type="button" className="tb-icon tb-glyph" onClick={() => openSettings()} aria-label="Inställningar" title="Inställningar för plan, lag och projekt"><SettingsIcon /></button>
+          <button type="button" className="tb-icon tb-glyph" onClick={onPresent} aria-label={t("Visa i helskärm")} title={t("Visa i helskärm, utan redigering")}><FullscreenIcon /></button>
+          <button type="button" className="tb-icon tb-glyph" onClick={() => setVersions(true)} aria-label={t("Versioner")} title={t("Tidigare versioner")}><HistoryIcon /></button>
+          <button type="button" className="tb-icon tb-glyph" onClick={() => openSettings()} aria-label={t("Inställningar")} title={t("Inställningar för plan, lag och projekt")}><SettingsIcon /></button>
         </span>
         {owner && <LiveButton onClick={() => setLiving(true)} />}
         <TopBarMore onPresent={onPresent} onLive={owner ? () => setLiving(true) : undefined} onVersions={() => setVersions(true)} onSettings={() => openSettings()} />
-        <button type="button" className="tb-icon tb-glyph tb-share" onClick={() => setSharing(true)} aria-label="Dela" title="Dela: länk, PDF, video och mer"><ShareIcon /></button>
+        <button type="button" className="tb-icon tb-glyph tb-share" onClick={() => setSharing(true)} aria-label={t("Dela")} title={t("Dela: länk, PDF, video och mer")}><ShareIcon /></button>
         <span className="tb-save" data-state={saveState} role="status">
-          {saveLabels[saveState]}
-          {saveState === "error" && client && <button type="button" className="tb-link" onClick={() => void saveNow(client)}>Försök igen</button>}
-          {saveState === "conflict" && <button type="button" className="tb-link" onClick={() => window.location.reload()}>Hämta senaste</button>}
-          {saveState === "conflict" && client && <button type="button" className="tb-link" onClick={() => void saveAsCopy(client).then(done => { if (!done) window.alert("Kopian kunde inte sparas. Försök igen."); })}>Spara mina ändringar som kopia</button>}
+          {t(saveLabels[saveState])}
+          {saveState === "error" && client && <button type="button" className="tb-link" onClick={() => void saveNow(client)}>{t("Försök igen")}</button>}
+          {saveState === "conflict" && <button type="button" className="tb-link" onClick={() => window.location.reload()}>{t("Hämta senaste")}</button>}
+          {saveState === "conflict" && client && <button type="button" className="tb-link" onClick={() => void saveAsCopy(client).then(done => { if (!done) window.alert(t("Kopian kunde inte sparas. Försök igen.")); })}>{t("Spara mina ändringar som kopia")}</button>}
         </span>
       </div>
     </header>

@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { resetTips } from "./ToolHint.tsx";
 import { supportEmail, supportReply } from "../../lib/support.ts";
+import { useT } from "../language";
 
 const sections: { title: string; rows: [string, string][] }[] = [
   {
@@ -54,6 +55,7 @@ const sections: { title: string; rows: [string, string][] }[] = [
 ];
 
 export function HelpDialog({ onClose }: { onClose: () => void }) {
+  const t = useT();
   const [reset, setReset] = useState(false);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
@@ -61,29 +63,29 @@ export function HelpDialog({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
   return (
-    <div className="tb-modal" role="dialog" aria-modal="true" aria-label="Kortkommandon och tips" onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <div className="tb-modal" role="dialog" aria-modal="true" aria-label={t("Kortkommandon och tips")} onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
       <div className="tb-modal-card tb-help">
         <div className="tb-modal-head">
-          <h2>Kortkommandon och tips</h2>
-          <button type="button" className="tb-modal-close" aria-label="Stäng" onClick={onClose}>×</button>
+          <h2>{t("Kortkommandon och tips")}</h2>
+          <button type="button" className="tb-modal-close" aria-label={t("Stäng")} onClick={onClose}>×</button>
         </div>
         {sections.map(section => (
           <section key={section.title}>
-            <h3>{section.title}</h3>
+            <h3>{t(section.title)}</h3>
             <dl>
               {section.rows.map(([key, what]) => (
-                <div key={key}><dt><kbd>{key}</kbd></dt><dd>{what}</dd></div>
+                <div key={key}><dt><kbd>{t(key)}</kbd></dt><dd>{t(what)}</dd></div>
               ))}
             </dl>
           </section>
         ))}
-        <p className="tb-hint">På Mac används ⌘ i stället för Ctrl.</p>
-        <p className="tb-hint">Frågor eller problem? Mejla <a href={`mailto:${supportEmail}`}>{supportEmail}</a>. {supportReply}</p>
+        <p className="tb-hint">{t("På Mac används ⌘ i stället för Ctrl.")}</p>
+        <p className="tb-hint">{t("Frågor eller problem? Mejla")} <a href={`mailto:${supportEmail}`}>{supportEmail}</a>. {t(supportReply)}</p>
         <div className="tb-actions">
           <button type="button" className="wt-button secondary small" disabled={reset} onClick={() => { resetTips(); setReset(true); }}>
-            {reset ? "Tipsen visas igen" : "Visa verktygstipsen igen"}
+            {reset ? t("Tipsen visas igen") : t("Visa verktygstipsen igen")}
           </button>
-          <button type="button" className="wt-button small" onClick={onClose}>Stäng</button>
+          <button type="button" className="wt-button small" onClick={onClose}>{t("Stäng")}</button>
         </div>
       </div>
     </div>

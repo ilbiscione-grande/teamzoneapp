@@ -9,8 +9,10 @@ import type { Board, Side, SquadPlayer } from "../../../lib/tactics/model.ts";
 import { useAccount } from "../../account";
 import { activeObjects, useEditor, NONE } from "../store.ts";
 import { useSquadFetch } from "../use-squad.ts";
+import { useT } from "../../language";
 
 export function SquadPanel({ board }: { board: Board }) {
+  const t = useT();
   const meta = useEditor(state => state.meta);
   const squad = useEditor(state => state.document?.squad ?? NONE);
   const objects = useEditor(activeObjects);
@@ -39,32 +41,32 @@ export function SquadPanel({ board }: { board: Board }) {
 
   return (
     <div className="tb-inspector">
-      <h3>Formation</h3>
+      <h3>{t("Formation")}</h3>
       <div className="tb-row">
-        <label className="tb-field">Lag
+        <label className="tb-field">{t("Lag")}
           <select value={side} onChange={event => setSide(event.target.value as Side)}>
-            <option value="home">{board.teams.home.name}</option>
-            <option value="away">{board.teams.away.name}</option>
+            <option value="home">{t(board.teams.home.name)}</option>
+            <option value="away">{t(board.teams.away.name)}</option>
           </select>
         </label>
-        <label className="tb-field">Formation
+        <label className="tb-field">{t("Formation")}
           <select value={formation} onChange={event => { setFormation(event.target.value); setCustom(""); }}>
             {Object.keys(formations).map(name => <option key={name} value={name}>{name}</option>)}
           </select>
         </label>
       </div>
-      <label className="tb-field">Egen formation (frivilligt)<input value={custom} placeholder="T.ex. 3-1-4-2" onChange={event => setCustom(event.target.value)} /></label>
-      {custom.trim() && !lines && <p className="tb-hint">Skriv raderna bakifrån, t.ex. 4-4-2, med 3–10 utespelare.</p>}
-      <button type="button" className="wt-button small" disabled={!lines} onClick={place}>Ställ upp laget</button>
-      <p className="tb-hint">Lagets spelare flyttas till formationen, och saknade läggs till.</p>
+      <label className="tb-field">{t("Egen formation (frivilligt)")}<input value={custom} placeholder={t("T.ex. 3-1-4-2")} onChange={event => setCustom(event.target.value)} /></label>
+      {custom.trim() && !lines && <p className="tb-hint">{t("Skriv raderna bakifrån, t.ex. 4-4-2, med 3–10 utespelare.")}</p>}
+      <button type="button" className="wt-button small" disabled={!lines} onClick={place}>{t("Ställ upp laget")}</button>
+      <p className="tb-hint">{t("Lagets spelare flyttas till formationen, och saknade läggs till.")}</p>
 
-      {(meta?.teamId || hasTeams) && <h3>Trupp</h3>}
+      {(meta?.teamId || hasTeams) && <h3>{t("Trupp")}</h3>}
       {!meta?.teamId ? (
-        hasTeams && <p className="tb-hint">Koppla projektet till ett av dina lag i TeamZone under Inställningar, så kan du hämta truppen.</p>
+        hasTeams && <p className="tb-hint">{t("Koppla projektet till ett av dina lag i TeamZone under Inställningar, så kan du hämta truppen.")}</p>
       ) : (
         <>
           <button type="button" className="wt-button secondary small" disabled={busy} onClick={() => void fetchSquad()}>
-            {squad.length ? "Hämta truppen igen" : `Hämta truppen från ${meta.teamName ?? "laget"}`}
+            {squad.length ? t("Hämta truppen igen") : t("Hämta truppen från {team}", { team: meta.teamName ?? t("laget") })}
           </button>
           {error && <p className="wt-error" role="alert">{error}</p>}
           {squad.length > 0 && (

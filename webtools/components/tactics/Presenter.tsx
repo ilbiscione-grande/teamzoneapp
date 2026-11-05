@@ -17,11 +17,13 @@ import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import { activeBoard, stepFrame, togglePlay, useEditor, NONE } from "./store.ts";
 import { Timeline } from "./timeline/Timeline.tsx";
 import { SurroundingsButton, TextIcon, usePhone } from "./ViewerTools.tsx";
+import { useT } from "../language";
 
 const BoardStage = dynamic(() => import("./stage/BoardStage.tsx"), { ssr: false, loading: () => <div className="tb-stage" /> });
 
 /** viewer: from a shared link, played as there: a tap plays or pauses, a swipe steps, 3D on the board. */
 export function Presenter({ onClose, viewer = false }: { onClose: () => void; viewer?: boolean }) {
+  const t = useT();
   const root = useRef<HTMLDivElement>(null);
   const board = useEditor(activeBoard);
   const boards = useEditor(state => state.document?.boards ?? NONE);
@@ -61,14 +63,14 @@ export function Presenter({ onClose, viewer = false }: { onClose: () => void; vi
     <div ref={root} className="tb-present" data-text={aside !== null}>
       <LiveNotice />
       <header className="tb-present-top">
-        {boards.length > 1 && <button type="button" className="tb-icon" onClick={() => step(-1)} disabled={boardIndex <= 0} aria-label="Föregående tavla">‹</button>}
-        <strong className="tb-present-title">{board.name || "Tavla"}{boards.length > 1 && <small> {boardIndex + 1} av {boards.length}</small>}</strong>
-        {boards.length > 1 && <button type="button" className="tb-icon" onClick={() => step(1)} disabled={boardIndex >= boards.length - 1} aria-label="Nästa tavla">›</button>}
+        {boards.length > 1 && <button type="button" className="tb-icon" onClick={() => step(-1)} disabled={boardIndex <= 0} aria-label={t("Föregående tavla")}>‹</button>}
+        <strong className="tb-present-title">{board.name || t("Tavla")}{boards.length > 1 && <small> {t("{current} av {total}", { current: boardIndex + 1, total: boards.length })}</small>}</strong>
+        {boards.length > 1 && <button type="button" className="tb-icon" onClick={() => step(1)} disabled={boardIndex >= boards.length - 1} aria-label={t("Nästa tavla")}>›</button>}
         <span className="tb-spacer" />
         {live && <button type="button" className="tb-present-toggle" aria-pressed={aside === "live"} onClick={() => toggle("live")}><LiveBadge label="Live" hands /></button>}
         <button type="button" className="tb-present-toggle tb-present-icon" aria-pressed={aside === "text"} onClick={() => toggle("text")}
-          aria-label="Beskrivning" title="Beskrivning"><TextIcon /></button>
-        <button type="button" className="tb-icon" onClick={onClose} aria-label="Stäng visningen" title="Stäng (Esc)">×</button>
+          aria-label={t("Beskrivning")} title={t("Beskrivning")}><TextIcon /></button>
+        <button type="button" className="tb-icon" onClick={onClose} aria-label={t("Stäng visningen")} title={t("Stäng (Esc)")}>×</button>
       </header>
       <div className="tb-present-body">
         <div className="tb-center">
@@ -76,7 +78,7 @@ export function Presenter({ onClose, viewer = false }: { onClose: () => void; vi
             {...(viewer ? { onSwipe: stepFrame, onTap: togglePlay, tiltButton: true, portrait: phone, tools: <SurroundingsButton board={board} /> } : {})} /></ErrorBoundary>
           <ErrorBoundary label="Tidslinjen"><Timeline board={board} readOnly viewer={viewer} /></ErrorBoundary>
         </div>
-        {aside === "text" && <BoardText emptyHint="Tavlan har ingen beskrivning. Skriv en under Tavlan i redigeringen." />}
+        {aside === "text" && <BoardText emptyHint={t("Tavlan har ingen beskrivning. Skriv en under Tavlan i redigeringen.")} />}
         {aside === "live" && live && <aside className="tb-present-text tb-present-live"><LivePanel /></aside>}
       </div>
     </div>

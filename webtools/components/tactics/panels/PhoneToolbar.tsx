@@ -5,9 +5,11 @@
 // group's tools above the row, with a word under each, and a choice closes it.
 import { useEffect, useRef, useState } from "react";
 import { useEditor, type Tool } from "../store.ts";
-import { groups, type Item } from "./Toolbar.tsx";
+import { groups, measureGroup, type Item } from "./Toolbar.tsx";
+import { useT } from "../../language";
 
 export function PhoneToolbar({ homeColor, awayColor }: { homeColor: string; awayColor: string }) {
+  const t = useT();
   const tool = useEditor(state => state.tool);
   const measure = useEditor(state => state.measure);
   const [open, setOpen] = useState<string | null>(null);
@@ -32,33 +34,33 @@ export function PhoneToolbar({ homeColor, awayColor }: { homeColor: string; away
   };
   const shown = groups.find(group => group.title === open);
   return (
-    <nav ref={nav} className="tb-tools tb-phone-tools" aria-label="Verktyg">
+    <nav ref={nav} className="tb-tools tb-phone-tools" aria-label={t("Verktyg")}>
       {shown && (
         <div className="tb-phone-group" role="group" aria-label={shown.title}>
           {shown.items.map(item => (
             <button key={item.tool} type="button" aria-pressed={tool === item.tool} onClick={() => choose(item.tool)}>
               <span className="tb-tool-icon" aria-hidden="true" style={colour(item)}>{item.icon}</span>
-              <span>{item.short}</span>
+              <span>{t(item.short)}</span>
             </button>
           ))}
-          {shown.title === "Mät" && (
+          {shown.title === measureGroup && (
             <button type="button" aria-pressed={measure} onClick={() => { useEditor.getState().setMeasure(!measure); setOpen(null); }}>
               <span className="tb-tool-icon" aria-hidden="true">m²</span>
-              <span>Mått</span>
+              <span>{t("Mått")}</span>
             </button>
           )}
         </div>
       )}
       {groups.map(group => {
-        const single = group.items.length === 1 && group.title !== "Mät";
+        const single = group.items.length === 1 && group.title !== measureGroup;
         const item = group.items.find(entry => entry.tool === (last[group.title] ?? group.items[0].tool)) ?? group.items[0];
         const active = group.items.some(entry => entry.tool === tool);
         return (
           <button key={group.title} type="button" className="tb-phone-button" aria-pressed={active} aria-expanded={single ? undefined : open === group.title}
-            aria-label={single ? item.label : `${group.title}: ${item.label}`}
+            aria-label={single ? t(item.label) : `${t(group.title)}: ${t(item.label)}`}
             onClick={() => (single ? choose(item.tool) : setOpen(open === group.title ? null : group.title))}>
             <span className="tb-tool-icon" aria-hidden="true" style={colour(item)}>{item.icon}</span>
-            <span className="tb-phone-label">{group.title}{!single && <span aria-hidden="true"> ▴</span>}</span>
+            <span className="tb-phone-label">{t(group.title)}{!single && <span aria-hidden="true"> ▴</span>}</span>
           </button>
         );
       })}

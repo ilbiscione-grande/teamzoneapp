@@ -3,14 +3,16 @@
 // Beside a presented board: its description and the note of the frame in
 // hand. Used when presenting and when following a live lesson.
 import { activeBoard, useEditor } from "./store.ts";
+import { useT } from "../language";
 
 export function BoardText({ emptyHint }: { emptyHint: string }) {
+  const t = useT();
   const board = useEditor(activeBoard);
   const frameIndex = useEditor(state => state.frameIndex);
   const description = board?.description?.trim() ?? "";
   const note = board?.frames[frameIndex]?.note?.trim() ?? "";
   return (
-    <aside className="tb-present-text" aria-label="Beskrivning">
+    <aside className="tb-present-text" aria-label={t("Beskrivning")}>
       {description ? <p>{description}</p> : <p className="tb-present-empty">{emptyHint}</p>}
       {note && (
         <>

@@ -37,6 +37,7 @@ import { useBand } from "./use-band.ts";
 import { useSwipe } from "./use-swipe.ts";
 import { isDrawTool, isPlaceTool, useDrawing } from "./use-drawing.ts";
 import { IDENTITY, useViewport } from "./use-viewport.ts";
+import { useT } from "../../language";
 
 // A drag moves one node; Konva need not rebuild its hit map on every step.
 // Pinching is read from the browser's own touch events instead.
@@ -59,6 +60,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
   editable?: boolean; moveOnly?: boolean; extra?: React.ReactNode; onSwipe?: (direction: 1 | -1) => void; onTap?: () => void; tiltButton?: boolean;
   tools?: React.ReactNode; portrait?: boolean;
 }) {
+  const t = useT();
   const frame = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const board = useEditor(activeBoard);
@@ -273,22 +275,22 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
       )}
       {cropping && (
         <div className="tb-crop-bar" role="status">
-          <span>Dra en ruta över den del av planen som ska visas i PDF, video, visningsläget och delade länkar.</span>
-          {board.crop && <button type="button" className="wt-button secondary small" onClick={() => setCrop(board.id, null)}>Hela planen</button>}
-          <button type="button" className="wt-button small" onClick={() => useCropping.getState().stop()}>Klar</button>
+          <span>{t("Dra en ruta över den del av planen som ska visas i PDF, video, visningsläget och delade länkar.")}</span>
+          {board.crop && <button type="button" className="wt-button secondary small" onClick={() => setCrop(board.id, null)}>{t("Hela planen")}</button>}
+          <button type="button" className="wt-button small" onClick={() => useCropping.getState().stop()}>{t("Klar")}</button>
         </div>
       )}
       {fullEdit && (
         <div ref={trash} className="tb-trash" data-active="false" data-over="false" aria-hidden="true">
-          <span>🗑</span>Släpp för att ta bort
+          <span>🗑</span>{t("Släpp för att ta bort")}
         </div>
       )}
       {tools && <div className="tb-board-tools">{tools}</div>}
-      <div className="tb-zoom" role="group" aria-label="Zoom">
-        <button type="button" onClick={() => view.zoomBy(1.25, { x: size.width / 2, y: size.height / 2 })} aria-label="Zooma in">+</button>
-        <button type="button" onClick={() => view.zoomBy(0.8, { x: size.width / 2, y: size.height / 2 })} aria-label="Zooma ut">−</button>
-        {tiltButton && <button type="button" className="tb-zoom-tilt" aria-pressed={tilt} onClick={() => useEditor.getState().setTilt(!tilt)} aria-label="3D" title="Planen sedd snett från läktaren">3D</button>}
-        <button type="button" onClick={() => view.apply(IDENTITY, true)} aria-label="Visa hela" disabled={view.viewport === IDENTITY}>⤢</button>
+      <div className="tb-zoom" role="group" aria-label={t("Zoom")}>
+        <button type="button" onClick={() => view.zoomBy(1.25, { x: size.width / 2, y: size.height / 2 })} aria-label={t("Zooma in")}>+</button>
+        <button type="button" onClick={() => view.zoomBy(0.8, { x: size.width / 2, y: size.height / 2 })} aria-label={t("Zooma ut")}>−</button>
+        {tiltButton && <button type="button" className="tb-zoom-tilt" aria-pressed={tilt} onClick={() => useEditor.getState().setTilt(!tilt)} aria-label="3D" title={t("Planen sedd snett från läktaren")}>3D</button>}
+        <button type="button" onClick={() => view.apply(IDENTITY, true)} aria-label={t("Visa hela")} disabled={view.viewport === IDENTITY}>⤢</button>
       </div>
     </div>
   );
