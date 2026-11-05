@@ -107,7 +107,7 @@ export default function TacticsboardTermsPage() {
       eyebrow="Juridik"
       title="Villkor för Tacticsboard"
       version="2026-11-05"
-      updated="4 november 2026"
+      updated="5 november 2026"
       introduction="Här står vad som gäller när du provar och prenumererar på Tacticsboard: pris, betalning, uppsägning och ångerrätt."
       sections={sections}
     />
