@@ -1,6 +1,9 @@
 // Withdrawing from a Tacticsboard purchase: the deadline, which purchase it
 // concerns and the two mails, kept free of I/O so they can be tested.
-import { tacticsboardProduct } from "./tacticsboard_billing.ts";
+import {
+  type BillingLocale,
+  tacticsboardProduct,
+} from "./tacticsboard_billing.ts";
 
 const stockholmDate = (ms: number) =>
   new Date(ms).toLocaleDateString("sv-SE", { timeZone: "Europe/Stockholm" });
@@ -50,8 +53,8 @@ export function parseWithdrawalName(value: unknown): string | null {
   return name.length >= 1 && name.length <= 200 ? name : null;
 }
 
-const stockholmTime = (value: string) =>
-  new Date(value).toLocaleString("sv-SE", {
+const stockholmTime = (value: string, intl = "sv-SE") =>
+  new Date(value).toLocaleString(intl, {
     timeZone: "Europe/Stockholm",
     dateStyle: "long",
     timeStyle: "short",
@@ -74,8 +77,33 @@ type Withdrawal = {
 
 /// The receipt the law asks for. It says when we received the message; it
 /// also says what happens next, since the person has no other record of it.
-export function withdrawalReceipt(item: Withdrawal) {
+export function withdrawalReceipt(item: Withdrawal, locale: BillingLocale = "sv") {
   const purchased = stockholmDate(item.purchasedAtSeconds * 1000);
+  if (locale === "en") {
+    const subscription = item.interval === "year"
+      ? "annual subscription"
+      : item.interval === "month"
+      ? "monthly subscription"
+      : "subscription";
+    return {
+      subject: "Receipt: you have withdrawn from the purchase of Tacticsboard",
+      text: [
+        `Hello ${item.name}!`,
+        "",
+        `We received your notice of withdrawal from the purchase on ${stockholmTime(item.receivedAt, "en-GB")} (Swedish time).`,
+        "",
+        `Contract: Tacticsboard, ${subscription}, bought ${purchased}.`,
+        `Account: ${item.email}`,
+        "",
+        "We are ending the subscription, and nothing more will be charged.",
+        "If you have paid, you get the money back to the same payment method within 14 days, less a proportionate part of the price for the paid time up to today.",
+        "",
+        "Questions? Do not reply to this email; write to support@teamzoneapp.se.",
+        "",
+        "Tre 60 Grader, Plangränd 15, 574 34 Vetlanda, Sweden",
+      ].join("\n"),
+    };
+  }
   return {
     subject: "Mottagningsbevis: du har ångrat köpet av Tacticsboard",
     text: [

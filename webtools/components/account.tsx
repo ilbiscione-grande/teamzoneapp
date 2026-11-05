@@ -4,7 +4,7 @@ import { createClient, type Session, type SupabaseClient } from "@supabase/supab
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { Connection, LegalStatus } from "../lib/account";
 import { requiresAcceptance } from "../lib/account";
-import { useT } from "./language";
+import { useLanguage } from "./language";
 
 type Links = { siteUrl: string; appUrl: string | null; tacticsboardOnly: boolean };
 
@@ -44,7 +44,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   const [connections, setConnections] = useState<Connection[] | null>(null);
   const [links, setLinks] = useState<Links>(defaultLinks);
   const [error, setError] = useState("");
-  const t = useT();
+  const { t, locale, switchable } = useLanguage();
 
   useEffect(() => {
     let disposed = false;
@@ -94,6 +94,12 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     loadAccount(client).catch(() => setError(t("Kontot kunde inte läsas. Försök igen.")));
   }, [client, session, loadAccount, t]);
 
+  // Mail sent while signed out, such as a new password, goes by this language.
+  useEffect(() => {
+    if (!client || !session || !switchable || session.user.is_anonymous) return;
+    if (session.user.user_metadata?.locale !== locale) void client.auth.updateUser({ data: { locale } });
+  }, [client, session, switchable, locale]);
+
   const signIn = useCallback(async (email: string, password: string) => {
     if (!client) return t("Kontotjänsten är inte tillgänglig just nu.");
     const { error: signInError } = await client.auth.signInWithPassword({ email: email.trim(), password });
@@ -108,10 +114,10 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     const { error: signUpError } = await client.auth.signUp({
       email: email.trim(),
       password,
-      options: { emailRedirectTo: `${window.location.origin}/logga-in?konto=bekraftat` },
+      options: { emailRedirectTo: `${window.location.origin}/logga-in?konto=bekraftat`, data: { locale } },
     });
-    return signUpError ? "Kontot kunde inte skapas. Kontrollera adressen eller logga in om du redan har ett konto." : null;
-  }, [client, t]);
+    return signUpError ? t("Kontot kunde inte skapas. Kontrollera adressen eller logga in om du redan har ett konto.") : null;
+  }, [client, t, locale]);
 
   const signOut = useCallback(async () => { await client?.auth.signOut({ scope: "local" }); }, [client]);
 

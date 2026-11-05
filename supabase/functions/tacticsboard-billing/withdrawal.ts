@@ -3,6 +3,7 @@
 // so the Stripe cancellation and the mails come after and may be retried.
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.57.4";
 import type Stripe from "npm:stripe@22.0.0";
+import type { BillingLocale } from "../_shared/tacticsboard_billing.ts";
 import {
   latestPurchase,
   purchaseInterval,
@@ -88,7 +89,11 @@ async function sendMail(
   return response.ok;
 }
 
-export async function withdraw(context: Context, name: string) {
+export async function withdraw(
+  context: Context,
+  name: string,
+  locale: BillingLocale,
+) {
   const { admin, stripe, livemode, profileId, email } = context;
   const purchase = await findPurchase(context);
   if (!purchase) return { state: "none" };
@@ -141,7 +146,7 @@ export async function withdraw(context: Context, name: string) {
     from,
     email,
     `teamzone-withdrawal-receipt-${stored.id}`,
-    withdrawalReceipt(item),
+    withdrawalReceipt(item, locale),
   );
   if (resendKey) {
     await sendMail(

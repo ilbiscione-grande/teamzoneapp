@@ -93,6 +93,7 @@ export const account: Record<string, string> = {
   "Avslutar…": "Deleting…",
   "Avsluta kontot för gott": "Delete my account for good",
   "Avbryt": "Cancel",
+  "Kontot kunde inte skapas. Kontrollera adressen eller logga in om du redan har ett konto.": "The account could not be created. Check the address, or sign in if you already have an account.",
   "Ditt konto är kopplat till en klubb i TeamZone. Be om att få kontot raderat i TeamZone-appen, eller mejla support@teamzoneapp.se.": "Your account is connected to a club in TeamZone. Ask for it to be deleted in the TeamZone app, or email support@teamzoneapp.se.",
   "Kontot har uppgifter som behöver tas bort för hand. Mejla support@teamzoneapp.se så hjälper vi dig.": "Your account has data that must be removed by hand. Email support@teamzoneapp.se and we will help you.",
   "Prenumerationen gick inte att avsluta just nu. Inget är borttaget. Försök igen om en stund.": "We could not end your subscription just now. Nothing has been deleted. Please try again shortly.",

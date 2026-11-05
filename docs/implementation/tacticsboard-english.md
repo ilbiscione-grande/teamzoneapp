@@ -78,11 +78,28 @@ Brittisk engelska, som i fotbollen.
 | 3 | Produktsidan och köpet, med priser och ångerfunktion | Klart |
 | 4 | Editorn, inklusive export och pdf | Klart |
 | 5 | Hem, bibliotek, mappar, delade sidor och OG-bilder | Klart |
-| 6 | Livegenomgångar | Klart lokalt |
-| 7 | Backend: Stripe `locale` från språket, språk på kontot, ångerkvitto, Auth-mejl med `{{ if eq .Data.locale "en" }}` | Nästa |
-| 8 | Publika sajten och juridiken, efter att de svenska texterna är granskade | |
+| 6 | Livegenomgångar | Klart |
+| 7 | Backend: Stripe `locale` från språket, språk på kontot, ångerkvitto, Auth-mejl med `{{ if eq .Data.locale "en" }}` | Klart lokalt, se nedan |
+| 8 | Publika sajten och juridiken, efter att de svenska texterna är granskade | Nästa |
 | 9 | Skärmbilder och demofilm på engelska | |
 | 10 | Hela köpflödet på engelska, flaggan på i produktionen | |
+
+## Steg 7: backend
+
+- **Språket i betalningen.** Webtools skickar `locale: "en"` till `tacticsboard-billing` bara på engelska. Svenska anrop ser ut som förut. Checkout och kundportalen öppnas då på brittisk engelska, med samtycket på engelska.
+- **Ordning vid driftsättning.** Funktionen avvisar okända fält, så den ska driftsättas innan flaggan slås på. Så länge flaggan är av skickas inget nytt fält.
+- **Språket på kontot.** Sparas som `locale` i kontots användardata när kontot skapas och när någon använder Webtools med flaggan på. Mejl som skickas utan inloggning går efter det. Konton utan värde får svenska.
+- **Ångerkvittot** går på det språk personen använder när hen ångrar. Mejlet till supporten är kvar på svenska.
+- **Mejlmallarna** i `supabase/templates/` är nu på båda språken och ska klistras in på nytt under Authentication → Emails, först i test och sedan i produktion. Konton utan värde får svenska, så det påverkar ingen befintlig användare.
+- **Ämnesrader** att klistra in. Prova dem i test först. Följer inte ämnet språket eller stoppas mejlet, använd i stället båda språken i samma rad:
+  - Confirm signup: `{{ if and .Data.locale (eq .Data.locale "en") }}Confirm your email address{{ else }}Bekräfta din e-postadress{{ end }}`
+  - Magic link: `{{ if and .Data.locale (eq .Data.locale "en") }}Your code to sign in{{ else }}Din kod för att logga in{{ end }}`
+  - Reset password: `{{ if and .Data.locale (eq .Data.locale "en") }}Choose a new password{{ else }}Välj ett nytt lösenord{{ end }}`
+  - Change email: `{{ if and .Data.locale (eq .Data.locale "en") }}Confirm your new email address{{ else }}Bekräfta din nya e-postadress{{ end }}`
+- **Villkoren.** Det engelska samtycket länkar till `https://public.teamzoneapp.se/en/terms/tacticsboard`, som skapas i steg 8. Texten ska granskas med de andra engelska juridiktexterna.
+- **Kvar att prova i steg 10:** att Stripes kvitton och fakturamejl kommer på engelska efter ett engelskt köp.
+
+## Förhandsvisning av länkar
 
 En delad länks titel och bild i en chatt följer språket i begäran. Chatttjänster anger
 oftast inget språk, och då blir det svenska. När språket finns på kontot (steg 7) bör

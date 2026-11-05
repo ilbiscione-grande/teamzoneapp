@@ -12,6 +12,7 @@ import {
   type ClaimedCheckout,
   parseTacticsboardBillingRequest,
   stripeKeyIsLive,
+  stripeLocale,
   tacticsboardProductionOrigins,
 } from "../_shared/tacticsboard_billing.ts";
 import {
@@ -92,6 +93,7 @@ Deno.serve(async (request) => {
   }
   const stripe = new Stripe(stripeKey);
   const flow = "checkout";
+  const locale = body.locale ?? "sv";
   const step = body.action === "checkout"
     ? "tacticsboard_checkout"
     : body.action === "portal"
@@ -108,7 +110,7 @@ Deno.serve(async (request) => {
         email: user.user.email ?? "",
       };
       const answer = body.action === "withdraw"
-        ? await withdraw(context, body.name)
+        ? await withdraw(context, body.name, locale)
         : await withdrawalStatus(context);
       return respond(json(200, answer, headers));
     }
@@ -126,7 +128,7 @@ Deno.serve(async (request) => {
       const session = await stripe.billingPortal.sessions.create({
         customer,
         return_url: `${origin}/konto`,
-        locale: "sv",
+        locale: stripeLocale(locale),
       });
       await recordCriticalFlowOutcome(admin, flow, "succeeded", requestId);
       return respond(json(200, { url: session.url }, headers));
@@ -160,6 +162,8 @@ Deno.serve(async (request) => {
         claimed as ClaimedCheckout,
         origin,
         user.user.email ?? null,
+        Date.now(),
+        locale,
       ) as Parameters<typeof stripe.checkout.sessions.create>[0],
       { idempotencyKey: body.idempotencyKey },
     );

@@ -18,11 +18,22 @@ export type TacticsboardBillingRequest =
 const uuid =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+export type BillingLocale = "sv" | "en";
+
+/// Only English is stated; Swedish stays the request it has always been.
 export function parseTacticsboardBillingRequest(
   value: unknown,
-): TacticsboardBillingRequest | null {
+): (TacticsboardBillingRequest & { locale?: "en" }) | null {
   if (!value || typeof value !== "object") return null;
-  const body = value as Record<string, unknown>;
+  const { locale, ...rest } = value as Record<string, unknown>;
+  if (locale !== undefined && locale !== "en") return null;
+  const request = parseRequest(rest);
+  return request && locale ? { ...request, locale } : request;
+}
+
+function parseRequest(
+  body: Record<string, unknown>,
+): TacticsboardBillingRequest | null {
   const keys = Object.keys(body).sort().join(",");
   if (body.action === "portal" || body.action === "withdrawal_status") {
     return keys === "action" ? { action: body.action } : null;
@@ -89,18 +100,28 @@ export function remainingTrialEnd(
 
 export const tacticsboardTermsUrl =
   "https://public.teamzoneapp.se/villkor/tacticsboard";
+/// The English translation of the terms; published in step 8 of the plan.
+export const tacticsboardTermsUrlEnglish =
+  "https://public.teamzoneapp.se/en/terms/tacticsboard";
+
+/// As Stripe names the languages of Checkout and the Customer Portal.
+export const stripeLocale = (locale: BillingLocale) =>
+  locale === "en" ? "en-GB" : "sv";
 
 /// The required box in Checkout: the terms, and the consent to start at once
 /// that the right of withdrawal asks for. Stripe also needs a terms URL
 /// under its public business details.
 export const tacticsboardConsentText =
   `Jag godkänner [villkoren för Tacticsboard](${tacticsboardTermsUrl}) och vill att prenumerationen börjar direkt. Jag kan ångra köpet inom 14 dagar med knappen Ångra köpet på kontosidan och betalar då en proportionell del av priset för den betalda tiden.`;
+export const tacticsboardConsentTextEnglish =
+  `I accept the [terms for Tacticsboard](${tacticsboardTermsUrlEnglish}) and want the subscription to start at once. I can withdraw from the purchase within 14 days with the Withdraw from the purchase button on the account page, and then pay a proportionate part of the price for the time paid for.`;
 
 export function checkoutSessionParams(
   claimed: ClaimedCheckout,
   origin: string,
   email: string | null,
   now = Date.now(),
+  locale: BillingLocale = "sv",
 ): Record<string, unknown> {
   const metadata = {
     teamzone_product: tacticsboardProduct,
@@ -113,13 +134,17 @@ export function checkoutSessionParams(
     success_url: `${origin}/konto?betalning=klar`,
     cancel_url: `${origin}/konto?betalning=avbruten`,
     client_reference_id: claimed.checkout_request_id,
-    locale: "sv",
+    locale: stripeLocale(locale),
     automatic_tax: { enabled: true },
     tax_id_collection: { enabled: true },
     billing_address_collection: "required",
     consent_collection: { terms_of_service: "required" },
     custom_text: {
-      terms_of_service_acceptance: { message: tacticsboardConsentText },
+      terms_of_service_acceptance: {
+        message: locale === "en"
+          ? tacticsboardConsentTextEnglish
+          : tacticsboardConsentText,
+      },
     },
     metadata,
     subscription_data: {

@@ -121,6 +121,29 @@ Deno.test("checkout: a new customer, tax, Swedish, metadata on both", () => {
   assertEquals(params.subscription_data, { metadata });
 });
 
+Deno.test("billing: English is stated, Swedish is the plain request", () => {
+  assertEquals(parseTacticsboardBillingRequest({ action: "portal", locale: "en" }), {
+    action: "portal",
+    locale: "en",
+  });
+  assertEquals(parseTacticsboardBillingRequest({ action: "portal", locale: "de" }), null);
+  assertEquals(
+    parseTacticsboardBillingRequest({ action: "withdraw", name: "Kim", locale: "en" }),
+    { action: "withdraw", name: "Kim", locale: "en" },
+  );
+});
+
+Deno.test("checkout: in English, with the terms in English", () => {
+  const params = checkoutSessionParams(claimed, "https://webtools.teamzoneapp.se", null, now, "en");
+  assertEquals(params.locale, "en-GB");
+  const message = (params.custom_text as {
+    terms_of_service_acceptance: { message: string };
+  }).terms_of_service_acceptance.message;
+  assertEquals(message.includes("/en/terms/tacticsboard"), true);
+  assertEquals(message.includes("start at once"), true);
+  assertEquals(message.length <= 1200, true);
+});
+
 Deno.test("checkout: the terms and the consent to start at once are required", () => {
   const params = checkoutSessionParams(claimed, "https://webtools.teamzoneapp.se", null, now);
   assertEquals(params.consent_collection, { terms_of_service: "required" });

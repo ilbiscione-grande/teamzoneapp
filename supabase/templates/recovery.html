@@ -1,7 +1,15 @@
-<div style="font-family:Arial,sans-serif;font-size:16px;line-height:1.5;color:#1a1a1a;max-width:480px">
+{{ $en := false }}{{ with .Data.locale }}{{ if eq . "en" }}{{ $en = true }}{{ end }}{{ end }}<div style="font-family:Arial,sans-serif;font-size:16px;line-height:1.5;color:#1a1a1a;max-width:480px">
+{{ if $en }}
+  <h2 style="font-size:20px;margin:0 0 16px">Choose a new password</h2>
+  <p>Someone has asked for a new password for {{ .Email }}. Tap the button to choose a new one.</p>
+  <p style="margin:24px 0"><a href="{{ .ConfirmationURL }}" style="background:#14532d;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;display:inline-block">Choose a new password</a></p>
+  <p style="color:#555;font-size:14px">If you did not ask for it you can ignore this email. Your password does not change.</p>
+  <p style="color:#555;font-size:14px">Questions? Email support@teamzoneapp.se.</p>
+{{ else }}
   <h2 style="font-size:20px;margin:0 0 16px">Välj ett nytt lösenord</h2>
   <p>Någon har bett om ett nytt lösenord för {{ .Email }}. Tryck på knappen för att välja ett nytt.</p>
   <p style="margin:24px 0"><a href="{{ .ConfirmationURL }}" style="background:#14532d;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;display:inline-block">Välj nytt lösenord</a></p>
   <p style="color:#555;font-size:14px">Har du inte bett om det kan du bortse från mejlet. Ditt lösenord ändras inte.</p>
   <p style="color:#555;font-size:14px">Frågor? Mejla support@teamzoneapp.se.</p>
+{{ end }}
 </div>

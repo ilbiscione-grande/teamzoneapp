@@ -24,7 +24,7 @@ export function WithdrawPurchase({ onReceived }: { onReceived: () => void }) {
     if (!client) return null;
     setBusy(true);
     setError("");
-    const { data, error: invokeError } = await client.functions.invoke("tacticsboard-billing", { body });
+    const { data, error: invokeError } = await client.functions.invoke("tacticsboard-billing", { body: language.locale === "en" ? { ...body, locale: language.locale } : body });
     setBusy(false);
     if (invokeError || typeof data?.state !== "string") { setError(t(failed)); return null; }
     return data as WithdrawalStatus;

@@ -76,6 +76,14 @@ Deno.test("withdrawal: the receipt says when, what and what happens next", () =>
   assertEquals(text.includes("Vi avslutar prenumerationen"), true);
 });
 
+Deno.test("withdrawal: the receipt in English", () => {
+  const { subject, text } = withdrawalReceipt(item, "en");
+  assertEquals(subject.includes("withdrawn"), true);
+  assertEquals(text.includes("6 November 2026"), true);
+  assertEquals(text.includes("annual subscription, bought 2026-11-05"), true);
+  assertEquals(/[åä]r|prenumeration/.test(text.replace("Plangränd", "")), false);
+});
+
 Deno.test("withdrawal: support is told when Stripe must be done by hand", () => {
   const mail = {
     ...item,

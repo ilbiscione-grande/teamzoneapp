@@ -5,13 +5,13 @@
 // afterwards it only reads the status.
 import { useCallback, useEffect, useState } from "react";
 import { useAccount } from "../account";
-import { useT } from "../language";
+import { useLanguage } from "../language";
 import { billingErrorText, type Interval, type TacticsAccess } from "../../lib/tactics/access.ts";
 
 /** `startTrial` is false where only the status is shown, such as the account page. */
 export function useTacticsboardAccess({ startTrial = true }: { startTrial?: boolean } = {}) {
   const { client } = useAccount();
-  const t = useT();
+  const { t } = useLanguage();
   const [access, setAccess] = useState<TacticsAccess | null>(null);
   const [error, setError] = useState("");
 
@@ -36,7 +36,7 @@ export function useTacticsboardAccess({ startTrial = true }: { startTrial?: bool
 /** Opens Stripe Checkout or the Customer Portal; returns an error text, or navigates away. */
 export function useBilling() {
   const { client } = useAccount();
-  const t = useT();
+  const { t, locale } = useLanguage();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -44,12 +44,12 @@ export function useBilling() {
     if (!client || busy) return;
     setBusy(true);
     setError("");
-    const { data, error: invokeError } = await client.functions.invoke("tacticsboard-billing", { body });
+    const { data, error: invokeError } = await client.functions.invoke("tacticsboard-billing", { body: locale === "en" ? { ...body, locale } : body });
     if (!invokeError && typeof data?.url === "string") { window.location.assign(data.url); return; }
     const answer = await (invokeError as { context?: Response } | null)?.context?.json?.().catch(() => null);
     setError(t(billingErrorText(answer?.error ?? "")));
     setBusy(false);
-  }, [client, busy, t]);
+  }, [client, busy, t, locale]);
 
   return {
     busy,

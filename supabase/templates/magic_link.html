@@ -1,8 +1,17 @@
-<div style="font-family:Arial,sans-serif;font-size:16px;line-height:1.5;color:#1a1a1a;max-width:480px">
+{{ $en := false }}{{ with .Data.locale }}{{ if eq . "en" }}{{ $en = true }}{{ end }}{{ end }}<div style="font-family:Arial,sans-serif;font-size:16px;line-height:1.5;color:#1a1a1a;max-width:480px">
+{{ if $en }}
+  <h2 style="font-size:20px;margin:0 0 16px">Your code to sign in</h2>
+  <p>Tap the button to sign in.</p>
+  <p style="margin:24px 0"><a href="{{ .ConfirmationURL }}" style="background:#14532d;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;display:inline-block">Sign in</a></p>
+  <p>Or enter the code <strong>{{ .Token }}</strong>.</p>
+  <p style="color:#555;font-size:14px">If you did not ask for the code you can ignore this email.</p>
+  <p style="color:#555;font-size:14px">Questions? Email support@teamzoneapp.se.</p>
+{{ else }}
   <h2 style="font-size:20px;margin:0 0 16px">Din kod för att logga in</h2>
   <p>Tryck på knappen för att logga in.</p>
   <p style="margin:24px 0"><a href="{{ .ConfirmationURL }}" style="background:#14532d;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;display:inline-block">Logga in</a></p>
   <p>Eller skriv in koden <strong>{{ .Token }}</strong>.</p>
   <p style="color:#555;font-size:14px">Har du inte bett om koden kan du bortse från mejlet.</p>
   <p style="color:#555;font-size:14px">Frågor? Mejla support@teamzoneapp.se.</p>
+{{ end }}
 </div>
