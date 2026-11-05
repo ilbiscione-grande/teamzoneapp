@@ -26,12 +26,18 @@ import { useFloorMoves } from "./use-floor.ts";
 import { LiveBadge } from "./LiveBadge.tsx";
 import { useLive } from "./live-store.ts";
 import { useLiveFollow } from "./use-live-follow.ts";
+import { useT } from "../../language";
 
 const BoardStage = dynamic(() => import("../stage/BoardStage.tsx"), { ssr: false, loading: () => <div className="tb-stage" /> });
 
-const ended = { ended: "Lektionen är slut. Tack för att du var med!", removed: "Läraren kräver nu inloggning. Logga in för att vara med igen.", failed: "Det gick inte att ansluta till lektionen. Ladda om sidan och försök igen." };
+const ended = {
+  ended: "Lektionen är slut. Tack för att du var med!",
+  removed: "Läraren kräver nu inloggning. Logga in för att vara med igen.",
+  failed: "Det gick inte att ansluta till lektionen. Ladda om sidan och försök igen.",
+};
 
 export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; joined: LiveJoined; guest: boolean }) {
+  const t = useT();
   const [ready, setReady] = useState(false);
   const [aside, setAside] = useState<"text" | "chat" | null>(null);
   const me = useMemo<LivePresence>(() => ({ role: "participant", name: joined.participant_name, guest }), [joined.participant_name, guest]);
@@ -62,8 +68,8 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
   if (state === "ended" || state === "removed" || state === "failed") {
     return (
       <div className="wt-wrap wt-section">
-        <p className="wt-status" role="status">{ended[state]}</p>
-        {state === "failed" && detail && <p className="wt-small">Felet från anslutningen: {detail}</p>}
+        <p className="wt-status" role="status">{t(ended[state])}</p>
+        {state === "failed" && detail && <p className="wt-small">{t("Felet från anslutningen: {detail}", { detail })}</p>}
       </div>
     );
   }
@@ -75,32 +81,32 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
           <span className="tb-viewer-mark" aria-hidden="true">TZ</span>
           <div className="tb-viewer-title">
             <strong>{joined.name}</strong>
-            <span>{kindLabels[joined.kind]} · live med {joined.host_name}</span>
+            <span>{t("{kind} · live med {name}", { kind: t(kindLabels[joined.kind]), name: joined.host_name })}</span>
           </div>
           <span className="tb-spacer" />
           {/* On a phone the row scrolls sideways rather than lose a button. */}
           <div className="tb-live-actions">
-            <span className="tb-live-status" data-host={hostHere}>{state === "connecting" ? "Ansluter…" : hostHere ? "Följer läraren" : "Väntar på läraren"}</span>
+            <span className="tb-live-status" data-host={hostHere}>{state === "connecting" ? t("Ansluter…") : hostHere ? t("Följer läraren") : t("Väntar på läraren")}</span>
             {handsAllowed && state === "following" && (
-              <button type="button" className="tb-present-toggle" aria-pressed={!!hand} onClick={() => setHand(!hand)} title={hand ? "Sänk handen" : "Räck upp handen"}>✋</button>
+              <button type="button" className="tb-present-toggle" aria-pressed={!!hand} onClick={() => setHand(!hand)} title={hand ? t("Sänk handen") : t("Räck upp handen")}>✋</button>
             )}
             {(chatMode !== "off" || hasMessages) && (
-              <button type="button" className="tb-present-toggle" aria-pressed={aside === "chat"} onClick={() => toggle("chat")}><LiveBadge label="Chatt" /></button>
+              <button type="button" className="tb-present-toggle" aria-pressed={aside === "chat"} onClick={() => toggle("chat")}><LiveBadge label={t("Chatt")} /></button>
             )}
             {state === "following" && <LiveDrawButtons />}
-            <button type="button" className="tb-present-toggle" aria-pressed={aside === "text"} onClick={() => toggle("text")}>Beskrivning</button>
+            <button type="button" className="tb-present-toggle" aria-pressed={aside === "text"} onClick={() => toggle("text")}>{t("Beskrivning")}</button>
           </div>
         </div>
       </header>
       <div className="tb-present-body">
         <div className="tb-center">
-          <ErrorBoundary label="Tavlan">
+          <ErrorBoundary label={t("Tavlan")}>
             <BoardStage editable={hasFloor} moveOnly
               extra={<><LiveStrokes pen={selfId ? { client, sessionId: joined.id, selfId } : undefined} /><LiveAnswers answering={{ client }} /><Laser /></>} />
           </ErrorBoundary>
           <LiveWhere hasFloor={hasFloor} />
         </div>
-        {aside === "text" && <BoardText emptyHint="Tavlan har ingen beskrivning." />}
+        {aside === "text" && <BoardText emptyHint={t("Tavlan har ingen beskrivning.")} />}
         {aside === "chat" && <aside className="tb-present-text tb-present-live"><ChatPanel client={client} sessionId={joined.id} host={false} /></aside>}
       </div>
     </div>

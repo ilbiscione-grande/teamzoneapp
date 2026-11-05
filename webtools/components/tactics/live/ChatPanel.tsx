@@ -7,9 +7,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useEffect, useRef, useState } from "react";
 import { chatError, clockTime, type ChatMessage } from "../../../lib/tactics/live-chat.ts";
+import { useLanguage } from "../../language";
 import { useChat } from "./chat-store.ts";
 
 export function ChatPanel({ client, sessionId, host }: { client: SupabaseClient; sessionId: string; host: boolean }) {
+  const { t, intl } = useLanguage();
   const messages = useChat(state => state.messages);
   const chatMode = useChat(state => state.chatMode);
   const muted = useChat(state => state.muted);
@@ -33,31 +35,31 @@ export function ChatPanel({ client, sessionId, host }: { client: SupabaseClient;
     setBusy(true); setError("");
     const { data, error: sendError } = await client.schema("api").rpc("send_tactics_live_message", { target_session_id: sessionId, message_body: text });
     setBusy(false);
-    if (sendError) { setError(chatError(sendError.message)); return; }
+    if (sendError) { setError(t(chatError(sendError.message))); return; }
     useChat.getState().add([data as ChatMessage]);
     setText("");
   };
   const remove = async (message: ChatMessage) => {
-    if (!window.confirm("Ta bort meddelandet för alla?")) return;
+    if (!window.confirm(t("Ta bort meddelandet för alla?"))) return;
     const { error: removeError } = await client.schema("api").rpc("delete_tactics_live_message", { target_message_id: message.id });
-    if (removeError) setError("Meddelandet kunde inte tas bort."); else useChat.getState().remove(message.id);
+    if (removeError) setError(t("Meddelandet kunde inte tas bort.")); else useChat.getState().remove(message.id);
   };
 
   const notice = host ? null
-    : chatMode === "off" ? "Läraren har stängt av chatten."
-    : muted ? "Läraren har stängt av chatten för dig."
-    : chatMode === "questions" ? "Det du skriver går bara till läraren." : null;
+    : chatMode === "off" ? t("Läraren har stängt av chatten.")
+    : muted ? t("Läraren har stängt av chatten för dig.")
+    : chatMode === "questions" ? t("Det du skriver går bara till läraren.") : null;
   return (
-    <section className="tb-chat" aria-label="Chatt">
+    <section className="tb-chat" aria-label={t("Chatt")}>
       <ol ref={list} className="tb-chat-list">
-        {messages.length === 0 && <li className="tb-chat-empty">Inga meddelanden än.</li>}
+        {messages.length === 0 && <li className="tb-chat-empty">{t("Inga meddelanden än.")}</li>}
         {messages.map(message => (
           <li key={message.id} data-host={message.from_host} data-own={message.profile_id === selfId}>
             <div className="tb-chat-meta">
               <strong>{message.name}</strong>
-              {message.to_host && <span className="tb-chat-tag">{host ? "Fråga" : "Bara till läraren"}</span>}
-              <time>{clockTime(message.created_at)}</time>
-              {host && <button type="button" className="tb-chat-remove" aria-label="Ta bort meddelandet" onClick={() => void remove(message)}>×</button>}
+              {message.to_host && <span className="tb-chat-tag">{host ? t("Fråga") : t("Bara till läraren")}</span>}
+              <time>{clockTime(message.created_at, intl)}</time>
+              {host && <button type="button" className="tb-chat-remove" aria-label={t("Ta bort meddelandet")} onClick={() => void remove(message)}>×</button>}
             </div>
             <p>{message.body}</p>
           </li>
@@ -66,9 +68,9 @@ export function ChatPanel({ client, sessionId, host }: { client: SupabaseClient;
       {notice && <p className="tb-chat-notice">{notice}</p>}
       {canWrite && (
         <form className="tb-chat-form" onSubmit={send}>
-          <input value={text} maxLength={500} onChange={event => setText(event.target.value)} aria-label="Meddelande"
-            placeholder={host ? "Skriv till alla" : chatMode === "questions" ? "Fråga läraren" : "Skriv i chatten"} />
-          <button type="submit" className="wt-button small" disabled={busy || !text.trim()}>Skicka</button>
+          <input value={text} maxLength={500} onChange={event => setText(event.target.value)} aria-label={t("Meddelande")}
+            placeholder={host ? t("Skriv till alla") : chatMode === "questions" ? t("Fråga läraren") : t("Skriv i chatten")} />
+          <button type="submit" className="wt-button small" disabled={busy || !text.trim()}>{t("Skicka")}</button>
         </form>
       )}
       {error && <p className="wt-error" role="alert">{error}</p>}

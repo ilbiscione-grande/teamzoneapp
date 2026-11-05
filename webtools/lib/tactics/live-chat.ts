@@ -33,4 +33,4 @@ export function raisedHands<T extends { hand?: number | null }>(people: T[]): T[
 }
 
 /** "14:05" for a message's time. */
-export const clockTime = (iso: string) => new Date(iso).toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
+export const clockTime = (iso: string, intl: string) => new Date(iso).toLocaleTimeString(intl, { hour: "2-digit", minute: "2-digit" });

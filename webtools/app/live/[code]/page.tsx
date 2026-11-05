@@ -1,7 +1,10 @@
 import { LiveJoin } from "../../../components/tactics/live/LiveJoin.tsx";
+import { serverT } from "../../../lib/i18n/server";
 import { normalizeCode } from "../../../lib/tactics/live.ts";
 
-export const metadata = { title: "Livelektion" };
+export async function generateMetadata() {
+  return { title: (await serverT())("Livelektion") };
+}
 
 type Props = { params: Promise<{ code: string }> };
 

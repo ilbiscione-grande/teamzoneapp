@@ -9,10 +9,12 @@ import { throttle } from "../../../lib/tactics/live.ts";
 import { objectDrag, objectDrop } from "../stage/stage-context.ts";
 import { useEditor } from "../store.ts";
 import { useDraw } from "./draw-store.ts";
+import { useT } from "../../language";
 
 type Moves = Record<string, { x: number; y: number }>;
 
 export function useFloorMoves(client: SupabaseClient, sessionId: string, hasFloor: boolean) {
+  const t = useT();
   useEffect(() => {
     if (!hasFloor) return;
     const send = (moves: Moves, dropped: boolean) => {
@@ -22,7 +24,7 @@ export function useFloorMoves(client: SupabaseClient, sessionId: string, hasFloo
         target_session_id: sessionId, target_board_id: boardId, target_frame_index: frameIndex, object_moves: moves, dropped,
       }).then(({ error }) => {
         // Said under the board, so a move that did not reach the host is not silent.
-        if (error) useDraw.getState().set({ error: `Flytten nådde inte läraren (${error.message}).` });
+        if (error) useDraw.getState().set({ error: t("Flytten nådde inte läraren ({error}).", { error: error.message }) });
         else if (dropped) useDraw.getState().set({ error: "" });
       });
     };

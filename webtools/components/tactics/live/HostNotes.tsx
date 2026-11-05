@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 import { useAccount } from "../../account";
 import { useEditor } from "../store.ts";
+import { useT } from "../../language";
 
 type NotesState = { projectId: string | null; notes: Record<string, string>; load: (projectId: string, notes: Record<string, string>) => void };
 
@@ -20,6 +21,7 @@ export const useHostNotes = create<NotesState>(set => ({
 const SAVE_AFTER_MS = 800;
 
 export function HostNotes({ compact = false }: { compact?: boolean }) {
+  const t = useT();
   const { client } = useAccount();
   const boardId = useEditor(state => state.boardId);
   const projectId = useHostNotes(state => state.projectId);
@@ -43,10 +45,10 @@ export function HostNotes({ compact = false }: { compact?: boolean }) {
 
   return (
     <details className="tb-host-notes" open>
-      <summary>Mina anteckningar <small>syns inte för eleverna</small></summary>
+      <summary>{t("Mina anteckningar")} <small>{t("syns inte för eleverna")}</small></summary>
       <textarea rows={compact ? 4 : 6} maxLength={5000} value={text} onChange={event => change(event.target.value)}
-        placeholder={"Stolpar för den här tavlan, t.ex.\n- Fråga varför 6:an går ner\n- Visa frame 3 två gånger"} />
-      <span className="tb-hint" role="status">{status === "saving" ? "Sparar…" : status === "saved" ? "Sparat" : status === "error" ? "Kunde inte spara" : ""}</span>
+        placeholder={t("Stolpar för den här tavlan, t.ex.\n- Fråga varför 6:an går ner\n- Visa frame 3 två gånger")} />
+      <span className="tb-hint" role="status">{status === "saving" ? t("Sparar…") : status === "saved" ? t("Sparat") : status === "error" ? t("Kunde inte spara") : ""}</span>
     </details>
   );
 }

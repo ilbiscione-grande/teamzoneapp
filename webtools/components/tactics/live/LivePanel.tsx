@@ -18,8 +18,10 @@ import { HostNotes } from "./HostNotes.tsx";
 import { LivePeople } from "./LivePeople.tsx";
 import { LiveQuestion } from "./LiveQuestion.tsx";
 import { useLive } from "./live-store.ts";
+import { useT } from "../../language";
 
 export function LivePanel() {
+  const t = useT();
   const { client } = useAccount();
   const session = useLive(state => state.session);
   const participants = useLive(state => state.participants);
@@ -35,7 +37,7 @@ export function LivePanel() {
   const chatSettings = async (mode: ChatMode, handsAllowed: boolean) => {
     setError("");
     const { data, error: saveError } = await client.schema("api").rpc("set_tactics_live_chat", { target_session_id: session.id, new_chat_mode: mode, hands_allowed: handsAllowed });
-    if (saveError) { setError("Inställningen kunde inte sparas."); return; }
+    if (saveError) { setError(t("Inställningen kunde inte sparas.")); return; }
     saved(data);
     useChat.getState().set({ chatMode: mode, hands: handsAllowed });
     send("settings", { chatMode: mode, hands: handsAllowed, drawMode });
@@ -43,52 +45,52 @@ export function LivePanel() {
   const drawSettings = async (mode: DrawMode) => {
     setError("");
     const { data, error: saveError } = await client.schema("api").rpc("set_tactics_live_drawing", { target_session_id: session.id, new_draw_mode: mode });
-    if (saveError) { setError("Inställningen kunde inte sparas."); return; }
+    if (saveError) { setError(t("Inställningen kunde inte sparas.")); return; }
     saved(data);
     useDraw.getState().set({ drawMode: mode });
     send("settings", { chatMode, hands, drawMode: mode });
   };
   const clear = async () => {
-    if (!window.confirm("Rensa allas ritningar på den här tavlan?")) return;
+    if (!window.confirm(t("Rensa allas ritningar på den här tavlan?"))) return;
     const { error: clearError } = await client.schema("api").rpc("clear_tactics_live_strokes", { target_session_id: session.id, target_board_id: useEditor.getState().boardId });
-    if (clearError) setError("Ritningarna kunde inte rensas.");
+    if (clearError) setError(t("Ritningarna kunde inte rensas."));
   };
   const up = raisedHands(participants);
 
   return (
     <div className="tb-inspector tb-live-panel">
-      <h3>Livelektion · {session.code}</h3>
+      <h3>{t("Livelektion · {code}", { code: session.code })}</h3>
       <HostNotes />
       <div className="tb-row">
-        <label className="tb-field">Chatt
+        <label className="tb-field">{t("Chatt")}
           <select value={chatMode} onChange={event => void chatSettings(event.target.value as ChatMode, hands)}>
-            {(Object.keys(chatModeLabels) as ChatMode[]).map(mode => <option key={mode} value={mode}>{chatModeLabels[mode]}</option>)}
+            {(Object.keys(chatModeLabels) as ChatMode[]).map(mode => <option key={mode} value={mode}>{t(chatModeLabels[mode])}</option>)}
           </select>
         </label>
-        <label className="tb-field">Eleverna ritar
+        <label className="tb-field">{t("Eleverna ritar")}
           <select value={drawMode} onChange={event => void drawSettings(event.target.value as DrawMode)}>
-            {(Object.keys(drawModeLabels) as DrawMode[]).map(mode => <option key={mode} value={mode}>{drawModeLabels[mode]}</option>)}
+            {(Object.keys(drawModeLabels) as DrawMode[]).map(mode => <option key={mode} value={mode}>{t(drawModeLabels[mode])}</option>)}
           </select>
         </label>
       </div>
-      <label className="tb-check"><input type="checkbox" checked={hands} onChange={event => void chatSettings(chatMode, event.target.checked)} />Deltagarna kan räcka upp handen</label>
-      {strokeCount > 0 && <button type="button" className="tb-link" onClick={() => void clear()}>Rensa allas ritningar på tavlan</button>}
+      <label className="tb-check"><input type="checkbox" checked={hands} onChange={event => void chatSettings(chatMode, event.target.checked)} />{t("Deltagarna kan räcka upp handen")}</label>
+      {strokeCount > 0 && <button type="button" className="tb-link" onClick={() => void clear()}>{t("Rensa allas ritningar på tavlan")}</button>}
       {hands && up.length > 0 && (
         <>
-          <h3>✋ Räcker upp handen ({up.length})</h3>
+          <h3>{t("✋ Räcker upp handen ({count})", { count: up.length })}</h3>
           <ol className="tb-live-hands">
             {up.map(person => (
-              <li key={person.key}><span>{person.name}</span><button type="button" className="tb-link" onClick={() => send("lower-hand", { key: person.key })}>Sänk</button></li>
+              <li key={person.key}><span>{person.name}</span><button type="button" className="tb-link" onClick={() => send("lower-hand", { key: person.key })}>{t("Sänk")}</button></li>
             ))}
           </ol>
         </>
       )}
-      <h3>Fråga på planen</h3>
+      <h3>{t("Fråga på planen")}</h3>
       <LiveQuestion client={client} sessionId={session.id} />
-      <h3>Med nu ({participants.length})</h3>
+      <h3>{t("Med nu ({count})", { count: participants.length })}</h3>
       <LivePeople client={client} session={session} onError={setError} />
       {error && <p className="wt-error" role="alert">{error}</p>}
-      <h3>Chatt</h3>
+      <h3>{t("Chatt")}</h3>
       <ChatPanel client={client} sessionId={session.id} host />
     </div>
   );

@@ -6,7 +6,8 @@ import { editorMore } from "./editor-more.ts";
 import { editorPanels } from "./editor-panels.ts";
 import { editorTools } from "./editor-tools.ts";
 import { library } from "./library.ts";
+import { live } from "./live.ts";
 import { sharing } from "./sharing.ts";
 import { shell } from "./shell.ts";
 
-export const english: Record<string, string> = { ...shell, ...account, ...billing, ...editorPanels, ...editorTools, ...editorMore, ...library, ...sharing };
+export const english: Record<string, string> = { ...shell, ...account, ...billing, ...editorPanels, ...editorTools, ...editorMore, ...library, ...sharing, ...live };

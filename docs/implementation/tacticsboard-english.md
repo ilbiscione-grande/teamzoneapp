@@ -77,9 +77,9 @@ Brittisk engelska, som i fotbollen.
 | 2 | Skal, start, inloggning, konto | Klart |
 | 3 | Produktsidan och köpet, med priser och ångerfunktion | Klart |
 | 4 | Editorn, inklusive export och pdf | Klart |
-| 5 | Hem, bibliotek, mappar, delade sidor och OG-bilder | Klart lokalt |
-| 6 | Livegenomgångar | Nästa |
-| 7 | Backend: Stripe `locale` från språket, språk på kontot, ångerkvitto, Auth-mejl med `{{ if eq .Data.locale "en" }}` | |
+| 5 | Hem, bibliotek, mappar, delade sidor och OG-bilder | Klart |
+| 6 | Livegenomgångar | Klart lokalt |
+| 7 | Backend: Stripe `locale` från språket, språk på kontot, ångerkvitto, Auth-mejl med `{{ if eq .Data.locale "en" }}` | Nästa |
 | 8 | Publika sajten och juridiken, efter att de svenska texterna är granskade | |
 | 9 | Skärmbilder och demofilm på engelska | |
 | 10 | Hela köpflödet på engelska, flaggan på i produktionen | |

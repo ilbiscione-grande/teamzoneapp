@@ -9,8 +9,10 @@ import type { LiveQuestion as Question } from "../../../lib/tactics/live-questio
 import { useEditor } from "../store.ts";
 import { useLive } from "./live-store.ts";
 import { latestQuestion, useQuestions } from "./question-store.ts";
+import { useT } from "../../language";
 
 export function LiveQuestion({ client, sessionId }: { client: SupabaseClient; sessionId: string }) {
+  const t = useT();
   const question = useQuestions(latestQuestion);
   const participants = useLive(state => state.participants.length);
   const [prompt, setPrompt] = useState("");
@@ -27,12 +29,12 @@ export function LiveQuestion({ client, sessionId }: { client: SupabaseClient; se
     const { boardId, frameIndex } = useEditor.getState();
     if (!prompt.trim() || !boardId) return;
     const { data, error: askError } = await client.schema("api").rpc("ask_tactics_live_question", { target_session_id: sessionId, target_board_id: boardId, target_frame_index: frameIndex, question_prompt: prompt });
-    if (done(data, askError, "Frågan kunde inte ställas.")) setPrompt("");
+    if (done(data, askError, t("Frågan kunde inte ställas."))) setPrompt("");
   };
   const close = async (show: boolean) => {
     if (!question) return;
     const { data, error: closeError } = await client.schema("api").rpc("close_tactics_live_question", { target_question_id: question.id, show_answers: show });
-    done(data, closeError, "Frågan kunde inte stängas.");
+    done(data, closeError, t("Frågan kunde inte stängas."));
   };
 
   return (
@@ -40,24 +42,24 @@ export function LiveQuestion({ client, sessionId }: { client: SupabaseClient; se
       {question?.status === "open" ? (
         <>
           <p className="tb-live-prompt">{question.prompt}</p>
-          <p className="tb-hint">{question.answer_count} av {participants} har svarat. Svaren syns bara för dig tills du visar dem.</p>
+          <p className="tb-hint">{t("{count} av {total} har svarat. Svaren syns bara för dig tills du visar dem.", { count: question.answer_count, total: participants })}</p>
           <div className="tb-actions">
-            <button type="button" className="wt-button small" onClick={() => void close(true)}>Stäng och visa svaren</button>
-            <button type="button" className="wt-button secondary small" onClick={() => void close(false)}>Stäng</button>
+            <button type="button" className="wt-button small" onClick={() => void close(true)}>{t("Stäng och visa svaren")}</button>
+            <button type="button" className="wt-button secondary small" onClick={() => void close(false)}>{t("Stäng")}</button>
           </div>
         </>
       ) : (
         <>
           {question && (
-            <p className="tb-hint">Senast: {question.prompt} ({question.answer_count} svar{question.revealed ? ", visas för alla" : ""}).
-              {!question.revealed && question.answer_count > 0 && <> <button type="button" className="tb-link" onClick={() => void close(true)}>Visa svaren</button></>}
+            <p className="tb-hint">{question.revealed ? t("Senast: {prompt} ({count} svar, visas för alla).", { prompt: question.prompt, count: question.answer_count }) : t("Senast: {prompt} ({count} svar).", { prompt: question.prompt, count: question.answer_count })}
+              {!question.revealed && question.answer_count > 0 && <> <button type="button" className="tb-link" onClick={() => void close(true)}>{t("Visa svaren")}</button></>}
             </p>
           )}
           <form className="tb-chat-form" onSubmit={ask}>
-            <input value={prompt} maxLength={200} onChange={event => setPrompt(event.target.value)} aria-label="Fråga på planen" placeholder="T.ex. Var ska 6:an stå när vi tappar bollen?" />
-            <button type="submit" className="wt-button small" disabled={!prompt.trim()}>Fråga</button>
+            <input value={prompt} maxLength={200} onChange={event => setPrompt(event.target.value)} aria-label={t("Fråga på planen")} placeholder={t("T.ex. Var ska 6:an stå när vi tappar bollen?")} />
+            <button type="submit" className="wt-button small" disabled={!prompt.trim()}>{t("Fråga|knapp")}</button>
           </form>
-          <p className="tb-hint">Eleverna svarar genom att trycka på planen, på tavlan och framen du står på.</p>
+          <p className="tb-hint">{t("Eleverna svarar genom att trycka på planen, på tavlan och framen du står på.")}</p>
         </>
       )}
       {error && <p className="wt-error" role="alert">{error}</p>}
