@@ -44,17 +44,18 @@ const sections = [
     items: [
       "Prenumerationen förnyas automatiskt varje månad eller år tills du säger upp den.",
       "Du säger upp när du vill under Hantera betalning på kontosidan. Prenumerationen gäller perioden ut och förnyas sedan inte. Betalt för en påbörjad period återbetalas inte, utom vid ånger enligt avsnitt 6.",
-      "Avslutar du ditt konto avslutas prenumerationen direkt, utan återbetalning.",
+      "Avslutar du ditt konto avslutas prenumerationen direkt, utan återbetalning, utom vid ånger enligt avsnitt 6.",
       "Misslyckas en betalning har du 14 dagar på dig att uppdatera betalningen. Under den tiden fungerar allt. Därefter låses Tacticsboard tills betalningen är ordnad. Inget tas bort.",
     ],
   },
   {
     title: "6. Ångerrätt",
     paragraphs: [
-      "Är du konsument har du 14 dagars ångerrätt från köpet enligt lagen om distansavtal och avtal utanför affärslokaler.",
-      "Vid köpet ber vi dig samtycka till att prenumerationen börjar direkt. Ångrar du dig inom 14 dagar betalar vi tillbaka det du har betalat, med avdrag för den tid du har haft tillgång till tjänsten efter köpet.",
-      "Du ångrar dig genom att mejla support@teamzoneapp.se inom 14 dagar. Skriv att du ångrar köpet och vilken e-postadress kontot har. Du kan använda Konsumentverkets standardformulär för ånger, men det behövs inte. Återbetalningen görs till samma betalsätt inom 14 dagar från att vi fick ditt besked.",
-      "[PLACEHOLDER: texten om ångerrätten granskas juridiskt före lansering.]",
+      "Är du konsument har du 14 dagars ångerrätt från den dag du köpte prenumerationen, enligt lagen om distansavtal och avtal utanför affärslokaler.",
+      "Du ångrar köpet med knappen Ångra köpet under Abonnemang på kontosidan. Den finns där under hela ångerfristen. Du bekräftar ditt namn och vilken prenumeration det gäller, och bekräftar sedan att du ångrar köpet. Vi skickar direkt ett mottagningsbevis med e-post som visar när vi tog emot beskedet.",
+      "Du kan också mejla support@teamzoneapp.se inom 14 dagar eller använda Konsumentverkets standardformulär för ånger. Skriv att du ångrar köpet och vilken e-postadress kontot har.",
+      "Vid köpet begär du att prenumerationen börjar direkt. Ångrar du dig betalar du därför en proportionell del av priset för tiden från att den betalda perioden började till att du ångrade dig. Tid under den kostnadsfria provperioden kostar ingenting. Resten betalar vi tillbaka till samma betalsätt inom 14 dagar från att vi fick ditt besked.",
+      "Ångerrätten gäller köpet av prenumerationen och inte varje automatisk förnyelse. Du kan alltid säga upp prenumerationen enligt avsnitt 5.",
     ],
   },
   {
@@ -77,14 +78,16 @@ const sections = [
     title: "9. Drift och ändringar",
     items: [
       "Vi arbetar för att Tacticsboard ska fungera hela tiden men kan inte lova oavbruten drift. Underhåll och fel hos leverantörer kan påverka tjänsten tillfälligt.",
-      "Ändras priset eller villkoren till din nackdel meddelar vi det med e-post minst 30 dagar innan ändringen gäller för dig. Vill du inte fortsätta kan du säga upp prenumerationen innan dess.",
+      "Vi kan ändra priset eller villkoren. Är ändringen till din nackdel meddelar vi det med e-post minst 30 dagar innan den gäller för dig. Ett nytt pris gäller från din första förnyelse efter det. Priset för en period du redan har betalat ändras inte.",
+      "Vill du inte fortsätta säger du upp prenumerationen innan ändringen gäller. Den upphör då vid periodens slut.",
     ],
   },
   {
     title: "10. Ansvar",
     paragraphs: [
       "Vårt ansvar är begränsat till det du har betalat för Tacticsboard de senaste 12 månaderna, utom vid uppsåt eller grov vårdslöshet. Begränsningen gäller inte rättigheter du har som konsument enligt lag.",
-      "Spara gärna kopior av viktiga projekt med exporten. [PLACEHOLDER: ansvarsbegränsningen granskas juridiskt före lansering.]",
+      "Är tjänsten felaktig har du som konsument rättigheter enligt lagen om avtal om tillhandahållande av digitalt innehåll och digitala tjänster, till exempel att vi rättar felet, att du får prisavdrag eller att du häver avtalet.",
+      "Spara gärna kopior av viktiga projekt med exporten.",
     ],
   },
   {

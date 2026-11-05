@@ -44,7 +44,7 @@ const sections = [
     title: "5. Minderåriga",
     paragraphs: [
       "Klubbar och ansvariga vuxna ska behandla barns uppgifter varsamt och följa tillämpliga regler, lagliga grunder och samtyckeskrav. Publik exponering av minderårigas uppgifter är avstängd som utgångspunkt.",
-      "[PLACEHOLDER: fastställd minimiålder och detaljerad guardianpolicy införs efter juridisk granskning.]",
+      "Du måste vara minst 13 år för att skapa ett eget konto. Yngre barn får använda TeamZone bara genom en verifierad koppling till en vårdnadshavare. För att köpa en prenumeration måste du vara 18 år eller ha vårdnadshavarens godkännande.",
     ],
   },
   {
@@ -64,7 +64,7 @@ const sections = [
     title: "8. Avgifter och betalning",
     paragraphs: [
       "Tacticsboard säljs som prenumeration till enskilda personer. Pris, provperiod, betalning, uppsägning och ångerrätt står i Villkor för Tacticsboard, som du godkänner när du köper.",
-      "[PLACEHOLDER: avgifter för klubbar avtalas separat och införs här innan de aktiveras.]",
+      "Avgifter för klubbar avtalas separat med varje klubb.",
     ],
   },
   {
@@ -72,7 +72,7 @@ const sections = [
     paragraphs: [
       "TeamZone ersätter inte professionell medicinsk, juridisk eller ekonomisk rådgivning. Användare och klubbar ansvarar för sina verksamhetsbeslut.",
       "Svensk lag gäller för villkoren. Som konsument kan du vända dig till Allmänna reklamationsnämnden (ARN), arn.se, om vi inte kommer överens. Tvister kan också prövas av allmän domstol.",
-      "[PLACEHOLDER: ansvarsbegränsningen fastställs vid juridisk granskning.]",
+      "Vi ansvarar för skada som vi har orsakat genom uppsåt eller grov vårdslöshet. I övrigt är vårt ansvar begränsat till det du har betalat till oss de senaste 12 månaderna. Begränsningen gäller inte rättigheter du har som konsument enligt lag.",
     ],
   },
   {
@@ -90,7 +90,7 @@ export default function TermsPage() {
       title="Användarvillkor"
       version="2026-11-04-draft"
       updated="4 november 2026"
-      introduction="Läs villkoren innan du skapar eller använder ett TeamZone-konto. Detta dokument är ett tekniskt komplett placeholderutkast och är ännu inte juridiskt godkänt."
+      introduction="Läs villkoren innan du skapar eller använder ett TeamZone-konto."
       sections={sections}
     />
   );

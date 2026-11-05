@@ -16,7 +16,7 @@ test("legal placeholders are public pages with explicit draft disclosure", () =>
 
 test("legal placeholders cover core technical acceptance topics", () => {
   for (const source of [terms, privacy]) {
-    assert.match(source, /\[PLACEHOLDER:/);
+    assert.doesNotMatch(source, /PLACEHOLDER|placeholder/);
     assert.match(source, /minderår|Barns personuppgifter/);
     assert.match(source, /Kontakt/);
   }
