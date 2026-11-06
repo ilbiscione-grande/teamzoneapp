@@ -22,7 +22,7 @@ export function copyObjects(document: ProjectDocument, from: FramePlace, ids: st
   const renamed = new Map(picked.map(item => [item.id, sameBoard ? item.id : newId()]));
 
   const copies = picked.map(item => {
-    const copy = { ...item, id: renamed.get(item.id)!, effects: [], effect: null, pathControl: null } as TacticsObject;
+    const copy = { ...item, id: renamed.get(item.id)!, effects: [], lastingEffects: [], effect: null, pathControl: null } as TacticsObject;
     if (copy.type === "ball" && copy.attachedTo) return { ...copy, attachedTo: renamed.get(copy.attachedTo) ?? copy.attachedTo };
     return copy;
   });

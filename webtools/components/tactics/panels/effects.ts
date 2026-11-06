@@ -2,7 +2,7 @@
 // objects it suits. Drawing in is for lines only; a trail, an arrow and a
 // ring for what moves; zooming for anything. An
 // object may have several in the same frame; they play together.
-import type { Easing, Effect, TacticsObject, ZoomLevel } from "../../../lib/tactics/model.ts";
+import type { Easing, Effect, TacticsObject, ZoomLevel, ZoomSpeed } from "../../../lib/tactics/model.ts";
 
 export const effects: Record<Effect, { label: string; icon: string; hint: string }> = {
   fade: { label: "Tona in", icon: "◐", hint: "Tonar fram. Nya objekt gör det av sig själva." },
@@ -37,3 +37,6 @@ export const easingLabels: Record<Easing, string> = {
 
 /** How close the zoom effect goes, for an object's choice. */
 export const zoomLabels: Record<ZoomLevel, string> = { close: "Nära", medium: "Mellan", wide: "Lite" };
+
+/** How fast the zoom goes in and out, for an object's choice. */
+export const zoomSpeedLabels: Record<ZoomSpeed, string> = { fast: "Snabbt", slow: "Långsamt" };

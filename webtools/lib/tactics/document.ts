@@ -228,11 +228,11 @@ export function keepOnGrass(point: Point, margin = 6): Point {
 }
 
 
-/** A copy of a frame put after it: the same objects (same ids, so they move between the two), no effects, bends or lofted passes of its own. */
+/** A copy of a frame put after it: the same objects (same ids, so they move between the two), no bends, lofted passes or effects of its own but those chosen for every frame. */
 export function insertFrame(board: Board, afterIndex: number): Board {
   const source = board.frames[afterIndex] ?? board.frames[board.frames.length - 1];
   const copy: Frame = {
-    ...newFrame(source.objects.map(item => ({ ...item, effect: null, effects: [], pathControl: null, ...(item.type === "ball" ? { flight: undefined } : {}) }) as TacticsObject)),
+    ...newFrame(source.objects.map(item => ({ ...item, effect: null, effects: item.lastingEffects ?? [], pathControl: null, ...(item.type === "ball" ? { flight: undefined } : {}) }) as TacticsObject)),
     durationMs: source.durationMs,
     ...(source.easing ? { easing: source.easing } : {}),
   };
@@ -262,9 +262,10 @@ export function setFrameEasing(board: Board, index: number, easing: Easing): Boa
   return { ...board, frames: board.frames.map((frame, i) => i === index ? { ...frame, easing } : frame) };
 }
 
-/** An object's effects with one added or taken away, as a patch; a board's single old effect becomes the list. */
+/** An object's effects with one added or taken away, as a patch; a board's single old effect becomes the list. Taken away here, frames copied from here do without it too. */
 export function toggleEffect(item: TacticsObject, kind: Effect, on: boolean): Partial<TacticsObject> {
   const current = effectsOf(item);
   const effects = on ? (current.includes(kind) ? current : [...current, kind]) : current.filter(other => other !== kind);
-  return { effects, effect: null };
+  const lasting = item.lastingEffects?.filter(other => on || other !== kind);
+  return { effects, effect: null, ...(lasting ? { lastingEffects: lasting } : {}) };
 }

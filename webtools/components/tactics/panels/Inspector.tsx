@@ -11,7 +11,7 @@ import { effects } from "./effects.ts";
 import { activeObjects, useEditor } from "../store.ts";
 import { BoardSettings } from "./BoardSettings.tsx";
 import { CopyTo } from "./CopyTo.tsx";
-import { Swatches } from "./Swatches.tsx";
+import { ObjectSwatches } from "./AllFrames.tsx";
 import { TextLook } from "./TextLook.tsx";
 import { PlayerLink } from "./PlayerLink.tsx";
 import { SharedFields } from "./SharedFields.tsx";
@@ -20,6 +20,7 @@ import { useT } from "../../language";
 function Fields({ item, board }: { item: TacticsObject; board: Board }) {
   const t = useT();
   const patch = (changes: Partial<TacticsObject>) => useEditor.getState().patch({ [item.id]: changes });
+  const paint = (color: string | null) => useEditor.getState().patchLook({ [item.id]: { color } });
   switch (item.type) {
     case "player":
       return (
@@ -56,8 +57,8 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
             </div>
             <span className="tb-hint">{t("Eller dra i den gula punkten framför spelaren.")}</span>
           </div>
-          <Swatches label={t("Egen färg (t.ex. målvakt)")} value={item.color} onChange={color => patch({ color })} />
-          {item.color && <button type="button" className="tb-link" onClick={() => patch({ color: null })}>{t("Lagets färg")}</button>}
+          <ObjectSwatches label={t("Egen färg (t.ex. målvakt)")} value={item.color} onChange={paint} />
+          {item.color && <button type="button" className="tb-link" onClick={() => paint(null)}>{t("Lagets färg")}</button>}
         </>
       );
     case "ball":
@@ -86,7 +87,7 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
           </label>
           {item.type === "line" && item.control && <button type="button" className="tb-link" onClick={() => patch({ control: null })}>{t("Gör rak")}</button>}
           {item.type === "line" && <p className="tb-hint">{t("Dra i mittpunkten för att böja linjen.")}</p>}
-          <Swatches label={t("Färg")} value={item.color} onChange={color => patch({ color })} />
+          <ObjectSwatches label={t("Färg")} value={item.color} onChange={paint} />
         </>
       );
     case "rect":
@@ -102,7 +103,7 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
             </select>
           </label>
           <label className="tb-check"><input type="checkbox" checked={item.dashed} onChange={event => patch({ dashed: event.target.checked })} />{t("Streckad kant")}</label>
-          <Swatches label={t("Färg")} value={item.color} onChange={color => patch({ color })} />
+          <ObjectSwatches label={t("Färg")} value={item.color} onChange={paint} />
         </>
       );
     case "text":
@@ -113,7 +114,7 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
             <input type="range" min={0.8} max={8} step={0.2} value={item.size} onChange={event => patch({ size: Number(event.target.value) })} />
           </label>
           {item.width != null && <button type="button" className="tb-link" onClick={() => patch({ width: null, height: null })}>{t("Anpassa rutan efter texten")}</button>}
-          <Swatches label={t("Textfärg")} value={item.color} onChange={color => patch({ color })} />
+          <ObjectSwatches label={t("Textfärg")} value={item.color} onChange={paint} />
           <TextLook texts={[item]} />
         </>
       );
@@ -145,7 +146,7 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
           )}
           <label className="tb-check"><input type="checkbox" checked={item.dashed} onChange={event => patch({ dashed: event.target.checked })} />{t("Streckad")}</label>
           <label className="tb-check"><input type="checkbox" checked={item.rings !== false} onChange={event => patch({ rings: event.target.checked })} />{t("Ringar vid spelarna")}</label>
-          <Swatches label={t("Färg")} value={item.color} onChange={color => patch({ color })} />
+          <ObjectSwatches label={t("Färg")} value={item.color} onChange={paint} />
         </>
       );
     default:
@@ -154,7 +155,7 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
           <label className="tb-field">{t("Storlek")}
             <input type="range" min={0.4} max={3} step={0.1} value={item.scale} onChange={event => patch({ scale: Number(event.target.value) })} />
           </label>
-          <Swatches label={t("Färg")} value={item.color} onChange={color => patch({ color })} />
+          <ObjectSwatches label={t("Färg")} value={item.color} onChange={paint} />
         </>
       );
   }

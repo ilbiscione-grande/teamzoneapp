@@ -8,10 +8,12 @@
 import {
   insertFrame, moveFrame, objectLabel, removeFrame, setFrameDuration, setFrameEasing, toggleEffect, updateBoard,
 } from "../../../lib/tactics/document.ts";
-import type { Board, Easing, Effect, ZoomLevel } from "../../../lib/tactics/model.ts";
+import { hasEffectEveryFrame, setEffectEveryFrame } from "../../../lib/tactics/every-frame.ts";
+import type { Board, Easing, Effect, TacticsObject, ZoomLevel, ZoomSpeed } from "../../../lib/tactics/model.ts";
 import { effectsOf } from "../../../lib/tactics/timeline.ts";
 import { activeObjects, useEditor } from "../store.ts";
-import { easingLabels, effectKinds, effects, effectSuits, zoomLabels } from "./effects.ts";
+import { AllFrames } from "./AllFrames.tsx";
+import { easingLabels, effectKinds, effects, effectSuits, zoomLabels, zoomSpeedLabels } from "./effects.ts";
 import { useLanguage } from "../../language";
 
 const durations = [500, 750, 1000, 1500, 2000, 3000, 4000];
@@ -22,7 +24,8 @@ export function FramesPanel({ board }: { board: Board }) {
   const frameIndex = useEditor(state => Math.min(state.frameIndex, board.frames.length - 1));
   const selection = useEditor(state => state.selection);
   const playing = useEditor(state => state.playing);
-  const { setFrame, change, patch, select, preview } = useEditor.getState();
+  const allFrames = useEditor(state => state.allFrames);
+  const { setFrame, change, patch, patchLook, select, preview } = useEditor.getState();
   const frames = board.frames;
   const frame = frames[frameIndex];
   const changeBoard = (next: (current: Board) => Board) => change(document => updateBoard(document, board.id, next));
@@ -44,19 +47,24 @@ export function FramesPanel({ board }: { board: Board }) {
   const before = new Set(frames[frameIndex - 1]?.objects.map(item => item.id) ?? []);
   const selected = frame.objects.filter(item => selection.includes(item.id));
   const withEffect = frame.objects.filter(item => effectsOf(item).length > 0);
+  /** Whether an object has an effect: here, or in every frame when that is what is being chosen. */
+  const hasEffect = (item: TacticsObject, kind: Effect) => allFrames ? hasEffectEveryFrame(board, item.id, kind) : effectsOf(item).includes(kind);
   /** One effect on or off for these objects where it suits, read as they are now (quick clicks build on each other). */
-  const toggleOn = (ids: string[], kind: Effect, on: boolean) => patch(Object.fromEntries(activeObjects(useEditor.getState())
-    .filter(item => ids.includes(item.id) && effectSuits(kind, item))
-    .map(item => [item.id, toggleEffect(item, kind, on)])));
+  const toggleOn = (ids: string[], kind: Effect, on: boolean) => {
+    const suited = activeObjects(useEditor.getState()).filter(item => ids.includes(item.id) && effectSuits(kind, item));
+    if (allFrames) changeBoard(current => setEffectEveryFrame(current, suited.map(item => item.id), kind, on));
+    else patch(Object.fromEntries(suited.map(item => [item.id, toggleEffect(item, kind, on)])));
+  };
   const toggle = (kind: Effect, on: boolean) => toggleOn(selected.map(item => item.id), kind, on);
-  const clear = () => patch(Object.fromEntries(selected.map(item => [item.id, { effects: [], effect: null }])));
+  const clear = () => patchLook(Object.fromEntries(selected.map(item => [item.id, { effects: [], lastingEffects: [], effect: null }])));
 
   return (
     <div className="tb-inspector tb-frames-panel">
       <h3>{t("Frames")}</h3>
       <ol className="tb-frame-list">
         {frames.map((item, index) => {
-          const count = item.objects.reduce((sum, object) => sum + effectsOf(object).length, 0);
+          // The first frame has no move into it, so an effect chosen for all frames plays from the second.
+          const count = index === 0 ? 0 : item.objects.reduce((sum, object) => sum + effectsOf(object).length, 0);
           return (
             <li key={item.id}>
               <button type="button" aria-current={index === frameIndex} onClick={() => setFrame(index)}>
@@ -105,10 +113,11 @@ export function FramesPanel({ board }: { board: Board }) {
           ) : (
             <>
               <p className="tb-hint">{t("{what}: välj en eller flera effekter när frame {number} nås.", { what: selected.length === 1 ? objectLabel(selected[0], board, t) : t("{count} markerade", { count: selected.length }), number: frameIndex + 1 })}</p>
+              <AllFrames />
               <div className="tb-effects">
                 {effectKinds.map(kind => {
                   const suited = selected.filter(item => effectSuits(kind, item));
-                  const all = suited.length > 0 && suited.every(item => effectsOf(item).includes(kind));
+                  const all = suited.length > 0 && suited.every(item => hasEffect(item, kind));
                   return (
                     <button key={kind} type="button" aria-pressed={all} disabled={suited.length === 0} title={t(effects[kind].hint)} onClick={() => toggle(kind, !all)}>
                       <span aria-hidden="true">{effects[kind].icon}</span>
@@ -131,7 +140,7 @@ export function FramesPanel({ board }: { board: Board }) {
                   </button>
                   <span className="tb-effect-toggles" role="group" aria-label={t("Effekter för {name}", { name: objectLabel(item, board, t) })}>
                     {effectKinds.filter(kind => effectSuits(kind, item)).map(kind => {
-                      const on = effectsOf(item).includes(kind);
+                      const on = hasEffect(item, kind);
                       return (
                         <button key={kind} type="button" aria-pressed={on} title={t(effects[kind].label)} aria-label={t(effects[kind].label)}
                           onClick={() => toggleOn([item.id], kind, !on)}>{effects[kind].icon}</button>
@@ -139,11 +148,23 @@ export function FramesPanel({ board }: { board: Board }) {
                     })}
                   </span>
                   {effectsOf(item).includes("zoom") && (
-                    <label className="tb-zoom-level">{t("Zoom")}
-                      <select value={item.zoomLevel ?? "medium"} onChange={event => patch({ [item.id]: { zoomLevel: event.target.value as ZoomLevel } })}>
-                        {Object.entries(zoomLabels).map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
-                      </select>
-                    </label>
+                    <span className="tb-zoom-choices">
+                      <label className="tb-zoom-level">{t("Zoom")}
+                        <select value={item.zoomLevel ?? "medium"} onChange={event => patchLook({ [item.id]: { zoomLevel: event.target.value as ZoomLevel } })}>
+                          {Object.entries(zoomLabels).map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
+                        </select>
+                      </label>
+                      <label className="tb-zoom-level">{t("In")}
+                        <select value={item.zoomIn ?? "fast"} onChange={event => patchLook({ [item.id]: { zoomIn: event.target.value as ZoomSpeed } })}>
+                          {Object.entries(zoomSpeedLabels).map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
+                        </select>
+                      </label>
+                      <label className="tb-zoom-level">{t("Ut")}
+                        <select value={item.zoomOut ?? "fast"} onChange={event => patchLook({ [item.id]: { zoomOut: event.target.value as ZoomSpeed } })}>
+                          {Object.entries(zoomSpeedLabels).map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
+                        </select>
+                      </label>
+                    </span>
                   )}
                 </li>
               ))}

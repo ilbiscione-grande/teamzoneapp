@@ -12,7 +12,7 @@ import { facings, facingToRotation, normalAngle } from "../../../lib/tactics/fac
 import type { ArrowHead, Board, ChainObject, EquipmentObject, FreehandObject, LineObject, PlayerObject, ShapeObject, TacticsObject, TextObject } from "../../../lib/tactics/model.ts";
 import { standingFacing } from "../../../lib/tactics/timeline.ts";
 import { useEditor } from "../store.ts";
-import { Swatches } from "./Swatches.tsx";
+import { ObjectSwatches } from "./AllFrames.tsx";
 import { TextLook } from "./TextLook.tsx";
 import { useT } from "../../language";
 
@@ -54,6 +54,8 @@ export function SharedFields({ items, board }: { items: TacticsObject[]; board: 
   /** The same change to each, worked out per object. */
   const patchEach = <T extends TacticsObject>(list: T[], change: (item: T) => Partial<TacticsObject>) =>
     useEditor.getState().patch(Object.fromEntries(list.map(item => [item.id, change(item)])));
+  const paintEach = (list: TacticsObject[], color: string | null) =>
+    useEditor.getState().patchLook(Object.fromEntries(list.map(item => [item.id, { color }])));
   const coloured = open.filter(item => item.type !== "ball") as Exclude<TacticsObject, { type: "ball" }>[];
   const players = open.every(item => item.type === "player") ? (open as PlayerObject[]) : null;
   const lines = open.every(item => item.type === "line" || item.type === "freehand") ? (open as (LineObject | FreehandObject)[]) : null;
@@ -144,9 +146,9 @@ export function SharedFields({ items, board }: { items: TacticsObject[]; board: 
       )}
       {coloured.length > 0 && (
         <>
-          <Swatches label={players ? t("Egen färg") : t("Färg")} value={shared(coloured, item => item.color) ?? null} onChange={color => patchEach(coloured, () => ({ color }))} />
+          <ObjectSwatches label={players ? t("Egen färg") : t("Färg")} value={shared(coloured, item => item.color) ?? null} onChange={color => paintEach(coloured, color)} />
           {coloured.some(item => item.type === "player" && item.color) && (
-            <button type="button" className="tb-link" onClick={() => patchEach(coloured.filter(item => item.type === "player"), () => ({ color: null }))}>{t("Lagets färg")}</button>
+            <button type="button" className="tb-link" onClick={() => paintEach(coloured.filter(item => item.type === "player"), null)}>{t("Lagets färg")}</button>
           )}
           {!players && coloured.length < open.length && <p className="tb-hint">{t("Färgen gäller allt markerat utom bollen.")}</p>}
         </>

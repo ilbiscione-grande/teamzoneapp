@@ -4,8 +4,8 @@
 // the board moves into the frame that has it; a trail and a ring stay on
 // reaching the frame and fade out over the next move.
 import { ballPosition } from "./ball.ts";
-import type { Frame, Point, TacticsObject, ZoomLevel } from "./model.ts";
-import { curvePoint, ease, effectsOf, lerp, lerpPoint, quick } from "./motion.ts";
+import type { Frame, Point, TacticsObject, ZoomLevel, ZoomSpeed } from "./model.ts";
+import { curvePoint, ease, easeInOut, effectsOf, lerp, lerpPoint, quick } from "./motion.ts";
 
 /** A dashed track along a move: pitch points x, y, …, how visible, whether it ends in an arrowhead, and whether the ball made it. */
 export type Trail = { points: number[]; opacity: number; arrow?: boolean; ball?: boolean };
@@ -140,15 +140,18 @@ export type Camera = { at: Point; amount: number; scale: number };
 export const zoomScales: Record<ZoomLevel, number> = { close: 2.8, medium: ZOOM, wide: 1.6 };
 const scaleOf = (item: TacticsObject) => zoomScales[item.zoomLevel ?? "medium"] ?? ZOOM;
 
+/** How far a zoom has come at progress t of the move: quickly, or over all of it. */
+const zoomStep = (speed: ZoomSpeed | undefined, t: number) => (speed === "slow" ? easeInOut(t) : quick(t));
+
 /** The object a frame zooms in on: the first with the zoom effect. */
 const zoomedOn = (frame: Frame | undefined) => frame?.objects.find(item => effectsOf(item).includes("zoom")) ?? null;
 
 /**
  * The view at a playhead, following the zoomed object where it is shown
  * (`shown`, the objects at the playhead). Moving into a frame that zooms,
- * the view zooms in quickly and stays; a next frame that zooms too keeps
- * it in (gliding over to its object), one that does not zooms out again.
- * Null for the whole view.
+ * the view zooms in and stays; a next frame that zooms too keeps it in
+ * (gliding over to its object), one that does not zooms out again. In and
+ * out go at the speeds chosen on the object. Null for the whole view.
  */
 export function cameraAt(frames: Frame[], playhead: number, shown: TacticsObject[]): Camera | null {
   if (frames.length === 0) return null;
@@ -167,9 +170,9 @@ export function cameraAt(frames: Frame[], playhead: number, shown: TacticsObject
   const hereAt = here && where(here.id, frames[index]);
   if (nextAt && next) {
     if (hereAt && here) return { at: lerpPoint(hereAt, nextAt, step), amount: 1, scale: lerp(scaleOf(here), scaleOf(next), step) };
-    return { at: { x: nextAt.x, y: nextAt.y }, amount: step, scale: scaleOf(next) };
+    return { at: { x: nextAt.x, y: nextAt.y }, amount: zoomStep(next.zoomIn, t), scale: scaleOf(next) };
   }
-  if (hereAt && here) return { at: { x: hereAt.x, y: hereAt.y }, amount: 1 - step, scale: scaleOf(here) };
+  if (hereAt && here) return { at: { x: hereAt.x, y: hereAt.y }, amount: 1 - zoomStep(here.zoomOut, t), scale: scaleOf(here) };
   return null;
 }
 

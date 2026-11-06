@@ -56,6 +56,10 @@ export const editorPanels: Record<string, string> = {
   "Nära": "Close",
   "Mellan": "Medium",
   "Lite": "A little",
+  "Snabbt": "Fast",
+  "Långsamt": "Slow",
+  "In": "In",
+  "Ut": "Out",
 
   // Drill fields
   "Övningen": "The drill",
@@ -83,6 +87,8 @@ export const editorPanels: Record<string, string> = {
   "Anteckning": "Note",
   "Effekter": "Effects",
   "Inga effekter": "No effects",
+  "Gäller alla frames": "Applies to all frames",
+  "Ändringen gäller objektet i alla frames det finns i.": "The change applies to the object in every frame it is in.",
   "Zoom": "Zoom",
   "Nya objekt tonar in och borttagna tonar ut av sig själva.": "New objects fade in and removed ones fade out on their own.",
   "Start": "Start",

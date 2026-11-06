@@ -34,7 +34,7 @@ export function TextLook({ texts }: { texts: TextObject[] }) {
       <label className="tb-check"><input type="checkbox" checked={background} onChange={event => patch({ background: event.target.checked })} />{t("Bakgrund")}</label>
       {background && (
         <>
-          <Swatches label={t("Bakgrundsfärg")} value={colour ?? null} onChange={value => patch({ backgroundColor: value })} />
+          <Swatches label={t("Bakgrundsfärg")} value={colour ?? null} onChange={value => useEditor.getState().patchLook(Object.fromEntries(texts.map(item => [item.id, { backgroundColor: value }])))} />
           <label className="tb-field">{t("Bakgrundens täckning")} {opacity === undefined ? "" : `${Math.round(opacity * 100)} %`}
             <input type="range" min={0.1} max={1} step={0.05} value={opacity ?? textBackground.opacity}
               onChange={event => patch({ backgroundOpacity: Number(event.target.value) })} />

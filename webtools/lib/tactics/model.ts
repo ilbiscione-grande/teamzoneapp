@@ -29,11 +29,18 @@ type Base = {
   effect?: Effect | null;
   /** Animation: the effects played together as this frame is reached; read through effectsOf. */
   effects?: Effect[];
+  /** Animation: the effects chosen for every frame the object is in; a frame added later has them too. */
+  lastingEffects?: Effect[];
   /** Animation: how close the zoom effect goes on this object; "medium" when missing. */
   zoomLevel?: ZoomLevel;
+  /** Animation: how fast the zoom effect goes in on this frame, and out on the move after it; fast when missing. */
+  zoomIn?: ZoomSpeed;
+  zoomOut?: ZoomSpeed;
 };
 
 export type ZoomLevel = "close" | "medium" | "wide";
+/** fast: over the first third of the move; slow: over all of it. */
+export type ZoomSpeed = "fast" | "slow";
 
 /**
  * Effects play while the board moves into the frame that has them. An

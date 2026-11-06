@@ -6,6 +6,7 @@
 // project for saving.
 import { create } from "zustand";
 import { newId, patchObjects, updateBoard, updateFrame } from "../../lib/tactics/document.ts";
+import { patchEveryFrame } from "../../lib/tactics/every-frame.ts";
 import { copiesOf, setGroup, withGroups } from "../../lib/tactics/grouping.ts";
 import { emptyHistory, record, redo, undo, type History } from "../../lib/tactics/history.ts";
 import { duplicateBoard } from "../../lib/tactics/templates.ts";
@@ -32,6 +33,9 @@ type EditorState = {
   frameIndex: number;
   selection: string[];
   tool: Tool;
+  /** A colour or an effect goes for every frame the object is in, not only this one. Not saved. */
+  allFrames: boolean;
+  setAllFrames: (allFrames: boolean) => void;
   /** Whether a dropped ball sticks to a nearby player. */
   attachBall: boolean;
   /** Sizes shown on areas, lines and lines through players while editing (lib/tactics/measure.ts). Not saved. */
@@ -88,6 +92,8 @@ type EditorState = {
   /** A change to the active frame's objects. */
   changeObjects: (next: (objects: TacticsObject[]) => TacticsObject[]) => void;
   patch: (patches: Record<string, Partial<TacticsObject>>) => void;
+  /** A colour or an effect's setting: in this frame, or in all of them when allFrames is on. */
+  patchLook: (patches: Record<string, Partial<TacticsObject>>) => void;
   removeSelected: () => void;
   /** Copies of the selection put a little aside, and chosen. */
   duplicateSelected: () => void;
@@ -107,6 +113,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   frameIndex: 0,
   selection: [],
   tool: "select",
+  allFrames: false,
   attachBall: true,
   measure: false,
   ruler: null,
@@ -124,12 +131,13 @@ export const useEditor = create<EditorState>((set, get) => ({
   me: null,
   plain: false,
   setMe: me => set({ me }),
+  setAllFrames: allFrames => set({ allFrames }),
 
   setFrame: index => {
     const board = activeBoard(get());
     if (!board) return;
     const frameIndex = Math.min(board.frames.length - 1, Math.max(0, index));
-    set({ frameIndex, playhead: frameIndex, playing: false, selection: [] });
+    set(state => ({ frameIndex, playhead: frameIndex, playing: false, selection: selectionIn(board, frameIndex, state.selection) }));
   },
   // From where it was stopped (between two frames too), or from the start when at the end.
   play: () => {
@@ -149,7 +157,11 @@ export const useEditor = create<EditorState>((set, get) => ({
     const board = activeBoard(get());
     if (!board) return;
     const clamped = Math.min(board.frames.length - 1, Math.max(0, playhead));
-    set({ playing: false, stopAt: null, playhead: clamped, frameIndex: Math.round(clamped), selection: [] });
+    // Between two frames nothing is edited, so nothing stays chosen; on a frame it does.
+    set(state => ({
+      playing: false, stopAt: null, playhead: clamped, frameIndex: Math.round(clamped),
+      selection: Number.isInteger(clamped) ? selectionIn(board, clamped, state.selection) : [],
+    }));
   },
   setPlayhead: playhead => set({ playhead }),
   setLoop: loop => set({ loop }),
@@ -162,7 +174,7 @@ export const useEditor = create<EditorState>((set, get) => ({
       id: project.id, name: project.name, kind: project.kind, teamId: project.teamzone_team_id, teamName: project.team_name, revision: project.revision,
       access: project.access ?? "owner", leaderAccess: project.leader_access ?? "view", ownerName: project.owner_name ?? null,
     },
-    document, boardId: document.boards[0]?.id ?? null, frameIndex: 0, selection: [], tool: "select", playing: false, playhead: 0, me: null,
+    document, boardId: document.boards[0]?.id ?? null, frameIndex: 0, selection: [], tool: "select", allFrames: false, playing: false, playhead: 0, me: null,
     history: emptyHistory(), saveState: "saved",
   }),
   setTool: tool => set({ tool, ruler: null, selection: tool === "select" ? get().selection : [] }),
@@ -211,6 +223,11 @@ export const useEditor = create<EditorState>((set, get) => ({
     get().change(document => updateFrame(document, boardId, frameIndex, next));
   },
   patch: patches => get().changeObjects(objects => patchObjects(objects, patches)),
+  patchLook: patches => {
+    const { allFrames, boardId } = get();
+    if (allFrames && boardId) get().change(document => updateBoard(document, boardId, board => patchEveryFrame(board, patches)));
+    else get().patch(patches);
+  },
   removeSelected: () => {
     const selected = new Set(get().selection);
     if (selected.size === 0) return;
@@ -239,6 +256,12 @@ export const useEditor = create<EditorState>((set, get) => ({
 
 /** One empty list for selectors, so an empty result is the same value each time (React subscribes by identity). */
 export const NONE: never[] = [];
+
+/** What stays chosen on going to a frame: the chosen objects that are in it. */
+function selectionIn(board: Board, frameIndex: number, selection: string[]) {
+  const here = new Set(board.frames[frameIndex]?.objects.map(item => item.id));
+  return selection.filter(id => here.has(id));
+}
 
 /** After undo or redo the frame being edited may be gone. */
 function frameWithin(document: ProjectDocument, state: { boardId: string | null; frameIndex: number }) {
