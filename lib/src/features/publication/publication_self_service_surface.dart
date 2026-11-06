@@ -148,9 +148,10 @@ class _PublicationSelfServiceSurfaceState
           ? '${item['slug']}'
           : _publicationSlug('${item['name'] ?? ''}'),
     );
+    final slugMinimum = type == 'club' ? 3 : 2;
     bool slugValid() {
       final value = slug.text.trim().toLowerCase();
-      return value.length >= 2 &&
+      return value.length >= slugMinimum &&
           value.length <= 80 &&
           RegExp(r'^[a-z0-9]+(?:-[a-z0-9]+)*$').hasMatch(value);
     }
@@ -236,7 +237,7 @@ class _PublicationSelfServiceSurfaceState
                       helperText: 'Små bokstäver a–z, siffror och bindestreck.',
                       errorText: slugValid()
                           ? null
-                          : 'Använd 2–80 tecken: a–z, 0–9 och bindestreck, t.ex. f2014.',
+                          : 'Använd $slugMinimum–80 tecken: a–z, 0–9 och bindestreck, t.ex. f2014.',
                     ),
                   ),
                   if (type == 'club') ...[

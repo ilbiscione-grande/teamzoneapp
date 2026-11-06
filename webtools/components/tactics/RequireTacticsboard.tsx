@@ -12,7 +12,7 @@ import { tacticsboardTermsUrl } from "../../lib/support.ts";
 
 export function SubscribeButtons() {
   const { busy, error, subscribe } = useBilling();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const offer = launchOfferOpen();
   return (
     <>
@@ -25,7 +25,7 @@ export function SubscribeButtons() {
         </button>
       </div>
       {offer && <p className="wt-small">{t("25 % rabatt första året gäller årsabonnemang som tecknas senast 31 december 2026.")}</p>}
-      <p className="wt-small">{t("Priserna är inklusive moms. Du betalar hos Stripe och kan säga upp när du vill. I 14 dagar från köpet kan du ångra det med knappen Ångra köpet på kontosidan. Läs")} <a href={tacticsboardTermsUrl}>{t("villkoren för Tacticsboard")}</a>.</p>
+      <p className="wt-small">{t("Priserna är inklusive moms. Du betalar hos Stripe och kan säga upp när du vill. I 14 dagar från köpet kan du ångra det med knappen Ångra köpet på kontosidan. Läs")} <a href={tacticsboardTermsUrl(locale)}>{t("villkoren för Tacticsboard")}</a>.</p>
       {error && <p className="wt-error" role="alert">{error}</p>}
     </>
   );
@@ -34,7 +34,7 @@ export function SubscribeButtons() {
 /** During the trial it offers to subscribe; after a failed payment or a cancellation, Stripe's portal. */
 function AccessNote({ note, trial, grace }: { note: string; trial: boolean; grace: boolean }) {
   const { busy, error, manage } = useBilling();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [open, setOpen] = useState(false);
   return (
     <div className="wt-note" role="status">

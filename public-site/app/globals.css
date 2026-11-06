@@ -205,8 +205,6 @@ h1 { max-width: 780px; margin: 0; font-size: clamp(2.5rem, 7vw, 5.4rem); line-he
 .legal-sections p, .legal-sections li { color: var(--muted); line-height: 1.75; }
 .legal-sections p { margin: 8px 0; }
 .legal-sections ul { display: grid; gap: 8px; margin: 8px 0 0; padding-left: 24px; }
-.draft-banner { display: grid; gap: 3px; margin-bottom: 28px; padding: 15px 17px; border: 1px solid #e7bd72; border-radius: 14px; color: #5e3a00; background: #fff4dc; }
-.draft-banner span { line-height: 1.5; }
 @media (max-width: 760px) {
   .content-grid, .content-grid.balanced, .contact-panel { grid-template-columns: 1fr; }
   .privacy-label { display: none; }

@@ -61,7 +61,10 @@ export function canonicalOriginRedirect(input: {
   return `${canonical.origin}${input.path}${input.search}`;
 }
 
-const legalPaths = new Set(["/villkor", "/villkor/tacticsboard", "/integritet"]);
+const legalPaths = new Set([
+  "/villkor", "/villkor/tacticsboard", "/integritet",
+  "/en/terms", "/en/terms/tacticsboard", "/en/privacy",
+]);
 
 /**
  * The terms and the privacy policy on the canonical origin are fixed texts,
@@ -77,9 +80,9 @@ export function isCanonicalLegalPage(hostname: string, path: string, publicOrigi
   }
 }
 
-/** The start page on the canonical origin, when it is the fixed launch page. */
+/** The start page, in Swedish or English, on the canonical origin, when it is the fixed launch page. */
 export function isCanonicalHome(hostname: string, path: string, publicOrigin?: string): boolean {
-  if (!publicOrigin || path !== "/") return false;
+  if (!publicOrigin || (path !== "/" && path !== "/en")) return false;
   try {
     return normalizedHostname(hostname) === new URL(publicOrigin).hostname;
   } catch {

@@ -19,7 +19,7 @@ produktionen.
 | Livegenomgångar | `components/tactics/live/` | cirka 15 filer |
 | Texter i `lib/tactics/` | mallar, övningar, fel, formationer | cirka 25 filer |
 | Backend | Stripe-språk, ångerkvitto, fel från funktionen, fyra Auth-mejl | se steg 7 |
-| Publika sajten | landningssidan, sidfoten, tre juridiksidor | se steg 8 |
+| Publika sajten | landningssidan, sidfoten, tre juridiksidor | klart, se steg 8 |
 | Bilder | `editor.png`, `verktyg.png`, `ytor.png`, `demo.mp4` | klart, se steg 9 |
 
 Totalt 113 filer och drygt 650 rader med svensk text i Webtools.
@@ -30,8 +30,9 @@ Totalt 113 filer och drygt 650 rader med svensk text i Webtools.
   av `teamzoneapp.se` och `webtools.teamzoneapp.se`. Utan val styr webbläsaren:
   svenska om den föredrar svenska, annars engelska.
 - **Adresserna ändras inte.** En delningslänk fungerar likadant för alla, och
-  mottagaren får sitt eget språk. Bara juridiksidorna får egna engelska adresser,
-  så att en länk alltid pekar på en bestämd text.
+  mottagaren får sitt eget språk. Bara juridiksidorna och den publika startsidan
+  får egna engelska adresser. En länk till villkoren pekar då på en bestämd text,
+  och startsidans sparade kopia i CDN:et kan inte blanda språken.
 - **Svenskan är nyckeln.** Koden skriver `t("Logga in")`, och `lib/i18n/en/`
   översätter. Då blir koden läsbar, inga nycklar behöver hittas på, och befintliga
   tester som läser svensk text fortsätter att gälla.
@@ -79,9 +80,9 @@ Brittisk engelska, som i fotbollen.
 | 4 | Editorn, inklusive export och pdf | Klart |
 | 5 | Hem, bibliotek, mappar, delade sidor och OG-bilder | Klart |
 | 6 | Livegenomgångar | Klart |
-| 7 | Backend: Stripe `locale` från språket, språk på kontot, ångerkvitto, Auth-mejl med `{{ if eq .Data.locale "en" }}` | Klart lokalt, se nedan |
-| 8 | Publika sajten och juridiken, efter att de svenska texterna är granskade | Nästa |
-| 9 | Skärmbilder och demofilm på engelska | Klart lokalt, se nedan |
+| 7 | Backend: Stripe `locale` från språket, språk på kontot, ångerkvitto, Auth-mejl med `{{ if eq .Data.locale "en" }}` | Klart, funktionen i produktion 2026-11-06, se nedan |
+| 8 | Publika sajten och juridiken, efter att de svenska texterna är granskade | Klart lokalt, se nedan |
+| 9 | Skärmbilder och demofilm på engelska | Klart, i produktion 2026-11-06, se nedan |
 | 10 | Hela köpflödet på engelska, flaggan på i produktionen | |
 
 ## Steg 7: backend
@@ -99,6 +100,16 @@ Brittisk engelska, som i fotbollen.
 - **Villkoren.** Det engelska samtycket länkar till `https://public.teamzoneapp.se/en/terms/tacticsboard`, som skapas i steg 8. Texten ska granskas med de andra engelska juridiktexterna.
 - **Provat 2026-11-05 i produktionen:** bekräftelsemejlet kom på engelska, från en lokal sida med engelska på. Länken landade på den svenska sidan, eftersom flaggan är av i produktionen. Lösenordsmejlet följer språket som är sparat på kontot, och det ändras bara när man är inloggad med flaggan på. Efter en inloggning med svenska vald kom det på svenska, så båda språken är provade. Utloggad går sidans språk inte att föra över till mejlet, och det får vara så.
 - **Kvar att prova i steg 10:** att Stripes kvitton och fakturamejl kommer på engelska efter ett engelskt köp, och att länkarna i mejlen landar på engelska med flaggan på. Sidan följer kakan och webbläsaren, inte kontot, så en länk som öppnas i en annan webbläsare kan bli svensk.
+
+## Steg 8: publika sajten och juridiken
+
+- **Granskningen** av de tre svenska texterna godkändes 2026-11-06. Bannern om utkast är borttagen, och alla tre har versionen `2026-11-06`.
+- **Engelska sidor:** `/en`, `/en/terms`, `/en/terms/tacticsboard` och `/en/privacy`. Varje juridiksida säger att den är en översättning och att den svenska texten gäller, enligt rekommendationen under Beslut.
+- **Länkarna till engelska** syns först när `NEXT_PUBLIC_TACTICSBOARD_ENGLISH=on` är satt i `public-site/apphosting.yaml`. Det görs i steg 10, tillsammans med flaggan i Webtools. Sidorna går att nå direkt före det.
+- **Webtools** länkar till villkoren på sidans språk.
+- **Klubbadressen `/en`:** en klubbs webbadress måste nu ha minst tre tecken (migrationen `20270210090000`), så ingen klubb kan krocka med `/en`. Klubbnamnet har ingen sådan gräns.
+- **Köpsamtycket** i Stripe länkar redan till den engelska adressen.
+- **Översättningen** är jämförd med svenskan 2026-11-06, avsnitt för avsnitt, med samma siffror, adresser och perioder. Termerna följer EU:s engelska lagtexter. Det är Claudes egen genomgång, inte en juridisk granskning.
 
 ## Steg 9: bilder och film
 

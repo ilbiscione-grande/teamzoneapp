@@ -88,8 +88,9 @@ export default function TermsPage() {
     <LegalDocument
       eyebrow="Juridik"
       title="Användarvillkor"
-      version="2026-11-04-draft"
-      updated="4 november 2026"
+      version="2026-11-06"
+      updated="6 november 2026"
+      counterpart="/en/terms"
       introduction="Läs villkoren innan du skapar eller använder ett TeamZone-konto."
       sections={sections}
     />

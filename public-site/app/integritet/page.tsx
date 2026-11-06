@@ -117,8 +117,9 @@ export default function PrivacyPage() {
     <LegalDocument
       eyebrow="Din integritet"
       title="Integritetspolicy"
-      version="2026-11-04-draft"
-      updated="4 november 2026"
+      version="2026-11-06"
+      updated="6 november 2026"
+      counterpart="/en/privacy"
       introduction="Här beskriver vi hur TeamZone behandlar personuppgifter."
       sections={sections}
     />

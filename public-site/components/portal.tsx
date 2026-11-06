@@ -18,13 +18,26 @@ export function tacticsboardLaunch(): boolean {
   return process.env.NEXT_PUBLIC_TACTICSBOARD_LAUNCH === "1";
 }
 
-export function PortalHeader({ active }: { active?: "home" | "search" | "legal" | "matchpool" }) {
+export type Locale = "sv" | "en";
+
+/** The way to the site in English; shown when Tacticsboard opens in English. */
+export function englishOpen(): boolean {
+  return process.env.NEXT_PUBLIC_TACTICSBOARD_ENGLISH === "on";
+}
+
+const portalText = {
+  sv: { home: "/", tagline: "Klubbar, lag och gemenskap", discover: "Upptäck", start: "Start", legal: "Juridik", privacy: ["/integritet", "Integritetspolicy"], terms: ["/villkor", "Användarvillkor"], built: "Byggt för föreningslivet" },
+  en: { home: "/en", tagline: "Clubs, teams and community", discover: "Discover", start: "Home", legal: "Legal", privacy: ["/en/privacy", "Privacy policy"], terms: ["/en/terms", "Terms of use"], built: "Built for grassroots sport" },
+} as const;
+
+export function PortalHeader({ active, locale = "sv" }: { active?: "home" | "search" | "legal" | "matchpool"; locale?: Locale }) {
+  const text = portalText[locale];
   return (
     <header className="cs-header">
       <div className="cs-mainbar"><div className="cs-wrap">
-        <Link href="/" className="cs-brand pz-brand"><span className="pz-mark" aria-hidden="true">TZ</span><span>TeamZone</span></Link>
-        <nav className="cs-nav" aria-label="Huvudmeny">
-          <Link href="/" aria-current={active === "home" ? "page" : undefined}>Start</Link>
+        <Link href={text.home} className="cs-brand pz-brand"><span className="pz-mark" aria-hidden="true">TZ</span><span>TeamZone</span></Link>
+        <nav className="cs-nav" aria-label={locale === "en" ? "Main menu" : "Huvudmeny"}>
+          <Link href={text.home} aria-current={active === "home" ? "page" : undefined}>{text.start}</Link>
           {!tacticsboardLaunch() && <Link href="/klubbar" aria-current={active === "search" ? "page" : undefined}>Hitta klubb</Link>}
           {!tacticsboardLaunch() && <Link href="/matchpool" aria-current={active === "matchpool" ? "page" : undefined}>Matchpool</Link>}
           {webtoolsUrl() && <a href={webtoolsUrl()!}>Webtools</a>}
@@ -35,16 +48,18 @@ export function PortalHeader({ active }: { active?: "home" | "search" | "legal" 
   );
 }
 
-export function PortalFooter() {
+export function PortalFooter({ locale = "sv" }: { locale?: Locale }) {
+  const text = portalText[locale];
+  const other = locale === "en" || englishOpen();
   return (
     <footer className="cs-footer">
       <div className="cs-wrap cs-footer-grid">
-        <div className="cs-footer-club"><span className="pz-mark large" aria-hidden="true">TZ</span><div><strong>TeamZone</strong><span>Klubbar, lag och gemenskap</span></div></div>
-        <div><h2>Upptäck</h2><ul>{!tacticsboardLaunch() && <li><Link href="/klubbar">Hitta klubb eller lag</Link></li>}<li><Link href="/">{tacticsboardLaunch() ? "Start" : "Min startsida"}</Link></li>{!tacticsboardLaunch() && <li><Link href="/matchpool">Matchpoolen</Link></li>}{webtoolsUrl() && <li><a href={webtoolsUrl()!}>Webtools</a></li>}</ul></div>
+        <div className="cs-footer-club"><span className="pz-mark large" aria-hidden="true">TZ</span><div><strong>TeamZone</strong><span>{text.tagline}</span></div></div>
+        <div><h2>{text.discover}</h2><ul>{!tacticsboardLaunch() && <li><Link href="/klubbar">Hitta klubb eller lag</Link></li>}<li><Link href={text.home}>{tacticsboardLaunch() ? text.start : "Min startsida"}</Link></li>{!tacticsboardLaunch() && <li><Link href="/matchpool">Matchpoolen</Link></li>}{webtoolsUrl() && <li><a href={webtoolsUrl()!}>Webtools</a></li>}</ul></div>
         {!tacticsboardLaunch() && <div><h2>Konto</h2><ul><li><a href="https://app.teamzoneapp.se">Öppna TeamZone-appen</a></li><li><a href="https://app.teamzoneapp.se">Skapa konto</a></li></ul></div>}
-        <div><h2>Juridik</h2><ul><li><Link href="/integritet">Integritetspolicy</Link></li><li><Link href="/villkor">Användarvillkor</Link></li></ul></div>
+        <div><h2>{text.legal}</h2><ul><li><Link href={text.privacy[0]}>{text.privacy[1]}</Link></li><li><Link href={text.terms[0]}>{text.terms[1]}</Link></li>{other && <li><Link href={locale === "en" ? "/" : "/en"} lang={locale === "en" ? "sv" : "en"}>{locale === "en" ? "På svenska" : "In English"}</Link></li>}</ul></div>
       </div>
-      <div className="cs-wrap cs-footer-base"><span>© {new Date().getFullYear()} TeamZone</span><span>Byggt för föreningslivet</span></div>
+      <div className="cs-wrap cs-footer-base"><span>© {new Date().getFullYear()} TeamZone</span><span>{text.built}</span></div>
     </footer>
   );
 }

@@ -39,7 +39,8 @@ const questions = [
 
 export async function TacticsProduct() {
   const t = await serverT();
-  const english = await serverLocale() === "en";
+  const locale = await serverLocale();
+  const english = locale === "en";
   const offer = launchOfferOpen();
   return (
     <div className="tb-product">
@@ -96,7 +97,7 @@ export async function TacticsProduct() {
             )}
           </article>
         </div>
-        <p className="wt-small">{t("Priserna är inklusive moms. Du betalar med kort, Apple Pay eller Google Pay hos Stripe. I 14 dagar från köpet kan du ångra det med knappen Ångra köpet på kontosidan. Läs")} <a href={tacticsboardTermsUrl}>{t("villkoren för Tacticsboard")}</a>.</p>
+        <p className="wt-small">{t("Priserna är inklusive moms. Du betalar med kort, Apple Pay eller Google Pay hos Stripe. I 14 dagar från köpet kan du ångra det med knappen Ångra köpet på kontosidan. Läs")} <a href={tacticsboardTermsUrl(locale)}>{t("villkoren för Tacticsboard")}</a>.</p>
         <Link className="wt-button" href={signUp}>{t("Prova gratis i 7 dagar")}</Link>
       </section>
 

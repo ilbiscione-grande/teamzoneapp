@@ -3,4 +3,5 @@
 
 export const supportEmail = "support@teamzoneapp.se";
 export const supportReply = "Vi svarar inom två vardagar.";
-export const tacticsboardTermsUrl = "https://public.teamzoneapp.se/villkor/tacticsboard";
+export const tacticsboardTermsUrl = (locale: "sv" | "en") =>
+  `https://public.teamzoneapp.se/${locale === "en" ? "en/terms" : "villkor"}/tacticsboard`;

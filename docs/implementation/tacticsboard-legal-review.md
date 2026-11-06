@@ -1,14 +1,13 @@
 # Juridisk genomgång av Tacticsboard (punkt 11)
 
-Utkast 2026-11-05 i `public-site/app/villkor`, `villkor/tacticsboard` och
-`integritet`. Inget är driftsatt. Platshållarna är borta, men bannern
-"Juridiskt utkast" ligger kvar tills texterna är granskade. Versionerna och
-datumen sätts när texterna publiceras (steg 14 i
-`tacticsboard-production.md`).
+Texterna i `public-site/app/villkor`, `villkor/tacticsboard` och `integritet`
+är granskade och godkända 2026-11-06, med versionen `2026-11-06`. Bannern om
+utkast är borttagen. Publiceringen och versionerna i databasen är steg 14 i
+`tacticsboard-production.md`. Listorna nedan är det som granskades.
 
 ## Krav före lansering
 
-**Ångerfunktionen** är driftsatt i produktionen 2026-11-05, men inte provad med ett riktigt köp. Sedan 19 juni 2026 kräver 2 kap. 10 a §
+**Ångerfunktionen** är driftsatt i produktionen 2026-11-05 och provad av Thomas under provperioden, alltså utan dragning. Den proportionella återbetalningen efter en betald period är inte provad. Sedan 19 juni 2026 kräver 2 kap. 10 a §
 distansavtalslagen en funktion för ånger på sajten när avtalet ingås online:
 
 - lätt att hitta under hela ångerfristen och tydligt märkt
