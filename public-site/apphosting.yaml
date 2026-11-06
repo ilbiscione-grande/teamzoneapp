@@ -48,6 +48,12 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  # The links to the English pages, on since 2026-11-06.
+  - variable: NEXT_PUBLIC_TACTICSBOARD_ENGLISH
+    value: "on"
+    availability:
+      - BUILD
+      - RUNTIME
   - variable: PUBLIC_PERSONAL_HOME_ENABLED
     value: "1"
     availability:

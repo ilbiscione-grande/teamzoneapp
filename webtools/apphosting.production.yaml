@@ -29,6 +29,12 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  # Tacticsboard in English, on since 2026-11-06.
+  - variable: TACTICSBOARD_ENGLISH
+    value: "on"
+    availability:
+      - BUILD
+      - RUNTIME
   # app.teamzoneapp.se is the test app, so production does not link to it.
   - variable: TEAMZONE_APP_URL
     value: "off"

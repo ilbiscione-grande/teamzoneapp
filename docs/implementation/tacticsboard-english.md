@@ -81,9 +81,9 @@ Brittisk engelska, som i fotbollen.
 | 5 | Hem, bibliotek, mappar, delade sidor och OG-bilder | Klart |
 | 6 | Livegenomgångar | Klart |
 | 7 | Backend: Stripe `locale` från språket, språk på kontot, ångerkvitto, Auth-mejl med `{{ if eq .Data.locale "en" }}` | Klart, funktionen i produktion 2026-11-06, se nedan |
-| 8 | Publika sajten och juridiken, efter att de svenska texterna är granskade | Klart lokalt, se nedan |
+| 8 | Publika sajten och juridiken, efter att de svenska texterna är granskade | Klart, i produktion 2026-11-06, se nedan |
 | 9 | Skärmbilder och demofilm på engelska | Klart, i produktion 2026-11-06, se nedan |
-| 10 | Hela köpflödet på engelska, flaggan på i produktionen | |
+| 10 | Hela köpflödet på engelska, flaggan på i produktionen | Flaggorna på 2026-11-06. Köp på engelska är inte provat |
 
 ## Steg 7: backend
 
