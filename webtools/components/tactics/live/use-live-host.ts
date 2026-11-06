@@ -4,8 +4,8 @@
 // what the board does is sent on it. Where the board is goes at once (a
 // scrub a little slower), the board in hand when it changes, objects while
 // they are dragged, the pointer while it moves over the pitch. Someone joining gets the whole state.
-// A lesson takes 25 participants, and each message counts once per receiver
-// against the project's 500 a second: 15 a second leaves room for the rest.
+// A lesson takes 12 participants, and each message counts once per receiver
+// against the project's 500 a second: 15 a second leaves room for other lessons.
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { useEffect } from "react";
 import { applyMoves, liveTopic, throttle, viewChanged, type LiveView } from "../../../lib/tactics/live.ts";

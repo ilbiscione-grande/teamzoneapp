@@ -14,7 +14,7 @@ const signIn = "/logga-in?returnTo=%2Ftacticsboard";
 const points = [
   ["Rita", "Spelare, bollar, koner, mål, pilar och ytor på en riktig plan. Formationer på ett klick."],
   ["Animera", "Bygg förloppet steg för steg och spela upp det. Spelarna rör sig dit du drar dem."],
-  ["Presentera", "Visa tavlan i helskärm, eller håll en livegenomgång där laget följer med i mobilen, svarar på frågor och chattar."],
+  ["Presentera", "Visa tavlan i helskärm, eller håll en livegenomgång där upp till 12 deltagare följer med i mobilen, svarar på frågor och chattar."],
   ["Dela", "Skicka en länk till spelare och föräldrar. De behöver inget konto för att titta."],
   ["Spara och ordna", "Projekt, mappar, mallar och versioner. Hämta och dela övningar i biblioteket."],
   ["Exportera", "Som PDF eller video, till träningsplanen eller gruppchatten."],

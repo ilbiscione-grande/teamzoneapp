@@ -18,7 +18,7 @@ export const launchText = {
     points: [
       { title: "Rita", text: "Spelare, bollar, koner, mål, pilar och ytor på en riktig plan." },
       { title: "Animera", text: "Bygg förloppet steg för steg och spela upp det." },
-      { title: "Presentera", text: "Visa tavlan i helskärm, eller håll en livegenomgång där laget följer med i mobilen." },
+      { title: "Presentera", text: "Visa tavlan i helskärm, eller håll en livegenomgång där upp till 12 deltagare följer med i mobilen." },
       { title: "Dela", text: "Skicka en länk till spelare och föräldrar. De behöver inget konto för att titta." },
     ],
     features,
@@ -39,7 +39,7 @@ export const launchText = {
     points: [
       { title: "Draw", text: "Players, balls, cones, goals, arrows and zones on a real pitch." },
       { title: "Animate", text: "Build the sequence step by step and play it back." },
-      { title: "Present", text: "Show the board full screen, or run a live session where the team follows on their phones." },
+      { title: "Present", text: "Show the board full screen, or run a live session where up to 12 participants follow on their phones." },
       { title: "Share", text: "Send a link to players and parents. They need no account to watch." },
     ],
     features: [

@@ -11,7 +11,7 @@ export const billing: Record<string, string> = {
   "Animera": "Animate",
   "Bygg förloppet steg för steg och spela upp det. Spelarna rör sig dit du drar dem.": "Build the sequence step by step and play it back. Players move where you drag them.",
   "Presentera": "Present",
-  "Visa tavlan i helskärm, eller håll en livegenomgång där laget följer med i mobilen, svarar på frågor och chattar.": "Show the board full screen, or run a live session where the team follows on their phones, answers questions and chats.",
+  "Visa tavlan i helskärm, eller håll en livegenomgång där upp till 12 deltagare följer med i mobilen, svarar på frågor och chattar.": "Show the board full screen, or run a live session where up to 12 participants follow on their phones, answer questions and chat.",
   "Dela": "Share",
   "Skicka en länk till spelare och föräldrar. De behöver inget konto för att titta.": "Send a link to players and parents. They do not need an account to watch.",
   "Spara och ordna": "Save and organise",

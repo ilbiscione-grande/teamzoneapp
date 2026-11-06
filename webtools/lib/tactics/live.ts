@@ -68,7 +68,7 @@ export function viewChanged(before: LiveView | null, after: LiveView): boolean {
 export function joinError(message: string): string {
   if (message.includes("login_required")) return "Läraren kräver inloggning för den här lektionen.";
   if (message.includes("invalid_name")) return "Skriv ditt namn, högst 40 tecken.";
-  if (message.includes("session_full")) return "Lektionen är full. Den tar 25 deltagare.";
+  if (message.includes("session_full")) return "Lektionen är full. Den tar 12 deltagare.";
   if (message.includes("not_found")) return "Det finns ingen pågående lektion med den koden.";
   return "Det gick inte att gå med. Försök igen.";
 }
