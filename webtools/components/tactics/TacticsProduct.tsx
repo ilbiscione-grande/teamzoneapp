@@ -3,7 +3,7 @@
 // /appar/tacticsboard and, for the signed-out, at /tacticsboard.
 import Link from "next/link";
 import { launchOfferOpen, prices } from "../../lib/tactics/access.ts";
-import { serverT } from "../../lib/i18n/server.ts";
+import { serverLocale, serverT } from "../../lib/i18n/server.ts";
 import { supportEmail, tacticsboardTermsUrl } from "../../lib/support.ts";
 import { ProductVideo } from "./ProductVideo.tsx";
 import "./product.css";
@@ -20,11 +20,12 @@ const points = [
   ["Exportera", "Som PDF eller video, till träningsplanen eller gruppchatten."],
 ] as const;
 
-// Screenshots in public/tacticsboard: file, size, and what they show.
+// Screenshots in public/tacticsboard: file, its English version, size, and what
+// they show. The players and teams are made up. The film and ytor.png have no text.
 const shots = [
-  ["verktyg.png", 1291, 882, "Verktygen: spelare, boll, utrustning, pilar, ytor och mått."],
-  ["editor.png", 1521, 1045, "Tavlorna i ett projekt, med beskrivning och tidslinje."],
-  ["ytor.png", 1360, 846, "Markera ytor och de spelare laget ska titta på."],
+  ["verktyg.png", "verktyg-en.png", 1222, 875, "Verktygen: spelare, boll, utrustning, pilar, ytor och mått."],
+  ["editor.png", "editor-en.png", 1521, 1045, "Tavlorna i ett projekt, med beskrivning och tidslinje."],
+  ["ytor.png", "ytor.png", 1428, 887, "Markera ytor och de spelare laget ska titta på."],
 ] as const;
 
 const questions = [
@@ -38,11 +39,12 @@ const questions = [
 
 export async function TacticsProduct() {
   const t = await serverT();
+  const english = await serverLocale() === "en";
   const offer = launchOfferOpen();
   return (
     <div className="tb-product">
       <section className="wt-hero tb-product-hero">
-        <ProductVideo src="/tacticsboard/demo.mp4" poster="/tacticsboard/editor.png" end={7.5} />
+        <ProductVideo src="/tacticsboard/demo.mp4" poster="/tacticsboard/demo-poster.jpg" />
         <div className="wt-wrap">
           <p className="tb-product-brand">Teamzone Webtools</p>
           <h1>Tacticsboard</h1>
@@ -62,9 +64,9 @@ export async function TacticsProduct() {
           ))}
         </div>
         <div className="tb-shots">
-          {shots.map(([file, width, height, caption]) => (
+          {shots.map(([file, englishFile, width, height, caption]) => (
             <figure key={file}>
-              <img src={`/tacticsboard/${file}`} width={width} height={height} alt={t(caption)} loading="lazy" />
+              <img src={`/tacticsboard/${english ? englishFile : file}`} width={width} height={height} alt={t(caption)} loading="lazy" />
               <figcaption>{t(caption)}</figcaption>
             </figure>
           ))}

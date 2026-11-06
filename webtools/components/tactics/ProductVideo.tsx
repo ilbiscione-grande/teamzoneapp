@@ -1,28 +1,4 @@
-"use client";
-
-// The product page's film, behind the hero's text: muted, looping, and only
-// its first `end` seconds (the recording's last second shows the desktop).
-import { useRef } from "react";
-
-export function ProductVideo({ src, poster, end }: { src: string; poster: string; end: number }) {
-  const video = useRef<HTMLVideoElement>(null);
-  return (
-    <video
-      ref={video}
-      className="tb-product-video"
-      src={`${src}#t=0,${end}`}
-      poster={poster}
-      autoPlay
-      muted
-      loop
-      playsInline
-      preload="metadata"
-      aria-hidden="true"
-      tabIndex={-1}
-      onTimeUpdate={() => {
-        const element = video.current;
-        if (element && element.currentTime >= end) { element.currentTime = 0; void element.play(); }
-      }}
-    />
-  );
+// The product page's film, behind the hero's text: muted and looping.
+export function ProductVideo({ src, poster }: { src: string; poster: string }) {
+  return <video className="tb-product-video" src={src} poster={poster} autoPlay muted loop playsInline preload="metadata" aria-hidden="true" tabIndex={-1} />;
 }
