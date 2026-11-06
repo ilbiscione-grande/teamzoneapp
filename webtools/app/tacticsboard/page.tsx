@@ -8,7 +8,7 @@ import { serverT } from "../../lib/i18n/server";
 
 export async function generateMetadata() {
   const t = await serverT();
-  return { title: "Tacticsboard", description: t("Rita, animera och presentera taktik för träning, genomgångar och match. Prova gratis i 7 dagar.") };
+  return { title: "Tacticsboard", description: t("Rita, animera och presentera taktik för träning, genomgångar och match. Prova gratis i 7 dagar."), robots: { index: true, follow: true } };
 }
 
 // Rebuilt hourly, so the launch offer leaves the page when it ends.

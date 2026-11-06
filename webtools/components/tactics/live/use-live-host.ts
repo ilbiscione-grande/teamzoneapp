@@ -4,6 +4,8 @@
 // what the board does is sent on it. Where the board is goes at once (a
 // scrub a little slower), the board in hand when it changes, objects while
 // they are dragged, the pointer while it moves over the pitch. Someone joining gets the whole state.
+// A lesson takes 25 participants, and each message counts once per receiver
+// against the project's 500 a second: 15 a second leaves room for the rest.
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { useEffect } from "react";
 import { applyMoves, liveTopic, throttle, viewChanged, type LiveView } from "../../../lib/tactics/live.ts";
@@ -44,16 +46,20 @@ export function useLiveHost(client: SupabaseClient | null) {
     const sendQuietly = (event: string, payload: object) => { if (ready) void channel?.send({ type: "broadcast", event, payload }); };
     // Whatever the host sends is the host doing something, save the heartbeat below.
     const send = (event: string, payload: object) => { useLive.getState().markActivity(); sendQuietly(event, payload); };
-    const sendView = throttle((view: LiveView) => send("view", view), 60);
+    const sendView = throttle((view: LiveView) => send("view", view), 66);
     const sendBoard = throttle(() => {
       const board = activeBoard(useEditor.getState());
       if (board) send("board", { board });
     }, 250);
-    const sendPointer = throttle((point: { x: number; y: number } | null) => send("pointer", { point }), 50);
+    const sendPointer = throttle((point: { x: number; y: number } | null) => send("pointer", { point }), 100);
+    // While something is dragged it shows where the host is; the pointer need not.
+    let draggedAt = 0;
+    const pointer = (point: { x: number; y: number } | null) => { if (Date.now() - draggedAt > 200) sendPointer.call(point); };
     const sendDrag = throttle((moves: Record<string, { x: number; y: number }>) => {
       const { boardId, frameIndex } = useEditor.getState();
       if (boardId) send("drag", { boardId, frameIndex, moves });
-    }, 40);
+    }, 66);
+    const drag = (moves: Record<string, { x: number; y: number }>) => { draggedAt = Date.now(); sendPointer.cancel(); sendDrag.call(moves); };
     // Everything, for someone who just came in.
     const sync = () => {
       const { chatMode, hands } = useChat.getState();
@@ -76,8 +82,8 @@ export function useLiveHost(client: SupabaseClient | null) {
     });
     // While playing, the participants are kept in step now and then.
     const heartbeat = setInterval(() => { const view = viewOf(useEditor.getState()); if (view?.playing) sendQuietly("view", view); }, 2000);
-    pitchPointer.add(sendPointer.call);
-    objectDrag.add(sendDrag.call);
+    pitchPointer.add(pointer);
+    objectDrag.add(drag);
 
     void (async () => {
       await client.realtime.setAuth();
@@ -107,8 +113,8 @@ export function useLiveHost(client: SupabaseClient | null) {
       ready = false;
       clearInterval(heartbeat);
       unsubscribe();
-      pitchPointer.delete(sendPointer.call);
-      objectDrag.delete(sendDrag.call);
+      pitchPointer.delete(pointer);
+      objectDrag.delete(drag);
       sendView.cancel(); sendBoard.cancel(); sendPointer.cancel(); sendDrag.cancel();
       if (channel) void client.removeChannel(channel);
       useLive.getState().set({ participants: [], send: null });

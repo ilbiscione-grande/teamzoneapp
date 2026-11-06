@@ -13,7 +13,7 @@ export async function generateMetadata() {
   return {
     title: { default: "TeamZone Webtools", template: "%s | TeamZone Webtools" },
     description: t("Verktyg för lag och klubbar: taktiktavla, videoanalys, bokningar och turneringar, med ditt TeamZone-konto."),
-    // A temporary address until webtools.teamzoneapp.se moves over.
+    // Only the product page is for search engines; it says so itself.
     robots: { index: false, follow: false },
   };
 }
@@ -21,7 +21,7 @@ export async function generateMetadata() {
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const locale = await serverLocale();
   return (
-    <html lang={locale} className={`${display.variable} ${body.variable}`}>
+    <html lang={locale} className={`${display.variable} ${body.variable}`} suppressHydrationWarning>
       <body>
         <LanguageProvider locale={locale} switchable={englishOpen()}>
           <AccountProvider>

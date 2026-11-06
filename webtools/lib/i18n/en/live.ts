@@ -125,6 +125,7 @@ export const live: Record<string, string> = {
   "Läraren kräver inloggning för den här lektionen.": "The coach requires sign-in for this session.",
   "Skriv ditt namn, högst 40 tecken.": "Enter your name, at most 40 characters.",
   "Det finns ingen pågående lektion med den koden.": "There is no running session with that code.",
+  "Lektionen är full. Den tar 25 deltagare.": "The session is full. It takes 25 participants.",
   "Det gick inte att gå med. Försök igen.": "Could not join. Try again.",
   "Gäster kan inte gå med just nu. Logga in för att vara med.": "Guests cannot join right now. Sign in to take part.",
   "Det gick inte att ansluta. Ladda om sidan och försök igen.": "Could not connect. Reload the page and try again.",

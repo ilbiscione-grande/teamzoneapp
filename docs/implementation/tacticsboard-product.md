@@ -261,24 +261,34 @@ Genomgången gjordes 2026-11-02 i koden och i förhandsvisningen av `/tacticsboa
 
 ### Ofärdiga flöden
 
-- **Panelen "Lag" utan lag** visar bara en hänvisning till TeamZone. För en fristående användare är fliken tom. Antingen döljs fliken, eller så kan man skriva in sin egen trupp (namn och nummer). Det andra är en ny funktion och kan vänta.
-- **"Lägg i träning"** syns även för den som inte har något lag.
+- **Panelen "Lag" utan lag:** löst. Fliken visar formationerna, och delen om truppen syns bara för den som har ett lag (kontrollerat 2026-11-06).
+- **"Lägg i träning":** löst. Valet syns bara i ett träningsprojekt för den som har ett lag.
 - **Biblioteket som gemenskap:** det finns inget sätt att anmäla olämpligt innehåll. När främlingar kan publicera till alla behövs det, eller så stängs publicering till alla av för konton utan lag tills vidare.
 - **Steg 5 i kopplingen till TeamZone** (`tacticsboard-teamzone-link.md`) och AI-funktionen (`tacticsboard-ai.md`) är planerade och påverkar inte lanseringen.
 
 ### Mobil och surfplatta
 
 - I mobil (375 px bred) ryms editorn utan sidledsscroll. Tavlan, tidslinjen, verktygsraden för telefon och panelflikarna får plats.
-- **Toppraden är kapad i mobil:** knapparna efter "+ Tav…" (ångra, gör om och resten) hamnar utanför skärmen. De går att nå genom att scrolla i sidled i raden, men det syns inte. Toppraden bör få en "Mer"-meny i smal skärm. `TopBarMore` finns redan och kan användas.
-- Tidslinjens förloppsstapel (`tb-progress`) sticker ut 2 px till höger.
-- **Surfplatta (768–1024 px) och riktiga pekskärmar är inte testade i den här genomgången.** De ska testas på en riktig iPad och en Android-telefon innan lanseringen, eftersom du värderar pekkänslan högst.
+- **Toppraden i mobil:** löst med "Mer"-menyn. Kontrollerat 2026-11-06 i 375 och 320 px. Då rättades också att knapparna för en misslyckad sparning hamnade utanför skärmen, och att Inställningar var för bred.
+- Tidslinjens förloppsstapel (`tb-progress`): löst, den sticker inte längre ut.
+- **Surfplatta och riktiga pekskärmar:** provade av Thomas 2026-11-06.
 
 ### Prestanda
 
-- Den här genomgången mätte inte prestanda. Inför lanseringen:
-  - mät hur snabbt editorn och produktsidan laddar på en mobil (Lighthouse), och storleken på JavaScript-paketet för editorn (Konva och jsPDF)
-  - prova ett stort projekt (till exempel 20 tavlor med många frames) för autosparning, miniatyrer och PDF-export
-  - prova en livelektion med många deltagare. Supabase Realtime har gränser för samtidiga anslutningar och meddelanden per plan.
+Mätt 2026-11-06 med en simulerad mobil: 1,6 Mbit/s, 150 ms svarstid och fyra gånger långsammare processor.
+
+| Sida | Första innehåll | Största innehåll | Blockerad tid | Sidhopp | Data |
+|---|---|---|---|---|---|
+| Produktsidan före rättelsen (produktion) | 1,6 s | 5,8 s | 0,25 s | 0,22 | 1,1 MB, med filmen 1,6 MB |
+| Produktsidan efter rättelsen (lokalt) | 2,0 s | 3,8 s | 0,34 s | 0 | 1,1 MB utan film |
+| Inloggningen | 1,4 s | 3,0 s | 0,27 s | 0 | 0,3 MB |
+| Editorn (lokalt, klar att använda 4,5 s) | 1,4 s | 4,1 s | 0,70 s | 0 | 0,6 MB, varav 435 kB JavaScript |
+| Startsidan teamzoneapp.se | 1,8 s | 1,8 s | 0,28 s | 0 | 0,5 MB |
+
+- **Produktsidan** visade "Laddar…" tills kontot var läst, och hoppade sedan. Nu visas den direkt från servern, och filmen laddas inte på telefon, där den ändå ligger bakom en mörk yta. Den är också öppen för sökmotorer. Lokala och produktionens siffror är inte helt jämförbara.
+- **Stort projekt** (20 tavlor, 40 frames, 25 objekt per frame, 3,9 MB text): att byta tavla tar under 75 ms, och en dragning cirka 34 ms per steg, med fyra gånger långsammare processor. Projektgränsen är 4 MB komprimerat. Riktiga ritningar utan objekt är inte med i provet.
+- **PDF** med 20 tavlor och 15 frames, en per sida: 59 sekunder på dator. Provet är inte gjort på telefon.
+- **Livelektion** är beräknad, inte provad med många deltagare. Produktionen är på Pro med spending cap: 500 samtidiga anslutningar och 500 meddelanden per sekund, och gränserna går inte att höja med spending cap på. Varje mottagare räknas som ett meddelande. En lektion tar 25 deltagare, vilket databasen kontrollerar när någon går med (migrationen `20270211090000`). Den som redan har gått med behåller sin plats, men den som lämnar frigör ingen. Läraren skickar högst 15 drag per sekund, och pekaren, 10 per sekund, är av under dragning. Det ger högst 390 meddelanden per sekund för en full lektion. Två fulla lektioner där lärarna drar samtidigt går över gränsen.
 
 ### Drift och säkerhet
 

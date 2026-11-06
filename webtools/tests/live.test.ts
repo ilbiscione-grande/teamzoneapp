@@ -11,6 +11,7 @@ test("live: codes, links and topics", () => {
   assert.equal(liveTopic("abc"), "tactics-live:abc");
   assert.match(joinError("ERROR: login_required"), /inloggning/);
   assert.match(joinError("not_found"), /ingen pågående/i);
+  assert.match(joinError("session_full"), /full/);
 });
 
 test("live: a board from the host replaces the participant's, or is added", () => {
