@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { useEditor } from "../components/tactics/store.ts";
 import { createObject, createPlayer, insertFrame, newBoard, newDocument, newFrame, toggleEffect } from "../lib/tactics/document.ts";
-import { hasEffectEveryFrame, patchEveryFrame, setEffectEveryFrame } from "../lib/tactics/every-frame.ts";
+import { effectsLast, hasEffectEveryFrame, patchEveryFrame, setEffectEveryFrame, setLastingEffects } from "../lib/tactics/every-frame.ts";
 import { cameraAt } from "../lib/tactics/marks.ts";
 import type { Board, Effect, Project, TacticsObject } from "../lib/tactics/model.ts";
 import { effectsOf } from "../lib/tactics/motion.ts";
@@ -78,6 +78,32 @@ test("an effect for one frame is not carried into a new one, and taking one away
   const lasting = setEffectEveryFrame(boardOf([player]), [player.id], "pulse", true).frames[0].objects[0];
   const taken = { ...lasting, ...toggleEffect(lasting, "pulse", false) } as TacticsObject;
   assert.equal(effectsOf(insertFrame(boardOf([taken]), 0).frames[1].objects[0]).length, 0);
+});
+
+test("all frames is chosen per object: it goes off when others are chosen", () => {
+  load(boardOf([player, cone], [player, cone]));
+  const state = useEditor.getState();
+  state.select([player.id]);
+  state.setAllFrames(true);
+  state.select([player.id]);
+  assert.equal(useEditor.getState().allFrames, true, "the same object");
+  state.setFrame(1);
+  assert.equal(useEditor.getState().allFrames, true, "another frame");
+  state.select([cone.id]);
+  assert.equal(useEditor.getState().allFrames, false, "another object");
+});
+
+test("one object's effects can stay out of frames added later, the others' not", () => {
+  let board = setEffectEveryFrame(boardOf([player, cone], [player, cone]), [player.id, cone.id], "ring", true);
+  assert.ok(effectsLast(board.frames[1].objects[0]));
+  board = setLastingEffects(board, player.id, []);
+  assert.equal(effectsLast(board.frames[0].objects[0]), false, "in every frame");
+  const added = insertFrame(board, 1).frames[2].objects;
+  assert.equal(effectsOf(added[0]).length, 0, "not on the player");
+  assert.deepEqual(effectsOf(added[1]), ["ring"], "still on the cone");
+  assert.ok(hasEffectEveryFrame(board, player.id, "ring"), "the frames there keep it");
+  board = setLastingEffects(board, player.id, ["ring"]);
+  assert.deepEqual(effectsOf(insertFrame(board, 1).frames[2].objects[0]), ["ring"], "and back on");
 });
 
 test("the zoom goes in and out at the chosen speed", () => {

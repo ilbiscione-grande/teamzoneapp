@@ -8,7 +8,7 @@
 import {
   insertFrame, moveFrame, objectLabel, removeFrame, setFrameDuration, setFrameEasing, toggleEffect, updateBoard,
 } from "../../../lib/tactics/document.ts";
-import { hasEffectEveryFrame, setEffectEveryFrame } from "../../../lib/tactics/every-frame.ts";
+import { effectsLast, hasEffectEveryFrame, setEffectEveryFrame, setLastingEffects } from "../../../lib/tactics/every-frame.ts";
 import type { Board, Easing, Effect, TacticsObject, ZoomLevel, ZoomSpeed } from "../../../lib/tactics/model.ts";
 import { effectsOf } from "../../../lib/tactics/timeline.ts";
 import { activeObjects, useEditor } from "../store.ts";
@@ -147,6 +147,11 @@ export function FramesPanel({ board }: { board: Board }) {
                       );
                     })}
                   </span>
+                  <label className="tb-zoom-level" title={t("Frames du lägger till efter den här får samma effekter på objektet.")}>
+                    <input type="checkbox" checked={effectsLast(item)}
+                      onChange={event => changeBoard(current => setLastingEffects(current, item.id, event.target.checked ? effectsOf(item) : []))} />
+                    {t("Även i nya frames")}
+                  </label>
                   {effectsOf(item).includes("zoom") && (
                     <span className="tb-zoom-choices">
                       <label className="tb-zoom-level">{t("Zoom")}

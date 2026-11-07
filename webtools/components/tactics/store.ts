@@ -186,7 +186,10 @@ export const useEditor = create<EditorState>((set, get) => ({
   // One of a group chooses the whole group.
   select: (given, additive = false) => set(state => {
     const ids = withGroups(activeObjects(state), given);
-    return { selection: additive ? [...new Set([...state.selection.filter(id => !ids.includes(id)), ...ids.filter(id => !state.selection.includes(id))])] : ids };
+    const selection = additive ? [...new Set([...state.selection.filter(id => !ids.includes(id)), ...ids.filter(id => !state.selection.includes(id))])] : ids;
+    // "All frames" is chosen for these objects: others start from the frame in hand again.
+    const same = selection.length === state.selection.length && selection.every(id => state.selection.includes(id));
+    return { selection, allFrames: same && state.allFrames };
   }),
   duplicateSelected: () => {
     const state = get();

@@ -88,6 +88,8 @@ export const editorPanels: Record<string, string> = {
   "Effekter": "Effects",
   "Inga effekter": "No effects",
   "Gäller alla frames": "Applies to all frames",
+  "Även i nya frames": "In new frames too",
+  "Frames du lägger till efter den här får samma effekter på objektet.": "Frames you add after this one give the object the same effects.",
   "Ändringen gäller objektet i alla frames det finns i.": "The change applies to the object in every frame it is in.",
   "Zoom": "Zoom",
   "Nya objekt tonar in och borttagna tonar ut av sig själva.": "New objects fade in and removed ones fade out on their own.",
