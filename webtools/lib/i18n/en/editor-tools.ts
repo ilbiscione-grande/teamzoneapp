@@ -45,6 +45,8 @@ export const editorTools: Record<string, string> = {
   "Pausa (mellanslag)": "Pause (space)",
   "Spela (mellanslag)": "Play (space)",
   "Nästa frame": "Next frame",
+  "Visa tidigare frames": "Show earlier frames",
+  "Visa senare frames": "Show later frames",
   "Ny frame (kopia av denna)": "New frame (copy of this one)",
   "Ny frame: en kopia av den här att flytta vidare i": "New frame: a copy of this one to continue moving in",
   "Planen sedd snett från läktaren. Redigera uppifrån.": "The pitch seen at an angle from the stand. Edit from above.",

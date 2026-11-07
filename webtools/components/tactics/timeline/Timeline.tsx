@@ -4,10 +4,10 @@
 // choose among the frames (scrolled sideways when there are many), add one
 // copied from the one in hand, set the frame's own tools, and loop and speed.
 // One row of fixed height, so that scrubbing never changes the board's size.
-import { useEffect, useRef } from "react";
 import { insertFrame, updateBoard } from "../../../lib/tactics/document.ts";
 import type { Board } from "../../../lib/tactics/model.ts";
 import { isBetween, stepFrame, useEditor } from "../store.ts";
+import { FrameStrip } from "./FrameStrip.tsx";
 import { FrameTools } from "./FrameTools.tsx";
 import { Scrubber } from "./Scrubber.tsx";
 import { usePlayback } from "./use-playback.ts";
@@ -41,16 +41,6 @@ export function Timeline({ board, readOnly = false, viewer = false }: { board: B
     setFrame(frameIndex + 1);
   };
   const moving = playing || between;
-  // The frame in hand, or the one being played, is kept in view among many.
-  const list = useRef<HTMLDivElement>(null);
-  const shown = moving ? Math.round(playhead) : frameIndex;
-  useEffect(() => {
-    const box = list.current;
-    const chip = box?.children[shown] as HTMLElement | undefined;
-    if (!box || !chip) return;
-    if (chip.offsetLeft < box.scrollLeft) box.scrollLeft = chip.offsetLeft;
-    else if (chip.offsetLeft + chip.offsetWidth > box.scrollLeft + box.clientWidth) box.scrollLeft = chip.offsetLeft + chip.offsetWidth - box.clientWidth;
-  }, [shown, frames.length]);
 
   return (
     <div className="tb-timeline" aria-label={t("Frames och uppspelning")}>
@@ -68,15 +58,7 @@ export function Timeline({ board, readOnly = false, viewer = false }: { board: B
           <button type="button" className="tb-step" aria-label={t("Nästa frame")} onClick={() => stepFrame(1)}>›</button>
         )}
         {viewer && frames.length > 1 && <Scrubber frames={frames} time={false} />}
-        {!readOnly && <div className="tb-frames-wrap">
-          <div ref={list} className="tb-frames" role="tablist" aria-label={t("Frames")} onWheel={event => { event.currentTarget.scrollLeft += event.deltaY; }}>
-            {frames.map((frame, index) => (
-              <button key={frame.id} type="button" role="tab" aria-selected={!moving && index === frameIndex}
-                data-current={moving && Math.round(playhead) === index} onClick={() => setFrame(index)}>{index + 1}</button>
-            ))}
-          </div>
-          <button type="button" className="tb-frame-add" onClick={add} disabled={playing} aria-label={t("Ny frame (kopia av denna)")} title={t("Ny frame: en kopia av den här att flytta vidare i")}>+</button>
-        </div>}
+        {!readOnly && <FrameStrip frames={frames} moving={moving} onAdd={add} />}
         {readOnly ? !viewer && <span className="tb-spacer" /> : frames.length > 1
           ? <FrameTools board={board} moving={moving} changeBoard={changeBoard}
               hint={between ? t("Mellan frame {from} och {to}. Välj en frame för att redigera.", { from: Math.floor(playhead) + 1, to: Math.floor(playhead) + 2 }) : undefined} />
