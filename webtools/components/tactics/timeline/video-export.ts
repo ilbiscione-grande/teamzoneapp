@@ -5,10 +5,17 @@
 // MP4 where the browser makes it (Safari, newer Chrome), else WebM. With a
 // crop, only that part of the pitch is copied, at the crop's own shape; in
 // 3D, the part of the tilted picture where the crop shows, players standing in it.
+// It stands still for a moment first, so a page showing it has time to load,
+// and has a small watermark in the corner.
 import { contentHolder, stageHolder } from "../stage/stage-context.ts";
 import { drawTilted, layerCanvases, tiltHolder } from "../stage/tilt-picture.ts";
 import { create } from "zustand";
 import { activeBoard, useEditor } from "../store.ts";
+import { drawWatermark } from "./watermark.ts";
+
+/** How long the first frame stands still, and the last. */
+const HOLD_FIRST = 500;
+const HOLD_LAST = 600;
 
 const TYPES = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
 
@@ -86,7 +93,7 @@ async function record(): Promise<{ blob: Blob; extension: string } | null> {
   canvas.height = height - (height % 2);
   const context = canvas.getContext("2d");
   if (!context) return null;
-  const copy = () => {
+  const picture = () => {
     if (figures && whole) {
       const part = area();
       const target = part ? whole : canvas;
@@ -111,6 +118,16 @@ async function record(): Promise<{ blob: Blob; extension: string } | null> {
       else context.drawImage(layer, 0, 0);
     }
   };
+  const copy = () => {
+    picture();
+    drawWatermark(context, canvas.width, canvas.height);
+  };
+  /** Keeps drawing while the board stands still: a canvas that is not drawn on gives the video no frames. */
+  const hold = (ms: number) => new Promise<void>(resolve => {
+    const start = performance.now();
+    const tick = () => { copy(); if (performance.now() - start < ms) requestAnimationFrame(tick); else resolve(); };
+    requestAnimationFrame(tick);
+  });
   copy();
   const type = pickType();
   const recorder = new MediaRecorder(canvas.captureStream(30), { ...(type ? { mimeType: type } : {}), videoBitsPerSecond: 6_000_000 });
@@ -123,8 +140,7 @@ async function record(): Promise<{ blob: Blob; extension: string } | null> {
   const loop = editor.loop;
   useEditor.setState({ frameIndex: 0, playhead: 0, loop: false, selection: [] });
   recorder.start(250);
-  // A moment on the first frame before it moves.
-  await new Promise(resolve => setTimeout(resolve, 400));
+  await hold(HOLD_FIRST);
   useEditor.getState().play();
   await new Promise<void>(resolve => {
     const tick = () => {
@@ -136,12 +152,7 @@ async function record(): Promise<{ blob: Blob; extension: string } | null> {
     };
     requestAnimationFrame(tick);
   });
-  // And a moment on the last.
-  const end = performance.now();
-  await new Promise<void>(resolve => {
-    const hold = () => { copy(); if (performance.now() - end < 600) requestAnimationFrame(hold); else resolve(); };
-    requestAnimationFrame(hold);
-  });
+  await hold(HOLD_LAST);
   recorder.stop();
   await done;
   useEditor.setState({ loop });
