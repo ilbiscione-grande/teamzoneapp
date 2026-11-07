@@ -6,7 +6,7 @@
 // object if wanted, chosen for the objects selected on the pitch and tried
 // out with a preview; and whether the move starts and stops softly.
 import {
-  insertFrame, moveFrame, objectLabel, removeFrame, setFrameDuration, setFrameEasing, toggleEffect, updateBoard,
+  duplicateFrame, insertFrame, moveFrame, objectLabel, removeFrame, setFrameDuration, setFrameEasing, toggleEffect, updateBoard,
 } from "../../../lib/tactics/document.ts";
 import { effectsLast, hasEffectEveryFrame, setEffectEveryFrame, setLastingEffects } from "../../../lib/tactics/every-frame.ts";
 import type { Board, Easing, Effect, TacticsObject, ZoomLevel, ZoomSpeed } from "../../../lib/tactics/model.ts";
@@ -32,6 +32,10 @@ export function FramesPanel({ board }: { board: Board }) {
 
   const add = () => {
     changeBoard(current => insertFrame(current, frameIndex));
+    setFrame(frameIndex + 1);
+  };
+  const copy = () => {
+    changeBoard(current => duplicateFrame(current, frameIndex));
     setFrame(frameIndex + 1);
   };
   const remove = () => {
@@ -77,6 +81,7 @@ export function FramesPanel({ board }: { board: Board }) {
       </ol>
       <div className="tb-actions">
         <button type="button" className="wt-button small" onClick={add} disabled={playing}>{t("+ Ny frame")}</button>
+        <button type="button" className="wt-button secondary small" onClick={copy} disabled={playing} title={t("En exakt kopia direkt efter den här, med effekter, anteckning och tid.")}>{t("Kopiera frame")}</button>
         <button type="button" className="wt-button secondary small" onClick={() => move(-1)} disabled={playing || frameIndex === 0} aria-label={t("Flytta framen bakåt")}>↑</button>
         <button type="button" className="wt-button secondary small" onClick={() => move(1)} disabled={playing || frameIndex >= frames.length - 1} aria-label={t("Flytta framen framåt")}>↓</button>
         <button type="button" className="wt-button secondary small" onClick={remove} disabled={playing || frames.length < 2}>{t("Ta bort")}</button>

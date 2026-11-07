@@ -241,6 +241,16 @@ export function insertFrame(board: Board, afterIndex: number): Board {
   return { ...board, frames };
 }
 
+/** A frame as it is, effects, note and timing too, put right after it. Nothing moves between the two, so nothing bends or lifts into the copy. */
+export function duplicateFrame(board: Board, index: number): Board {
+  const source = board.frames[index];
+  if (!source) return board;
+  const objects = source.objects.map(item => ({ ...item, pathControl: null, ...(item.type === "ball" ? { flight: undefined } : {}) }) as TacticsObject);
+  const frames = [...board.frames];
+  frames.splice(index + 1, 0, { ...source, id: newId(), objects });
+  return { ...board, frames };
+}
+
 export function removeFrame(board: Board, index: number): Board {
   if (board.frames.length < 2) return board;
   return { ...board, frames: board.frames.filter((_, i) => i !== index) };

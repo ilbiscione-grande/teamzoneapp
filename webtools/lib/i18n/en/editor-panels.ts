@@ -93,6 +93,8 @@ export const editorPanels: Record<string, string> = {
   // Frames
   "Frames": "Frames",
   "+ Ny frame": "+ New frame",
+  "Kopiera frame": "Copy frame",
+  "En exakt kopia direkt efter den här, med effekter, anteckning och tid.": "An exact copy right after this one, with effects, note and timing.",
   "En ny frame är en kopia av den du står på. Flytta spelarna i den, så spelas rörelsen upp mellan dina frames.": "A new frame is a copy of the one you are on. Move the players in it, and the movement plays between your frames.",
   "Förflyttning hit": "Move here in",
   "Rörelsen": "The movement",
