@@ -28,6 +28,14 @@ export function effectSuits(kind: Effect, item: TacticsObject): boolean {
 }
 
 /** How a move speeds up and slows down, for the frame's choice. */
+/** The same for the row under the board, where room is short. */
+export const shortEasingLabels: Record<Easing, string> = {
+  smooth: "Mjuk",
+  linear: "Jämn",
+  in: "Mjuk start",
+  out: "Mjuk stopp",
+};
+
 export const easingLabels: Record<Easing, string> = {
   smooth: "Mjuk start och inbromsning",
   linear: "Jämn fart hela vägen",
