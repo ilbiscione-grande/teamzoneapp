@@ -197,7 +197,10 @@ class SupabaseEventPreparationServices
     try {
       return await _client.schema('api').rpc<Object?>(name, params: params);
     } on PostgrestException catch (error) {
-      if (error.code == '40001') throw const PreparationConflict();
+      // PT409 since 20270213090000; 40001 from a database not yet migrated.
+      if (error.code == 'PT409' || error.code == '40001') {
+        throw const PreparationConflict();
+      }
       rethrow;
     }
   }

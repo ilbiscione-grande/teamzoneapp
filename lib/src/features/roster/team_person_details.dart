@@ -373,7 +373,10 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
     } catch (error) {
       if (mounted) {
         setState(() {
-          _stale = error is PostgrestException && error.code == '40001';
+          // PT409 since 20270213090000; 40001 before.
+          _stale =
+              error is PostgrestException &&
+              (error.code == 'PT409' || error.code == '40001');
           _error = strings.feature(
             _stale
                 ? 'Uppgifterna har ändrats av någon annan. Hämta senaste uppgifter innan du sparar.'
