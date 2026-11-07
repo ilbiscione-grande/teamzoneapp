@@ -48,6 +48,8 @@ a { color: var(--wt-brand); }
 .wt-nav a:hover, .wt-nav-button:hover { color: white; }
 .wt-nav-button { background: none; border-top: 0; border-left: 0; border-right: 0; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
 .wt-nav-out { color: var(--wt-accent) !important; }
+.wt-language { display: inline-flex; align-items: center; gap: 8px; color: white; }
+.wt-flag { flex: none; border-radius: 2px; box-shadow: 0 0 0 1px rgba(255, 255, 255, .35); }
 
 /* Hero */
 .wt-hero { background: linear-gradient(160deg, var(--wt-ink) 0%, var(--wt-ink-2) 100%); color: white; padding: 48px 0 44px; }

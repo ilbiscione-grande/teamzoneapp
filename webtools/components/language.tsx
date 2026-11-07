@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useMemo } from "react";
 import { intlLocale, localeCookieValue, type Locale } from "../lib/i18n/locale";
+import { LanguageFlag } from "./language-flag";
 import { translator, type Translate } from "../lib/i18n/translate";
 
 type Language = { locale: Locale; intl: string; t: Translate; switchable: boolean };
@@ -23,8 +24,8 @@ export function Bold({ text, value }: { text: string; value: React.ReactNode }) 
   return <>{before}<strong>{value}</strong>{after}</>;
 }
 
-/** Names the other language in that language, so it can always be found. */
-export function LanguageSwitch() {
+/** Names the other language in that language, so it can always be found; in the header with its flag. */
+export function LanguageSwitch({ header = false }: { header?: boolean }) {
   const { locale, switchable } = useLanguage();
   if (!switchable) return null;
   const other: Locale = locale === "sv" ? "en" : "sv";
@@ -32,5 +33,7 @@ export function LanguageSwitch() {
     document.cookie = localeCookieValue(other, window.location.hostname);
     window.location.reload();
   };
-  return <button type="button" className="wt-link-button" lang={other} onClick={choose}>{other === "en" ? "English" : "Svenska"}</button>;
+  const name = other === "en" ? "English" : "Svenska";
+  if (header) return <button type="button" className="wt-nav-button wt-language" lang={other} onClick={choose}><LanguageFlag locale={other} />{name}</button>;
+  return <button type="button" className="wt-link-button" lang={other} onClick={choose}>{name}</button>;
 }

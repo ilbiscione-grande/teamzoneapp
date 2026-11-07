@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { clubSiteFonts } from "./club-site";
+import { LanguageFlag } from "./language-flag";
 
 // TeamZone's own pages (start page, sign-in, personal start page, search and
 // status pages) in the same look as the club and team pages.
@@ -32,6 +33,9 @@ const portalText = {
 
 export function PortalHeader({ active, locale = "sv" }: { active?: "home" | "search" | "legal" | "matchpool"; locale?: Locale }) {
   const text = portalText[locale];
+  const other = locale === "en" ? "sv" : "en";
+  // The launch page is the one that has the other language at its own address.
+  const switchable = active === "home" && tacticsboardLaunch() && (locale === "en" || englishOpen());
   return (
     <header className="cs-header">
       <div className="cs-mainbar"><div className="cs-wrap">
@@ -42,6 +46,7 @@ export function PortalHeader({ active, locale = "sv" }: { active?: "home" | "sea
           {!tacticsboardLaunch() && <Link href="/matchpool" aria-current={active === "matchpool" ? "page" : undefined}>Matchpool</Link>}
           {webtoolsUrl() && <a href={webtoolsUrl()!}>Webtools</a>}
           {!tacticsboardLaunch() && <a href="https://app.teamzoneapp.se">Öppna appen</a>}
+          {switchable && <Link href={other === "en" ? "/en" : "/"} className="pz-language" lang={other}><LanguageFlag locale={other} />{other === "en" ? "English" : "Svenska"}</Link>}
         </nav>
       </div></div>
     </header>

@@ -65,7 +65,7 @@ export function SignIn() {
         <button type="button" role="tab" aria-selected={mode === "in"} onClick={() => { setMode("in"); setError(""); setSent(false); }}>{t("Logga in")}</button>
         <button type="button" role="tab" aria-selected={mode === "up"} onClick={() => { setMode("up"); setError(""); }}>{t("Skapa konto")}</button>
       </div>
-      <h1 id="signin-title">{mode === "in" ? "Logga in" : t("Skapa ett konto")}</h1>
+      <h1 id="signin-title">{mode === "in" ? t("Logga in") : t("Skapa ett konto")}</h1>
       {confirmed && mode === "in" && <p className="wt-note">{t("Din e-postadress är bekräftad. Logga in för att fortsätta.")}</p>}
       {sent ? (
         <p className="wt-note" role="status">
@@ -78,7 +78,7 @@ export function SignIn() {
           {mode === "up" && <p className="wt-small">{t(passwordRule)}</p>}
           {mode === "up" && <p className="wt-small">{t("Med kontot använder du Tacticsboard och de andra apparna i Teamzone Webtools. Du behöver inte vara med i något lag eller någon klubb.")}</p>}
           {error && <p role="alert" className="wt-error">{error}</p>}
-          <button type="submit" className="wt-button" disabled={busy}>{mode === "in" ? "Logga in" : t("Skapa konto")}</button>
+          <button type="submit" className="wt-button" disabled={busy}>{mode === "in" ? t("Logga in") : t("Skapa konto")}</button>
           {mode === "in" && <p className="wt-small"><button type="button" className="wt-link-button" onClick={() => { setMode("forgot"); setError(""); }}>{t("Glömt lösenordet?")}</button></p>}
         </form>
       )}

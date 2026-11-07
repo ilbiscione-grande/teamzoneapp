@@ -32,6 +32,8 @@ export function Header() {
           )}
           {!links.tacticsboardOnly && <NotificationBell />}
           {!links.tacticsboardOnly && <a href={links.siteUrl} className="wt-nav-out">teamzoneapp.se</a>}
+          {/* Before signing in: changing language reloads the page, which would drop a board being drawn. */}
+          {!session && <LanguageSwitch header />}
         </nav>
       </div>
     </header>

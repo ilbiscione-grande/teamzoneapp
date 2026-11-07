@@ -17,6 +17,8 @@
 .pz-mark { flex: 0 0 auto; display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 8px; background: var(--cs-accent); color: var(--cs-accent-ink); font-family: var(--cs-display), sans-serif; font-size: 1.15rem; font-weight: 800; letter-spacing: 0; }
 .pz-mark.large { width: 64px; height: 64px; border-radius: 12px; font-size: 1.8rem; }
 .cs-nav a[aria-current="page"] { color: white; border-bottom-color: var(--cs-accent); }
+.cs-nav a.pz-language { display: inline-flex; align-items: center; gap: 8px; color: white; }
+.pz-flag { flex: none; border-radius: 2px; box-shadow: 0 0 0 1px rgba(255, 255, 255, .35); }
 
 /* Hero */
 .pz-hero .cs-hero-inner, .pz-hero-grid { position: relative; z-index: 1; }
