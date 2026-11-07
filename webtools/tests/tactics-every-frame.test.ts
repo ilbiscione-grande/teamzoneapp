@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { useEditor } from "../components/tactics/store.ts";
 import { createObject, createPlayer, insertFrame, newBoard, newDocument, newFrame, toggleEffect } from "../lib/tactics/document.ts";
-import { effectsLast, hasEffectEveryFrame, patchEveryFrame, setEffectEveryFrame, setLastingEffects } from "../lib/tactics/every-frame.ts";
+import { copyToEveryFrame, effectsLast, hasEffectEveryFrame, otherFramesWith, patchEveryFrame, setEffectEveryFrame, setLastingEffects } from "../lib/tactics/every-frame.ts";
 import { cameraAt } from "../lib/tactics/marks.ts";
-import type { Board, Effect, Project, TacticsObject } from "../lib/tactics/model.ts";
+import { textFontStyle, type Board, type Effect, type Project, type TacticsObject } from "../lib/tactics/model.ts";
 import { effectsOf } from "../lib/tactics/motion.ts";
 
 const player = createPlayer({ x: 10, y: 10 }, "home", []);
@@ -104,6 +104,43 @@ test("one object's effects can stay out of frames added later, the others' not",
   assert.ok(hasEffectEveryFrame(board, player.id, "ring"), "the frames there keep it");
   board = setLastingEffects(board, player.id, ["ring"]);
   assert.deepEqual(effectsOf(insertFrame(board, 1).frames[2].objects[0]), ["ring"], "and back on");
+});
+
+test("an object is set as in one frame in the others it is in, keeping what plays there", () => {
+  const here = { ...player, x: 50, y: 30, rotation: 90, color: "#444444", name: "Ali" } as TacticsObject;
+  const there = { ...player, x: 1, y: 2, effects: ["pulse"] as Effect[], zoomLevel: "close", pathControl: { x: 9, y: 9 } } as TacticsObject;
+  const held = { ...player, x: 3, y: 4, locked: true } as TacticsObject;
+  const frames = [[here, cone], [there, cone], [cone], [held]];
+  const board = copyToEveryFrame(boardOf(...frames), 0, [player.id]);
+  const copy = board.frames[1].objects[0] as typeof here;
+  assert.deepEqual([copy.x, copy.y, copy.rotation, (copy as { name?: string }).name], [50, 30, 90, "Ali"]);
+  assert.equal(colorOf(board, 1, player.id), "#444444");
+  assert.deepEqual(effectsOf(copy), ["pulse"], "the frame's own effect");
+  assert.equal(copy.zoomLevel, "close");
+  assert.equal(copy.pathControl, null, "no bend on a move of no length");
+  assert.equal(board.frames[2].objects.length, 1, "not added where it was not");
+  assert.equal(board.frames[3].objects[0].x, 3, "a locked copy stays");
+  assert.deepEqual(board.frames[0].objects[1], cone, "others are left alone");
+  assert.equal(otherFramesWith(boardOf(...frames), 0, [player.id]), 1, "one to change");
+});
+
+test("a ball stays with its player when either is set in every frame", () => {
+  const ball = { ...createObject("ball", { x: 12, y: 10 }), attachedTo: player.id, offset: { x: 2, y: 0 } } as TacticsObject;
+  const moved = { ...player, x: 40, y: 40 } as TacticsObject;
+  const carried = { ...ball, x: 42, y: 40 } as TacticsObject;
+  const board = copyToEveryFrame(boardOf([player, ball], [moved, carried]), 0, [player.id]);
+  assert.equal(board.frames[1].objects[1].x, 12, "follows the player");
+  const free = { ...ball, x: 70, y: 40, attachedTo: null, offset: null } as TacticsObject;
+  const alone = copyToEveryFrame(boardOf([player, ball], [cone, free]), 0, [ball.id]);
+  const loose = alone.frames[1].objects[1] as { attachedTo: string | null; x: number };
+  assert.equal(loose.attachedTo, null, "no player there to hold it");
+  assert.equal(loose.x, 12);
+});
+
+test("a text is bold until another style is chosen", () => {
+  assert.equal(textFontStyle({}), "bold");
+  assert.equal(textFontStyle({ style: "regular" }), "normal");
+  assert.equal(textFontStyle({ style: "italic" }), "italic");
 });
 
 test("the zoom goes in and out at the chosen speed", () => {

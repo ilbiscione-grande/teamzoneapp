@@ -109,7 +109,7 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
     case "text":
       return (
         <>
-          <label className="tb-field">{t("Text")}<textarea rows={2} maxLength={200} value={item.text} onChange={event => patch({ text: event.target.value })} /></label>
+          <label className="tb-field">{t("Text")}<textarea rows={2} maxLength={500} value={item.text} onChange={event => patch({ text: event.target.value })} /></label>
           <label className="tb-field">{t("Textstorlek")}
             <input type="range" min={0.8} max={8} step={0.2} value={item.size} onChange={event => patch({ size: Number(event.target.value) })} />
           </label>

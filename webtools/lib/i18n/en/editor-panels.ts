@@ -19,6 +19,15 @@ export const editorPanels: Record<string, string> = {
 
   // Copy to
   "Kopiera till nästa frame": "Copy to next frame",
+  "Kopiera till alla frames": "Copy to all frames",
+  "Stil": "Style",
+  "Normal": "Regular",
+  "Fet": "Bold",
+  "Kursiv": "Italic",
+  "Utseende, storlek, plats och rotation blir som i den här framen, i alla frames objektet finns i.": "Look, size, place and rotation become as in this frame, in every frame the object is in.",
+  "Det du har markerat får samma utseende och plats i alla frames där det finns, så rörelserna mellan dem försvinner. Effekterna ligger kvar.": "What you have selected gets the same look and place in every frame it is in, so the moves between them are lost. The effects stay.",
+  "Kopierat till en annan frame.": "Copied to one other frame.",
+  "Kopierat till {count} andra frames.": "Copied to {count} other frames.",
   "Kopiera till…": "Copy to…",
   "Kopiera till": "Copy to",
   "Objektet": "The object",

@@ -4,8 +4,9 @@
 // that keeps reading upright on a turned pitch. A resized text box wraps its
 // text; the letters keep their own size. With measuring on, an area shows
 // its sides and the ground it covers.
+import Konva from "konva";
 import { Ellipse, Group, Label, Rect, Tag, Text } from "react-konva";
-import { textBackground, type ShapeObject, type TextObject } from "../../../lib/tactics/model.ts";
+import { TEXT_LINE_HEIGHT, textBackground, textFontStyle, type ShapeObject, type TextObject } from "../../../lib/tactics/model.ts";
 import type { Rendered } from "../../../lib/tactics/timeline.ts";
 import { shapeMeasure } from "../../../lib/tactics/measure.ts";
 import type { Context } from "konva/lib/Context";
@@ -41,15 +42,25 @@ export function ShapeNode({ item, measure = false, upright = 0 }: { item: ShapeO
   );
 }
 
+/** A box resized to fit the text stays that high, but never cuts lines off: the text then takes the room it needs. */
+function boxHeight(item: TextObject, font: { fontSize: number; fontStyle: string; lineHeight: number; padding: number }) {
+  if (item.height == null) return undefined;
+  const needed = new Konva.Text({ ...font, text: item.text, width: item.width ?? undefined, wrap: "word" });
+  const height = needed.height();
+  needed.destroy();
+  return item.height > height ? item.height : undefined;
+}
+
 export function TextNode({ item, upright }: { item: TextObject & Rendered; upright: number }) {
   const shared = useStage();
   const drag = useObjectDrag(item);
+  const font = { fontSize: item.size, fontStyle: textFontStyle(item), lineHeight: TEXT_LINE_HEIGHT, padding: item.background ? 0.45 : 0 };
   return (
     <Group ref={nodeRef(shared, item.id)} x={item.x} y={item.y} rotation={item.rotation + upright} {...look(item)} {...drag}>
       <Label>
         {item.background && <Tag fill={item.backgroundColor ?? textBackground.color} opacity={item.backgroundOpacity ?? textBackground.opacity} cornerRadius={0.4} />}
-        <Text text={item.text} fontSize={item.size} fontStyle="bold" fill={item.color} padding={item.background ? 0.45 : 0}
-          width={item.width ?? undefined} height={item.height ?? undefined} wrap="word" align={item.align ?? "left"} />
+        <Text {...font} text={item.text} fill={item.color}
+          width={item.width ?? undefined} height={boxHeight(item, font)} wrap="word" align={item.align ?? "left"} />
       </Label>
     </Group>
   );

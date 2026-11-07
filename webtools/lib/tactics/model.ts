@@ -140,12 +140,21 @@ export type TextObject = Base & {
   background: boolean;
   /** How the lines lie in the box: left when missing. */
   align?: TextAlign;
+  /** The letters: bold when missing, as all texts were before there was a choice. */
+  style?: TextStyle;
   /** The background's colour and how much it covers (0–1); a dark blue, mostly opaque, when missing. */
   backgroundColor?: string;
   backgroundOpacity?: number;
 };
 
 export type TextAlign = "left" | "center" | "right";
+export type TextStyle = "regular" | "bold" | "italic";
+
+/** The lines of a text, as parts of its size. */
+export const TEXT_LINE_HEIGHT = 1.3;
+
+/** A text's style in the drawing library's words. */
+export const textFontStyle = (item: { style?: TextStyle }) => item.style === "regular" ? "normal" : item.style ?? "bold";
 
 /** The background a text has when it has not chosen one. */
 export const textBackground = { color: "#0f1726", opacity: 0.78 };
