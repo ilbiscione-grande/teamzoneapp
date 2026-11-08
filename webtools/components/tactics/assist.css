@@ -102,3 +102,9 @@
   .tb-editor[data-panel] .tb-panel .tb-panel-tabs button { border-bottom-width: 3px; border-bottom-style: solid; border-bottom-color: transparent; }
   .tb-editor[data-panel] .tb-panel .tb-panel-tabs button[aria-selected="true"] { border-bottom-color: var(--wt-brand); }
 }
+
+/* A phone's "pick several" on the pitch's top left corner once something is chosen (PickMany). */
+.tb-board-corner { position: absolute; left: 10px; top: 10px; z-index: 2; }
+.tb-pick-many { min-height: 40px; padding: 0 14px; border: 0; border-radius: 20px; background: rgba(11, 17, 28, .72); color: white; font: inherit; font-size: .9rem; font-weight: 700; cursor: pointer; }
+.tb-pick-many span { font-size: 1.1rem; vertical-align: -1px; }
+.tb-pick-many[aria-pressed="true"] { background: #facc15; color: #0b111c; }

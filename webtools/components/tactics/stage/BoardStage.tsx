@@ -59,10 +59,11 @@ const NO_REACH: Reach = { left: 0, top: 0, right: 0, bottom: 0 };
  * portrait: a wide view turned upright whatever the frame's shape (a phone).
  * phoneTools: the editor's tools on a phone, in a column over "show all" instead of the zoom buttons.
  * onGrass: a tap on the grass, not on an object, while selecting (a phone closes its panel).
+ * corner: what shows on the board's top left corner (a phone's "pick several").
  */
-export default function BoardStage({ editable = true, moveOnly = false, extra, onSwipe, onTap, tiltButton = false, tools, portrait = false, phoneTools, onGrass }: {
+export default function BoardStage({ editable = true, moveOnly = false, extra, onSwipe, onTap, tiltButton = false, tools, portrait = false, phoneTools, onGrass, corner }: {
   editable?: boolean; moveOnly?: boolean; extra?: React.ReactNode; onSwipe?: (direction: 1 | -1) => void; onTap?: () => void; tiltButton?: boolean;
-  tools?: React.ReactNode; portrait?: boolean; phoneTools?: React.ReactNode; onGrass?: () => void;
+  tools?: React.ReactNode; portrait?: boolean; phoneTools?: React.ReactNode; onGrass?: () => void; corner?: React.ReactNode;
 }) {
   const t = useT();
   const frame = useRef<HTMLDivElement>(null);
@@ -295,6 +296,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
         </div>
       )}
       {tools && <div className="tb-board-tools">{tools}</div>}
+      {corner && <div className="tb-board-corner">{corner}</div>}
       <div className="tb-zoom" role="group" aria-label={t("Zoom")}>
         {/* A phone: the tools stand over "show all"; two fingers zoom. */}
         {phoneTools}

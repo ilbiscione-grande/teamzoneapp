@@ -11,8 +11,12 @@ import { activeObjects, useEditor } from "../store.ts";
 /** Room kept round the chosen object at the edges of what shows. */
 const MARGIN = 32;
 
-/** Where an object is, for bringing it into view: a line's middle, or its place. */
-function middleOf(item: TacticsObject): Point {
+/** Where an object is, for bringing it into view: a line's middle, a line between players their middle, or its place. */
+function middleOf(item: TacticsObject, objects: TacticsObject[]): Point {
+  if (item.type === "chain") {
+    const players = objects.filter(other => item.players.includes(other.id));
+    if (players.length) return { x: players.reduce((sum, p) => sum + p.x, 0) / players.length, y: players.reduce((sum, p) => sum + p.y, 0) / players.length };
+  }
   if (item.type === "line") return { x: item.x + (item.points[0] + item.points[2]) / 2, y: item.y + (item.points[1] + item.points[3]) / 2 };
   return { x: item.x, y: item.y };
 }
@@ -28,9 +32,10 @@ export function useReveal(view: { live: React.RefObject<Viewport>; apply: (next:
       return;
     }
     const state = useEditor.getState();
-    const chosen = activeObjects(state).filter(item => state.selection.includes(item.id));
+    const objects = activeObjects(state);
+    const chosen = objects.filter(item => state.selection.includes(item.id));
     if (!chosen.length || width === 0 || tilt) return;
-    const middles = chosen.map(middleOf);
+    const middles = chosen.map(item => middleOf(item, objects));
     const at = pitchToFrame({ x: middles.reduce((sum, p) => sum + p.x, 0) / middles.length, y: middles.reduce((sum, p) => sum + p.y, 0) / middles.length }, fit);
     const now = view.live.current;
     const screen = { x: now.x + at.x * now.scale, y: now.y + at.y * now.scale };

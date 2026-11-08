@@ -16,6 +16,9 @@ import { objectDrag, objectDrop, trashAt, useStage } from "./stage-context.ts";
 
 type Start = Map<string, { x: number; y: number }>;
 
+/** When a finger last went down on an object (use-object-drag): the mouse event after it is the same tap. */
+let lastTouch = 0;
+
 export function useObjectDrag(item: TacticsObject) {
   const shared = useStage();
   const starts = useRef<Start>(new Map());
@@ -38,9 +41,9 @@ export function useObjectDrag(item: TacticsObject) {
   };
 
   const select = (additive: boolean) => {
-    const { tool, selection, select } = useEditor.getState();
+    const { tool, selection, select, pickMany } = useEditor.getState();
     if (tool !== "select") return;
-    if (additive) select([item.id], true);
+    if (additive || pickMany) select([item.id], true);
     else if (!selection.includes(item.id)) select([item.id]);
   };
 
@@ -48,10 +51,13 @@ export function useObjectDrag(item: TacticsObject) {
     draggable: editable,
     onMouseDown: (event: Konva.KonvaEventObject<MouseEvent>) => {
       if (useEditor.getState().tool === "select") event.cancelBubble = true;
+      // The mouse event a touch is followed by would take a picked object out again.
+      if (Date.now() - lastTouch < 700) return;
       select(event.evt.shiftKey);
     },
     onTouchStart: (event: Konva.KonvaEventObject<TouchEvent>) => {
       if (useEditor.getState().tool === "select") event.cancelBubble = true;
+      lastTouch = Date.now();
       select(false);
     },
     onDragStart: (event: Konva.KonvaEventObject<DragEvent>) => {

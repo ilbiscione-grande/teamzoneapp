@@ -27,7 +27,7 @@ import { useHostNotes } from "./live/HostNotes.tsx";
 import { useLive } from "./live/live-store.ts";
 import { usePhone } from "./ViewerTools.tsx";
 import { Toolbar } from "./panels/Toolbar.tsx";
-import { PhoneToolbar } from "./panels/PhoneToolbar.tsx";
+import { PhoneToolbar, PickMany } from "./panels/PhoneToolbar.tsx";
 import { activeBoard, useEditor } from "./store.ts";
 import { TopBar } from "./TopBar.tsx";
 import { useAutosave } from "./use-autosave.ts";
@@ -83,7 +83,7 @@ export function TacticsWorkspace() {
         <Toolbar homeColor={board.teams.home.color} awayColor={board.teams.away.color} onHelp={openHelp} />
         <div className="tb-center">
           <ErrorBoundary label={t("Tavlan")}>
-            <BoardStage portrait={phone} extra={<><LiveStrokes /><LiveAnswers /></>} onGrass={phone ? () => setPanelOpen(false) : undefined}
+            <BoardStage portrait={phone} extra={<><LiveStrokes /><LiveAnswers /></>} onGrass={phone ? () => setPanelOpen(false) : undefined} corner={phone ? <PickMany /> : undefined}
               phoneTools={phone ? <PhoneToolbar homeColor={board.teams.home.color} awayColor={board.teams.away.color} /> : undefined} />
           </ErrorBoundary>
           <ToolHint />

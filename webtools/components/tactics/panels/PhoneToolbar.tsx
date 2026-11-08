@@ -3,7 +3,8 @@
 // The tools on a phone, in a column on the board: one button per group (select, place, draw,
 // measure) showing the group's tool in hand or last taken; a tap opens the
 // group's tools to its left, with a word under each, and a choice closes it.
-import { useEffect, useRef, useState } from "react";
+// Pick several (PickMany) shows on the pitch once something is chosen.
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useEditor, type Tool } from "../store.ts";
 import { groups, measureGroup, type Item } from "./Toolbar.tsx";
 import { useT } from "../../language";
@@ -12,6 +13,7 @@ export function PhoneToolbar({ homeColor, awayColor }: { homeColor: string; away
   const t = useT();
   const tool = useEditor(state => state.tool);
   const measure = useEditor(state => state.measure);
+  const pickMany = useEditor(state => state.pickMany);
   const [open, setOpen] = useState<string | null>(null);
   // Each group's last tool, shown on its button.
   const [last, setLast] = useState<Record<string, Tool>>({});
@@ -56,14 +58,35 @@ export function PhoneToolbar({ homeColor, awayColor }: { homeColor: string; away
         const item = group.items.find(entry => entry.tool === (last[group.title] ?? group.items[0].tool)) ?? group.items[0];
         const active = group.items.some(entry => entry.tool === tool);
         return (
-          <button key={group.title} type="button" className="tb-phone-button" aria-pressed={active} aria-expanded={single ? undefined : open === group.title}
-            aria-label={single ? t(item.label) : `${t(group.title)}: ${t(item.label)}`}
-            onClick={() => (single ? choose(item.tool) : setOpen(open === group.title ? null : group.title))}>
-            <span className="tb-tool-icon" aria-hidden="true" style={colour(item)}>{item.icon}</span>
-            <span className="tb-phone-label">{t(group.title)}{!single && <span aria-hidden="true"> ▴</span>}</span>
-          </button>
+          <Fragment key={group.title}>
+            <button type="button" className="tb-phone-button" aria-pressed={active} aria-expanded={single ? undefined : open === group.title}
+              aria-label={single ? t(item.label) : `${t(group.title)}: ${t(item.label)}`}
+              onClick={() => { if (pickMany) useEditor.getState().setPickMany(false); if (single) choose(item.tool); else setOpen(open === group.title ? null : group.title); }}>
+              <span className="tb-tool-icon" aria-hidden="true" style={colour(item)}>{item.icon}</span>
+              <span className="tb-phone-label">{t(group.title)}{!single && <span aria-hidden="true"> ▴</span>}</span>
+            </button>
+          </Fragment>
         );
       })}
     </nav>
+  );
+}
+
+/**
+ * On the pitch's top corner once something is chosen: pick several, one
+ * tap at a time, in the order tapped (a line between players); on, it
+ * says how many are picked and is turned off from the same place.
+ */
+export function PickMany() {
+  const t = useT();
+  const pickMany = useEditor(state => state.pickMany);
+  const picked = useEditor(state => state.selection.length);
+  const tool = useEditor(state => state.tool);
+  if (tool !== "select" || (!pickMany && picked === 0)) return null;
+  return (
+    <button type="button" className="tb-pick-many" aria-pressed={pickMany} title={t("Välj flera: varje tryck lägger till eller tar bort")}
+      onClick={() => useEditor.getState().setPickMany(!pickMany)}>
+      {pickMany ? <>{t(picked === 1 ? "{count} vald" : "{count} valda", { count: picked })} · {t("Klar")}</> : <><span aria-hidden="true">⊕</span> {t("Välj flera")}</>}
+    </button>
   );
 }

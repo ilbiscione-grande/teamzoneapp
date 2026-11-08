@@ -53,6 +53,9 @@ type EditorState = {
   /** A phone with its panel open: how far down from its top the board shows above the panel; the selection is brought in there. Not saved. */
   reveal: number | null;
   setReveal: (reveal: number | null) => void;
+  /** A phone's "pick several": each tap adds an object to the selection or takes it out, as Shift does. Not saved. */
+  pickMany: boolean;
+  setPickMany: (pickMany: boolean) => void;
   history: History;
   saveState: SaveState;
   /** Playing: where the playhead is (in frames), and how. */
@@ -126,6 +129,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   reshaping: null,
   focus: null,
   reveal: null,
+  pickMany: false,
   history: emptyHistory(),
   saveState: "saved",
   playing: false,
@@ -184,12 +188,13 @@ export const useEditor = create<EditorState>((set, get) => ({
     document, boardId: document.boards[0]?.id ?? null, frameIndex: 0, selection: [], tool: "select", allFrames: false, playing: false, playhead: 0, me: null,
     history: emptyHistory(), saveState: "saved",
   }),
-  setTool: tool => set({ tool, ruler: null, selection: tool === "select" ? get().selection : [] }),
+  setTool: tool => set({ tool, ruler: null, selection: tool === "select" ? get().selection : [], pickMany: tool === "select" && get().pickMany }),
   setMeasure: measure => set({ measure }),
   setRuler: ruler => set({ ruler }),
   setReshaping: reshaping => set({ reshaping }),
   setFocus: focus => set({ focus }),
   setReveal: reveal => set({ reveal }),
+  setPickMany: pickMany => set(pickMany ? { pickMany, tool: "select", ruler: null } : { pickMany }),
   setAttachBall: attachBall => set({ attachBall }),
   // One of a group chooses the whole group.
   select: (given, additive = false) => set(state => {
