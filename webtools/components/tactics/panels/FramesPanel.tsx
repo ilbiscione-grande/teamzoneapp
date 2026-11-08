@@ -14,8 +14,9 @@ import { effectsOf } from "../../../lib/tactics/timeline.ts";
 import { activeObjects, useEditor } from "../store.ts";
 import { AllFrames } from "./AllFrames.tsx";
 import { FrameCarousel } from "./FrameCarousel.tsx";
-import { usePhone } from "../ViewerTools.tsx";
-import { easingLabels, effectKinds, effects, effectSuits, zoomLabels, zoomSpeedLabels } from "./effects.ts";
+import { InfoIcon, usePhone } from "../ViewerTools.tsx";
+import { useState } from "react";
+import { easingLabels, effectKinds, effects, effectSuits, shortEasingLabels, zoomLabels, zoomSpeedLabels } from "./effects.ts";
 import { useLanguage } from "../../language";
 
 const durations = [500, 750, 1000, 1500, 2000, 3000, 4000];
@@ -28,6 +29,8 @@ export function FramesPanel({ board }: { board: Board }) {
   const playing = useEditor(state => state.playing);
   const allFrames = useEditor(state => state.allFrames);
   const phone = usePhone();
+  // How frames work, behind the i by the heading.
+  const [info, setInfo] = useState(false);
   const { setFrame, change, patch, patchLook, select, preview } = useEditor.getState();
   const frames = board.frames;
   const frame = frames[frameIndex];
@@ -80,7 +83,11 @@ export function FramesPanel({ board }: { board: Board }) {
 
   return (
     <div className="tb-inspector tb-frames-panel">
-      <h3>{t("Frames")}</h3>
+      <div className="tb-heading-row">
+        <h3>{t("Frames")}</h3>
+        <button type="button" className="tb-info-button" aria-expanded={info} aria-label={t("Om frames")} title={t("Om frames")} onClick={() => setInfo(!info)}><InfoIcon /></button>
+      </div>
+      {info && <p className="tb-hint">{t("En ny frame är en kopia av den du står på. Flytta spelarna i den, så spelas rörelsen upp mellan dina frames.")}</p>}
       {phone
         ? <FrameCarousel count={frames.length} current={frameIndex} card={card} />
         : <ol className="tb-frame-list">{frames.map((item, index) => <li key={item.id}>{card(index)}</li>)}</ol>}
@@ -92,23 +99,23 @@ export function FramesPanel({ board }: { board: Board }) {
         {!phone && <button type="button" className="wt-button secondary small" onClick={() => move(1)} disabled={playing || frameIndex >= frames.length - 1} aria-label={t("Flytta framen framåt")}>↓</button>}
         <button type="button" className="wt-button secondary small" onClick={remove} disabled={playing || frames.length < 2}>{t("Ta bort")}</button>
       </div>
-      <p className="tb-hint">{t("En ny frame är en kopia av den du står på. Flytta spelarna i den, så spelas rörelsen upp mellan dina frames.")}</p>
 
-      <h3>{t("Frame {number}", { number: frameIndex + 1 })}</h3>
-      {frameIndex > 0 && (
-        <label className="tb-field">{t("Förflyttning hit")}
-          <select value={frame.durationMs} onChange={event => changeBoard(current => setFrameDuration(current, frameIndex, Number(event.target.value)))}>
-            {[...new Set([...durations, frame.durationMs])].sort((a, b) => a - b).map(value => <option key={value} value={value}>{seconds(value, intl)}</option>)}
-          </select>
-        </label>
-      )}
-      {frameIndex > 0 && (
-        <label className="tb-field">{t("Rörelsen")}
-          <select value={frame.easing ?? "smooth"} onChange={event => changeBoard(current => setFrameEasing(current, frameIndex, event.target.value as Easing))}>
-            {Object.entries(easingLabels).map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
-          </select>
-        </label>
-      )}
+      {/* The move's time and how it eases, small beside the heading, so the note shows at once. */}
+      <div className="tb-heading-row">
+        <h3>{t("Frame {number}", { number: frameIndex + 1 })}</h3>
+        {frameIndex > 0 && (
+          <span className="tb-heading-picks">
+            <select className="tb-heading-pick" value={frame.durationMs} aria-label={t("Förflyttning hit")} title={t("Förflyttning hit")}
+              onChange={event => changeBoard(current => setFrameDuration(current, frameIndex, Number(event.target.value)))}>
+              {[...new Set([...durations, frame.durationMs])].sort((a, b) => a - b).map(value => <option key={value} value={value}>{seconds(value, intl)}</option>)}
+            </select>
+            <select className="tb-heading-pick" value={frame.easing ?? "smooth"} aria-label={t("Rörelsen")} title={t(easingLabels[frame.easing ?? "smooth"])}
+              onChange={event => changeBoard(current => setFrameEasing(current, frameIndex, event.target.value as Easing))}>
+              {Object.entries(shortEasingLabels).map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
+            </select>
+          </span>
+        )}
+      </div>
       <label className="tb-field">{t("Anteckning")}
         <textarea rows={2} maxLength={500} value={frame.note ?? ""} placeholder={t("Visas under bilden i PDF:en och i visningsläget")}
           onChange={event => changeBoard(current => ({ ...current, frames: current.frames.map((item, index) => index === frameIndex ? { ...item, note: event.target.value } : item) }))} />

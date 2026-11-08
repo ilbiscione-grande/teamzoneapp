@@ -78,3 +78,12 @@
 .tb-frame-track span { color: var(--wt-muted); font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tb-frame-actions { flex-wrap: nowrap; }
 .tb-frame-actions .wt-button { flex: 1 1 0; min-width: 0; padding-left: 6px; padding-right: 6px; white-space: nowrap; }
+
+/* A heading with its small controls on the same row: the frames' i, a frame's time and motion. */
+.tb-heading-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tb-heading-row h3 { flex: 1 1 auto; min-width: 0; margin: 0; }
+.tb-info-button { flex: none; width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border: 1px solid var(--wt-line); border-radius: 50%; background: white; color: var(--wt-muted); cursor: pointer; }
+.tb-info-button svg { width: 18px; height: 18px; }
+.tb-info-button[aria-expanded="true"] { border-color: var(--wt-brand); color: var(--wt-text); }
+.tb-heading-picks { flex: none; display: flex; gap: 4px; }
+.tb-heading-pick { min-height: 30px; max-width: 108px; padding: 0 4px; border: 1px solid var(--wt-line); border-radius: 6px; background: white; color: var(--wt-text); font: inherit; font-size: .82rem; }

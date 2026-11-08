@@ -17,7 +17,8 @@ function middleOf(item: TacticsObject): Point {
   return { x: item.x, y: item.y };
 }
 
-export function useReveal(view: { live: React.RefObject<Viewport>; apply: (next: Viewport, commit: boolean) => void }, fit: Fit, width: number, tilt: boolean) {
+/** height: the board's; a new size resets the view, so the selection is brought in again. */
+export function useReveal(view: { live: React.RefObject<Viewport>; apply: (next: Viewport, commit: boolean) => void }, fit: Fit, width: number, height: number, tilt: boolean) {
   const reveal = useEditor(state => state.reveal);
   const before = useRef<Viewport | null>(null);
   useEffect(() => {
@@ -42,7 +43,7 @@ export function useReveal(view: { live: React.RefObject<Viewport>; apply: (next:
       x: aside ? width / 2 - at.x * now.scale : now.x,
       y: outside ? reveal / 2 - at.y * now.scale : now.y,
     }, true);
-    // Only when the panel opens or closes, not as the view moves after.
+    // When the panel opens or closes, or the board's size resets the view; not as the view moves after.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reveal]);
+  }, [reveal, width, height]);
 }

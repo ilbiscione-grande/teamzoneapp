@@ -138,6 +138,7 @@ export const editorPanels: Record<string, string> = {
   "Tjocklek": "Thickness",
   "Linje": "Line",
   "Gör rak": "Straighten",
+  "Om frames": "About frames",
   "Passningen går": "The pass goes",
   "På marken": "Along the ground",
   "I luften": "In the air",

@@ -142,7 +142,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
     useEditor.getState().setFocus(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus, fit]);
-  useReveal(view, fit, size.width, tilt);
+  useReveal(view, fit, size.width, size.height, tilt);
   const drawing = useDrawing(() => content.current?.getRelativePointerPosition() ?? null, () => -fit.rotation);
   const cropDraw = useCropDraw(() => content.current?.getRelativePointerPosition() ?? null, board?.id);
 
