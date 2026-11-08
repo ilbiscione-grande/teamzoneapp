@@ -28,6 +28,7 @@ const sections: { title: string; rows: [string, string][] }[] = [
       ["Ctrl + G", "Gruppera det markerade"],
       ["Ctrl + Shift + G", "Dela upp gruppen"],
       ["Delete", "Ta bort det markerade"],
+      ["Shift + Delete", "Ta bort det markerade ur alla frames"],
     ],
   },
   {

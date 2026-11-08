@@ -46,6 +46,9 @@
 .tb-trash span { font-size: 1.6rem; }
 .tb-trash[data-active="true"] { opacity: 1; transform: none; }
 .tb-trash[data-over="true"] { background: rgba(220, 38, 38, .85); border-color: white; transform: scale(1.08); }
+.tb-trash em { font-style: normal; }
+.tb-trash .tb-trash-all, .tb-trash[data-all="true"] .tb-trash-one { display: none; }
+.tb-trash[data-all="true"] .tb-trash-all { display: block; }
 .tb-zoom button { width: 40px; height: 40px; border: 0; border-radius: 8px; background: rgba(11, 17, 28, .72); color: white; font-size: 1.2rem; cursor: pointer; }
 .tb-zoom button:disabled { opacity: .4; cursor: default; }
 

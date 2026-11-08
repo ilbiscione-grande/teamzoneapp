@@ -281,8 +281,8 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
         </div>
       )}
       {fullEdit && (
-        <div ref={trash} className="tb-trash" data-active="false" data-over="false" aria-hidden="true">
-          <span>🗑</span>{t("Släpp för att ta bort")}
+        <div ref={trash} className="tb-trash" data-active="false" data-over="false" data-all="false" aria-hidden="true">
+          <span>🗑</span><em className="tb-trash-one">{t("Släpp för att ta bort")}</em><em className="tb-trash-all">{t("Släpp för att ta bort ur alla frames")}</em>
         </div>
       )}
       {tools && <div className="tb-board-tools">{tools}</div>}

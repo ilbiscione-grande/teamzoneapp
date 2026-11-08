@@ -19,8 +19,8 @@ export type StageShared = {
 /** The editor's group in metres, for the video to find the crop on the screen. */
 export const contentHolder: { current: Konva.Group | null } = { current: null };
 
-/** Shows the bin while dragging, lit when the pointer is over it; whether it is. */
-export function trashAt(shared: StageShared, stage: Konva.Stage | null, dragging: boolean): boolean {
+/** Shows the bin while dragging, lit when the pointer is over it, saying when it takes every frame; whether it is over. */
+export function trashAt(shared: StageShared, stage: Konva.Stage | null, dragging: boolean, everyFrame = false): boolean {
   const bin = shared.trash?.current;
   if (!bin) return false;
   const pointer = stage?.getPointerPosition();
@@ -33,6 +33,7 @@ export function trashAt(shared: StageShared, stage: Konva.Stage | null, dragging
   }
   bin.dataset.active = String(dragging);
   bin.dataset.over = String(over);
+  bin.dataset.all = String(dragging && everyFrame);
   return over;
 }
 

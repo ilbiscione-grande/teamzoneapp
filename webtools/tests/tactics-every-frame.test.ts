@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { useEditor } from "../components/tactics/store.ts";
+import { activeBoard, useEditor } from "../components/tactics/store.ts";
 import { createObject, createPlayer, insertFrame, newBoard, newDocument, newFrame, toggleEffect } from "../lib/tactics/document.ts";
-import { copyToEveryFrame, effectsLast, hasEffectEveryFrame, otherFramesWith, patchEveryFrame, setEffectEveryFrame, setLastingEffects } from "../lib/tactics/every-frame.ts";
+import { copyToEveryFrame, effectsLast, hasEffectEveryFrame, otherFramesWith, patchEveryFrame, removeEveryFrame, setEffectEveryFrame, setLastingEffects } from "../lib/tactics/every-frame.ts";
 import { cameraAt } from "../lib/tactics/marks.ts";
 import { textFontStyle, type Board, type Effect, type Project, type TacticsObject } from "../lib/tactics/model.ts";
 import { effectsOf } from "../lib/tactics/motion.ts";
@@ -156,4 +156,27 @@ test("the zoom goes in and out at the chosen speed", () => {
   assert.ok(at(slow, 0.75) > 0.9, "nearly in");
   assert.ok(at(slow, 1.25) > 0.9, "only started out");
   assert.ok(at(slow, 1.75) < 0.1, "nearly out");
+});
+
+test("an object goes out of every frame it is in, or out of this one", () => {
+  const locked = { ...cone, id: "locked-cone", locked: true } as TacticsObject;
+  const board = boardOf([player, cone], [player, cone, locked], [cone]);
+  const gone = removeEveryFrame(board, [cone.id, locked.id]);
+  assert.deepEqual(gone.frames.map(frame => frame.objects.map(item => item.id)), [[player.id], [player.id, locked.id], []], "a locked copy stays");
+
+  load(board);
+  const state = useEditor.getState();
+  state.select([cone.id]);
+  state.removeSelected();
+  assert.deepEqual(activeBoard(useEditor.getState())!.frames.map(frame => frame.objects.length), [1, 3, 1], "only the frame in hand");
+  state.select([player.id]);
+  state.removeSelected(true);
+  assert.deepEqual(activeBoard(useEditor.getState())!.frames.map(frame => frame.objects.map(item => item.id)), [[], [cone.id, locked.id], [cone.id]]);
+  assert.deepEqual(useEditor.getState().selection, []);
+  state.undo();
+  state.setFrame(1);
+  state.select([cone.id]);
+  state.setAllFrames(true);
+  state.removeSelected();
+  assert.deepEqual(activeBoard(useEditor.getState())!.frames.map(frame => frame.objects.map(item => item.id)), [[player.id], [player.id, locked.id], []], "with all frames ticked");
 });

@@ -41,7 +41,7 @@ export function useShortcuts(enabled = true, onHelp?: () => void) {
         event.preventDefault();
         onHelp();
       } else if (event.key === "Delete" || event.key === "Backspace") {
-        if (state.selection.length) { event.preventDefault(); state.removeSelected(); }
+        if (state.selection.length) { event.preventDefault(); state.removeSelected(event.shiftKey || state.allFrames); }
       } else if (event.key === "Escape") {
         state.setTool("select");
         state.select([]);

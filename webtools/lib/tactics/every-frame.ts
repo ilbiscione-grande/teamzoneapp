@@ -71,3 +71,9 @@ export function hasEffectEveryFrame(board: Board, id: string, kind: Effect): boo
   const copies = board.frames.flatMap(frame => frame.objects.filter(item => item.id === id && !item.locked));
   return copies.length > 0 && copies.every(item => effectsOf(item).includes(kind));
 }
+
+/** The objects out of every frame they are in; a locked copy stays. */
+export function removeEveryFrame(board: Board, ids: string[]): Board {
+  const gone = new Set(ids);
+  return { ...board, frames: board.frames.map(frame => ({ ...frame, objects: frame.objects.filter(item => !gone.has(item.id) || item.locked) })) };
+}

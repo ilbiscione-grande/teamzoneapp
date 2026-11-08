@@ -4,13 +4,14 @@
 // renders while a finger moves. The other selected objects and the balls of
 // moved players follow by moving their nodes directly. Only the drop is
 // written to the document, where a dropped ball may stick to a player.
-// Dropped on the bin beside the pitch, the dragged objects are removed.
+// Dropped on the bin beside the pitch, the dragged objects are removed: out of
+// every frame with Shift held or "all frames" ticked, else out of this one.
 import type Konva from "konva";
 import { useRef } from "react";
 import { dropBall } from "../../../lib/tactics/ball.ts";
 import { keepOnGrass } from "../../../lib/tactics/document.ts";
 import type { BallObject, TacticsObject } from "../../../lib/tactics/model.ts";
-import { activeObjects, useEditor } from "../store.ts";
+import { activeBoard, activeObjects, useEditor } from "../store.ts";
 import { objectDrag, objectDrop, trashAt, useStage } from "./stage-context.ts";
 
 type Start = Map<string, { x: number; y: number }>;
@@ -28,6 +29,12 @@ export function useObjectDrag(item: TacticsObject) {
     const objects = activeObjects(state);
     const ids = state.selection.includes(item.id) ? state.selection : [item.id];
     return objects.filter(other => ids.includes(other.id) && !other.locked);
+  };
+
+  // Shift, or "all frames" ticked: the bin takes them out of every frame.
+  const everyFrame = (event: Konva.KonvaEventObject<DragEvent>) => {
+    const state = useEditor.getState();
+    return (activeBoard(state)?.frames.length ?? 0) > 1 && ((event.evt as MouseEvent | undefined)?.shiftKey === true || state.allFrames);
   };
 
   const select = (additive: boolean) => {
@@ -48,7 +55,7 @@ export function useObjectDrag(item: TacticsObject) {
       select(false);
     },
     onDragStart: (event: Konva.KonvaEventObject<DragEvent>) => {
-      trashAt(shared, event.target.getStage(), true);
+      trashAt(shared, event.target.getStage(), true, everyFrame(event));
       starts.current = new Map();
       const objects = activeObjects(useEditor.getState());
       for (const mover of movers()) {
@@ -70,7 +77,7 @@ export function useObjectDrag(item: TacticsObject) {
         if (id === item.id) return;
         shared.nodes.get(id)?.position({ x: start.x + dx, y: start.y + dy });
       });
-      trashAt(shared, event.target.getStage(), true);
+      trashAt(shared, event.target.getStage(), true, everyFrame(event));
       if (objectDrag.size) {
         const moves = Object.fromEntries([...starts.current].map(([id, start]) => [id, { x: start.x + dx, y: start.y + dy }]));
         objectDrag.forEach(listen => listen(moves));
@@ -78,15 +85,15 @@ export function useObjectDrag(item: TacticsObject) {
     },
     onDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => {
       const own = starts.current.get(item.id);
-      const binned = trashAt(shared, event.target.getStage(), true);
+      const all = everyFrame(event);
+      const binned = trashAt(shared, event.target.getStage(), true, all);
       trashAt(shared, null, false);
       if (!own) return;
       if (binned) {
         // The dragged objects go; a ball that only came along with a player stays where it was.
         const gone = new Set(movers().map(mover => mover.id));
         starts.current.forEach((start, id) => { if (!gone.has(id)) shared.nodes.get(id)?.position(start); });
-        useEditor.getState().changeObjects(objects => objects.filter(other => !gone.has(other.id)));
-        useEditor.getState().select([]);
+        useEditor.getState().removeObjects([...gone], all);
         starts.current = new Map();
         return;
       }

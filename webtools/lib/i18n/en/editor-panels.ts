@@ -179,6 +179,7 @@ export const editorPanels: Record<string, string> = {
   "Lås upp, så kan det ändras och flyttas": "Unlock so it can be changed and moved",
   "Lås, så flyttas det inte av misstag": "Lock so it is not moved by mistake",
   "Ta bort (Delete)": "Remove (Delete)",
+  "Ta bort ur alla frames (Delete)": "Remove from all frames (Delete)",
   "Objekten": "The objects",
   "Objektet är låst. Lås upp för att ändra.": "The object is locked. Unlock it to make changes.",
   "Objekten är låsta. Lås upp för att ändra.": "The objects are locked. Unlock them to make changes.",

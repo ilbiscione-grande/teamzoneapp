@@ -6,7 +6,7 @@
 // project for saving.
 import { create } from "zustand";
 import { newId, patchObjects, updateBoard, updateFrame } from "../../lib/tactics/document.ts";
-import { patchEveryFrame } from "../../lib/tactics/every-frame.ts";
+import { patchEveryFrame, removeEveryFrame } from "../../lib/tactics/every-frame.ts";
 import { copiesOf, setGroup, withGroups } from "../../lib/tactics/grouping.ts";
 import { emptyHistory, record, redo, undo, type History } from "../../lib/tactics/history.ts";
 import { duplicateBoard } from "../../lib/tactics/templates.ts";
@@ -94,7 +94,10 @@ type EditorState = {
   patch: (patches: Record<string, Partial<TacticsObject>>) => void;
   /** A colour or an effect's setting: in this frame, or in all of them when allFrames is on. */
   patchLook: (patches: Record<string, Partial<TacticsObject>>) => void;
-  removeSelected: () => void;
+  /** The selection out of this frame, or out of every frame when `everyFrame` (by default: allFrames is on). */
+  removeSelected: (everyFrame?: boolean) => void;
+  /** These objects out of this frame, or out of every frame. */
+  removeObjects: (ids: string[], everyFrame: boolean) => void;
   /** Copies of the selection put a little aside, and chosen. */
   duplicateSelected: () => void;
   /** The selection put in a group of its own (on), or out of its groups. */
@@ -231,10 +234,13 @@ export const useEditor = create<EditorState>((set, get) => ({
     if (allFrames && boardId) get().change(document => updateBoard(document, boardId, board => patchEveryFrame(board, patches)));
     else get().patch(patches);
   },
-  removeSelected: () => {
-    const selected = new Set(get().selection);
-    if (selected.size === 0) return;
-    get().changeObjects(objects => objects.filter(item => !selected.has(item.id) || item.locked));
+  removeSelected: (everyFrame = get().allFrames) => get().removeObjects(get().selection, everyFrame),
+  removeObjects: (ids, everyFrame) => {
+    const { boardId } = get();
+    if (ids.length === 0 || !boardId) return;
+    const gone = new Set(ids);
+    if (everyFrame) get().change(document => updateBoard(document, boardId, board => removeEveryFrame(board, ids)));
+    else get().changeObjects(objects => objects.filter(item => !gone.has(item.id) || item.locked));
     set({ selection: [] });
   },
   setMeta: meta => set(state => state.meta ? { meta: { ...state.meta, ...meta }, saveState: "dirty" } : {}),
