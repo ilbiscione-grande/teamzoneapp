@@ -4,7 +4,7 @@
 // finger goes down to where it lifts; a freehand stroke along the way; an
 // area from corner to corner. Placing tools put an object where you tap.
 // The ruler measures from where the finger goes down to where it lifts; the
-// measure stays shown, not saved, and the ruler stays in hand.
+// measure stays shown, not saved. Every tool stays in hand until another is chosen.
 import { useState } from "react";
 import { createObject, createPlayer, keepOnGrass, newId } from "../../../lib/tactics/document.ts";
 import type { Point, TacticsObject } from "../../../lib/tactics/model.ts";
@@ -74,11 +74,8 @@ export function useDrawing(pointer: () => Point | null) {
     const made = draftObject(draft);
     setDraft(null);
     if (!made) return;
-    const { changeObjects, select, setTool } = useEditor.getState();
-    changeObjects(objects => [...objects, made]);
-    // One stroke at a time: back to selecting, with the new object chosen.
-    setTool("select");
-    select([made.id]);
+    // The tool stays in hand for the next stroke, until another is chosen.
+    useEditor.getState().changeObjects(objects => [...objects, made]);
   };
 
   /** Places the tool's object where the pointer is. */

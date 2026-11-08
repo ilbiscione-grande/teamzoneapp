@@ -13,12 +13,10 @@ import type { LineObject, Point, ShapeObject, TacticsObject } from "../../../lib
 import { useEditor } from "../store.ts";
 import { FacingHandle } from "./FacingHandle.tsx";
 import { useStage } from "./stage-context.ts";
-import { useT } from "../../language";
 
 const TRANSFORMABLE = new Set(["cone", "pole", "mannequin", "goal", "rect", "ellipse", "text"]);
 
-function Transform({ items, upright }: { items: TacticsObject[]; upright: number }) {
-  const t = useT();
+function Transform({ items }: { items: TacticsObject[] }) {
   const shared = useStage();
   const ref = useRef<Konva.Transformer>(null);
   const ids = items.map(item => item.id).join(",");
@@ -51,10 +49,9 @@ function Transform({ items, upright }: { items: TacticsObject[]; upright: number
             node.scale({ x: 1, y: 1 });
           } else if (item.type === "text") {
             // The box changes; the letters keep their size.
-            const text = (node as Konva.Group).findOne(t("Text"));
+            const text = (node as Konva.Group).findOne("Text");
             const width = item.width ?? text?.width() ?? 1, height = item.height ?? text?.height() ?? 1;
-            // Text is drawn turned upright on a turned pitch; that turn is not its own.
-            patches[item.id] = { ...common, rotation: common.rotation - upright, width: Math.max(item.size, width * sx), height: Math.max(item.size, height * sy) };
+            patches[item.id] = { ...common, width: Math.max(item.size, width * sx), height: Math.max(item.size, height * sy) };
             node.scale({ x: 1, y: 1 });
           } else if ("scale" in item) {
             patches[item.id] = { ...common, scale: Math.min(4, Math.max(0.3, sx)) };
@@ -151,7 +148,7 @@ export function Selection({ objects, selection, upright, facing = false }: { obj
   const player = facing && selected.length === 1 && selected[0].type === "player" ? selected[0] : null;
   return (
     <>
-      {transformable.length > 0 && <Transform items={transformable} upright={upright} />}
+      {transformable.length > 0 && <Transform items={transformable} />}
       {area && <AreaHandle key={area.id + area.width + area.height + area.x + area.y + area.rotation} item={area} />}
       {line && <LineHandles key={line.id + line.points.join(",")} item={line} />}
       {player && <FacingHandle key={player.id} item={player} />}

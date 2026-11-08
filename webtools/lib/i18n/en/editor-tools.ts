@@ -68,6 +68,7 @@ export const editorTools: Record<string, string> = {
   "Släpp för att ta bort": "Drop to remove",
   "Släpp för att ta bort ur alla frames": "Drop to remove from all frames",
   "Zooma in": "Zoom in",
+  "Lägg ifrån dig verktyget": "Put the tool down",
   "Zooma ut": "Zoom out",
   "Planen sedd snett från läktaren": "The pitch seen at an angle from the stand",
   "Visa hela": "Show all",

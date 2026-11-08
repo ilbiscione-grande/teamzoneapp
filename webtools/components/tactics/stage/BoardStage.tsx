@@ -286,6 +286,10 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
           <span>🗑</span><em className="tb-trash-one">{t("Släpp för att ta bort")}</em><em className="tb-trash-all">{t("Släpp för att ta bort ur alla frames")}</em>
         </div>
       )}
+      {fullEdit && tool !== "select" && (
+        <button type="button" className="tb-drop-tool" onClick={() => useEditor.getState().setTool("select")}
+          aria-label={t("Lägg ifrån dig verktyget")} title={t("Lägg ifrån dig verktyget")}>×</button>
+      )}
       {tools && <div className="tb-board-tools">{tools}</div>}
       <div className="tb-zoom" role="group" aria-label={t("Zoom")}>
         <button type="button" onClick={() => view.zoomBy(1.25, { x: size.width / 2, y: size.height / 2 })} aria-label={t("Zooma in")}>+</button>
