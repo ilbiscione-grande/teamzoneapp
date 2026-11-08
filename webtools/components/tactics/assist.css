@@ -78,3 +78,15 @@
 @media (pointer: coarse) {
   .tb-selection-actions button { min-height: 52px; }
 }
+
+/* A phone's timeline: one row whatever the board has; "more" opens over the pitch's foot (PhoneTimeline). */
+.tb-phone-timeline { position: relative; padding: 6px 8px !important; }
+.tb-phone-timeline .tb-timeline-edit { flex-wrap: nowrap; gap: 6px; }
+.tb-phone-timeline .tb-frames-wrap { flex: 1 1 0; min-width: 0; }
+.tb-phone-timeline .tb-phone-more-button { flex: none; min-width: 40px; font-size: 1.2rem; line-height: 1; }
+.tb-phone-timeline .tb-phone-more-button[aria-expanded="true"] { border-color: var(--wt-accent); color: var(--wt-accent); }
+.tb-phone-more { position: absolute; z-index: 8; left: 6px; right: 6px; bottom: calc(100% + 6px); display: grid; gap: 10px; padding: 10px; border-radius: 12px; background: #13221a; box-shadow: 0 -8px 24px rgba(0, 0, 0, .45); }
+.tb-phone-more .tb-frame-tools { order: 0; }
+.tb-phone-more .tb-frame-tools, .tb-phone-more-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.tb-phone-more .tb-mini-select, .tb-phone-more .tb-mini-button { min-height: 38px; }
+.tb-phone-more .tb-mini-button { min-width: 42px; }

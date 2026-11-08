@@ -25,6 +25,7 @@ import { LiveStrokes } from "./live/LiveStrokes.tsx";
 import { LiveAnswers } from "./live/LiveAnswers.tsx";
 import { useHostNotes } from "./live/HostNotes.tsx";
 import { useLive } from "./live/live-store.ts";
+import { usePhone } from "./ViewerTools.tsx";
 import { Toolbar } from "./panels/Toolbar.tsx";
 import { activeBoard, useEditor } from "./store.ts";
 import { TopBar } from "./TopBar.tsx";
@@ -48,6 +49,8 @@ export function TacticsWorkspace() {
   const [help, setHelp] = useState(false);
   const openHelp = useCallback(() => setHelp(true), []);
   const live = useLive(state => !!state.session);
+  // A phone keeps the pitch standing, whatever room the timeline and panel leave it.
+  const phone = usePhone();
   // On a phone the board gets the room; the panel opens from its tabs.
   const [panelOpen, setPanelOpen] = useState(() => typeof window === "undefined" || window.innerWidth > 760);
   const board = useEditor(activeBoard);
@@ -68,7 +71,7 @@ export function TacticsWorkspace() {
         <Toolbar homeColor={board.teams.home.color} awayColor={board.teams.away.color} onHelp={openHelp} />
         <div className="tb-center">
           <ErrorBoundary label={t("Tavlan")}>
-            <BoardStage extra={<><LiveStrokes /><LiveAnswers /></>} />
+            <BoardStage portrait={phone} extra={<><LiveStrokes /><LiveAnswers /></>} />
           </ErrorBoundary>
           <ToolHint />
           <DrillPicker />

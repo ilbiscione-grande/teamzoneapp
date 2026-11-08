@@ -13,6 +13,8 @@ import { Scrubber } from "./Scrubber.tsx";
 import { usePlayback } from "./use-playback.ts";
 import { useRecording } from "./video-export.ts";
 import { useLanguage } from "../../language";
+import { usePhone } from "../ViewerTools.tsx";
+import { PhoneTimeline } from "./PhoneTimeline.tsx";
 
 const speeds = [0.5, 1, 1.5, 2];
 
@@ -26,11 +28,9 @@ export function Timeline({ board, readOnly = false, viewer = false }: { board: B
   const frameIndex = useEditor(state => state.frameIndex);
   const playing = useEditor(state => state.playing);
   const playhead = useEditor(state => state.playhead);
-  const loop = useEditor(state => state.loop);
-  const speed = useEditor(state => state.speed);
-  const tilt = useEditor(state => state.tilt);
   const between = useEditor(isBetween);
-  const { setFrame, play, pause, setLoop, setSpeed, setTilt, change } = useEditor.getState();
+  const phone = usePhone();
+  const { setFrame, play, pause, change } = useEditor.getState();
   // A video is recorded from the share dialog by playing the board.
   const recording = useRecording(state => state.share);
   const frames = board.frames;
@@ -41,6 +41,7 @@ export function Timeline({ board, readOnly = false, viewer = false }: { board: B
     setFrame(frameIndex + 1);
   };
   const moving = playing || between;
+  if (phone && !readOnly) return <PhoneTimeline board={board} moving={moving} onAdd={add} changeBoard={changeBoard} />;
 
   return (
     <div className="tb-timeline" aria-label={t("Frames och uppspelning")}>
@@ -63,15 +64,29 @@ export function Timeline({ board, readOnly = false, viewer = false }: { board: B
           ? <FrameTools board={board} moving={moving} changeBoard={changeBoard}
               hint={between ? t("Mellan frame {from} och {to}. Välj en frame för att redigera.", { from: Math.floor(playhead) + 1, to: Math.floor(playhead) + 2 }) : undefined} />
           : <p className="tb-timeline-hint">{t("Tryck + för en ny frame, flytta spelarna och tryck ▶ för att se rörelsen.")}</p>}
-        {!viewer && <button type="button" className="tb-mini-button" aria-pressed={tilt} onClick={() => setTilt(!tilt)}
-          title={t("Planen sedd snett från läktaren. Redigera uppifrån.")}>3D</button>}
-        {!viewer && <label className="tb-mini" title={t("Spela om och om igen")}>
-          <input type="checkbox" checked={loop} aria-label={t("Slinga")} onChange={event => setLoop(event.target.checked)} /><span className="tb-mini-icon" aria-hidden="true">⟲</span>
-        </label>}
-        <select className="tb-mini-select" value={speed} aria-label={t("Hastighet")} onChange={event => setSpeed(Number(event.target.value))}>
-          {speeds.map(value => <option key={value} value={value}>{value}×</option>)}
-        </select>
+        <PlaySettings viewer={viewer} />
       </div>
     </div>
+  );
+}
+
+/** 3D, loop and speed: after the frames, or in a phone's "more". viewer: speed only. */
+export function PlaySettings({ viewer = false }: { viewer?: boolean }) {
+  const { t } = useLanguage();
+  const loop = useEditor(state => state.loop);
+  const speed = useEditor(state => state.speed);
+  const tilt = useEditor(state => state.tilt);
+  const { setLoop, setSpeed, setTilt } = useEditor.getState();
+  return (
+    <>
+      {!viewer && <button type="button" className="tb-mini-button" aria-pressed={tilt} onClick={() => setTilt(!tilt)}
+        title={t("Planen sedd snett från läktaren. Redigera uppifrån.")}>3D</button>}
+      {!viewer && <label className="tb-mini" title={t("Spela om och om igen")}>
+        <input type="checkbox" checked={loop} aria-label={t("Slinga")} onChange={event => setLoop(event.target.checked)} /><span className="tb-mini-icon" aria-hidden="true">⟲</span>
+      </label>}
+      <select className="tb-mini-select" value={speed} aria-label={t("Hastighet")} onChange={event => setSpeed(Number(event.target.value))}>
+        {speeds.map(value => <option key={value} value={value}>{value}×</option>)}
+      </select>
+    </>
   );
 }

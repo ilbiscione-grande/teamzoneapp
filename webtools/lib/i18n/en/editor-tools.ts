@@ -38,6 +38,7 @@ export const editorTools: Record<string, string> = {
   "Ta bort frame": "Remove frame",
   "Tryck + för en ny frame, flytta spelarna och tryck ▶ för att se rörelsen.": "Press + for a new frame, move the players and press ▶ to see the movement.",
   "Frames och uppspelning": "Frames and playback",
+  "Mer för frames och uppspelning": "More for frames and playback",
   "Föregående frame": "Previous frame",
   "Pausa": "Pause",
   "Spela": "Play",
