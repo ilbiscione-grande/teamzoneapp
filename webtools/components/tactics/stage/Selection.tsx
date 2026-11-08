@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { Circle, Group, Transformer } from "react-konva";
 import type { LineObject, Point, ShapeObject, TacticsObject } from "../../../lib/tactics/model.ts";
 import { useEditor } from "../store.ts";
+import { attachLine } from "../../../lib/tactics/line-attach.ts";
 import { FacingHandle } from "./FacingHandle.tsx";
 import { useStage } from "./stage-context.ts";
 
@@ -80,16 +81,20 @@ function LineHandles({ item }: { item: LineObject }) {
     setDraft(next);
     useEditor.getState().setReshaping({ id: item.id, patch: { points: [next.start.x, next.start.y, next.end.x, next.end.y], control: next.control } });
   };
-  const commit = (next: { start: Point; end: Point; control: Point | null }) => {
+  /** started: the start was moved; dropped on a player it sticks there, elsewhere it comes loose. */
+  const commit = (next: { start: Point; end: Point; control: Point | null }, started = false) => {
     setDraft(null);
-    useEditor.getState().setReshaping(null);
-    useEditor.getState().patch({ [item.id]: { points: [next.start.x, next.start.y, next.end.x, next.end.y], control: next.control } });
+    const { setReshaping, patch, changeObjects } = useEditor.getState();
+    setReshaping(null);
+    const shape = { points: [next.start.x, next.start.y, next.end.x, next.end.y] as LineObject["points"], control: next.control };
+    if (!started) patch({ [item.id]: shape });
+    else changeObjects(objects => objects.map(other => other.id === item.id && other.type === "line" ? attachLine({ ...other, ...shape }, objects) : other));
   };
   const handle = (key: string, at: Point, move: (p: Point) => { start: Point; end: Point; control: Point | null }, fill: string) => (
     <Circle key={key} x={at.x} y={at.y} radius={radius} fill={fill} stroke="#111827" strokeWidth={radius * 0.18} draggable
       onMouseDown={event => { event.cancelBubble = true; }} onTouchStart={event => { event.cancelBubble = true; }}
       onDragMove={event => redraw(move({ x: event.target.x(), y: event.target.y() }))}
-      onDragEnd={event => commit(move({ x: event.target.x(), y: event.target.y() }))}
+      onDragEnd={event => commit(move({ x: event.target.x(), y: event.target.y() }), key === "start")}
       onDblClick={() => key === "mid" && commit({ ...shape, control: null })}
       onDblTap={() => key === "mid" && commit({ ...shape, control: null })} />
   );

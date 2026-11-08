@@ -3,17 +3,20 @@
 // Lines, passes, runs and dribbles: straight, or curved through a control
 // point, with an arrowhead at the end or both, a dribble swinging from side
 // to side; and freehand strokes. Drawn as on television (lib/tactics/ribbon.ts):
-// a pass a band widening into a broad head, every mark edged and shadowed. White shows in the theme's ink on a light pitch. A wide invisible
+// a pass a band widening into a broad head, every mark edged and shadowed; a pass in the air arcs over
+// its shadow on the ground. White shows in the theme's ink on a light pitch. A wide invisible
 // hit area makes thin lines easy to take with a finger. With measuring on,
 // a line shows how long it is.
+import { useEffect, useState } from "react";
 import { Group, Line } from "react-konva";
 import { halfway, metres, pathLength } from "../../../lib/tactics/measure.ts";
 import type { ArrowHead, FreehandObject, LineObject, Point } from "../../../lib/tactics/model.ts";
 import { arrowHeads, band, edgeFor, shortened } from "../../../lib/tactics/ribbon.ts";
-import { partialPolyline, sampleCurve, wavePoints } from "../../../lib/tactics/path.ts";
+import { airPoints, partialPolyline, sampleCurve, wavePoints } from "../../../lib/tactics/path.ts";
 import { inkFor, type ThemeLook } from "../../../lib/tactics/pitch-style.ts";
 import type { Rendered } from "../../../lib/tactics/timeline.ts";
-import { nodeRef, useStage } from "../stage/stage-context.ts";
+import { nodeRef, objectDrag, objectDrop, useStage } from "../stage/stage-context.ts";
+import { startAt } from "../../../lib/tactics/line-attach.ts";
 import { useObjectDrag } from "../stage/use-object-drag.ts";
 import { MeasureTag } from "./MeasureTag.tsx";
 
@@ -27,8 +30,9 @@ export function linePoints(item: LineObject): number[] {
   return sampleCurve({ x: x1, y: y1 }, { x: x2, y: y2 }, item.control);
 }
 
-function Stroke({ points, arrow, dashed, wavy, color, width, tension, selected }: {
-  points: number[]; arrow: ArrowHead; dashed: boolean; wavy: boolean; color: string; width: number; tension: number; selected: boolean;
+/** ground: a pass in the air's shadow, the way it takes along the ground under its arc. */
+function Stroke({ points, arrow, dashed, wavy, color, width, tension, selected, ground }: {
+  points: number[]; arrow: ArrowHead; dashed: boolean; wavy: boolean; color: string; width: number; tension: number; selected: boolean; ground?: number[];
 }) {
   const shared = useStage();
   const edge = edgeFor(color);
@@ -42,7 +46,9 @@ function Stroke({ points, arrow, dashed, wavy, color, width, tension, selected }
     const shape = { points: outline, closed: true, lineJoin: "round" as const, perfectDrawEnabled: false };
     return (
       <>
-        <Line {...shape} x={SHADOW.x} y={SHADOW.y} fill="rgba(0,0,0,0.24)" listening={false} />
+        {ground
+          ? <Line points={ground} stroke="rgba(0,0,0,0.32)" strokeWidth={width * 1.4} lineCap="round" lineJoin="round" listening={false} perfectDrawEnabled={false} />
+          : <Line {...shape} x={SHADOW.x} y={SHADOW.y} fill="rgba(0,0,0,0.24)" listening={false} />}
         {selected && <Line {...shape} stroke="#facc15" strokeWidth={0.7} opacity={0.6} listening={false} />}
         <Line {...shape} fill={color} stroke={edge} strokeWidth={0.12} hitStrokeWidth={hit} />
       </>
@@ -79,11 +85,27 @@ type Measured = { measure?: boolean; upright?: number };
 export function LineNode({ item, selected, look, measure = false, upright = 0 }: { item: LineObject & Rendered; selected: boolean; look: ThemeLook } & Measured) {
   const shared = useStage();
   const drag = useObjectDrag(item);
+  // Stuck to a player being dragged: the start follows them before the drop is written.
+  const [following, setFollowing] = useState<Point | null>(null);
+  useEffect(() => {
+    const from = item.from;
+    if (!from) return;
+    const moving = (moves: Record<string, Point>) => { if (from in moves && !(item.id in moves)) setFollowing(moves[from]); };
+    const dropped = () => setFollowing(null);
+    objectDrag.add(moving);
+    objectDrop.add(dropped);
+    return () => { objectDrag.delete(moving); objectDrop.delete(dropped); };
+  }, [item.from, item.id]);
+  const line = following ? startAt(item, following) : item;
+  const way = linePoints(line);
+  // In the air: the pass arcs over its shadow, which runs the way along the ground.
+  const air = !!item.aerial && !item.dashed && !item.wavy && item.arrow !== "none";
+  const drawn = item.drawn ?? 1;
   return (
-    <Group ref={nodeRef(shared, item.id)} x={item.x} y={item.y} opacity={item.opacity ?? 1} {...drag}>
-      <Stroke points={shaped(partialPolyline(linePoints(item), item.drawn ?? 1), item.wavy)} arrow={item.arrow} dashed={item.dashed} wavy={!!item.wavy} color={inkFor(item.color, look)}
-        width={item.width} tension={item.wavy ? 0.4 : 0} selected={selected} />
-      {measure && <Length points={linePoints(item)} upright={upright} />}
+    <Group ref={nodeRef(shared, item.id)} x={line.x} y={line.y} opacity={item.opacity ?? 1} {...drag}>
+      <Stroke points={air ? partialPolyline(airPoints(way), drawn) : shaped(partialPolyline(way, drawn), item.wavy)} arrow={item.arrow} dashed={item.dashed} wavy={!!item.wavy} color={inkFor(item.color, look)}
+        width={item.width} tension={item.wavy ? 0.4 : 0} selected={selected} ground={air ? partialPolyline(way, drawn) : undefined} />
+      {measure && <Length points={way} upright={upright} />}
     </Group>
   );
 }

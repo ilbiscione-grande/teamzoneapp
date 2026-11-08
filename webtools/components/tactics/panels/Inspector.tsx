@@ -85,6 +85,15 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
               <option value="solid">{t("Heldragen (passning)")}</option><option value="dashed">{t("Streckad (löpning)")}</option><option value="wavy">{t("Vågig (dribbling)")}</option>
             </select>
           </label>
+          {item.type === "line" && !item.dashed && !item.wavy && item.arrow !== "none" && (
+            <div className="tb-field">{t("Passningen går")}
+              <div className="tb-aligns" style={{ gridTemplateColumns: "1fr 1fr" }} role="group" aria-label={t("Passningen går")}>
+                <button type="button" aria-pressed={!item.aerial} onClick={() => patch({ aerial: false })}>{t("På marken")}</button>
+                <button type="button" aria-pressed={!!item.aerial} onClick={() => patch({ aerial: true })}>{t("I luften")}</button>
+              </div>
+            </div>
+          )}
+          {item.type === "line" && item.from && <button type="button" className="tb-link" onClick={() => patch({ from: null })}>{t("Släpp från spelaren")}</button>}
           {item.type === "line" && item.control && <button type="button" className="tb-link" onClick={() => patch({ control: null })}>{t("Gör rak")}</button>}
           {item.type === "line" && <p className="tb-hint">{t("Dra i mittpunkten för att böja linjen.")}</p>}
           <ObjectSwatches label={t("Färg")} value={item.color} onChange={paint} />

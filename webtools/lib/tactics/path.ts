@@ -88,3 +88,37 @@ export function wavePoints(points: number[]): number[] {
   result.push(points[points.length - 2], points[points.length - 1]);
   return result;
 }
+
+/**
+ * A pass in the air: the polyline lifted into an arc, highest halfway and
+ * on the ground at both ends, bent to the side that is up on the pitch
+ * (or left when the pass runs straight across). The arc is a tenth of the
+ * way's length high, at most 5 m. Its shadow is the polyline as it is.
+ */
+export function airPoints(points: number[], steps = 24): number[] {
+  if (points.length < 4) return points;
+  const lengths = [0];
+  for (let i = 2; i < points.length; i += 2) lengths.push(lengths[lengths.length - 1] + Math.hypot(points[i] - points[i - 2], points[i + 1] - points[i - 1]));
+  const total = lengths[lengths.length - 1];
+  const [x1, y1] = [points[0], points[1]];
+  const [x2, y2] = [points[points.length - 2], points[points.length - 1]];
+  const chord = Math.hypot(x2 - x1, y2 - y1);
+  if (total === 0 || chord === 0) return points;
+  let [nx, ny] = [-(y2 - y1) / chord, (x2 - x1) / chord];
+  if (ny > 1e-6 || (Math.abs(ny) <= 1e-6 && nx > 0)) [nx, ny] = [-nx, -ny];
+  const height = Math.min(5, chord / 10);
+  const result: number[] = [];
+  let segment = 1;
+  for (let step = 0; step <= steps; step++) {
+    const at = (total * step) / steps;
+    while (segment < lengths.length - 1 && lengths[segment] < at) segment++;
+    const span = lengths[segment] - lengths[segment - 1];
+    const t = span > 0 ? (at - lengths[segment - 1]) / span : 0;
+    const i = segment * 2;
+    const x = points[i - 2] + (points[i] - points[i - 2]) * t;
+    const y = points[i - 1] + (points[i + 1] - points[i - 1]) * t;
+    const lift = height * 4 * (step / steps) * (1 - step / steps);
+    result.push(x + nx * lift, y + ny * lift);
+  }
+  return result;
+}

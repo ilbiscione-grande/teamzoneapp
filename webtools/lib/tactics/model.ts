@@ -100,6 +100,10 @@ export type LineObject = Base & {
   dashed: boolean;
   /** A dribble: the line swings from side to side. */
   wavy?: boolean;
+  /** A pass in the air: drawn in an arc, its shadow on the ground. On the ground when missing. */
+  aerial?: boolean;
+  /** The player the start is stuck to, following them (line-attach.ts); loose when missing. */
+  from?: string | null;
   color: string;
   width: number;
 };

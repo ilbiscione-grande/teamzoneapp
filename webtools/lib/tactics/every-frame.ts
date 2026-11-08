@@ -4,6 +4,7 @@
 // frame added later has it too, unless that is turned off for the object.
 // An object can also be set as it is in one frame in all the others.
 import { settleBalls } from "./ball.ts";
+import { settleLines } from "./line-attach.ts";
 import { toggleEffect } from "./document.ts";
 import type { Board, Effect, TacticsObject } from "./model.ts";
 import { effectsOf } from "./motion.ts";
@@ -63,7 +64,7 @@ export function copyToEveryFrame(board: Board, frameIndex: number, ids: string[]
     const source = sources.get(item.id);
     return source ? ({ ...source, ...ownedByFrame(item), pathControl: null } as TacticsObject) : null;
   });
-  return { ...copied, frames: copied.frames.map(frame => ({ ...frame, objects: settleBalls(frame.objects) })) };
+  return { ...copied, frames: copied.frames.map(frame => ({ ...frame, objects: settleLines(settleBalls(frame.objects)) })) };
 }
 
 /** Whether every copy of the object that can be changed has the effect. */

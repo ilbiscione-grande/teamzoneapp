@@ -2,6 +2,7 @@
 // project, board or object, a board's current objects and the edits the
 // editor makes. Pure, so the store and the tests share them.
 import { settleBalls } from "./ball.ts";
+import { settleLines } from "./line-attach.ts";
 import { formationPositions } from "./formations.ts";
 import type { Translate } from "../i18n/translate.ts";
 import {
@@ -120,7 +121,7 @@ export function updateFrame(
     ...document,
     boards: document.boards.map(board => board.id !== boardId ? board : {
       ...board,
-      frames: board.frames.map((frame, index) => index !== frameIndex ? frame : { ...frame, objects: settleBalls(change(frame.objects)) }),
+      frames: board.frames.map((frame, index) => index !== frameIndex ? frame : { ...frame, objects: settleLines(settleBalls(change(frame.objects))) }),
     }),
   };
 }

@@ -9,6 +9,7 @@ import { useState } from "react";
 import { createObject, createPlayer, keepOnGrass, newId } from "../../../lib/tactics/document.ts";
 import type { Point, TacticsObject } from "../../../lib/tactics/model.ts";
 import { activeObjects, useEditor, type Tool } from "../store.ts";
+import { attachLine } from "../../../lib/tactics/line-attach.ts";
 
 export type Draft = { tool: Tool; start: Point; current: Point; path: number[] };
 
@@ -76,7 +77,8 @@ export function useDrawing(pointer: () => Point | null, upright: () => number = 
     setDraft(null);
     if (!made) return;
     // The tool stays in hand for the next stroke, until another is chosen.
-    useEditor.getState().changeObjects(objects => [...objects, made]);
+    // An arrow drawn from a player sticks to them (line-attach.ts).
+    useEditor.getState().changeObjects(objects => [...objects, made.type === "line" ? attachLine(made, objects) : made]);
   };
 
   /** Places the tool's object where the pointer is. */

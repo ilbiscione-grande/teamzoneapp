@@ -103,7 +103,10 @@ export function useObjectDrag(item: TacticsObject) {
       starts.current.forEach((start, id) => moved.set(id, keepOnGrass({ x: start.x + dx, y: start.y + dy })));
       const { attachBall, changeObjects } = useEditor.getState();
       changeObjects(objects => {
-        const placed = objects.map(other => moved.has(other.id) ? { ...other, ...moved.get(other.id)! } : other);
+        // An arrow dragged away from its player comes loose; dragged along with them it stays.
+        const placed = objects.map(other => !moved.has(other.id) ? other
+          : other.type === "line" && other.from && !moved.has(other.from) ? { ...other, ...moved.get(other.id)!, from: null }
+          : { ...other, ...moved.get(other.id)! });
         // A ball dragged on its own is dropped: it sticks to a player or lies loose.
         if (item.type !== "ball") return placed;
         return placed.map(other => other.id === item.id
