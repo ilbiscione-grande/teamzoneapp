@@ -60,6 +60,17 @@ export function TacticsWorkspace() {
   // Choosing something shows its properties, unless effects are being chosen
   // for it or it is chosen in the object list (where more can be added).
   useEffect(() => { if (selectionCount > 0) setPanel(current => current === "frames" || current === "objects" ? current : "properties"); }, [selectionCount]);
+  // A phone's panel lies over the board's foot: the board is told how much of it still shows (use-reveal.ts).
+  useEffect(() => {
+    const { setReveal } = useEditor.getState();
+    if (!phone || !panelOpen) { setReveal(null); return; }
+    const frame = requestAnimationFrame(() => {
+      const sheet = document.querySelector(".tb-panel-body")?.getBoundingClientRect();
+      const stage = document.querySelector(".tb-center .tb-stage")?.getBoundingClientRect();
+      if (sheet && stage) setReveal(Math.max(0, sheet.top - stage.top));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [phone, panelOpen]);
   if (!board) return null;
   if (presenting) return <Presenter onClose={() => setPresenting(false)} />;
   const tabs: [Panel, React.ReactNode][] = [["properties", t("Egenskaper")], ["frames", t("Frames")], ["objects", t("Objekt")], ["squad", t("Lag")]];
@@ -72,7 +83,7 @@ export function TacticsWorkspace() {
         <Toolbar homeColor={board.teams.home.color} awayColor={board.teams.away.color} onHelp={openHelp} />
         <div className="tb-center">
           <ErrorBoundary label={t("Tavlan")}>
-            <BoardStage portrait={phone} extra={<><LiveStrokes /><LiveAnswers /></>}
+            <BoardStage portrait={phone} extra={<><LiveStrokes /><LiveAnswers /></>} onGrass={phone ? () => setPanelOpen(false) : undefined}
               phoneTools={phone ? <PhoneToolbar homeColor={board.teams.home.color} awayColor={board.teams.away.color} /> : undefined} />
           </ErrorBoundary>
           <ToolHint />

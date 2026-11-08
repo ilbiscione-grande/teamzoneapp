@@ -1,6 +1,6 @@
 "use client";
 
-// The frames: each one with its move's length and note, a new one copied
+// The frames (side by side on a phone, FrameCarousel): each one with its move's length and note, a new one copied
 // from the one in hand, moving and removing it; and the effects of the
 // frame in hand: what shows how as the board moves into it, several to an
 // object if wanted, chosen for the objects selected on the pitch and tried
@@ -13,6 +13,8 @@ import type { Board, Easing, Effect, TacticsObject, ZoomLevel, ZoomSpeed } from 
 import { effectsOf } from "../../../lib/tactics/timeline.ts";
 import { activeObjects, useEditor } from "../store.ts";
 import { AllFrames } from "./AllFrames.tsx";
+import { FrameCarousel } from "./FrameCarousel.tsx";
+import { usePhone } from "../ViewerTools.tsx";
 import { easingLabels, effectKinds, effects, effectSuits, zoomLabels, zoomSpeedLabels } from "./effects.ts";
 import { useLanguage } from "../../language";
 
@@ -25,6 +27,7 @@ export function FramesPanel({ board }: { board: Board }) {
   const selection = useEditor(state => state.selection);
   const playing = useEditor(state => state.playing);
   const allFrames = useEditor(state => state.allFrames);
+  const phone = usePhone();
   const { setFrame, change, patch, patchLook, select, preview } = useEditor.getState();
   const frames = board.frames;
   const frame = frames[frameIndex];
@@ -48,6 +51,19 @@ export function FramesPanel({ board }: { board: Board }) {
     setFrame(frameIndex + step);
   };
 
+  /** One frame to take: its number, the move's time, its effects and note. */
+  const card = (index: number) => {
+    const item = frames[index];
+    // The first frame has no move into it, so an effect chosen for all frames plays from the second.
+    const count = index === 0 ? 0 : item.objects.reduce((sum, object) => sum + effectsOf(object).length, 0);
+    return (
+      <button type="button" aria-current={index === frameIndex} onClick={() => setFrame(index)}>
+        <strong>Frame {index + 1}</strong>
+        <span>{[index > 0 ? seconds(item.durationMs, intl) : t("Start"), count > 0 ? `${count} ${count === 1 ? "effekt" : "effekter"}` : null, item.note?.trim() || null].filter(Boolean).join(" · ")}</span>
+      </button>
+    );
+  };
+
   const before = new Set(frames[frameIndex - 1]?.objects.map(item => item.id) ?? []);
   const selected = frame.objects.filter(item => selection.includes(item.id));
   const withEffect = frame.objects.filter(item => effectsOf(item).length > 0);
@@ -65,25 +81,15 @@ export function FramesPanel({ board }: { board: Board }) {
   return (
     <div className="tb-inspector tb-frames-panel">
       <h3>{t("Frames")}</h3>
-      <ol className="tb-frame-list">
-        {frames.map((item, index) => {
-          // The first frame has no move into it, so an effect chosen for all frames plays from the second.
-          const count = index === 0 ? 0 : item.objects.reduce((sum, object) => sum + effectsOf(object).length, 0);
-          return (
-            <li key={item.id}>
-              <button type="button" aria-current={index === frameIndex} onClick={() => setFrame(index)}>
-                <strong>Frame {index + 1}</strong>
-                <span>{[index > 0 ? seconds(item.durationMs, intl) : t("Start"), count > 0 ? `${count} ${count === 1 ? "effekt" : "effekter"}` : null, item.note?.trim() || null].filter(Boolean).join(" · ")}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-      <div className="tb-actions">
+      {phone
+        ? <FrameCarousel count={frames.length} current={frameIndex} card={card} />
+        : <ol className="tb-frame-list">{frames.map((item, index) => <li key={item.id}>{card(index)}</li>)}</ol>}
+      {/* A phone: the three on one row; frames are moved in the timeline's "more". */}
+      <div className={phone ? "tb-actions tb-frame-actions" : "tb-actions"}>
         <button type="button" className="wt-button small" onClick={add} disabled={playing}>{t("+ Ny frame")}</button>
         <button type="button" className="wt-button secondary small" onClick={copy} disabled={playing} title={t("En exakt kopia direkt efter den här, med effekter, anteckning och tid.")}>{t("Kopiera frame")}</button>
-        <button type="button" className="wt-button secondary small" onClick={() => move(-1)} disabled={playing || frameIndex === 0} aria-label={t("Flytta framen bakåt")}>↑</button>
-        <button type="button" className="wt-button secondary small" onClick={() => move(1)} disabled={playing || frameIndex >= frames.length - 1} aria-label={t("Flytta framen framåt")}>↓</button>
+        {!phone && <button type="button" className="wt-button secondary small" onClick={() => move(-1)} disabled={playing || frameIndex === 0} aria-label={t("Flytta framen bakåt")}>↑</button>}
+        {!phone && <button type="button" className="wt-button secondary small" onClick={() => move(1)} disabled={playing || frameIndex >= frames.length - 1} aria-label={t("Flytta framen framåt")}>↓</button>}
         <button type="button" className="wt-button secondary small" onClick={remove} disabled={playing || frames.length < 2}>{t("Ta bort")}</button>
       </div>
       <p className="tb-hint">{t("En ny frame är en kopia av den du står på. Flytta spelarna i den, så spelas rörelsen upp mellan dina frames.")}</p>

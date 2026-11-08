@@ -38,6 +38,7 @@ import { useBand } from "./use-band.ts";
 import { useSwipe } from "./use-swipe.ts";
 import { isDrawTool, isPlaceTool, useDrawing } from "./use-drawing.ts";
 import { IDENTITY, useViewport } from "./use-viewport.ts";
+import { useReveal } from "./use-reveal.ts";
 import { useT } from "../../language";
 
 // A drag moves one node; Konva need not rebuild its hit map on every step.
@@ -57,10 +58,11 @@ const NO_REACH: Reach = { left: 0, top: 0, right: 0, bottom: 0 };
  * tools: more buttons on the board's top right corner (a shared link's full screen, arena).
  * portrait: a wide view turned upright whatever the frame's shape (a phone).
  * phoneTools: the editor's tools on a phone, in a column over "show all" instead of the zoom buttons.
+ * onGrass: a tap on the grass, not on an object, while selecting (a phone closes its panel).
  */
-export default function BoardStage({ editable = true, moveOnly = false, extra, onSwipe, onTap, tiltButton = false, tools, portrait = false, phoneTools }: {
+export default function BoardStage({ editable = true, moveOnly = false, extra, onSwipe, onTap, tiltButton = false, tools, portrait = false, phoneTools, onGrass }: {
   editable?: boolean; moveOnly?: boolean; extra?: React.ReactNode; onSwipe?: (direction: 1 | -1) => void; onTap?: () => void; tiltButton?: boolean;
-  tools?: React.ReactNode; portrait?: boolean; phoneTools?: React.ReactNode;
+  tools?: React.ReactNode; portrait?: boolean; phoneTools?: React.ReactNode; onGrass?: () => void;
 }) {
   const t = useT();
   const frame = useRef<HTMLDivElement>(null);
@@ -112,7 +114,11 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
   useEffect(() => {
     const element = frame.current;
     if (!element) return;
-    const observer = new ResizeObserver(([entry]) => setSize({ width: entry.contentRect.width, height: entry.contentRect.height }));
+    // Whole pixels: a fraction more or less (a panel opening over the board) is no new size, and keeps the zoom.
+    const observer = new ResizeObserver(([entry]) => {
+      const next = { width: Math.round(entry.contentRect.width), height: Math.round(entry.contentRect.height) };
+      setSize(current => (current.width === next.width && current.height === next.height ? current : next));
+    });
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
@@ -136,6 +142,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
     useEditor.getState().setFocus(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus, fit]);
+  useReveal(view, fit, size.width, tilt);
   const drawing = useDrawing(() => content.current?.getRelativePointerPosition() ?? null, () => -fit.rotation);
   const cropDraw = useCropDraw(() => content.current?.getRelativePointerPosition() ?? null, board?.id);
 
@@ -176,7 +183,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
   const onGround = layered(tilt ? visible.filter(item => !STANDING.has(item.type)) : visible);
   const tapGrass = (target: Konva.Node) => {
     if (isPlaceTool(tool)) drawing.place();
-    else if (tool === "select" && target.name() === "grass") useEditor.getState().select([]);
+    else if (tool === "select" && target.name() === "grass") { useEditor.getState().select([]); onGrass?.(); }
   };
 
   return (

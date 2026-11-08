@@ -63,3 +63,18 @@
 .tb-zoom-choices { display: flex; flex-wrap: wrap; gap: 4px 10px; }
 .tb-zoom-level { display: inline-flex; align-items: center; gap: 4px; color: var(--wt-muted); font-size: .8rem; }
 .tb-zoom-level select { min-height: 28px; border: 1px solid var(--wt-line); border-radius: 6px; background: white; font: inherit; }
+
+/* A phone's frames side by side: the one in hand in the middle, its neighbours showing at the edges (FrameCarousel). */
+.tb-frame-carousel { overflow: hidden; margin: 0 -12px; padding: 2px 0; touch-action: pan-y; }
+.tb-frame-track { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; transition: transform .25s ease; }
+.tb-frame-track[data-dragging="true"] { transition: none; }
+.tb-frame-track li { flex: 0 0 68%; min-width: 0; }
+.tb-frame-track li[aria-current="false"] { opacity: .7; }
+.tb-frame-track li[aria-current="false"] button { background: #e8eef3; }
+/* The one before shows its right end: its words there. */
+.tb-frame-track li[data-before="true"] button { text-align: right; }
+.tb-frame-track button { width: 100%; display: grid; gap: 2px; text-align: left; padding: 10px 12px; border: 1px solid var(--wt-line); border-radius: 8px; background: white; color: inherit; font: inherit; cursor: pointer; }
+.tb-frame-track button[aria-current="true"] { border-color: var(--wt-brand); box-shadow: inset 3px 0 0 var(--wt-brand); }
+.tb-frame-track span { color: var(--wt-muted); font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-frame-actions { flex-wrap: nowrap; }
+.tb-frame-actions .wt-button { flex: 1 1 0; min-width: 0; padding-left: 6px; padding-right: 6px; white-space: nowrap; }

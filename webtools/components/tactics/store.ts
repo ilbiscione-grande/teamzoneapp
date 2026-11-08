@@ -50,6 +50,9 @@ type EditorState = {
   /** The view to bring in on a pitch point, so many times in (a drill just laid out); the board takes it once. Not saved. */
   focus: { at: Point; scale: number } | null;
   setFocus: (focus: { at: Point; scale: number } | null) => void;
+  /** A phone with its panel open: how far down from its top the board shows above the panel; the selection is brought in there. Not saved. */
+  reveal: number | null;
+  setReveal: (reveal: number | null) => void;
   history: History;
   saveState: SaveState;
   /** Playing: where the playhead is (in frames), and how. */
@@ -122,6 +125,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   ruler: null,
   reshaping: null,
   focus: null,
+  reveal: null,
   history: emptyHistory(),
   saveState: "saved",
   playing: false,
@@ -185,6 +189,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   setRuler: ruler => set({ ruler }),
   setReshaping: reshaping => set({ reshaping }),
   setFocus: focus => set({ focus }),
+  setReveal: reveal => set({ reveal }),
   setAttachBall: attachBall => set({ attachBall }),
   // One of a group chooses the whole group.
   select: (given, additive = false) => set(state => {
