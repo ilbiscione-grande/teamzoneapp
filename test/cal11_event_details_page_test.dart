@@ -1,3 +1,4 @@
+import 'package:teamzone_app/src/features/calendar/booking_management_services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,6 +20,112 @@ import 'package:teamzone_app/src/features/assistant_coach/assistant_task_prefere
 import 'package:teamzone_app/src/features/assistant_coach/assistant_identity.dart';
 
 void main() {
+  testWidgets(
+    'foreign-context event link shows owner in body and folded header with authorized actions',
+    (tester) async {
+      await tester.pumpWidget(
+        _app(
+          _ForeignContextCalendar(),
+          identity: const _ForeignContextIdentity(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Kalender').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Vy och filter'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Agenda').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Träning A'));
+      await tester.pumpAndSettle();
+      expect(find.text('Demoklubben IF · P2012'), findsOneWidget);
+      expect(find.text('Annan förening · Annat lag'), findsNothing);
+      expect(find.byKey(const Key('event-actions-menu')), findsOneWidget);
+      await tester.tap(find.text('Deltagare'));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('Demoklubben IF · P2012'),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('event-actions-menu')));
+      await tester.pumpAndSettle();
+      expect(find.text('Redigera'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'shared view-only context retains restrictions when owner context is also available',
+    (tester) async {
+      await tester.pumpWidget(
+        _app(_SharedViewCalendar(), identity: const _SharedAndOwnerIdentity()),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Kalender').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Vy och filter'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Agenda').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Träning A'));
+      await tester.pumpAndSettle();
+      expect(find.text('Testklubben · F2012'), findsOneWidget);
+      expect(find.byKey(const Key('event-actions-menu')), findsNothing);
+      await tester.tap(find.text('Deltagare'));
+      await tester.pumpAndSettle();
+      expect(find.text('Skicka kallelser'), findsNothing);
+      expect(find.text('Sök spelare eller lag i hela klubben'), findsNothing);
+    },
+  );
+  testWidgets('booking series tools appear only in managing context', (
+    tester,
+  ) async {
+    final calendar = _BookingSeriesCalendar();
+    await tester.pumpWidget(_app(calendar));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kalender').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Vy och filter'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Agenda').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Träning A').first);
+    await tester.pumpAndSettle();
+    final tools = find.byKey(
+      const Key('event-booking-change'),
+      skipOffstage: false,
+    );
+    await tester.ensureVisible(tools);
+    await tester.pumpAndSettle();
+    expect(tools, findsOneWidget);
+    expect(find.textContaining('Automatik aktiv'), findsOneWidget);
+  });
+  testWidgets(
+    'legacy event editor restricts a planned series to one occurrence',
+    (tester) async {
+      await tester.pumpWidget(_app(_BookingSeriesCalendar()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Kalender').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Vy och filter'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Agenda').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Träning A').first);
+      await tester.pumpAndSettle();
+      await _openEventMenu(tester);
+      await tester.tap(find.text('Redigera').last);
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Här ändras bara detta tillfälle'),
+        findsOneWidget,
+      );
+      expect(find.text('Hela serien'), findsNothing);
+    },
+  );
+
   test('an ended fixture starts today even just after midnight', () {
     for (final now in [
       DateTime(2026, 10, 18, 0, 7),
@@ -1584,7 +1691,7 @@ class _Calendar extends UnconfiguredCalendarServices {
               ),
             )
             .toList(),
-    callerActions: const {
+    callerActions: responseRole == 'self' ? const {} : const {
       'save_squad',
       'lock_squad',
       'send_callups',
@@ -1835,6 +1942,74 @@ class _Identity implements IdentityServices {
   Future<void> signOut() async {}
 }
 
+class _ForeignContextIdentity extends _Identity {
+  const _ForeignContextIdentity();
+  @override
+  Future<List<TeamZoneContext>> getContexts() async => const [
+    TeamZoneContext(
+      id: 'foreign',
+      clubId: 'other-club',
+      clubName: 'Annan förening',
+      teamId: 'other-team',
+      teamName: 'Annat lag',
+      rolePackage: 'leader',
+      capabilities: {'event.manage'},
+    ),
+    TeamZoneContext(
+      id: 'target-context',
+      clubId: 'target-club',
+      clubName: 'Demoklubben IF',
+      teamId: 'target-team',
+      teamName: 'P2012',
+      rolePackage: 'leader',
+      capabilities: {'event.manage'},
+    ),
+  ];
+}
+
+class _ForeignContextCalendar extends _Calendar {
+  @override
+  Future<EventDetails> getEventDetails(String id) async {
+    final base = await super.getEventDetails(id);
+    return EventDetails(
+      id: base.id,
+      title: base.title,
+      description: base.description,
+      type: base.type,
+      state: base.state,
+      startsAt: base.startsAt,
+      endsAt: base.endsAt,
+      allDay: base.allDay,
+      timezone: base.timezone,
+      revision: base.revision,
+      callerActions: const {'revise', 'cancel', 'manage_roster'},
+      clubId: 'target-club',
+      owningTeamId: 'target-team',
+      teams: const [
+        {'team_id': 'target-team', 'name': 'P2012', 'relation': 'primary'},
+      ],
+      audiences: base.audiences,
+    );
+  }
+}
+
+class _SharedAndOwnerIdentity extends _SharedTeamIdentity {
+  const _SharedAndOwnerIdentity();
+  @override
+  Future<List<TeamZoneContext>> getContexts() async => [
+    ...(await super.getContexts()),
+    const TeamZoneContext(
+      id: 'owner-context',
+      clubId: 'club',
+      clubName: 'Testklubben',
+      teamId: 'team',
+      teamName: 'F2012',
+      rolePackage: 'leader',
+      capabilities: {'event.manage', 'event.squad.manage'},
+    ),
+  ];
+}
+
 class _SharedTeamIdentity extends _Identity {
   const _SharedTeamIdentity();
 
@@ -2052,6 +2227,8 @@ class _ConflictCalendar extends _Calendar {
   @override
   Future<EventDetails> getEventDetails(String eventId) async => EventDetails(
     id: eventId,
+    clubId: (eventId == 'two' && responseRole == 'self') ? 'other-club' : 'club',
+    owningTeamId: (eventId == 'two' && responseRole == 'self') ? 'other-team' : 'team',
     title: 'Aktivitet $eventId',
     description: null,
     type: 'training',
@@ -2061,9 +2238,13 @@ class _ConflictCalendar extends _Calendar {
     allDay: false,
     timezone: 'Europe/Stockholm',
     revision: 1,
-    callerActions: const {'revise'},
-    teams: const [
-      {'team_id': 'team', 'relation': 'primary'},
+    callerActions: responseRole == 'self' ? const {} : const {'revise'},
+    teams: [
+      {
+        'team_id': (eventId == 'two' && responseRole == 'self') ? 'other-team' : 'team',
+        'name': (eventId == 'two' && responseRole == 'self') ? 'Handboll' : 'Fotboll',
+        'relation': 'primary',
+      },
     ],
     audiences: const [],
   );
@@ -2233,4 +2414,84 @@ Future<void> _openEventMenu(WidgetTester tester) async {
   var end = now.subtract(const Duration(hours: 1));
   if (!end.isAfter(start)) end = start.add(now.difference(start) ~/ 2);
   return (start: start.toUtc(), end: end.toUtc());
+}
+
+class _BookingSeriesCalendar extends _Calendar
+    implements EventBookingServices, BookingManagementServices {
+  @override
+  Future<EventDetails> getEventDetails(String eventId) async {
+    final b = await super.getEventDetails(eventId);
+    return EventDetails(
+      id: b.id,
+      title: b.title,
+      description: b.description,
+      type: b.type,
+      state: b.state,
+      startsAt: b.startsAt,
+      endsAt: b.endsAt,
+      allDay: false,
+      timezone: b.timezone,
+      revision: b.revision,
+      callerActions: b.callerActions,
+      teams: b.teams,
+      audiences: b.audiences,
+      recurrenceId: 'series',
+    );
+  }
+
+  @override
+  Future<List<EventBooking>> listEventBookings(String id) async => [
+    EventBooking(
+      id: 'booking',
+      resourceId: 'pitch',
+      resourceName: 'A-plan',
+      category: 'pitch',
+      organizationName: 'Klubben',
+      startsAt: _event.startsAt,
+      endsAt: _event.endsAt,
+      status: 'confirmed',
+      canCancel: true,
+    ),
+  ];
+  @override
+  Future<List<({String organizationId, String name, String? teamId})>>
+  listEventBookingTargets(String id) async => [];
+  @override
+  Future<List<ResourceAvailability>> listBookingAvailability({
+    required String organizationId,
+    required DateTime startsAt,
+    required DateTime endsAt,
+  }) async => [];
+  @override
+  Future<int> createBookingGroup({
+    required List<String> resourceIds,
+    required DateTime startsAt,
+    required DateTime endsAt,
+    String? title,
+    String? teamId,
+    String? eventId,
+  }) async => 0;
+  @override
+  Future<void> cancelEventBooking(
+    EventBooking booking, {
+    bool wholeGroup = false,
+  }) async {}
+  @override
+  Future<BookingData> getSeriesPlan(String id) async => {
+    'plan': {
+      'id': 'plan',
+      'state': 'active',
+      'revision': 1,
+      'configuration': {'ends_on': '2027-03-14'},
+    },
+    'slots': [],
+  };
+  @override
+  Future<void> controlSeriesPlan(BookingData p, String action) async {}
+  @override
+  Future<BookingData> previewBookingChange(BookingData p) async => {};
+  @override
+  Future<void> saveBookingChange(BookingData p, BookingData review) async {}
+  @override
+  Future<List<ResourceAvailability>> changeResources(BookingData p) async => [];
 }

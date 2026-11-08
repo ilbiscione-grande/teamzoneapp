@@ -699,6 +699,8 @@ class BookingApproval {
 class PendingBooking {
   const PendingBooking({
     required this.id,
+    this.revision = 1,
+    this.revisions = const {},
     required this.resourceName,
     required this.startsAt,
     required this.endsAt,
@@ -713,6 +715,8 @@ class PendingBooking {
     this.groupResources = const [],
   });
   final String id, resourceName;
+  final int revision;
+  final Map<String, int> revisions;
   final DateTime startsAt, endsAt;
   final String? title, notes, bookedByName, teamName, eventTitle;
   final String? seriesId, groupId;
@@ -721,6 +725,10 @@ class PendingBooking {
 
   factory PendingBooking.fromJson(Map<String, dynamic> json) => PendingBooking(
     id: json['id'] as String,
+    revision: (json['revision'] as num?)?.toInt() ?? 1,
+    revisions: (json['revisions'] as Map<String, dynamic>? ?? const {}).map(
+      (key, value) => MapEntry(key, (value as num).toInt()),
+    ),
     resourceName: json['resource_name'] as String? ?? '',
     startsAt: DateTime.parse(json['starts_at'] as String),
     endsAt: DateTime.parse(json['ends_at'] as String),

@@ -583,6 +583,7 @@ class _ProductShellState extends State<_ProductShell> {
                 state.uri.queryParameters['tab'] == 'preparation',
             // "Kan inte…" on a callup notification.
             initialDeclineCallupId: state.uri.queryParameters['decline'],
+            availableContexts: widget.contexts,
             onChanged: () => setState(() => _assistantTaskRevision++),
             contextValue: _contextForLocation(state.uri.toString()),
             calendar: widget.calendar,

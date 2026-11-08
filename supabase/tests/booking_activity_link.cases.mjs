@@ -1,0 +1,40 @@
+import assert from 'node:assert/strict';
+export async function checkActivityLink({db,call,fails,owner,coach,stranger}) {
+ const clubOrg=await call(owner,"select api.create_booking_organization('Standalone linking','club',null)");
+ const club=(await db.query("insert into core.clubs values(gen_random_uuid(),'Standalone club') returning id")).rows[0].id;
+ const team=(await db.query("insert into core.teams(id,club_id,name) values(gen_random_uuid(),$1,'Standalone team') returning id",[club])).rows[0].id;
+ await db.query('update core.booking_organizations set teamzone_club_id=$2 where id=$1',[clubOrg,club]);
+ const person=(await db.query("insert into core.club_people values(gen_random_uuid(),$1,'Standalone coach') returning id",[club])).rows[0].id;
+ await db.query("insert into core.person_account_links values($1,$2,$3,'active')",[coach,club,person]);
+ await db.query("insert into core.assignments(club_id,team_id,club_person_id,role_package) values($1,$2,$3,'leader')",[club,team,person]);
+ const day=new Date(Date.now()+290*86400e3).toISOString().slice(0,10),at=h=>`${day}T${String(h).padStart(2,'0')}:00:00Z`;
+ const resource=async name=>call(owner,'select api.save_booking_resource_v2($1,null,$2::jsonb,null)',[clubOrg,JSON.stringify({name,category:'equipment',ownership_kind:'owned',timezone:'UTC',requires_approval:true})]);
+ const first=await resource('Standalone camera'),second=await resource('Standalone vehicle');
+ const event=(await db.query("insert into core.events(id,club_id,title,state,starts_at,ends_at) values(gen_random_uuid(),$1,'Attach event','scheduled',$2,$3) returning id",[club,at(10),at(11)])).rows[0].id;
+ await db.query('insert into core.event_teams(event_id,club_id,team_id) values($1,$2,$3)',[event,club,team]);
+ const group=await call(coach,'select api.create_booking_group($1::uuid[],$2,$3,null,null,$4,null,false)',[[first,second],at(9),at(12),team]);
+ const before=(await db.query('select * from core.booking_bookings where group_id=$1 order by id',[group.group_id])).rows;
+ const booking=before[0].id;
+ const preview=(who=coach)=>call(who,'select api.preview_booking_activity_link($1,$2,$3)',[booking,team,event]);
+ await fails(stranger,'select api.preview_booking_activity_link($1,$2,$3)',[booking,team,event],/not_allowed/);
+ await fails(owner,'select api.preview_booking_activity_link($1,$2,$3)',[booking,team,event],/event_move_not_allowed/);
+ const plan=await preview();assert.equal(plan.bookings.length,2);
+ const key=(await db.query('select gen_random_uuid() id')).rows[0].id;
+ const payload=JSON.stringify({target_booking_id:booking,target_team_id:team,target_event_id:event,expected_plan:plan});
+ await db.query('update core.events set revision=revision+1 where id=$1',[event]);
+ await fails(coach,"select api.execute_booking_command($1,'link_booking_activity',$2::jsonb,null)",[key,payload],/stale_revision/);
+ assert.equal((await db.query('select count(*) n from core.booking_bookings where group_id=$1 and event_id is not null',[group.group_id])).rows[0].n,0);
+ const reviewed=await preview(),intent=JSON.stringify({...JSON.parse(payload),expected_plan:reviewed});
+ await call(coach,"select api.execute_booking_command($1,'link_booking_activity',$2::jsonb,null)",[key,intent]);
+ await call(coach,"select api.execute_booking_command($1,'link_booking_activity',$2::jsonb,null)",[key,intent]);
+ const after=(await db.query('select * from core.booking_bookings where group_id=$1 order by id',[group.group_id])).rows;
+ after.forEach((b,i)=>{assert.equal(b.event_id,event);assert.equal(b.revision,before[i].revision+1);assert.equal(b.status,before[i].status);assert.deepEqual(b.starts_at,before[i].starts_at);assert.deepEqual(b.ends_at,before[i].ends_at);});
+ await fails(coach,'select api.preview_booking_activity_link($1,$2,$3)',[booking,team,event],/activity_link_not_standalone/);
+ // The existing synchronization trigger now moves both linked resources.
+ await db.query('update core.events set starts_at=$2,ends_at=$3,revision=revision+1 where id=$1',[event,at(14),at(15)]);
+ const moved=(await db.query('select * from core.booking_bookings where group_id=$1',[group.group_id])).rows;
+ moved.forEach(b=>{assert.equal(new Date(b.starts_at).getUTCHours(),13);assert.equal(new Date(b.ends_at).getUTCHours(),16);});
+ await db.query("update core.events set state='cancelled',revision=revision+1 where id=$1",[event]);
+ assert.equal((await db.query("select count(*) n from core.booking_bookings where group_id=$1 and status<>'cancelled'",[group.group_id])).rows[0].n,0);
+ console.log('standalone activity linking: permissions, grouped atomicity, stale review, retry, margins and cancellation passed');
+}

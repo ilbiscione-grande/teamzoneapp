@@ -1,3 +1,4 @@
+import 'package:teamzone_app/src/shared/async/booking_command.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/overview/overview_models.dart';
 import '../assistant_coach/assistant_task_feedback.dart';
@@ -411,10 +412,14 @@ class SupabaseOverviewServices
         : booking.groupId != null
         ? ('decide_booking_group', {'target_group_id': booking.groupId})
         : ('decide_booking', {'target_booking_id': booking.id});
-    await _client
-        .schema('api')
-        .rpc<Object?>(name, params: {...params, 'approve': approve})
-        .timeout(const Duration(seconds: 15));
+    await executeBookingCommand(
+      _client,
+      name,
+      {...params, 'approve': approve},
+      revisions: booking.seriesId != null || booking.groupId != null
+          ? booking.revisions
+          : {booking.id: booking.revision},
+    );
   }
 
   @override

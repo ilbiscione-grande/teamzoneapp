@@ -1250,6 +1250,7 @@ class _EventEditorDialog extends StatefulWidget {
     required this.teamName,
     required this.locationSuggestions,
     this.initial,
+    this.singleOccurrenceOnly = false,
     this.initialType,
     this.initialDate,
     this.shareableTeams = const [],
@@ -1262,6 +1263,7 @@ class _EventEditorDialog extends StatefulWidget {
   /// Other teams a new event can be shared with directly (creating only).
   final List<ShareableTeam> shareableTeams;
   final EventDetails? initial;
+  final bool singleOccurrenceOnly;
 
   /// Preselected type for a new event, e.g. from the quick actions sheet.
   final String? initialType;
@@ -1994,6 +1996,14 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     final form = ListView(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
       children: [
+        if (!creating) ...[
+          Text(
+            strings.feature(
+              'Kopplade resursbokningar följer med när tiden ändras. Marginaler före och efter aktiviteten behålls. Om någon resurs inte är tillgänglig stoppas hela ändringen. Resurser som kräver godkännande kan behöva godkännas på nytt.',
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
         // What
         _section(
           context,
@@ -2102,7 +2112,12 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
             ),
             if (_recurring) _seriesFields(strings),
           ],
-          if (widget.initial?.recurrenceId != null) ...[
+          if (widget.singleOccurrenceOnly)
+            const Text(
+              'Serien har en seriegrund. Här ändras bara detta tillfälle. Använd Ändra tid och resurser under Resursbokningar för serieändringar och framtida tillfällen.',
+            ),
+          if (widget.initial?.recurrenceId != null &&
+              !widget.singleOccurrenceOnly) ...[
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _scope,

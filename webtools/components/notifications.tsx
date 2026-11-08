@@ -9,7 +9,7 @@ import { RequireAccount } from "./shell";
 
 type Notification = {
   id: string;
-  kind: "requested" | "approved" | "declined" | "cancelled";
+  kind: "requested" | "approved" | "declined" | "cancelled" | "rescheduled" | "resource_changed" | "resources_updated";
   created_at: string;
   read: boolean;
   organization_id: string;
@@ -28,6 +28,9 @@ const headlines: Record<Notification["kind"], string> = {
   approved: "Din bokning är godkänd",
   declined: "Din bokning nekades",
   cancelled: "Din bokning är avbokad",
+  resources_updated: "Bokningens resurser har ändrats",
+  resource_changed: "Din bokning har bytt resurs",
+  rescheduled: "Din bokning har fått ny tid",
 };
 
 function useInbox(poll: boolean) {

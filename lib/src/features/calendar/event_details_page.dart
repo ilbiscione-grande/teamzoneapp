@@ -23,6 +23,7 @@ class _EventDetailsPage extends StatefulWidget {
     this.initialPreparation = false,
     this.initialDeclineCallupId,
     this.onChanged,
+    this.availableContexts = const [],
     super.key,
   });
 
@@ -34,6 +35,7 @@ class _EventDetailsPage extends StatefulWidget {
   final String? initialDeclineCallupId;
   final VoidCallback? onChanged;
   final TeamZoneContext contextValue;
+  final List<TeamZoneContext> availableContexts;
   final CalendarServices calendar;
   final RosterServices roster;
   final MatchServices match;
@@ -60,7 +62,7 @@ class _EventDetailsPageState extends State<_EventDetailsPage> {
 
   /// The event's title in the app bar, set by the body while its header is
   /// folded away (every tab but Info).
-  final _barTitle = ValueNotifier<String?>(null);
+  final _barTitle = ValueNotifier<({String title, String subtitle})?>(null);
 
   @override
   void dispose() {
@@ -101,16 +103,20 @@ class _EventDetailsPageState extends State<_EventDetailsPage> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         centerTitle: true,
-        title: ValueListenableBuilder<String?>(
+        title: ValueListenableBuilder<({String title, String subtitle})?>(
           valueListenable: _barTitle,
           builder: (context, title, _) => title == null
               ? const SizedBox.shrink()
               : Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
                     Text(
-                      '${widget.contextValue.clubName} · ${widget.contextValue.teamName ?? strings.feature('Aktivitet')}',
+                      title.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      title.subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.labelSmall,
@@ -203,7 +209,12 @@ class _EventDetailsPageState extends State<_EventDetailsPage> {
             initialEvent: event,
             initialSquad: squad,
             eventId: widget.eventId,
-            contextValue: widget.contextValue,
+            contextValue: eventDetailsContext(
+              event,
+              widget.contextValue,
+              widget.availableContexts,
+            ),
+            availableContexts: widget.availableContexts,
             calendar: widget.calendar,
             roster: widget.roster,
             match: widget.match,
@@ -231,6 +242,7 @@ class _EventDetailsBody extends StatefulWidget {
     required this.onDeleted,
     required this.menu,
     required this.barTitle,
+    required this.availableContexts,
     this.initialParticipants = false,
     this.initialPreparation = false,
     this.initialDeclineCallupId,
@@ -252,7 +264,8 @@ class _EventDetailsBody extends StatefulWidget {
   final bool matchSpaceV2;
   final VoidCallback onDeleted;
   final ValueNotifier<List<_EventMenuAction>> menu;
-  final ValueNotifier<String?> barTitle;
+  final ValueNotifier<({String title, String subtitle})?> barTitle;
+  final List<TeamZoneContext> availableContexts;
 
   @override
   State<_EventDetailsBody> createState() => _EventDetailsBodyState();
@@ -344,6 +357,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
   // A user's stronger role in another team must not leak into the event
   // while a shared recipient team is the active context.
   bool get _contextCanManageRoster =>
+      (event.clubId == null || event.clubId == widget.contextValue.clubId) &&
       event.archivedAt == null &&
       (widget.contextValue.teamId == null ||
           _activeContextIsPrimary ||
@@ -351,12 +365,14 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
           _activeSharedCapabilities.contains('co_manage'));
 
   bool get _contextCanCoManage =>
+      (event.clubId == null || event.clubId == widget.contextValue.clubId) &&
       event.archivedAt == null &&
       (widget.contextValue.teamId == null ||
           _activeContextIsPrimary ||
           _activeSharedCapabilities.contains('co_manage'));
 
   bool get _contextCanRestoreArchive =>
+      (event.clubId == null || event.clubId == widget.contextValue.clubId) &&
       event.archivedAt != null &&
       (widget.contextValue.teamId == null || _activeContextIsPrimary);
 
@@ -375,8 +391,16 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     super.dispose();
   }
 
-  void _syncBarTitle() =>
-      widget.barTitle.value = _tabController.index == 0 ? null : event.title;
+  String get _eventSubtitle => eventDetailsSubtitle(
+    event,
+    widget.contextValue,
+    widget.availableContexts,
+    fallback: AppStrings.of(context).feature('Aktivitet'),
+  );
+
+  void _syncBarTitle() => widget.barTitle.value = _tabController.index == 0
+      ? null
+      : (title: event.title, subtitle: _eventSubtitle);
 
   void _handleTabIndexChanged() {
     _syncBarTitle();
@@ -461,8 +485,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
             child: _EventHeader(
               type: event.type,
               title: event.title,
-              subtitle:
-                  '${widget.contextValue.clubName} · ${widget.contextValue.teamName ?? strings.feature('Aktivitet')}',
+              subtitle: _eventSubtitle,
             ),
           ),
           ?resultHeader,
@@ -817,6 +840,12 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
             startsAt: event.startsAt,
             endsAt: event.endsAt,
             services: bookings,
+            recurring: event.recurrenceId != null,
+            canManage:
+                _contextCanCoManage &&
+                event.can('revise') &&
+                event.archivedAt == null,
+            onChanged: _refresh,
             // Booking is for what is still to come.
             canBook:
                 event.state != 'cancelled' &&
@@ -965,6 +994,24 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
   Future<void> _revise() async {
     final teamId = widget.contextValue.teamId;
     if (teamId == null) return;
+    var hasSeriesPlan = false;
+    if (event.recurrenceId != null &&
+        widget.calendar is BookingManagementServices &&
+        widget.calendar is EventBookingServices) {
+      try {
+        final bookings = await (widget.calendar as EventBookingServices)
+            .listEventBookings(event.id);
+        if (bookings.isNotEmpty) {
+          final data = await (widget.calendar as BookingManagementServices)
+              .getSeriesPlan(bookings.first.id);
+          hasSeriesPlan = data['plan'] != null;
+        }
+      } catch (error) {
+        AppErrors.caught('event_details_page.seriesPlan', error);
+        // The server still rejects unsafe series edits if this read failed.
+      }
+    }
+    if (!mounted) return;
     List<SavedEventPlace> suggestions;
     try {
       suggestions = await widget.calendar.listSavedPlaces(
@@ -992,6 +1039,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
         teamName: widget.contextValue.teamName ?? '',
         locationSuggestions: suggestions,
         initial: event,
+        singleOccurrenceOnly: hasSeriesPlan,
         matchFormat: matchSettings?.format ?? MatchFormat.fallback,
         matchSettings: matchSettings,
       ),
@@ -1030,9 +1078,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
       AppErrors.caught('event_details_page._revise', error);
 
       if (mounted) {
-        _showError(
-          'Eventet ändrades av någon annan. Ladda om och försök igen.',
-        );
+        _showError(eventChangeFailureMessage(error));
       }
       return;
     }
@@ -1059,6 +1105,31 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
   }
 
   Future<void> _transition(String targetState) async {
+    if (targetState == 'cancelled') {
+      final strings = AppStrings.of(context);
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(strings.feature('Ställ in aktiviteten?')),
+          content: Text(
+            strings.feature(
+              'Aktiviteten ställs in och dess kopplade resursbokningar avbokas. Kallelser återkallas också. Om aktiviteten återaktiveras behöver resurser bokas på nytt.',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(strings.feature('Avbryt')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(strings.feature('Ställ in')),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
     try {
       await widget.calendar.transitionEvent(
         eventId: event.id,
@@ -1072,9 +1143,7 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
       AppErrors.caught('event_details_page._transition', error);
 
       if (mounted) {
-        _showError(
-          'Eventet ändrades av någon annan. Ladda om och försök igen.',
-        );
+        _showError(eventChangeFailureMessage(error));
       }
     }
   }
@@ -1119,7 +1188,9 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
 
       if (mounted) {
         _showError(
-          'Eventet kan inte tas bort. Det kan ha ändrats eller fått kallelser.',
+          error.toString().contains('event_booking_history')
+              ? eventChangeFailureMessage(error)
+              : 'Eventet kan inte tas bort. Det kan ha ändrats eller fått kallelser.',
         );
       }
     }
@@ -2171,17 +2242,52 @@ class _EventBookingsSection extends StatefulWidget {
     required this.endsAt,
     required this.services,
     this.canBook = false,
+    this.canManage = false,
+    this.recurring = false,
+    required this.onChanged,
   });
   final String eventId, eventTitle;
   final DateTime startsAt, endsAt;
   final EventBookingServices services;
-  final bool canBook;
+  final bool canBook, canManage, recurring;
+  final Future<void> Function() onChanged;
 
   @override
   State<_EventBookingsSection> createState() => _EventBookingsSectionState();
 }
 
-class _EventBookingsSectionState extends State<_EventBookingsSection> {
+class _EventBookingsSectionState extends State<_EventBookingsSection>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  void _refreshBookings() => setState(() {
+    _bookings = _load();
+    _targets = _loadTargets();
+  });
+
+  /// After a booking changed: the list here, and the rest of the activity
+  /// (its details, and the calendar behind it), without leaving the page.
+  void _bookingChanged() {
+    _refreshBookings();
+    unawaited(widget.onChanged());
+  }
+
+  // Back from Webtools, where more may have been booked.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) _bookingChanged();
+  }
+
   late Future<List<EventBooking>> _bookings = _load();
   late Future<List<({String organizationId, String name, String? teamId})>>
   _targets = _loadTargets();
@@ -2193,7 +2299,7 @@ class _EventBookingsSectionState extends State<_EventBookingsSection> {
       return await widget.services.listEventBookingTargets(widget.eventId);
     } catch (error) {
       AppErrors.caught('event_details_page._EventBookingsSection', error);
-      return const [];
+      rethrow;
     }
   }
 
@@ -2221,7 +2327,7 @@ class _EventBookingsSectionState extends State<_EventBookingsSection> {
         ),
       );
       if (booked != null && mounted) {
-        setState(() => _bookings = _load());
+        _bookingChanged();
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(booked)));
@@ -2293,7 +2399,7 @@ class _EventBookingsSectionState extends State<_EventBookingsSection> {
     try {
       await widget.services.cancelEventBooking(booking, wholeGroup: choice);
       if (!mounted) return;
-      setState(() => _bookings = _load());
+      _bookingChanged();
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(strings.feature('Avbokat.'))));
@@ -2307,7 +2413,11 @@ class _EventBookingsSectionState extends State<_EventBookingsSection> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            strings.feature('Bokningen kunde inte avbokas. Försök igen.'),
+            strings.feature(
+              error.toString().contains('stale_revision')
+                  ? 'Bokningen har ändrats. Listan har uppdaterats; kontrollera den igen.'
+                  : 'Bokningen kunde inte avbokas. Försök igen.',
+            ),
           ),
         ),
       );
@@ -2327,7 +2437,9 @@ class _EventBookingsSectionState extends State<_EventBookingsSection> {
   void didUpdateWidget(covariant _EventBookingsSection oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.eventId != widget.eventId ||
-        oldWidget.canBook != widget.canBook) {
+        oldWidget.canBook != widget.canBook ||
+        oldWidget.startsAt != widget.startsAt ||
+        oldWidget.endsAt != widget.endsAt) {
       _bookings = _load();
       _targets = _loadTargets();
     }
@@ -2348,11 +2460,21 @@ class _EventBookingsSectionState extends State<_EventBookingsSection> {
     future: _bookings,
     builder: (context, snapshot) => FutureBuilder(
       future: _targets,
-      builder: (context, targetSnapshot) => _content(
-        context,
-        snapshot.data ?? const <EventBooking>[],
-        targetSnapshot.data ?? const [],
-      ),
+      builder: (context, targetSnapshot) => snapshot.hasError
+          ? Column(
+              children: [
+                const Text('Resursbokningarna kunde inte hämtas.'),
+                TextButton(
+                  onPressed: _refreshBookings,
+                  child: const Text('Försök igen'),
+                ),
+              ],
+            )
+          : _content(
+              context,
+              snapshot.data ?? const <EventBooking>[],
+              targetSnapshot.data ?? const [],
+            ),
     ),
   );
 
@@ -2369,6 +2491,35 @@ class _EventBookingsSectionState extends State<_EventBookingsSection> {
       key: const ValueKey('event-bookings'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Row(
+          children: [
+            Expanded(child: Text(strings.feature('Resursbokningar'))),
+            IconButton(
+              onPressed: _refreshBookings,
+              tooltip: strings.feature('Uppdatera resursbokningar'),
+              icon: const Icon(Icons.refresh),
+            ),
+          ],
+        ),
+        if (bookings.isEmpty)
+          Text(strings.feature('Ingen resurs är bokad för aktiviteten.')),
+        if (bookings.any(
+          (b) =>
+              !b.active &&
+              !bookings.any(
+                (other) =>
+                    other.active &&
+                    (b.resourceId != null
+                        ? other.resourceId == b.resourceId
+                        : other.resourceName == b.resourceName &&
+                              other.organizationName == b.organizationName),
+              ),
+        ))
+          Text(
+            strings.feature(
+              'En tidigare bokad resurs är avbokad eller nekad. Aktiviteten är kvar. Kontrollera resursstatus nedan.',
+            ),
+          ),
         for (final booking in bookings)
           ListTile(
             key: ValueKey('event-booking-${booking.id}'),
@@ -2379,7 +2530,7 @@ class _EventBookingsSectionState extends State<_EventBookingsSection> {
               [
                 '${time(booking.startsAt)}–${time(booking.endsAt)}',
                 booking.organizationName,
-                if (booking.pending) strings.feature('Väntar på godkännande'),
+                strings.feature(booking.statusLabel),
               ].join(' · '),
             ),
             trailing: booking.canCancel
@@ -2390,6 +2541,23 @@ class _EventBookingsSectionState extends State<_EventBookingsSection> {
                     icon: const Icon(Icons.close),
                   )
                 : null,
+          ),
+        if (widget.canManage &&
+            bookings.isNotEmpty &&
+            widget.services is BookingManagementServices)
+          EventBookingManagement(
+            key: ValueKey(
+              'booking-management-${bookings.map((b) => '${b.id}:${b.revision}').join(',')}-${widget.startsAt}',
+            ),
+            services: widget.services as BookingManagementServices,
+            bookings: bookings,
+            startsAt: widget.startsAt,
+            endsAt: widget.endsAt,
+            recurring: widget.recurring,
+            onChanged: () async {
+              _refreshBookings();
+              await widget.onChanged();
+            },
           ),
         for (final target in targets)
           Padding(
@@ -2507,6 +2675,8 @@ class _BookResourcesSheetState extends State<_BookResourcesSheet> {
         _error = strings.feature(
           busy
               ? 'Någon av resurserna hann bli upptagen. Ingen har bokats. Välj igen.'
+              : error.toString().contains('event_changed')
+              ? eventChangeFailureMessage(error)
               : 'Bokningen kunde inte göras. Försök igen.',
         );
         if (busy) {

@@ -153,6 +153,8 @@ class CalendarProjection {
 
 class EventDetails {
   const EventDetails({
+    this.clubId,
+    this.owningTeamId,
     required this.id,
     required this.title,
     required this.description,
@@ -184,6 +186,7 @@ class EventDetails {
     this.meetingAgenda,
   });
   final String id, title, type, state, timezone;
+  final String? clubId, owningTeamId;
   final bool callupsRequired;
   final String? description, locationName;
 
@@ -211,6 +214,8 @@ class EventDetails {
   factory EventDetails.fromJson(Map<String, dynamic> json) {
     final location = json['location'];
     return EventDetails(
+      clubId: json['club_id'] as String?,
+      owningTeamId: json['owning_team_id'] as String?,
       id: json['id'] as String,
       title: json['title'] as String,
       callupsRequired: json['callups_required'] as bool? ?? true,
@@ -911,6 +916,9 @@ class EventLineup {
 class EventBooking {
   const EventBooking({
     required this.id,
+    this.revision = 1,
+    this.revisions = const {},
+    this.resourceId,
     required this.resourceName,
     required this.category,
     required this.organizationName,
@@ -922,6 +930,9 @@ class EventBooking {
     this.canCancel = false,
   });
   final String id, resourceName, category, organizationName, status;
+  final String? resourceId;
+  final int revision;
+  final Map<String, int> revisions;
   final DateTime startsAt, endsAt;
   final String? title;
 
@@ -930,9 +941,22 @@ class EventBooking {
   final bool canCancel;
 
   bool get pending => status == 'pending';
+  bool get active => status == 'pending' || status == 'confirmed';
+  String get statusLabel => switch (status) {
+    'pending' => 'Väntar på godkännande',
+    'confirmed' => 'Bokad',
+    'declined' => 'Nekad',
+    'cancelled' => 'Avbokad',
+    _ => 'Okänd status',
+  };
 
   factory EventBooking.fromJson(Map<String, dynamic> json) => EventBooking(
     id: json['id'] as String,
+    revision: (json['revision'] as num?)?.toInt() ?? 1,
+    revisions: (json['revisions'] as Map<String, dynamic>? ?? const {}).map(
+      (key, value) => MapEntry(key, (value as num).toInt()),
+    ),
+    resourceId: json['resource_id'] as String?,
     resourceName: json['resource_name'] as String,
     category: json['category'] as String,
     organizationName: json['organization_name'] as String,

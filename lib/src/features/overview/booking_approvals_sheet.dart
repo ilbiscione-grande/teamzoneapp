@@ -89,10 +89,13 @@ class _BookingApprovalsSheetState extends State<BookingApprovalsSheet> {
     } catch (error) {
       AppErrors.caught('booking_approvals_sheet.decide', error);
       if (!mounted) return;
-      final handled = error.toString().contains('not_pending');
+      final stale = error.toString().contains('stale_revision');
+      final handled = stale || error.toString().contains('not_pending');
       setState(() {
         _deciding = null;
-        _error = handled
+        _error = stale
+            ? 'Bokningen har ändrats. Listan har uppdaterats; kontrollera den igen.'
+            : handled
             ? 'Bokningen är redan hanterad.'
             : 'Beslutet kunde inte sparas. Försök igen.';
         if (handled) _pending = _load();

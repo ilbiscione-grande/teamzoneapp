@@ -18,6 +18,10 @@ import {
 const allowedWebOrigins = webOrigins(
   Deno.env.get("TEAMZONE_EXTRA_WEB_ORIGINS"),
 );
+// This preview belongs to the audit project; keep other environments unchanged.
+if (Deno.env.get("SUPABASE_URL") === "https://hgcshgunvooyudvrcpig.supabase.co") {
+  allowedWebOrigins.add("https://teamzoneapp-b02a2--booking-safety-5hsymkm1.web.app");
+}
 
 function corsHeaders(origin: string | null): Record<string, string> {
   const headers: Record<string, string> = {

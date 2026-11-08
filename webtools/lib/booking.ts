@@ -15,8 +15,26 @@ export type OrganizationSummary = {
 export type OrgKind = "club" | "association" | "company" | "school" | "other";
 export type ResourceCategory = "pitch" | "hall" | "locker_room" | "vehicle" | "equipment" | "room" | "other";
 
+export type ResourceOwnership = "unspecified" | "owned" | "external";
+
+export type ResourceWindow = { start: number; end: number };
+export type ResourceAvailability = {
+  mode: "always" | "weekly";
+  weekly: (ResourceWindow & { day: number })[];
+  exceptions: { date: string; windows: ResourceWindow[] }[];
+};
+
 export type Resource = {
+  parent_resource_id?: string | null;
+  availability?: ResourceAvailability;
   id: string;
+  revision?: number;
+  ownership_kind?: ResourceOwnership;
+  owner_name?: string | null;
+  timezone?: string;
+  available_from?: string | null;
+  available_until?: string | null;
+  pitch_layout?: Record<string,string> | null;
   name: string;
   category: ResourceCategory;
   description: string | null;
@@ -56,21 +74,36 @@ export type Booking = {
   event_id: string | null;
   event_title: string | null;
   can_cancel: boolean;
+  can_move_event?: boolean;
+  future_plan_id?: string | null;
+  resource_event_series?: boolean;
+  event_starts_at?: string | null;
+  event_ends_at?: string | null;
   can_decide: boolean;
   /** A recurring booking: its series and how many coming times are left. */
   series_id?: string | null;
+  series_sequence?: number | null;
+  series_forward_remaining?: number;
+  series_upcoming_remaining?: number;
+  event_upcoming_remaining?: number;
+  event_forward_remaining?: number;
   series_remaining?: number | null;
   /** Booked together with other resources: the group and its resources. */
   group_id?: string | null;
   group_resources?: string[] | null;
 };
 
+export type SeriesOverride = { original_starts_at: string; starts_at: string; ends_at: string; resource_ids: string[] };
+export type SeriesTime = { starts_at: string; ends_at: string; clash: boolean; outside_disposition?: boolean;
+  original_starts_at?: string; resource_ids?: string[]; changed?: boolean;
+  blocked_resources?: { resource_id: string; name: string; outside_disposition: boolean }[] };
+
 /** A planned or booked series: every time, and whether it clashes. */
 export type SeriesPlan = {
   series_id: string | null;
   status: "pending" | "confirmed";
   created: number;
-  times: { starts_at: string; ends_at: string; clash: boolean }[];
+  times: SeriesTime[];
 };
 
 export const weekdayLabels = ["Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön"];
@@ -129,14 +162,49 @@ export const statusLabels: Record<BookingStatus, string> = {
 
 /** The API's error codes as sentences; anything else is a general failure. */
 const errorMessages: Record<string, string> = {
+  activity_link_not_standalone: "Bara kommande, aktiva bokningar utan aktivitetskoppling kan kopplas. Ladda om bokningen.",
+  activity_resource_already_booked: "Aktiviteten har redan en aktiv bokning av någon av resurserna. Hantera den befintliga bokningen först.",
+  series_plan_requires_combined: "Serien har en seriegrund. Använd Ändra tid och resurser så att även nya framtida tillfällen följer ändringen.",
+  series_plan_multiple_organizations: "Aktivitetsserien har resurser från flera organisationer. Den kan inte genereras från en enda organisations seriegrund.",
+  generation_failed: "Tillfället kunde inte skapas. Kontrollera seriegrunden och försök igen.",
+  past_occurrence: "Tillfället har passerat och skapas inte i efterhand.",
+  booking_change_conflicts: "Tiden eller någon resurs är inte tillgänglig. Ingen ändring har sparats. Förhandsvisa igen.",
+  booking_change_no_change: "Ingen tid eller resurs behöver ändras med dina val.",
+  pitch_layout_exists: "Planen har redan delar. Använd den befintliga indelningen eller kontakta administratören för hjälp med upplägget.",
+  invalid_resource_set: "Välj vilka resurser som ska läggas till och tas bort. Samma resurs kan inte väljas i båda listorna.",
+  too_many_resources: "En bokning kan ha högst tio aktiva resurser. Ta bort någon resurs först.",
+  resource_set_conflicts: "Något tillfälle kan inte ändras. Ingen ändring har sparats. Förhandsvisa igen för att se aktuella konflikter.",
+  resource_set_no_change: "Inga resurser behöver ändras med dina val.",
+  resource_series_ambiguous: "Ett tillfälle har flera separata bokningar av ursprungsresursen. Byt dem var för sig för att undvika ett otydligt seriebyte.",
+  resource_change_requires_future: "Resurs kan bara bytas för ett tillfälle som inte har börjat.",
+  resource_change_not_found: "Välj en resurs i samma organisation.",
+  resource_change_same: "Välj en annan resurs än den som redan är bokad.",
+  resource_change_conflicts: "Den nya resursen kan inte bokas. Din befintliga bokning är kvar. Förhandsvisa igen för att se aktuella konflikter.",
+  forward_conflicts: "Ett tillfälle kan inte flyttas. Ingen ändring har sparats. Förhandsvisa igen för att se de aktuella konflikterna.",
+  forward_requires_future: "Välj ett tillfälle som inte har börjat. Pågående och tidigare tillfällen flyttas inte med serien.",
+  forward_series_not_found: "Det här tillfället hör inte till en serie som kan flyttas här.",
+  forward_invalid_local_time: "En av tiderna är ogiltig eller tvetydig vid övergången mellan sommar- och vintertid. Välj en annan klocktid och förhandsvisa igen.",
+  event_move_not_allowed: "Du saknar behörighet att ändra aktiviteten. Du kan ändra bara resursens bokningstid.",
+  event_booking_conflict: "Någon av aktivitetens resurser är upptagen. Hela ändringen har stoppats.",
+  event_booking_outside_hours: "Någon av aktivitetens resurser är inte tillgänglig under den nya tiden.",
+  event_booking_inactive: "Någon av aktivitetens resurser är inaktiverad.",
+  event_booking_invalid_time: "Kontrollera tiderna för aktiviteten och alla dess bokningar.",
+  invalid_timezone: "Ange en giltig tidszon, till exempel Europe/Stockholm.",
+  invalid_resource_hierarchy: "Välj en överordnad resurs i samma organisation. En resurs kan inte vara del av sig själv eller någon av sina underdelar.",
+  hierarchy_has_bookings: "Indelningen kan inte ändras eftersom befintliga bokningar då skulle krocka eller hamna utanför tillåtna tider. Hantera bokningarna först.",
+  invalid_availability: "Kontrollera veckotider och datumundantag. Sluttiden måste vara efter starttiden inom samma dag och varje undantagsdatum får bara förekomma en gång.",
+  invalid_disposition: "Kontrollera ägare och dispositionsperiod. Slutdatum måste vara samma dag eller senare än startdatum.",
+  disposition_has_bookings: "Tiderna kan inte ändras eftersom befintliga bokningar skulle hamna utanför. Hantera bokningarna först.",
+  resource_outside_disposition: "Resursen får inte bokas utanför sina bokningsbara tider eller dispositionsperioden. Välj en annan tid.",
   stale_revision: "Bokningen har ändrats. Ladda om bokningarna och kontrollera dem igen.",
   revision_required: "Ladda om bokningarna innan du fortsätter.",
   idempotency_conflict: "Förfrågan har ändrats. Ladda om och försök igen.",
-  resource_busy: "Resursen är redan bokad den tiden. Välj en annan tid eller resurs.",
+  resource_busy: "Resursen eller en överordnad/underordnad del är redan bokad den tiden. Välj en annan tid eller resurs.",
   in_the_past: "Tiden har redan passerat.",
   invalid_time: "Sluttiden behöver vara efter starttiden, och en bokning får vara högst 31 dagar.",
   resource_inactive: "Resursen går inte att boka just nu.",
   not_team_leader: "Du kan bara boka för lag där du är ledare.",
+  event_changed: "Aktivitetens tid har ändrats. Ladda om aktiviteten och kontrollera tiderna innan du bokar.",
   event_not_found: "Aktiviteten hör inte till laget eller syns inte för dig.",
   event_needs_team: "Välj laget först när bokningen gäller en aktivitet.",
   not_admin: "Det kräver att du är administratör för organisationen.",
@@ -154,6 +222,20 @@ const errorMessages: Record<string, string> = {
 export function bookingError(error: { message?: string } | null | undefined): string {
   const code = error?.message ?? "";
   return errorMessages[code] ?? "Det gick inte. Försök igen.";
+}
+
+/** Stable parent-before-child order, including inactive parents and malformed legacy roots. */
+export function resourceTree(resources: Resource[]): {resource:Resource;depth:number}[] {
+  const result:{resource:Resource;depth:number}[]=[],seen=new Set<string>();
+  const visit=(resource:Resource,depth:number)=>{
+    if(seen.has(resource.id))return;
+    seen.add(resource.id);result.push({resource,depth});
+    resources.filter(r=>r.parent_resource_id===resource.id).sort((a,b)=>a.name.localeCompare(b.name,"sv")).forEach(r=>visit(r,depth+1));
+  };
+  const sorted=[...resources].sort((a,b)=>a.name.localeCompare(b.name,"sv"));
+  sorted.filter(r=>!r.parent_resource_id||!resources.some(p=>p.id===r.parent_resource_id)).forEach(r=>visit(r,0));
+  sorted.forEach(r=>visit(r,0));
+  return result;
 }
 
 /** "2026-10-21" in local time. */
@@ -313,4 +395,30 @@ export function parseFilter(value: string | null): CalendarFilter | null {
   } catch {
     return null;
   }
+}
+
+/** Resource paths and descendant checks also tolerate partial legacy responses. */
+export function resourcePath(resource: Resource, resources: Resource[]): string {
+  const names = [resource.name];
+  const seen = new Set([resource.id]);
+  let parent = resource.parent_resource_id;
+  while (parent && !seen.has(parent)) {
+    seen.add(parent);
+    const found = resources.find(item => item.id === parent);
+    if (!found) break;
+    names.unshift(found.name);
+    parent = found.parent_resource_id;
+  }
+  return names.join(" → ");
+}
+
+export function resourceCanContain(parent: Resource, childId: string | null, resources: Resource[]): boolean {
+  const seen = new Set<string>();
+  let current: Resource | undefined = parent;
+  while (current) {
+    if (current.id === childId || seen.has(current.id)) return false;
+    seen.add(current.id);
+    current = resources.find(item => item.id === current?.parent_resource_id);
+  }
+  return true;
 }

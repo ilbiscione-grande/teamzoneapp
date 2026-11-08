@@ -1,10 +1,16 @@
 // Webtools Bokningshanterare (2026-10-20), in isolated Postgres with a
 // reduced schema. node supabase/tests/booking_manager.local.mjs
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { PGlite } from '../../.tmp-search-test/node_modules/@electric-sql/pglite/dist/index.js';
 const read = p => readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
-const db = new PGlite();
+const { btree_gist } = await import('../../.tmp-search-test/node_modules/@electric-sql/pglite/dist/contrib/btree_gist.js');
+const db = new PGlite({ extensions: { btree_gist } });
+// Export this same reduced schema for the multi-connection PostgreSQL test.
+const fixture = [];
+const exec = db.exec.bind(db);
+db.exec = sql => { fixture.push(sql); return exec(sql); };
+await db.exec('create schema extensions');
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 let locker2;
 const owner = id(1), friend = id(2), coach = id(3), clubAdmin = id(4), stranger = id(5), coach2 = id(6);
@@ -52,7 +58,10 @@ insert into core.event_teams values ('${event}','${club}','${team}'),('${otherEv
 create function internal.actor_has_capability(c uuid, t uuid, cap text) returns boolean language sql stable as
   $$select auth.uid() = '${clubAdmin}'::uuid and cap = 'club.memberships.manage'$$;
 create function internal.actor_can_read_event(e uuid) returns boolean language sql stable as $$select auth.uid() in ('${coach}'::uuid, '${clubAdmin}'::uuid)$$;
+alter table core.events add column revision bigint not null default 1, add column recurrence_id uuid, add column occurrence_number integer default 1, add column timezone text not null default 'UTC';
+create function internal.actor_can_manage_event(e uuid) returns boolean language sql stable as $$select auth.uid() in ('${coach}'::uuid,'${clubAdmin}'::uuid)$$;
 grant usage on schema api, internal, core, auth to authenticated;`);
+await db.exec("alter function internal.actor_has_capability(uuid,uuid,text) set search_path = ''; alter function internal.actor_can_read_event(uuid) set search_path = '';");
 await db.exec(read('supabase/migrations/20261115090000_booking_manager.sql'));
 await db.exec(read('supabase/migrations/20261115100000_booking_team_events_venue.sql'));
 await db.exec(read('supabase/migrations/20261116090000_booking_notifications.sql'));
@@ -62,6 +71,36 @@ await db.exec(read('supabase/migrations/20261117090000_booking_series.sql'));
 await db.exec(read('supabase/migrations/20261117100000_booking_groups.sql'));
 await db.exec(read('supabase/migrations/20261117110000_booking_availability.sql'));
 await db.exec(read('supabase/migrations/20261118090000_booking_cancel_from_event.sql'));
+await db.exec(read('supabase/migrations/20261225090000_booking_safety_commands.sql'));
+await db.exec(read('supabase/migrations/20261226090000_booking_resource_ownership.sql'));
+await db.exec(read('supabase/migrations/20261228090000_booking_resource_schedule.sql'));
+await db.exec(read('supabase/migrations/20261229090000_booking_resource_hierarchy.sql'));
+await db.exec(read('supabase/migrations/20261230090000_booking_event_sync.sql'));
+await db.exec(read('supabase/migrations/20261231090000_booking_reverse_sync.sql'));
+await db.exec(read('supabase/migrations/20270103080000_booking_forward_time.sql'));
+await db.exec(read('supabase/migrations/20270105090000_booking_upcoming_series.sql'));
+await db.exec(read('supabase/migrations/20270106090000_booking_resource_swap.sql'));
+await db.exec(read('supabase/migrations/20270108090000_booking_resource_series.sql'));
+await db.exec(read('supabase/migrations/20270112090000_booking_resource_sets.sql'));
+await db.exec(read('supabase/migrations/20270116090000_booking_combined_changes.sql'));
+await db.exec(`create table core.recurrence_rules(id uuid primary key default gen_random_uuid(),club_id uuid,timezone text,frequency text,interval_value integer,local_start timestamp,occurrence_count integer,revision bigint default 1);
+alter table core.events add column owning_team_id uuid,add column description text,add column all_day boolean default false;
+alter table core.event_teams add column relation text default 'primary',add column capabilities text[] default '{}';
+create table core.event_audiences(id uuid default gen_random_uuid(),club_id uuid,event_id uuid,audience_type text,team_id uuid,created_by uuid);
+`);
+await db.exec(read('supabase/migrations/20270120090000_booking_series_plans.sql'));
+await db.exec(read('supabase/migrations/20270121090000_booking_standalone_activity_link.sql'));
+// The reduced fixture tests the orchestration and trigger. Actual event API
+// history/outbox behavior is exercised against the complete audit schema.
+await db.exec(`create or replace function internal.revise_event_v2_for_actor(target_event_id uuid, change_scope text, patch jsonb, expected_revision bigint, idempotency_key uuid) returns bigint language plpgsql security definer set search_path='' as $$ declare rev bigint; begin if internal.actor_can_manage_event(target_event_id) is not true then raise insufficient_privilege;end if; update core.events set starts_at=(patch->>'starts_at')::timestamptz,ends_at=(patch->>'ends_at')::timestamptz,revision=revision+1 where id=target_event_id and revision=expected_revision returning revision into rev; if rev is null then raise serialization_failure;end if;return rev;end; $$;`);
+if (process.env.BOOKING_FIXTURE_PATH) {
+  writeFileSync(process.env.BOOKING_FIXTURE_PATH, fixture.join('\n;\n').replace(
+    'create role anon; create role authenticated;',
+    () => "do $$ begin if not exists(select 1 from pg_roles where rolname='anon') then create role anon; end if; if not exists(select 1 from pg_roles where rolname='authenticated') then create role authenticated; end if; end $$;"
+  ));
+  await db.close();
+}
+if (!process.env.BOOKING_FIXTURE_PATH) {
 await db.exec('begin');
 
 // Standalone: anyone signed in creates an organisation and becomes admin.
@@ -153,7 +192,7 @@ await fails(coach, 'select api.create_booking($1,$2,$3,null,null,$4,$5)', [locke
 await fails(coach, 'select api.create_booking($1,$2,$3,null,null,null,$4)', [locker, t(70), t(71), event], /event_needs_team/);
 // The app: where the coach can book for the match, and for which team.
 assert.deepEqual(await call(coach, 'select api.list_event_booking_targets($1)', [event]), [{ organization_id: clubOrg, name: 'Demoklubben IF', team_id: team }]);
-assert.deepEqual((await call(clubAdmin, 'select api.list_event_booking_targets($1)', [event])).map(t => t.team_id), [null], 'an admin who leads no team books without one');
+assert.deepEqual((await call(clubAdmin, 'select api.list_event_booking_targets($1)', [event])).map(t => t.team_id), [team], 'an admin receives an authorized team for the activity');
 await fails(stranger, 'select api.list_event_booking_targets($1)', [event], /not_found/);
 // The app: the activity lists its bookings for those who see it.
 const onEvent = await call(coach, 'select api.list_event_bookings($1)', [event]);
@@ -167,7 +206,7 @@ assert.deepEqual(await call(coach, 'select api.list_booking_organizations()'), [
 await fails(stranger, 'select api.cancel_booking($1)', [busForMatch.id], /not_found/);
 await call(coach2, 'select api.cancel_booking($1)', [busForMatch.id]);
 assert.equal((await inbox(coach)).items[0].kind, 'cancelled');
-assert.deepEqual(await call(coach, 'select api.list_event_bookings($1)', [event]), []);
+assert.deepEqual((await call(coach, 'select api.list_event_bookings($1)', [event])).map(b => [b.id,b.status,b.can_cancel]), [[busForMatch.id,'cancelled',false]]);
 // Recurring: every Tuesday and Thursday for four weeks, from next Monday.
 const monday = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() + ((8 - d.getUTCDay()) % 7 || 7)); return d.toISOString().slice(0, 10); })();
 const plusDays = (day, n) => { const d = new Date(day + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
@@ -226,4 +265,21 @@ await fails(stranger, 'select api.list_booking_availability($1,$2,$3)', [org, gS
 await fails(friend, 'select api.decide_booking_group($1,true)', [group.group_id], /not_admin/);
 assert.equal(await call(owner, 'select api.decide_booking_group($1,true)', [group.group_id]), 1);
 assert.equal(await call(friend, 'select api.cancel_booking_group($1)', [group.group_id]), 2);
-console.log('booking manager: ok');
+await import('./booking_safety.cases.mjs').then(m => m.checkBookingSafety({db,call,fails,owner,friend,coach,clubAdmin,stranger,clubOrg,club,team,event,org,pitch,bus,t,id}));
+await import('./booking_resource_ownership.cases.mjs').then(m => m.checkResourceOwnership({db,call,fails,owner,friend,stranger,org,t,id}));
+await import('./booking_resource_schedule.cases.mjs').then(m => m.checkResourceSchedule({db,call,fails,owner,friend,stranger,org}));
+await import('./booking_resource_hierarchy.cases.mjs').then(m => m.checkResourceHierarchy({db,call,fails,owner,friend,stranger,org}));
+await import('./booking_event_sync.cases.mjs').then(m => m.checkEventSync({db,call,fails,owner,friend,coach,clubAdmin,stranger,org,club,team,event}));
+await import('./booking_reverse_sync.cases.mjs').then(m => m.checkReverseSync({db,call,fails,owner,friend,coach,clubAdmin,stranger}));
+await import('./booking_forward_time.cases.mjs').then(m => m.checkForwardTime({db,call,fails,owner,friend,coach,stranger}));
+  await import('./booking_upcoming_series.cases.mjs').then(m => m.checkUpcomingSeries({db,call,fails,owner,friend,coach,stranger}));
+await import('./booking_resource_swap.cases.mjs').then(m => m.checkResourceSwap({db,call,fails,owner,friend,coach,stranger,club,team,event}));
+await import('./booking_resource_series.cases.mjs').then(m => m.checkResourceSeries({db,call,fails,owner,friend,coach,stranger}));
+await import('./booking_resource_sets.cases.mjs').then(m => m.checkResourceSets({db,call,fails,owner,friend,coach,stranger}));
+await import('./booking_combined.cases.mjs').then(m => m.checkCombined({db,call,fails,owner,friend,coach,stranger}));
+await import('./booking_series_plans.cases.mjs').then(m => m.checkSeriesPlans({db,call,fails,owner,friend,coach,clubAdmin,stranger}));
+await import('./booking_activity_link.cases.mjs').then(m => m.checkActivityLink({db,call,fails,owner,coach,stranger,clubOrg,club,team}));
+await db.exec('rollback');
+await db.close();
+console.log('booking manager and safety: ok');
+}

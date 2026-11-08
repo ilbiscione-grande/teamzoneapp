@@ -1,3 +1,6 @@
+import 'booking_management_services.dart';
+export 'event_booking_sync.dart';
+import 'package:teamzone_app/src/shared/async/booking_command.dart';
 import 'dart:async';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -509,7 +512,11 @@ class UnconfiguredCalendarServices implements CalendarServices {
 }
 
 class SupabaseCalendarServices
-    implements CalendarServices, EventBookingServices, TournamentServices {
+    implements
+        CalendarServices,
+        EventBookingServices,
+        TournamentServices,
+        BookingManagementServices {
   @override
   String? get accountEmail => _client.auth.currentUser?.email;
 
@@ -596,6 +603,24 @@ class SupabaseCalendarServices
         : null;
   }
 
+  BookingManagementServices get _bookingManagement =>
+      SupabaseBookingManagement(_client);
+  @override
+  Future<BookingData> getSeriesPlan(String bookingId) =>
+      _bookingManagement.getSeriesPlan(bookingId);
+  @override
+  Future<void> controlSeriesPlan(BookingData plan, String action) =>
+      _bookingManagement.controlSeriesPlan(plan, action);
+  @override
+  Future<BookingData> previewBookingChange(BookingData parameters) =>
+      _bookingManagement.previewBookingChange(parameters);
+  @override
+  Future<void> saveBookingChange(BookingData parameters, BookingData preview) =>
+      _bookingManagement.saveBookingChange(parameters, preview);
+  @override
+  Future<List<ResourceAvailability>> changeResources(BookingData preview) =>
+      _bookingManagement.changeResources(preview);
+
   @override
   Future<List<ResourceAvailability>> listBookingAvailability({
     required String organizationId,
@@ -631,22 +656,20 @@ class SupabaseCalendarServices
     String? teamId,
     String? eventId,
   }) async {
-    final value = await _client
-        .schema('api')
-        .rpc<Object?>(
-          'create_booking_group',
-          params: {
-            'target_resource_ids': resourceIds,
-            'booking_starts_at': startsAt.toUtc().toIso8601String(),
-            'booking_ends_at': endsAt.toUtc().toIso8601String(),
-            'booking_title': title,
-            'booking_notes': null,
-            'target_team_id': teamId,
-            'target_event_id': eventId,
-            'dry_run': false,
-          },
-        )
-        .timeout(const Duration(seconds: 15));
+    final value = await executeBookingCommand(_client, 'create_booking_group', {
+      'target_resource_ids': resourceIds,
+      'booking_starts_at': startsAt.toUtc().toIso8601String(),
+      'booking_ends_at': endsAt.toUtc().toIso8601String(),
+      'booking_title': title,
+      'booking_notes': null,
+      'target_team_id': teamId,
+      'target_event_id': eventId,
+      if (eventId != null)
+        'expected_event_starts_at': startsAt.toUtc().toIso8601String(),
+      if (eventId != null)
+        'expected_event_ends_at': endsAt.toUtc().toIso8601String(),
+      'dry_run': false,
+    });
     if (value is! Map) throw const FormatException('Invalid booking.');
     return (value['pending'] as num?)?.toInt() ?? 0;
   }
@@ -659,10 +682,14 @@ class SupabaseCalendarServices
     final (name, params) = wholeGroup && booking.groupId != null
         ? ('cancel_booking_group', {'target_group_id': booking.groupId})
         : ('cancel_booking', {'target_booking_id': booking.id});
-    await _client
-        .schema('api')
-        .rpc<Object?>(name, params: params)
-        .timeout(const Duration(seconds: 15));
+    await executeBookingCommand(
+      _client,
+      name,
+      params,
+      revisions: wholeGroup && booking.groupId != null
+          ? booking.revisions
+          : {booking.id: booking.revision},
+    );
   }
 
   @override
