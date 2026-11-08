@@ -1,7 +1,7 @@
 "use client";
 
 // Above the board, on one row: back to the projects (or the folder it was
-// opened from), the boards as tabs (renamed by a double click),
+// opened from), the boards as tabs (renamed by a double click; a list to choose from on a phone),
 // undo and redo, presenting, versions and settings, sharing (a link, PDF,
 // video and more, in one dialog) and how saving goes. The project's name, kind and team are under Inställningar.
 import Link from "next/link";
@@ -16,6 +16,7 @@ import { saveAsCopy, saveNow } from "./use-autosave.ts";
 import { ShareDialog } from "./ShareDialog.tsx";
 import { useCropping } from "./stage/CropFrame.tsx";
 import { BoardMenu } from "./BoardMenu.tsx";
+import { usePhone } from "./ViewerTools.tsx";
 import { LiveButton } from "./live/LiveButton.tsx";
 import { LiveDialog } from "./live/LiveDialog.tsx";
 import { TopBarMore } from "./TopBarMore.tsx";
@@ -32,6 +33,9 @@ const saveLabels: Record<SaveState, string> = {
 
 export const kindLabels = kindNames;
 
+/** The two actions at the end of a phone's list of boards. */
+const RENAME = "rename", REMOVE = "remove";
+
 function Boards() {
   const t = useT();
   const boards = useEditor(state => state.document?.boards ?? NONE);
@@ -40,6 +44,7 @@ function Boards() {
   const projectId = useEditor(state => state.meta?.id);
   const { items } = useLibrary();
   const [renaming, setRenaming] = useState<string | null>(null);
+  const phone = usePhone();
   // On a phone the tabs scroll sideways; the board you are on stays in view,
   // and on the last one so does "+" after it.
   useEffect(() => {
@@ -58,6 +63,28 @@ function Boards() {
     change(document => ({ ...document, boards: document.boards.filter(board => board.id !== id) }));
     setBoard(next.id);
   };
+  // A phone: the boards in a list to choose from, renaming and removing last in it, and "+" beside.
+  if (phone) {
+    const current = boards.find(board => board.id === boardId);
+    const choose = (value: string) => {
+      if (value === RENAME && current) {
+        const name = window.prompt(t("Tavlans namn"), current.name)?.trim();
+        if (name) rename(current.id, name);
+      } else if (value === REMOVE && current) remove(current.id, current.name);
+      else setBoard(value);
+    };
+    return (
+      <div className="tb-boards tb-boards-phone">
+        <select className="tb-board-select" value={boardId ?? ""} aria-label={t("Tavla")} onChange={event => choose(event.target.value)}>
+          {boards.map(board => <option key={board.id} value={board.id}>{board.name || t("Tavla")}</option>)}
+          <option disabled>──────────</option>
+          <option value={RENAME}>{t("Byt namn…")}</option>
+          {boards.length > 1 && <option value={REMOVE}>{t("Ta bort tavlan…")}</option>}
+        </select>
+        <BoardMenu />
+      </div>
+    );
+  }
   return (
     <div className="tb-boards" role="tablist" aria-label={t("Tavlor")}>
       {boards.map(board => (

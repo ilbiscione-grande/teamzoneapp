@@ -216,7 +216,8 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
 @media (max-width: 760px) {
   .tb-top .tb-wide-only { display: none; }
   .tb-narrow-only { display: inline-flex; }
-  .tb-save[data-state="saved"] { display: none; }
+  /* Saved, or saving on its own as it does: said only when it goes wrong, so the board name has the room. */
+  .tb-save[data-state="saved"], .tb-save[data-state="dirty"], .tb-save[data-state="saving"] { display: none; }
   /* A failed save and its ways out get a row of their own, so they can be reached. */
   .tb-top-row:has(.tb-save[data-state="error"], .tb-save[data-state="conflict"]) { flex-wrap: wrap; }
   .tb-top-row:has(.tb-save[data-state="error"], .tb-save[data-state="conflict"]) .tb-boards { flex-basis: 0; }
@@ -351,3 +352,7 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
 .tb-recording-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .25); overflow: hidden; }
 .tb-recording-bar i { display: block; height: 100%; background: var(--wt-brand, #c6f432); transition: width .2s linear; }
 .tb-share-list li > .tb-actions { flex: none; flex-wrap: nowrap; }
+
+/* A phone: the boards in a list to choose from instead of tabs that scroll (TopBar). */
+.tb-boards-phone { align-items: center; gap: 6px; overflow: visible; }
+.tb-board-select { flex: 1 1 auto; min-width: 0; height: 36px; padding: 0 8px; border: 1px solid rgba(255, 255, 255, .2); border-radius: 8px; background: #0f1a14; color: white; font: inherit; font-size: .95rem; font-weight: 700; text-overflow: ellipsis; }

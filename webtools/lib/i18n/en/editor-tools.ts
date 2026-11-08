@@ -91,6 +91,8 @@ export const editorTools: Record<string, string> = {
   "Kunde inte spara": "Could not save",
   "Ändrat på annat håll": "Changed elsewhere",
   "Tavlans namn": "Board name",
+  "Byt namn…": "Rename…",
+  "Ta bort tavlan…": "Remove the board…",
   "Dubbelklicka för att byta namn": "Double-click to rename",
   "En annan ledare": "Another coach",
   "Visa i helskärm": "Show full screen",
