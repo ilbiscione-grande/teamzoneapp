@@ -1,0 +1,22 @@
+/* The help section (HelpIndex, GuideView): one readable column. */
+.tb-helpcenter { display: grid; gap: 28px; max-width: 760px; }
+.tb-helpcenter h2 { margin: 0 0 8px; }
+.tb-helpcenter-lead { margin: 0 0 12px; color: var(--wt-muted); font-size: 1.05rem; }
+.tb-helpcenter-search { display: grid; gap: 6px; font-weight: 700; }
+.tb-helpcenter-search input { min-height: 46px; padding: 0 14px; border: 1px solid var(--wt-line); border-radius: 8px; font: inherit; font-weight: 400; }
+.tb-helpcenter-guides { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.tb-helpcenter-guides a { display: grid; gap: 4px; height: 100%; padding: 14px 16px; border: 1px solid var(--wt-line); border-radius: 10px; background: white; color: var(--wt-text); text-decoration: none; }
+.tb-helpcenter-guides a:hover { border-color: var(--wt-brand); }
+.tb-helpcenter-guides span { color: var(--wt-muted); font-size: .9rem; }
+.tb-helpcenter-group { display: grid; gap: 6px; margin-bottom: 18px; }
+.tb-helpcenter-group h3 { margin: 4px 0; font-size: 1rem; }
+.tb-helpcenter details { border: 1px solid var(--wt-line); border-radius: 8px; background: white; }
+.tb-helpcenter summary { padding: 12px 14px; font-weight: 700; cursor: pointer; }
+.tb-helpcenter details p { margin: 0 14px 12px; }
+.tb-helpcenter-contact h2 { font-size: 1.1rem; }
+.tb-helpcenter-contact p { margin: 0; }
+.tb-guide section { display: grid; gap: 6px; }
+.tb-guide p, .tb-guide ol { margin: 0; }
+.tb-guide ol { padding-left: 22px; display: grid; gap: 6px; }
+.tb-helpcenter-tip { padding: 10px 14px; border-left: 3px solid var(--wt-brand); border-radius: 0 8px 8px 0; background: #f0f9e8; }
+.tb-guide-nav { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding-top: 8px; border-top: 1px solid var(--wt-line); }

@@ -31,6 +31,8 @@ export function TopBarMore({ onPresent, onLive, onVersions, onSettings }: { onPr
     ...(onLive ? [{ label: live ? t("Livelektion pågår") : t("Livelektion"), run: onLive }] : []),
     { label: t("Versioner"), run: onVersions },
     { label: t("Inställningar"), run: onSettings },
+    // In a new tab, so the board stays open where it was.
+    { label: t("Hjälp och guider"), run: () => { window.open("/support/tacticsboard", "_blank", "noopener"); } },
   ];
   const toggle = () => {
     const rect = button.current?.getBoundingClientRect();

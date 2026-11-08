@@ -50,6 +50,7 @@ export const billing: Record<string, string> = {
   "Priserna är inklusive moms. Du betalar med kort, Apple Pay eller Google Pay hos Stripe. I 14 dagar från köpet kan du ångra det med knappen Ångra köpet på kontosidan. Läs": "Prices include VAT. You pay by card, Apple Pay or Google Pay through Stripe. For 14 days from the purchase you can withdraw from it with the Withdraw from purchase button on the account page. Read the",
   "villkoren för Tacticsboard": "Tacticsboard terms",
   "Vanliga frågor": "Frequently asked questions",
+  "Fler frågor och guider till alla funktioner →": "More questions, and guides to every feature →",
 
   // Subscribing
   "25 % rabatt första året gäller årsabonnemang som tecknas senast 31 december 2026.": "25% off the first year applies to yearly subscriptions taken out by 31 December 2026.",

@@ -81,6 +81,7 @@ export function HelpDialog({ onClose }: { onClose: () => void }) {
           </section>
         ))}
         <p className="tb-hint">{t("På Mac används ⌘ i stället för Ctrl.")}</p>
+        <p className="tb-hint"><a href="/support/tacticsboard" target="_blank" rel="noopener">{t("Hjälp och guider")}</a>: {t("svar på vanliga frågor och guider till alla funktioner.")}</p>
         <p className="tb-hint">{t("Frågor eller problem? Mejla")} <a href={`mailto:${supportEmail}`}>{supportEmail}</a>. {t(supportReply)}</p>
         <div className="tb-actions">
           <button type="button" className="wt-button secondary small" disabled={reset} onClick={() => { resetTips(); setReset(true); }}>

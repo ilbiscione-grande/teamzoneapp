@@ -108,6 +108,7 @@ export async function TacticsProduct() {
             <div key={question}><dt>{t(question)}</dt><dd>{t(answer, { email: supportEmail })}</dd></div>
           ))}
         </dl>
+        <p><Link href="/support/tacticsboard">{t("Fler frågor och guider till alla funktioner →")}</Link></p>
       </section>
     </div>
   );

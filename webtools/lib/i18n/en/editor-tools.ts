@@ -119,6 +119,8 @@ export const editorTools: Record<string, string> = {
   // Help
   "På Mac används ⌘ i stället för Ctrl.": "On a Mac, use ⌘ instead of Ctrl.",
   "Frågor eller problem? Mejla": "Questions or problems? Email",
+  "Hjälp och guider": "Help and guides",
+  "svar på vanliga frågor och guider till alla funktioner.": "answers to common questions and guides to every feature.",
   "Stäng": "Close",
   "Klick": "Click",
   "Markera ett objekt (hela gruppen om det är grupperat)": "Select an object (the whole group if it is grouped)",
