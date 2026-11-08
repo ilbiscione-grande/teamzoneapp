@@ -5,10 +5,9 @@
 // ruler from one point to another. A placing tool stays in hand for several taps; a drawing tool goes
 // back to select after one stroke. On a wide screen the palette can be
 // wider, a short word under each icon, two or three to a row; the choice
-// stays in this browser. A phone has them in groups (PhoneToolbar).
+// stays in this browser. A phone has them in groups on the board (PhoneToolbar).
 import { useEffect, useState } from "react";
 import { useEditor, type Tool } from "../store.ts";
-import { PhoneToolbar } from "./PhoneToolbar.tsx";
 import { useT } from "../../language";
 
 /** Whether the screen is a phone's: the tools then come in groups. */
@@ -84,7 +83,8 @@ export function Toolbar({ homeColor, awayColor, onHelp }: { homeColor: string; a
   const measure = useEditor(state => state.measure);
   const [size, setSize] = useToolbarSize();
   const narrow = useNarrow();
-  if (narrow) return <PhoneToolbar homeColor={homeColor} awayColor={awayColor} />;
+  // A phone has its tools on the board, over "show all" (PhoneToolbar, from the editor).
+  if (narrow) return null;
   return (
     <nav className="tb-tools" data-size={size} aria-label={t("Verktyg")}>
       {groups.map(group => (

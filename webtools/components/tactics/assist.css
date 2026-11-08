@@ -40,14 +40,14 @@
   .tb-drills-grid button { min-height: 44px; }
 }
 
-/* The tools on a phone: four large group buttons, a group's tools opening above them. */
-.tb-phone-tools { position: relative; display: grid !important; grid-template-columns: repeat(4, 1fr); gap: 4px !important; padding: 4px 6px !important; overflow: visible !important; }
-.tb-phone-tools .tb-phone-button { width: auto !important; height: 50px !important; display: grid; place-items: center; align-content: center; gap: 1px; }
-.tb-phone-label { font-size: .7rem; font-weight: 700; color: #c9d5cd; }
-.tb-phone-tools .tb-phone-button[aria-pressed="true"] .tb-phone-label { color: var(--wt-accent-ink); }
-.tb-phone-tools .tb-phone-button[aria-expanded="true"] { box-shadow: inset 0 0 0 2px var(--wt-accent); }
-.tb-phone-group { position: absolute; z-index: 8; left: 6px; right: 6px; bottom: calc(100% + 6px); display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 6px; border-radius: 12px; background: #13221a; box-shadow: 0 -8px 24px rgba(0, 0, 0, .45); }
-.tb-phone-group button { width: auto !important; height: 58px !important; display: grid; place-items: center; align-content: center; gap: 2px; font-size: 1.2rem; }
+/* The tools on a phone: a column of group buttons on the board, over "show all"; a group's tools open to its left. */
+.tb-zoom .tb-phone-tools { order: 0; position: relative; display: grid; gap: 4px; padding: 0; background: none; overflow: visible; }
+.tb-zoom .tb-phone-tools button, .tb-zoom:has(.tb-phone-tools) > button { width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 8px; background: rgba(11, 17, 28, .72); color: white; font-size: 1.2rem; cursor: pointer; }
+.tb-zoom .tb-phone-tools button[aria-pressed="true"] { background: var(--wt-accent); color: var(--wt-accent-ink); }
+.tb-zoom .tb-phone-tools .tb-phone-button[aria-expanded="true"] { box-shadow: inset 0 0 0 2px var(--wt-accent); }
+.tb-phone-label { display: none; }
+.tb-zoom .tb-phone-group { position: absolute; z-index: 8; right: calc(100% + 8px); bottom: 0; width: 228px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 6px; border-radius: 12px; background: #13221a; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+.tb-zoom .tb-phone-group button { width: auto; height: 58px; align-content: center; gap: 2px; background: transparent; }
 .tb-phone-group button span:last-child { font-size: .7rem; font-weight: 600; color: #c9d5cd; }
 .tb-phone-group button[aria-pressed="true"] span:last-child { color: var(--wt-accent-ink); }
 

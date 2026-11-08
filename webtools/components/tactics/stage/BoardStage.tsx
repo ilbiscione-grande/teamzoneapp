@@ -56,10 +56,11 @@ const NO_REACH: Reach = { left: 0, top: 0, right: 0, bottom: 0 };
  * tiltButton: 3D among the zoom buttons, for a shared link without the editor's timeline button.
  * tools: more buttons on the board's top right corner (a shared link's full screen, arena).
  * portrait: a wide view turned upright whatever the frame's shape (a phone).
+ * phoneTools: the editor's tools on a phone, in a column over "show all" instead of the zoom buttons.
  */
-export default function BoardStage({ editable = true, moveOnly = false, extra, onSwipe, onTap, tiltButton = false, tools, portrait = false }: {
+export default function BoardStage({ editable = true, moveOnly = false, extra, onSwipe, onTap, tiltButton = false, tools, portrait = false, phoneTools }: {
   editable?: boolean; moveOnly?: boolean; extra?: React.ReactNode; onSwipe?: (direction: 1 | -1) => void; onTap?: () => void; tiltButton?: boolean;
-  tools?: React.ReactNode; portrait?: boolean;
+  tools?: React.ReactNode; portrait?: boolean; phoneTools?: React.ReactNode;
 }) {
   const t = useT();
   const frame = useRef<HTMLDivElement>(null);
@@ -286,14 +287,12 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
           <span>🗑</span><em className="tb-trash-one">{t("Släpp för att ta bort")}</em><em className="tb-trash-all">{t("Släpp för att ta bort ur alla frames")}</em>
         </div>
       )}
-      {fullEdit && tool !== "select" && (
-        <button type="button" className="tb-drop-tool" onClick={() => useEditor.getState().setTool("select")}
-          aria-label={t("Lägg ifrån dig verktyget")} title={t("Lägg ifrån dig verktyget")}>×</button>
-      )}
       {tools && <div className="tb-board-tools">{tools}</div>}
       <div className="tb-zoom" role="group" aria-label={t("Zoom")}>
-        <button type="button" onClick={() => view.zoomBy(1.25, { x: size.width / 2, y: size.height / 2 })} aria-label={t("Zooma in")}>+</button>
-        <button type="button" onClick={() => view.zoomBy(0.8, { x: size.width / 2, y: size.height / 2 })} aria-label={t("Zooma ut")}>−</button>
+        {/* A phone: the tools stand over "show all"; two fingers zoom. */}
+        {phoneTools}
+        {!phoneTools && <button type="button" onClick={() => view.zoomBy(1.25, { x: size.width / 2, y: size.height / 2 })} aria-label={t("Zooma in")}>+</button>}
+        {!phoneTools && <button type="button" onClick={() => view.zoomBy(0.8, { x: size.width / 2, y: size.height / 2 })} aria-label={t("Zooma ut")}>−</button>}
         {tiltButton && <button type="button" className="tb-zoom-tilt" aria-pressed={tilt} onClick={() => useEditor.getState().setTilt(!tilt)} aria-label="3D" title={t("Planen sedd snett från läktaren")}>3D</button>}
         <button type="button" onClick={() => view.apply(IDENTITY, true)} aria-label={t("Visa hela")} disabled={view.viewport === IDENTITY}>⤢</button>
       </div>

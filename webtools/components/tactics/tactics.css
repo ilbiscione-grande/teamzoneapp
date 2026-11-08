@@ -51,9 +51,6 @@
 .tb-trash[data-all="true"] .tb-trash-all { display: block; }
 .tb-zoom button { width: 40px; height: 40px; border: 0; border-radius: 8px; background: rgba(11, 17, 28, .72); color: white; font-size: 1.2rem; cursor: pointer; }
 .tb-zoom button:disabled { opacity: .4; cursor: default; }
-/* A phone: the cross in the corner puts the tool down and picks up selecting. */
-.tb-drop-tool { display: none; position: absolute; left: 10px; top: 10px; z-index: 2; width: 40px; height: 40px; border: 0; border-radius: 8px; background: rgba(11, 17, 28, .72); color: white; font-size: 1.5rem; line-height: 1; cursor: pointer; }
-@media (max-width: 760px) { .tb-drop-tool { display: block; } }
 
 .tb-panel { width: 300px; display: flex; flex-direction: column; min-height: 0; background: #f7f9fb; color: var(--wt-text); border-left: 1px solid #0b111c; }
 .tb-panel-tabs { display: flex; border-bottom: 1px solid var(--wt-line); overflow-x: auto; scrollbar-width: none; }

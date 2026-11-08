@@ -1,8 +1,8 @@
 "use client";
 
-// The tools on a phone: one large button per group (select, place, draw,
+// The tools on a phone, in a column on the board: one button per group (select, place, draw,
 // measure) showing the group's tool in hand or last taken; a tap opens the
-// group's tools above the row, with a word under each, and a choice closes it.
+// group's tools to its left, with a word under each, and a choice closes it.
 import { useEffect, useRef, useState } from "react";
 import { useEditor, type Tool } from "../store.ts";
 import { groups, measureGroup, type Item } from "./Toolbar.tsx";
