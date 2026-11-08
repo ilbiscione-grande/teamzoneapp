@@ -32,6 +32,7 @@ import { drawnGround, groundReach, projector, TILT, tiltOrigin, tiltTransform, u
 import { contentHolder, pitchPointer, StageContext, stageHolder, type StageShared } from "./stage-context.ts";
 import { CropFrame, setCrop, useCropDraw, useCropping } from "./CropFrame.tsx";
 import { useRecording } from "../timeline/video-export.ts";
+import { RecordingOverlay } from "../timeline/RecordingOverlay.tsx";
 import { tiltHolder } from "./tilt-picture.ts";
 import { useBand } from "./use-band.ts";
 import { useSwipe } from "./use-swipe.ts";
@@ -243,7 +244,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
             <Layer {...offset}>
               <Group ref={view.objectView} {...zoomed}>
                 <Group ref={node => { content.current = node; if (editable && !moveOnly) contentHolder.current = node; }} {...fitted}>
-                  {previous && <Ghosts previous={previous} current={objects} selection={selection} editable={canEdit} ink={lookOf(board.pitch).ink} />}
+                  {previous && !recording && <Ghosts previous={previous} current={objects} selection={selection} editable={canEdit} ink={lookOf(board.pitch).ink} />}
                   <Marks objects={visible} board={board} />
                   {visible.filter(item => isMe(item, me)).map(item => <MeMarker key={`me-${item.id}`} at={item} upright={upright} label={!tilt} />)}
                   {onGround.map(item => (
@@ -251,7 +252,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
                       objects={visible} measure={measure} />
                   ))}
                   {fullEdit && <Selection objects={objects} selection={selection} upright={upright} facing={board.showFacing ?? false} />}
-                  {previous && !cropping && <Ghosts part="handles" previous={previous} current={objects} selection={selection} editable={canEdit} />}
+                  {previous && !cropping && !recording && <Ghosts part="handles" previous={previous} current={objects} selection={selection} editable={canEdit} />}
                   {fullEdit && !tilt && (cropping || !recording) && (
                     <CropFrame crop={cropDraw.draft ?? board.crop ?? null} active={cropping} pixel={shared.metresPerPixel()} upright={upright} />
                   )}
@@ -292,6 +293,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
         {tiltButton && <button type="button" className="tb-zoom-tilt" aria-pressed={tilt} onClick={() => useEditor.getState().setTilt(!tilt)} aria-label="3D" title={t("Planen sedd snett från läktaren")}>3D</button>}
         <button type="button" onClick={() => view.apply(IDENTITY, true)} aria-label={t("Visa hela")} disabled={view.viewport === IDENTITY}>⤢</button>
       </div>
+      {recording && <RecordingOverlay />}
     </div>
   );
 }

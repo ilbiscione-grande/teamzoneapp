@@ -10,6 +10,7 @@
 import { useEffect } from "react";
 import { stack, type Stacking } from "../../lib/tactics/document.ts";
 import { activeBoard, activeObjects, stepFrame, useEditor } from "./store.ts";
+import { useRecording } from "./timeline/video-export.ts";
 
 /** Page Up and Down move the selection a step up or down in the drawing order, Home and End to the top or bottom. */
 const STACKING: Record<string, Stacking> = { PageUp: "up", PageDown: "down", Home: "top", End: "bottom" };
@@ -19,7 +20,8 @@ export function useShortcuts(enabled = true, onHelp?: () => void) {
   useEffect(() => {
     if (!enabled) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.defaultPrevented) return;
+      // Hands off the board while a video is recorded.
+      if (event.defaultPrevented || useRecording.getState().share !== null) return;
       const target = event.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable)) return;
       const state = useEditor.getState();

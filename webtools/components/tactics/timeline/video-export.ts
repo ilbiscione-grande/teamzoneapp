@@ -29,10 +29,15 @@ function pickType(): string | undefined {
 /** How far a recording has come, 0 to 1, while one runs: the play button waits for it. */
 export const useRecording = create<{ share: number | null }>(() => ({ share: null }));
 
+/** Two screen frames: what was just changed (the selection taken away) is drawn by then. */
+const painted = () => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+
 /** Plays the board from the start and gives back the recording; null when this browser cannot. */
 export async function recordBoard(): Promise<{ blob: Blob; extension: string } | null> {
+  // Nothing is chosen in the video: no handles or frames round an object.
+  useEditor.setState({ selection: [] });
   useRecording.setState({ share: 0 });
-  try { return await record(); } finally { useRecording.setState({ share: null }); }
+  try { await painted(); return await record(); } finally { useRecording.setState({ share: null }); }
 }
 
 /** The crop's place on the layers' canvases now (the view may zoom while it plays); null without one. */

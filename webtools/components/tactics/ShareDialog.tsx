@@ -55,7 +55,10 @@ export function ShareDialog({ onClose, onCrop }: { onClose: () => void; onCrop: 
     try {
       const video = await recordBoard();
       if (!video) setError(t("Webbläsaren kan inte spela in video här."));
-      else download(video.blob, `${(board.name || t("tavla")).replace(/[^\p{L}\p{N}]+/gu, "_")}.${video.extension}`);
+      else {
+        download(video.blob, `${(board.name || t("tavla")).replace(/[^\p{L}\p{N}]+/gu, "_")}.${video.extension}`);
+        onClose();
+      }
     } catch {
       setError(t("Videon kunde inte spelas in."));
     }
@@ -66,6 +69,8 @@ export function ShareDialog({ onClose, onCrop }: { onClose: () => void; onCrop: 
     download(new Blob([exportProject(meta.name, meta.kind, document)], { type: "application/json" }), exportFileName(meta.name));
   };
 
+  // Out of the way while it records, so the pitch shows; it comes back only if the recording failed.
+  if (recording !== null) return null;
   if (inner === "pdf") return <ExportDialog onClose={() => setInner(null)} />;
   if (inner === "publish") return <PublishDialog onClose={() => setInner(null)} />;
   if (inner === "training") return <TrainingLinkDialog board={board} onClose={() => setInner(null)} />;

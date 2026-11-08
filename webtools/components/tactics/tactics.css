@@ -346,4 +346,8 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
 /* Choosing the crop: what to do and the way out, over the top of the board. */
 .tb-crop-bar { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 5; width: min(560px, calc(100% - 20px)); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: rgba(11, 17, 28, .92); color: white; font-size: .85rem; box-shadow: 0 10px 30px rgba(0, 0, 0, .3); }
 .tb-crop-bar span { flex: 1 1 220px; }
+.tb-recording { position: absolute; inset: 0; z-index: 6; display: flex; align-items: flex-end; justify-content: center; padding: 16px; background: rgba(11, 17, 28, .18); cursor: progress; }
+.tb-recording-card { width: min(360px, 100%); display: grid; gap: 8px; padding: 10px 14px; border-radius: 10px; background: rgba(11, 17, 28, .6); color: white; font-size: .85rem; font-weight: 700; backdrop-filter: blur(2px); }
+.tb-recording-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .25); overflow: hidden; }
+.tb-recording-bar i { display: block; height: 100%; background: var(--wt-brand, #c6f432); transition: width .2s linear; }
 .tb-share-list li > .tb-actions { flex: none; flex-wrap: nowrap; }
