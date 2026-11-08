@@ -7,6 +7,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { normalizeDocument } from "../../lib/tactics/document.ts";
 import type { Project } from "../../lib/tactics/model.ts";
 import { useAccount } from "../account";
@@ -52,6 +53,9 @@ export function TacticsWorkspace() {
   const live = useLive(state => !!state.session);
   // A phone keeps the pitch standing, whatever room the timeline and panel leave it.
   const phone = usePhone();
+  // The site header's room for the top bar (shell.tsx), found once the page is up.
+  const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => { setHeaderSlot(document.getElementById("wt-header-slot")); }, []);
   // On a phone the board gets the room; the panel opens from its tabs.
   const [panelOpen, setPanelOpen] = useState(() => typeof window === "undefined" || window.innerWidth > 760);
   const board = useEditor(activeBoard);
@@ -78,7 +82,8 @@ export function TacticsWorkspace() {
   if (live) tabs.unshift(["live", <LiveBadge key="live" label="Live" hands />]);
   return (
     <div className="tb-editor" data-panel={panelOpen}>
-      <TopBar onPresent={() => setPresenting(true)} />
+      {/* Not a phone: the top bar in the site's header row, so the board has the height. */}
+      {!phone && headerSlot ? createPortal(<TopBar onPresent={() => setPresenting(true)} />, headerSlot) : <TopBar onPresent={() => setPresenting(true)} />}
       <div className="tb-body">
         <Toolbar homeColor={board.teams.home.color} awayColor={board.teams.away.color} onHelp={openHelp} />
         <div className="tb-center">

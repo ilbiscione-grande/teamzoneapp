@@ -20,6 +20,8 @@ export function Header() {
           <span className="wt-mark" aria-hidden="true">TZ</span>
           <span>Webtools</span>
         </Link>
+        {/* Room for a page's own bar on the same row (Tacticsboard's top bar); empty, not shown. */}
+        <div id="wt-header-slot" className="wt-header-slot" />
         <nav className="wt-nav" aria-label={t("Huvudmeny")}>
           <Link href="/" aria-current={path === "/" ? "page" : undefined}>{t("Appar")}</Link>
           {session ? (

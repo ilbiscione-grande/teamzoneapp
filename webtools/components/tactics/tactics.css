@@ -356,3 +356,24 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
 /* A phone: the boards in a list to choose from instead of tabs that scroll (TopBar). */
 .tb-boards-phone { align-items: center; gap: 6px; overflow: visible; }
 .tb-board-select { flex: 1 1 auto; min-width: 0; height: 36px; padding: 0 8px; border: 1px solid rgba(255, 255, 255, .2); border-radius: 8px; background: #0f1a14; color: white; font: inherit; font-size: .95rem; font-weight: 700; text-overflow: ellipsis; }
+
+/* Not a phone: the editor's top bar on the site header's row (TacticsEditor), so the board has the height. */
+.wt-header-slot { display: none; }
+.wt-header-slot:not(:empty) { display: block; flex: 1 1 0; min-width: 0; }
+.wt-header:has(.wt-header-slot:not(:empty)) .wt-header-row { max-width: none; min-height: 52px; flex-wrap: nowrap; gap: 14px; }
+.wt-header:has(.wt-header-slot:not(:empty)) .wt-brand { font-size: 1.2rem; }
+.wt-header:has(.wt-header-slot:not(:empty)) .wt-nav { flex-wrap: nowrap; gap: 4px 14px; font-size: .95rem; }
+.wt-header-slot .tb-top { padding: 0; background: none; }
+.wt-header-slot .tb-top-row { align-items: center; }
+.wt-header-slot .tb-board-tab { border-radius: 6px; }
+@media (max-width: 1180px) {
+  /* A tablet: the brand as its mark, and the way to teamzoneapp.se left out, so the board tabs have the room. */
+  .wt-header:has(.wt-header-slot:not(:empty)) .wt-brand > span:last-child,
+  .wt-header:has(.wt-header-slot:not(:empty)) .wt-nav-out { display: none; }
+}
+@media (max-width: 1000px) {
+  /* A narrow tablet: presenting, versions, settings and live go into "more", and saving is said only when it fails, as on a phone. */
+  .wt-header-slot .tb-top .tb-wide-only { display: none; }
+  .wt-header-slot .tb-top .tb-narrow-only { display: inline-flex; }
+  .wt-header-slot .tb-save[data-state="saved"], .wt-header-slot .tb-save[data-state="dirty"], .wt-header-slot .tb-save[data-state="saving"] { display: none; }
+}
