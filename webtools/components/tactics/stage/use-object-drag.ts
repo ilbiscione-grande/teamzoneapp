@@ -22,6 +22,8 @@ let lastTouch = 0;
 export function useObjectDrag(item: TacticsObject) {
   const shared = useStage();
   const starts = useRef<Start>(new Map());
+  // Pressed while picked, picking several: taken out if it turns out a tap.
+  const pickedOut = useRef(false);
   // Only the select tool drags; the others draw or place over objects.
   const tool = useEditor(state => state.tool);
   const editable = shared.editable && !item.locked && tool === "select";
@@ -43,12 +45,23 @@ export function useObjectDrag(item: TacticsObject) {
   const select = (additive: boolean) => {
     const { tool, selection, select, pickMany } = useEditor.getState();
     if (tool !== "select") return;
+    // Picking several, a picked object goes out on a tap, not as it is pressed: pressed to be dragged, the picked ones move together.
+    if (pickMany && selection.includes(item.id)) { pickedOut.current = true; return; }
     if (additive || pickMany) select([item.id], true);
     else if (!selection.includes(item.id)) select([item.id]);
+  };
+  /** A tap, no drag, on an object picked already: out of the selection. */
+  const tapped = () => {
+    if (!pickedOut.current) return;
+    pickedOut.current = false;
+    const { pickMany, select } = useEditor.getState();
+    if (pickMany) select([item.id], true);
   };
 
   return {
     draggable: editable,
+    onClick: () => { if (Date.now() - lastTouch >= 700) tapped(); },
+    onTap: tapped,
     onMouseDown: (event: Konva.KonvaEventObject<MouseEvent>) => {
       if (useEditor.getState().tool === "select") event.cancelBubble = true;
       // The mouse event a touch is followed by would take a picked object out again.
@@ -61,10 +74,13 @@ export function useObjectDrag(item: TacticsObject) {
       select(false);
     },
     onDragStart: (event: Konva.KonvaEventObject<DragEvent>) => {
+      pickedOut.current = false;
       trashAt(shared, event.target.getStage(), true, everyFrame(event));
       starts.current = new Map();
       const objects = activeObjects(useEditor.getState());
       for (const mover of movers()) {
+        // A line between players is where its players are: moved too, it would go twice as far.
+        if (mover.type === "chain") continue;
         starts.current.set(mover.id, { x: mover.x, y: mover.y });
         // Balls held by a moving player come along.
         for (const ball of objects) {

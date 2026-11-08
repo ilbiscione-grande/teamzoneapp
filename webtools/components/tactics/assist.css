@@ -108,3 +108,9 @@
 .tb-pick-many { min-height: 40px; padding: 0 14px; border: 0; border-radius: 20px; background: rgba(11, 17, 28, .72); color: white; font: inherit; font-size: .9rem; font-weight: 700; cursor: pointer; }
 .tb-pick-many span { font-size: 1.1rem; vertical-align: -1px; }
 .tb-pick-many[aria-pressed="true"] { background: #facc15; color: #0b111c; }
+
+/* A phone's tools as a row along the pitch's foot, "show all" at its end; a group opens above. */
+.tb-zoom:has(.tb-phone-tools[data-layout="row"]) { display: flex; align-items: flex-end; gap: 4px; }
+.tb-zoom .tb-phone-tools[data-layout="row"] { grid-auto-flow: column; }
+.tb-zoom .tb-phone-tools[data-layout="row"] .tb-phone-group { right: 0; bottom: calc(100% + 8px); width: min(300px, calc(100vw - 32px)); grid-template-columns: repeat(4, 1fr); }
+.tb-zoom .tb-phone-tools .tb-tools-turn { background: rgba(11, 17, 28, .5); font-size: 1.1rem; }

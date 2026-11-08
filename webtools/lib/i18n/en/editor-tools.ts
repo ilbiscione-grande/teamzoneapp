@@ -70,6 +70,8 @@ export const editorTools: Record<string, string> = {
   "Släpp för att ta bort ur alla frames": "Drop to remove from all frames",
   "Zooma in": "Zoom in",
   "Välj flera": "Pick several",
+  "Verktygen som rad": "Tools in a row",
+  "Verktygen som kolumn": "Tools in a column",
   "{count} valda": "{count} picked",
   "{count} vald": "{count} picked",
   "Välj flera: varje tryck lägger till eller tar bort": "Pick several: each tap adds or takes out",

@@ -1,13 +1,30 @@
 "use client";
 
-// The tools on a phone, in a column on the board: one button per group (select, place, draw,
+// The tools on a phone, on the board as a column on the right or a row along the foot (the last
+// button turns them, kept in this browser): one button per group (select, place, draw,
 // measure) showing the group's tool in hand or last taken; a tap opens the
-// group's tools to its left, with a word under each, and a choice closes it.
+// group's tools beside it (above, in a row), with a word under each, and a choice closes it.
 // Pick several (PickMany) shows on the pitch once something is chosen.
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useEditor, type Tool } from "../store.ts";
 import { groups, measureGroup, type Item } from "./Toolbar.tsx";
 import { useT } from "../../language";
+
+type Layout = "column" | "row";
+const LAYOUT_KEY = "tb-phone-tools-layout";
+
+/** Column or row, kept in this browser (the storage may be closed: a column then). */
+function useToolsLayout(): [Layout, (next: Layout) => void] {
+  const [layout, setLayout] = useState<Layout>("column");
+  useEffect(() => {
+    try { if (window.localStorage.getItem(LAYOUT_KEY) === "row") setLayout("row"); } catch { /* a column */ }
+  }, []);
+  const change = (next: Layout) => {
+    setLayout(next);
+    try { window.localStorage.setItem(LAYOUT_KEY, next); } catch { /* for this visit only */ }
+  };
+  return [layout, change];
+}
 
 export function PhoneToolbar({ homeColor, awayColor }: { homeColor: string; awayColor: string }) {
   const t = useT();
@@ -35,8 +52,10 @@ export function PhoneToolbar({ homeColor, awayColor }: { homeColor: string; away
     setOpen(null);
   };
   const shown = groups.find(group => group.title === open);
+  const [layout, setLayout] = useToolsLayout();
+  const row = layout === "row";
   return (
-    <nav ref={nav} className="tb-tools tb-phone-tools" aria-label={t("Verktyg")}>
+    <nav ref={nav} className="tb-tools tb-phone-tools" data-layout={layout} aria-label={t("Verktyg")}>
       {shown && (
         <div className="tb-phone-group" role="group" aria-label={shown.title}>
           {shown.items.map(item => (
@@ -68,6 +87,12 @@ export function PhoneToolbar({ homeColor, awayColor }: { homeColor: string; away
           </Fragment>
         );
       })}
+      {/* Last: the tools as a column on the right or a row along the foot, whichever leaves the pitch free. */}
+      <button type="button" className="tb-phone-button tb-tools-turn" aria-pressed={false}
+        aria-label={row ? t("Verktygen som kolumn") : t("Verktygen som rad")} title={row ? t("Verktygen som kolumn") : t("Verktygen som rad")}
+        onClick={() => { setOpen(null); setLayout(row ? "column" : "row"); }}>
+        <span className="tb-tool-icon" aria-hidden="true">{row ? "⇕" : "⇔"}</span>
+      </button>
     </nav>
   );
 }
