@@ -99,6 +99,12 @@ export function useObjectDrag(item: TacticsObject) {
         // The dragged objects go; a ball that only came along with a player stays where it was.
         const gone = new Set(movers().map(mover => mover.id));
         starts.current.forEach((start, id) => { if (!gone.has(id)) shared.nodes.get(id)?.position(start); });
+        // The drag is over: what followed it (a line between players, an arrow) lets go of the
+        // bin's place, so an undo brings the player back with them where they were.
+        if (objectDrop.size) {
+          const back = Object.fromEntries(starts.current);
+          objectDrop.forEach(listen => listen(back));
+        }
         useEditor.getState().removeObjects([...gone], all);
         starts.current = new Map();
         return;
