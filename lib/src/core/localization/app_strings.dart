@@ -2871,6 +2871,20 @@ class AppStrings {
         "Some of the resources are approved by an admin. The others are booked at once.",
     'Annan tid eller återkommande? Öppna Bokningshanteraren':
         "Another time or recurring? Open the booking manager",
+    'Kopplade resursbokningar följer med när tiden ändras. Marginaler före och efter aktiviteten behålls. Om någon resurs inte är tillgänglig stoppas hela ändringen. Resurser som kräver godkännande kan behöva godkännas på nytt.':
+        'Linked resource bookings move with the activity when its time changes. Buffers before and after the activity are preserved. If any resource is unavailable, the entire change is blocked. Resources that require approval may need to be approved again.',
+    'Ställ in aktiviteten?':
+        'Cancel the activity?',
+    'Aktiviteten ställs in och dess kopplade resursbokningar avbokas. Kallelser återkallas också. Om aktiviteten återaktiveras behöver resurser bokas på nytt.':
+        'The activity and its linked resource bookings will be cancelled. Invitations will also be withdrawn. If the activity is reactivated, resources must be booked again.',
+    'Resursbokningar':
+        'Resource bookings',
+    'Uppdatera resursbokningar':
+        'Refresh resource bookings',
+    'Ingen resurs är bokad för aktiviteten.':
+        'No resource is booked for this activity.',
+    'En tidigare bokad resurs är avbokad eller nekad. Aktiviteten är kvar. Kontrollera resursstatus nedan.':
+        'A previously booked resource has been cancelled or declined. The activity remains. Check the resource status below.',
     'Boka resurs': 'Book a resource',
     'Avboka resurs': 'Cancel a booking',
     'Avboka': 'Cancel booking',
