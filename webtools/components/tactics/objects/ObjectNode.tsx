@@ -23,7 +23,7 @@ export function ObjectNode({ item, board, selected, upright, holding = false, ob
     case "rect":
     case "ellipse": return <ShapeNode item={item} measure={measure} upright={upright} />;
     case "chain": return <ChainNode item={item} objects={objects} selected={selected} upright={upright} measure={measure} />;
-    case "text": return <TextNode item={item} />;
+    case "text": return <TextNode item={item} board={board} />;
     default: return <EquipmentNode item={item} />;
   }
 }

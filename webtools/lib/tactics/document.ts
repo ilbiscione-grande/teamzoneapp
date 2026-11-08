@@ -84,7 +84,7 @@ export function createPlayer(point: Point, side: Side, objects: TacticsObject[],
 /** A new object of a placeable kind at a point. */
 export function createObject(type: Exclude<ObjectType, "player" | "line" | "freehand" | "rect" | "ellipse" | "chain">, point: Point): TacticsObject {
   if (type === "ball") return { ...base(point), type: "ball", attachedTo: null, offset: null };
-  if (type === "text") return { ...base(point), type: "text", text: "Text", size: 2.2, color: "#ffffff", background: true };
+  if (type === "text") return { ...base(point), type: "text", text: "Text", size: 2.2, color: "#ffffff", background: true, onPitch: true };
   const colors: Record<EquipmentKind, string> = { cone: "#f97316", pole: "#facc15", mannequin: "#1e293b", goal: "#ffffff" };
   return { ...base(point), type, color: colors[type], scale: 1 };
 }

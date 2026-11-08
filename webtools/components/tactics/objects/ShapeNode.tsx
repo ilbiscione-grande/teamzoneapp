@@ -1,12 +1,13 @@
 "use client";
 
 // Areas and text: a rectangle or ellipse marking a zone (filled or striped, glowing at its edge), and a text label
-// that turns with the pitch, as the rest of the drawing does (a phone shows it turned). A resized text box wraps its
+// that lies as it did where it was written and turns with the pitch from there. A resized text box wraps its
 // text; the letters keep their own size. With measuring on, an area shows
 // its sides and the ground it covers.
 import Konva from "konva";
 import { Ellipse, Group, Label, Rect, Tag, Text } from "react-konva";
-import { TEXT_LINE_HEIGHT, textBackground, textFontStyle, type ShapeObject, type TextObject } from "../../../lib/tactics/model.ts";
+import { TEXT_LINE_HEIGHT, textBackground, textFontStyle, type Board, type ShapeObject, type TextObject } from "../../../lib/tactics/model.ts";
+import { textTurn } from "../../../lib/tactics/geometry.ts";
 import type { Rendered } from "../../../lib/tactics/timeline.ts";
 import { shapeMeasure } from "../../../lib/tactics/measure.ts";
 import type { Context } from "konva/lib/Context";
@@ -51,12 +52,12 @@ function boxHeight(item: TextObject, font: { fontSize: number; fontStyle: string
   return item.height > height ? item.height : undefined;
 }
 
-export function TextNode({ item }: { item: TextObject & Rendered }) {
+export function TextNode({ item, board }: { item: TextObject & Rendered; board: Board }) {
   const shared = useStage();
   const drag = useObjectDrag(item);
   const font = { fontSize: item.size, fontStyle: textFontStyle(item), lineHeight: TEXT_LINE_HEIGHT, padding: item.background ? 0.45 : 0 };
   return (
-    <Group ref={nodeRef(shared, item.id)} x={item.x} y={item.y} rotation={item.rotation} {...look(item)} {...drag}>
+    <Group ref={nodeRef(shared, item.id)} x={item.x} y={item.y} rotation={textTurn(item, board)} {...look(item)} {...drag}>
       <Label>
         {item.background && <Tag fill={item.backgroundColor ?? textBackground.color} opacity={item.backgroundOpacity ?? textBackground.opacity} cornerRadius={0.4} />}
         <Text {...font} text={item.text} fill={item.color}

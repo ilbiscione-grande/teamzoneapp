@@ -60,6 +60,16 @@ export function fitView(rect: Rect, frameWidth: number, frameHeight: number, por
   return { x: left - rect.y * scale, y: top + (rect.x + rect.width) * scale, scale, rotation: -90 };
 }
 
+/**
+ * A text's turn on the pitch. A text lies as it did where it was written and
+ * turns with the pitch from there. Texts made before kept their turn on the
+ * screen; most were written on a wide screen, so that view is taken as where.
+ */
+export function textTurn(item: { rotation: number; onPitch?: boolean }, board: { view: PitchView; surroundings?: Surroundings }): number {
+  if (item.onPitch) return item.rotation;
+  return item.rotation - fitView(viewRect(board.view, marginFor(board.surroundings)), 16, 9).rotation;
+}
+
 /** A pitch point on the screen, before the user's zoom and pan. */
 export function pitchToFrame(point: Point, fit: Fit): Point {
   if (fit.rotation === 0) return { x: fit.x + point.x * fit.scale, y: fit.y + point.y * fit.scale };

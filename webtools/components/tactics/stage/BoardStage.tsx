@@ -135,7 +135,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
     useEditor.getState().setFocus(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus, fit]);
-  const drawing = useDrawing(() => content.current?.getRelativePointerPosition() ?? null);
+  const drawing = useDrawing(() => content.current?.getRelativePointerPosition() ?? null, () => -fit.rotation);
   const cropDraw = useCropDraw(() => content.current?.getRelativePointerPosition() ?? null, board?.id);
 
   if (!board) return <div ref={frame} className="tb-stage" />;

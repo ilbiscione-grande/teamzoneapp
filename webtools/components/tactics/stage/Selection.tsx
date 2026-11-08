@@ -51,7 +51,8 @@ function Transform({ items }: { items: TacticsObject[] }) {
             // The box changes; the letters keep their size.
             const text = (node as Konva.Group).findOne("Text");
             const width = item.width ?? text?.width() ?? 1, height = item.height ?? text?.height() ?? 1;
-            patches[item.id] = { ...common, width: Math.max(item.size, width * sx), height: Math.max(item.size, height * sy) };
+            // The node's turn is on the pitch, an old text's too from now on (textTurn).
+            patches[item.id] = { ...common, onPitch: true, width: Math.max(item.size, width * sx), height: Math.max(item.size, height * sy) };
             node.scale({ x: 1, y: 1 });
           } else if ("scale" in item) {
             patches[item.id] = { ...common, scale: Math.min(4, Math.max(0.3, sx)) };

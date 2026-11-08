@@ -145,6 +145,11 @@ export type TextObject = Base & {
   /** The background's colour and how much it covers (0–1); a dark blue, mostly opaque, when missing. */
   backgroundColor?: string;
   backgroundOpacity?: number;
+  /**
+   * The turn is on the pitch, so the text turns with it. Missing on texts made
+   * before: their turn was on the screen of whoever wrote them (textTurn).
+   */
+  onPitch?: boolean;
 };
 
 export type TextAlign = "left" | "center" | "right";

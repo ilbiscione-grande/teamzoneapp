@@ -40,7 +40,8 @@ export function draftObject(draft: Draft): TacticsObject | null {
   };
 }
 
-export function useDrawing(pointer: () => Point | null) {
+/** upright: the turn that makes a new text read upright on the screen it is written on. */
+export function useDrawing(pointer: () => Point | null, upright: () => number = () => 0) {
   const [draft, setDraft] = useState<Draft | null>(null);
 
   const start = () => {
@@ -91,6 +92,7 @@ export function useDrawing(pointer: () => Point | null) {
       made = createPlayer(at, side, objects);
     } else {
       made = createObject(tool as Parameters<typeof createObject>[0], at);
+      if (made.type === "text") made = { ...made, rotation: upright() };
     }
     changeObjects(current => [...current, made]);
     if (made.type === "text") select([made.id]);
