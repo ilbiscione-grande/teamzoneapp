@@ -36,6 +36,7 @@ import { useLiveHost } from "./live/use-live-host.ts";
 import { useShortcuts } from "./use-shortcuts.ts";
 import { Timeline } from "./timeline/Timeline.tsx";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
+import { copyProject } from "./copy-project.ts";
 import "./tactics.css";
 import { useT } from "../language";
 
@@ -128,12 +129,9 @@ function WatchProject({ project }: { project: Project }) {
   const copy = async () => {
     if (!client) return;
     setBusy(true);
-    const { data, error } = await client.schema("api").rpc("create_tactics_project", {
-      project_name: `${project.name} (kopia)`.slice(0, 120), project_kind: project.kind,
-      target_team_id: project.teamzone_team_id, project_document: project.document,
-    });
-    if (error) { setBusy(false); window.alert(t("Kopian kunde inte skapas. Försök igen.")); return; }
-    window.location.href = `/tacticsboard/${(data as { id: string }).id}`;
+    const id = await copyProject(client, { name: project.name, kind: project.kind, teamId: project.teamzone_team_id, document: project.document }, t);
+    if (!id) { setBusy(false); window.alert(t("Kopian kunde inte skapas. Försök igen.")); return; }
+    window.location.href = `/tacticsboard/${id}`;
   };
   const document = normalizeDocument(project.document);
   return (

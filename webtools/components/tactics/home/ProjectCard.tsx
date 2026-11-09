@@ -31,6 +31,7 @@ type Props = {
   onPin: (project: HomeProject) => void;
   onFolders?: (project: HomeProject) => void;
   onRemove?: (project: HomeProject) => void;
+  onCopy?: (project: HomeProject) => void;
   onUnpublish?: (item: Published) => void;
   // Your own: picked with shift, and dragged onto a folder.
   selected?: boolean;
@@ -40,7 +41,7 @@ type Props = {
 
 export const changedOn = (at: string, intl: string) => new Date(at).toLocaleDateString(intl, { day: "numeric", month: "short" });
 
-export function ProjectCard({ project, onPin, onFolders, onRemove, onUnpublish, selected, onSelect, onDrag }: Props) {
+export function ProjectCard({ project, onPin, onFolders, onRemove, onCopy, onUnpublish, selected, onSelect, onDrag }: Props) {
   const { t, intl } = useLanguage();
   // The menu closes on a choice and on a press outside it.
   const menu = useRef<HTMLDetailsElement>(null);
@@ -87,6 +88,7 @@ export function ProjectCard({ project, onPin, onFolders, onRemove, onUnpublish, 
           <summary aria-label={t("Mer för {name}", { name: project.name })} title={t("Mer")}>⋯</summary>
           <div role="menu" onClick={() => { if (menu.current) menu.current.open = false; }}>
             <Link role="menuitem" href={href}>{t("Öppna")}</Link>
+            {onCopy && <button type="button" role="menuitem" onClick={() => onCopy(project)}>{t("Kopiera projekt")}</button>}
             {onFolders && <button type="button" role="menuitem" onClick={() => onFolders(project)}>{t("Mappar…")}</button>}
             {published.map(item => onUnpublish && (
               <button key={item.item_id} type="button" role="menuitem" onClick={() => onUnpublish(item)}

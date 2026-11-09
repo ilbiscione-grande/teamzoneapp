@@ -110,6 +110,14 @@ export const showGuides: Guide[] = [
         text: { sv: "En mapp kan delas med en länk. Den som har länken ser mappens projekt och spelar upp tavlorna utan konto, även projekt som läggs till senare.", en: "A folder can be shared with a link. Whoever has the link sees the folder's projects and plays the boards without an account, including projects added later." },
       },
       {
+        title: { sv: "Kopiera ett projekt", en: "Copy a project" },
+        steps: [
+          { sv: "På startsidan: öppna ⋯ på projektets kort och välj Kopiera projekt. Kopian hamnar först i listan.", en: "On the start page: open ⋯ on the project's card and choose Copy project. The copy comes first in the list." },
+          { sv: "I editorn: öppna Inställningar och välj Kopiera projekt. Kopian öppnas direkt.", en: "In the editor: open Settings and choose Copy project. The copy opens straight away." },
+        ],
+        tip: { sv: "Kopian får alla tavlor, samma typ och samma lag. Delningslänkar, mappar och det du publicerat följer inte med. En enskild tavla kopierar du i tavelmenyn.", en: "The copy gets all the boards, the same kind and the same team. Share links, folders and what you have published are not copied. A single board you copy in the board menu." },
+      },
+      {
         title: { sv: "Mallar och versioner", en: "Templates and versions" },
         text: { sv: "Spara ett projekt som mall och börja nya projekt från den. Under Versioner går du tillbaka till en tidigare version av projektet.", en: "Save a project as a template and start new projects from it. Under Versions you go back to an earlier version of the project." },
       },

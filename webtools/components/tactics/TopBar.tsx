@@ -13,6 +13,7 @@ import type { LeaderTeam } from "../../lib/tournament";
 import { useAccount } from "../account";
 import { useEditor, type SaveState, NONE } from "./store.ts";
 import { saveAsCopy, saveNow } from "./use-autosave.ts";
+import { copyProject } from "./copy-project.ts";
 import { ShareDialog } from "./ShareDialog.tsx";
 import { useCropping } from "./stage/CropFrame.tsx";
 import { BoardMenu } from "./BoardMenu.tsx";
@@ -126,7 +127,12 @@ export function ProjectFields({ className }: { className: string }) {
   if (!meta) return null;
   // Another leader of the team changes the boards; the project itself is the owner's.
   if (meta.access !== "owner") {
-    return <p className="tb-hint">{t("{name} äger projektet. Du kan ändra tavlorna; namn, lag, delning och versioner sköter ägaren.", { name: meta.ownerName?.trim() || t("En annan ledare") })}</p>;
+    return (
+      <>
+        <p className="tb-hint">{t("{name} äger projektet. Du kan ändra tavlorna; namn, lag, delning och versioner sköter ägaren.", { name: meta.ownerName?.trim() || t("En annan ledare") })}</p>
+        <CopyThisProject />
+      </>
+    );
   }
   const setAccess = async (leaderAccess: LeaderAccess) => {
     const { error } = await client?.schema("api").rpc("set_tactics_leader_access", { target_project_id: meta.id, access: leaderAccess }) ?? { error: true };
@@ -158,7 +164,29 @@ export function ProjectFields({ className }: { className: string }) {
             </select>
           </label>
         )}
+        <CopyThisProject />
     </>
+  );
+}
+
+/** The whole project, as it is in the editor now, in a new project of your own that opens in place of this one. */
+function CopyThisProject() {
+  const t = useT();
+  const { client } = useAccount();
+  const [busy, setBusy] = useState(false);
+  const copy = async () => {
+    const { meta, document } = useEditor.getState();
+    if (!client || !meta || !document) return;
+    setBusy(true);
+    const id = await copyProject(client, { name: meta.name, kind: meta.kind, teamId: meta.teamId, document }, t);
+    if (!id) { setBusy(false); window.alert(t("Kopian kunde inte skapas. Försök igen.")); return; }
+    window.location.href = `/tacticsboard/${id}`;
+  };
+  return (
+    <div className="tb-field">
+      <button type="button" className="wt-button secondary small" disabled={busy} onClick={() => void copy()}>{busy ? t("Kopierar…") : t("Kopiera projekt")}</button>
+      <span className="tb-hint">{t("Alla tavlor i ett nytt eget projekt. Delningslänkar följer inte med.")}</span>
+    </div>
   );
 }
 

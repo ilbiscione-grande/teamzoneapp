@@ -16,6 +16,7 @@ import type { ProjectKind } from "../../lib/tactics/model.ts";
 import { noFilters } from "../../lib/tactics/library.ts";
 import type { LeaderTeam } from "../../lib/tournament";
 import { useAccount } from "../account";
+import { copyProjectById } from "./copy-project.ts";
 import { kindLabels } from "./TopBar.tsx";
 import { useTemplates } from "./use-templates.ts";
 import { useSharedLibrary } from "./use-shared-library.ts";
@@ -81,6 +82,13 @@ export function TacticsHome() {
     reload();
   };
 
+  // The copy shows first in the list, as the last changed.
+  const copyOf = async (project: HomeProject) => {
+    if (!client) return;
+    if (!await copyProjectById(client, project.id, t)) { window.alert(t("Kopian kunde inte skapas. Försök igen.")); return; }
+    reload();
+  };
+
   const removeProject = async (project: HomeProject) => {
     const published = (project.published ?? []).length > 0 ? t(" Det du publicerat från projektet finns kvar i biblioteket.") : "";
     if (await remove(project, `${t("Ta bort {name}? Det går inte att ångra.", { name: project.name })}${published}${removalNote(project.folders ?? [], t)}`) && project.folders?.length) {
@@ -98,7 +106,7 @@ export function TacticsHome() {
     const own = project.access === undefined;
     return (
       <ProjectCard key={project.id} project={project} onPin={pin} onFolders={setPicking}
-        onRemove={own ? removeProject : undefined} onUnpublish={unpublish}
+        onRemove={own ? removeProject : undefined} onCopy={own ? copyOf : undefined} onUnpublish={unpublish}
         selected={selected.includes(project.id)} onSelect={own ? select : undefined} onDrag={own && folders?.length ? drag : undefined} />
     );
   };
