@@ -388,8 +388,9 @@ class _TdpAbove extends StatelessWidget {
   }
 }
 
-/// A block's name, focus and principles in focus (up to eight of the plan's,
-/// in the order picked). Its dates are set on the timeline.
+/// A block's name, dates (within its period; also dragged on the timeline),
+/// focus and principles in focus (up to eight of the plan's, in the order
+/// picked).
 abstract final class _TdpBlockDialog {
   static Future<void> edit(
     BuildContext context,
@@ -398,6 +399,17 @@ abstract final class _TdpBlockDialog {
     DevelopmentBlock block,
   ) async {
     final chosen = [...block.principleIds];
+    final period = plan.periods
+        .where((period) => period.id == block.periodId)
+        .firstOrNull;
+    var startsOn = block.startsOn, endsOn = block.endsOn;
+    Future<DateTime?> pick(BuildContext context, DateTime initial) =>
+        showDatePicker(
+          context: context,
+          initialDate: initial,
+          firstDate: period?.startsOn ?? plan.startsOn,
+          lastDate: period?.endsOn ?? plan.endsOn,
+        );
     // Without a game model the block picks from the base list, and the
     // picked ones become the plan's principles when the block is saved.
     final standard = <_TdpIdea>[];
@@ -425,6 +437,57 @@ abstract final class _TdpBlockDialog {
                       ),
                       onChanged: (_) => setState(() {}),
                     ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ListTile(
+                            key: const Key('tdp-block-starts'),
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.event),
+                            title: Text(_tdpText(context, 'Från', 'From')),
+                            subtitle: Text(_tdpDate(context, startsOn)),
+                            onTap: () async {
+                              final day = await pick(context, startsOn);
+                              if (day == null) return;
+                              setState(() {
+                                startsOn = day;
+                                if (endsOn.isBefore(day)) endsOn = day;
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ListTile(
+                            key: const Key('tdp-block-ends'),
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.event_available),
+                            title: Text(_tdpText(context, 'Till', 'To')),
+                            subtitle: Text(_tdpDate(context, endsOn)),
+                            onTap: () async {
+                              final day = await pick(context, endsOn);
+                              if (day == null) return;
+                              setState(() {
+                                endsOn = day;
+                                if (startsOn.isAfter(day)) startsOn = day;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (period != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          _tdpText(
+                            context,
+                            'Inom perioden ${period.name}, ${_tdpRange(context, period.startsOn, period.endsOn)}. Blocket kan också dras på tidslinjen.',
+                            'Within the period ${period.name}, ${_tdpRange(context, period.startsOn, period.endsOn)}. The block can also be dragged on the timeline.',
+                          ),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
                     TextField(
                       key: const Key('tdp-block-focus'),
                       controller: focus,
@@ -538,8 +601,8 @@ abstract final class _TdpBlockDialog {
         blockId: block.id,
         periodId: block.periodId,
         name: result.$1,
-        startsOn: block.startsOn,
-        endsOn: block.endsOn,
+        startsOn: startsOn,
+        endsOn: endsOn,
         focus: result.$2,
         principleIds: [
           ...chosen,

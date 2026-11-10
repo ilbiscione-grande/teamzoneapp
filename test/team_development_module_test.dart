@@ -1267,6 +1267,36 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('a block\'s dates are chosen in its dialog', (tester) async {
+    final services = await openWithoutModel(tester);
+    final before = services.plan!.blocks.single;
+    await tester.tap(find.text('Planera'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('tdp-item-b1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-panel-edit')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Inom perioden Seriespel'), findsOneWidget);
+
+    // Two days earlier or later, within the same month.
+    final end = before.endsOn;
+    final target = end.day > 3
+        ? DateTime(end.year, end.month, end.day - 2)
+        : DateTime(end.year, end.month, end.day + 2);
+    await tester.tap(find.byKey(const Key('tdp-block-ends')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('${target.day}').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-block-save')));
+    await tester.pumpAndSettle();
+    final after = services.plan!.blocks.single;
+    expect(after.endsOn, target);
+    expect(after.startsOn, before.startsOn);
+    expect(tester.takeException(), isNull);
+  });
+
   test('a key figure counts goals, own buttons and values set by hand', () {
     final day = DateTime(2026, 10, 1);
     final plan = SeasonPlan(
