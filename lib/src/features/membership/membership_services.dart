@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:teamzone_app/src/features/membership/club_register.dart';
 import 'package:teamzone_app/src/features/membership/membership_models.dart';
 
 abstract interface class MembershipServices {
@@ -284,10 +285,33 @@ class UnconfiguredMembershipServices implements MembershipServices {
   }) => Future.error(StateError('Supabase is not configured.'));
 }
 
-class SupabaseMembershipServices implements MembershipServices {
+class SupabaseMembershipServices
+    implements MembershipServices, ClubRegisterServices {
   const SupabaseMembershipServices(this._client);
 
   final SupabaseClient _client;
+
+  @override
+  Future<ClubRegister> loadClubRegister(String clubId) =>
+      loadClubRegisterFrom(_client, clubId);
+
+  @override
+  Future<void> setClubMembership({
+    required String clubId,
+    required String personId,
+    required bool isMember,
+    required String? category,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) => setClubMembershipWith(
+    _client,
+    clubId: clubId,
+    personId: personId,
+    isMember: isMember,
+    category: category,
+    expectedRevision: expectedRevision,
+    idempotencyKey: idempotencyKey,
+  );
 
   @override
   Future<List<ClubTeamSearchResult>> search({required String query}) async {

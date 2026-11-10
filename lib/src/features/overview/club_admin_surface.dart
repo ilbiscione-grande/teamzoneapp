@@ -66,7 +66,9 @@ class _ClubAdminSurfaceState extends State<_ClubAdminSurface> {
     }
   }
 
-  void _reload() => setState(() => _home = _load());
+  void _reload() => setState(() {
+    _home = _load();
+  });
 
   @override
   void didUpdateWidget(covariant _ClubAdminSurface oldWidget) {
@@ -197,6 +199,29 @@ class _ClubAdminSurfaceState extends State<_ClubAdminSurface> {
                       ),
                   ],
                 ),
+                if (widget.membership case final ClubRegisterServices register)
+                  _ClubAdminSection(
+                    title: strings.feature('Medlemmar'),
+                    children: [
+                      _ClubAdminTile(
+                        key: const ValueKey('club-admin-register'),
+                        icon: Icons.contacts_outlined,
+                        title: strings.feature('Medlemsregister'),
+                        subtitle: strings.feature(
+                          'Alla i klubben, vem som är medlem och i vilken kategori',
+                        ),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => _ClubRegisterPage(
+                              clubId: clubId,
+                              clubName: clubName,
+                              services: register,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 _ClubAdminSection(
                   title: strings.feature('Lag och uppdrag'),
                   children: [
