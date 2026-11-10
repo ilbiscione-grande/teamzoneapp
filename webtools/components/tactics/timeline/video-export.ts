@@ -16,6 +16,8 @@ import { drawWatermark } from "./watermark.ts";
 /** How long the first frame stands still, and the last. */
 const HOLD_FIRST = 500;
 const HOLD_LAST = 600;
+/** Step by step: how long each frame between stands still. */
+const HOLD_STEP = 1500;
 
 const TYPES = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
 
@@ -146,17 +148,23 @@ async function record(): Promise<{ blob: Blob; extension: string } | null> {
   useEditor.setState({ frameIndex: 0, playhead: 0, loop: false, selection: [] });
   recorder.start(250);
   await hold(HOLD_FIRST);
-  useEditor.getState().play();
-  await new Promise<void>(resolve => {
-    const tick = () => {
-      copy();
-      const state = useEditor.getState();
-      useRecording.setState({ share: Math.min(1, state.playhead / Math.max(1, board.frames.length - 1)) });
-      if (state.playing) requestAnimationFrame(tick);
-      else resolve();
-    };
-    requestAnimationFrame(tick);
-  });
+  // Step by step, the video stands still a while on each frame instead of waiting for play.
+  const last = board.frames.length - 1;
+  for (;;) {
+    useEditor.getState().play();
+    await new Promise<void>(resolve => {
+      const tick = () => {
+        copy();
+        const state = useEditor.getState();
+        useRecording.setState({ share: Math.min(1, state.playhead / Math.max(1, last)) });
+        if (state.playing) requestAnimationFrame(tick);
+        else resolve();
+      };
+      requestAnimationFrame(tick);
+    });
+    if (!editor.stepwise || useEditor.getState().playhead >= last) break;
+    await hold(HOLD_STEP);
+  }
   await hold(HOLD_LAST);
   recorder.stop();
   await done;

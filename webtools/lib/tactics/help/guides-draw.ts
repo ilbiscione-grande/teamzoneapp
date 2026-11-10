@@ -111,7 +111,7 @@ export const drawGuides: Guide[] = [
       },
       {
         title: { sv: "Frames och uppspelning", en: "Frames and playback" },
-        text: { sv: "Under planen finns uppspelning, framesen och + för en ny frame. Tid, rörelse, 3D, slinga och hastighet finns under ⋯. Under fliken Frames bläddrar du mellan frames med ett svep i sidled.", en: "Below the pitch are playback, the frames and + for a new frame. Time, motion, 3D, loop and speed are under ⋯. Under the Frames tab you move between frames with a sideways swipe." },
+        text: { sv: "Under planen finns uppspelning, framesen och + för en ny frame. Tid, rörelse, 3D, slinga, steg för steg och hastighet finns under ⋯. Under fliken Frames bläddrar du mellan frames med ett svep i sidled.", en: "Below the pitch are playback, the frames and + for a new frame. Time, motion, 3D, loop, step by step and speed are under ⋯. Under the Frames tab you move between frames with a sideways swipe." },
       },
       {
         title: { sv: "Surfplatta", en: "Tablet" },

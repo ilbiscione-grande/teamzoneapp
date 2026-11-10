@@ -62,6 +62,9 @@ type EditorState = {
   playing: boolean;
   playhead: number;
   loop: boolean;
+  /** Step by step: each play plays one move and stops on the next frame, until played again. Not saved. */
+  stepwise: boolean;
+  setStepwise: (stepwise: boolean) => void;
   /** The pitch tilted as if seen from the stand: for watching and playing, not editing. Not saved. */
   tilt: boolean;
   speed: number;
@@ -135,6 +138,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   playing: false,
   playhead: 0,
   loop: false,
+  stepwise: false,
   tilt: false,
   speed: 1,
   stopAt: null,
@@ -155,7 +159,9 @@ export const useEditor = create<EditorState>((set, get) => ({
     const board = activeBoard(get());
     if (!board || board.frames.length < 2) return;
     const start = get().playhead >= board.frames.length - 1 ? 0 : get().playhead;
-    set({ playing: true, playhead: start, stopAt: null, selection: [], tool: "select" });
+    // Step by step, to the next whole frame (from between two frames too).
+    const stopAt = get().stepwise ? Math.min(board.frames.length - 1, Math.floor(start + 1e-6) + 1) : null;
+    set({ playing: true, playhead: start, stopAt, selection: [], tool: "select" });
   },
   preview: index => {
     const board = activeBoard(get());
@@ -176,6 +182,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   },
   setPlayhead: playhead => set({ playhead }),
   setLoop: loop => set({ loop }),
+  setStepwise: stepwise => set({ stepwise }),
   setTilt: tilt => set({ tilt, selection: [] }),
   setPlain: plain => set({ plain }),
   setSpeed: speed => set({ speed }),

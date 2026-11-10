@@ -20,7 +20,7 @@ import { useLiveIdle } from "./use-live-idle.ts";
 
 type State = ReturnType<typeof useEditor.getState>;
 const viewOf = (state: State): LiveView | null => state.boardId === null ? null : {
-  boardId: state.boardId, frameIndex: state.frameIndex, playhead: state.playhead, playing: state.playing, speed: state.speed, loop: state.loop,
+  boardId: state.boardId, frameIndex: state.frameIndex, playhead: state.playhead, playing: state.playing, speed: state.speed, loop: state.loop, stopAt: state.stopAt,
 };
 
 export function useLiveHost(client: SupabaseClient | null) {

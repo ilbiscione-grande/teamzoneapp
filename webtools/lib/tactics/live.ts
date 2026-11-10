@@ -17,8 +17,8 @@ export type LiveJoined = LiveSession & {
   name: string; kind: ProjectKind; document: unknown; participant_name: string; host_name: string; muted: boolean;
 };
 
-/** Where the host's board is. A playing board is played on locally from the playhead. */
-export type LiveView = { boardId: string; frameIndex: number; playhead: number; playing: boolean; speed: number; loop: boolean };
+/** Where the host's board is. A playing board is played on locally from the playhead, to stopAt when the host plays step by step. */
+export type LiveView = { boardId: string; frameIndex: number; playhead: number; playing: boolean; speed: number; loop: boolean; stopAt?: number | null };
 
 export type LiveEvent =
   | { event: "view"; payload: LiveView }
@@ -59,7 +59,7 @@ export function applyMoves(document: ProjectDocument, drag: LiveDrag): ProjectDo
 /** Whether two views differ enough to send: anything but the playhead while playing (played on locally). */
 export function viewChanged(before: LiveView | null, after: LiveView): boolean {
   if (!before) return true;
-  if (before.boardId !== after.boardId || before.playing !== after.playing || before.speed !== after.speed || before.loop !== after.loop) return true;
+  if (before.boardId !== after.boardId || before.playing !== after.playing || before.speed !== after.speed || before.loop !== after.loop || (before.stopAt ?? null) !== (after.stopAt ?? null)) return true;
   if (after.playing) return false;
   return before.frameIndex !== after.frameIndex || Math.abs(before.playhead - after.playhead) > 1e-6;
 }

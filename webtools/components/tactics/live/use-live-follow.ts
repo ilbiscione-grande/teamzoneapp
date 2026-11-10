@@ -23,7 +23,7 @@ export type FollowState = "connecting" | "following" | "ended" | "removed" | "fa
 function applyView(view: LiveView) {
   const state = useEditor.getState();
   if (!state.document?.boards.some(board => board.id === view.boardId)) return;
-  const common = { boardId: view.boardId, speed: view.speed, loop: view.loop, stopAt: null, selection: [] };
+  const common = { boardId: view.boardId, speed: view.speed, loop: view.loop, stopAt: view.playing ? view.stopAt ?? null : null, selection: [] };
   if (view.playing) {
     useEditor.setState({ ...common, playing: true, playhead: view.playhead, frameIndex: Math.round(view.playhead), playSeq: state.playSeq + 1 });
   } else {

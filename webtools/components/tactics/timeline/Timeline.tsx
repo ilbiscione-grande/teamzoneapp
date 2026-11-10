@@ -70,13 +70,14 @@ export function Timeline({ board, readOnly = false, viewer = false }: { board: B
   );
 }
 
-/** 3D, loop and speed: after the frames, or in a phone's "more". viewer: speed only. */
+/** 3D, loop, step by step and speed: after the frames, or in a phone's "more". viewer: step by step and speed. */
 export function PlaySettings({ viewer = false }: { viewer?: boolean }) {
   const { t } = useLanguage();
   const loop = useEditor(state => state.loop);
   const speed = useEditor(state => state.speed);
   const tilt = useEditor(state => state.tilt);
-  const { setLoop, setSpeed, setTilt } = useEditor.getState();
+  const stepwise = useEditor(state => state.stepwise);
+  const { setLoop, setSpeed, setTilt, setStepwise } = useEditor.getState();
   return (
     <>
       {!viewer && <button type="button" className="tb-mini-button" aria-pressed={tilt} onClick={() => setTilt(!tilt)}
@@ -84,6 +85,8 @@ export function PlaySettings({ viewer = false }: { viewer?: boolean }) {
       {!viewer && <label className="tb-mini" title={t("Spela om och om igen")}>
         <input type="checkbox" checked={loop} aria-label={t("Slinga")} onChange={event => setLoop(event.target.checked)} /><span className="tb-mini-icon" aria-hidden="true">⟲</span>
       </label>}
+      <button type="button" className="tb-mini-button" aria-pressed={stepwise} onClick={() => setStepwise(!stepwise)}
+        aria-label={t("Steg för steg")} title={t("Steg för steg: stanna på varje frame tills du spelar igen")}>⇥</button>
       <select className="tb-mini-select" value={speed} aria-label={t("Hastighet")} onChange={event => setSpeed(Number(event.target.value))}>
         {speeds.map(value => <option key={value} value={value}>{value}×</option>)}
       </select>

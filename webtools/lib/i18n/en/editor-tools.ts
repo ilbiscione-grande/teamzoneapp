@@ -34,6 +34,8 @@ export const editorTools: Record<string, string> = {
   // Timeline
   "Tidslinje": "Timeline",
   "Slinga": "Loop",
+  "Steg för steg": "Step by step",
+  "Steg för steg: stanna på varje frame tills du spelar igen": "Step by step: stop on each frame until you play again",
   "Förflyttning": "Move time",
   "Ta bort frame": "Remove frame",
   "Tryck + för en ny frame, flytta spelarna och tryck ▶ för att se rörelsen.": "Press + for a new frame, move the players and press ▶ to see the movement.",

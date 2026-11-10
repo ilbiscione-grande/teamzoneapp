@@ -18,7 +18,7 @@ export const showGuides: Guide[] = [
       },
       {
         title: { sv: "Tid och rörelse", en: "Time and motion" },
-        text: { sv: "För varje frame väljer du hur lång tid förflyttningen dit tar och hur den rör sig: mjuk, jämn, mjuk start eller mjukt stopp. Uppspelningen kan gå i slinga och i olika hastighet. Under Frames skriver du också en anteckning till varje frame, som visas i PDF:en och i visningsläget.", en: "For each frame you choose how long the move into it takes and how it moves: smooth, even, smooth start or smooth stop. Playback can loop and run at different speeds. Under Frames you also write a note for each frame, shown in the PDF and when presenting." },
+        text: { sv: "För varje frame väljer du hur lång tid förflyttningen dit tar och hur den rör sig: mjuk, jämn, mjuk start eller mjukt stopp. Uppspelningen kan gå i slinga och i olika hastighet. Med ⇥ (steg för steg) stannar den på varje frame, och du spelar vidare med play eller mellanslag. Under Frames skriver du också en anteckning till varje frame, som visas i PDF:en och i visningsläget.", en: "For each frame you choose how long the move into it takes and how it moves: smooth, even, smooth start or smooth stop. Playback can loop and run at different speeds. With ⇥ (step by step) it stops on each frame, and you play on with play or the space bar. Under Frames you also write a note for each frame, shown in the PDF and when presenting." },
       },
       {
         title: { sv: "Effekter", en: "Effects" },
@@ -65,7 +65,7 @@ export const showGuides: Guide[] = [
       },
       {
         title: { sv: "Video", en: "Video" },
-        text: { sv: "Spela in tavlan du står på som video: den spelas upp från början och sparas som fil. Markeringen tas bort och planen visas medan videon spelas in.", en: "Record the board you are on as a video: it plays from the start and is saved as a file. The selection is cleared and the pitch shows while it records." },
+        text: { sv: "Spela in tavlan du står på som video: den spelas upp från början och sparas som fil. Markeringen tas bort och planen visas medan videon spelas in. Med steg för steg står videon still en stund på varje frame.", en: "Record the board you are on as a video: it plays from the start and is saved as a file. The selection is cleared and the pitch shows while it records. With step by step, the video stands still a while on each frame." },
       },
       {
         title: { sv: "Fil", en: "File" },
