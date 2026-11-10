@@ -1147,6 +1147,19 @@ class AppStrings {
         'No one has been called up for the next match yet.',
     'Inställd': 'Cancelled',
     'Klubbens behörigheter': 'Club permissions',
+    // Klubb: the club administrator's page.
+    'Att hantera': 'To handle',
+    'Öppna kön': 'Open the queue',
+    'Lag och uppdrag': 'Teams and roles',
+    'lag': 'teams',
+    'Klubbens utseende och status': "The club's look and status",
+    'Klubbens abonnemang i TeamZone': "The club's TeamZone subscription",
+    'Klubbsidan är för klubbens administratörer.':
+        "The club page is for the club's administrators.",
+    'Lag, behörigheter, klubbmärke, färger och verifiering':
+        'Teams, permissions, badge, colours and verification',
+    'Klubbadmin': 'Club admin',
+    'Publicering': 'Publishing',
     'kommer': 'attending',
     'kommer inte': 'not attending',
     'Laget har inga spelare än.': 'The team has no players yet.',

@@ -23,6 +23,9 @@ class ProductRouteContract {
 
   /// The club's areas given to its functionaries.
   static const clubPermissions = '/club-permissions';
+
+  /// Klubb: the club administrator's work in one place.
+  static const club = '/club';
   static const settings = '/settings';
   static const support = '/support';
 
@@ -44,6 +47,7 @@ class ProductRouteContract {
     editorial,
     publication,
     clubPermissions,
+    club,
     settings,
     support,
   };

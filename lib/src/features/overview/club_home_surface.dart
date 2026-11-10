@@ -147,13 +147,13 @@ class _ClubHomeContent extends StatelessWidget {
       if (contextValue.can('club.memberships.manage'))
         _task(
           context,
-          key: const ValueKey('club-home-permissions'),
-          icon: Icons.admin_panel_settings_outlined,
-          title: strings.feature('Klubbens behörigheter'),
+          key: const ValueKey('club-home-club'),
+          icon: Icons.domain_outlined,
+          title: strings.feature('Klubb'),
           subtitle: strings.feature(
-            'Vem som sköter publicering, medlemmar, anslag och domare',
+            'Lag, behörigheter, klubbmärke, färger och verifiering',
           ),
-          route: ProductRouteContract.clubPermissions,
+          route: ProductRouteContract.club,
         ),
       if (home.publication case final publication?)
         _task(

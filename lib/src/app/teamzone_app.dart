@@ -141,6 +141,7 @@ part '../features/messaging/inbox_surface.dart';
 part '../features/messaging/inbox_cards.dart';
 part '../features/overview/overview_surface.dart';
 part '../features/overview/club_home_surface.dart';
+part '../features/overview/club_admin_surface.dart';
 part '../features/overview/home_event_cards.dart';
 part '../features/publication/editorial_surface.dart';
 part '../features/publication/publication_management_surface.dart';

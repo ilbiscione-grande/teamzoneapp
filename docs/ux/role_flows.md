@@ -422,6 +422,8 @@ En kontext för hela klubben, till exempel "IF Eksjö · Klubbfunktionär". Pers
 - C. Menyn visar namnet i klubben och styrelsetiteln (KF-F4), Styrelse visar svenska datum (KF-F5), Ekonomi heter Ekonomi och säger att kassören skapar kassorna för den som bara får läsa (KF-F6), mottagarlistan visar personens namn i klubben och lagen (KF-F7).
 - Kvar: kalenderns laddtid i klubbkontexten (KF-F9) och ärenden/beslut i Styrelse (OR-01/02).
 
+**Byggt 2026-11-10 (lucka 5, ingen migration):** sidan **Klubb** (`/club`) samlar klubbadministratörens arbete: Att hantera (medlemsansökningar och förfrågningar om nya lag för hela klubben, ansökningar om lagsida), Lag och uppdrag (klubbens lag, skapa lag, klubbens behörigheter, domartillsättning), Klubbens utseende och status (klubbmärke, färger, verifiering) och Abonnemang. Den nås från klubbens Hem, där kortet Klubb ersätter Klubbens behörigheter, och från menyn i alla kontexter i klubben. De gamla ingångarna finns kvar, så inget behöver letas upp på nytt. Inga behörigheter är ändrade.
+
 ---
 
 ## 7. Dubbla roller
@@ -442,7 +444,7 @@ En kontext för hela klubben, till exempel "IF Eksjö · Klubbfunktionär". Pers
 - DR-02 i laget: lagbytet erbjuder Skapa ytterligare lag (skapar direkt), Förfrågningar om nya lag och Gör klubben officiell; Inställningar har Klubb. I klubbkontexten: Hem med Ekonomi, Medlemsansökningar och Förfrågningar om nya lag, och Domartillsättning i menyn.
 - DR-F2 Medlemsansökningar från klubbens Hem öppnade två ark ovanpå varandra (trupplistans egen länkhantering körde också i klubbkontexten) och arket saknade stängknapp, så man fastnade. *Åtgärdat:* bara klubbens Laget öppnar kön i klubbkontexten, och arket har en stängknapp.
 - DR-F3 "Månad" bröts till "Måna d" i kalenderväljaren under Inställningar. *Åtgärdat.*
-- DR-F4 Lagbytet visar klubbkontexten som "Hela klubben · Klubbfunktionär" utan uppdragen (Kassör, klubbadmin). *Ej åtgärdat.*
+- DR-F4 Lagbytet visar klubbkontexten som "Hela klubben · Klubbfunktionär" utan uppdragen (Kassör, klubbadmin). *Åtgärdat 2026-11-10:* klubbkontexten visar områdena, till exempel "Klubbadmin · Styrelse · Ekonomi".
 
 
 ---

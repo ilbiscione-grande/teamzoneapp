@@ -502,6 +502,21 @@ class _ProductShellState extends State<_ProductShell> {
         ),
       ),
       GoRoute(
+        path: ProductRouteContract.club,
+        builder: (_, _) => _ClubAdminSurface(
+          contextValue: widget.contextValue,
+          contexts: widget.contexts,
+          overview: widget.overview,
+          roster: widget.roster,
+          membership: widget.membership,
+          profileServices: widget.profileServices,
+          onNavigate: _navigateFromSurface,
+          onContextsChanged: widget.onContextsChanged,
+          onTeamCreated: widget.onTeamCreated,
+          onTeamRequestsChanged: _refreshPendingTeamRequests,
+        ),
+      ),
+      GoRoute(
         path: ProductRouteContract.publication,
         builder: (_, _) => _PublicationSelfServiceSurface(
           clubId: widget.contextValue.clubId,
@@ -1664,7 +1679,7 @@ Future<void> _showContextPicker({
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Text(
-                        '${strings.feature('Aktivt lag')} · ${_contextRolesLabel(strings, item)}',
+                        '${strings.feature('Aktivt lag')} · ${_contextPickerLabel(strings, item)}',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1679,7 +1694,7 @@ Future<void> _showContextPicker({
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Text(
-                        _contextRolesLabel(strings, item),
+                        _contextPickerLabel(strings, item),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -2109,6 +2124,13 @@ List<_QuickAction> _moreActionsFor(
         icon: Icons.query_stats_outlined,
         label: strings.feature('Lagstatistik'),
         route: ProductRouteContract.teamStatistics,
+      ),
+    // Klubb: the club administrator's work in one place.
+    if (contextValue.can('club.memberships.manage'))
+      (
+        icon: Icons.domain_outlined,
+        label: strings.feature('Klubb'),
+        route: ProductRouteContract.club,
       ),
     if (_hasEconomyCapability(contextValue))
       (
@@ -2759,6 +2781,21 @@ String _contextRolesLabel(AppStrings strings, TeamZoneContext context) {
     main,
     if (context.roles.contains('player')) strings.domainValue('player'),
   ].join(' · ');
+}
+
+/// DR-F4: the team switcher names a club context by the club's areas you
+/// hold ("Klubbadmin · Ekonomi"), not only "Klubbfunktionär".
+String _contextPickerLabel(AppStrings strings, TeamZoneContext context) {
+  if (context.teamId != null) return _contextRolesLabel(strings, context);
+  final areas = [
+    if (context.can('club.memberships.manage')) 'Klubbadmin',
+    if (context.can('board.read')) 'Styrelse',
+    if (context.can('economy.read')) 'Ekonomi',
+    if (context.can('publication.manage')) 'Publicering',
+    if (context.can('club.referees.manage')) 'Domartillsättning',
+  ];
+  if (areas.isEmpty) return _contextRolesLabel(strings, context);
+  return areas.map(strings.feature).join(' · ');
 }
 
 /// Title: your board offices in a club context, shown instead of the role.
