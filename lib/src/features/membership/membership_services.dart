@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:teamzone_app/src/features/membership/club_fees.dart';
 import 'package:teamzone_app/src/features/membership/club_register.dart';
 import 'package:teamzone_app/src/features/membership/membership_models.dart';
 
@@ -286,10 +287,13 @@ class UnconfiguredMembershipServices implements MembershipServices {
 }
 
 class SupabaseMembershipServices
-    implements MembershipServices, ClubRegisterServices {
+    implements MembershipServices, ClubRegisterServices, ClubFeesProvider {
   const SupabaseMembershipServices(this._client);
 
   final SupabaseClient _client;
+
+  @override
+  ClubFeeServices get clubFees => SupabaseClubFees(_client);
 
   @override
   Future<ClubRegister> loadClubRegister(String clubId) =>

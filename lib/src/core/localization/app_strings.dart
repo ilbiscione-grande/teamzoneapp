@@ -1180,6 +1180,81 @@ class AppStrings {
     'Inget lag': 'No team',
     'Ej medlem': 'Not a member',
     'Via barnet': 'Through the child',
+    // Avgifter och familjer.
+    'Avgifter': 'Fees',
+    'Medlemsavgifter och lagavgifter, med familjerabatt':
+        'Membership and team fees, with a family discount',
+    'Medlemsavgift': 'Membership fee',
+    'Lagavgift': 'Team fee',
+    'Ny avgiftsomgång': 'New fee round',
+    'Ändra avgiftsomgång': 'Change fee round',
+    'Avgiftsomgång': 'Fee round',
+    'Familjer': 'Families',
+    'Inga avgiftsomgångar än. Skapa till exempel årets medlemsavgift eller en lagavgift.':
+        "No fee rounds yet. Create, for example, this year's membership fee or a team fee.",
+    'förfaller': 'due',
+    'avgift': 'fee',
+    'avgifter': 'fees',
+    'Skapa avgifterna?': 'Create the fees?',
+    'Ta bort utkastet?': 'Delete the draft?',
+    'Beloppen låses. Ingen får något meddelande än.':
+        'The amounts are locked. No one gets a message yet.',
+    'Utkastet tas bort.': 'The draft is deleted.',
+    'Skapa avgifterna': 'Create the fees',
+    'Avgifterna är skapade.': 'The fees have been created.',
+    'Någon annan har ändrat omgången. Öppna den igen.':
+        'Someone else has changed the round. Open it again.',
+    'Det gick inte. Försök igen.': 'That did not work. Try again.',
+    'att betala': 'to pay',
+    'familjerabatt': 'family discount',
+    'Utkast. Avgifterna räknas om tills de skapas. Ingen får något meddelande än.':
+        'Draft. The fees are recalculated until they are created. No one gets a message yet.',
+    'Får ingen avgift, kategori saknas (inget födelseår)':
+        'Gets no fee, category missing (no year of birth)',
+    'Ange kategori i medlemsregistret.':
+        'Set the category in the member register.',
+    'Ta bort utkastet': 'Delete the draft',
+    'Omgången ger inga avgifter.': 'The round gives no fees.',
+    'per spelare': 'per player',
+    'rabatt från andra syskonet': 'discount from the second sibling',
+    'högst': 'at most',
+    'per familj': 'per family',
+    'betalas av': 'paid by',
+    'familj med': 'family with',
+    'täcks av familjetaket': 'covered by the family cap',
+    'rabatt': 'discount',
+    'Skriv beloppen i kronor, till exempel 300.':
+        'Enter the amounts in kronor, for example 300.',
+    'Ange ett belopp för minst en kategori.':
+        'Enter an amount for at least one category.',
+    'Ange beloppet per spelare.': 'Enter the amount per player.',
+    'Välj lag.': 'Choose a team.',
+    'Syskonrabatten anges i procent, 1–100.':
+        'The sibling discount is a percentage, 1–100.',
+    'Skriv taket i kronor, till exempel 800.':
+        'Enter the cap in kronor, for example 800.',
+    'Omgången kunde inte sparas. Försök igen.':
+        'The round could not be saved. Try again.',
+    'För alla som är medlemmar, med belopp per kategori.':
+        'For everyone who is a member, with an amount per category.',
+    'För spelarna i ett lag, med samma belopp per spelare.':
+        'For the players in a team, with the same amount per player.',
+    'Sista betalningsdag': 'Last day to pay',
+    'Belopp per kategori': 'Amount per category',
+    'Familjerabatt': 'Family discount',
+    'Valfritt. Den dyraste avgiften i en familj betalas hel, rabatten gäller syskonen. Taket begränsar familjens summa.':
+        "Optional. The most expensive fee in a family is paid in full, the discount applies to the siblings. The cap limits the family's total.",
+    'Rabatt från andra syskonet': 'Discount from the second sibling',
+    'Högst per familj': 'At most per family',
+    'Belopp per spelare': 'Amount per player',
+    'Medlemmar med en gemensam vårdnadshavare blir en familj för familjerabatten. Ändra om det har blivit fel, till exempel när föräldrarna bor isär.':
+        'Members with a shared guardian form one family for the family discount. Change it if it is wrong, for example when the parents live apart.',
+    'Inga familjer med fler än en medlem.':
+        'No families with more than one member.',
+    'Ändrad för hand': 'Changed by hand',
+    'Flytta ut': 'Move out',
+    'Följ vårdnadshavarna igen': 'Follow the guardians again',
+    'Lägg till i familjen': 'Add to the family',
     'Någon annan har ändrat personen. Stäng och öppna igen.':
         'Someone else has changed this person. Close and open again.',
     'Efter födelseår (okänt)': 'By year of birth (unknown)',

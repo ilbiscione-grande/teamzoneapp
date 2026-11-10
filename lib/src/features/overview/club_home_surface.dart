@@ -144,14 +144,16 @@ class _ClubHomeContent extends StatelessWidget {
           route: _clubTeamRequestsRoute,
         ),
       ],
-      if (contextValue.can('club.memberships.manage'))
+      if (_canHandleClubFees(contextValue))
         _task(
           context,
           key: const ValueKey('club-home-club'),
           icon: Icons.domain_outlined,
           title: strings.feature('Klubb'),
           subtitle: strings.feature(
-            'Lag, behörigheter, klubbmärke, färger och verifiering',
+            contextValue.can('club.memberships.manage')
+                ? 'Lag, behörigheter, klubbmärke, färger och verifiering'
+                : 'Medlemsavgifter och lagavgifter, med familjerabatt',
           ),
           route: ProductRouteContract.club,
         ),

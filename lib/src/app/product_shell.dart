@@ -2126,7 +2126,8 @@ List<_QuickAction> _moreActionsFor(
         route: ProductRouteContract.teamStatistics,
       ),
     // Klubb: the club administrator's work in one place.
-    if (contextValue.can('club.memberships.manage'))
+    // The treasurer sees it for the fees.
+    if (_canHandleClubFees(contextValue))
       (
         icon: Icons.domain_outlined,
         label: strings.feature('Klubb'),
