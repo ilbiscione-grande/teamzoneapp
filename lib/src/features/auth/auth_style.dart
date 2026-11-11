@@ -185,7 +185,7 @@ class _AuthPillToggle<T> extends StatelessWidget {
 
 /// An error on a pale red field, or a message on a soft accent field.
 class _AuthNotice extends StatelessWidget {
-  const _AuthNotice({required this.text, this.error = false});
+  const _AuthNotice({super.key, required this.text, this.error = false});
   final String text;
   final bool error;
 

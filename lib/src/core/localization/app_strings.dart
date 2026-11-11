@@ -1290,6 +1290,9 @@ class AppStrings {
     'Anledning (valfri)': 'Reason (optional)',
     'obetalda': 'unpaid',
     'av': 'of',
+    // A team code in the waiting room.
+    'Ansökan är skickad till laget. Du kommer in när en ledare har godkänt den.':
+        'Your request has been sent to the team. You get in once a leader has approved it.',
     // Påminnelser och Mina avgifter.
     'Påminn obetalda': 'Remind unpaid',
     'Påminn valda': 'Remind selected',

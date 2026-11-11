@@ -862,6 +862,9 @@ class _WaitingRoomState extends State<_WaitingRoom> {
   bool _pending = false;
   String? _message;
 
+  /// The message is a failure; otherwise it says what happened.
+  bool _messageIsError = true;
+
   @override
   void dispose() {
     _token.dispose();
@@ -874,22 +877,41 @@ class _WaitingRoomState extends State<_WaitingRoom> {
       _pending = true;
       _message = null;
     });
+    final token = _token.text.trim();
     try {
-      await widget.roster.claim(
-        token: _token.text.trim(),
+      await widget.roster.claim(token: token, idempotencyKey: _newUuid());
+      widget.onClaimed();
+      return;
+    } catch (_) {
+      // Not a personal invitation: it may be a team code (2026-11-11).
+    }
+    try {
+      // A team code asks to join; a leader approves it, so the person stays
+      // here until then and is told so.
+      await widget.roster.claimTeamCode(
+        token: token,
         idempotencyKey: _newUuid(),
       );
-      widget.onClaimed();
+      if (mounted) {
+        _token.clear();
+        setState(() {
+          _messageIsError = false;
+          _message = AppStrings.of(context).feature(
+            'Ansökan är skickad till laget. Du kommer in när en ledare har godkänt den.',
+          );
+        });
+      }
     } catch (_) {
       // Wrong passwords, codes and expired links are user errors, not app
       // defects; Auth outages are tracked server-side (critical flow "auth").
 
       if (mounted) {
-        setState(
-          () => _message = AppStrings.of(
+        setState(() {
+          _messageIsError = true;
+          _message = AppStrings.of(
             context,
-          ).feature('Inbjudan är ogiltig eller har gått ut.'),
-        );
+          ).feature('Inbjudan är ogiltig eller har gått ut.');
+        });
       }
     } finally {
       if (mounted) setState(() => _pending = false);
@@ -912,11 +934,12 @@ class _WaitingRoomState extends State<_WaitingRoom> {
       AppErrors.caught('auth_surfaces._acceptGuardianInvite', error);
 
       if (mounted) {
-        setState(
-          () => _message = AppStrings.of(
+        setState(() {
+          _messageIsError = true;
+          _message = AppStrings.of(
             context,
-          ).feature('Guardianinbjudan är ogiltig eller har gått ut.'),
-        );
+          ).feature('Guardianinbjudan är ogiltig eller har gått ut.');
+        });
       }
     } finally {
       if (mounted) setState(() => _pending = false);
@@ -967,7 +990,11 @@ class _WaitingRoomState extends State<_WaitingRoom> {
                       ),
                       if (_message != null) ...[
                         const SizedBox(height: 12),
-                        _AuthNotice(text: _message!, error: true),
+                        _AuthNotice(
+                          key: const ValueKey('waiting-room-message'),
+                          text: _message!,
+                          error: _messageIsError,
+                        ),
                       ],
                       const SizedBox(height: 16),
                       FilledButton(
