@@ -68,6 +68,30 @@ och dess capability grants.
 - v1 fungerar fortfarande för äldre klienter, lämnar egna benämningar orörda
   och följer samma rollregler.
 
+## Lagkapten, vice kapten och spelarråd (2026-11-11)
+
+- I spelarens lagdetaljer (personprofilen → Position) väljer den som får ändra
+  lagdetaljer Lagkapten, Vice kapten eller Ingen, och slår på "Med i
+  spelarrådet". Bara spelare kan ha dem.
+- Laget har en lagkapten och en vice kapten. Får någon annan rollen flyttas den
+  dit och tas bort från den förra.
+- Trupplistan och profilen visar "Lagkapten" eller "Vice kapten"; profilen
+  visar också "Spelarrådet".
+- Spelarrådet får en egen systemchatt, "<lag> – Spelarråd". Den skapas när den
+  första spelaren går med i rådet. Deltagare är lagets ledare (samma regel som
+  ledarchatten) och spelarna i rådet med konto. Lämnar en spelare rådet eller
+  laget tas hen bort ur chatten.
+- Chatten har trådtypen `leader` (inga grupputskick-regler) och kopplingstypen
+  `council` i `core.system_thread_bindings`. I inkorgen syns den under filtret
+  Ledare.
+- Databas: `20270226090000_team_captains_player_council.sql`, med kolumnerna
+  `captain_role` och `player_council` i `core.team_person_details`,
+  `api.set_team_person_details_v6` och `list_team_roles` med fälten.
+  `sync_team_system_threads` har tre chattyper, och det finns en trigger på
+  `player_council`. Verifierad mot den länkade databasen i en transaktion som
+  rullades tillbaka. Där flyttades kaptensbindeln, rådet lades till och togs
+  bort ur chatten, och en okänd roll gav `invalid_captain_role`.
+
 ## Verifiering
 
 - `node supabase/tests/team_roles.local.mjs --details`

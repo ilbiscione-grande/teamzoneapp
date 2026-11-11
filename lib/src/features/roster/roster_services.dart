@@ -58,6 +58,8 @@ abstract interface class RosterServices {
     String? mainPosition,
     String? mainTitle,
     int? jerseyNumber,
+    String? captainRole,
+    bool playerCouncil = false,
     required int expectedRevision,
     required String idempotencyKey,
   });
@@ -420,6 +422,8 @@ class UnconfiguredRosterServices implements RosterServices {
     String? mainPosition,
     String? mainTitle,
     int? jerseyNumber,
+    String? captainRole,
+    bool playerCouncil = false,
     required int expectedRevision,
     required String idempotencyKey,
   }) => Future.error(StateError('Supabase is not configured.'));
@@ -980,13 +984,15 @@ class SupabaseRosterServices implements RosterServices {
     String? mainPosition,
     String? mainTitle,
     int? jerseyNumber,
+    String? captainRole,
+    bool playerCouncil = false,
     required int expectedRevision,
     required String idempotencyKey,
   }) async {
     final result = await _client
         .schema('api')
         .rpc<Object?>(
-          'set_team_person_details_v5',
+          'set_team_person_details_v6',
           params: {
             'target_club_id': clubId,
             'target_team_id': teamId,
@@ -998,6 +1004,8 @@ class SupabaseRosterServices implements RosterServices {
             'new_main_position': mainPosition,
             'new_main_title': mainTitle,
             'new_jersey_number': jerseyNumber,
+            'new_captain_role': captainRole,
+            'new_player_council': playerCouncil,
             'expected_revision': expectedRevision,
             'idempotency_key': idempotencyKey,
           },

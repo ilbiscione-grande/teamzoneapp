@@ -1661,6 +1661,14 @@ class AppStrings {
     'Lagstatistik': 'Team statistics',
     'Turneringar': 'Tournaments',
     'Tröjnummer': 'Shirt number',
+    'Lagkapten': 'Captain',
+    'Vice kapten': 'Vice captain',
+    'Spelarrådet': 'Player council',
+    'Med i spelarrådet': 'In the player council',
+    'Spelarrådet har en egen chatt, Spelarråd, tillsammans med lagets ledare.':
+        "The player council has its own chat, Spelarråd, with the team's leaders.",
+    'Laget har en lagkapten och en vice kapten. Har någon annan rollen flyttas den hit.':
+        'A team has one captain and one vice captain. If someone else has the role, it moves here.',
     'Tröjnumret är ett heltal 0–999.':
         'The shirt number is a whole number 0–999.',
     'Tröjnumret används redan av en annan spelare i laget.':

@@ -99,8 +99,11 @@ String _anyPositionLabel(AppStrings strings, String position) =>
     ? _positionLabel(strings, position)
     : position;
 
-/// For the squad list: the shirt number and the main position, else the
-/// first one chosen; null without either.
+String _captainLabel(AppStrings strings, String role) =>
+    strings.feature(role == 'captain' ? 'Lagkapten' : 'Vice kapten');
+
+/// For the squad list: the shirt number, the armband and the main position,
+/// else the first one chosen; null without any.
 String? _listPositionLabel(AppStrings strings, TeamRole? role) {
   if (role == null) return null;
   final key =
@@ -109,6 +112,7 @@ String? _listPositionLabel(AppStrings strings, TeamRole? role) {
       role.customPositions.firstOrNull;
   final parts = [
     if (role.jerseyNumber != null) '#${role.jerseyNumber}',
+    if (role.captainRole case final armband?) _captainLabel(strings, armband),
     if (key != null) _anyPositionLabel(strings, key),
   ];
   return parts.isEmpty ? null : parts.join(' · ');
@@ -163,6 +167,11 @@ String _personDetailsSummary(
     if (roles.any(_isLeaderRole)) _titlesSummary(strings, rows.first),
     if (roles.contains('player'))
       _positionsSummary(strings, rows.first, data.positionCatalog),
+    if (roles.contains('player'))
+      if (rows.first.captainRole case final armband?)
+        _captainLabel(strings, armband),
+    if (roles.contains('player') && rows.first.playerCouncil)
+      strings.feature('Spelarrådet'),
   ].where((part) => part.isNotEmpty).join(' · ');
 }
 
@@ -212,6 +221,8 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
   late List<String> _customPositions = [..._person.customPositions];
   late String? _main = _person.mainPosition;
   late String? _mainTitle = _person.mainTitle;
+  late String? _captain = _person.captainRole;
+  late bool _council = _person.playerCouncil;
   late int _revision = _person.detailsRevision;
   late final _number = TextEditingController(
     text: _person.jerseyNumber?.toString() ?? '',
@@ -309,6 +320,8 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
           _main = person.mainPosition;
           _mainTitle = person.mainTitle;
           _number.text = person.jerseyNumber?.toString() ?? '';
+          _captain = person.captainRole;
+          _council = person.playerCouncil;
           _revision = person.detailsRevision;
           _key = _newUuid();
           _error = null;
@@ -365,6 +378,8 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
             mainPosition: _isPlayer ? _main : null,
             mainTitle: _isLeader ? _mainTitle : null,
             jerseyNumber: _isPlayer ? number.value : null,
+            captainRole: _isPlayer ? _captain : null,
+            playerCouncil: _isPlayer && _council,
             expectedRevision: _revision,
             idempotencyKey: _key,
           )
@@ -559,6 +574,51 @@ class _TeamPersonDetailsEditorState extends State<_TeamPersonDetailsEditor> {
                         prefixText: '# ',
                       ),
                     ),
+                  ),
+                  _heading(strings.feature('Lagkapten')),
+                  Wrap(
+                    key: const ValueKey('captain-role'),
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      for (final (value, label) in const [
+                        (null, 'Ingen'),
+                        ('captain', 'Lagkapten'),
+                        ('vice_captain', 'Vice kapten'),
+                      ])
+                        ChoiceChip(
+                          key: ValueKey('captain-role-${value ?? 'none'}'),
+                          label: Text(strings.feature(label)),
+                          selected: _captain == value,
+                          onSelected: _busy || _stale
+                              ? null
+                              : (_) => _changed(() => _captain = value),
+                        ),
+                    ],
+                  ),
+                  if (_captain != null && _captain != _person.captainRole)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        strings.feature(
+                          'Laget har en lagkapten och en vice kapten. Har någon annan rollen flyttas den hit.',
+                        ),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  SwitchListTile(
+                    key: const ValueKey('player-council'),
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(strings.feature('Med i spelarrådet')),
+                    subtitle: Text(
+                      strings.feature(
+                        'Spelarrådet har en egen chatt, Spelarråd, tillsammans med lagets ledare.',
+                      ),
+                    ),
+                    value: _council,
+                    onChanged: _busy || _stale
+                        ? null
+                        : (value) => _changed(() => _council = value),
                   ),
                   _heading(
                     '${strings.feature('Position')} · ${_sportLabel(strings, _data.sport)}',

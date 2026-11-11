@@ -40,8 +40,11 @@ void main() {
     // A player is offered positions, not leader titles.
     expect(find.widgetWithText(FilterChip, 'Huvudtränare'), findsNothing);
     expect(find.textContaining('Fotboll'), findsOneWidget);
+    await tester.ensureVisible(find.widgetWithText(FilterChip, 'Försvarare'));
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilterChip, 'Försvarare'));
     await tester.ensureVisible(find.widgetWithText(FilterChip, 'Mittback'));
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilterChip, 'Mittback'));
     await tester.enterText(
       find.widgetWithText(TextField, 'Egen position'),
@@ -138,6 +141,63 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('roster-avatar-ada')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a leader makes a player captain and puts them in the council', (
+    tester,
+  ) async {
+    final roster = _Roster(
+      roles: [
+        const TeamRole(personId: 'ada', name: 'Ada Spelare', role: 'player'),
+      ],
+      people: [
+        const RosterPersonSummary(
+          id: 'ada',
+          displayName: 'Ada Spelare',
+          ageClass: 'F2012',
+          teamId: 'team',
+          teamName: 'F2012',
+          assignmentState: 'active',
+          safeguardingRequired: false,
+        ),
+      ],
+    );
+    await _openRoster(tester, roster);
+    await tester.tap(find.text('Ada Spelare'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('person-team-details')),
+    );
+    await tester.tap(find.byKey(const ValueKey('person-team-details')));
+    await tester.pumpAndSettle();
+    final none = find.byKey(const ValueKey('captain-role-none'));
+    await tester.ensureVisible(none);
+    expect(tester.widget<ChoiceChip>(none).selected, isTrue);
+    await tester.tap(find.byKey(const ValueKey('captain-role-captain')));
+    await tester.pump();
+    expect(
+      find.text(
+        'Laget har en lagkapten och en vice kapten. Har någon annan rollen flyttas den hit.',
+      ),
+      findsOneWidget,
+    );
+    final council = find.byKey(const ValueKey('player-council'));
+    await tester.ensureVisible(council);
+    await tester.tap(council);
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('save-team-person-details')));
+    await tester.pumpAndSettle();
+    expect(roster.savedCaptainRole, 'captain');
+    expect(roster.savedPlayerCouncil, isTrue);
+    expect(find.text('Lagkapten · Spelarrådet'), findsOneWidget);
+    await tester.tap(find.byTooltip('Tillbaka till truppen'));
+    await tester.pumpAndSettle();
+    final row = find.byKey(const ValueKey('roster-player-ada'));
+    expect(
+      find.descendant(of: row, matching: find.text('Lagkapten')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -1242,6 +1302,8 @@ class _Roster extends UnconfiguredRosterServices {
   String? savedMainPosition;
   String? savedMainTitle;
   int? savedJerseyNumber;
+  String? savedCaptainRole;
+  bool? savedPlayerCouncil;
   List<String> grantable = const [];
   final permissionCalls = <(String, List<String>, List<String>, String?)>[];
 
@@ -1312,6 +1374,8 @@ class _Roster extends UnconfiguredRosterServices {
     String? mainPosition,
     String? mainTitle,
     int? jerseyNumber,
+    String? captainRole,
+    bool playerCouncil = false,
     required int expectedRevision,
     required String idempotencyKey,
   }) async {
@@ -1319,6 +1383,8 @@ class _Roster extends UnconfiguredRosterServices {
     savedMainPosition = mainPosition;
     savedMainTitle = mainTitle;
     savedJerseyNumber = jerseyNumber;
+    savedCaptainRole = captainRole;
+    savedPlayerCouncil = playerCouncil;
     if (failWith != null) throw failWith!;
     roles = [
       for (final r in roles)
@@ -1337,6 +1403,8 @@ class _Roster extends UnconfiguredRosterServices {
             mainPosition: mainPosition,
             mainTitle: mainTitle,
             jerseyNumber: jerseyNumber,
+            captainRole: captainRole,
+            playerCouncil: playerCouncil,
             detailsRevision: expectedRevision + 1,
           ),
     ];

@@ -516,6 +516,8 @@ class TeamRole {
     this.mainPosition,
     this.mainTitle,
     this.jerseyNumber,
+    this.captainRole,
+    this.playerCouncil = false,
     this.detailsRevision = 0,
     this.permissions,
     this.permissionTemplate,
@@ -539,6 +541,12 @@ class TeamRole {
 
   /// The player's shirt number in the team, one per player.
   final int? jerseyNumber;
+
+  /// captain or vice_captain (one of each per team), null otherwise.
+  final String? captainRole;
+
+  /// In the team's player council, which has a chat with the leaders.
+  final bool playerCouncil;
   final int detailsRevision;
 
   /// A leader's panel capabilities in this team; only sent to viewers who
@@ -558,6 +566,8 @@ class TeamRole {
     mainPosition: json['main_position'] as String?,
     mainTitle: json['main_title'] as String?,
     jerseyNumber: (json['jersey_number'] as num?)?.toInt(),
+    captainRole: json['captain_role'] as String?,
+    playerCouncil: json['player_council'] == true,
     detailsRevision: (json['details_revision'] as num?)?.toInt() ?? 0,
     permissions: json['permissions'] is List
         ? _strings(json['permissions'])

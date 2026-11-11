@@ -69,6 +69,8 @@ class _PersonProfileHero extends StatelessWidget {
                     final roleLine = [
                       if (held.contains('player') && row?.jerseyNumber != null)
                         '#${row!.jerseyNumber}',
+                      if (held.contains('player') && row?.captainRole != null)
+                        _captainLabel(strings, row!.captainRole!),
                       ...held.map((role) => _roleLabel(strings, role)),
                     ].join(' · ');
                     final position = row == null
