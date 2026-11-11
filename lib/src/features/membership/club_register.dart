@@ -53,6 +53,8 @@ class ClubRegisterPerson {
     required this.revision,
     this.email,
     this.emailEditable = false,
+    this.clubRoles = const [],
+    this.isSelf = false,
   });
 
   factory ClubRegisterPerson.fromJson(Map<String, dynamic> json) {
@@ -79,6 +81,8 @@ class ClubRegisterPerson {
       revision: (json['revision'] as num?)?.toInt() ?? 0,
       email: json['email'] as String?,
       emailEditable: json['email_editable'] as bool? ?? false,
+      clubRoles: names(json['club_roles']),
+      isSelf: json['is_self'] as bool? ?? false,
     );
   }
 
@@ -118,6 +122,13 @@ class ClubRegisterPerson {
   /// an account, never for a protected person.
   final String? email;
   final bool emailEditable;
+
+  /// The club-wide roles: club_functionary and member (2026-11-11).
+  final List<String> clubRoles;
+
+  /// The person is the viewer: their own functionary and leader roles
+  /// cannot be taken back here.
+  final bool isSelf;
 }
 
 class ClubRegister {
@@ -155,6 +166,116 @@ abstract interface class ClubRegisterServices {
     required String personId,
     required String email,
   });
+
+  /// Gives or takes back a club-wide role: club_functionary or member.
+  /// Throws [ClubRoleException].
+  Future<void> setClubRole({
+    required String clubId,
+    required String personId,
+    required String role,
+    required bool active,
+    required String idempotencyKey,
+  });
+
+  /// Adds ([fromRole] null) or removes ([toRole] null) leader or player in
+  /// a team. Throws [ClubRoleException].
+  Future<void> setTeamRole({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    String? fromRole,
+    String? toRole,
+    required String idempotencyKey,
+  });
+
+  /// The club's active teams.
+  Future<List<({String id, String name})>> listClubTeams(String clubId);
+}
+
+/// A role change the server refused: own_club_role, own_leader_role,
+/// last_memberships_manager, home_in_other_team or stale_role.
+class ClubRoleException implements Exception {
+  const ClubRoleException(this.code);
+  final String code;
+}
+
+const _knownRoleErrors = {
+  'own_club_role',
+  'own_leader_role',
+  'last_memberships_manager',
+  'home_in_other_team',
+  'stale_role',
+};
+
+Never _roleError(PostgrestException error) {
+  for (final code in _knownRoleErrors) {
+    if (error.message.contains(code)) throw ClubRoleException(code);
+  }
+  throw error;
+}
+
+Future<void> setClubRoleWith(
+  SupabaseClient client, {
+  required String clubId,
+  required String personId,
+  required String role,
+  required bool active,
+  required String idempotencyKey,
+}) async {
+  try {
+    await client
+        .schema('api')
+        .rpc<Object?>(
+          'set_club_role',
+          params: {
+            'target_club_id': clubId,
+            'target_person_id': personId,
+            'target_role': role,
+            'make_active': active,
+            'idempotency_key': idempotencyKey,
+          },
+        )
+        .timeout(const Duration(seconds: 15));
+  } on PostgrestException catch (error) {
+    _roleError(error);
+  }
+}
+
+Future<void> setTeamRoleWith(
+  SupabaseClient client, {
+  required String clubId,
+  required String teamId,
+  required String personId,
+  String? fromRole,
+  String? toRole,
+  required String idempotencyKey,
+}) async {
+  final (name, params) = switch ((fromRole, toRole)) {
+    (null, final String to) => ('add_team_role', {'role': to}),
+    (final String from, null) => ('remove_team_role', {'role': from}),
+    (final String from, final String to) => (
+      'change_team_role',
+      {'from_role': from, 'to_role': to},
+    ),
+    _ => throw ArgumentError('A role change needs a from or to role.'),
+  };
+  try {
+    await client
+        .schema('api')
+        .rpc<Object?>(
+          name,
+          params: {
+            'target_club_id': clubId,
+            'target_team_id': teamId,
+            'target_person_id': personId,
+            ...params,
+            'idempotency_key': idempotencyKey,
+          },
+        )
+        .timeout(const Duration(seconds: 15));
+  } on PostgrestException catch (error) {
+    _roleError(error);
+  }
 }
 
 /// The address is not an e-mail address.

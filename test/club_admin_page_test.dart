@@ -235,6 +235,69 @@ void main() {
     await tester.pumpAndSettle();
     expect(membership.emails, ['parent bo@example.com']);
 
+    // Roles in the person card: the child stops playing in P2014.
+    await tester.tap(find.byKey(const ValueKey('club-register-kid')));
+    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-register-role-remove-p2014-player')),
+    );
+    await tester.pumpAndSettle();
+    // The guardian role follows the child; the parent joins the board.
+    await tester.tap(find.byKey(const ValueKey('club-register-parent')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('club-register-role-remove-p2014-guardian')),
+      findsNothing,
+    );
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-register-role-new')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Styrelse eller funktionär').last);
+    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-register-role-add')),
+    );
+    await tester.pumpAndSettle();
+    // You keep your own functionary role; you can lead team B.
+    await tester.tap(find.byKey(const ValueKey('club-register-chair')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('club-register-role-club_functionary')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('club-register-role-remove-club_functionary')),
+      findsNothing,
+    );
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-register-role-new')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ledare').last);
+    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-register-role-team')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('B').last);
+    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-register-role-add')),
+    );
+    await tester.pumpAndSettle();
+    expect(membership.roles, [
+      'kid p2014 player>-',
+      'parent club_functionary on',
+      'chair b ->leader',
+    ]);
+
     await tester.tap(find.byKey(const ValueKey('club-register-export')));
     await tester.pumpAndSettle();
     expect(exported, hasLength(1));
@@ -450,6 +513,8 @@ class _Membership extends UnconfiguredMembershipServices
         'name': 'Cecilia Ordförande',
         'has_account': true,
         'club_role': true,
+        'club_roles': ['club_functionary'],
+        'is_self': true,
         'teams': [],
         'is_member': true,
         'category': null,
@@ -459,6 +524,27 @@ class _Membership extends UnconfiguredMembershipServices
   });
 
   final emails = <String>[];
+  final roles = <String>[];
+
+  @override
+  Future<void> setClubRole({
+    required String clubId,
+    required String personId,
+    required String role,
+    required bool active,
+    required String idempotencyKey,
+  }) async => roles.add('$personId $role ${active ? 'on' : 'off'}');
+
+  @override
+  Future<void> setTeamRole({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    String? fromRole,
+    String? toRole,
+    required String idempotencyKey,
+  }) async =>
+      roles.add('$personId $teamId ${fromRole ?? '-'}>${toRole ?? '-'}');
 
   @override
   Future<String?> setClubPersonEmail({

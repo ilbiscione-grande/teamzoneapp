@@ -511,6 +511,13 @@ class _ClubRegisterPersonSheetState extends State<_ClubRegisterPersonSheet> {
               ),
             ],
             const Divider(height: 24),
+            _ClubRegisterRoles(
+              clubId: widget.clubId,
+              person: person,
+              services: widget.services,
+              onChanged: () => Navigator.of(context).pop(true),
+            ),
+            const Divider(height: 24),
             SwitchListTile(
               key: const ValueKey('club-register-member'),
               contentPadding: EdgeInsets.zero,

@@ -47,6 +47,7 @@
    - **Avregistrering:** en länk i mejlet och `List-Unsubscribe` (one-click). Länken pekar på mejlets id med en HMAC-signatur, aldrig på adressen. Den avregistrerade adressen sparas som hash och får inga fler avgiftsmejl. Den som då varken har konto eller e-post visas som "kan inte nås".
    - **Sändning:** `fee-email-worker` körs varje minut via pg_cron, bara när något väntar, och skickar via Resend som klubbsajtens svar (`RESEND_API_KEY`). Avregistreringslänkarna signeras med `CONTACT_REPLY_SECRET` med eget prefix. Swish-referens per avgift är inte byggd än.
    - **Efteråt (2026-11-11):** medlemsregistret visar och sparar "E-post för påminnelser" för den som saknar konto, men aldrig för en skyddad person (migration `20270223090000_register_fee_email.sql`). Mina avgifter finns under Inställningar. Rollen "Medlem i klubben" ger appen med klubbens Hem, utan väntrummet.
+   - **Roller (2026-11-11):** personkortet i registret har en sektion Roller. Där ger och tar klubbadmin bort styrelse eller funktionär och medlem i klubben för hela klubben, och ledare eller spelare i ett lag (migration `20270225090000_club_roles.sql`).
 
 Senare: Swish-QR, import av bankfil och en riktig betalintegration.
 

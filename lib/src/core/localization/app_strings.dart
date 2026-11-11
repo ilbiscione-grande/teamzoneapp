@@ -1313,6 +1313,26 @@ class AppStrings {
     'Placera i': 'Place in',
     'Där personen sökte': 'Where they applied',
     'Klubben, utan lag': 'The club, without a team',
+    // Roles in the register's person card (2026-11-11).
+    'Roller': 'Roles',
+    'Klubben måste ha minst en person med Medlemmar och lag.':
+        'The club must have at least one person with Members and teams.',
+    'Ta bort rollen': 'Remove the role',
+    'Personen har ingen roll i klubben.': 'The person has no role in the club.',
+    'Lägg till roll': 'Add a role',
+    'Lagen kunde inte hämtas.': 'The teams could not be loaded.',
+    'Områden som Medlemmar och lag ger du under Klubbens behörigheter.':
+        'Areas such as Members and teams are given under Club permissions.',
+    'Du kan inte ta bort din egen roll som funktionär.':
+        'You cannot remove your own functionary role.',
+    'Du kan inte ta bort din egen ledarroll.':
+        'You cannot remove your own leader role.',
+    'Personen är redan spelare i ett annat lag.':
+        'The person is already a player in another team.',
+    'Rollen har ändrats av någon annan. Stäng och öppna igen.':
+        'Someone else changed the role. Close and open again.',
+    'Rollen kunde inte sparas. Försök igen.':
+        'The role could not be saved. Try again.',
     'Styrelse och funktionärer hör till hela klubben. Personen läggs i klubben, inte i laget.':
         'The board and functionaries belong to the whole club. The person is placed in the club, not in the team.',
     // Applying to the club (2026-11-11).

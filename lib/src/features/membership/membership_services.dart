@@ -480,6 +480,40 @@ class SupabaseMembershipServices
   );
 
   @override
+  Future<void> setClubRole({
+    required String clubId,
+    required String personId,
+    required String role,
+    required bool active,
+    required String idempotencyKey,
+  }) => setClubRoleWith(
+    _client,
+    clubId: clubId,
+    personId: personId,
+    role: role,
+    active: active,
+    idempotencyKey: idempotencyKey,
+  );
+
+  @override
+  Future<void> setTeamRole({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    String? fromRole,
+    String? toRole,
+    required String idempotencyKey,
+  }) => setTeamRoleWith(
+    _client,
+    clubId: clubId,
+    teamId: teamId,
+    personId: personId,
+    fromRole: fromRole,
+    toRole: toRole,
+    idempotencyKey: idempotencyKey,
+  );
+
+  @override
   Future<ClubRegister> loadClubRegister(String clubId) =>
       loadClubRegisterFrom(_client, clubId);
 

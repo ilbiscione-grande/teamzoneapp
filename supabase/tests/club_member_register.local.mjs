@@ -115,4 +115,48 @@ await assert.rejects(setEmail(parentP, 'inte en adress'), /invalid_email/);
 await assert.rejects(call(coach, 'select api.set_club_person_email($1, $2, $3)', [club, parentP, 'x@example.com']), /not_found/);
 assert.deepEqual(await setEmail(parentP, ''), { email: null });
 assert.doesNotMatch(read('supabase/migrations/20270215090000_club_member_register.sql'), /serialization_failure/);
+// Roles in the person card (2026-11-11): the club admin gives and takes back
+// the club-wide roles; a functionary's areas end with the role.
+await db.exec(`alter table core.assignments add column revision bigint default 1, add column created_by uuid;
+alter table core.capability_grants add column revision bigint default 1;
+create function internal.actor_owns_club_person(target_club_id uuid, target_club_person_id uuid) returns boolean
+language sql stable security definer set search_path = '' as $$ select exists (select 1 from core.person_account_links l
+  where l.club_id = target_club_id and l.club_person_id = target_club_person_id and l.profile_id = auth.uid() and l.state = 'active') $$;
+create function internal.club_has_memberships_manager(target_club_id uuid) returns boolean
+language sql stable security definer set search_path = '' as $$ select exists (select 1 from core.capability_grants g
+  join core.assignments a on a.id = g.assignment_id and a.state = 'active'
+  where g.club_id = target_club_id and g.capability = 'club.memberships.manage'
+    and (g.ends_at is null or g.ends_at > now())) $$;`);
+await db.exec(read('supabase/migrations/20270225090000_club_roles.sql'));
+const role = (who, person, r, on) => call(who, 'select api.set_club_role($1, $2, $3, $4, gen_random_uuid())', [club, person, r, on]);
+people = await register();
+assert.deepEqual([byName('Admin Adminsson').club_roles, byName('Admin Adminsson').is_self], [['club_functionary'], true]);
+assert.deepEqual([byName('Tränaren').club_roles, byName('Tränaren').is_self], [[], false]);
+// The coach becomes a functionary and gets members and teams there.
+assert.deepEqual(await role(admin, coachP, 'club_functionary', true), { person_id: coachP, role: 'club_functionary', active: true });
+await role(admin, coachP, 'club_functionary', true);
+await role(admin, parentP, 'member', true);
+people = await register();
+assert.deepEqual([byName('Tränaren').club_roles, byName('Tränaren').club_role], [['club_functionary'], true]);
+assert.deepEqual(byName('Föräldern').club_roles, ['member']);
+assert.equal((await db.query("select count(*)::int n from core.assignments where club_person_id = $1 and team_id is null", [coachP])).rows[0].n, 1);
+const coachRole = (await db.query("select id from core.assignments where club_person_id = $1 and team_id is null", [coachP])).rows[0].id;
+await db.query("insert into core.capability_grants values ($1, $2, 'club.memberships.manage', 'club', $1, now() - interval '1 second', null)", [club, coachRole]);
+// Not your own functionary role, nor the last one with members and teams.
+await assert.rejects(role(admin, adminP, 'club_functionary', false), /own_club_role/);
+await assert.rejects(role(admin, kidP, 'player', true), /invalid_role/);
+await role(admin, parentP, 'member', false);
+await role(admin, coachP, 'club_functionary', false);
+people = await register();
+assert.deepEqual([byName('Tränaren').club_roles, byName('Föräldern').club_roles], [[], []]);
+assert.equal((await db.query("select count(*)::int n from core.capability_grants where assignment_id = $1 and ends_at is not null", [coachRole])).rows[0].n, 1);
+// A functionary with members and teams again: not their own role, but the admin's.
+await role(admin, coachP, 'club_functionary', true);
+const coachRole2 = (await db.query("select id from core.assignments where club_person_id = $1 and team_id is null and state = 'active'", [coachP])).rows[0].id;
+await db.query("insert into core.capability_grants values ($1, $2, 'club.memberships.manage', 'club', $1, now() - interval '1 second', null)", [club, coachRole2]);
+await assert.rejects(role(coach, coachP, 'club_functionary', false), /own_club_role/);
+await role(coach, adminP, 'club_functionary', false);
+await assert.rejects(call(admin, 'select api.get_club_member_register($1)', [club]), /not_found/);
+assert.equal((await db.query("select count(*)::int n from audit.command_events where command_type = 'club.role.set.v1'")).rows[0].n, 7);
+assert.doesNotMatch(read('supabase/migrations/20270225090000_club_roles.sql'), /serialization_failure/);
 console.log('club member register: ok');

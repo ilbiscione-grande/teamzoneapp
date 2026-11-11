@@ -146,6 +146,7 @@ part '../features/overview/overview_surface.dart';
 part '../features/overview/club_home_surface.dart';
 part '../features/overview/club_admin_surface.dart';
 part '../features/overview/club_register_surface.dart';
+part '../features/overview/club_register_roles.dart';
 part '../features/overview/club_codes_surface.dart';
 part '../features/overview/club_fees_surface.dart';
 part '../features/overview/club_fee_editor_surface.dart';
