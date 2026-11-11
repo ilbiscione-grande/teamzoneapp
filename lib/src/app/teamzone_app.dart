@@ -148,6 +148,7 @@ part '../features/overview/club_register_surface.dart';
 part '../features/overview/club_fees_surface.dart';
 part '../features/overview/club_fee_editor_surface.dart';
 part '../features/overview/club_fee_payments_surface.dart';
+part '../features/overview/my_club_fees_surface.dart';
 part '../features/overview/club_families_surface.dart';
 part '../features/overview/home_event_cards.dart';
 part '../features/publication/editorial_surface.dart';

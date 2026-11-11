@@ -64,11 +64,13 @@ enum _FeeFilter { all, open, paid, waived }
 class _ClubFeePayments extends StatefulWidget {
   const _ClubFeePayments({
     required this.clubId,
+    required this.roundId,
     required this.fees,
     required this.services,
     required this.onChanged,
   });
   final String clubId;
+  final String roundId;
   final List<ClubFee> fees;
   final ClubFeeServices services;
   final VoidCallback onChanged;
@@ -149,6 +151,74 @@ class _ClubFeePaymentsState extends State<_ClubFeePayments> {
             ),
           ),
         ),
+      );
+    }
+    if (!mounted) return;
+    setState(() => _busy = false);
+    widget.onChanged();
+  }
+
+  Future<void> _remind(List<ClubFee> fees) async {
+    final strings = AppStrings.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final all = fees.length == widget.fees.where((fee) => fee.isOpen).length;
+    final unreachable = fees.where((fee) => fee.reachable == false).length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(strings.feature('Skicka påminnelse?')),
+        content: Text(
+          [
+            '${fees.length} ${strings.feature(fees.length == 1 ? 'obetald avgift' : 'obetalda avgifter')}. '
+                '${strings.feature('Personen och vårdnadshavarna får en notis i inkorgen och en push.')}',
+            if (unreachable > 0)
+              '$unreachable ${strings.feature('kan inte nås, de saknar konto i TeamZone.')}',
+            strings.feature(
+              'En avgift som påmints senaste dygnet hoppas över.',
+            ),
+          ].join('\n\n'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(strings.feature('Avbryt')),
+          ),
+          FilledButton(
+            key: const ValueKey('club-fee-remind-confirm'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(strings.feature('Skicka')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      final result = await widget.services.sendClubFeeReminders(
+        clubId: widget.clubId,
+        roundId: widget.roundId,
+        feeIds: all ? null : [for (final fee in fees) fee.feeId!],
+        idempotencyKey: _newUuid(),
+      );
+      _selected.clear();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            [
+              '${strings.feature('Påminnelse om')} ${result.reminded} ${strings.feature(result.reminded == 1 ? 'avgift' : 'avgifter')} '
+                  '${strings.feature('till')} ${result.notifications} ${strings.feature('mottagare')}.',
+              if (result.skippedRecent > 0)
+                '${result.skippedRecent} ${strings.feature('påmindes nyss och hoppades över.')}',
+              if (result.unreachable.isNotEmpty)
+                '${strings.feature('Kan inte nås')}: ${result.unreachable.join(', ')}.',
+            ].join(' '),
+          ),
+        ),
+      );
+    } catch (error) {
+      AppErrors.caught('club_fees._remind', error);
+      messenger.showSnackBar(
+        SnackBar(content: Text(strings.feature('Det gick inte. Försök igen.'))),
       );
     }
     if (!mounted) return;
@@ -271,6 +341,18 @@ class _ClubFeePaymentsState extends State<_ClubFeePayments> {
                     : '${strings.feature('Markera betalda')} (${selected.length})',
               ),
             ),
+            OutlinedButton.icon(
+              key: const ValueKey('club-fee-remind'),
+              onPressed: _busy || open.isEmpty
+                  ? null
+                  : () => _remind(selected.isEmpty ? open : selected),
+              icon: const Icon(Icons.notifications_outlined),
+              label: Text(
+                selected.isEmpty
+                    ? strings.feature('Påminn obetalda')
+                    : '${strings.feature('Påminn valda')} (${selected.length})',
+              ),
+            ),
           ],
         ),
         if (_busy) const LinearProgressIndicator(),
@@ -343,6 +425,10 @@ class _ClubFeePaymentRow extends StatelessWidget {
           status,
           if (fee.guardians.isNotEmpty)
             '${strings.feature('betalas av')} ${fee.guardians.join(', ')}',
+          if (fee.isOpen && fee.reachable == false)
+            strings.feature('kan inte nås')
+          else if (fee.remindedAt case final at?)
+            '${strings.feature('påmind')} ${_feeDay(at.toLocal())}',
           ?fee.note,
         ].join(' · '),
       ),

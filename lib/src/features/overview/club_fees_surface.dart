@@ -206,6 +206,32 @@ class _ClubFeeRoundPageState extends State<_ClubFeeRoundPage> {
     if (saved != null && mounted) _reload();
   }
 
+  Future<void> _editPaymentInfo(ClubFeeRound round) async {
+    final strings = AppStrings.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final info = await showDialog<String>(
+      context: context,
+      builder: (_) => _FeePaymentInfoDialog(initial: round.paymentInfo ?? ''),
+    );
+    if (info == null || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await widget.services.setClubFeeRoundPaymentInfo(
+        clubId: widget.clubId,
+        roundId: round.roundId,
+        paymentInfo: info.isEmpty ? null : info,
+      );
+    } catch (error) {
+      AppErrors.caught('club_fees._editPaymentInfo', error);
+      messenger.showSnackBar(
+        SnackBar(content: Text(strings.feature('Det gick inte. Försök igen.'))),
+      );
+    }
+    if (!mounted) return;
+    setState(() => _busy = false);
+    _reload();
+  }
+
   Future<void> _decide(ClubFeeRoundDetail detail, String decision) async {
     final strings = AppStrings.of(context);
     final issue = decision == 'issue';
@@ -333,6 +359,11 @@ class _ClubFeeRoundPageState extends State<_ClubFeeRoundPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(_feeTermsLine(strings, round)),
+                    const SizedBox(height: 8),
+                    _FeePaymentInfoCard(
+                      info: round.paymentInfo,
+                      onEdit: _busy ? null : () => _editPaymentInfo(round),
+                    ),
                     const SizedBox(height: 12),
                     Text(
                       key: const ValueKey('club-fee-summary'),
@@ -397,6 +428,7 @@ class _ClubFeeRoundPageState extends State<_ClubFeeRoundPage> {
                     else
                       _ClubFeePayments(
                         clubId: widget.clubId,
+                        roundId: widget.roundId,
                         fees: detail.fees,
                         services: widget.services,
                         onChanged: _reload,
@@ -502,6 +534,92 @@ class _ClubFeeRow extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// How to pay, as the payers see it in Mina avgifter.
+class _FeePaymentInfoCard extends StatelessWidget {
+  const _FeePaymentInfoCard({required this.info, required this.onEdit});
+  final String? info;
+  final VoidCallback? onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final theme = Theme.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      child: ListTile(
+        key: const ValueKey('club-fee-payment-info'),
+        leading: const Icon(Icons.info_outline),
+        title: Text(strings.feature('Så betalar man')),
+        subtitle: Text(
+          info ??
+              strings.feature(
+                'Inte angivet. Skriv till exempel Swish-nummer och vad betalningen ska märkas med.',
+              ),
+          style: info == null
+              ? TextStyle(color: theme.colorScheme.onSurfaceVariant)
+              : null,
+        ),
+        trailing: IconButton(
+          key: const ValueKey('club-fee-payment-info-edit'),
+          tooltip: strings.feature('Ändra'),
+          icon: const Icon(Icons.edit_outlined),
+          onPressed: onEdit,
+        ),
+      ),
+    );
+  }
+}
+
+class _FeePaymentInfoDialog extends StatefulWidget {
+  const _FeePaymentInfoDialog({required this.initial});
+  final String initial;
+
+  @override
+  State<_FeePaymentInfoDialog> createState() => _FeePaymentInfoDialogState();
+}
+
+class _FeePaymentInfoDialogState extends State<_FeePaymentInfoDialog> {
+  late final _text = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return AlertDialog(
+      title: Text(strings.feature('Så betalar man')),
+      content: TextField(
+        key: const ValueKey('club-fee-payment-info-text'),
+        controller: _text,
+        maxLength: 500,
+        minLines: 2,
+        maxLines: 5,
+        decoration: InputDecoration(
+          hintText: strings.feature(
+            'Swish 123 456 78 90. Märk betalningen med namn och avgift.',
+          ),
+          border: const OutlineInputBorder(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(strings.feature('Avbryt')),
+        ),
+        FilledButton(
+          key: const ValueKey('club-fee-payment-info-save'),
+          onPressed: () => Navigator.of(context).pop(_text.text.trim()),
+          child: Text(strings.feature('Spara')),
+        ),
+      ],
     );
   }
 }

@@ -502,6 +502,15 @@ class _ProductShellState extends State<_ProductShell> {
         ),
       ),
       GoRoute(
+        path: ProductRouteContract.fees,
+        builder: (_, _) => _MyClubFeesPage(
+          services: switch (widget.membership) {
+            final ClubFeesProvider provider => provider.clubFees,
+            _ => null,
+          },
+        ),
+      ),
+      GoRoute(
         path: ProductRouteContract.club,
         builder: (_, _) => _ClubAdminSurface(
           contextValue: widget.contextValue,

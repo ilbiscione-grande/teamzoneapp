@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:teamzone_app/src/app/product_route_contract.dart';
 import 'package:teamzone_app/src/app/teamzone_app.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
@@ -205,6 +207,71 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  testWidgets('unpaid fees are reminded and how to pay is set', (tester) async {
+    final fees = await openFees(tester, {'club.memberships.manage'});
+    await tester.tap(find.byKey(const ValueKey('club-fee-round-r1')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Obetald · betalas av Föräldern · kan inte nås'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Obetald · betalas av Föräldern · påmind 2026-11-10'),
+      findsOneWidget,
+    );
+
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-fee-payment-info-edit')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('club-fee-payment-info-text')),
+      'Swish 123 45 67',
+    );
+    await tester.tap(find.byKey(const ValueKey('club-fee-payment-info-save')));
+    await tester.pumpAndSettle();
+    expect(fees.infos, ['Swish 123 45 67']);
+
+    await _tapVisible(tester, find.byKey(const ValueKey('club-fee-remind')));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('1 kan inte nås, de saknar konto'),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('club-fee-remind-confirm')));
+    await tester.pumpAndSettle();
+    expect(fees.reminders, ['r1 all']);
+    expect(
+      find.text(
+        'Påminnelse om 2 avgifter till 1 mottagare. Kan inte nås: Cissi.',
+      ),
+      findsOneWidget,
+    );
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('Mina avgifter shows what is owed and how to pay', (
+    tester,
+  ) async {
+    await openFees(tester, {'club.memberships.manage'});
+    GoRouter.of(
+      tester.element(find.byKey(const ValueKey('club-fees'))),
+    ).go(ProductRouteContract.fees);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('my-club-fees')), findsOneWidget);
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('my-club-fees-summary')))
+          .data,
+      'Att betala: 300 kr',
+    );
+    expect(find.text('Swish 123 45 67'), findsOneWidget);
+    expect(find.text('Sista betalningsdag 2026-03-31'), findsOneWidget);
+    expect(find.text('Betald 2026-04-02'), findsOneWidget);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
   testWidgets('the treasurer sees only the fees on the Klubb page', (
     tester,
   ) async {
@@ -281,6 +348,8 @@ Map<String, dynamic> _fee(
 }) => {
   if (issued) 'fee_id': 'fee-$id',
   if (issued) 'revision': 1,
+  if (issued) 'reachable': id != 'alva',
+  if (issued && id == 'bertil') 'reminded_at': '2026-11-10T10:00:00Z',
   'person_id': id,
   'name': name,
   'category': 'youth',
@@ -297,8 +366,59 @@ class _Fees implements ClubFeeServices {
   final decisions = <({String round, String decision, int rev})>[];
   final changes = <(String, List<String>)>[];
   final marks = <String>[];
+  final reminders = <String>[];
+  final infos = <String?>[];
   var _issued = false;
   bool _isIssued(String roundId) => roundId == 'r1' || _issued;
+
+  @override
+  Future<ClubFeeReminderResult> sendClubFeeReminders({
+    required String clubId,
+    required String roundId,
+    List<String>? feeIds,
+    required String idempotencyKey,
+  }) async {
+    reminders.add('$roundId ${feeIds?.join(',') ?? 'all'}');
+    return const ClubFeeReminderResult(
+      reminded: 2,
+      notifications: 1,
+      skippedRecent: 0,
+      unreachable: ['Cissi'],
+    );
+  }
+
+  @override
+  Future<void> setClubFeeRoundPaymentInfo({
+    required String clubId,
+    required String roundId,
+    required String? paymentInfo,
+  }) async => infos.add(paymentInfo);
+
+  @override
+  Future<List<MyClubFee>> loadMyClubFees() async => [
+    MyClubFee.fromJson({
+      'fee_id': 'fee-alva',
+      'name': 'Alva',
+      'club_name': 'Demoklubben IF',
+      'title': 'Medlemsavgift 2026',
+      'due_on': '2026-03-31',
+      'amount': 30000,
+      'discount_amount': 0,
+      'state': 'open',
+      'payment_info': 'Swish 123 45 67',
+    }),
+    MyClubFee.fromJson({
+      'fee_id': 'fee-bertil',
+      'name': 'Bertil',
+      'club_name': 'Demoklubben IF',
+      'title': 'Lagavgift P2014',
+      'due_on': '2026-04-30',
+      'amount': 50000,
+      'discount_amount': 0,
+      'state': 'paid',
+      'paid_on': '2026-04-02',
+    }),
+  ];
 
   @override
   Future<List<ClubFeeRound>> loadClubFeeRounds(String clubId) async => [

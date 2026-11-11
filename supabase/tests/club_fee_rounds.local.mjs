@@ -10,7 +10,7 @@ const read = p => readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
 const db = new PGlite();
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const club = id(10), team = id(20);
-const [admin, treasurer, coach] = [id(1), id(2), id(3)];
+const [admin, treasurer, coach, parentProfile] = [id(1), id(2), id(3), id(4)];
 const [adminP, treasurerP, coachP, alva, bertil, cissi, parent, parent2] =
   [id(41), id(42), id(43), id(44), id(45), id(46), id(47), id(48)];
 const year = new Date().getFullYear();
@@ -53,6 +53,12 @@ create table core.capability_grants(club_id uuid, assignment_id uuid, capability
   starts_at timestamptz, ends_at timestamptz);
 insert into core.capability_grants values ('${club}','${id(51)}','club.memberships.manage','club','${club}', now() - interval '1 day', null),
   ('${club}','${id(52)}','economy.manage','club','${club}', now() - interval '1 day', null);
+create table internal.notification_outbox(id uuid primary key default gen_random_uuid(), club_id uuid, domain_event_id uuid, event_type text,
+  aggregate_type text, aggregate_id uuid, recipient_profile_id uuid, recipient_person_id uuid, payload_ref jsonb default '{}',
+  state text default 'pending', created_at timestamptz default now(), unique(domain_event_id, recipient_person_id));
+insert into core.profiles values ('${parentProfile}');
+insert into core.person_account_links values ('${club}','${parent}','${parentProfile}','active');
+alter table core.clubs add column name text; update core.clubs set name = 'Demoklubben';
 create table internal.command_deduplication(actor_profile_id uuid, idempotency_key uuid, command_type text, result jsonb);
 create table audit.command_events(club_id uuid, actor_profile_id uuid, command_type text, aggregate_type text, aggregate_id uuid,
   aggregate_revision bigint, metadata jsonb);
@@ -68,6 +74,9 @@ returns boolean language sql stable security definer set search_path = '' as $$
 await db.exec(read('supabase/migrations/20270215090000_club_member_register.sql'));
 await db.exec(read('supabase/migrations/20270216090000_club_fee_rounds.sql'));
 await db.exec(read('supabase/migrations/20270217090000_club_fee_payments.sql'));
+await db.exec('set check_function_bodies = off');
+await db.exec(read('supabase/migrations/20270218090000_club_fee_reminders.sql'));
+await db.exec('set check_function_bodies = on');
 const call = async (who, sql, params = []) => {
   await db.query("select set_config('request.jwt.claim.sub',$1,false)", [who]);
   await db.exec('set role authenticated');
@@ -171,6 +180,34 @@ await db.exec(`update core.club_fees set discount_amount = base_amount, amount =
 paid = await round(admin, created.round_id);
 await assert.rejects(mark(admin, [feeOf(paid, 'Bertil')], 'paid', today, 'cash', null), /nothing_to_pay/);
 
+// Påminnelser: to the person and the guardians with an account, once a
+// day; who cannot be reached is named; Mina avgifter shows what is owed.
+await mark(admin, [feeOf(paid, 'Cissi')], 'open', null, null, null);
+await call(admin, 'select api.set_club_fee_round_payment_info($1, $2, $3)', [club, created.round_id, ' Swish 123 45 67 ']);
+const remind = (who, fees) => call(who, 'select api.send_club_fee_reminders($1, $2, $3, gen_random_uuid())',
+  [club, created.round_id, fees]);
+assert.deepEqual(await remind(admin, null), { reminded: 2, notifications: 2, skipped_recent: 0, unreachable: ['Cissi'] });
+const outbox = (await db.query(`select recipient_profile_id who, event_type, payload_ref from internal.notification_outbox
+  order by payload_ref->>'amount'`)).rows;
+assert.deepEqual(outbox.map(o => [o.who, o.event_type, o.payload_ref.amount]),
+  [[parentProfile, 'club.fee.reminder.v1', 30000], [treasurer, 'club.fee.reminder.v1', 60000]]);
+assert.deepEqual(await remind(treasurer, null), { reminded: 0, notifications: 0, skipped_recent: 2, unreachable: ['Cissi'] });
+const reminded = await round(admin, created.round_id);
+assert.deepEqual([feeOf(reminded, 'Alva').reminder_count, feeOf(reminded, 'Alva').reachable, feeOf(reminded, 'Cissi').reachable],
+  [1, true, false]);
+assert.equal(typeof feeOf(reminded, 'Alva').reminded_at, 'string');
+assert.equal(reminded.payment_info, 'Swish 123 45 67');
+const mine = (await call(parentProfile, 'select api.get_my_club_fees()')).fees;
+assert.deepEqual(mine.map(f => [f.name, f.amount, f.state, f.payment_info, f.club_name]),
+  [['Alva', 30000, 'open', 'Swish 123 45 67', 'Demoklubben']]);
+assert.deepEqual((await call(coach, 'select api.get_my_club_fees()')).fees, []);
+await assert.rejects(remind(coach, null), /not_found/);
+await assert.rejects(remind(admin, [id(99)]), /not_found/);
+await assert.rejects(call(admin, 'select api.set_club_fee_round_payment_info($1, $2, $3)', [club, created.round_id, 'x'.repeat(501)]),
+  /invalid_payment_info/);
+assert.equal((await db.query("select internal.notification_title('club.fee.reminder.v1') t")).rows[0].t, 'Påminnelse om avgift');
+assert.equal((await db.query('select internal.notification_deep_link(o) l from internal.notification_outbox o limit 1')).rows[0].l, '/fees');
+
 // A team round: 1000 kr per player, no family rule.
 const teamRound = await save(admin, null, { kind: 'team', team_id: team, title: 'Lagavgift P2014', due_on: `${year + 1}-04-30`,
   amount_player: 100000 }, 0);
@@ -189,7 +226,8 @@ await assert.rejects(round(admin, teamRound.round_id), /not_found/);
 await assert.rejects(call(coach, 'select api.get_club_fee_rounds($1)', [club]), /not_found/);
 await assert.rejects(call(coach, 'select api.get_club_families($1)', [club]), /not_found/);
 await assert.rejects(save(coach, null, membership, 0), /not_found/);
-assert.equal((await db.query("select count(*)::int n from audit.command_events where command_type like 'club.%'")).rows[0].n, 13);
+assert.equal((await db.query("select count(*)::int n from audit.command_events where command_type like 'club.%'")).rows[0].n, 17);
+assert.doesNotMatch(read('supabase/migrations/20270218090000_club_fee_reminders.sql'), /serialization_failure/);
 assert.doesNotMatch(read('supabase/migrations/20270217090000_club_fee_payments.sql'), /serialization_failure/);
 assert.doesNotMatch(read('supabase/migrations/20270216090000_club_fee_rounds.sql'), /serialization_failure/);
 console.log('club fee rounds: ok');

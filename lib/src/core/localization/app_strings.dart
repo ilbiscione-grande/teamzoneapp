@@ -1290,6 +1290,36 @@ class AppStrings {
     'Anledning (valfri)': 'Reason (optional)',
     'obetalda': 'unpaid',
     'av': 'of',
+    // Påminnelser och Mina avgifter.
+    'Påminn obetalda': 'Remind unpaid',
+    'Påminn valda': 'Remind selected',
+    'kan inte nås': 'cannot be reached',
+    'påmind': 'reminded',
+    'Skicka påminnelse?': 'Send a reminder?',
+    'obetald avgift': 'unpaid fee',
+    'obetalda avgifter': 'unpaid fees',
+    'Personen och vårdnadshavarna får en notis i inkorgen och en push.':
+        'The person and the guardians get a notification in the inbox and a push.',
+    'kan inte nås, de saknar konto i TeamZone.':
+        'cannot be reached, they have no TeamZone account.',
+    'En avgift som påmints senaste dygnet hoppas över.':
+        'A fee reminded in the last day is skipped.',
+    'Påminnelse om': 'Reminder about',
+    'till': 'to',
+    'mottagare': 'recipients',
+    'påmindes nyss och hoppades över.': 'were reminded recently and skipped.',
+    'Kan inte nås': 'Cannot be reached',
+    'Så betalar man': 'How to pay',
+    'Inte angivet. Skriv till exempel Swish-nummer och vad betalningen ska märkas med.':
+        'Not given. Enter, for example, the Swish number and what to mark the payment with.',
+    'Swish 123 456 78 90. Märk betalningen med namn och avgift.':
+        'Swish 123 456 78 90. Mark the payment with the name and fee.',
+    'Mina avgifter': 'My fees',
+    'Du har inga obetalda avgifter.': 'You have no unpaid fees.',
+    'Att betala': 'To pay',
+    'Så betalar du': 'How to pay',
+    'Klubben markerar avgiften som betald när betalningen har kommit in.':
+        'The club marks the fee as paid once the payment has arrived.',
     'Någon annan har ändrat personen. Stäng och öppna igen.':
         'Someone else has changed this person. Close and open again.',
     'Efter födelseår (okänt)': 'By year of birth (unknown)',

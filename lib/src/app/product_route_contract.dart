@@ -26,6 +26,9 @@ class ProductRouteContract {
 
   /// Klubb: the club administrator's work in one place.
   static const club = '/club';
+
+  /// Mina avgifter: the signed-in person's fees and their children's.
+  static const fees = '/fees';
   static const settings = '/settings';
   static const support = '/support';
 
@@ -48,6 +51,7 @@ class ProductRouteContract {
     publication,
     clubPermissions,
     club,
+    fees,
     settings,
     support,
   };

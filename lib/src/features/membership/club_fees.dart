@@ -47,6 +47,7 @@ class ClubFeeRound {
     this.paidTotal = 0,
     this.openCount = 0,
     this.openTotal = 0,
+    this.paymentInfo,
   });
 
   factory ClubFeeRound.fromJson(Map<String, dynamic> json) => ClubFeeRound(
@@ -70,6 +71,7 @@ class ClubFeeRound {
     paidTotal: (json['paid_total'] as num?)?.toInt() ?? 0,
     openCount: (json['open_count'] as num?)?.toInt() ?? 0,
     openTotal: (json['open_total'] as num?)?.toInt() ?? 0,
+    paymentInfo: json['payment_info'] as String?,
   );
 
   final String roundId;
@@ -98,6 +100,9 @@ class ClubFeeRound {
   final int openCount;
   final int openTotal;
 
+  /// How to pay, shown to the payers ("Swish 123 456 78 90 …").
+  final String? paymentInfo;
+
   bool get isDraft => state == 'draft';
   bool get isMembership => kind == 'membership';
 }
@@ -118,6 +123,9 @@ class ClubFee {
     this.paidOn,
     this.paymentMethod,
     this.note,
+    this.remindedAt,
+    this.reminderCount = 0,
+    this.reachable,
   });
 
   factory ClubFee.fromJson(Map<String, dynamic> json) => ClubFee(
@@ -140,6 +148,12 @@ class ClubFee {
     },
     paymentMethod: json['payment_method'] as String?,
     note: json['note'] as String?,
+    remindedAt: switch (json['reminded_at']) {
+      final String at => DateTime.parse(at),
+      _ => null,
+    },
+    reminderCount: (json['reminder_count'] as num?)?.toInt() ?? 0,
+    reachable: json['reachable'] as bool?,
   );
 
   final String personId;
@@ -164,6 +178,13 @@ class ClubFee {
   /// swish, bank, cash or other.
   final String? paymentMethod;
   final String? note;
+
+  final DateTime? remindedAt;
+  final int reminderCount;
+
+  /// Someone with an account hears about it: the person or a guardian.
+  /// Null while the round is a draft.
+  final bool? reachable;
 
   bool get isOpen => state == 'open' && amount > 0;
   bool get canReopen => feeId != null && amount > 0 && state != 'open';
@@ -318,6 +339,23 @@ abstract interface class ClubFeeServices {
     required String idempotencyKey,
   });
 
+  /// [feeIds] null: every unpaid fee of the round.
+  Future<ClubFeeReminderResult> sendClubFeeReminders({
+    required String clubId,
+    required String roundId,
+    List<String>? feeIds,
+    required String idempotencyKey,
+  });
+
+  Future<void> setClubFeeRoundPaymentInfo({
+    required String clubId,
+    required String roundId,
+    required String? paymentInfo,
+  });
+
+  /// The signed-in person's fees and their children's.
+  Future<List<MyClubFee>> loadMyClubFees();
+
   Future<List<ClubFamilyMember>> loadClubFamilies(String clubId);
 
   /// [change]: merge, split or reset.
@@ -438,6 +476,43 @@ class SupabaseClubFees implements ClubFeeServices {
   });
 
   @override
+  Future<ClubFeeReminderResult> sendClubFeeReminders({
+    required String clubId,
+    required String roundId,
+    List<String>? feeIds,
+    required String idempotencyKey,
+  }) async => ClubFeeReminderResult.fromJson(
+    _map(
+      await _rpc(_client, 'send_club_fee_reminders', {
+        'target_club_id': clubId,
+        'target_round_id': roundId,
+        'target_fee_ids': feeIds,
+        'idempotency_key': idempotencyKey,
+      }),
+    ),
+  );
+
+  @override
+  Future<void> setClubFeeRoundPaymentInfo({
+    required String clubId,
+    required String roundId,
+    required String? paymentInfo,
+  }) => _rpc(_client, 'set_club_fee_round_payment_info', {
+    'target_club_id': clubId,
+    'target_round_id': roundId,
+    'new_payment_info': paymentInfo,
+  });
+
+  @override
+  Future<List<MyClubFee>> loadMyClubFees() async {
+    final json = _map(await _rpc(_client, 'get_my_club_fees', const {}));
+    return (json['fees'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(MyClubFee.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
   Future<List<ClubFamilyMember>> loadClubFamilies(String clubId) async {
     final json = _map(
       await _rpc(_client, 'get_club_families', {'target_club_id': clubId}),
@@ -514,4 +589,77 @@ String clubFeesCsv(
       ],
   ];
   return '﻿${lines.map((line) => line.map(cell).join(';')).join('\r\n')}\r\n';
+}
+
+class ClubFeeReminderResult {
+  const ClubFeeReminderResult({
+    required this.reminded,
+    required this.notifications,
+    required this.skippedRecent,
+    required this.unreachable,
+  });
+  factory ClubFeeReminderResult.fromJson(Map<String, dynamic> json) =>
+      ClubFeeReminderResult(
+        reminded: (json['reminded'] as num?)?.toInt() ?? 0,
+        notifications: (json['notifications'] as num?)?.toInt() ?? 0,
+        skippedRecent: (json['skipped_recent'] as num?)?.toInt() ?? 0,
+        unreachable: (json['unreachable'] as List? ?? const [])
+            .whereType<String>()
+            .toList(),
+      );
+
+  /// Fees reminded now.
+  final int reminded;
+
+  /// Notifications sent: one per recipient.
+  final int notifications;
+
+  /// Fees already reminded the last day.
+  final int skippedRecent;
+
+  /// Whose fees nobody with an account hears about.
+  final List<String> unreachable;
+}
+
+/// A fee for the signed-in person or their child (Mina avgifter).
+class MyClubFee {
+  const MyClubFee({
+    required this.feeId,
+    required this.name,
+    required this.clubName,
+    required this.title,
+    required this.dueOn,
+    required this.amount,
+    required this.discountAmount,
+    required this.state,
+    this.paymentInfo,
+    this.paidOn,
+  });
+  factory MyClubFee.fromJson(Map<String, dynamic> json) => MyClubFee(
+    feeId: json['fee_id'] as String,
+    name: json['name'] as String? ?? '',
+    clubName: json['club_name'] as String? ?? '',
+    title: json['title'] as String? ?? '',
+    dueOn: DateTime.parse(json['due_on'] as String),
+    amount: (json['amount'] as num?)?.toInt() ?? 0,
+    discountAmount: (json['discount_amount'] as num?)?.toInt() ?? 0,
+    state: json['state'] as String? ?? 'open',
+    paymentInfo: json['payment_info'] as String?,
+    paidOn: switch (json['paid_on']) {
+      final String day => DateTime.parse(day),
+      _ => null,
+    },
+  );
+  final String feeId;
+  final String name;
+  final String clubName;
+  final String title;
+  final DateTime dueOn;
+  final int amount;
+  final int discountAmount;
+
+  /// open or paid.
+  final String state;
+  final String? paymentInfo;
+  final DateTime? paidOn;
 }
