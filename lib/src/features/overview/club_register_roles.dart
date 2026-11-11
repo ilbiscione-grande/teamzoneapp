@@ -76,6 +76,8 @@ class _ClubRegisterRolesState extends State<_ClubRegisterRoles> {
             'Klubben måste ha minst en person med Medlemmar och lag.',
           ClubRoleException(code: 'home_in_other_team') =>
             'Personen är redan spelare i ett annat lag.',
+          ClubRoleException(code: 'captain_needs_player_role') =>
+            'Bara spelare i laget kan vara kapten eller med i spelarrådet.',
           ClubRoleException(code: 'stale_role') =>
             'Rollen har ändrats av någon annan. Stäng och öppna igen.',
           _ => 'Rollen kunde inte sparas. Försök igen.',
@@ -103,6 +105,28 @@ class _ClubRegisterRolesState extends State<_ClubRegisterRoles> {
       idempotencyKey: _newUuid(),
     ),
   );
+
+  Future<void> _editPlayerRoles(ClubRegisterTeamRole team) async {
+    final picked = await showDialog<(String?, bool)>(
+      context: context,
+      builder: (_) => _PlayerRolesDialog(team: team),
+    );
+    if (picked == null || !mounted) return;
+    final (captainRole, council) = picked;
+    if (captainRole == team.captainRole && council == team.playerCouncil) {
+      return;
+    }
+    _run(
+      () => widget.services.setTeamPlayerRoles(
+        clubId: widget.clubId,
+        teamId: team.teamId,
+        personId: _person.personId,
+        captainRole: captainRole,
+        playerCouncil: council,
+        idempotencyKey: _newUuid(),
+      ),
+    );
+  }
 
   void _add() {
     final role = _role;
@@ -135,6 +159,7 @@ class _ClubRegisterRolesState extends State<_ClubRegisterRoles> {
     required String title,
     required String subtitle,
     VoidCallback? onRemove,
+    VoidCallback? onEdit,
   }) {
     final strings = AppStrings.of(context);
     return ListTile(
@@ -143,14 +168,25 @@ class _ClubRegisterRolesState extends State<_ClubRegisterRoles> {
       dense: true,
       title: Text(title),
       subtitle: Text(subtitle),
-      trailing: onRemove == null
-          ? null
-          : IconButton(
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (onEdit != null)
+            IconButton(
+              key: ValueKey('club-register-role-edit-$keyName'),
+              tooltip: strings.feature('Kapten och spelarråd'),
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: _busy ? null : onEdit,
+            ),
+          if (onRemove != null)
+            IconButton(
               key: ValueKey('club-register-role-remove-$keyName'),
               tooltip: strings.feature('Ta bort rollen'),
               icon: const Icon(Icons.remove_circle_outline),
               onPressed: _busy ? null : onRemove,
             ),
+        ],
+      ),
     );
   }
 
@@ -172,7 +208,15 @@ class _ClubRegisterRolesState extends State<_ClubRegisterRoles> {
         _roleRow(
           keyName: '${team.teamId}-${team.role}',
           title: _clubRoleLabel(strings, team.role),
-          subtitle: team.teamName,
+          subtitle: [
+            team.teamName,
+            if (team.captainRole case final armband?)
+              strings.feature(
+                armband == 'captain' ? 'Lagkapten' : 'Vice kapten',
+              ),
+            if (team.playerCouncil) strings.feature('Spelarrådet'),
+          ].join(' · '),
+          onEdit: team.role == 'player' ? () => _editPlayerRoles(team) : null,
           // A guardian follows the child; your own leader role stays.
           onRemove:
               !_teamRoles.contains(team.role) ||
@@ -270,6 +314,93 @@ class _ClubRegisterRolesState extends State<_ClubRegisterRoles> {
             icon: const Icon(Icons.add),
             label: Text(strings.feature('Lägg till')),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Captain role and player council for a player in one team.
+class _PlayerRolesDialog extends StatefulWidget {
+  const _PlayerRolesDialog({required this.team});
+  final ClubRegisterTeamRole team;
+
+  @override
+  State<_PlayerRolesDialog> createState() => _PlayerRolesDialogState();
+}
+
+class _PlayerRolesDialogState extends State<_PlayerRolesDialog> {
+  late String? _captain = widget.team.captainRole;
+  late bool _council = widget.team.playerCouncil;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final theme = Theme.of(context);
+    return AlertDialog(
+      title: Text(widget.team.teamName),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              strings.feature('Lagkapten'),
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                for (final (value, label) in const [
+                  (null, 'Ingen'),
+                  ('captain', 'Lagkapten'),
+                  ('vice_captain', 'Vice kapten'),
+                ])
+                  ChoiceChip(
+                    key: ValueKey('club-register-captain-${value ?? 'none'}'),
+                    label: Text(strings.feature(label)),
+                    selected: _captain == value,
+                    onSelected: (_) => setState(() => _captain = value),
+                  ),
+              ],
+            ),
+            if (_captain != null && _captain != widget.team.captainRole)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  strings.feature(
+                    'Laget har en lagkapten och en vice kapten. Har någon annan rollen flyttas den hit.',
+                  ),
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+            SwitchListTile(
+              key: const ValueKey('club-register-council'),
+              contentPadding: EdgeInsets.zero,
+              title: Text(strings.feature('Med i spelarrådet')),
+              subtitle: Text(
+                strings.feature(
+                  'Spelarrådet har en egen chatt, Spelarråd, tillsammans med lagets ledare.',
+                ),
+              ),
+              value: _council,
+              onChanged: (value) => setState(() => _council = value),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(strings.feature('Avbryt')),
+        ),
+        FilledButton(
+          key: const ValueKey('club-register-player-roles-save'),
+          onPressed: () => Navigator.pop(context, (_captain, _council)),
+          child: Text(strings.feature('Spara')),
         ),
       ],
     );

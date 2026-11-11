@@ -92,6 +92,10 @@ och dess capability grants.
   rullades tillbaka. Där flyttades kaptensbindeln, rådet lades till och togs
   bort ur chatten, och en okänd roll gav `invalid_captain_role`.
 
+- Klubbadmin kan också sätta dem i medlemsregistrets personkort, med
+  `api.set_team_player_roles` (`20270227090000_register_captain_council.sql`).
+  Kommandot ändrar bara kapten och spelarråd.
+
 ## Verifiering
 
 - `node supabase/tests/team_roles.local.mjs --details`

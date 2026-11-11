@@ -1662,6 +1662,9 @@ class AppStrings {
     'Turneringar': 'Tournaments',
     'Tröjnummer': 'Shirt number',
     'Lagkapten': 'Captain',
+    'Kapten och spelarråd': 'Captain and player council',
+    'Bara spelare i laget kan vara kapten eller med i spelarrådet.':
+        'Only players in the team can be captain or in the player council.',
     'Vice kapten': 'Vice captain',
     'Spelarrådet': 'Player council',
     'Med i spelarrådet': 'In the player council',

@@ -235,6 +235,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(membership.emails, ['parent bo@example.com']);
 
+    // The child becomes captain of P2014 and joins the player council.
+    await tester.tap(find.byKey(const ValueKey('club-register-kid')));
+    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-register-role-edit-p2014-player')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('club-register-captain-captain')),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('club-register-council')));
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey('club-register-player-roles-save')),
+    );
+    await tester.pumpAndSettle();
+
     // Roles in the person card: the child stops playing in P2014.
     await tester.tap(find.byKey(const ValueKey('club-register-kid')));
     await tester.pumpAndSettle();
@@ -248,6 +267,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('club-register-role-remove-p2014-guardian')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('club-register-role-edit-p2014-guardian')),
       findsNothing,
     );
     await _tapVisible(
@@ -293,6 +316,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(membership.roles, [
+      'kid p2014 captain council',
       'kid p2014 player>-',
       'parent club_functionary on',
       'chair b ->leader',
@@ -545,6 +569,18 @@ class _Membership extends UnconfiguredMembershipServices
     required String idempotencyKey,
   }) async =>
       roles.add('$personId $teamId ${fromRole ?? '-'}>${toRole ?? '-'}');
+
+  @override
+  Future<void> setTeamPlayerRoles({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    String? captainRole,
+    required bool playerCouncil,
+    required String idempotencyKey,
+  }) async => roles.add(
+    '$personId $teamId ${captainRole ?? '-'}${playerCouncil ? ' council' : ''}',
+  );
 
   @override
   Future<String?> setClubPersonEmail({

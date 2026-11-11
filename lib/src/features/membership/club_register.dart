@@ -22,18 +22,27 @@ class ClubRegisterTeamRole {
     required this.teamId,
     required this.teamName,
     required this.role,
+    this.captainRole,
+    this.playerCouncil = false,
   });
   factory ClubRegisterTeamRole.fromJson(Map<String, dynamic> json) =>
       ClubRegisterTeamRole(
         teamId: json['team_id'] as String,
         teamName: json['name'] as String? ?? '',
         role: json['role'] as String? ?? 'player',
+        captainRole: json['captain_role'] as String?,
+        playerCouncil: json['player_council'] == true,
       );
   final String teamId;
   final String teamName;
 
   /// player, leader, guardian or club_functionary.
   final String role;
+
+  /// For a player: captain or vice_captain, and whether they sit in the
+  /// team's player council.
+  final String? captainRole;
+  final bool playerCouncil;
 }
 
 class ClubRegisterPerson {
@@ -190,6 +199,18 @@ abstract interface class ClubRegisterServices {
 
   /// The club's active teams.
   Future<List<({String id, String name})>> listClubTeams(String clubId);
+
+  /// Sets a player's captain role ([captainRole] null: none) and player
+  /// council in a team; the armband moves from anyone else who has it.
+  /// Throws [ClubRoleException].
+  Future<void> setTeamPlayerRoles({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    String? captainRole,
+    required bool playerCouncil,
+    required String idempotencyKey,
+  });
 }
 
 /// A role change the server refused: own_club_role, own_leader_role,
@@ -205,6 +226,7 @@ const _knownRoleErrors = {
   'last_memberships_manager',
   'home_in_other_team',
   'stale_role',
+  'captain_needs_player_role',
 };
 
 Never _roleError(PostgrestException error) {
@@ -269,6 +291,35 @@ Future<void> setTeamRoleWith(
             'target_team_id': teamId,
             'target_person_id': personId,
             ...params,
+            'idempotency_key': idempotencyKey,
+          },
+        )
+        .timeout(const Duration(seconds: 15));
+  } on PostgrestException catch (error) {
+    _roleError(error);
+  }
+}
+
+Future<void> setTeamPlayerRolesWith(
+  SupabaseClient client, {
+  required String clubId,
+  required String teamId,
+  required String personId,
+  String? captainRole,
+  required bool playerCouncil,
+  required String idempotencyKey,
+}) async {
+  try {
+    await client
+        .schema('api')
+        .rpc<Object?>(
+          'set_team_player_roles',
+          params: {
+            'target_club_id': clubId,
+            'target_team_id': teamId,
+            'target_person_id': personId,
+            'new_captain_role': captainRole,
+            'new_player_council': playerCouncil,
             'idempotency_key': idempotencyKey,
           },
         )
