@@ -595,6 +595,7 @@ class ClubFeeReminderResult {
   const ClubFeeReminderResult({
     required this.reminded,
     required this.notifications,
+    this.emails = 0,
     required this.skippedRecent,
     required this.unreachable,
   });
@@ -602,6 +603,7 @@ class ClubFeeReminderResult {
       ClubFeeReminderResult(
         reminded: (json['reminded'] as num?)?.toInt() ?? 0,
         notifications: (json['notifications'] as num?)?.toInt() ?? 0,
+        emails: (json['emails'] as num?)?.toInt() ?? 0,
         skippedRecent: (json['skipped_recent'] as num?)?.toInt() ?? 0,
         unreachable: (json['unreachable'] as List? ?? const [])
             .whereType<String>()
@@ -613,6 +615,9 @@ class ClubFeeReminderResult {
 
   /// Notifications sent: one per recipient.
   final int notifications;
+
+  /// E-mails queued: one per address without a TeamZone account.
+  final int emails;
 
   /// Fees already reminded the last day.
   final int skippedRecent;

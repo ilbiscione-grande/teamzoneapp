@@ -1,6 +1,6 @@
 # Medlemsregister och avgifter för klubbadmin – plan
 
-**Status: steg 1–4 byggda (1–2 den 2026-11-10, 3–4 den 2026-11-11).** Steg 1, registret: migration `20270215090000_club_member_register.sql`, Klubb → Medlemmar → Medlemsregister. Kontaktuppgifter ingår inte än; de följer reglerna i `get_person_contact`. Steg 2, avgiftsomgångar och familjer: migration `20270216090000_club_fee_rounds.sql`, Klubb → Medlemmar → Avgifter. Steg 3, betalstatus: migration `20270217090000_club_fee_payments.sql`, på en skapad omgång. Steg 4, påminnelser i appen: migration `20270218090000_club_fee_reminders.sql`. Alla fyra migrationerna är körda och loggade. Steg 5 återstår. Kommer från rollgenomgången för klubbadmin och styrelse. Klubb-sidan (`/club`, commit aaaf2cc) är ingången.
+**Status: steg 1–5 byggda (1–2 den 2026-11-10, 3–5 den 2026-11-11).** Steg 1, registret: migration `20270215090000_club_member_register.sql`, Klubb → Medlemmar → Medlemsregister. Kontaktuppgifter ingår inte än; de följer reglerna i `get_person_contact`. Steg 2, avgiftsomgångar och familjer: migration `20270216090000_club_fee_rounds.sql`, Klubb → Medlemmar → Avgifter. Steg 3, betalstatus: migration `20270217090000_club_fee_payments.sql`, på en skapad omgång. Steg 4, påminnelser i appen: migration `20270218090000_club_fee_reminders.sql`. Steg 5, påminnelser via e-post: migration `20270222090000_club_fee_email_reminders.sql` och Edge Functions `fee-email-worker` och `fee-email-unsubscribe`. Alla fem migrationerna är körda och loggade. Kommer från rollgenomgången för klubbadmin och styrelse. Klubb-sidan (`/club`, commit aaaf2cc) är ingången.
 
 ## Produktägarens beslut (2026-11-10)
 
@@ -41,6 +41,11 @@
    - **Mina avgifter:** den inloggades och barnens obetalda avgifter och de som betalats det senaste året, med belopp, sista betalningsdag och hur man betalar. Sidan nås i dag från notisen, inte från menyn.
    - **Notisfunktionerna** (`notification_title`, `notification_preview`, `notification_deep_link`, `push_message_for_outbox`) är kopierade från databasen och har fått avgiften tillagd.
 5. **Påminnelser via e-post.** Samma påminnelse skickas till e-postadressen för den som saknar app, med en Swish-referens per avgift. Innan steget byggs ska avsändare, gränser och avregistrering bestämmas.
+   - **Byggt så här (beslut 2026-11-11):** samma påminnelse går också som mejl till den som saknar konto i TeamZone, alltså personen eller barnets vårdnadshavare, när klubbens register har en e-postadress (`club_people.contact_email`). Ett mejl går per adress och utskick och nämner avgifterna, beloppen, sista betalningsdagen och "Så betalar man".
+   - **Avsändare:** "<klubb> via TeamZone" <avgifter@teamzoneapp.se>, som kan ändras med `FEE_EMAIL_FROM_ADDRESS`. Mejlet ber mottagaren att inte svara utan kontakta klubben.
+   - **Gränser:** samma som i appen, högst en påminnelse per avgift och 20 timmar. Ett mejl vars avgifter hunnit bli betalda skickas inte.
+   - **Avregistrering:** en länk i mejlet och `List-Unsubscribe` (one-click). Länken pekar på mejlets id med en HMAC-signatur, aldrig på adressen. Den avregistrerade adressen sparas som hash och får inga fler avgiftsmejl. Den som då varken har konto eller e-post visas som "kan inte nås".
+   - **Sändning:** `fee-email-worker` körs varje minut via pg_cron, bara när något väntar, och skickar via Resend som klubbsajtens svar (`RESEND_API_KEY`). Avregistreringslänkarna signeras med `CONTACT_REPLY_SECRET` med eget prefix. Swish-referens per avgift är inte byggd än.
 
 Senare: Swish-QR, import av bankfil och en riktig betalintegration.
 

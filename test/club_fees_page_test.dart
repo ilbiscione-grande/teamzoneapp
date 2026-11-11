@@ -236,7 +236,7 @@ void main() {
     await _tapVisible(tester, find.byKey(const ValueKey('club-fee-remind')));
     await tester.pumpAndSettle();
     expect(
-      find.textContaining('1 kan inte nås, de saknar konto'),
+      find.textContaining('1 kan inte nås, de saknar både konto'),
       findsOneWidget,
     );
     await tester.tap(find.byKey(const ValueKey('club-fee-remind-confirm')));
@@ -244,7 +244,7 @@ void main() {
     expect(fees.reminders, ['r1 all']);
     expect(
       find.text(
-        'Påminnelse om 2 avgifter till 1 mottagare. Kan inte nås: Cissi.',
+        'Påminnelse om 2 avgifter till 1 i appen och 1 mejl. Kan inte nås: Cissi.',
       ),
       findsOneWidget,
     );
@@ -382,6 +382,7 @@ class _Fees implements ClubFeeServices {
     return const ClubFeeReminderResult(
       reminded: 2,
       notifications: 1,
+      emails: 1,
       skippedRecent: 0,
       unreachable: ['Cissi'],
     );

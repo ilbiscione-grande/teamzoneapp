@@ -433,6 +433,14 @@ verify_jwt = false
 [functions.contact-inbound]
 verify_jwt = false
 
+# Fee reminders by e-mail (club-members-and-fees.md, step 5): the worker
+# (worker token) and the signed unsubscribe link (no session).
+[functions.fee-email-worker]
+verify_jwt = false
+
+[functions.fee-email-unsubscribe]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

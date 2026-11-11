@@ -1291,6 +1291,14 @@ class AppStrings {
     'Anledning (valfri)': 'Reason (optional)',
     'obetalda': 'unpaid',
     'av': 'of',
+    // Fee reminders by e-mail (2026-11-11).
+    'Personen och vårdnadshavarna får en notis i inkorgen och en push. Den som saknar konto får ett mejl om klubben har e-postadressen.':
+        'The person and the guardians get a notification in the inbox and a push. Anyone without an account gets an e-mail if the club has their address.',
+    'kan inte nås, de saknar både konto och e-postadress.':
+        'cannot be reached, they have neither an account nor an e-mail address.',
+    'i appen': 'in the app',
+    'och': 'and',
+    'mejl': 'e-mails',
     // Placing an applicant on approval (2026-11-11).
     'Placera i': 'Place in',
     'Där personen sökte': 'Where they applied',

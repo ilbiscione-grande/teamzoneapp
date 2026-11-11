@@ -14,14 +14,20 @@ const [admin, treasurer, coach, parentProfile] = [id(1), id(2), id(3), id(4)];
 const [adminP, treasurerP, coachP, alva, bertil, cissi, parent, parent2] =
   [id(41), id(42), id(43), id(44), id(45), id(46), id(47), id(48)];
 const year = new Date().getFullYear();
-await db.exec(`create role anon; create role authenticated;
+await db.exec(`create role anon; create role authenticated; create role service_role;
 create schema internal; create schema api; create schema core; create schema auth; create schema audit;
+create schema extensions; create schema cron; create schema vault; create schema net;
+create function extensions.digest(value text, kind text) returns bytea language sql immutable as $$select convert_to(value,'UTF8')$$;
+create table cron.job(jobid bigserial primary key, jobname text, schedule text, command text);
+create function cron.schedule(name text, schedule text, command text) returns bigint language sql as $$insert into cron.job(jobname, schedule, command) values (name, schedule, command) returning jobid$$;
+create function cron.unschedule(id bigint) returns boolean language sql as $$delete from cron.job where jobid = id returning true$$;
 create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
 create table core.clubs(id uuid primary key);
 insert into core.clubs values ('${club}');
 create table core.profiles(id uuid primary key);
 insert into core.profiles values ('${admin}'),('${treasurer}'),('${coach}');
 create table core.club_people(id uuid primary key, club_id uuid, display_name text, status text default 'active', birth_year smallint,
+  contact_email text,
   unique (id, club_id));
 insert into core.club_people values
   ('${adminP}','${club}','Admin','active',null),
@@ -76,6 +82,9 @@ await db.exec(read('supabase/migrations/20270216090000_club_fee_rounds.sql'));
 await db.exec(read('supabase/migrations/20270217090000_club_fee_payments.sql'));
 await db.exec('set check_function_bodies = off');
 await db.exec(read('supabase/migrations/20270218090000_club_fee_reminders.sql'));
+await db.exec('set check_function_bodies = off');
+await db.exec(read('supabase/migrations/20270222090000_club_fee_email_reminders.sql'));
+await db.exec('set check_function_bodies = on');
 await db.exec('set check_function_bodies = on');
 const call = async (who, sql, params = []) => {
   await db.query("select set_config('request.jwt.claim.sub',$1,false)", [who]);
@@ -186,12 +195,12 @@ await mark(admin, [feeOf(paid, 'Cissi')], 'open', null, null, null);
 await call(admin, 'select api.set_club_fee_round_payment_info($1, $2, $3)', [club, created.round_id, ' Swish 123 45 67 ']);
 const remind = (who, fees) => call(who, 'select api.send_club_fee_reminders($1, $2, $3, gen_random_uuid())',
   [club, created.round_id, fees]);
-assert.deepEqual(await remind(admin, null), { reminded: 2, notifications: 2, skipped_recent: 0, unreachable: ['Cissi'] });
+assert.deepEqual(await remind(admin, null), { reminded: 2, notifications: 2, emails: 0, skipped_recent: 0, unreachable: ['Cissi'] });
 const outbox = (await db.query(`select recipient_profile_id who, event_type, payload_ref from internal.notification_outbox
   order by payload_ref->>'amount'`)).rows;
 assert.deepEqual(outbox.map(o => [o.who, o.event_type, o.payload_ref.amount]),
   [[parentProfile, 'club.fee.reminder.v1', 30000], [treasurer, 'club.fee.reminder.v1', 60000]]);
-assert.deepEqual(await remind(treasurer, null), { reminded: 0, notifications: 0, skipped_recent: 2, unreachable: ['Cissi'] });
+assert.deepEqual(await remind(treasurer, null), { reminded: 0, notifications: 0, emails: 0, skipped_recent: 2, unreachable: ['Cissi'] });
 const reminded = await round(admin, created.round_id);
 assert.deepEqual([feeOf(reminded, 'Alva').reminder_count, feeOf(reminded, 'Alva').reachable, feeOf(reminded, 'Cissi').reachable],
   [1, true, false]);
@@ -207,6 +216,21 @@ await assert.rejects(call(admin, 'select api.set_club_fee_round_payment_info($1,
   /invalid_payment_info/);
 assert.equal((await db.query("select internal.notification_title('club.fee.reminder.v1') t")).rows[0].t, 'Påminnelse om avgift');
 assert.equal((await db.query('select internal.notification_deep_link(o) l from internal.notification_outbox o limit 1')).rows[0].l, '/fees');
+
+// Påminnelser via e-post: Cissi's guardian has no account but an address.
+await db.exec(`update core.club_people set contact_email = ' Annan@Example.com ' where id = '${parent2}'`);
+assert.deepEqual(await remind(admin, null),
+  { reminded: 1, notifications: 0, emails: 1, skipped_recent: 2, unreachable: [] });
+const claimed = (await db.query('select internal.claim_club_fee_emails(10) j')).rows[0].j;
+assert.deepEqual(claimed.map(m => [m.to, m.club_name, m.title, m.payment_info, m.fees]),
+  [['annan@example.com', 'Demoklubben', 'Medlemsavgift 2027', 'Swish 123 45 67', [{ name: 'Cissi', amount: 30000 }]]]);
+await db.query('select internal.finish_club_fee_email($1, true, $2, null)', [claimed[0].email_id, 'resend-1']);
+assert.equal((await db.query('select state from internal.club_fee_emails')).rows[0].state, 'sent');
+assert.equal(feeOf(await round(admin, created.round_id), 'Cissi').reachable, true);
+// Unsubscribed: no more fee e-mail, and Cissi cannot be reached again.
+await db.query('select internal.opt_out_fee_email($1)', ['ANNAN@example.com']);
+assert.equal(feeOf(await round(admin, created.round_id), 'Cissi').reachable, false);
+await assert.rejects(call(admin, 'select api.claim_club_fee_emails(10)'), /permission denied/);
 
 // A team round: 1000 kr per player, no family rule.
 const teamRound = await save(admin, null, { kind: 'team', team_id: team, title: 'Lagavgift P2014', due_on: `${year + 1}-04-30`,
@@ -226,7 +250,8 @@ await assert.rejects(round(admin, teamRound.round_id), /not_found/);
 await assert.rejects(call(coach, 'select api.get_club_fee_rounds($1)', [club]), /not_found/);
 await assert.rejects(call(coach, 'select api.get_club_families($1)', [club]), /not_found/);
 await assert.rejects(save(coach, null, membership, 0), /not_found/);
-assert.equal((await db.query("select count(*)::int n from audit.command_events where command_type like 'club.%'")).rows[0].n, 17);
+assert.equal((await db.query("select count(*)::int n from audit.command_events where command_type like 'club.%'")).rows[0].n, 18);
+assert.doesNotMatch(read('supabase/migrations/20270222090000_club_fee_email_reminders.sql'), /serialization_failure/);
 assert.doesNotMatch(read('supabase/migrations/20270218090000_club_fee_reminders.sql'), /serialization_failure/);
 assert.doesNotMatch(read('supabase/migrations/20270217090000_club_fee_payments.sql'), /serialization_failure/);
 assert.doesNotMatch(read('supabase/migrations/20270216090000_club_fee_rounds.sql'), /serialization_failure/);

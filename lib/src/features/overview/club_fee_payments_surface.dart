@@ -170,9 +170,9 @@ class _ClubFeePaymentsState extends State<_ClubFeePayments> {
         content: Text(
           [
             '${fees.length} ${strings.feature(fees.length == 1 ? 'obetald avgift' : 'obetalda avgifter')}. '
-                '${strings.feature('Personen och vårdnadshavarna får en notis i inkorgen och en push.')}',
+                '${strings.feature('Personen och vårdnadshavarna får en notis i inkorgen och en push. Den som saknar konto får ett mejl om klubben har e-postadressen.')}',
             if (unreachable > 0)
-              '$unreachable ${strings.feature('kan inte nås, de saknar konto i TeamZone.')}',
+              '$unreachable ${strings.feature('kan inte nås, de saknar både konto och e-postadress.')}',
             strings.feature(
               'En avgift som påmints senaste dygnet hoppas över.',
             ),
@@ -206,7 +206,8 @@ class _ClubFeePaymentsState extends State<_ClubFeePayments> {
           content: Text(
             [
               '${strings.feature('Påminnelse om')} ${result.reminded} ${strings.feature(result.reminded == 1 ? 'avgift' : 'avgifter')} '
-                  '${strings.feature('till')} ${result.notifications} ${strings.feature('mottagare')}.',
+                  '${strings.feature('till')} ${result.notifications} ${strings.feature('i appen')}'
+                  '${result.emails > 0 ? ' ${strings.feature('och')} ${result.emails} ${strings.feature('mejl')}' : ''}.',
               if (result.skippedRecent > 0)
                 '${result.skippedRecent} ${strings.feature('påmindes nyss och hoppades över.')}',
               if (result.unreachable.isNotEmpty)
