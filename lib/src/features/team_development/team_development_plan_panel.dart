@@ -122,7 +122,7 @@ class _TdpPeriodPanel extends StatelessWidget {
                 AppStrings.of(context).feature('Fokus'),
                 style: theme.textTheme.labelLarge,
               ),
-              Text(period.focus),
+              _TdpRichText(period.focus),
             ],
             const Divider(height: 24),
             _TdpGoalGroup(
@@ -261,7 +261,7 @@ class _TdpBlockPanel extends StatelessWidget {
                 AppStrings.of(context).feature('Fokus'),
                 style: theme.textTheme.labelLarge,
               ),
-              Text(block.focus),
+              _TdpRichText(block.focus),
             ],
             const SizedBox(height: 12),
             Text(
@@ -488,6 +488,7 @@ abstract final class _TdpBlockDialog {
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ),
+                    _TdpFormatBar(controller: focus),
                     TextField(
                       key: const Key('tdp-block-focus'),
                       controller: focus,

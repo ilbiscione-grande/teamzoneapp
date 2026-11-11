@@ -96,6 +96,7 @@ import 'package:teamzone_app/src/shared/theme/app_theme.dart';
 import 'package:teamzone_app/src/shared/widgets/app_states.dart';
 import 'package:teamzone_app/src/shared/widgets/dialog_controllers.dart';
 import 'package:teamzone_app/src/shared/widgets/browser_offline_notice.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
@@ -179,6 +180,7 @@ part '../features/team_development/team_development_checkins.dart';
 part '../features/team_development/team_development_play.dart';
 part '../features/team_development/team_development_block_exercises.dart';
 part '../features/team_development/team_development_load.dart';
+part '../features/team_development/team_development_markdown.dart';
 part '../features/team_development/session_effort_card.dart';
 part '../features/team_development/team_development_injuries.dart';
 part '../features/team_development/player_injury_card.dart';

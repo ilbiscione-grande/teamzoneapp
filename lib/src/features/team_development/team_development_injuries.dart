@@ -198,7 +198,8 @@ class _TdpInjurySheetState extends State<_TdpInjurySheet> {
                           'Sedan ${_tdpDate(context, current.startedOn)}',
                           'Since ${_tdpDate(context, current.startedOn)}',
                         ),
-                        if ((current.note ?? '').isNotEmpty) current.note!,
+                        if ((current.note ?? '').isNotEmpty)
+                          _tdpPlain(current.note!),
                       ].join('\n'),
                     ),
                     onTap: canEdit ? () => _edit(current) : null,
@@ -428,6 +429,7 @@ class _TdpInjuryEditorState extends State<_TdpInjuryEditor> {
                           onPressed: () => setState(() => _backOn = null),
                         ),
                 ),
+                _TdpFormatBar(controller: _note),
                 TextFormField(
                   key: const Key('tdp-injury-note'),
                   controller: _note,

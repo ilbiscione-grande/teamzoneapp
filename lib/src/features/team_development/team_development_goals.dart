@@ -118,7 +118,8 @@ class _TdpGoalTile extends StatelessWidget {
         AppStrings.of(context).feature(goal.state.label),
       if (plan.checkinsOfGoal(goal.id).firstOrNull?.status case final status?)
         AppStrings.of(context).feature(status.label),
-      if (goal.description.trim().isNotEmpty) goal.description.trim(),
+      if (goal.description.trim().isNotEmpty)
+        _tdpPlain(goal.description.trim()),
     ];
     return ListTile(
       key: ValueKey('tdp-goal-${goal.id}'),

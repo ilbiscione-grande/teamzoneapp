@@ -101,7 +101,7 @@ class _PlanSuggestionBox extends StatelessWidget {
           ),
           if (block != null && blockFocus.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text(
+            _TdpRichText(
               blockFocus,
               key: const Key('plan-suggestion-block-focus'),
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -111,10 +111,13 @@ class _PlanSuggestionBox extends StatelessWidget {
           ],
           if (periodFocus.isNotEmpty && periodFocus != blockFocus) ...[
             const SizedBox(height: 4),
-            Text(
-              block == null
-                  ? periodFocus
-                  : '${_tdpText(context, 'Perioden', 'The period')}: $periodFocus',
+            if (block != null)
+              Text(
+                _tdpText(context, 'Perioden', 'The period'),
+                style: theme.textTheme.labelSmall,
+              ),
+            _TdpRichText(
+              periodFocus,
               style: block == null ? null : theme.textTheme.bodySmall,
             ),
           ],

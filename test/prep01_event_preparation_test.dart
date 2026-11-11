@@ -494,7 +494,8 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Bygga upp från målvakten'), findsOneWidget);
-      expect(find.text('Perioden: Spelprinciperna i match'), findsOneWidget);
+      expect(find.text('Perioden'), findsOneWidget);
+      expect(find.text('Spelprinciperna i match'), findsOneWidget);
       expect(find.text('Blockets principer'), findsOneWidget);
       expect(find.text('Andra spelprinciper'), findsOneWidget);
       expect(

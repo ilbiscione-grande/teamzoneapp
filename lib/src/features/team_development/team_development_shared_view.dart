@@ -86,7 +86,7 @@ class _TeamPlanCardState extends State<_TeamPlanCard> {
                     ),
                     if (period.focus.trim().isNotEmpty)
                       Text(
-                        period.focus,
+                        _tdpPlain(period.focus),
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -155,11 +155,15 @@ class _SharedTeamPlanPage extends StatelessWidget {
                           ? '${period.name} · nu'
                           : period.name,
                     ),
-                    subtitle: Text(
-                      [
-                        '${AppStrings.of(context).feature(period.phase.label)}, ${_tdpRange(context, period.startsOn, period.endsOn)}',
-                        if (period.focus.trim().isNotEmpty) period.focus,
-                      ].join('\n'),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${AppStrings.of(context).feature(period.phase.label)}, ${_tdpRange(context, period.startsOn, period.endsOn)}',
+                        ),
+                        if (period.focus.trim().isNotEmpty)
+                          _TdpRichText(period.focus),
+                      ],
                     ),
                   ),
                 ),
@@ -198,7 +202,7 @@ class _SharedTeamPlanPage extends StatelessWidget {
                                     subtitle:
                                         principle.description.trim().isEmpty
                                         ? null
-                                        : Text(principle.description),
+                                        : _TdpRichText(principle.description),
                                   ),
                             ],
                         ],

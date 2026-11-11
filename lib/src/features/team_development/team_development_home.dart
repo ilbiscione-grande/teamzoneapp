@@ -259,7 +259,7 @@ class _TdpHomeHeader extends StatelessWidget {
         ),
         if (plan.vision.trim().isNotEmpty) ...[
           const SizedBox(height: 8),
-          Text(
+          _TdpRichText(
             plan.vision,
             style: theme.textTheme.bodyLarge?.copyWith(
               fontStyle: FontStyle.italic,
@@ -386,7 +386,7 @@ class _TdpNowCard extends StatelessWidget {
             ],
             if (focus.trim().isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text(focus),
+              _TdpRichText(focus),
             ],
             const SizedBox(height: 8),
             Text(

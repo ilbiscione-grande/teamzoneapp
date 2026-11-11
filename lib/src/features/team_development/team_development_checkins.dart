@@ -89,7 +89,7 @@ abstract final class _TdpGoalSheet {
               ],
               if (goal.description.trim().isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text(goal.description),
+                _TdpRichText(goal.description),
               ],
               if (goal.state != GoalState.open) ...[
                 const SizedBox(height: 8),
@@ -192,7 +192,7 @@ class _TdpCheckinTile extends StatelessWidget {
       ),
       subtitle: Text(
         [
-          if (checkin.note.trim().isNotEmpty) checkin.note.trim(),
+          if (checkin.note.trim().isNotEmpty) _tdpPlain(checkin.note.trim()),
           if (checkin.createdBy != null) checkin.createdBy!,
         ].join('\n'),
       ),
@@ -325,6 +325,7 @@ abstract final class _TdpCheckinDialog {
                       ),
                     ),
                     const SizedBox(height: 12),
+                    _TdpFormatBar(controller: note),
                     TextField(
                       key: const Key('tdp-checkin-note'),
                       controller: note,

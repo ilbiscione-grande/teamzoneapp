@@ -173,7 +173,7 @@ class _TdpPhasePair extends StatelessWidget {
             title: Text(principle.title),
             subtitle: principle.description.trim().isEmpty
                 ? null
-                : Text(principle.description),
+                : _TdpRichText(principle.description),
             onTap: controller.canEdit
                 ? () => _TdpPrincipleDialog.edit(
                     context,
@@ -538,6 +538,7 @@ abstract final class _TdpPrincipleDialog {
                     ),
                     onChanged: (_) => setState(() {}),
                   ),
+                  _TdpFormatBar(controller: description),
                   TextField(
                     key: const Key('tdp-principle-description'),
                     controller: description,

@@ -1297,6 +1297,42 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('a block\'s focus is written and shown as Markdown', (
+    tester,
+  ) async {
+    final services = await openWithoutModel(tester);
+    await tester.tap(find.text('Planera'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('tdp-item-b1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-panel-edit')));
+    await tester.pumpAndSettle();
+    final field = find.byKey(const Key('tdp-block-focus'));
+    await tester.enterText(field, 'Bygg upp lugnt');
+    await tester.pump();
+    // "Bygg" made bold, then the line a list item.
+    tester.widget<TextField>(field).controller!.selection = const TextSelection(
+      baseOffset: 0,
+      extentOffset: 4,
+    );
+    await tester.tap(find.byKey(const Key('tdp-format-bold')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tdp-format-list')));
+    await tester.pump();
+    expect(
+      tester.widget<TextField>(field).controller!.text,
+      '- **Bygg** upp lugnt',
+    );
+    await tester.tap(find.byKey(const Key('tdp-block-save')));
+    await tester.pumpAndSettle();
+    expect(services.plan!.blocks.single.focus, '- **Bygg** upp lugnt');
+
+    // The panel shows it formatted, without the marks.
+    expect(find.text('Bygg upp lugnt'), findsWidgets);
+    expect(find.textContaining('**'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   test('a key figure counts goals, own buttons and values set by hand', () {
     final day = DateTime(2026, 10, 1);
     final plan = SeasonPlan(

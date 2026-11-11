@@ -50,7 +50,7 @@ class _TdpPlanNote extends StatelessWidget {
         ),
         if (focus.isNotEmpty) ...[
           const SizedBox(height: 4),
-          Text(focus, style: theme.textTheme.bodyMedium),
+          _TdpRichText(focus, style: theme.textTheme.bodyMedium),
         ],
         if (principles.isNotEmpty) ...[
           const SizedBox(height: 6),

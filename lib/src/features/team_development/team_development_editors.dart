@@ -314,6 +314,7 @@ abstract final class _SeasonDialog {
                         ),
                     ],
                     const SizedBox(height: 16),
+                    _TdpFormatBar(controller: vision),
                     TextField(
                       key: const Key('tdp-season-vision'),
                       controller: vision,
@@ -471,6 +472,7 @@ abstract final class _TdpPeriodDialog {
                       ],
                     ),
                     const SizedBox(height: 16),
+                    _TdpFormatBar(controller: focus),
                     TextField(
                       key: const Key('tdp-period-focus'),
                       controller: focus,
@@ -688,6 +690,7 @@ abstract final class _TdpGoalDialog {
                       ),
                       onChanged: (_) => setState(() {}),
                     ),
+                    _TdpFormatBar(controller: description),
                     TextField(
                       key: const Key('tdp-goal-description'),
                       controller: description,
