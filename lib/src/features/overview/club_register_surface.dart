@@ -340,6 +340,43 @@ const _automaticCategory = 'automatic';
 
 class _ClubRegisterPersonSheetState extends State<_ClubRegisterPersonSheet> {
   late bool _member = widget.person.isMember;
+  late final _email = TextEditingController(text: widget.person.email ?? '');
+  String? _emailError;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    super.dispose();
+  }
+
+  /// The address fee reminders go to, for someone without an account.
+  Future<void> _saveEmail() async {
+    final strings = AppStrings.of(context);
+    setState(() {
+      _saving = true;
+      _emailError = null;
+    });
+    try {
+      await widget.services.setClubPersonEmail(
+        clubId: widget.clubId,
+        personId: widget.person.personId,
+        email: _email.text.trim(),
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (error) {
+      AppErrors.caught('club_register._saveEmail', error);
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _emailError = strings.feature(
+          error is ClubRegisterInvalidEmail
+              ? 'Det ser inte ut som en e-postadress.'
+              : 'Adressen kunde inte sparas. Försök igen.',
+        );
+      });
+    }
+  }
+
   late String _category = widget.person.categorySet
       ? widget.person.category ?? _automaticCategory
       : _automaticCategory;
@@ -434,6 +471,45 @@ class _ClubRegisterPersonSheetState extends State<_ClubRegisterPersonSheet> {
                     : 'Har inget konto i TeamZone',
               ),
             ),
+            if (person.emailEditable) ...[
+              const SizedBox(height: 12),
+              Text(
+                strings.feature('E-post för påminnelser'),
+                style: theme.textTheme.titleSmall,
+              ),
+              Text(
+                strings.feature(
+                  'Personen har inget konto i TeamZone. Påminnelser om avgifter går hit, och för ett barn till vårdnadshavarnas adresser.',
+                ),
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      key: const ValueKey('club-register-email'),
+                      controller: _email,
+                      enabled: !_saving,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        hintText: 'namn@example.com',
+                        errorText: _emailError,
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton(
+                    key: const ValueKey('club-register-email-save'),
+                    onPressed: _saving ? null : _saveEmail,
+                    child: Text(strings.feature('Spara')),
+                  ),
+                ],
+              ),
+            ],
             const Divider(height: 24),
             SwitchListTile(
               key: const ValueKey('club-register-member'),

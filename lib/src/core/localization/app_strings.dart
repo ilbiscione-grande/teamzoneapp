@@ -1291,6 +1291,14 @@ class AppStrings {
     'Anledning (valfri)': 'Reason (optional)',
     'obetalda': 'unpaid',
     'av': 'of',
+    // E-mail in the register, Mina avgifter in settings (2026-11-11).
+    'E-post för påminnelser': 'E-mail for reminders',
+    'Personen har inget konto i TeamZone. Påminnelser om avgifter går hit, och för ett barn till vårdnadshavarnas adresser.':
+        "The person has no TeamZone account. Fee reminders go here, and for a child to the guardians' addresses.",
+    'Det ser inte ut som en e-postadress.': 'That does not look like an e-mail address.',
+    'Adressen kunde inte sparas. Försök igen.': 'The address could not be saved. Try again.',
+    'Medlems- och lagavgifter för dig och dina barn, och hur du betalar.':
+        'Membership and team fees for you and your children, and how to pay.',
     // Fee reminders by e-mail (2026-11-11).
     'Personen och vårdnadshavarna får en notis i inkorgen och en push. Den som saknar konto får ett mejl om klubben har e-postadressen.':
         'The person and the guardians get a notification in the inbox and a push. Anyone without an account gets an e-mail if the club has their address.',

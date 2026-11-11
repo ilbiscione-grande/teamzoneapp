@@ -51,6 +51,8 @@ class ClubRegisterPerson {
     required this.category,
     required this.categorySet,
     required this.revision,
+    this.email,
+    this.emailEditable = false,
   });
 
   factory ClubRegisterPerson.fromJson(Map<String, dynamic> json) {
@@ -75,6 +77,8 @@ class ClubRegisterPerson {
       category: json['category'] as String?,
       categorySet: json['category_set'] as bool? ?? false,
       revision: (json['revision'] as num?)?.toInt() ?? 0,
+      email: json['email'] as String?,
+      emailEditable: json['email_editable'] as bool? ?? false,
     );
   }
 
@@ -109,6 +113,11 @@ class ClubRegisterPerson {
   /// The category is set by the club; otherwise it follows the birth year.
   final bool categorySet;
   final int revision;
+
+  /// The address fee reminders go to (2026-11-11): only for someone without
+  /// an account, never for a protected person.
+  final String? email;
+  final bool emailEditable;
 }
 
 class ClubRegister {
@@ -139,6 +148,45 @@ abstract interface class ClubRegisterServices {
     required int expectedRevision,
     required String idempotencyKey,
   });
+
+  /// [email] empty: no address. Throws [ClubRegisterInvalidEmail].
+  Future<String?> setClubPersonEmail({
+    required String clubId,
+    required String personId,
+    required String email,
+  });
+}
+
+/// The address is not an e-mail address.
+class ClubRegisterInvalidEmail implements Exception {
+  const ClubRegisterInvalidEmail();
+}
+
+Future<String?> setClubPersonEmailWith(
+  SupabaseClient client, {
+  required String clubId,
+  required String personId,
+  required String email,
+}) async {
+  try {
+    final value = await client
+        .schema('api')
+        .rpc<Object?>(
+          'set_club_person_email',
+          params: {
+            'target_club_id': clubId,
+            'target_person_id': personId,
+            'new_email': email,
+          },
+        )
+        .timeout(const Duration(seconds: 15));
+    return value is Map ? value['email'] as String? : null;
+  } on PostgrestException catch (error) {
+    if (error.message.contains('invalid_email')) {
+      throw const ClubRegisterInvalidEmail();
+    }
+    rethrow;
+  }
 }
 
 Future<ClubRegister> loadClubRegisterFrom(

@@ -19,7 +19,7 @@ create table core.clubs(id uuid primary key);
 insert into core.clubs values ('${club}'),('${other}');
 create table core.profiles(id uuid primary key);
 insert into core.profiles values ('${admin}'),('${coach}');
-create table core.club_people(id uuid primary key, club_id uuid, display_name text, status text default 'active', birth_year smallint,
+create table core.club_people(id uuid primary key, club_id uuid, display_name text, status text default 'active', birth_year smallint, contact_email text, phone text, safeguarding_required boolean default false, revision bigint default 1,
   unique (id, club_id));
 insert into core.club_people values
   ('${adminP}','${club}','Admin Adminsson','active',null),
@@ -58,6 +58,12 @@ returns boolean language sql stable security definer set search_path = '' as $$
       and assignment.club_id = target_club_id and grant_row.capability = required_capability
       and grant_row.scope_type = 'club' and grant_row.scope_id = target_club_id) $$;`);
 await db.exec(read('supabase/migrations/20270215090000_club_member_register.sql'));
+await db.exec(`create function internal.normalized_contact(new_email text, new_phone text) returns jsonb language plpgsql immutable set search_path to '' as $$
+declare email text:=nullif(lower(btrim(coalesce(new_email,''))),''); phone text:=nullif(btrim(coalesce(new_phone,'')),'');
+begin
+ if email is not null and (length(email)>254 or email !~* '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$') then raise invalid_parameter_value using message='invalid_email'; end if;
+ return jsonb_build_object('email',email,'phone',phone);
+end$$;`);
 const call = async (who, sql, params = []) => {
   await db.query("select set_config('request.jwt.claim.sub',$1,false)", [who]);
   await db.exec('set role authenticated');
@@ -96,5 +102,17 @@ await assert.rejects(set(endedP, true, null, 0), /not_found/);
 await assert.rejects(call(coach, 'select api.get_club_member_register($1)', [club]), /not_found/);
 await assert.rejects(call(coach, 'select api.set_club_membership($1,$2,true,null,1,gen_random_uuid())', [club, parentP]), /not_found/);
 assert.equal((await db.query("select count(*)::int n from audit.command_events where command_type = 'club.membership.updated.v1'")).rows[0].n, 2);
+
+// The address fee reminders go to: only for someone without an account.
+await db.exec(read('supabase/migrations/20270223090000_register_fee_email.sql'));
+const setEmail = (person, email) => call(admin, 'select api.set_club_person_email($1, $2, $3)', [club, person, email]);
+assert.deepEqual(await setEmail(parentP, ' Foralder@Example.com '), { email: 'foralder@example.com' });
+people = await register();
+assert.deepEqual([byName('Föräldern').email, byName('Föräldern').email_editable], ['foralder@example.com', true]);
+assert.deepEqual([byName('Tränaren').email, byName('Tränaren').email_editable], [null, false]);
+await assert.rejects(setEmail(coachP, 'coach@example.com'), /not_found/);
+await assert.rejects(setEmail(parentP, 'inte en adress'), /invalid_email/);
+await assert.rejects(call(coach, 'select api.set_club_person_email($1, $2, $3)', [club, parentP, 'x@example.com']), /not_found/);
+assert.deepEqual(await setEmail(parentP, ''), { email: null });
 assert.doesNotMatch(read('supabase/migrations/20270215090000_club_member_register.sql'), /serialization_failure/);
 console.log('club member register: ok');

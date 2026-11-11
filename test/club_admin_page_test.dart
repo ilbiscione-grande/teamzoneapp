@@ -173,6 +173,20 @@ void main() {
     ]);
     expect(find.byKey(const ValueKey('club-register-person')), findsNothing);
 
+    // The guardian has no account: the address reminders go to.
+    await tester.tap(find.byKey(const ValueKey('club-register-parent')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('club-register-email')),
+      'bo@example.com',
+    );
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-register-email-save')),
+    );
+    await tester.pumpAndSettle();
+    expect(membership.emails, ['parent bo@example.com']);
+
     await tester.tap(find.byKey(const ValueKey('club-register-export')));
     await tester.pumpAndSettle();
     expect(exported, hasLength(1));
@@ -376,6 +390,7 @@ class _Membership extends UnconfiguredMembershipServices
         ],
         'guardians': [],
         'children': ['Alva Barn'],
+        'email_editable': true,
         'is_member': false,
         'member_set': false,
         'category': 'adult',
@@ -394,6 +409,18 @@ class _Membership extends UnconfiguredMembershipServices
       },
     ],
   });
+
+  final emails = <String>[];
+
+  @override
+  Future<String?> setClubPersonEmail({
+    required String clubId,
+    required String personId,
+    required String email,
+  }) async {
+    emails.add('$personId $email');
+    return email;
+  }
 
   @override
   Future<ClubRegister> loadClubRegister(String clubId) async => register;

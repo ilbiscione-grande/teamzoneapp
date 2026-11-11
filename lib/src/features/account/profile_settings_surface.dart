@@ -635,6 +635,24 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
       ),
       const SizedBox(height: 24),
     ],
+    // Mina avgifter: before, reached only from a fee reminder (2026-11-11).
+    if (!widget.embedded && widget.membership is ClubFeesProvider) ...[
+      Card(
+        child: ListTile(
+          key: const ValueKey('setting-my-fees'),
+          leading: const Icon(Icons.receipt_long_outlined),
+          title: Text(strings.feature('Mina avgifter')),
+          subtitle: Text(
+            strings.feature(
+              'Medlems- och lagavgifter för dig och dina barn, och hur du betalar.',
+            ),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => GoRouter.of(context).push(ProductRouteContract.fees),
+        ),
+      ),
+      const SizedBox(height: 24),
+    ],
     Builder(
       builder: (context) {
         final scope = LanguagePreferenceScope.of(context);

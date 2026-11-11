@@ -468,6 +468,18 @@ class SupabaseMembershipServices
   }
 
   @override
+  Future<String?> setClubPersonEmail({
+    required String clubId,
+    required String personId,
+    required String email,
+  }) => setClubPersonEmailWith(
+    _client,
+    clubId: clubId,
+    personId: personId,
+    email: email,
+  );
+
+  @override
   Future<ClubRegister> loadClubRegister(String clubId) =>
       loadClubRegisterFrom(_client, clubId);
 
