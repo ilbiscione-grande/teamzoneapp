@@ -7,6 +7,7 @@ import 'package:teamzone_app/src/core/identity/identity_models.dart';
 import 'package:teamzone_app/src/core/identity/identity_services.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 import 'package:teamzone_app/src/features/membership/club_fees.dart';
+import 'package:teamzone_app/src/features/membership/club_register.dart';
 import 'package:teamzone_app/src/features/membership/membership_services.dart';
 import 'package:teamzone_app/src/features/overview/overview_models.dart';
 import 'package:teamzone_app/src/features/overview/overview_services.dart';
@@ -45,7 +46,7 @@ void main() {
   ) async {
     final fees = await openFees(tester, {'club.memberships.manage'});
     expect(find.text('Medlemsavgift 2026'), findsOneWidget);
-    expect(find.text('5 avgifter\n1 900 kr'), findsOneWidget);
+    expect(find.text('3 obetalda\n600 kr av 1 900 kr'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('club-fees-new')));
     await tester.pumpAndSettle();
@@ -126,6 +127,84 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  testWidgets('fees are marked paid together, waived and exported', (
+    tester,
+  ) async {
+    final exported = <String>[];
+    final original = saveClubRegisterCsv;
+    saveClubRegisterCsv = (name, csv) async {
+      exported.add(csv);
+      return true;
+    };
+    addTearDown(() => saveClubRegisterCsv = original);
+    final fees = await openFees(tester, {'economy.manage'});
+    await tester.tap(find.byKey(const ValueKey('club-fee-round-r1')));
+    await tester.pumpAndSettle();
+    String summary() => tester
+        .widget<Text>(find.byKey(const ValueKey('club-fee-payment-summary')))
+        .data!;
+    expect(summary(), 'Betalt 0 · 0 kr   Obetalt 2 · 400 kr');
+    expect(find.text('Täcks av familjetaket · betalas av Föräldern'), findsOne);
+
+    // Both unpaid at once, by bank.
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-fee-select-open')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Markera betalda (2)'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('club-fee-mark-paid')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('club-fee-method-bank')));
+    await tester.enterText(find.byKey(const ValueKey('club-fee-note')), 'OCR');
+    await tester.tap(find.byKey(const ValueKey('club-fee-paid-save')));
+    await tester.pumpAndSettle();
+    expect(fees.marks, ['paid fee-alva,fee-bertil bank OCR']);
+    expect(find.text('2 markerade som betalda'), findsOneWidget);
+    for (final messenger in tester.stateList<ScaffoldMessengerState>(
+      find.byType(ScaffoldMessenger),
+    )) {
+      messenger.removeCurrentSnackBar();
+    }
+    await tester.pumpAndSettle();
+
+    // One waived with a reason; the capped one has nothing to pay.
+    await _tapVisible(tester, find.byKey(const ValueKey('club-fee-alva')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('club-fee-sheet-waive')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('club-fee-waive-note')),
+      'Syskon i annan klubb',
+    );
+    await tester.tap(find.byKey(const ValueKey('club-fee-waive-save')));
+    await tester.pumpAndSettle();
+    expect(fees.marks.last, 'waived fee-alva - Syskon i annan klubb');
+    await _tapVisible(tester, find.byKey(const ValueKey('club-fee-cissi')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('club-fee-sheet-paid')), findsNothing);
+    expect(find.byKey(const ValueKey('club-fee-sheet-reopen')), findsNothing);
+    Navigator.of(
+      tester.element(find.byKey(const ValueKey('club-fee-sheet'))),
+    ).pop();
+    await tester.pumpAndSettle();
+
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-fee-filter-waived')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('club-fee-alva')), findsNothing);
+    expect(find.byKey(const ValueKey('club-fee-cissi')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('club-fee-export')));
+    await tester.pumpAndSettle();
+    final lines = exported.single.split('\r\n');
+    expect(lines.first, startsWith('﻿Namn;Kategori;Betalas av;Belopp'));
+    expect(lines[1], 'Alva;Barn och ungdom;Föräldern;300,00;0,00;Obetald;;;');
+    debugDefaultTargetPlatformOverride = null;
+  });
+
   testWidgets('the treasurer sees only the fees on the Klubb page', (
     tester,
   ) async {
@@ -196,9 +275,12 @@ Map<String, dynamic> _fee(
   String name,
   int base,
   int discount, {
+  bool issued = false,
   String key = 'k1',
   List<String> guardians = const ['Föräldern'],
 }) => {
+  if (issued) 'fee_id': 'fee-$id',
+  if (issued) 'revision': 1,
   'person_id': id,
   'name': name,
   'category': 'youth',
@@ -214,7 +296,9 @@ class _Fees implements ClubFeeServices {
   final saved = <Map<String, Object?>>[];
   final decisions = <({String round, String decision, int rev})>[];
   final changes = <(String, List<String>)>[];
+  final marks = <String>[];
   var _issued = false;
+  bool _isIssued(String roundId) => roundId == 'r1' || _issued;
 
   @override
   Future<List<ClubFeeRound>> loadClubFeeRounds(String clubId) async => [
@@ -228,6 +312,8 @@ class _Fees implements ClubFeeServices {
       'revision': 2,
       'fee_count': 5,
       'total': 190000,
+      'open_count': 3,
+      'paid_total': 60000,
     }),
   ];
 
@@ -243,14 +329,14 @@ class _Fees implements ClubFeeServices {
     'amounts': {'youth': 30000, 'adult': 50000},
     'family_cap': 40000,
     'sibling_discount_percent': 50,
-    'state': _issued ? 'issued' : 'draft',
-    'revision': _issued ? 2 : 1,
+    'state': _isIssued(roundId) ? 'issued' : 'draft',
+    'revision': _isIssued(roundId) ? 2 : 1,
     'fees': [
-      _fee('alva', 'Alva', 30000, 0),
-      _fee('bertil', 'Bertil', 30000, 20000),
-      _fee('cissi', 'Cissi', 30000, 30000),
+      _fee('alva', 'Alva', 30000, 0, issued: _isIssued(roundId)),
+      _fee('bertil', 'Bertil', 30000, 20000, issued: _isIssued(roundId)),
+      _fee('cissi', 'Cissi', 30000, 30000, issued: _isIssued(roundId)),
     ],
-    'missing': _issued ? [] : ['Admin'],
+    'missing': _isIssued(roundId) ? [] : ['Admin'],
   });
 
   @override
@@ -276,6 +362,19 @@ class _Fees implements ClubFeeServices {
     decisions.add((round: roundId, decision: decision, rev: expectedRevision));
     _issued = decision == 'issue';
   }
+
+  @override
+  Future<void> markClubFees({
+    required String clubId,
+    required List<ClubFee> fees,
+    required String decision,
+    DateTime? paidOn,
+    String? method,
+    String? note,
+    required String idempotencyKey,
+  }) async => marks.add(
+    '$decision ${fees.map((fee) => fee.feeId).join(',')} ${method ?? '-'} ${note ?? '-'}',
+  );
 
   @override
   Future<List<ClubFamilyMember>> loadClubFamilies(String clubId) async => [

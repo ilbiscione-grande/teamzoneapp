@@ -148,8 +148,8 @@ class _ClubFeeRoundsPageState extends State<_ClubFeeRoundsPage> {
                       trailing: Text(
                         round.isDraft
                             ? strings.feature('Utkast')
-                            : '${round.feeCount} ${strings.feature(round.feeCount == 1 ? 'avgift' : 'avgifter')}\n'
-                                  '${clubFeeKronor(round.total)}',
+                            : '${round.openCount} ${strings.feature('obetalda')}\n'
+                                  '${clubFeeKronor(round.paidTotal)} ${strings.feature('av')} ${clubFeeKronor(round.total)}',
                         textAlign: TextAlign.end,
                       ),
                       onTap: () => _openRound(round.roundId),
@@ -298,6 +298,13 @@ class _ClubFeeRoundPageState extends State<_ClubFeeRoundPage> {
                   icon: const Icon(Icons.edit_outlined),
                   onPressed: _busy ? null : () => _edit(round),
                 ),
+              if (detail != null && round != null && !round.isDraft)
+                IconButton(
+                  key: const ValueKey('club-fee-export'),
+                  tooltip: strings.feature('Exportera som CSV'),
+                  icon: const Icon(Icons.download_outlined),
+                  onPressed: () => _exportClubFees(context, round, detail.fees),
+                ),
             ],
           ),
           body: snapshot.hasError
@@ -383,9 +390,17 @@ class _ClubFeeRoundPageState extends State<_ClubFeeRoundPage> {
                     ],
                     const Divider(height: 32),
                     if (detail.fees.isEmpty)
-                      Text(strings.feature('Omgången ger inga avgifter.')),
-                    for (final fee in detail.fees)
-                      _ClubFeeRow(fee: fee, all: detail.fees),
+                      Text(strings.feature('Omgången ger inga avgifter.'))
+                    else if (round.isDraft)
+                      for (final fee in detail.fees)
+                        _ClubFeeRow(fee: fee, all: detail.fees)
+                    else
+                      _ClubFeePayments(
+                        clubId: widget.clubId,
+                        fees: detail.fees,
+                        services: widget.services,
+                        onChanged: _reload,
+                      ),
                   ],
                 ),
         );

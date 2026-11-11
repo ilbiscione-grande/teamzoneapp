@@ -43,6 +43,10 @@ class ClubFeeRound {
     required this.revision,
     this.feeCount = 0,
     this.total = 0,
+    this.paidCount = 0,
+    this.paidTotal = 0,
+    this.openCount = 0,
+    this.openTotal = 0,
   });
 
   factory ClubFeeRound.fromJson(Map<String, dynamic> json) => ClubFeeRound(
@@ -62,6 +66,10 @@ class ClubFeeRound {
     revision: (json['revision'] as num?)?.toInt() ?? 0,
     feeCount: (json['fee_count'] as num?)?.toInt() ?? 0,
     total: (json['total'] as num?)?.toInt() ?? 0,
+    paidCount: (json['paid_count'] as num?)?.toInt() ?? 0,
+    paidTotal: (json['paid_total'] as num?)?.toInt() ?? 0,
+    openCount: (json['open_count'] as num?)?.toInt() ?? 0,
+    openTotal: (json['open_total'] as num?)?.toInt() ?? 0,
   );
 
   final String roundId;
@@ -84,6 +92,12 @@ class ClubFeeRound {
   final int feeCount;
   final int total;
 
+  /// Issued rounds: what is paid and what is left.
+  final int paidCount;
+  final int paidTotal;
+  final int openCount;
+  final int openTotal;
+
   bool get isDraft => state == 'draft';
   bool get isMembership => kind == 'membership';
 }
@@ -99,6 +113,11 @@ class ClubFee {
     required this.amount,
     required this.state,
     required this.guardians,
+    this.feeId,
+    this.revision = 0,
+    this.paidOn,
+    this.paymentMethod,
+    this.note,
   });
 
   factory ClubFee.fromJson(Map<String, dynamic> json) => ClubFee(
@@ -113,6 +132,14 @@ class ClubFee {
     guardians: (json['guardians'] as List? ?? const [])
         .whereType<String>()
         .toList(),
+    feeId: json['fee_id'] as String?,
+    revision: (json['revision'] as num?)?.toInt() ?? 0,
+    paidOn: switch (json['paid_on']) {
+      final String day => DateTime.parse(day),
+      _ => null,
+    },
+    paymentMethod: json['payment_method'] as String?,
+    note: json['note'] as String?,
   );
 
   final String personId;
@@ -128,6 +155,18 @@ class ClubFee {
 
   /// Who pays for a child.
   final List<String> guardians;
+
+  /// Null while the round is a draft.
+  final String? feeId;
+  final int revision;
+  final DateTime? paidOn;
+
+  /// swish, bank, cash or other.
+  final String? paymentMethod;
+  final String? note;
+
+  bool get isOpen => state == 'open' && amount > 0;
+  bool get canReopen => feeId != null && amount > 0 && state != 'open';
 }
 
 class ClubFeeRoundDetail {
@@ -268,6 +307,17 @@ abstract interface class ClubFeeServices {
     required String idempotencyKey,
   });
 
+  /// [decision]: paid (with [paidOn] and [method]), waived or open (undo).
+  Future<void> markClubFees({
+    required String clubId,
+    required List<ClubFee> fees,
+    required String decision,
+    DateTime? paidOn,
+    String? method,
+    String? note,
+    required String idempotencyKey,
+  });
+
   Future<List<ClubFamilyMember>> loadClubFamilies(String clubId);
 
   /// [change]: merge, split or reset.
@@ -367,6 +417,27 @@ class SupabaseClubFees implements ClubFeeServices {
   });
 
   @override
+  Future<void> markClubFees({
+    required String clubId,
+    required List<ClubFee> fees,
+    required String decision,
+    DateTime? paidOn,
+    String? method,
+    String? note,
+    required String idempotencyKey,
+  }) => _rpc(_client, 'mark_club_fees', {
+    'target_club_id': clubId,
+    'target_fees': [
+      for (final fee in fees) {'fee_id': fee.feeId, 'revision': fee.revision},
+    ],
+    'decision': decision,
+    'new_paid_on': paidOn == null ? null : clubFeeDay(paidOn),
+    'new_method': method,
+    'new_note': note,
+    'idempotency_key': idempotencyKey,
+  });
+
+  @override
   Future<List<ClubFamilyMember>> loadClubFamilies(String clubId) async {
     final json = _map(
       await _rpc(_client, 'get_club_families', {'target_club_id': clubId}),
@@ -394,4 +465,53 @@ class SupabaseClubFees implements ClubFeeServices {
 /// Membership services that also handle the club's fees.
 abstract interface class ClubFeesProvider {
   ClubFeeServices get clubFees;
+}
+
+/// yyyy-mm-dd, as the server reads a day.
+String clubFeeDay(DateTime day) =>
+    '${day.year.toString().padLeft(4, '0')}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+
+/// A round's fees as CSV for the treasurer: semicolons and a BOM, so Excel
+/// opens it in Swedish. Amounts in kronor with a decimal comma.
+String clubFeesCsv(
+  List<ClubFee> fees, {
+  required String Function(String? category) categoryLabel,
+  required String Function(ClubFee fee) stateLabel,
+  required String Function(String? method) methodLabel,
+}) {
+  String cell(Object? value) {
+    final text = '${value ?? ''}';
+    return text.contains(RegExp('[;"\n]'))
+        ? '"${text.replaceAll('"', '""')}"'
+        : text;
+  }
+
+  String kronor(int minor) =>
+      '${minor ~/ 100},${(minor % 100).toString().padLeft(2, '0')}';
+  final lines = <List<Object?>>[
+    [
+      'Namn',
+      'Kategori',
+      'Betalas av',
+      'Belopp',
+      'Rabatt',
+      'Status',
+      'Betald',
+      'Sätt',
+      'Anteckning',
+    ],
+    for (final fee in fees)
+      [
+        fee.name,
+        fee.category == null ? null : categoryLabel(fee.category),
+        fee.guardians.join(', '),
+        kronor(fee.amount),
+        kronor(fee.discountAmount),
+        stateLabel(fee),
+        fee.paidOn == null ? null : clubFeeDay(fee.paidOn!),
+        fee.paymentMethod == null ? null : methodLabel(fee.paymentMethod),
+        fee.note,
+      ],
+  ];
+  return '﻿${lines.map((line) => line.map(cell).join(';')).join('\r\n')}\r\n';
 }

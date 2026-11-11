@@ -1,6 +1,6 @@
 # Medlemsregister och avgifter för klubbadmin – plan
 
-**Status: steg 1 och 2 byggda 2026-11-10.** Steg 1, registret: migration `20270215090000_club_member_register.sql`, Klubb → Medlemmar → Medlemsregister. Kontaktuppgifter ingår inte än; de följer reglerna i `get_person_contact`. Steg 2, avgiftsomgångar och familjer: migration `20270216090000_club_fee_rounds.sql`, Klubb → Medlemmar → Avgifter. Båda migrationerna är körda och loggade. Steg 3–5 återstår. Kommer från rollgenomgången för klubbadmin och styrelse. Klubb-sidan (`/club`, commit aaaf2cc) är ingången.
+**Status: steg 1–3 byggda (1–2 den 2026-11-10, 3 den 2026-11-11).** Steg 1, registret: migration `20270215090000_club_member_register.sql`, Klubb → Medlemmar → Medlemsregister. Kontaktuppgifter ingår inte än; de följer reglerna i `get_person_contact`. Steg 2, avgiftsomgångar och familjer: migration `20270216090000_club_fee_rounds.sql`, Klubb → Medlemmar → Avgifter. Steg 3, betalstatus: migration `20270217090000_club_fee_payments.sql`, på en skapad omgång. Alla tre migrationerna är körda och loggade. Steg 4–5 återstår. Kommer från rollgenomgången för klubbadmin och styrelse. Klubb-sidan (`/club`, commit aaaf2cc) är ingången.
 
 ## Produktägarens beslut (2026-11-10)
 
@@ -35,6 +35,7 @@
    - **Egna tabeller:** `club_fee_rounds` och `club_fees` i stället för `fee_obligations`, eftersom de senare kräver en kassa i Ekonomimodulen. Kopplingen till Ekonomimodulen görs när betalning i appen byggs.
    - **Behörighet:** klubbadmin, eller kassören (`economy.manage` på klubbnivå). Kassören ser bara Avgifter på Klubb-sidan.
 3. **Betalstatus.** En lista per omgång med obetald, betald och efterskänkt. Avgifter markeras som betalda för hand, en eller flera i taget, och det går att filtrera fram de obetalda. Kassören ser summan och kan exportera.
+   - **Byggt så här:** på en skapad omgång syns betalt och obetalt med summor, och listan går att filtrera på alla, obetalda, betalda och efterskänkta. Man kan välja alla obetalda eller några och markera dem betalda samtidigt, med betalningsdag, sätt (Swish, bank, kontant, annat) och en valfri anteckning. En avgift kan efterskänkas med en anledning eller ändras tillbaka till obetald. En avgift på 0 kr (familjetaket) har inget att betala. Varje ändring sparas i granskningsloggen med det tidigare värdet. CSV-exporten innehåller namn, kategori, betalare, belopp, rabatt, status, betalningsdag, sätt och anteckning.
 4. **Påminnelser i appen.** Påminnelser skickas till de som inte har betalat: till personen, och för barn till vårdnadshavarna, via inkorgen och push. Listan visar när var och en senast påmindes och vem som inte kan nås.
 5. **Påminnelser via e-post.** Samma påminnelse skickas till e-postadressen för den som saknar app, med en Swish-referens per avgift. Innan steget byggs ska avsändare, gränser och avregistrering bestämmas.
 

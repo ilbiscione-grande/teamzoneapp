@@ -67,6 +67,7 @@ returns boolean language sql stable security definer set search_path = '' as $$
       and grant_row.scope_type = 'club' and grant_row.scope_id = target_club_id) $$;`);
 await db.exec(read('supabase/migrations/20270215090000_club_member_register.sql'));
 await db.exec(read('supabase/migrations/20270216090000_club_fee_rounds.sql'));
+await db.exec(read('supabase/migrations/20270217090000_club_fee_payments.sql'));
 const call = async (who, sql, params = []) => {
   await db.query("select set_config('request.jwt.claim.sub',$1,false)", [who]);
   await db.exec('set role authenticated');
@@ -138,6 +139,38 @@ assert.deepEqual(frozen.missing, []);
 await assert.rejects(save(admin, created.round_id, membership, 3), /fee_round_issued/);
 await assert.rejects(decide(created.round_id, 'cancel', 3), /fee_round_issued/);
 
+// Betalstatus: paid by hand, waived with a note, opened again; PT409 when
+// someone else marked the fee meanwhile.
+const mark = (who, fees, decision, day, method, note) => call(who,
+  'select api.mark_club_fees($1, $2, $3, $4, $5, $6, gen_random_uuid())',
+  [club, JSON.stringify(fees.map(f => ({ fee_id: f.fee_id, revision: f.revision }))), decision, day, method, note]);
+const feeOf = (r, name) => r.fees.find(f => f.name === name);
+const today = new Date().toISOString().slice(0, 10);
+assert.equal(typeof feeOf(frozen, 'Alva').fee_id, 'string');
+assert.equal(feeOf(draft, 'Alva').fee_id, undefined);
+assert.deepEqual(await mark(treasurer, [feeOf(frozen, 'Alva'), feeOf(frozen, 'Cissi')], 'paid', today, 'swish', null),
+  { decision: 'paid', count: 2 });
+let paid = await round(admin, created.round_id);
+assert.deepEqual([feeOf(paid, 'Alva').state, feeOf(paid, 'Alva').paid_on, feeOf(paid, 'Alva').payment_method, feeOf(paid, 'Alva').revision],
+  ['paid', today, 'swish', 2]);
+await assert.rejects(mark(admin, [feeOf(frozen, 'Alva')], 'waived', null, null, null), e => e.code === 'PT409');
+await mark(admin, [feeOf(paid, 'Tränaren')], 'waived', null, null, ' Ledare ');
+await mark(admin, [feeOf(paid, 'Alva')], 'open', null, null, null);
+paid = await round(admin, created.round_id);
+assert.deepEqual([feeOf(paid, 'Tränaren').state, feeOf(paid, 'Tränaren').note], ['waived', 'Ledare']);
+assert.deepEqual([feeOf(paid, 'Alva').state, feeOf(paid, 'Alva').paid_on], ['open', undefined]);
+let listed = (await call(treasurer, 'select api.get_club_fee_rounds($1)', [club])).rounds[0];
+assert.deepEqual([listed.paid_count, listed.paid_total, listed.open_count, listed.open_total], [1, 30000, 3, 100000]);
+await assert.rejects(mark(admin, [feeOf(paid, 'Alva')], 'paid', today, null, null), /invalid_fee_mark/);
+await assert.rejects(mark(admin, [feeOf(paid, 'Alva')], 'paid', '2099-01-01', 'bank', null), /invalid_fee_mark/);
+await assert.rejects(mark(admin, [{ fee_id: id(99), revision: 1 }], 'waived', null, null, null), /not_found/);
+await assert.rejects(mark(coach, [feeOf(paid, 'Alva')], 'waived', null, null, null), /not_found/);
+// A fee the family cap covers has nothing to pay.
+await db.exec(`update core.club_fees set discount_amount = base_amount, amount = 0, state = 'waived'
+  where id = '${feeOf(paid, 'Bertil').fee_id}'`);
+paid = await round(admin, created.round_id);
+await assert.rejects(mark(admin, [feeOf(paid, 'Bertil')], 'paid', today, 'cash', null), /nothing_to_pay/);
+
 // A team round: 1000 kr per player, no family rule.
 const teamRound = await save(admin, null, { kind: 'team', team_id: team, title: 'Lagavgift P2014', due_on: `${year + 1}-04-30`,
   amount_player: 100000 }, 0);
@@ -149,13 +182,14 @@ await assert.rejects(save(admin, null, { kind: 'team', team_id: team, title: 'X'
 // A cancelled draft is gone from the list.
 await decide(teamRound.round_id, 'cancel', 1);
 const rounds = (await call(treasurer, 'select api.get_club_fee_rounds($1)', [club])).rounds;
-assert.deepEqual(rounds.map(r => [r.title, r.state, r.fee_count, r.total]), [['Medlemsavgift 2027', 'issued', 5, 190000]]);
+assert.deepEqual(rounds.map(r => [r.title, r.state, r.fee_count, r.total]), [["Medlemsavgift 2027", "issued", 4, 180000]]);
 await assert.rejects(round(admin, teamRound.round_id), /not_found/);
 
 // Without members and teams or economy: nothing to see or change.
 await assert.rejects(call(coach, 'select api.get_club_fee_rounds($1)', [club]), /not_found/);
 await assert.rejects(call(coach, 'select api.get_club_families($1)', [club]), /not_found/);
 await assert.rejects(save(coach, null, membership, 0), /not_found/);
-assert.equal((await db.query("select count(*)::int n from audit.command_events where command_type like 'club.%'")).rows[0].n, 9);
+assert.equal((await db.query("select count(*)::int n from audit.command_events where command_type like 'club.%'")).rows[0].n, 13);
+assert.doesNotMatch(read('supabase/migrations/20270217090000_club_fee_payments.sql'), /serialization_failure/);
 assert.doesNotMatch(read('supabase/migrations/20270216090000_club_fee_rounds.sql'), /serialization_failure/);
 console.log('club fee rounds: ok');
