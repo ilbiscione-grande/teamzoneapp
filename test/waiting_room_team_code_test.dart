@@ -5,6 +5,7 @@ import 'package:teamzone_app/src/core/config/app_environment.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
 import 'package:teamzone_app/src/core/identity/identity_services.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
+import 'package:teamzone_app/src/features/membership/membership_models.dart';
 import 'package:teamzone_app/src/features/membership/membership_services.dart';
 import 'package:teamzone_app/src/features/roster/roster_services.dart';
 
@@ -98,11 +99,115 @@ void main() {
     expect(find.text('Vad heter du?'), findsNothing);
     expect(accept().onPressed, isNotNull);
   });
+
+  testWidgets('one can apply to the club itself, as a member', (tester) async {
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final membership = _Naming();
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'audit'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _NewUser(),
+          roster: _Roster(teamCodeValid: true),
+          membership: membership,
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hitta klubb eller lag'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, 'eksjö');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    final club = find.byKey(const ValueKey('membership-result-eksjo-club'));
+    expect(club, findsOneWidget);
+    expect(
+      find.textContaining('Klubben – medlem eller styrelse, utan lag'),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.descendant(of: club, matching: find.byType(FilledButton)),
+    );
+    await tester.pumpAndSettle();
+    // The club takes members and board, not players.
+    await tester.tap(find.byKey(const ValueKey('membership-apply-role')));
+    await tester.pumpAndSettle();
+    expect(find.text('Styrelse eller funktionär').last, findsOneWidget);
+    expect(find.text('Spelare'), findsNothing);
+    await tester.tap(find.text('Medlem i klubben').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('membership-apply-send')));
+    await tester.pumpAndSettle();
+    expect(membership.clubApplications, ['eksjo member']);
+  });
 }
 
 class _Naming extends UnconfiguredMembershipServices
-    implements DisplayNameServices {
+    implements DisplayNameServices, ClubJoinServices {
   final names = <String>[];
+  final clubApplications = <String>[];
+
+  final placed = <String>[];
+
+  @override
+  Future<List<({String id, String name})>> listClubTeams(String clubId) async =>
+      [(id: 'a', name: 'A'), (id: 'b', name: 'B')];
+
+  @override
+  Future<void> approvePlaced({
+    required String applicationId,
+    required MembershipRole role,
+    String? teamId,
+    bool toClub = false,
+    required String idempotencyKey,
+  }) async => placed.add(
+    '$applicationId ${role.wireName} ${teamId ?? '-'} ${toClub ? 'club' : '-'}',
+  );
+
+  @override
+  Future<List<ClubTeamSearchResult>> search({required String query}) async => [
+    ClubTeamSearchResult.fromJson({
+      'club_id': 'eksjo',
+      'club_name': 'IF Eksjö Fotboll',
+      'club_is_official': true,
+    }),
+    ClubTeamSearchResult.fromJson({
+      'club_id': 'eksjo',
+      'club_name': 'IF Eksjö Fotboll',
+      'club_is_official': true,
+      'team_id': 'a',
+      'team_name': 'A',
+    }),
+  ];
+
+  @override
+  Future<String> applyToClub({
+    required String clubId,
+    required MembershipRole role,
+    required String idempotencyKey,
+  }) async {
+    clubApplications.add('$clubId ${role.wireName}');
+    return 'application';
+  }
+
+  @override
+  Future<List<ClubJoinCode>> listClubCodes(String clubId) async => const [];
+
+  @override
+  Future<String> issueClubCode({
+    required String clubId,
+    required MembershipRole role,
+    required String token,
+    required DateTime expiresAt,
+    required String idempotencyKey,
+  }) async => 'code';
+
+  @override
+  Future<String> revealClubCode(String codeId) async => 'x' * 64;
   @override
   Future<String> setMyDisplayName(String name) async {
     names.add(name);

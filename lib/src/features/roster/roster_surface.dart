@@ -6821,6 +6821,31 @@ class _MembershipReviewSheetState extends State<_MembershipReviewSheet> {
     if (_pendingId != null) return;
     final strings = AppStrings.of(context);
     var approvedRole = item.role;
+    // The club admin can place the applicant elsewhere: another team, or the
+    // club without a team (2026-11-11). null: where they applied.
+    final placer =
+        widget.membership is ClubJoinServices &&
+            widget.contextValue.can('club.memberships.manage')
+        ? widget.membership as ClubJoinServices
+        : null;
+    var teams = const <({String id, String name})>[];
+    if (approve && placer != null) {
+      try {
+        teams = await placer
+            .listClubTeams(widget.contextValue.clubId)
+            .timeout(const Duration(seconds: 15));
+      } catch (error) {
+        AppErrors.caught('roster_surface._decide.teams', error);
+      }
+      if (!mounted) return;
+    }
+    String? placement;
+    List<MembershipRole> rolesFor(String? place) => switch (place) {
+      null when item.teamName.isEmpty => clubApplicationRoles,
+      null => [...teamApplicationRoles, MembershipRole.clubFunctionary],
+      _clubPlacement => clubApplicationRoles,
+      _ => [...teamApplicationRoles, MembershipRole.clubFunctionary],
+    };
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -6841,9 +6866,41 @@ class _MembershipReviewSheetState extends State<_MembershipReviewSheet> {
                       : 'Sökanden ser endast att ansökan har avslagits.',
                 ),
               ),
+              if (approve && teams.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String?>(
+                  key: const ValueKey('membership-review-placement'),
+                  initialValue: placement,
+                  decoration: InputDecoration(
+                    labelText: strings.feature('Placera i'),
+                  ),
+                  items: [
+                    DropdownMenuItem(
+                      value: null,
+                      child: Text(
+                        '${strings.feature('Där personen sökte')}: ${item.teamName.isEmpty ? strings.feature('Klubben') : item.teamName}',
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: _clubPlacement,
+                      child: Text(strings.feature('Klubben, utan lag')),
+                    ),
+                    for (final team in teams)
+                      DropdownMenuItem(value: team.id, child: Text(team.name)),
+                  ],
+                  onChanged: (value) => setDialogState(() {
+                    placement = value;
+                    final roles = rolesFor(value);
+                    if (!roles.contains(approvedRole)) {
+                      approvedRole = roles.first;
+                    }
+                  }),
+                ),
+              ],
               if (approve) ...[
                 const SizedBox(height: 16),
                 DropdownButtonFormField<MembershipRole>(
+                  key: ValueKey('membership-review-role-${placement ?? ''}'),
                   initialValue: approvedRole,
                   decoration: InputDecoration(
                     labelText: strings.feature('Godkänn som'),
@@ -6851,7 +6908,9 @@ class _MembershipReviewSheetState extends State<_MembershipReviewSheet> {
                         .feature('Ansökt som: {role}')
                         .replaceFirst('{role}', _roleLabel(strings, item.role)),
                   ),
-                  items: MembershipRole.values
+                  // A club application stays with the club; a team one with
+                  // the team (2026-11-11).
+                  items: rolesFor(placement)
                       .map(
                         (role) => DropdownMenuItem(
                           value: role,
@@ -6887,14 +6946,26 @@ class _MembershipReviewSheetState extends State<_MembershipReviewSheet> {
       _error = null;
     });
     try {
-      await widget.membership
-          .decide(
-            applicationId: item.id,
-            approve: approve,
-            approvedRole: approve ? approvedRole : null,
-            idempotencyKey: _newUuid(),
-          )
-          .timeout(const Duration(seconds: 15));
+      if (approve && placer != null && placement != null) {
+        await placer
+            .approvePlaced(
+              applicationId: item.id,
+              role: approvedRole,
+              teamId: placement == _clubPlacement ? null : placement,
+              toClub: placement == _clubPlacement,
+              idempotencyKey: _newUuid(),
+            )
+            .timeout(const Duration(seconds: 15));
+      } else {
+        await widget.membership
+            .decide(
+              applicationId: item.id,
+              approve: approve,
+              approvedRole: approve ? approvedRole : null,
+              idempotencyKey: _newUuid(),
+            )
+            .timeout(const Duration(seconds: 15));
+      }
       if (approve) await widget.onApproved();
       if (mounted) setState(_reload);
     } catch (error) {
@@ -6912,12 +6983,8 @@ class _MembershipReviewSheetState extends State<_MembershipReviewSheet> {
     }
   }
 
-  String _roleLabel(AppStrings strings, MembershipRole role) => switch (role) {
-    MembershipRole.player => strings.feature('Spelare'),
-    MembershipRole.leader => strings.feature('Ledare'),
-    MembershipRole.guardian => strings.feature('Vårdnadshavare'),
-    MembershipRole.clubFunctionary => strings.feature('Klubbfunktionär'),
-  };
+  String _roleLabel(AppStrings strings, MembershipRole role) =>
+      membershipRoleLabel(strings, role);
 
   @override
   Widget build(BuildContext context) {
@@ -7223,6 +7290,9 @@ class _TeamEventSettingsTileState extends State<_TeamEventSettingsTile> {
   }
 }
 
+/// The placement choice for the club itself, without a team.
+const _clubPlacement = 'club';
+
 /// "ny@example.com", then "A · Ledare", then "Med lagkod 2026-11-11 10:14":
 /// who is asking, for what, and how (2026-11-11).
 String _membershipReviewDetails(
@@ -7241,7 +7311,7 @@ String _membershipReviewDetails(
   };
   return [
     ?item.applicantEmail,
-    '${item.teamName} · $roleLabel',
+    '${item.teamName.isEmpty ? strings.feature('Klubben') : item.teamName} · $roleLabel',
     '$how $when',
   ].join('\n');
 }

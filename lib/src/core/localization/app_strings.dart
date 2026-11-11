@@ -199,6 +199,7 @@ class AppStrings {
     'leader' => isSwedish ? 'Ledare' : 'Leader',
     'guardian' => isSwedish ? 'Vårdnadshavare' : 'Guardian',
     'club_functionary' => isSwedish ? 'Klubbfunktionär' : 'Club official',
+    'member' => isSwedish ? 'Medlem i klubben' : 'Club member',
     'referee' => isSwedish ? 'Domare' : 'Referee',
     'referee_assigner' => isSwedish ? 'Domartillsättare' : 'Referee assigner',
     'club' => isSwedish ? 'Hela klubben' : 'Entire club',
@@ -1290,6 +1291,31 @@ class AppStrings {
     'Anledning (valfri)': 'Reason (optional)',
     'obetalda': 'unpaid',
     'av': 'of',
+    // Placing an applicant on approval (2026-11-11).
+    'Placera i': 'Place in',
+    'Där personen sökte': 'Where they applied',
+    'Klubben, utan lag': 'The club, without a team',
+    // Applying to the club (2026-11-11).
+    'Klubben': 'The club',
+    'Klubben – medlem eller styrelse, utan lag':
+        'The club – member or board, without a team',
+    'Styrelse eller funktionär': 'Board or official',
+    'Klubbadmin godkänner ansökan och ger sedan styrelseroll och behörigheter.':
+        'The club admin approves the application and then gives the board role and permissions.',
+    'Klubbkod': 'Club code',
+    'Ansökan till klubben som medlem eller styrelse, utan lag':
+        'Apply to the club as a member or board, without a team',
+    'Koden kunde inte skapas.': 'The code could not be created.',
+    'Koden kunde inte visas.': 'The code could not be shown.',
+    'Den som får koden klistrar in den under "Har du fått en inbjudan?" eller Profil → Använd inbjudan eller lagkod. Du godkänner ansökan under Medlemsansökningar.':
+        'Whoever gets the code pastes it under "Have you been invited?" or Profile → Use invitation or team code. You approve the application under Membership applications.',
+    'En klubbkod låter någon ansöka till klubben utan att välja lag: som medlem i klubben (stödmedlem, förälder, ideell) eller som styrelse eller funktionär. Ansökan godkänns av klubbadmin. Styrelseroll och behörigheter ger du sedan under Klubbens behörigheter.':
+        "A club code lets someone apply to the club without choosing a team: as a member of the club (supporting member, parent, volunteer) or as board or official. The club admin approves the application. You then give the board role and permissions under the club's permissions.",
+    'Ny kod': 'New code',
+    'Aktiva koder': 'Active codes',
+    'Inga aktiva klubbkoder.': 'No active club codes.',
+    'använd': 'used',
+    'Visa': 'Show',
     // Who is applying (2026-11-11).
     'Skriv ditt för- och efternamn.': 'Enter your first and last name.',
     'Vad heter du?': 'What is your name?',

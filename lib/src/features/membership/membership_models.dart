@@ -1,4 +1,17 @@
-enum MembershipRole { player, leader, guardian, clubFunctionary }
+/// member: a member of the club without a team (2026-11-11); club-wide,
+/// like clubFunctionary when applied for to the club.
+enum MembershipRole { player, leader, guardian, clubFunctionary, member }
+
+/// The roles one applies for to a team, and to the club itself.
+const teamApplicationRoles = [
+  MembershipRole.player,
+  MembershipRole.leader,
+  MembershipRole.guardian,
+];
+const clubApplicationRoles = [
+  MembershipRole.member,
+  MembershipRole.clubFunctionary,
+];
 
 class ProtectedNameSupportCase {
   const ProtectedNameSupportCase({
@@ -162,6 +175,7 @@ extension MembershipRoleWire on MembershipRole {
     MembershipRole.leader => 'leader',
     MembershipRole.guardian => 'guardian',
     MembershipRole.clubFunctionary => 'club_functionary',
+    MembershipRole.member => 'member',
   };
 }
 
@@ -174,16 +188,21 @@ class ClubTeamSearchResult {
     required this.teamName,
   });
 
-  final String clubId, clubName, teamId, teamName;
+  final String clubId, clubName;
+
+  /// Null for the club itself (2026-11-11): apply to the club, not a team.
+  final String? teamId, teamName;
   final bool clubIsOfficial;
+
+  bool get isClub => teamId == null;
 
   factory ClubTeamSearchResult.fromJson(Map<String, dynamic> json) =>
       ClubTeamSearchResult(
         clubId: json['club_id'] as String,
         clubName: json['club_name'] as String,
         clubIsOfficial: json['club_is_official'] as bool? ?? false,
-        teamId: json['team_id'] as String,
-        teamName: json['team_name'] as String,
+        teamId: json['team_id'] as String?,
+        teamName: json['team_name'] as String?,
       );
 }
 
@@ -362,4 +381,37 @@ class ClubVerificationRequest {
       revision: (json['revision'] as num).toInt(),
     );
   }
+}
+
+/// A club code (2026-11-11): a join code for the club itself, no team.
+class ClubJoinCode {
+  const ClubJoinCode({
+    required this.codeId,
+    required this.role,
+    required this.expiresAt,
+    required this.useCount,
+    required this.maxUses,
+    required this.recoverable,
+  });
+
+  factory ClubJoinCode.fromJson(Map<String, dynamic> json) => ClubJoinCode(
+    codeId: json['code_id'] as String,
+    role: MembershipRole.values.firstWhere(
+      (role) => role.wireName == json['requested_role'],
+      orElse: () => MembershipRole.member,
+    ),
+    expiresAt: DateTime.parse(json['expires_at'] as String),
+    useCount: (json['use_count'] as num?)?.toInt() ?? 0,
+    maxUses: (json['max_uses'] as num?)?.toInt() ?? 0,
+    recoverable: json['recoverable'] as bool? ?? false,
+  );
+
+  final String codeId;
+  final MembershipRole role;
+  final DateTime expiresAt;
+  final int useCount;
+  final int maxUses;
+
+  /// The code can be shown again.
+  final bool recoverable;
 }

@@ -286,6 +286,42 @@ class UnconfiguredMembershipServices implements MembershipServices {
   }) => Future.error(StateError('Supabase is not configured.'));
 }
 
+/// Applying to the club itself, and its codes (2026-11-11).
+abstract interface class ClubJoinServices {
+  /// [role]: member or clubFunctionary. Returns the application id.
+  Future<String> applyToClub({
+    required String clubId,
+    required MembershipRole role,
+    required String idempotencyKey,
+  });
+
+  Future<List<ClubJoinCode>> listClubCodes(String clubId);
+
+  /// Creates a club code from [token]; returns its id.
+  Future<String> issueClubCode({
+    required String clubId,
+    required MembershipRole role,
+    required String token,
+    required DateTime expiresAt,
+    required String idempotencyKey,
+  });
+
+  Future<String> revealClubCode(String codeId);
+
+  /// The club's active teams, to place an applicant in on approval.
+  Future<List<({String id, String name})>> listClubTeams(String clubId);
+
+  /// Approves into [teamId], or into the club without a team when
+  /// [toClub]; only the club admin moves an application (2026-11-11).
+  Future<void> approvePlaced({
+    required String applicationId,
+    required MembershipRole role,
+    String? teamId,
+    bool toClub = false,
+    required String idempotencyKey,
+  });
+}
+
 /// The signed-in person names themself before applying (2026-11-11): a
 /// reviewer could not tell who "Ny användare" was.
 abstract interface class DisplayNameServices {
@@ -298,13 +334,124 @@ class SupabaseMembershipServices
         MembershipServices,
         ClubRegisterServices,
         ClubFeesProvider,
-        DisplayNameServices {
+        DisplayNameServices,
+        ClubJoinServices {
   const SupabaseMembershipServices(this._client);
 
   final SupabaseClient _client;
 
   @override
   ClubFeeServices get clubFees => SupabaseClubFees(_client);
+
+  @override
+  Future<String> applyToClub({
+    required String clubId,
+    required MembershipRole role,
+    required String idempotencyKey,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'request_club_membership',
+          params: {
+            'target_club_id': clubId,
+            'requested_role': role.wireName,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+    if (value is! String) throw const FormatException('Invalid application.');
+    return value;
+  }
+
+  @override
+  Future<List<ClubJoinCode>> listClubCodes(String clubId) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'list_club_join_codes',
+          params: {'target_club_id': clubId},
+        );
+    if (value is! List) throw const FormatException('Invalid club codes.');
+    return value
+        .whereType<Map<String, dynamic>>()
+        .map(ClubJoinCode.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<String> issueClubCode({
+    required String clubId,
+    required MembershipRole role,
+    required String token,
+    required DateTime expiresAt,
+    required String idempotencyKey,
+  }) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'issue_team_join_code',
+          params: {
+            'target_club_id': clubId,
+            'target_team_id': null,
+            'requested_role': role.wireName,
+            'raw_token': token,
+            'expires_at': expiresAt.toUtc().toIso8601String(),
+            'max_uses': 500,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+    if (value is! String) throw const FormatException('Invalid club code.');
+    return value;
+  }
+
+  @override
+  Future<List<({String id, String name})>> listClubTeams(String clubId) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'list_club_teams_for_review',
+          params: {'target_club_id': clubId},
+        );
+    if (value is! List) throw const FormatException('Invalid teams.');
+    return [
+      for (final team in value.whereType<Map<String, dynamic>>())
+        (id: team['team_id'] as String, name: team['name'] as String),
+    ];
+  }
+
+  @override
+  Future<void> approvePlaced({
+    required String applicationId,
+    required MembershipRole role,
+    String? teamId,
+    bool toClub = false,
+    required String idempotencyKey,
+  }) async {
+    await _client
+        .schema('api')
+        .rpc<Object?>(
+          'decide_membership_application_v3',
+          params: {
+            'application_id': applicationId,
+            'decision': 'approved',
+            'approved_role': role.wireName,
+            'target_team_id': teamId,
+            'to_club': toClub,
+            'idempotency_key': idempotencyKey,
+          },
+        );
+  }
+
+  @override
+  Future<String> revealClubCode(String codeId) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>('reveal_team_join_code', params: {'code_id': codeId});
+    if (value is! String || value.length < 32) {
+      throw const FormatException('Club code response is invalid.');
+    }
+    return value;
+  }
 
   @override
   Future<String> setMyDisplayName(String name) async {

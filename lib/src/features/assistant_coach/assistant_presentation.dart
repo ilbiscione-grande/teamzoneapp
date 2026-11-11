@@ -49,6 +49,7 @@ class AssistantPresentationContext {
     'guardian' => 'Vårdnadshavare',
     'club_functionary' => 'Klubbfunktionär',
     'referee' => 'Domare',
+    'member' => 'Medlem i klubben',
     'referee_assigner' => 'Domartillsättare',
     _ => 'Användare',
   };

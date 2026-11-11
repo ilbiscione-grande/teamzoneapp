@@ -236,6 +236,22 @@ class _ClubAdminSurfaceState extends State<_ClubAdminSurface> {
                           ),
                         ),
                       ),
+                    if (widget.membership case final ClubJoinServices join
+                        when admin)
+                      _ClubAdminTile(
+                        key: const ValueKey('club-admin-codes'),
+                        icon: Icons.key_outlined,
+                        title: strings.feature('Klubbkod'),
+                        subtitle: strings.feature(
+                          'Ansökan till klubben som medlem eller styrelse, utan lag',
+                        ),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                _ClubCodesPage(clubId: clubId, services: join),
+                          ),
+                        ),
+                      ),
                     if (widget.membership case final ClubFeesProvider fees
                         when _canHandleClubFees(contextValue))
                       _ClubAdminTile(

@@ -1539,37 +1539,47 @@ class _MembershipJoinSheetState extends State<_MembershipJoinSheet> {
 
   Future<void> _apply(ClubTeamSearchResult target) async {
     final strings = AppStrings.of(context);
-    MembershipRole role = MembershipRole.player;
+    // The club itself takes members and functionaries; a team its players,
+    // leaders and guardians (2026-11-11).
+    final roles = target.isClub ? clubApplicationRoles : teamApplicationRoles;
+    MembershipRole role = roles.first;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text('${target.clubName} – ${target.teamName}'),
-          content: DropdownButtonFormField<MembershipRole>(
-            initialValue: role,
-            decoration: InputDecoration(
-              labelText: strings.feature('Ansök som'),
-            ),
-            items: MembershipRole.values
-                .map(
-                  (value) => DropdownMenuItem(
-                    value: value,
-                    child: Text(switch (value) {
-                      MembershipRole.player => strings.feature('Spelare'),
-                      MembershipRole.leader => strings.feature('Ledare'),
-                      MembershipRole.guardian => strings.feature(
-                        'Vårdnadshavare',
-                      ),
-                      MembershipRole.clubFunctionary => strings.feature(
-                        'Klubbfunktionär',
-                      ),
-                    }),
+          title: Text(
+            '${target.clubName} – ${target.teamName ?? strings.feature('Klubben')}',
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DropdownButtonFormField<MembershipRole>(
+                key: const ValueKey('membership-apply-role'),
+                initialValue: role,
+                decoration: InputDecoration(
+                  labelText: strings.feature('Ansök som'),
+                ),
+                items: [
+                  for (final value in roles)
+                    DropdownMenuItem(
+                      value: value,
+                      child: Text(membershipRoleLabel(strings, value)),
+                    ),
+                ],
+                onChanged: (value) {
+                  if (value != null) setDialogState(() => role = value);
+                },
+              ),
+              if (role == MembershipRole.clubFunctionary) ...[
+                const SizedBox(height: 12),
+                Text(
+                  strings.feature(
+                    'Klubbadmin godkänner ansökan och ger sedan styrelseroll och behörigheter.',
                   ),
-                )
-                .toList(growable: false),
-            onChanged: (value) {
-              if (value != null) setDialogState(() => role = value);
-            },
+                ),
+              ],
+            ],
           ),
           actions: [
             TextButton(
@@ -1577,6 +1587,7 @@ class _MembershipJoinSheetState extends State<_MembershipJoinSheet> {
               child: Text(strings.feature('Avbryt')),
             ),
             FilledButton(
+              key: const ValueKey('membership-apply-send'),
               onPressed: () => Navigator.pop(context, true),
               child: Text(strings.feature('Skicka ansökan')),
             ),
@@ -1591,11 +1602,17 @@ class _MembershipJoinSheetState extends State<_MembershipJoinSheet> {
       _notice = null;
     });
     try {
-      final applicationId = await widget.membership.apply(
-        teamId: target.teamId,
-        role: role,
-        idempotencyKey: _newUuid(),
-      );
+      final applicationId = target.isClub
+          ? await (widget.membership as ClubJoinServices).applyToClub(
+              clubId: target.clubId,
+              role: role,
+              idempotencyKey: _newUuid(),
+            )
+          : await widget.membership.apply(
+              teamId: target.teamId!,
+              role: role,
+              idempotencyKey: _newUuid(),
+            );
       final alreadyPending = _applications.any(
         (application) =>
             application.id == applicationId &&
@@ -1703,7 +1720,7 @@ class _MembershipJoinSheetState extends State<_MembershipJoinSheet> {
               (application) => ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(
-                  '${application.clubName} – ${application.teamName}',
+                  '${application.clubName} – ${application.teamName.isEmpty ? strings.feature('Klubben') : application.teamName}',
                 ),
                 subtitle: Text(
                   '${strings.statusLabel}: ${strings.domainValue(application.status.name)}',
@@ -1721,26 +1738,34 @@ class _MembershipJoinSheetState extends State<_MembershipJoinSheet> {
             ),
           ],
           const SizedBox(height: 16),
-          ..._results.map(
-            (result) => Card(
-              child: ListTile(
-                leading: Icon(
-                  result.clubIsOfficial
-                      ? Icons.verified
-                      : Icons.groups_outlined,
-                ),
-                title: Text(result.clubName),
-                subtitle: Text(
-                  '${result.teamName}\n${result.clubIsOfficial ? strings.feature('Officiell klubb') : strings.feature('Inofficiell klubb')}',
-                ),
-                isThreeLine: true,
-                trailing: FilledButton(
-                  onPressed: _pending ? null : () => _apply(result),
-                  child: Text(strings.feature('Ansök')),
+          ..._results
+              .where(
+                (result) =>
+                    !result.isClub || widget.membership is ClubJoinServices,
+              )
+              .map(
+                (result) => Card(
+                  key: ValueKey(
+                    'membership-result-${result.clubId}-${result.teamId ?? 'club'}',
+                  ),
+                  child: ListTile(
+                    leading: Icon(
+                      result.clubIsOfficial
+                          ? Icons.verified
+                          : Icons.groups_outlined,
+                    ),
+                    title: Text(result.clubName),
+                    subtitle: Text(
+                      '${result.teamName ?? strings.feature('Klubben – medlem eller styrelse, utan lag')}\n${result.clubIsOfficial ? strings.feature('Officiell klubb') : strings.feature('Inofficiell klubb')}',
+                    ),
+                    isThreeLine: true,
+                    trailing: FilledButton(
+                      onPressed: _pending ? null : () => _apply(result),
+                      child: Text(strings.feature('Ansök')),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
           if (_pending)
             const Padding(
               padding: EdgeInsets.all(16),
@@ -1974,3 +1999,13 @@ String? _newPasswordProblem(AppStrings strings, String value) {
   }
   return null;
 }
+
+/// A role one applies for, as people say it (2026-11-11).
+String membershipRoleLabel(AppStrings strings, MembershipRole role) =>
+    strings.feature(switch (role) {
+      MembershipRole.player => 'Spelare',
+      MembershipRole.leader => 'Ledare',
+      MembershipRole.guardian => 'Vårdnadshavare',
+      MembershipRole.clubFunctionary => 'Styrelse eller funktionär',
+      MembershipRole.member => 'Medlem i klubben',
+    });
