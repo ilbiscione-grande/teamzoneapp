@@ -865,10 +865,51 @@ class _WaitingRoomState extends State<_WaitingRoom> {
   /// The message is a failure; otherwise it says what happened.
   bool _messageIsError = true;
 
+  /// The name reviewers see; asked for before applying when the profile has
+  /// none (2026-11-11), so an application never says only "Ny användare".
+  late String _name = widget.profile.displayName.trim();
+  final _nameField = TextEditingController();
+  String? _nameError;
+
+  bool get _needsName =>
+      _name.isEmpty && widget.membership is DisplayNameServices;
+
   @override
   void dispose() {
     _token.dispose();
+    _nameField.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveName() async {
+    final strings = AppStrings.of(context);
+    final name = _nameField.text.trim();
+    if (name.length < 2) {
+      setState(
+        () => _nameError = strings.feature('Skriv ditt för- och efternamn.'),
+      );
+      return;
+    }
+    setState(() {
+      _pending = true;
+      _nameError = null;
+    });
+    try {
+      final saved = await (widget.membership as DisplayNameServices)
+          .setMyDisplayName(name);
+      if (mounted) setState(() => _name = saved);
+    } catch (error) {
+      AppErrors.caught('auth_surfaces._saveName', error);
+      if (mounted) {
+        setState(
+          () => _nameError = strings.feature(
+            'Namnet kunde inte sparas. Försök igen.',
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _pending = false);
+    }
   }
 
   Future<void> _claim() async {
@@ -970,10 +1011,41 @@ class _WaitingRoomState extends State<_WaitingRoom> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _AuthHero(
-                    title: strings.welcome(widget.profile.displayName),
+                    title: strings.welcome(_name),
                     message: strings.waitingRoom,
                   ),
                   const SizedBox(height: 16),
+                  if (_needsName) ...[
+                    _AuthSection(
+                      title: strings.feature('Vad heter du?'),
+                      message: strings.feature(
+                        'Ledaren som godkänner dig ser ditt namn. Skriv det innan du går med i ett lag.',
+                      ),
+                      children: [
+                        TextField(
+                          key: const ValueKey('waiting-room-name'),
+                          controller: _nameField,
+                          enabled: !_pending,
+                          maxLength: 80,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: InputDecoration(
+                            labelText: strings.feature('För- och efternamn'),
+                            prefixIcon: const Icon(Icons.person_outline),
+                            errorText: _nameError,
+                          ),
+                          onSubmitted: (_) => _saveName(),
+                        ),
+                        const SizedBox(height: 8),
+                        FilledButton(
+                          key: const ValueKey('waiting-room-name-save'),
+                          style: _authPrimaryStyle(context),
+                          onPressed: _pending ? null : _saveName,
+                          child: Text(strings.feature('Spara namn')),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   _AuthSection(
                     title: strings.feature('Har du fått en inbjudan?'),
                     message: strings.feature(
@@ -999,14 +1071,16 @@ class _WaitingRoomState extends State<_WaitingRoom> {
                       const SizedBox(height: 16),
                       FilledButton(
                         style: _authPrimaryStyle(context),
-                        onPressed: _pending ? null : _claim,
+                        onPressed: _pending || _needsName ? null : _claim,
                         child: Text(
                           _pending ? 'Verifierar…' : 'Acceptera inbjudan',
                         ),
                       ),
                       const SizedBox(height: 4),
                       TextButton(
-                        onPressed: _pending ? null : _acceptGuardianInvite,
+                        onPressed: _pending || _needsName
+                            ? null
+                            : _acceptGuardianInvite,
                         child: Text(strings.feature('Acceptera som guardian')),
                       ),
                     ],
@@ -1021,7 +1095,7 @@ class _WaitingRoomState extends State<_WaitingRoom> {
                         message: strings.feature(
                           'Sök upp ditt lag och skicka en ansökan.',
                         ),
-                        onTap: _pending
+                        onTap: _pending || _needsName
                             ? null
                             : () => showModalBottomSheet<void>(
                                 context: context,
@@ -1039,7 +1113,7 @@ class _WaitingRoomState extends State<_WaitingRoom> {
                         message: strings.feature(
                           'För dig som startar upp en ny klubb i TeamZone.',
                         ),
-                        onTap: _pending
+                        onTap: _pending || _needsName
                             ? null
                             : () => showModalBottomSheet<void>(
                                 context: context,

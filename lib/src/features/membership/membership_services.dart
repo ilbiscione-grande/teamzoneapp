@@ -286,14 +286,39 @@ class UnconfiguredMembershipServices implements MembershipServices {
   }) => Future.error(StateError('Supabase is not configured.'));
 }
 
+/// The signed-in person names themself before applying (2026-11-11): a
+/// reviewer could not tell who "Ny användare" was.
+abstract interface class DisplayNameServices {
+  /// Returns the name as saved (trimmed, 2–80 characters).
+  Future<String> setMyDisplayName(String name);
+}
+
 class SupabaseMembershipServices
-    implements MembershipServices, ClubRegisterServices, ClubFeesProvider {
+    implements
+        MembershipServices,
+        ClubRegisterServices,
+        ClubFeesProvider,
+        DisplayNameServices {
   const SupabaseMembershipServices(this._client);
 
   final SupabaseClient _client;
 
   @override
   ClubFeeServices get clubFees => SupabaseClubFees(_client);
+
+  @override
+  Future<String> setMyDisplayName(String name) async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>(
+          'set_my_display_name',
+          params: {'new_display_name': name},
+        );
+    if (value is! Map<String, dynamic>) {
+      throw const FormatException('Invalid profile response.');
+    }
+    return value['display_name'] as String;
+  }
 
   @override
   Future<ClubRegister> loadClubRegister(String clubId) =>

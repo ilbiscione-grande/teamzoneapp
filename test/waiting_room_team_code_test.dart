@@ -5,6 +5,7 @@ import 'package:teamzone_app/src/core/config/app_environment.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
 import 'package:teamzone_app/src/core/identity/identity_services.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
+import 'package:teamzone_app/src/features/membership/membership_services.dart';
 import 'package:teamzone_app/src/features/roster/roster_services.dart';
 
 // A new user without a team pastes a team code in "Har du fått en
@@ -57,16 +58,68 @@ void main() {
     expect(roster.calls, ['claim lagkod-123', 'team code lagkod-123']);
     expect(find.text('Inbjudan är ogiltig eller har gått ut.'), findsOneWidget);
   });
+
+  testWidgets('someone without a name names themself before applying', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final membership = _Naming();
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'audit'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _NewUser(name: ''),
+          roster: _Roster(teamCodeValid: true),
+          membership: membership,
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    FilledButton accept() => tester.widget<FilledButton>(
+      find.ancestor(
+        of: find.text('Acceptera inbjudan'),
+        matching: find.byType(FilledButton),
+      ),
+    );
+    expect(find.text('Vad heter du?'), findsOneWidget);
+    expect(accept().onPressed, isNull);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('waiting-room-name')),
+      '  Nils Nysson ',
+    );
+    await tester.tap(find.byKey(const ValueKey('waiting-room-name-save')));
+    await tester.pumpAndSettle();
+    expect(membership.names, ['Nils Nysson']);
+    expect(find.text('Vad heter du?'), findsNothing);
+    expect(accept().onPressed, isNotNull);
+  });
+}
+
+class _Naming extends UnconfiguredMembershipServices
+    implements DisplayNameServices {
+  final names = <String>[];
+  @override
+  Future<String> setMyDisplayName(String name) async {
+    names.add(name);
+    return name;
+  }
 }
 
 class _NewUser implements IdentityServices {
+  _NewUser({this.name = 'Ny'});
+  final String name;
   @override
   SessionStatus get sessionStatus => SessionStatus.authenticated;
   @override
   Stream<SessionStatus> get sessionChanges => const Stream.empty();
   @override
   Future<TeamZoneProfile> getProfile() async =>
-      const TeamZoneProfile(id: 'profile', displayName: 'Ny', locale: 'sv');
+      TeamZoneProfile(id: 'profile', displayName: name, locale: 'sv');
   @override
   Future<List<TeamZoneContext>> getContexts() async => const [];
   @override

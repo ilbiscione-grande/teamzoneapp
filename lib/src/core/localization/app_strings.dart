@@ -1290,6 +1290,16 @@ class AppStrings {
     'Anledning (valfri)': 'Reason (optional)',
     'obetalda': 'unpaid',
     'av': 'of',
+    // Who is applying (2026-11-11).
+    'Skriv ditt för- och efternamn.': 'Enter your first and last name.',
+    'Vad heter du?': 'What is your name?',
+    'Ledaren som godkänner dig ser ditt namn. Skriv det innan du går med i ett lag.':
+        'The leader who approves you sees your name. Enter it before you join a team.',
+    'För- och efternamn': 'First and last name',
+    'Spara namn': 'Save name',
+    'Med lagkod': 'With a team code',
+    'Hittade laget själv': 'Found the team',
+    'Ansökte': 'Applied',
     // A team code in the waiting room.
     'Ansökan är skickad till laget. Du kommer in när en ledare har godkänt den.':
         'Your request has been sent to the team. You get in once a leader has approved it.',

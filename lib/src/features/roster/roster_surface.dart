@@ -6983,9 +6983,14 @@ class _MembershipReviewSheetState extends State<_MembershipReviewSheet> {
                       leading: const CircleAvatar(child: Icon(Icons.person)),
                       title: Text(item.applicantDisplayName),
                       subtitle: Text(
-                        '${item.teamName} · ${_roleLabel(strings, item.role)}',
+                        key: ValueKey('membership-review-details-${item.id}'),
+                        _membershipReviewDetails(
+                          strings,
+                          item,
+                          _roleLabel(strings, item.role),
+                        ),
                       ),
-                      isThreeLine: false,
+                      isThreeLine: true,
                       trailing: _pendingId == item.id
                           ? const SizedBox.square(
                               dimension: 24,
@@ -7216,4 +7221,27 @@ class _TeamEventSettingsTileState extends State<_TeamEventSettingsTile> {
       ),
     );
   }
+}
+
+/// "ny@example.com", then "A · Ledare", then "Med lagkod 2026-11-11 10:14":
+/// who is asking, for what, and how (2026-11-11).
+String _membershipReviewDetails(
+  AppStrings strings,
+  MembershipReviewItem item,
+  String roleLabel,
+) {
+  final at = item.createdAt.toLocal();
+  String two(int n) => n.toString().padLeft(2, '0');
+  final when =
+      '${at.year}-${two(at.month)}-${two(at.day)} ${two(at.hour)}:${two(at.minute)}';
+  final how = switch (item.source) {
+    'team_code' => strings.feature('Med lagkod'),
+    'search' => strings.feature('Hittade laget själv'),
+    _ => strings.feature('Ansökte'),
+  };
+  return [
+    ?item.applicantEmail,
+    '${item.teamName} · $roleLabel',
+    '$how $when',
+  ].join('\n');
 }

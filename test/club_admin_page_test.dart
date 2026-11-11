@@ -64,6 +64,15 @@ void main() {
     await tester.pumpAndSettle();
     // The whole club's applications, not one team's.
     expect(membership.reviewQueries, [(clubId: 'club-a', teamId: null)]);
+    // Who is asking, for what and how.
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(const ValueKey('membership-review-details-app-1')),
+          )
+          .data,
+      'nils@example.com\nA · Ledare\nMed lagkod 2026-11-11 10:14',
+    );
     debugDefaultTargetPlatformOverride = null;
   });
 
@@ -215,7 +224,17 @@ class _Membership extends UnconfiguredMembershipServices
     String? teamId,
   }) async {
     reviewQueries.add((clubId: clubId, teamId: teamId));
-    return const [];
+    return [
+      MembershipReviewItem.fromJson({
+        'application_id': 'app-1',
+        'applicant_display_name': 'Nils Nysson',
+        'team_name': 'A',
+        'requested_role': 'leader',
+        'created_at': DateTime(2026, 11, 11, 10, 14).toUtc().toIso8601String(),
+        'applicant_email': 'nils@example.com',
+        'source': 'team_code',
+      }),
+    ];
   }
 
   final saved =

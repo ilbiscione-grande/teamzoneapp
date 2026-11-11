@@ -226,9 +226,17 @@ class MembershipReviewItem {
     required this.teamName,
     required this.role,
     required this.createdAt,
+    this.applicantEmail,
+    this.source,
   });
 
   final String id, applicantDisplayName, teamName;
+
+  /// The applicant's sign-in address, for the reviewer to tell who it is.
+  final String? applicantEmail;
+
+  /// team_code (a code from the team) or search (found the team).
+  final String? source;
   final MembershipRole role;
   final DateTime createdAt;
 
@@ -241,6 +249,8 @@ class MembershipReviewItem {
           (role) => role.wireName == json['requested_role'],
         ),
         createdAt: DateTime.parse(json['created_at'] as String),
+        applicantEmail: json['applicant_email'] as String?,
+        source: json['source'] as String?,
       );
 }
 
