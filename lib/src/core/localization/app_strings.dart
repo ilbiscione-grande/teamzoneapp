@@ -1295,8 +1295,10 @@ class AppStrings {
     'E-post för påminnelser': 'E-mail for reminders',
     'Personen har inget konto i TeamZone. Påminnelser om avgifter går hit, och för ett barn till vårdnadshavarnas adresser.':
         "The person has no TeamZone account. Fee reminders go here, and for a child to the guardians' addresses.",
-    'Det ser inte ut som en e-postadress.': 'That does not look like an e-mail address.',
-    'Adressen kunde inte sparas. Försök igen.': 'The address could not be saved. Try again.',
+    'Det ser inte ut som en e-postadress.':
+        'That does not look like an e-mail address.',
+    'Adressen kunde inte sparas. Försök igen.':
+        'The address could not be saved. Try again.',
     'Medlems- och lagavgifter för dig och dina barn, och hur du betalar.':
         'Membership and team fees for you and your children, and how to pay.',
     // Fee reminders by e-mail (2026-11-11).
@@ -1311,6 +1313,8 @@ class AppStrings {
     'Placera i': 'Place in',
     'Där personen sökte': 'Where they applied',
     'Klubben, utan lag': 'The club, without a team',
+    'Styrelse och funktionärer hör till hela klubben. Personen läggs i klubben, inte i laget.':
+        'The board and functionaries belong to the whole club. The person is placed in the club, not in the team.',
     // Applying to the club (2026-11-11).
     'Klubben': 'The club',
     'Klubben – medlem eller styrelse, utan lag':
@@ -3114,14 +3118,11 @@ class AppStrings {
         "Another time or recurring? Open the booking manager",
     'Kopplade resursbokningar följer med när tiden ändras. Marginaler före och efter aktiviteten behålls. Om någon resurs inte är tillgänglig stoppas hela ändringen. Resurser som kräver godkännande kan behöva godkännas på nytt.':
         'Linked resource bookings move with the activity when its time changes. Buffers before and after the activity are preserved. If any resource is unavailable, the entire change is blocked. Resources that require approval may need to be approved again.',
-    'Ställ in aktiviteten?':
-        'Cancel the activity?',
+    'Ställ in aktiviteten?': 'Cancel the activity?',
     'Aktiviteten ställs in och dess kopplade resursbokningar avbokas. Kallelser återkallas också. Om aktiviteten återaktiveras behöver resurser bokas på nytt.':
         'The activity and its linked resource bookings will be cancelled. Invitations will also be withdrawn. If the activity is reactivated, resources must be booked again.',
-    'Resursbokningar':
-        'Resource bookings',
-    'Uppdatera resursbokningar':
-        'Refresh resource bookings',
+    'Resursbokningar': 'Resource bookings',
+    'Uppdatera resursbokningar': 'Refresh resource bookings',
     'Ingen resurs är bokad för aktiviteten.':
         'No resource is booked for this activity.',
     'En tidigare bokad resurs är avbokad eller nekad. Aktiviteten är kvar. Kontrollera resursstatus nedan.':

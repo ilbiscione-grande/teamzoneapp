@@ -6842,10 +6842,17 @@ class _MembershipReviewSheetState extends State<_MembershipReviewSheet> {
     String? placement;
     List<MembershipRole> rolesFor(String? place) => switch (place) {
       null when item.teamName.isEmpty => clubApplicationRoles,
-      null => [...teamApplicationRoles, MembershipRole.clubFunctionary],
+      // Klubbfunktionär is club-wide: only the club admin gives it, and it
+      // goes to the club, not the team (2026-11-11).
+      null => [
+        ...teamApplicationRoles,
+        if (placer != null) MembershipRole.clubFunctionary,
+      ],
       _clubPlacement => clubApplicationRoles,
-      _ => [...teamApplicationRoles, MembershipRole.clubFunctionary],
+      _ => teamApplicationRoles,
     };
+    bool clubWide(MembershipRole role) =>
+        role == MembershipRole.clubFunctionary || role == MembershipRole.member;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -6924,6 +6931,17 @@ class _MembershipReviewSheetState extends State<_MembershipReviewSheet> {
                     }
                   },
                 ),
+                if (item.teamName.isNotEmpty &&
+                    placement == null &&
+                    clubWide(approvedRole)) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    strings.feature(
+                      'Styrelse och funktionärer hör till hela klubben. Personen läggs i klubben, inte i laget.',
+                    ),
+                    key: const ValueKey('membership-review-club-wide'),
+                  ),
+                ],
               ],
             ],
           ),
@@ -6946,13 +6964,18 @@ class _MembershipReviewSheetState extends State<_MembershipReviewSheet> {
       _error = null;
     });
     try {
-      if (approve && placer != null && placement != null) {
+      final toClub =
+          placement == _clubPlacement ||
+          (placement == null &&
+              item.teamName.isNotEmpty &&
+              clubWide(approvedRole));
+      if (approve && placer != null && (placement != null || toClub)) {
         await placer
             .approvePlaced(
               applicationId: item.id,
               role: approvedRole,
-              teamId: placement == _clubPlacement ? null : placement,
-              toClub: placement == _clubPlacement,
+              teamId: toClub ? null : placement,
+              toClub: toClub,
               idempotencyKey: _newUuid(),
             )
             .timeout(const Duration(seconds: 15));

@@ -88,6 +88,54 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  testWidgets('a team application approved as functionary goes to the club', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final membership = _Membership();
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'audit'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _AdminIdentity(),
+          membership: membership,
+          overview: _ClubOverview(),
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _tapVisible(tester, find.byKey(const ValueKey('club-home-club')));
+    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-admin-applications')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Godkänn'));
+    await tester.pumpAndSettle();
+    final dialog = find.byType(AlertDialog);
+    await tester.tap(
+      find.descendant(of: dialog, matching: find.text('Ledare')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Styrelse eller funktionär').last);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('membership-review-club-wide')),
+      findsOneWidget,
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Godkänn'));
+    await tester.pumpAndSettle();
+    expect(membership.placed, ['app-1 club_functionary - club']);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
   testWidgets('the member register filters, changes a membership and exports', (
     tester,
   ) async {

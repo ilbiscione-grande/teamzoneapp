@@ -63,6 +63,7 @@ grant usage on schema api, internal, core, auth, audit, extensions, vault to aut
 await db.exec(read('supabase/tests/fixtures/decide_membership_application_v1.sql'));
 await db.exec(read('supabase/migrations/20270220090000_club_applications.sql'));
 await db.exec(read('supabase/migrations/20270221090000_application_placement.sql'));
+await db.exec(read('supabase/migrations/20270224090000_functionary_club_wide.sql'));
 const rows = async (who, sql, params = []) => {
   await db.query("select set_config('request.jwt.claim.sub',$1,false)", [who]);
   await db.exec('set role authenticated');
@@ -140,4 +141,22 @@ assert.equal((await db.query("select count(*)::int n from audit.command_events w
   .rows[0].n, 1);
 assert.doesNotMatch(read('supabase/migrations/20270220090000_club_applications.sql'), /serialization_failure/);
 assert.doesNotMatch(read('supabase/migrations/20270221090000_application_placement.sql'), /serialization_failure/);
+// Klubbfunktionär is club-wide (2026-11-11): a team application approved as
+// Klubbfunktionär lands in the club, not in the team; never in another team.
+await db.exec(`insert into core.profiles values ('${id(5)}','Ulf Funktionär');
+insert into auth.users values ('${id(5)}','u@example.com');
+insert into core.membership_applications(id, applicant_profile_id, club_id, team_id, requested_role)
+  values ('${id(60)}','${id(5)}','${club}','${team}','leader');`);
+const ulf = (role, teamId, toClub) => call(admin,
+  "select internal.decide_membership_application_v3($1, 'approved', $2, $3, $4, gen_random_uuid())",
+  [id(60), role, teamId, toClub]);
+await assert.rejects(ulf('club_functionary', team, false), /invalid_role/);
+assert.equal(await ulf('club_functionary', null, false), 'approved');
+const ulfRoles = (await db.query(`select a.role_package, a.team_id from core.assignments a
+  join core.club_people p on p.id = a.club_person_id where p.display_name = 'Ulf Funktionär'`)).rows;
+assert.deepEqual(ulfRoles.map(a => [a.role_package, a.team_id]), [['club_functionary', null]]);
+const ulfApp = (await db.query('select * from core.membership_applications where id = $1', [id(60)])).rows[0];
+assert.deepEqual([ulfApp.team_id, ulfApp.requested_role, ulfApp.approved_to_club, ulfApp.approved_role],
+  [team, 'leader', true, 'club_functionary']);
+assert.doesNotMatch(read('supabase/migrations/20270224090000_functionary_club_wide.sql'), /serialization_failure/);
 console.log('club applications: ok');
