@@ -1,7 +1,8 @@
 "use client";
 
-// Formations for either team, and the TeamZone team's squad: fetched into
-// the project and put on the pitch one by one or by a formation.
+// Either team shown or hidden, formations for either team, and the TeamZone
+// team's squad: fetched into the project and put on the pitch one by one or
+// by a formation.
 import { useState } from "react";
 import { applyFormation, createPlayer } from "../../../lib/tactics/document.ts";
 import { formations, parseFormation } from "../../../lib/tactics/formations.ts";
@@ -9,6 +10,7 @@ import type { Board, Side, SquadPlayer } from "../../../lib/tactics/model.ts";
 import { useAccount } from "../../account";
 import { activeObjects, useEditor, NONE } from "../store.ts";
 import { useSquadFetch } from "../use-squad.ts";
+import { TeamVisibility } from "./TeamVisibility.tsx";
 import { useT } from "../../language";
 
 export function SquadPanel({ board }: { board: Board }) {
@@ -16,6 +18,7 @@ export function SquadPanel({ board }: { board: Board }) {
   const meta = useEditor(state => state.meta);
   const squad = useEditor(state => state.document?.squad ?? NONE);
   const objects = useEditor(activeObjects);
+  const frameIndex = useEditor(state => state.frameIndex);
   const [side, setSide] = useState<Side>("home");
   const [formation, setFormation] = useState("4-3-3");
   const [custom, setCustom] = useState("");
@@ -41,6 +44,7 @@ export function SquadPanel({ board }: { board: Board }) {
 
   return (
     <div className="tb-inspector">
+      <TeamVisibility board={board} frameIndex={frameIndex} />
       <h3>{t("Formation")}</h3>
       <div className="tb-row">
         <label className="tb-field">{t("Lag")}

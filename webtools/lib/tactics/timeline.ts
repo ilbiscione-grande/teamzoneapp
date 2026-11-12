@@ -114,9 +114,14 @@ export function blendFrames(from: Frame, to: Frame, t: number): Rendered[] {
 
   for (const next of to.objects) {
     const prev = before.get(next.id);
-    if (!prev) {
-      // New in this frame: in by its effects, fading by default.
+    if (!prev || (prev.hidden && !next.hidden)) {
+      // New in this frame, or shown again: in by its effects, fading by default.
       result.push(withEffects(next, t, true));
+      continue;
+    }
+    if (next.hidden && !prev.hidden) {
+      // Hidden in this frame: fades out where it was, as one gone.
+      result.push({ ...prev, opacity: 1 - t });
       continue;
     }
     let blended: TacticsObject = {

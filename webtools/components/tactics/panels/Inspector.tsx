@@ -232,7 +232,7 @@ export function Inspector({ board }: { board: Board }) {
   const frameIndex = useEditor(state => state.frameIndex);
   const allFrames = useEditor(state => state.allFrames);
   const selected = objects.filter(item => selection.includes(item.id));
-  const { patch, changeObjects, removeSelected, duplicateSelected, groupSelected, select } = useEditor.getState();
+  const { patch, patchLook, changeObjects, removeSelected, duplicateSelected, groupSelected, select } = useEditor.getState();
   if (selected.length === 0) return <BoardSettings board={board} />;
   const single = selected.length === 1 ? selected[0] : null;
   const allLocked = selected.every(item => item.locked);
@@ -256,6 +256,8 @@ export function Inspector({ board }: { board: Board }) {
         {(grouped || selected.length > 1) && action("⧈", grouped ? t("Dela upp") : t("Gruppera"), grouped ? t("Dela upp gruppen (Ctrl+Shift+G)") : t("Gruppera (Ctrl+G)"), () => groupSelected(!grouped), { pressed: grouped })}
         {action(allLocked ? "🔒" : "🔓", allLocked ? t("Lås upp") : t("Lås"), allLocked ? t("Lås upp, så kan det ändras och flyttas") : t("Lås, så flyttas det inte av misstag"),
           () => patch(Object.fromEntries(selected.map(item => [item.id, { locked: !allLocked }]))), { pressed: allLocked })}
+        {action("◌", t("Dölj"), allFrames ? t("Dölj i alla frames. Visa igen under Objekt.") : t("Dölj i den här framen. Visa igen under Objekt."),
+          () => { patchLook(Object.fromEntries(selected.map(item => [item.id, { hidden: true }]))); select([]); })}
         {action("🗑", t("Ta bort"), allFrames ? t("Ta bort ur alla frames (Delete)") : t("Ta bort (Delete)"), () => removeSelected(), { disabled: allLocked, danger: true })}
       </div>
       {allLocked && <p className="tb-hint">{single ? t("Objektet är låst. Lås upp för att ändra.") : t("Objekten är låsta. Lås upp för att ändra.")}</p>}
