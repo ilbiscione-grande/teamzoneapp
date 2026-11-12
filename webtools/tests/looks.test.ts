@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { dropBall } from "../lib/tactics/ball.ts";
-import { createObject, createPlayer, newFrame } from "../lib/tactics/document.ts";
+import { createObject, createPlayer, newBoard, newFrame, setBallFlight } from "../lib/tactics/document.ts";
 import { spotlightAt } from "../lib/tactics/marks.ts";
 import type { BallObject, Effect, Frame, TacticsObject } from "../lib/tactics/model.ts";
 import { objectsAt, standingFacing, type Rendered } from "../lib/tactics/timeline.ts";
@@ -35,6 +35,19 @@ test("a ball in the air bends off its shadow to the side up on the pitch, the wa
   near(high.rise!.y, -7 * 0.45);
   assert.ok(Math.abs(ballAt(pass("chip"), 0.5).rise!.y) < Math.abs(high.rise!.y), "a chip bends less");
   assert.equal(ballAt(pass("high"), 1).rise, undefined, "landed on its shadow");
+});
+
+test("a long ball slows its frame down, a chip less, and back on the ground the frame has its time again", () => {
+  const frames = pass();
+  const board = { ...newBoard("Tavla"), frames };
+  const ballId = frames[1].objects.find(item => item.type === "ball")!.id;
+  const high = setBallFlight(board, 1, ballId, "high");
+  assert.equal(high.frames[1].durationMs, 1500);
+  assert.equal((high.frames[1].objects.find(item => item.id === ballId) as BallObject).flight, "high");
+  assert.equal(high.frames[0], board.frames[0], "the frame before is left as it was");
+  const chip = setBallFlight(high, 1, ballId, "chip");
+  assert.equal(chip.frames[1].durationMs, 1300);
+  assert.equal(setBallFlight(setBallFlight(board, 1, ballId, "high"), 1, ballId, "ground").frames[1].durationMs, 1000);
 });
 
 test("a running player faces the way of the run, then turns to their own facing as they arrive", () => {

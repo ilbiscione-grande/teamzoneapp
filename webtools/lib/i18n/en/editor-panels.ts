@@ -161,6 +161,7 @@ export const editorPanels: Record<string, string> = {
   "Dra i punkten mitt på spåret för att böja vägen hit.": "Drag the point in the middle of the trail to bend the path here.",
   "Bollen går hit": "The ball travels here",
   "Höjd": "Height",
+  "Framen går långsammare medan bollen är i luften, mer för en långboll.": "The frame plays slower while the ball is in the air, more for a long ball.",
   "Klar": "Done",
   "Namn i listan": "Name in the list",
   "Egen färg (t.ex. målvakt)": "Own colour (e.g. goalkeeper)",

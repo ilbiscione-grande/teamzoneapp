@@ -2,7 +2,7 @@
 
 // Properties of what is selected: one object's own fields, or what several
 // have in common. Nothing selected shows the board's settings.
-import { kindName, objectLabel, stack, updateBoard, type Stacking } from "../../../lib/tactics/document.ts";
+import { kindName, objectLabel, setBallFlight, stack, updateBoard, type Stacking } from "../../../lib/tactics/document.ts";
 import { oneGroup } from "../../../lib/tactics/grouping.ts";
 import type { AreaPattern, BallFlight, Board, TacticsObject } from "../../../lib/tactics/model.ts";
 import { effectsOf, standingFacing } from "../../../lib/tactics/timeline.ts";
@@ -171,7 +171,7 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
 }
 
 /** The object's effects in this frame (chosen under Frames), its path's bend, and how a passed ball travels. */
-function Motion({ item, frameIndex }: { item: TacticsObject; frameIndex: number }) {
+function Motion({ item, frameIndex, board }: { item: TacticsObject; frameIndex: number; board: Board }) {
   const t = useT();
   const patch = (changes: Partial<TacticsObject>) => useEditor.getState().patch({ [item.id]: changes });
   return (
@@ -180,7 +180,8 @@ function Motion({ item, frameIndex }: { item: TacticsObject; frameIndex: number 
       {frameIndex > 0 && item.pathControl && <button type="button" className="tb-link" onClick={() => patch({ pathControl: null })}>{t("Rak väg hit")}</button>}
       {frameIndex > 0 && !item.pathControl && <p className="tb-hint">{t("Dra i punkten mitt på spåret för att böja vägen hit.")}</p>}
       {frameIndex > 0 && item.type === "ball" && (
-        <BallFlightChoice flight={item.flight ?? "ground"} onChange={flight => patch({ flight } as Partial<TacticsObject>)} />
+        <BallFlightChoice flight={item.flight ?? "ground"}
+          onChange={flight => useEditor.getState().change(document => updateBoard(document, board.id, current => setBallFlight(current, frameIndex, item.id, flight)))} />
       )}
     </>
   );
@@ -204,6 +205,7 @@ function BallFlightChoice({ flight, onChange }: { flight: BallFlight; onChange: 
             <button type="button" aria-pressed={flight === "chip"} onClick={() => onChange("chip")}>{t("Chip (lyft)")}</button>
             <button type="button" aria-pressed={flight === "high"} onClick={() => onChange("high")}>{t("Långboll (hög)")}</button>
           </div>
+          <p className="tb-hint">{t("Framen går långsammare medan bollen är i luften, mer för en långboll.")}</p>
         </div>
       )}
     </>
@@ -258,7 +260,7 @@ export function Inspector({ board }: { board: Board }) {
       </div>
       {allLocked && <p className="tb-hint">{single ? t("Objektet är låst. Lås upp för att ändra.") : t("Objekten är låsta. Lås upp för att ändra.")}</p>}
       {single && !single.locked && <Section title={t("Utseende")}><Fields item={single} board={board} /></Section>}
-      {single && !single.locked && board.frames.length > 1 && frameIndex > 0 && <Section title={t("Rörelse i framen")}><Motion item={single} frameIndex={frameIndex} /></Section>}
+      {single && !single.locked && board.frames.length > 1 && frameIndex > 0 && <Section title={t("Rörelse i framen")}><Motion item={single} frameIndex={frameIndex} board={board} /></Section>}
       {!single && selected.filter(item => !item.locked).length > 1 && <Section title={t("Gemensamt")}><SharedFields items={selected} board={board} /></Section>}
       <Section title={t("Ordning i lagret")}>
         <div className="tb-stacking" role="group" aria-label={t("Ordning")}>

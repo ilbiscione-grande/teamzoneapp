@@ -7,7 +7,7 @@ import { formationPositions } from "./formations.ts";
 import type { Translate } from "../i18n/translate.ts";
 import {
   PITCH_LENGTH, PITCH_WIDTH, SCHEMA_VERSION,
-  type Board, type Easing, type Effect, type EquipmentKind, type Frame, type ObjectType, type PlayerObject, type Point,
+  type BallFlight, type Board, type Easing, type Effect, type EquipmentKind, type Frame, type ObjectType, type PlayerObject, type Point,
   type ProjectDocument, type Side, type SquadPlayer, type TacticsObject,
 } from "./model.ts";
 import { effectsOf } from "./timeline.ts";
@@ -267,6 +267,20 @@ export function moveFrame(board: Board, index: number, step: 1 | -1): Board {
 
 export function setFrameDuration(board: Board, index: number, durationMs: number): Board {
   return { ...board, frames: board.frames.map((frame, i) => i === index ? { ...frame, durationMs: Math.min(10000, Math.max(200, durationMs)) } : frame) };
+}
+
+/** How much longer a frame's move takes with its ball in the air, the higher the slower. */
+export const FLIGHT_SLOWER: Record<BallFlight, number> = { ground: 1, chip: 1.25, high: 1.5 };
+
+/** A ball's way into frame `index` chosen: the frame's move slows down as it goes up in the air and speeds up again as it comes down, to the nearest tenth of a second. */
+export function setBallFlight(board: Board, index: number, ballId: string, flight: BallFlight): Board {
+  const frame = board.frames[index];
+  const ball = frame?.objects.find(item => item.id === ballId);
+  if (!frame || ball?.type !== "ball") return board;
+  const factor = FLIGHT_SLOWER[flight] / FLIGHT_SLOWER[ball.flight ?? "ground"];
+  const objects = frame.objects.map(item => item.id === ballId ? { ...item, flight } as TacticsObject : item);
+  const timed = setFrameDuration(board, index, Math.round((frame.durationMs * factor) / 100) * 100);
+  return { ...timed, frames: timed.frames.map((each, i) => i === index ? { ...each, objects } : each) };
 }
 
 export function setFrameEasing(board: Board, index: number, easing: Easing): Board {
