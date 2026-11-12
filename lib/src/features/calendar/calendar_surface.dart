@@ -1317,6 +1317,23 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
   late final TextEditingController _matchNotes = TextEditingController(
     text: widget.initial?.matchNotes,
   );
+
+  /// An own title for a meeting or an activity, e.g. Lagfest or Årsmöte;
+  /// empty: the type's name. An existing type name is not prefilled.
+  late final TextEditingController _title = TextEditingController(
+    text: switch (widget.initial) {
+      final EventDetails event
+          when (event.type == 'meeting' || event.type == 'activity') &&
+              !const {
+                'Möte',
+                'Aktivitet',
+                'Meeting',
+                'Activity',
+              }.contains(event.title.trim()) =>
+        event.title,
+      _ => '',
+    },
+  );
   late final TextEditingController _meetingPurpose = TextEditingController(
     text: widget.initial?.meetingPurpose,
   );
@@ -1397,6 +1414,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
       _trainingPlan,
       _opponent,
       _matchNotes,
+      _title,
       _meetingPurpose,
       _meetingAgenda,
     ]) {
@@ -1423,6 +1441,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
       _trainingPlan,
       _opponent,
       _matchNotes,
+      _title,
       _meetingPurpose,
       _meetingAgenda,
     ]) {
@@ -1652,8 +1671,8 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
   String _generatedTitle() => switch (_type) {
     'training' => 'Träning',
     'match' => 'vs ${_opponent.text.trim()}',
-    'meeting' => 'Möte',
-    _ => 'Aktivitet',
+    'meeting' => _optional(_title) ?? 'Möte',
+    _ => _optional(_title) ?? 'Aktivitet',
   };
 
   static const _typeIcons = {
@@ -2036,6 +2055,27 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
                   ),
               ],
             ),
+            if (_type == 'meeting' || _type == 'activity') ...[
+              const SizedBox(height: 16),
+              TextFormField(
+                key: const ValueKey('event-title'),
+                controller: _title,
+                maxLength: 160,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(
+                  labelText: strings.feature('Titel'),
+                  hintText: strings.feature(
+                    _type == 'meeting' ? 'T.ex. Årsmöte' : 'T.ex. Lagfest',
+                  ),
+                  helperText: strings.feature(
+                    _type == 'meeting'
+                        ? 'Tom titel visas som Möte.'
+                        : 'Tom titel visas som Aktivitet.',
+                  ),
+                  prefixIcon: const Icon(Icons.title),
+                ),
+              ),
+            ],
             if (_type == 'match') ...[
               const SizedBox(height: 16),
               // Opponent and home/away share one row (home preselected).

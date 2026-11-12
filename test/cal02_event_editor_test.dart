@@ -154,6 +154,35 @@ void main() {
     });
   }
 
+  testWidgets('a meeting gets an own title; an empty one keeps the type', (
+    tester,
+  ) async {
+    final calendar = _Calendar();
+    await _openEditor(tester, calendar);
+    await tester.tap(find.byKey(const ValueKey('event-type-meeting')));
+    await tester.pumpAndSettle();
+    expect(find.text('Tom titel visas som Möte.'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('event-title')),
+      '  Årsmöte ',
+    );
+    await tester.tap(find.text('Skapa').last);
+    await tester.pumpAndSettle();
+    expect(calendar.created?.title, 'Årsmöte');
+  });
+
+  testWidgets('an activity without a title is called Aktivitet', (
+    tester,
+  ) async {
+    final activity = _Calendar();
+    await _openEditor(tester, activity);
+    await tester.tap(find.byKey(const ValueKey('event-type-activity')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Skapa').last);
+    await tester.pumpAndSettle();
+    expect(activity.created?.title, 'Aktivitet');
+  });
+
   testWidgets('a new match lasts as long as the team match format says', (
     tester,
   ) async {
