@@ -69,8 +69,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Statistik moved to Laget; leaders get Arbetsytor instead.
-    for (final label in ['Hem', 'Laget', 'Kalender', 'Inkorg', 'Arbetsytor']) {
+    // Statistik moved to Laget; the Arbetsytor heading is tested below.
+    for (final label in ['Hem', 'Laget', 'Kalender', 'Inkorg']) {
       await tester.scrollUntilVisible(
         find.text(label),
         250,
@@ -82,6 +82,106 @@ void main() {
       expect(find.text(label), findsWidgets);
     }
     expect(find.textContaining('F2012'), findsWidgets);
+  });
+
+  testWidgets('the drawer lists the workspaces under a heading and the tools', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'audit'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _FakeIdentity(
+            contexts: const [
+              TeamZoneContext(
+                id: 'assignment-1',
+                clubId: 'club-1',
+                clubName: 'Testklubben',
+                teamId: 'team-1',
+                teamName: 'F2012',
+                rolePackage: 'leader',
+                capabilities: {
+                  'team.read',
+                  'event.manage',
+                  'publication.manage',
+                  'club.memberships.manage',
+                },
+              ),
+            ],
+          ),
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final list = find.descendant(
+      of: find.byKey(const Key('app-navigation-panel-list')),
+      matching: find.byType(Scrollable),
+    );
+    // Arbetsytor is a heading, not a row of its own.
+    expect(find.text('ARBETSYTOR'), findsOneWidget);
+    for (final key in [
+      'drawer-workspace-match_workspace',
+      'drawer-workspace-training',
+      'drawer-workspace-team_development',
+      'drawer-workspace-development',
+      'drawer-workspace-statistics',
+      'drawer-tool-club',
+      'drawer-tool-tournaments',
+      'drawer-tool-editorial',
+      'drawer-tool-publication',
+    ]) {
+      await tester.scrollUntilVisible(
+        find.byKey(Key(key)),
+        100,
+        scrollable: list,
+      );
+      expect(find.byKey(Key(key)), findsOneWidget);
+    }
+    await tester.tap(find.byKey(const Key('drawer-tool-editorial')));
+    await tester.pumpAndSettle();
+    expect(find.text('Nyhetsredaktion'), findsWidgets);
+  });
+
+  testWidgets('a player has no workspaces or tools in the drawer', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'audit'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _FakeIdentity(
+            contexts: const [
+              TeamZoneContext(
+                id: 'assignment-1',
+                clubId: 'club-1',
+                clubName: 'Testklubben',
+                teamId: 'team-1',
+                teamName: 'F2012',
+                rolePackage: 'player',
+                capabilities: {'team.read'},
+              ),
+            ],
+          ),
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('ARBETSYTOR'), findsNothing);
+    expect(
+      find.byKey(const Key('drawer-workspace-match_workspace')),
+      findsNothing,
+    );
   });
 
   test('context parsing rejects missing capability projection', () {

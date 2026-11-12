@@ -40,11 +40,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Arbetsytor').first);
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const Key('workspace-module-module.match_workspace')),
-    );
+    await tester.tap(find.byKey(const Key('drawer-workspace-match_workspace')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Spelade'));
     await tester.pumpAndSettle();

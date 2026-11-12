@@ -333,10 +333,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Arbetsytor').first);
-    await tester.pumpAndSettle();
     await tester.tap(
-      find.byKey(const Key('workspace-module-module.team_development')),
+      find.byKey(const Key('drawer-workspace-team_development')),
     );
     await tester.pumpAndSettle();
 
@@ -462,10 +460,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Arbetsytor').first);
-    await tester.pumpAndSettle();
     await tester.tap(
-      find.byKey(const Key('workspace-module-module.team_development')),
+      find.byKey(const Key('drawer-workspace-team_development')),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('tdp-open-calendar')));
@@ -500,10 +496,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Arbetsytor').first);
-    await tester.pumpAndSettle();
     await tester.tap(
-      find.byKey(const Key('workspace-module-module.team_development')),
+      find.byKey(const Key('drawer-workspace-team_development')),
     );
     await tester.pumpAndSettle();
 
@@ -750,10 +744,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Arbetsytor').first);
-    await tester.pumpAndSettle();
     await tester.tap(
-      find.byKey(const Key('workspace-module-module.team_development')),
+      find.byKey(const Key('drawer-workspace-team_development')),
     );
     await tester.pumpAndSettle();
     return services;

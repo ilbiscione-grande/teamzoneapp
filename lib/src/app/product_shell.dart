@@ -1300,7 +1300,7 @@ class _ProductShellState extends State<_ProductShell> {
           contextValue: widget.contextValue,
           contexts: widget.contexts,
           currentLocation: location,
-          onNavigate: _router.go,
+          onNavigate: _openAction,
           onContextChanged: widget.onContextChanged,
           membership: widget.membership,
           onContextsChanged: widget.onContextsChanged,

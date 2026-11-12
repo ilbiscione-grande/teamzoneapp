@@ -34,21 +34,47 @@ class _WorkspacesSurfaceState extends State<_WorkspacesSurface> {
   @override
   void initState() {
     super.initState();
-    if (widget.openModule == 'team_development' &&
-        widget.contextValue.teamId != null) {
+    _openRequested();
+  }
+
+  /// Opens `?module=` at once, as from the drawer or the assistant: the
+  /// Team Development Plan directly, the others when the club has them.
+  /// Closing it clears the link, so the same link opens it again.
+  void _openRequested() {
+    final key = widget.openModule;
+    if (key == null || widget.contextValue.teamId == null) return;
+    Future<void> openAndClear(Future<void> Function() open) async {
+      await open();
+      if (mounted) widget.onNavigate(ProductRouteContract.workspaces);
+    }
+
+    if (key == 'team_development') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         unawaited(
-          _TeamDevelopmentModule.open(
-            context,
-            team: widget.contextValue,
-            services: widget.modules.teamDevelopment,
-            calendar: widget.calendar,
-            onNavigate: widget.onNavigate,
+          openAndClear(
+            () => _TeamDevelopmentModule.open(
+              context,
+              team: widget.contextValue,
+              services: widget.modules.teamDevelopment,
+              calendar: widget.calendar,
+              onNavigate: widget.onNavigate,
+            ),
           ),
         );
       });
+      return;
     }
+    unawaited(
+      _modules.then((modules) {
+        if (!mounted) return;
+        final module = modules.modules
+            .where((item) => item.key == 'module.$key')
+            .firstOrNull;
+        final open = module == null ? null : _opener(module);
+        if (open != null) unawaited(openAndClear(open));
+      }),
+    );
   }
 
   Future<TeamModules> _load() {
@@ -64,6 +90,7 @@ class _WorkspacesSurfaceState extends State<_WorkspacesSurface> {
     if (oldWidget.contextValue.teamId != widget.contextValue.teamId) {
       _modules = _load();
     }
+    if (oldWidget.openModule != widget.openModule) _openRequested();
   }
 
   static const _icons = {
@@ -74,7 +101,7 @@ class _WorkspacesSurfaceState extends State<_WorkspacesSurface> {
   };
 
   /// The modules built so far open their page; the rest are still being built.
-  void Function()? _opener(ModuleInfo module) {
+  Future<void> Function()? _opener(ModuleInfo module) {
     final teamId = widget.contextValue.teamId;
     if (!module.open || teamId == null) return null;
     return switch (module.key) {

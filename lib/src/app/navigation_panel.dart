@@ -438,6 +438,14 @@ class _NavPanelTeamSwitcher extends StatelessWidget {
   }
 }
 
+/// The workspace modules the drawer lists under Arbetsytor: key, icon and
+/// Swedish title. IDP joins when it is built.
+const _drawerWorkspaceModules = [
+  ('match_workspace', Icons.sports_soccer_outlined, 'Match'),
+  ('training', Icons.fitness_center_outlined, 'Träning'),
+  ('team_development', Icons.event_note_outlined, 'Team Development Plan'),
+];
+
 /// Shared content for the mobile navigation drawer (opened via the app bar's
 /// avatar) and the permanent tablet/desktop sidebar: profile, team switcher,
 /// the main destinations, tools, capability-gated admin links, and
@@ -511,6 +519,16 @@ class _AppNavigationPanel extends StatelessWidget {
         contextValue.rolePackage == 'leader' ||
         contextValue.rolePackages.contains('leader');
     final hasReferees = refereeSummary != null && onOpenRefereeBoard != null;
+    final canTournaments = isLeader && contextValue.can('event.manage');
+    final canPublicPages =
+        contextValue.can('publication.manage') ||
+        contextValue.can('team.roster.manage');
+    final hasTools =
+        hasReferees ||
+        canTournaments ||
+        canPublicPages ||
+        _canHandleClubFees(contextValue) ||
+        contextValue.can('publication.manage');
     const chevron = Icon(Icons.chevron_right);
     // A short window gets a tighter footer, so the menu rows keep room.
     final compact = MediaQuery.sizeOf(context).height < 760;
@@ -562,18 +580,82 @@ class _AppNavigationPanel extends StatelessWidget {
                     selected: currentLocation.startsWith(path),
                     onTap: () => _go(path),
                   ),
-                if (isLeader || hasReferees) ...[
+                // Arbetsytor is a heading over the workspaces themselves.
+                if (isLeader) ...[
+                  divider,
+                  _NavPanelSection(
+                    strings.destination(ProductRouteContract.workspaces),
+                  ),
+                  for (final (key, icon, title) in _drawerWorkspaceModules)
+                    _NavPanelRow(
+                      key: Key('drawer-workspace-$key'),
+                      icon: icon,
+                      label: strings.moduleTitle('module.$key', title),
+                      onTap: () =>
+                          _go('${ProductRouteContract.workspaces}?module=$key'),
+                    ),
+                  _NavPanelRow(
+                    key: const Key('drawer-workspace-development'),
+                    icon: _destinationFor(
+                      ProductRouteContract.development,
+                    ).icon,
+                    label: strings.destination(
+                      ProductRouteContract.development,
+                    ),
+                    selected: currentLocation.startsWith(
+                      ProductRouteContract.development,
+                    ),
+                    onTap: () => _go(ProductRouteContract.development),
+                  ),
+                  if (contextValue.can('event.manage') ||
+                      contextValue.can('event.attendance.manage'))
+                    _NavPanelRow(
+                      key: const Key('drawer-workspace-statistics'),
+                      icon: Icons.query_stats_outlined,
+                      label: strings.feature('Lagstatistik'),
+                      onTap: () => _go(ProductRouteContract.teamStatistics),
+                    ),
+                ],
+                if (hasTools) ...[
                   divider,
                   _NavPanelSection(strings.feature('Verktyg')),
                 ],
-                if (isLeader)
+                if (_canHandleClubFees(contextValue))
                   _NavPanelRow(
-                    icon: _destinationFor(ProductRouteContract.workspaces).icon,
-                    label: strings.destination(ProductRouteContract.workspaces),
+                    key: const Key('drawer-tool-club'),
+                    icon: Icons.domain_outlined,
+                    label: strings.feature('Klubb'),
                     selected: currentLocation.startsWith(
-                      ProductRouteContract.workspaces,
+                      ProductRouteContract.club,
                     ),
-                    onTap: () => _go(ProductRouteContract.workspaces),
+                    onTap: () => _go(ProductRouteContract.club),
+                  ),
+                if (canTournaments)
+                  _NavPanelRow(
+                    key: const Key('drawer-tool-tournaments'),
+                    icon: Icons.emoji_events_outlined,
+                    label: strings.feature('Turneringar'),
+                    onTap: () => _go(_tournamentsRoute),
+                  ),
+                if (contextValue.can('publication.manage'))
+                  _NavPanelRow(
+                    key: const Key('drawer-tool-editorial'),
+                    icon: Icons.newspaper_outlined,
+                    label: strings.feature('Nyhetsredaktion'),
+                    selected: currentLocation.startsWith(
+                      ProductRouteContract.editorial,
+                    ),
+                    onTap: () => _go(ProductRouteContract.editorial),
+                  ),
+                if (canPublicPages)
+                  _NavPanelRow(
+                    key: const Key('drawer-tool-publication'),
+                    icon: Icons.public_outlined,
+                    label: strings.feature('Publika sidor'),
+                    selected: currentLocation.startsWith(
+                      ProductRouteContract.publication,
+                    ),
+                    onTap: () => _go(ProductRouteContract.publication),
                   ),
                 // REF-02: one row for the active club's referees.
                 if (hasReferees)
