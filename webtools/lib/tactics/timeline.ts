@@ -3,8 +3,9 @@
 // from frame 2 to frame 3. From the first Tacticsboard, as pure functions.
 // What is drawn along a move (trails, arrows, rings, the zoom) is in marks.ts.
 import { ballPosition } from "./ball.ts";
+import { airSide } from "./path.ts";
 import { withMarks, type Marks } from "./marks.ts";
-import type { BallFlight, BallObject, Effect, Frame, LineObject, PlayerObject, ShapeObject, TacticsObject } from "./model.ts";
+import type { BallFlight, BallObject, Effect, Frame, LineObject, PlayerObject, Point, ShapeObject, TacticsObject } from "./model.ts";
 import { curvePoint, ease, effectsOf, lerp, lerpPoint } from "./motion.ts";
 
 export { curvePoint, ease, easeInOut, effectsOf } from "./motion.ts";
@@ -12,13 +13,17 @@ export type { Trail } from "./marks.ts";
 
 /**
  * What playing adds to an object: how visible, how large, how far drawn, how
- * lit, the marks along its move, a lofted ball's height in metres and the
+ * lit, the marks along its move, a lofted ball's height in metres and where
+ * it is drawn from its shadow on the flat pitch (rise, in metres), and the
  * way a running player faces (degrees, 0 towards the right-hand goal).
  */
-export type Rendered = TacticsObject & Marks & { opacity?: number; grow?: number; drawn?: number; glow?: number; lift?: number; facing?: number };
+export type Rendered = TacticsObject & Marks & { opacity?: number; grow?: number; drawn?: number; glow?: number; lift?: number; rise?: Point; facing?: number };
 
 /** How high a passed ball goes at the top of its flight, in metres. */
-const PEAK: Record<BallFlight, number> = { ground: 0, chip: 3, high: 7 };
+export const PEAK: Record<BallFlight, number> = { ground: 0, chip: 3, high: 7 };
+
+/** On the flat pitch a ball in the air is drawn this share of its height off its shadow, bent the way a pass arrow in the air is. */
+export const RISE = 0.45;
 
 /** Which way a player faces when standing: their turn, the away side turned round to face the home goal. */
 export const standingFacing = (player: PlayerObject) => player.rotation + (player.side === "away" ? 180 : 0);
@@ -167,7 +172,9 @@ export function blendFrames(from: Frame, to: Frame, t: number): Rendered[] {
     const end = ballPosition(next, to.objects);
     const peak = PEAK[next.flight ?? "ground"] ?? 0;
     const lift = peak * 4 * eased * (1 - eased);
-    return { ...item, ...curvePoint(start, end, next.pathControl, eased), ...(lift > 0 ? { lift } : {}) };
+    const side = lift > 0 ? airSide(start, end) : null;
+    const rise = side ? { x: side.x * lift * RISE, y: side.y * lift * RISE } : null;
+    return { ...item, ...curvePoint(start, end, next.pathControl, eased), ...(lift > 0 ? { lift } : {}), ...(rise ? { rise } : {}) };
   });
 }
 

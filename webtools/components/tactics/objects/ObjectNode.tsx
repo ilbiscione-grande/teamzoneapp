@@ -17,7 +17,7 @@ export function ObjectNode({ item, board, selected, upright, holding = false, ob
 }) {
   switch (item.type) {
     case "player": return <PlayerNode item={item} board={board} selected={selected} upright={upright} holding={holding} />;
-    case "ball": return <BallNode item={item} selected={selected} upright={upright} />;
+    case "ball": return <BallNode item={item} selected={selected} />;
     case "line": return <LineNode item={item} selected={selected} look={lookOf(board.pitch)} measure={measure} upright={upright} />;
     case "freehand": return <FreehandNode item={item} selected={selected} look={lookOf(board.pitch)} measure={measure} upright={upright} />;
     case "rect":

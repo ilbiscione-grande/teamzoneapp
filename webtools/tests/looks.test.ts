@@ -28,6 +28,15 @@ test("a lofted pass rises highest halfway and lands; a ground pass stays down", 
   assert.equal(ballAt(high, 1).lift, undefined, "landed");
 });
 
+test("a ball in the air bends off its shadow to the side up on the pitch, the way a pass arrow in the air does", () => {
+  assert.equal(ballAt(pass(), 0.5).rise, undefined);
+  const high = ballAt(pass("high"), 0.5);
+  near(high.rise!.x, 0);
+  near(high.rise!.y, -7 * 0.45);
+  assert.ok(Math.abs(ballAt(pass("chip"), 0.5).rise!.y) < Math.abs(high.rise!.y), "a chip bends less");
+  assert.equal(ballAt(pass("high"), 1).rise, undefined, "landed on its shadow");
+});
+
 test("a running player faces the way of the run, then turns to their own facing as they arrive", () => {
   const player = createPlayer({ x: 10, y: 10 }, "home", []);
   const there = { ...player, x: 10, y: 40, rotation: 0 };

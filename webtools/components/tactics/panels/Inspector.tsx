@@ -180,11 +180,31 @@ function Motion({ item, frameIndex }: { item: TacticsObject; frameIndex: number 
       {frameIndex > 0 && item.pathControl && <button type="button" className="tb-link" onClick={() => patch({ pathControl: null })}>{t("Rak väg hit")}</button>}
       {frameIndex > 0 && !item.pathControl && <p className="tb-hint">{t("Dra i punkten mitt på spåret för att böja vägen hit.")}</p>}
       {frameIndex > 0 && item.type === "ball" && (
-        <label className="tb-field">{t("Passningen hit")}
-          <select value={item.flight ?? "ground"} onChange={event => patch({ flight: event.target.value as BallFlight } as Partial<TacticsObject>)}>
-            <option value="ground">{t("Längs marken")}</option><option value="chip">{t("Chip (lyft)")}</option><option value="high">{t("Långboll (hög)")}</option>
-          </select>
-        </label>
+        <BallFlightChoice flight={item.flight ?? "ground"} onChange={flight => patch({ flight } as Partial<TacticsObject>)} />
+      )}
+    </>
+  );
+}
+
+/** How the ball travels into this frame: on the ground or in the air, and then how high, the way a pass arrow is chosen. */
+function BallFlightChoice({ flight, onChange }: { flight: BallFlight; onChange: (flight: BallFlight) => void }) {
+  const t = useT();
+  const two = { gridTemplateColumns: "1fr 1fr" };
+  return (
+    <>
+      <div className="tb-field">{t("Bollen går hit")}
+        <div className="tb-aligns" style={two} role="group" aria-label={t("Bollen går hit")}>
+          <button type="button" aria-pressed={flight === "ground"} onClick={() => onChange("ground")}>{t("På marken")}</button>
+          <button type="button" aria-pressed={flight !== "ground"} onClick={() => { if (flight === "ground") onChange("chip"); }}>{t("I luften")}</button>
+        </div>
+      </div>
+      {flight !== "ground" && (
+        <div className="tb-field">{t("Höjd")}
+          <div className="tb-aligns" style={two} role="group" aria-label={t("Höjd")}>
+            <button type="button" aria-pressed={flight === "chip"} onClick={() => onChange("chip")}>{t("Chip (lyft)")}</button>
+            <button type="button" aria-pressed={flight === "high"} onClick={() => onChange("high")}>{t("Långboll (hög)")}</button>
+          </div>
+        </div>
       )}
     </>
   );

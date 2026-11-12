@@ -90,6 +90,19 @@ export function wavePoints(points: number[]): number[] {
 }
 
 /**
+ * The way a pass in the air bends from its shadow, a unit step across the
+ * pass: to the side that is up on the pitch, or left when it runs straight
+ * across. Null when the ends meet.
+ */
+export function airSide(from: Point, to: Point): Point | null {
+  const chord = Math.hypot(to.x - from.x, to.y - from.y);
+  if (chord === 0) return null;
+  let [nx, ny] = [-(to.y - from.y) / chord, (to.x - from.x) / chord];
+  if (ny > 1e-6 || (Math.abs(ny) <= 1e-6 && nx > 0)) [nx, ny] = [-nx, -ny];
+  return { x: nx, y: ny };
+}
+
+/**
  * A pass in the air: the polyline lifted into an arc, highest halfway and
  * on the ground at both ends, bent to the side that is up on the pitch
  * (or left when the pass runs straight across). The arc is a tenth of the
@@ -103,9 +116,9 @@ export function airPoints(points: number[], steps = 24): number[] {
   const [x1, y1] = [points[0], points[1]];
   const [x2, y2] = [points[points.length - 2], points[points.length - 1]];
   const chord = Math.hypot(x2 - x1, y2 - y1);
-  if (total === 0 || chord === 0) return points;
-  let [nx, ny] = [-(y2 - y1) / chord, (x2 - x1) / chord];
-  if (ny > 1e-6 || (Math.abs(ny) <= 1e-6 && nx > 0)) [nx, ny] = [-nx, -ny];
+  const side = airSide({ x: x1, y: y1 }, { x: x2, y: y2 });
+  if (total === 0 || !side) return points;
+  const { x: nx, y: ny } = side;
   const height = Math.min(5, chord / 10);
   const result: number[] = [];
   let segment = 1;
