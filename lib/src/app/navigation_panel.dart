@@ -2,20 +2,37 @@ part of 'teamzone_app.dart';
 
 /// A small label over a group of rows: "HUVUDMENY", "VERKTYG", ...
 class _NavPanelSection extends StatelessWidget {
-  const _NavPanelSection(this.label);
+  const _NavPanelSection(this.label, {this.action});
   final String label;
+
+  /// A small button at the far right of the heading, e.g. a "+".
+  final Widget? action;
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(28, 16, 16, 6),
-    child: Text(
+  Widget build(BuildContext context) {
+    final text = Text(
       label.toUpperCase(),
       style: Theme.of(context).textTheme.labelSmall?.copyWith(
         color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .75),
         fontWeight: FontWeight.w700,
         letterSpacing: 2,
       ),
-    ),
-  );
+    );
+    if (action == null) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(28, 16, 16, 6),
+        child: text,
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 4, 8, 0),
+      child: Row(
+        children: [
+          Expanded(child: text),
+          action!,
+        ],
+      ),
+    );
+  }
 }
 
 /// A count on a row: a small red circle.
@@ -585,6 +602,14 @@ class _AppNavigationPanel extends StatelessWidget {
                   divider,
                   _NavPanelSection(
                     strings.destination(ProductRouteContract.workspaces),
+                    // The workspaces page lists every module and its status.
+                    action: IconButton(
+                      key: const Key('drawer-workspaces-add'),
+                      tooltip: strings.feature('Fler moduler'),
+                      icon: const Icon(Icons.add, size: 20),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => _go(ProductRouteContract.workspaces),
+                    ),
                   ),
                   for (final (key, icon, title) in _drawerWorkspaceModules)
                     _NavPanelRow(

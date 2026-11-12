@@ -146,6 +146,15 @@ void main() {
     await tester.tap(find.byKey(const Key('drawer-tool-editorial')));
     await tester.pumpAndSettle();
     expect(find.text('Nyhetsredaktion'), findsWidgets);
+    // The + on the heading opens the page listing every module.
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('drawer-workspaces-add')),
+      -100,
+      scrollable: list,
+    );
+    await tester.tap(find.byKey(const Key('drawer-workspaces-add')));
+    await tester.pumpAndSettle();
+    expect(find.text('Moduler'), findsOneWidget);
   });
 
   testWidgets('a player has no workspaces or tools in the drawer', (

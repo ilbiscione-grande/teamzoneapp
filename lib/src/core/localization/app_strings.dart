@@ -1431,6 +1431,7 @@ class AppStrings {
     'Matchplanen är sparad.': 'Match plan saved.',
     'Minut (frivilligt)': 'Minute (optional)',
     'Moduler': 'Modules',
+    'Fler moduler': 'More modules',
     'Modulerna kunde inte hämtas.': 'Modules could not be loaded.',
     'Mot': 'Against',
     'Någon annan har ändrat matchplanen. Den senaste versionen visas nu.':
