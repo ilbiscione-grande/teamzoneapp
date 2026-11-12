@@ -2,7 +2,8 @@
 // frame in hand: a colour or an effect. A locked copy is left as it is. An
 // effect chosen so is also remembered on the object (lastingEffects), so a
 // frame added later has it too, unless that is turned off for the object.
-// An object can also be set as it is in one frame in all the others.
+// An object can also be set as it is in one frame in all the others, and
+// put in those it is missing from.
 import { settleBalls } from "./ball.ts";
 import { settleLines } from "./line-attach.ts";
 import { toggleEffect } from "./document.ts";
@@ -47,16 +48,18 @@ function ownedByFrame({ effect, effects, lastingEffects, zoomLevel, zoomIn, zoom
   return { effect, effects, lastingEffects, zoomLevel, zoomIn, zoomOut, locked, group, ...(rest.type === "ball" ? { flight: rest.flight } : {}) };
 }
 
-/** How many other frames have a copy of these objects that can be changed. */
+/** How many other frames copying these objects to every frame changes: those with a copy that can be changed, or missing one. */
 export function otherFramesWith(board: Board, frameIndex: number, ids: string[]): number {
-  return board.frames.filter((frame, index) => index !== frameIndex && frame.objects.some(item => ids.includes(item.id) && !item.locked)).length;
+  return board.frames.filter((frame, index) => index !== frameIndex
+    && ids.some(id => { const copy = frame.objects.find(item => item.id === id); return !copy || !copy.locked; })).length;
 }
 
 /**
- * The objects as they are in this frame, look and place, in every other frame
- * they are in. They stand still between those frames then, so no bend is left
- * (one on a move of no length would swing out and back); a ball follows its
- * player, in the frames where the player is.
+ * The objects as they are in this frame, look and place, in every other frame:
+ * set so where they are, and put in where they are missing, with the effects
+ * they keep for frames added later. They stand still between the frames then,
+ * so no bend is left (one on a move of no length would swing out and back); a
+ * ball follows its player, in the frames where the player is.
  */
 export function copyToEveryFrame(board: Board, frameIndex: number, ids: string[]): Board {
   const sources = new Map((board.frames[frameIndex]?.objects ?? []).filter(item => ids.includes(item.id)).map(item => [item.id, item]));
@@ -64,7 +67,14 @@ export function copyToEveryFrame(board: Board, frameIndex: number, ids: string[]
     const source = sources.get(item.id);
     return source ? ({ ...source, ...ownedByFrame(item), pathControl: null } as TacticsObject) : null;
   });
-  return { ...copied, frames: copied.frames.map(frame => ({ ...frame, objects: settleLines(settleBalls(frame.objects)) })) };
+  return {
+    ...copied,
+    frames: copied.frames.map((frame, index) => {
+      const missing = index === frameIndex ? [] : [...sources.values()].filter(source => !frame.objects.some(item => item.id === source.id))
+        .map(source => ({ ...source, effect: null, effects: source.lastingEffects ?? [], pathControl: null }) as TacticsObject);
+      return { ...frame, objects: settleLines(settleBalls([...frame.objects, ...missing])) };
+    }),
+  };
 }
 
 /** Whether every copy of the object that can be changed has the effect. */

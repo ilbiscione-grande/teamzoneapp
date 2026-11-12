@@ -2,7 +2,7 @@
 
 // The selected objects copied on: to the next frame in one press, or to any
 // other frame of the board, or to the first frame of another board; or set
-// as they are here in every frame they are in. Says where they went; the
+// as they are here in every frame, put in where they are missing. Says where they went; the
 // board in hand stays shown.
 import { useState } from "react";
 import { copyObjects, type FramePlace } from "../../../lib/tactics/copy.ts";
@@ -35,7 +35,7 @@ export function CopyTo({ board, ids }: { board: Board; ids: string[] }) {
   };
   const elsewhere = otherFramesWith(board, frameIndex, ids);
   const copyEverywhere = () => {
-    if (!window.confirm(t("Det du har markerat får samma utseende och plats i alla frames där det finns, så rörelserna mellan dem försvinner. Effekterna ligger kvar."))) return;
+    if (!window.confirm(t("Det du har markerat läggs in i alla frames, med samma utseende och plats, så rörelserna mellan dem försvinner. Effekterna ligger kvar."))) return;
     useEditor.getState().change(document => updateBoard(document, board.id, current => copyToEveryFrame(current, frameIndex, ids)));
     setDone(elsewhere === 1 ? t("Kopierat till en annan frame.") : t("Kopierat till {count} andra frames.", { count: elsewhere }));
   };
@@ -58,7 +58,7 @@ export function CopyTo({ board, ids }: { board: Board; ids: string[] }) {
           </button>
         )}
         {elsewhere > 0 && (
-          <button type="button" className="wt-button secondary small" title={t("Utseende, storlek, plats och rotation blir som i den här framen, i alla frames objektet finns i.")} onClick={copyEverywhere}>
+          <button type="button" className="wt-button secondary small" title={t("Objektet läggs in i alla frames, med utseende, storlek, plats och rotation som i den här framen.")} onClick={copyEverywhere}>
             {t("Kopiera till alla frames")}
           </button>
         )}

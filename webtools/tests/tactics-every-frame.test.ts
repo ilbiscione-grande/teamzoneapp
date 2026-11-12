@@ -106,7 +106,7 @@ test("one object's effects can stay out of frames added later, the others' not",
   assert.deepEqual(effectsOf(insertFrame(board, 1).frames[2].objects[0]), ["ring"], "and back on");
 });
 
-test("an object is set as in one frame in the others it is in, keeping what plays there", () => {
+test("an object is set as in one frame in the others, put in where it is missing, keeping what plays there", () => {
   const here = { ...player, x: 50, y: 30, rotation: 90, color: "#444444", name: "Ali" } as TacticsObject;
   const there = { ...player, x: 1, y: 2, effects: ["pulse"] as Effect[], zoomLevel: "close", pathControl: { x: 9, y: 9 } } as TacticsObject;
   const held = { ...player, x: 3, y: 4, locked: true } as TacticsObject;
@@ -118,10 +118,11 @@ test("an object is set as in one frame in the others it is in, keeping what play
   assert.deepEqual(effectsOf(copy), ["pulse"], "the frame's own effect");
   assert.equal(copy.zoomLevel, "close");
   assert.equal(copy.pathControl, null, "no bend on a move of no length");
-  assert.equal(board.frames[2].objects.length, 1, "not added where it was not");
+  assert.deepEqual(board.frames[2].objects.map(item => [item.id, item.x]), [[cone.id, cone.x], [player.id, 50]], "put in where it was not");
+  assert.equal(board.frames[2].objects[1].pathControl, null);
   assert.equal(board.frames[3].objects[0].x, 3, "a locked copy stays");
   assert.deepEqual(board.frames[0].objects[1], cone, "others are left alone");
-  assert.equal(otherFramesWith(boardOf(...frames), 0, [player.id]), 1, "one to change");
+  assert.equal(otherFramesWith(boardOf(...frames), 0, [player.id]), 2, "one to change and one to put it in, not the locked one");
 });
 
 test("a ball stays with its player when either is set in every frame", () => {
