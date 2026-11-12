@@ -108,6 +108,11 @@ class ProductRouteContract {
       if (to.isNotEmpty) 'to': to.join(','),
     },
   ).toString();
+
+  /// The inbox on its Klubbsajt tab: messages from the public pages.
+  static String inboxSite() =>
+      Uri(path: inbox, queryParameters: {'action': 'site'}).toString();
+
   static String inboxAnnouncement() =>
       Uri(path: inbox, queryParameters: {'action': 'announce'}).toString();
 

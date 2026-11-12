@@ -49,6 +49,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
   // handles messages from the club site (or leads a team).
   TabController? _tabs;
   List<String> _tabKeys = const ['inbox'];
+  bool _openedSiteTab = false;
   bool _poolLeader = false;
   int _poolUnread = 0;
   int _contactCount = 0;
@@ -1141,7 +1142,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
               TextButton.icon(
                 onPressed: _crossClub,
                 icon: const Icon(Icons.travel_explore),
-                label: Text(AppStrings.of(context).feature('Ledarkontakt')),
+                label: Text(AppStrings.of(context).feature('Andra klubbar')),
               ),
               TextButton.icon(
                 onPressed: _showNotifications,
@@ -1551,7 +1552,14 @@ class _InboxSurfaceState extends State<_InboxSurface>
       if (_poolLeader || _contactCount > 0) 'site',
     ];
     if (_tabs != null && keys.join() == _tabKeys.join()) return;
-    final previous = _tabs == null ? 'inbox' : _tabKeys[_tabs!.index];
+    var previous = _tabs == null ? 'inbox' : _tabKeys[_tabs!.index];
+    // ?action=site (Home's Att hantera): Klubbsajt once it is there.
+    if (widget.initialAction == 'site' &&
+        !_openedSiteTab &&
+        keys.contains('site')) {
+      _openedSiteTab = true;
+      previous = 'site';
+    }
     _tabs?.dispose();
     _tabKeys = keys;
     _tabs = TabController(
@@ -1624,7 +1632,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
                   context,
                   value: 'cross_club',
                   icon: Icons.travel_explore,
-                  label: 'Ledarkontakt',
+                  label: 'Andra klubbar',
                 ),
                 _compactAction(
                   context,
@@ -2247,7 +2255,7 @@ class _InboxSurfaceState extends State<_InboxSurface>
     final query = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(AppStrings.of(context).feature('Hitta extern kontakt')),
+        title: Text(AppStrings.of(context).feature('Ledare i andra klubbar')),
         content: TextField(
           controller: search,
           maxLength: 80,

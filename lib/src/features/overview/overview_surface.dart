@@ -53,6 +53,10 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
   String? _guardianChildId;
   late Future<List<_GuardianChildElsewhere>> _childrenElsewhere;
   late Future<ClubHome?> _clubHome;
+
+  /// Messages from the public pages waiting to be handled (Klubbsajt);
+  /// null when there are none to handle or they could not be counted.
+  int? _siteMessages;
   Future<MainSurfacesProjection> _reload() =>
       widget.overview.load(contextIds: [widget.contextValue.id]);
 
@@ -190,6 +194,7 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
 
   Future<ClubHome?> _loadClubHome() async {
     if (!_isClubHome) return null;
+    unawaited(_loadSiteMessages());
     try {
       return await (widget.overview as ClubHomeServices).loadClubHome(
         widget.contextValue.id,
@@ -197,6 +202,22 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
     } catch (error) {
       AppErrors.caught('overview_surface._loadClubHome', error);
       return null;
+    }
+  }
+
+  Future<void> _loadSiteMessages() async {
+    try {
+      final threads = await widget.messaging.listContactThreads().timeout(
+        const Duration(seconds: 15),
+      );
+      if (!mounted) return;
+      setState(() {
+        _siteMessages = threads.isEmpty
+            ? null
+            : threads.where((thread) => !thread.handled).length;
+      });
+    } catch (error) {
+      AppErrors.caught('overview_surface._loadSiteMessages', error);
     }
   }
 
@@ -476,6 +497,7 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
                         );
                       }
                       return _ClubHomeContent(
+                        siteMessages: _siteMessages,
                         home: home,
                         contextValue: widget.contextValue,
                         roster: widget.roster,

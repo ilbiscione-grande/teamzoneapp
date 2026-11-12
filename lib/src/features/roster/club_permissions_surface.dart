@@ -1,5 +1,12 @@
 part of '../../app/teamzone_app.dart';
 
+/// Areas the server already gives to whoever holds members and teams
+/// (internal.actor_manages_club_referees and actor_pays_club_referees).
+bool _includedInMembers(Set<String> capabilities, String area) =>
+    area == 'club.referees.manage' &&
+    !capabilities.contains(area) &&
+    capabilities.contains('club.memberships.manage');
+
 const _clubAreaLabels = {
   'publication.manage': (
     'Publicering',
@@ -147,20 +154,34 @@ class _ClubPermissionsSurfaceState extends State<_ClubPermissionsSurface> {
                         ),
                       ),
                       for (final area in ClubPermissions.areas)
-                        SwitchListTile(
-                          key: ValueKey(
-                            'club-permission-${person.personId}-$area',
+                        if (_includedInMembers(person.capabilities, area))
+                          // The server lets members and teams handle the
+                          // referees too; a switch of its own would mislead.
+                          SwitchListTile(
+                            key: ValueKey(
+                              'club-permission-${person.personId}-$area',
+                            ),
+                            dense: true,
+                            title: Text(_clubAreaLabels[area]!.$1),
+                            subtitle: const Text('Ingår i Medlemmar och lag.'),
+                            value: true,
+                            onChanged: null,
+                          )
+                        else
+                          SwitchListTile(
+                            key: ValueKey(
+                              'club-permission-${person.personId}-$area',
+                            ),
+                            dense: true,
+                            title: Text(_clubAreaLabels[area]!.$1),
+                            subtitle: Text(_clubAreaLabels[area]!.$2),
+                            value: person.capabilities.contains(area),
+                            onChanged:
+                                _busyPerson != null ||
+                                    !permissions.grantable.contains(area)
+                                ? null
+                                : (on) => _toggle(person, area, on),
                           ),
-                          dense: true,
-                          title: Text(_clubAreaLabels[area]!.$1),
-                          subtitle: Text(_clubAreaLabels[area]!.$2),
-                          value: person.capabilities.contains(area),
-                          onChanged:
-                              _busyPerson != null ||
-                                  !permissions.grantable.contains(area)
-                              ? null
-                              : (on) => _toggle(person, area, on),
-                        ),
                     ],
                   ),
                 ),

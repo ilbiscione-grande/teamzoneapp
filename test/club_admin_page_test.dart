@@ -38,10 +38,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Home names Klubb instead of only the permissions.
-    final card = find.byKey(const ValueKey('club-home-club'));
+    // Home lists only what is waiting; Klubb is in the menu.
+    expect(find.byKey(const ValueKey('club-home-club')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('club-home-applications')),
+      findsOneWidget,
+    );
+    expect(find.text('Kommande i klubben'), findsOneWidget);
+    final card = find.byKey(const ValueKey('drawer-tool-club'));
     expect(card, findsOneWidget);
-    expect(find.byKey(const ValueKey('club-home-permissions')), findsNothing);
     await _tapVisible(tester, card);
     await tester.pumpAndSettle();
 
@@ -110,7 +115,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await _tapVisible(tester, find.byKey(const ValueKey('club-home-club')));
+    await _tapVisible(tester, find.byKey(const ValueKey('drawer-tool-club')));
     await tester.pumpAndSettle();
     await _tapVisible(
       tester,
@@ -165,7 +170,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await _tapVisible(tester, find.byKey(const ValueKey('club-home-club')));
+    await _tapVisible(tester, find.byKey(const ValueKey('drawer-tool-club')));
     await tester.pumpAndSettle();
     await _tapVisible(
       tester,
@@ -357,7 +362,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await _tapVisible(tester, find.byKey(const ValueKey('club-home-club')));
+    await _tapVisible(tester, find.byKey(const ValueKey('drawer-tool-club')));
     await tester.pumpAndSettle();
     await _tapVisible(tester, find.byKey(const ValueKey('club-admin-codes')));
     await tester.pumpAndSettle();

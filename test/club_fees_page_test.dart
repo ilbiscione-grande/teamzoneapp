@@ -36,7 +36,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await _tapVisible(tester, find.byKey(const ValueKey('club-home-club')));
+    await _tapVisible(tester, find.byKey(const ValueKey('drawer-tool-club')));
     await tester.pumpAndSettle();
     await _tapVisible(tester, find.byKey(const ValueKey('club-admin-fees')));
     await tester.pumpAndSettle();

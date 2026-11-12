@@ -2915,7 +2915,54 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
       unawaited(_showRefereeAssignment(summary));
       return;
     }
+    if (!summary.canOpen) {
+      unawaited(_showTeamActivity(summary));
+      return;
+    }
     widget.onNavigate(ProductRouteContract.calendarEvent(summary.id));
+  }
+
+  /// A team activity a club functionary sees but cannot open: what, when,
+  /// where and which team.
+  Future<void> _showTeamActivity(CalendarEventSummary summary) {
+    final strings = AppStrings.of(context);
+    final material = MaterialLocalizations.of(context);
+    final start = summary.startsAt.toLocal();
+    return showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          key: const ValueKey('calendar-team-activity'),
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.event_outlined),
+              title: Text(summary.title),
+              subtitle: Text(
+                [
+                  summary.teamName,
+                  summary.allDay
+                      ? material.formatMediumDate(start)
+                      : '${material.formatMediumDate(start)} ${material.formatTimeOfDay(TimeOfDay.fromDateTime(start))}',
+                  ?summary.locationName,
+                ].join(' · '),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Text(
+                strings.feature(
+                  'Lagets ledare och spelare ser detaljerna. Du ser vad, när och var.',
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// A referee assignment: the match, the place and its state; answering

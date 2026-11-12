@@ -1,8 +1,8 @@
 part of '../../app/teamzone_app.dart';
 
-// UX review, club functionary without a team: Home shows the work your club
-// permissions give and the club's teams; Laget lists the teams, and a team
-// opens read-only.
+// UX review, club functionary without a team: Home shows what is waiting
+// and what is coming in the club; Laget lists the teams, and a team opens
+// read-only.
 
 String _boardOfficeLabel(AppStrings strings, String office) =>
     strings.feature(switch (office) {
@@ -51,18 +51,24 @@ void _openClubTeam(
   );
 }
 
-/// Home of a club context: the tasks, then the teams.
+/// Home of a club context: what is waiting, the shortcuts your club roles
+/// give, then what is coming in the club.
 class _ClubHomeContent extends StatelessWidget {
   const _ClubHomeContent({
     required this.home,
     required this.contextValue,
     required this.roster,
     required this.onNavigate,
+    this.siteMessages,
   });
   final ClubHome home;
   final TeamZoneContext contextValue;
   final RosterServices? roster;
   final ValueChanged<String> onNavigate;
+
+  /// Messages from the public pages waiting to be handled; null when the
+  /// viewer has none to handle.
+  final int? siteMessages;
 
   Widget _task(
     BuildContext context, {
@@ -87,12 +93,67 @@ class _ClubHomeContent extends StatelessWidget {
     ),
   );
 
+  Widget _heading(BuildContext context, String text) => Padding(
+    padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
+    child: Text(text, style: Theme.of(context).textTheme.titleLarge),
+  );
+
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     final board = home.board;
     final economy = home.economy;
     final members = home.members;
+    final publication = home.publication;
+    final site = siteMessages;
+    // Att hantera: only what is waiting; Klubb in the menu has the rest.
+    final pending = <Widget>[
+      if (members != null && members.pendingApplications > 0)
+        _task(
+          context,
+          key: const ValueKey('club-home-applications'),
+          icon: Icons.how_to_reg_outlined,
+          title: strings.feature('Medlemsansökningar'),
+          subtitle:
+              '${members.pendingApplications} ${strings.feature('väntar på beslut')}',
+          badge: members.pendingApplications,
+          route: ProductRouteContract.teamApplications(),
+        ),
+      if (members != null && members.pendingTeamRequests > 0)
+        _task(
+          context,
+          key: const ValueKey('club-home-team-requests'),
+          icon: Icons.approval_outlined,
+          title: strings.feature('Förfrågningar om nya lag'),
+          subtitle:
+              '${members.pendingTeamRequests} ${strings.feature('väntar på beslut')}',
+          badge: members.pendingTeamRequests,
+          route: _clubTeamRequestsRoute,
+        ),
+      if (publication != null && publication.pendingTeamPages > 0)
+        _task(
+          context,
+          key: const ValueKey('club-home-team-pages'),
+          icon: Icons.public_outlined,
+          title: strings.feature('Ansökningar om lagsida'),
+          subtitle:
+              '${publication.pendingTeamPages} ${strings.feature('väntar på beslut')}',
+          badge: publication.pendingTeamPages,
+          route: ProductRouteContract.publication,
+        ),
+      if (site != null && site > 0)
+        _task(
+          context,
+          key: const ValueKey('club-home-site-messages'),
+          icon: Icons.mark_email_unread_outlined,
+          title: strings.feature('Meddelanden från de publika sidorna'),
+          subtitle: '$site ${strings.feature('att hantera')}',
+          badge: site,
+          route: ProductRouteContract.inboxSite(),
+        ),
+    ];
+    final handlesQueues =
+        members != null || publication != null || site != null;
     final tasks = <Widget>[
       if (board != null)
         _task(
@@ -120,55 +181,6 @@ class _ClubHomeContent extends StatelessWidget {
           badge: economy.pendingEntries,
           route: ProductRouteContract.economy,
         ),
-      if (members != null) ...[
-        _task(
-          context,
-          key: const ValueKey('club-home-applications'),
-          icon: Icons.how_to_reg_outlined,
-          title: strings.feature('Medlemsansökningar'),
-          subtitle: members.pendingApplications > 0
-              ? '${members.pendingApplications} ${strings.feature('väntar på beslut')}'
-              : strings.feature('Inga väntande'),
-          badge: members.pendingApplications,
-          route: ProductRouteContract.teamApplications(),
-        ),
-        _task(
-          context,
-          key: const ValueKey('club-home-team-requests'),
-          icon: Icons.approval_outlined,
-          title: strings.feature('Förfrågningar om nya lag'),
-          subtitle: members.pendingTeamRequests > 0
-              ? '${members.pendingTeamRequests} ${strings.feature('väntar på beslut')}'
-              : strings.feature('Inga väntande'),
-          badge: members.pendingTeamRequests,
-          route: _clubTeamRequestsRoute,
-        ),
-      ],
-      if (_canHandleClubFees(contextValue))
-        _task(
-          context,
-          key: const ValueKey('club-home-club'),
-          icon: Icons.domain_outlined,
-          title: strings.feature('Klubb'),
-          subtitle: strings.feature(
-            contextValue.can('club.memberships.manage')
-                ? 'Lag, behörigheter, klubbmärke, färger och verifiering'
-                : 'Medlemsavgifter och lagavgifter, med familjerabatt',
-          ),
-          route: ProductRouteContract.club,
-        ),
-      if (home.publication case final publication?)
-        _task(
-          context,
-          key: const ValueKey('club-home-team-pages'),
-          icon: Icons.public_outlined,
-          title: strings.feature('Ansökningar om lagsida'),
-          subtitle: publication.pendingTeamPages > 0
-              ? '${publication.pendingTeamPages} ${strings.feature('väntar på beslut')}'
-              : strings.feature('Inga väntande'),
-          badge: publication.pendingTeamPages,
-          route: ProductRouteContract.publication,
-        ),
       if (contextValue.can('club.referees.manage'))
         _task(
           context,
@@ -191,16 +203,79 @@ class _ClubHomeContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ...tasks,
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 20, 4, 8),
-          child: Text(
-            strings.feature('Klubbens lag'),
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+        if (handlesQueues) ...[
+          _heading(context, strings.feature('Att hantera')),
+          if (pending.isEmpty)
+            Card(
+              key: const ValueKey('club-home-nothing-pending'),
+              child: ListTile(
+                leading: const Icon(Icons.check_circle_outline),
+                title: Text(strings.feature('Inget att hantera just nu')),
+              ),
+            )
+          else
+            ...pending,
+        ],
+        if (tasks.isNotEmpty) ...[
+          if (handlesQueues) const SizedBox(height: 8),
+          ...tasks,
+        ],
+        _heading(context, strings.feature('Kommande i klubben')),
+        _ClubUpcoming(
+          teams: home.teams,
+          roster: roster,
+          onCalendar: () => onNavigate(ProductRouteContract.calendar),
         ),
-        _ClubTeamsList(teams: home.teams, roster: roster),
       ],
+    );
+  }
+}
+
+/// The club's next activities across all teams; each opens its team.
+class _ClubUpcoming extends StatelessWidget {
+  const _ClubUpcoming({
+    required this.teams,
+    required this.roster,
+    required this.onCalendar,
+  });
+  final List<ClubHomeTeam> teams;
+  final RosterServices? roster;
+  final VoidCallback onCalendar;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final upcoming = [
+      for (final team in teams)
+        for (final event in team.upcoming) (team: team, event: event),
+    ]..sort((a, b) => a.event.startsAt.compareTo(b.event.startsAt));
+    if (upcoming.isEmpty) {
+      return Text(strings.feature('Inga kommande aktiviteter.'));
+    }
+    return Card(
+      child: Column(
+        children: [
+          for (final item in upcoming.take(6))
+            ListTile(
+              leading: Icon(_clubEventIcon(item.event.eventType)),
+              title: Text('${item.event.title} · ${item.team.name}'),
+              subtitle: Text(
+                [
+                  _clubEventWhen(context, item.event),
+                  ?item.event.locationName,
+                ].join(' · '),
+              ),
+              onTap: () => _openClubTeam(context, item.team, roster),
+            ),
+          ListTile(
+            key: const ValueKey('club-home-calendar'),
+            leading: const Icon(Icons.calendar_month_outlined),
+            title: Text(strings.feature('Visa kalendern')),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: onCalendar,
+          ),
+        ],
+      ),
     );
   }
 }

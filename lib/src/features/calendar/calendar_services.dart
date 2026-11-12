@@ -766,7 +766,7 @@ class SupabaseCalendarServices
         final value = await _client
             .schema('api')
             .rpc<Object?>(
-              'list_calendar_page_v2',
+              'list_calendar_page_v3',
               params: {
                 'context_ids': contextIds,
                 'range_start': window.from.toUtc().toIso8601String(),

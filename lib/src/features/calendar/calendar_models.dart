@@ -20,6 +20,7 @@ class CalendarEventSummary {
     this.scoreUs,
     this.scoreOpponent,
     this.isShared = false,
+    this.canOpen = true,
     this.archivedAt,
     this.archiveReason,
     this.refereeSlot,
@@ -38,6 +39,10 @@ class CalendarEventSummary {
   final String? matchState;
   final int? scoreUs, scoreOpponent;
   final bool isShared;
+
+  /// False for a team activity a club functionary sees only as what, when
+  /// and where; opening it needs a role in the team.
+  final bool canOpen;
   final DateTime? archivedAt;
   final String? archiveReason;
   final int revision;
@@ -60,6 +65,7 @@ class CalendarEventSummary {
         scoreUs: (json['score_us'] as num?)?.toInt(),
         scoreOpponent: (json['score_opponent'] as num?)?.toInt(),
         isShared: json['is_shared'] as bool? ?? false,
+        canOpen: json['can_open'] as bool? ?? true,
         archivedAt: json['archived_at'] == null
             ? null
             : DateTime.parse(json['archived_at'] as String),

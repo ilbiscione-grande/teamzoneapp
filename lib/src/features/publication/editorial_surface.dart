@@ -186,6 +186,24 @@ class _EditorialSurfaceState extends State<_EditorialSurface> {
     }
   }
 
+  /// "Visas på klubbsidan och A": where an article shows, in words.
+  String _whereShown(
+    AppStrings strings,
+    bool publishToClub,
+    Iterable<String> teamIds,
+  ) {
+    final places = [
+      if (publishToClub) strings.feature('klubbsidan'),
+      for (final teamId in teamIds)
+        _teams[teamId] ?? strings.feature('en lagsida'),
+    ];
+    if (places.isEmpty) return strings.feature('Visas inte på någon sida');
+    final list = places.length == 1
+        ? places.single
+        : '${places.sublist(0, places.length - 1).join(', ')} ${strings.feature('och')} ${places.last}';
+    return '${strings.feature('Visas på')} $list';
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
@@ -278,7 +296,7 @@ class _EditorialSurfaceState extends State<_EditorialSurface> {
                   subtitle: Text(
                     '${strings.domainValue(article.state)} · /${article.slug}'
                     '${article.mediaStatus == 'none' ? '' : ' · ${strings.feature(_heroStateLabel(article.mediaStatus))}'}\n'
-                    '${[if (article.publishToClub) strings.feature('Klubbens publika sida'), for (final teamId in article.teamIds) _teams[teamId] ?? strings.feature('Vald publik lagsida')].join(' · ')}',
+                    '${_whereShown(strings, article.publishToClub, article.teamIds)}',
                   ),
                   isThreeLine: true,
                   onTap: pending || article.state == 'published'
