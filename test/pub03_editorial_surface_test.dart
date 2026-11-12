@@ -206,6 +206,69 @@ void main() {
     expect(find.text('Säsongen startar'), findsOneWidget);
   });
 
+  testWidgets('a club-wide editor picks any team page in the club', (
+    tester,
+  ) async {
+    final editorial = _Editorial()
+      ..clubTeams = const [
+        {'id': 'team-j', 'name': 'J-lag', 'mode': 'private'},
+        {'id': 'team-a', 'name': 'A-lag', 'mode': 'published'},
+      ];
+    await tester.pumpWidget(_app(editorial, canPublish: true));
+    await tester.pumpAndSettle();
+    await _openNewsroom(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Ny artikel'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Rubrik'),
+      'Seger för A-laget',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Artikeltext'),
+      'A-laget vann.',
+    );
+    final scrollable = find
+        .descendant(
+          of: find.byType(ListView).last,
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    final club = find.byKey(const Key('editorial-target-club'));
+    await tester.scrollUntilVisible(club, 200, scrollable: scrollable);
+    expect(find.text('Var ska nyheten visas?'), findsOneWidget);
+    await tester.ensureVisible(club);
+    await tester.pumpAndSettle();
+    await tester.tap(club);
+    await tester.pumpAndSettle();
+    // The club's teams and the own team, by name.
+    final teamA = find.byKey(const Key('editorial-target-team-team-a'));
+    await tester.scrollUntilVisible(teamA, 200, scrollable: scrollable);
+    await tester.ensureVisible(teamA);
+    await tester.pumpAndSettle();
+    await tester.tap(teamA);
+    await tester.pumpAndSettle();
+    final teamJ = find.byKey(const Key('editorial-target-team-team-j'));
+    await tester.scrollUntilVisible(teamJ, 200, scrollable: scrollable);
+    expect(find.byKey(const Key('editorial-target-team-team')), findsOneWidget);
+    expect(
+      find.textContaining('Lagets publika sida är inte publicerad än'),
+      findsOneWidget,
+    );
+    await tester.scrollUntilVisible(
+      find.text('Spara utkast'),
+      300,
+      scrollable: scrollable,
+    );
+    await tester.tap(find.text('Spara utkast'));
+    await tester.pumpAndSettle();
+    expect(editorial.saved?.teamIds, {'team-a'});
+    expect(editorial.saved?.publishToClub, isFalse);
+    // The list says which page the news goes to.
+    expect(find.textContaining('A-lag'), findsWidgets);
+    expect(find.textContaining('Vald publik lagsida'), findsNothing);
+  });
+
   testWidgets('editor shows publish action and explains unpublished club', (
     tester,
   ) async {
@@ -226,6 +289,8 @@ void main() {
           )
           .first,
     );
+    await tester.ensureVisible(find.text('Publicera nu'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Publicera nu'));
     await tester.pumpAndSettle();
     expect(
@@ -275,6 +340,17 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('editorial-hero-remove')));
     await tester.pumpAndSettle();
+    // The form is longer now: scroll back up to the image.
+    await tester.scrollUntilVisible(
+      hero,
+      -200,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView).last,
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     expect(
       find.descendant(of: hero, matching: find.text('Ingen bild vald')),
       findsOneWidget,
@@ -339,6 +415,8 @@ void main() {
           )
           .first,
     );
+    await tester.ensureVisible(find.text('Publicera nu'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Publicera nu'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
@@ -467,6 +545,14 @@ class _Editorial extends UnconfiguredEditorialServices {
   int managementLoads = 0;
   bool teamResults = false, teamTraining = false, teamMatches = false;
   int teamRevision = 0;
+  List<Map<String, dynamic>>? clubTeams;
+  @override
+  Future<Map<String, dynamic>> getPublicationSelfService(String clubId) async {
+    final teams = clubTeams;
+    if (teams == null) return super.getPublicationSelfService(clubId);
+    return {'teams': teams};
+  }
+
   @override
   Future<Map<String, dynamic>> getTeamEventVisibility(String teamId) async => {
     'show_results': teamResults,

@@ -28,6 +28,46 @@ class _EditorialSurfaceState extends State<_EditorialSurface> {
       isEmpty: (items) => items.isEmpty,
     )..addListener(_changed);
     unawaited(_data.load());
+    unawaited(_loadTeams());
+  }
+
+  /// The club's active teams, so an editor for the whole club can pick a
+  /// team page too (the server allows any team in the club); the own teams
+  /// are the fallback when the list cannot be read.
+  Map<String, String> _clubTeams = const {};
+  Set<String> _unpublishedTeams = const {};
+  Future<void> _loadTeams() async {
+    try {
+      final data = await widget.editorial.getPublicationSelfService(
+        widget.contextValue.clubId,
+      );
+      final teams = (data['teams'] as List? ?? const []).whereType<Map>();
+      if (!mounted) return;
+      setState(() {
+        _clubTeams = {
+          for (final team in teams) '${team['id']}': '${team['name']}',
+        };
+        _unpublishedTeams = {
+          for (final team in teams)
+            if (team['mode'] != 'published') '${team['id']}',
+        };
+      });
+    } catch (_) {
+      // Without the club's list the own teams remain.
+    }
+  }
+
+  /// Team id → name, sorted by name: the own teams and the club's.
+  Map<String, String> get _teams {
+    final teams = {
+      for (final value in widget.contexts)
+        if (value.clubId == widget.contextValue.clubId && value.teamId != null)
+          value.teamId!: value.teamName ?? value.clubName,
+      ..._clubTeams,
+    };
+    final entries = teams.entries.toList()
+      ..sort((a, b) => a.value.toLowerCase().compareTo(b.value.toLowerCase()));
+    return Map.fromEntries(entries);
   }
 
   void _changed() {
@@ -74,12 +114,8 @@ class _EditorialSurfaceState extends State<_EditorialSurface> {
       MaterialPageRoute(
         builder: (_) => _EditorialEditor(
           clubId: widget.contextValue.clubId,
-          teams: {
-            for (final value in widget.contexts)
-              if (value.clubId == widget.contextValue.clubId &&
-                  value.teamId != null)
-                value.teamId!: value.teamName ?? value.clubName,
-          },
+          teams: _teams,
+          unpublishedTeams: _unpublishedTeams,
           editorial: widget.editorial,
           article: article,
         ),
@@ -242,7 +278,7 @@ class _EditorialSurfaceState extends State<_EditorialSurface> {
                   subtitle: Text(
                     '${strings.domainValue(article.state)} · /${article.slug}'
                     '${article.mediaStatus == 'none' ? '' : ' · ${strings.feature(_heroStateLabel(article.mediaStatus))}'}\n'
-                    '${[if (article.publishToClub) strings.feature('Klubbens publika sida'), for (final teamId in article.teamIds) widget.contexts.where((value) => value.teamId == teamId).map((value) => value.teamName).firstOrNull ?? strings.feature('Vald publik lagsida')].join(' · ')}',
+                    '${[if (article.publishToClub) strings.feature('Klubbens publika sida'), for (final teamId in article.teamIds) _teams[teamId] ?? strings.feature('Vald publik lagsida')].join(' · ')}',
                   ),
                   isThreeLine: true,
                   onTap: pending || article.state == 'published'
@@ -327,10 +363,14 @@ class _EditorialEditor extends StatefulWidget {
     required this.clubId,
     required this.teams,
     required this.editorial,
+    this.unpublishedTeams = const {},
     this.article,
   });
   final String clubId;
   final Map<String, String> teams;
+
+  /// Teams whose public page is not published yet.
+  final Set<String> unpublishedTeams;
   final EditorialServices editorial;
   final EditorialArticle? article;
   @override
@@ -684,7 +724,15 @@ class _EditorialEditorState extends State<_EditorialEditor> {
               ),
               maxLength: 120,
             ),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                strings.feature('Var ska nyheten visas?'),
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+            ),
             SwitchListTile(
+              key: const Key('editorial-target-club'),
               value: _club,
               onChanged: (value) => setState(() => _club = value),
               title: Text(strings.feature('Visa på klubbens publika sida')),
@@ -694,6 +742,7 @@ class _EditorialEditorState extends State<_EditorialEditor> {
             ),
             for (final team in widget.teams.entries)
               CheckboxListTile(
+                key: Key('editorial-target-team-${team.key}'),
                 value: _teams.contains(team.key),
                 onChanged: (value) => setState(
                   () => value == true
@@ -703,7 +752,9 @@ class _EditorialEditorState extends State<_EditorialEditor> {
                 title: Text(team.value),
                 subtitle: Text(
                   strings.feature(
-                    'Visa på lagets publika sida och i följarnas flöde',
+                    widget.unpublishedTeams.contains(team.key)
+                        ? 'Lagets publika sida är inte publicerad än. Nyheten syns där när den blir det.'
+                        : 'Visa på lagets publika sida och i följarnas flöde',
                   ),
                 ),
               ),

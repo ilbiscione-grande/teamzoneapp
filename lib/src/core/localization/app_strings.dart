@@ -1635,6 +1635,9 @@ class AppStrings {
     'Visa på klubbens publika sida': 'Show on the club\'s public page',
     'Nyheten kan läsas utan inloggning.':
         'The news item can be read without signing in.',
+    'Var ska nyheten visas?': 'Where should the news appear?',
+    'Lagets publika sida är inte publicerad än. Nyheten syns där när den blir det.':
+        "The team's public page is not published yet. The news appears there once it is.",
     'Visa på lagets publika sida och i följarnas flöde':
         'Show on the team\'s public page and in followers\' feeds',
     'Välj minst en publik klubb- eller lagsida.':
