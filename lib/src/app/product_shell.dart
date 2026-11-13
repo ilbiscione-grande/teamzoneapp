@@ -489,6 +489,7 @@ class _ProductShellState extends State<_ProductShell> {
         builder: (_, _) => _BoardSurface(
           contextValue: widget.contextValue,
           board: widget.board,
+          onContextsChanged: widget.onContextsChanged,
         ),
       ),
       GoRoute(

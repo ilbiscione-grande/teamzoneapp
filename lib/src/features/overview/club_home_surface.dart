@@ -163,6 +163,8 @@ class _ClubHomeContent extends StatelessWidget {
           title: strings.feature('Styrelse'),
           subtitle: board.pendingChanges > 0
               ? '${board.pendingChanges} ${strings.feature('mandatändringar väntar')}'
+              : board.activeMandates == 1
+              ? strings.feature('1 aktivt mandat')
               : '${board.activeMandates} ${strings.feature('aktiva mandat')}',
           badge: board.pendingChanges,
           route: ProductRouteContract.board,

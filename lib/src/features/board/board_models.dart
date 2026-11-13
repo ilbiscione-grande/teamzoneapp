@@ -114,11 +114,21 @@ class BoardOverview {
     required this.assignments,
     required this.mandates,
     required this.changes,
+    this.forming = false,
+    this.canRegister = false,
   });
+
+  /// Fewer than three people hold a mandate: changes are registered at once.
+  final bool forming;
+
+  /// The viewer may register a change at once while the board is forming.
+  final bool canRegister;
   final List<BoardAssignment> assignments;
   final List<BoardMandate> mandates;
   final List<BoardMandateChange> changes;
   factory BoardOverview.fromJson(Map<String, dynamic> value) => BoardOverview(
+    forming: value['forming'] == true,
+    canRegister: value['can_register'] == true,
     assignments: (value['assignments'] as List<dynamic>? ?? const [])
         .whereType<Map>()
         .map(

@@ -23,6 +23,20 @@ class BoardStrings {
   String get officeLabel => isSwedish ? 'Uppdrag' : 'Office';
   String get next => isSwedish ? 'Nästa' : 'Next';
   String get newMandate => isSwedish ? 'Nytt mandat' : 'New mandate';
+  String get registerMandate =>
+      isSwedish ? 'Registrera styrelsemandat' : 'Register board mandate';
+  String get registeredDirectly => isSwedish
+      ? 'Registrerat direkt när styrelsen bildades'
+      : 'Registered at once while the board was formed';
+  String get endMandate => isSwedish ? 'Avsluta mandatet' : 'End the mandate';
+  String get formingTitle =>
+      isSwedish ? 'Styrelsen bildas' : 'The board is being formed';
+  String get formingMessage => isSwedish
+      ? 'Tills tre personer har ett mandat registreras ändringar direkt. Därefter behöver varje ändring två godkännanden från styrelsen.'
+      : 'Until three people hold a mandate, changes are registered at once. After that, each change needs two approvals from the board.';
+  String get officesExplained => isSwedish
+      ? 'Mandatet ger rättigheterna under sin period. Ordförande och sekreterare hanterar styrelsen, kassören klubbens ekonomi, ledamöter godkänner och revisorn granskar.'
+      : 'A mandate gives its rights for its period. The chair and secretary run the board, the treasurer the club\'s economy, members approve and the auditor reviews.';
   String get mandatesHeading => isSwedish
       ? 'Aktiva och historiska mandat'
       : 'Active and historical mandates';

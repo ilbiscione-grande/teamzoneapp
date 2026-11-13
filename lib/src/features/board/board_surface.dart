@@ -1,12 +1,25 @@
 part of '../../app/teamzone_app.dart';
 
-bool _hasBoardCapability(TeamZoneContext value) =>
-    const ['board.read', 'board.manage', 'board.approve'].any(value.can);
+/// Styrelse: the board, and members and teams, who form the first board.
+bool _hasBoardCapability(TeamZoneContext value) => const [
+  'board.read',
+  'board.manage',
+  'board.approve',
+  'club.memberships.manage',
+].any(value.can);
 
 class _BoardSurface extends StatefulWidget {
-  const _BoardSurface({required this.contextValue, required this.board});
+  const _BoardSurface({
+    required this.contextValue,
+    required this.board,
+    this.onContextsChanged,
+  });
   final TeamZoneContext contextValue;
   final BoardServices board;
+
+  /// A mandate gives its office's rights: reloaded after a change made at
+  /// once, which may be the viewer's own.
+  final Future<void> Function()? onContextsChanged;
   @override
   State<_BoardSurface> createState() => _BoardSurfaceState();
 }
@@ -54,11 +67,15 @@ class _BoardSurfaceState extends State<_BoardSurface> {
     return result == null || result.length < 3 ? null : result;
   }
 
-  Future<void> _run(Future<void> Function() action) async {
+  Future<void> _run(
+    Future<void> Function() action, {
+    bool reloadRights = false,
+  }) async {
     if (_busy) return;
     setState(() => _busy = true);
     try {
       await action();
+      if (reloadRights) await widget.onContextsChanged?.call();
       if (mounted) _refresh();
     } catch (error) {
       if (mounted) {
@@ -71,7 +88,10 @@ class _BoardSurfaceState extends State<_BoardSurface> {
     }
   }
 
-  Future<void> _createGrant(List<BoardAssignment> assignments) async {
+  Future<void> _createGrant(
+    List<BoardAssignment> assignments, {
+    required bool forming,
+  }) async {
     if (assignments.isEmpty) return;
     final copy = BoardStrings.of(context);
     final reason = TextEditingController();
@@ -81,7 +101,7 @@ class _BoardSurfaceState extends State<_BoardSurface> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(copy.proposeMandate),
+          title: Text(forming ? copy.registerMandate : copy.proposeMandate),
           content: SizedBox(
             width: 420,
             child: Column(
@@ -173,11 +193,15 @@ class _BoardSurfaceState extends State<_BoardSurface> {
         reason: value['reason']!,
         idempotencyKey: _newUuid(),
       ),
+      reloadRights: forming,
     );
   }
 
-  Future<void> _revoke(BoardMandate mandate) async {
-    final reason = await _reason(BoardStrings.of(context).proposeRevocation);
+  Future<void> _revoke(BoardMandate mandate, {required bool forming}) async {
+    final copy = BoardStrings.of(context);
+    final reason = await _reason(
+      forming ? copy.endMandate : copy.proposeRevocation,
+    );
     if (reason == null) return;
     await _run(
       () => widget.board.createChange(
@@ -189,13 +213,14 @@ class _BoardSurfaceState extends State<_BoardSurface> {
         reason: reason,
         idempotencyKey: _newUuid(),
       ),
+      reloadRights: forming,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final copy = BoardStrings.of(context);
-    if (!widget.contextValue.can('board.read')) {
+    if (!_hasBoardCapability(widget.contextValue)) {
       return _StateCard(
         icon: Icons.lock_outline,
         title: copy.title,
@@ -216,6 +241,8 @@ class _BoardSurfaceState extends State<_BoardSurface> {
           );
         }
         final data = snapshot.requireData;
+        final canChange =
+            widget.contextValue.can('board.manage') || data.canRegister;
         return Scaffold(
           body: ListView(
             padding: const EdgeInsets.all(24),
@@ -228,16 +255,33 @@ class _BoardSurfaceState extends State<_BoardSurface> {
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                   ),
-                  if (widget.contextValue.can('board.manage'))
+                  if (canChange)
                     FilledButton.icon(
+                      key: const ValueKey('board-new-mandate'),
                       onPressed: _busy
                           ? null
-                          : () => _createGrant(data.assignments),
+                          : () => _createGrant(
+                              data.assignments,
+                              forming: data.forming,
+                            ),
                       icon: const Icon(Icons.add),
                       label: Text(copy.newMandate),
                     ),
                 ],
               ),
+              const SizedBox(height: 8),
+              Text(copy.officesExplained),
+              if (data.forming) ...[
+                const SizedBox(height: 12),
+                Card(
+                  key: const ValueKey('board-forming'),
+                  child: ListTile(
+                    leading: const Icon(Icons.groups_outlined),
+                    title: Text(copy.formingTitle),
+                    subtitle: Text(copy.formingMessage),
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               Text(
                 copy.mandatesHeading,
@@ -256,14 +300,17 @@ class _BoardSurfaceState extends State<_BoardSurface> {
                       '${mandate.name} · ${copy.office(mandate.office)}',
                     ),
                     subtitle: Text(
-                      '${copy.state(mandate.state)} · ${_date(context, mandate.startsAt)} – ${_date(context, mandate.endsAt)}',
+                      // The end is exclusive: the last day is the one before.
+                      '${copy.state(mandate.state)} · ${_date(context, mandate.startsAt)} – ${_date(context, mandate.endsAt.subtract(const Duration(seconds: 1)))}',
                     ),
-                    trailing:
-                        mandate.state == 'active' &&
-                            widget.contextValue.can('board.manage')
+                    trailing: mandate.state == 'active' && canChange
                         ? IconButton(
-                            tooltip: copy.proposeRevocation,
-                            onPressed: _busy ? null : () => _revoke(mandate),
+                            tooltip: data.forming
+                                ? copy.endMandate
+                                : copy.proposeRevocation,
+                            onPressed: _busy
+                                ? null
+                                : () => _revoke(mandate, forming: data.forming),
                             icon: const Icon(Icons.person_remove_outlined),
                           )
                         : null,
@@ -292,7 +339,10 @@ class _BoardSurfaceState extends State<_BoardSurface> {
                     ),
                     subtitle: Text(
                       [
-                        '${copy.state(change.state)} · ${copy.approvals(change.approvalCount)}',
+                        // Registered at once while the board was forming.
+                        change.state == 'applied' && change.approvalCount == 0
+                            ? copy.registeredDirectly
+                            : '${copy.state(change.state)} · ${copy.approvals(change.approvalCount)}',
                         if (change.approvers.isNotEmpty)
                           change.approvers
                               .map((item) => item.displayName)
@@ -354,5 +404,8 @@ class _BoardSurfaceState extends State<_BoardSurface> {
 }
 
 /// "7 sep. 2026" rather than "2026-09-07".
-String _date(BuildContext context, DateTime value) =>
-    MaterialLocalizations.of(context).formatMediumDate(value.toLocal());
+/// "fre 13 nov. 2026": a mandate runs over years.
+String _date(BuildContext context, DateTime value) {
+  final local = value.toLocal();
+  return '${MaterialLocalizations.of(context).formatMediumDate(local)} ${local.year}';
+}

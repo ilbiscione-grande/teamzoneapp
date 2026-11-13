@@ -3195,6 +3195,7 @@ class AppStrings {
     'Ledamot': "Board member",
     'mandatändringar väntar': "mandate changes waiting",
     'aktiva mandat': "active mandates",
+    '1 aktivt mandat': '1 active mandate',
     'Inga kassor än': "No accounts yet",
     'poster väntar på attest': "entries waiting for approval",
     'kassor': "accounts",

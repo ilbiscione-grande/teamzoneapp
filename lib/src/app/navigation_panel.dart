@@ -724,6 +724,7 @@ class _AppNavigationPanel extends StatelessWidget {
                       icon: Icons.account_balance_wallet_outlined,
                       label: strings.feature('Ekonomi'),
                       trailing: chevron,
+                      selected: currentLocation.startsWith('/economy'),
                       onTap: () => _go('/economy'),
                     ),
                   if (_hasBoardCapability(contextValue))
@@ -731,6 +732,7 @@ class _AppNavigationPanel extends StatelessWidget {
                       icon: Icons.badge_outlined,
                       label: strings.feature('Styrelse'),
                       trailing: chevron,
+                      selected: currentLocation.startsWith('/board'),
                       onTap: () => _go('/board'),
                     ),
                 ],
