@@ -130,6 +130,51 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  testWidgets('a board member sees their group meetings on Hem', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'audit'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: const _Chair(),
+          overview: _ClubOverview(
+            meetings: [
+              {
+                'event_id': 'e1',
+                'title': 'Sektionsmöte',
+                'event_type': 'meeting',
+                'starts_at': DateTime.now()
+                    .add(const Duration(days: 3))
+                    .toUtc()
+                    .toIso8601String(),
+                'ends_at': DateTime.now()
+                    .add(const Duration(days: 3, hours: 1))
+                    .toUtc()
+                    .toIso8601String(),
+                'location_name': 'Klubbstugan',
+                'group_name': 'Herrsektionen',
+              },
+            ],
+          ),
+          leaderGroups: _Groups(),
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('club-home-my-meetings')), findsOneWidget);
+    expect(find.text('Sektionsmöte · Herrsektionen'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
   testWidgets('a treasurer opens Klubb but sees no leader groups', (
     tester,
   ) async {
@@ -298,6 +343,8 @@ class _Groups extends UnconfiguredLeaderGroupServices {
 
 class _ClubOverview extends UnconfiguredOverviewServices
     implements ClubHomeServices {
+  _ClubOverview({this.meetings = const []});
+  final List<Map<String, dynamic>> meetings;
   @override
   Future<MainSurfacesProjection> load({
     required List<String> contextIds,
@@ -330,5 +377,6 @@ class _ClubOverview extends UnconfiguredOverviewServices
     },
     'can_announce': false,
     'teams': const [],
+    'my_meetings': meetings,
   });
 }

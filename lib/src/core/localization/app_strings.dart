@@ -2446,6 +2446,7 @@ class AppStrings {
     'Andra klubbar': 'Other clubs',
     'Uppdrag': 'Roles',
     'Ledargrupper': 'Leader groups',
+    'Dina möten': 'Your meetings',
     'är tillagd.': 'has been added.',
     'Skicka inbjudningskoden till personen. När hen har skapat ett konto med samma e-postadress klistrar hen in koden under Inställningar → Använd kod. Koden gäller i 14 dagar.':
         'Send the invitation code to the person. Once they have an account with the same e-mail address, they paste the code under Settings → Use code. The code is valid for 14 days.',

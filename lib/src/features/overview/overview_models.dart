@@ -565,6 +565,7 @@ class ClubHome {
     this.publication,
     required this.canAnnounce,
     required this.teams,
+    this.myMeetings = const [],
   });
   final String clubId;
   final String? ownName;
@@ -580,6 +581,9 @@ class ClubHome {
   final ({int pendingTeamPages})? publication;
   final bool canAnnounce;
   final List<ClubHomeTeam> teams;
+
+  /// Dina möten: the coming meetings of the leader groups one is in.
+  final List<ClubGroupMeeting> myMeetings;
 
   factory ClubHome.fromJson(Map<String, dynamic> json) {
     int count(Map<String, dynamic>? map, String key) =>
@@ -619,8 +623,31 @@ class ClubHome {
       teams: _maps(
         json['teams'],
       ).map(ClubHomeTeam.fromJson).toList(growable: false),
+      // Optional: older servers do not send it.
+      myMeetings: _maps(
+        json['my_meetings'] ?? const [],
+      ).map(ClubGroupMeeting.fromJson).toList(growable: false),
     );
   }
+}
+
+/// A leader group's meeting on the club home: which group, and the
+/// activity to open.
+class ClubGroupMeeting {
+  const ClubGroupMeeting({
+    required this.eventId,
+    required this.groupName,
+    required this.event,
+  });
+  final String eventId, groupName;
+  final ClubTeamEvent event;
+
+  factory ClubGroupMeeting.fromJson(Map<String, dynamic> json) =>
+      ClubGroupMeeting(
+        eventId: json['event_id'] as String,
+        groupName: json['group_name'] as String? ?? '',
+        event: ClubTeamEvent.fromJson(json),
+      );
 }
 
 class ClubHomeTeam {

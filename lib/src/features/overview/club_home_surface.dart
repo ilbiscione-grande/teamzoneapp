@@ -222,6 +222,34 @@ class _ClubHomeContent extends StatelessWidget {
           if (handlesQueues) const SizedBox(height: 8),
           ...tasks,
         ],
+        if (home.myMeetings.isNotEmpty) ...[
+          _heading(context, strings.feature('Dina möten')),
+          Card(
+            key: const ValueKey('club-home-my-meetings'),
+            child: Column(
+              children: [
+                for (final meeting in home.myMeetings)
+                  ListTile(
+                    key: ValueKey('club-home-meeting-${meeting.eventId}'),
+                    leading: Icon(_clubEventIcon(meeting.event.eventType)),
+                    title: Text(
+                      '${meeting.event.title} · ${meeting.groupName}',
+                    ),
+                    subtitle: Text(
+                      [
+                        _clubEventWhen(context, meeting.event),
+                        ?meeting.event.locationName,
+                      ].join(' · '),
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => onNavigate(
+                      ProductRouteContract.calendarEvent(meeting.eventId),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
         _heading(context, strings.feature('Kommande i klubben')),
         _ClubUpcoming(
           teams: home.teams,
