@@ -151,186 +151,213 @@ class _ClubAdminSurfaceState extends State<_ClubAdminSurface> {
         ),
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: FutureBuilder<ClubHome?>(
-        future: _home,
-        builder: (context, snapshot) {
-          final loading = snapshot.connectionState != ConnectionState.done;
-          final home = snapshot.data;
-          final members = home?.members;
-          final clubId = contextValue.clubId;
-          final clubName = contextValue.clubName;
-          return RefreshIndicator(
-            onRefresh: () async {
-              _reload();
-              await _home;
-            },
-            child: ListView(
-              key: const ValueKey('club-admin'),
-              padding: const EdgeInsets.all(16),
-              children: [
-                Text(clubName, style: Theme.of(context).textTheme.titleLarge),
-                if (loading) const LinearProgressIndicator(),
-                if (admin)
-                  _ClubAdminSection(
-                    title: strings.feature('Att hantera'),
-                    children: [
+    return FutureBuilder<ClubHome?>(
+      future: _home,
+      builder: (context, snapshot) {
+        final loading = snapshot.connectionState != ConnectionState.done;
+        final home = snapshot.data;
+        final members = home?.members;
+        final clubId = contextValue.clubId;
+        final clubName = contextValue.clubName;
+        final pendingCount =
+            (members?.pendingApplications ?? 0) +
+            (members?.pendingTeamRequests ?? 0) +
+            (contextValue.can('publication.manage')
+                ? home?.publication?.pendingTeamPages ?? 0
+                : 0);
+        final tabs = <_ClubAdminTab>[
+          if (admin)
+            _ClubAdminTab(
+              id: 'pending',
+              label: strings.feature('Att hantera'),
+              badge: pendingCount,
+              groups: [
+                (
+                  title: null,
+                  tiles: [
+                    _ClubAdminTile(
+                      key: const ValueKey('club-admin-applications'),
+                      icon: Icons.how_to_reg_outlined,
+                      title: strings.feature('Medlemsansökningar'),
+                      subtitle: _pending(strings, members?.pendingApplications),
+                      badge: members?.pendingApplications ?? 0,
+                      onTap: _openApplications,
+                    ),
+                    _ClubAdminTile(
+                      key: const ValueKey('club-admin-team-requests'),
+                      icon: Icons.approval_outlined,
+                      title: strings.feature('Förfrågningar om nya lag'),
+                      subtitle: _pending(strings, members?.pendingTeamRequests),
+                      badge: members?.pendingTeamRequests ?? 0,
+                      onTap: _openTeamRequests,
+                    ),
+                    if (contextValue.can('publication.manage'))
                       _ClubAdminTile(
-                        key: const ValueKey('club-admin-applications'),
-                        icon: Icons.how_to_reg_outlined,
-                        title: strings.feature('Medlemsansökningar'),
+                        key: const ValueKey('club-admin-team-pages'),
+                        icon: Icons.public_outlined,
+                        title: strings.feature('Ansökningar om lagsida'),
                         subtitle: _pending(
                           strings,
-                          members?.pendingApplications,
+                          home?.publication?.pendingTeamPages,
                         ),
-                        badge: members?.pendingApplications ?? 0,
-                        onTap: _openApplications,
-                      ),
-                      _ClubAdminTile(
-                        key: const ValueKey('club-admin-team-requests'),
-                        icon: Icons.approval_outlined,
-                        title: strings.feature('Förfrågningar om nya lag'),
-                        subtitle: _pending(
-                          strings,
-                          members?.pendingTeamRequests,
-                        ),
-                        badge: members?.pendingTeamRequests ?? 0,
-                        onTap: _openTeamRequests,
-                      ),
-                      if (contextValue.can('publication.manage'))
-                        _ClubAdminTile(
-                          key: const ValueKey('club-admin-team-pages'),
-                          icon: Icons.public_outlined,
-                          title: strings.feature('Ansökningar om lagsida'),
-                          subtitle: _pending(
-                            strings,
-                            home?.publication?.pendingTeamPages,
-                          ),
-                          badge: home?.publication?.pendingTeamPages ?? 0,
-                          onTap: () => widget.onNavigate(
-                            ProductRouteContract.publication,
-                          ),
-                        ),
-                    ],
-                  ),
-                _ClubAdminSection(
-                  title: strings.feature('Medlemmar'),
-                  children: [
-                    if (widget.membership
-                        case final ClubRegisterServices register when admin)
-                      _ClubAdminTile(
-                        key: const ValueKey('club-admin-register'),
-                        icon: Icons.contacts_outlined,
-                        title: strings.feature('Medlemsregister'),
-                        subtitle: strings.feature(
-                          'Alla i klubben, vem som är medlem och i vilken kategori',
-                        ),
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => _ClubRegisterPage(
-                              clubId: clubId,
-                              clubName: clubName,
-                              services: register,
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (widget.membership case final ClubJoinServices join
-                        when admin)
-                      _ClubAdminTile(
-                        key: const ValueKey('club-admin-codes'),
-                        icon: Icons.key_outlined,
-                        title: strings.feature('Klubbkod'),
-                        subtitle: strings.feature(
-                          'Ansökan till klubben som medlem eller styrelse, utan lag',
-                        ),
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) =>
-                                _ClubCodesPage(clubId: clubId, services: join),
-                          ),
-                        ),
-                      ),
-                    if (widget.membership case final ClubFeesProvider fees
-                        when _canHandleClubFees(contextValue))
-                      _ClubAdminTile(
-                        key: const ValueKey('club-admin-fees'),
-                        icon: Icons.payments_outlined,
-                        title: strings.feature('Avgifter'),
-                        subtitle: strings.feature(
-                          'Medlemsavgifter och lagavgifter, med familjerabatt',
-                        ),
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => _ClubFeeRoundsPage(
-                              clubId: clubId,
-                              teams: [
-                                for (final team
-                                    in home?.teams ?? const <ClubHomeTeam>[])
-                                  (id: team.teamId, name: team.name),
-                              ],
-                              services: fees.clubFees,
-                            ),
-                          ),
-                        ),
+                        badge: home?.publication?.pendingTeamPages ?? 0,
+                        onTap: () =>
+                            widget.onNavigate(ProductRouteContract.publication),
                       ),
                   ],
                 ),
-                if (admin)
-                  _ClubAdminSection(
-                    title: strings.feature('Lag och uppdrag'),
-                    children: [
-                      if (home != null)
-                        _ClubAdminTile(
-                          key: const ValueKey('club-admin-teams'),
-                          icon: Icons.groups_outlined,
-                          title: strings.feature('Klubbens lag'),
-                          subtitle:
-                              '${home.teams.length} ${strings.feature('lag')}',
-                          onTap: () => _openTeams(home.teams),
-                        ),
-                      _ClubAdminTile(
-                        key: const ValueKey('club-admin-create-team'),
-                        icon: Icons.add_circle_outline,
-                        title: strings.feature('Skapa ytterligare lag'),
-                        subtitle: strings.feature(
-                          'Lägg till ett nytt lag i klubben.',
-                        ),
-                        onTap: () => _createTeamFromContextPicker(
-                          context: context,
-                          activeContext: _clubContext,
-                          membership: widget.membership,
-                          onTeamCreated: widget.onTeamCreated,
-                        ),
+              ],
+            ),
+          _ClubAdminTab(
+            id: 'members',
+            label: strings.feature('Medlemmar'),
+            groups: [
+              (
+                title: null,
+                tiles: [
+                  if (widget.membership case final ClubRegisterServices register
+                      when admin)
+                    _ClubAdminTile(
+                      key: const ValueKey('club-admin-register'),
+                      icon: Icons.contacts_outlined,
+                      title: strings.feature('Medlemsregister'),
+                      subtitle: strings.feature(
+                        'Alla i klubben, vem som är medlem och i vilken kategori',
                       ),
-                      _ClubAdminTile(
-                        key: const ValueKey('club-admin-permissions'),
-                        icon: Icons.admin_panel_settings_outlined,
-                        title: strings.feature('Klubbens behörigheter'),
-                        subtitle: strings.feature(
-                          'Vem som sköter publicering, medlemmar, anslag och domare',
-                        ),
-                        onTap: () => widget.onNavigate(
-                          ProductRouteContract.clubPermissions,
-                        ),
-                      ),
-                      if (contextValue.can('club.referees.manage'))
-                        _ClubAdminTile(
-                          key: const ValueKey('club-admin-referees'),
-                          icon: Icons.sports_outlined,
-                          title: strings.feature('Domartillsättning'),
-                          subtitle: strings.feature(
-                            'Klubbens matcher och domare',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => _ClubRegisterPage(
+                            clubId: clubId,
+                            clubName: clubName,
+                            services: register,
                           ),
-                          onTap: () => widget.onNavigate(_refereeBoardRoute),
                         ),
-                    ],
-                  ),
+                      ),
+                    ),
+                  if (widget.membership case final ClubJoinServices join
+                      when admin)
+                    _ClubAdminTile(
+                      key: const ValueKey('club-admin-codes'),
+                      icon: Icons.key_outlined,
+                      title: strings.feature('Klubbkod'),
+                      subtitle: strings.feature(
+                        'Ansökan till klubben som medlem eller styrelse, utan lag',
+                      ),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              _ClubCodesPage(clubId: clubId, services: join),
+                        ),
+                      ),
+                    ),
+                  if (widget.membership case final ClubFeesProvider fees
+                      when _canHandleClubFees(contextValue))
+                    _ClubAdminTile(
+                      key: const ValueKey('club-admin-fees'),
+                      icon: Icons.payments_outlined,
+                      title: strings.feature('Avgifter'),
+                      subtitle: strings.feature(
+                        'Medlemsavgifter och lagavgifter, med familjerabatt',
+                      ),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => _ClubFeeRoundsPage(
+                            clubId: clubId,
+                            teams: [
+                              for (final team
+                                  in home?.teams ?? const <ClubHomeTeam>[])
+                                (id: team.teamId, name: team.name),
+                            ],
+                            services: fees.clubFees,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+          if (admin)
+            _ClubAdminTab(
+              id: 'teams',
+              label: strings.feature('Lag och uppdrag'),
+              groups: [
+                (
+                  title: strings.feature('Lag'),
+                  tiles: [
+                    if (home != null)
+                      _ClubAdminTile(
+                        key: const ValueKey('club-admin-teams'),
+                        icon: Icons.groups_outlined,
+                        title: strings.feature('Klubbens lag'),
+                        subtitle:
+                            '${home.teams.length} ${strings.feature('lag')}',
+                        onTap: () => _openTeams(home.teams),
+                      ),
+                    _ClubAdminTile(
+                      key: const ValueKey('club-admin-create-team'),
+                      icon: Icons.add_circle_outline,
+                      title: strings.feature('Skapa ytterligare lag'),
+                      subtitle: strings.feature(
+                        'Lägg till ett nytt lag i klubben.',
+                      ),
+                      onTap: () => _createTeamFromContextPicker(
+                        context: context,
+                        activeContext: _clubContext,
+                        membership: widget.membership,
+                        onTeamCreated: widget.onTeamCreated,
+                      ),
+                    ),
+                  ],
+                ),
+                (
+                  title: strings.feature('Uppdrag'),
+                  tiles: [
+                    if (_hasBoardCapability(contextValue))
+                      _ClubAdminTile(
+                        key: const ValueKey('club-admin-board'),
+                        icon: Icons.badge_outlined,
+                        title: strings.feature('Styrelse'),
+                        subtitle: strings.feature(
+                          'Ordförande, kassör och övriga mandat',
+                        ),
+                        onTap: () =>
+                            widget.onNavigate(ProductRouteContract.board),
+                      ),
+                    _ClubAdminTile(
+                      key: const ValueKey('club-admin-permissions'),
+                      icon: Icons.admin_panel_settings_outlined,
+                      title: strings.feature('Klubbens behörigheter'),
+                      subtitle: strings.feature(
+                        'Vem som sköter publicering, medlemmar, anslag och domare',
+                      ),
+                      onTap: () => widget.onNavigate(
+                        ProductRouteContract.clubPermissions,
+                      ),
+                    ),
+                    if (contextValue.can('club.referees.manage'))
+                      _ClubAdminTile(
+                        key: const ValueKey('club-admin-referees'),
+                        icon: Icons.sports_outlined,
+                        title: strings.feature('Domartillsättning'),
+                        subtitle: strings.feature(
+                          'Klubbens matcher och domare',
+                        ),
+                        onTap: () => widget.onNavigate(_refereeBoardRoute),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          if (admin || contextValue.can('club.billing.manage'))
+            _ClubAdminTab(
+              id: 'club',
+              label: strings.feature('Klubben'),
+              groups: [
                 if (admin)
-                  _ClubAdminSection(
-                    title: strings.feature('Klubbens utseende och status'),
-                    children: [
+                  (
+                    title: strings.feature('Utseende och status'),
+                    tiles: [
                       _ClubAdminTile(
                         key: const ValueKey('club-admin-badge'),
                         icon: Icons.verified_user_outlined,
@@ -383,9 +410,9 @@ class _ClubAdminSurfaceState extends State<_ClubAdminSurface> {
                     ],
                   ),
                 if (contextValue.can('club.billing.manage'))
-                  _ClubAdminSection(
+                  (
                     title: strings.feature('Abonnemang'),
-                    children: [
+                    tiles: [
                       _ClubAdminTile(
                         key: const ValueKey('club-admin-billing'),
                         icon: Icons.payments_outlined,
@@ -400,16 +427,81 @@ class _ClubAdminSurfaceState extends State<_ClubAdminSurface> {
                   ),
               ],
             ),
+        ].where((tab) => tab.groups.any((g) => g.tiles.isNotEmpty)).toList();
+        Widget page(_ClubAdminTab tab) => RefreshIndicator(
+          onRefresh: () async {
+            _reload();
+            await _home;
+          },
+          child: ListView(
+            key: ValueKey('club-admin-tab-${tab.id}'),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            children: [
+              if (loading) const LinearProgressIndicator(),
+              for (final group in tab.groups)
+                if (group.tiles.isNotEmpty)
+                  _ClubAdminSection(title: group.title, children: group.tiles),
+            ],
+          ),
+        );
+        // One tab: no tab bar (a treasurer who only handles the fees).
+        if (tabs.length == 1) {
+          return Scaffold(
+            key: const ValueKey('club-admin'),
+            appBar: AppBar(title: Text(title)),
+            body: page(tabs.single),
           );
-        },
-      ),
+        }
+        return DefaultTabController(
+          length: tabs.length,
+          child: Scaffold(
+            key: const ValueKey('club-admin'),
+            appBar: AppBar(
+              title: Text(title),
+              bottom: TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                tabs: [
+                  for (final tab in tabs)
+                    Tab(
+                      key: ValueKey('club-admin-tabbar-${tab.id}'),
+                      child: Badge.count(
+                        count: tab.badge,
+                        isLabelVisible: tab.badge > 0,
+                        offset: const Offset(14, -6),
+                        child: Text(tab.label),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            body: TabBarView(children: [for (final tab in tabs) page(tab)]),
+          ),
+        );
+      },
     );
   }
 }
 
+/// A tab of Klubb: groups of tiles, each with an optional heading.
+class _ClubAdminTab {
+  const _ClubAdminTab({
+    required this.id,
+    required this.label,
+    required this.groups,
+    this.badge = 0,
+  });
+  final String id;
+  final String label;
+  final int badge;
+  final List<({String? title, List<Widget> tiles})> groups;
+}
+
+/// A group of tiles: one card with rows on a phone, a grid of cards in two
+/// or three columns on a tablet or desktop.
 class _ClubAdminSection extends StatelessWidget {
   const _ClubAdminSection({required this.title, required this.children});
-  final String title;
+  final String? title;
   final List<Widget> children;
 
   @override
@@ -417,12 +509,42 @@ class _ClubAdminSection extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Padding(
-        padding: const EdgeInsets.fromLTRB(4, 20, 4, 8),
-        child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+        padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
+        child: title == null
+            ? const SizedBox.shrink()
+            : Text(title!, style: Theme.of(context).textTheme.titleMedium),
       ),
-      Card(
-        clipBehavior: Clip.antiAlias,
-        child: Column(children: children),
+      LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final columns = width >= 960 ? 3 : (width >= 600 ? 2 : 1);
+          if (columns == 1) {
+            return Card(
+              clipBehavior: Clip.antiAlias,
+              child: Column(children: children),
+            );
+          }
+          const gap = 12.0;
+          final tileWidth = (width - gap * (columns - 1)) / columns;
+          return Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: [
+              for (final child in children)
+                SizedBox(
+                  width: tileWidth,
+                  child: Card(
+                    margin: EdgeInsets.zero,
+                    clipBehavior: Clip.antiAlias,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 88),
+                      child: Center(child: child),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     ],
   );

@@ -14,6 +14,52 @@ import 'package:teamzone_app/src/features/overview/overview_services.dart';
 
 // Klubb: the club administrator's work in one place (UX review, lucka 5).
 void main() {
+  testWidgets(
+    'Klubb lays tiles in columns on a wide screen, in one on a phone',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      tester.view.physicalSize = const Size(1600, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        TeamZoneApp(
+          environment: const AppEnvironment(name: 'audit'),
+          locale: const Locale('sv'),
+          services: AppServices(
+            identity: _AdminIdentity(),
+            membership: _Membership(),
+            overview: _ClubOverview(),
+            isConfigured: true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _tapVisible(tester, find.byKey(const ValueKey('drawer-tool-club')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('club-admin-tabbar-club')));
+      await tester.pumpAndSettle();
+      final badge = find.byKey(const ValueKey('club-admin-badge'));
+      final colors = find.byKey(const ValueKey('club-admin-colors'));
+      // Side by side on a wide screen.
+      expect(tester.getTopLeft(badge).dy, tester.getTopLeft(colors).dy);
+      expect(
+        tester.getTopLeft(colors).dx,
+        greaterThan(tester.getTopLeft(badge).dx),
+      );
+      // One under the other on a phone.
+      tester.view.physicalSize = const Size(390, 844);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(colors).dy,
+        greaterThan(tester.getTopLeft(badge).dy),
+      );
+      expect(tester.getTopLeft(colors).dx, tester.getTopLeft(badge).dx);
+      expect(tester.takeException(), isNull);
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
+
   testWidgets('club Home opens Klubb, which opens the club-wide queues', (
     tester,
   ) async {
@@ -53,14 +99,25 @@ void main() {
     expect(find.byKey(const ValueKey('club-admin')), findsOneWidget);
     expect(find.text('Att hantera'), findsOneWidget);
     expect(find.text('Lag och uppdrag'), findsOneWidget);
-    expect(find.text('Klubbens utseende och status'), findsOneWidget);
+    expect(find.text('Medlemmar'), findsWidgets);
+    expect(find.text('Klubben'), findsWidgets);
     expect(find.text('2 väntar på beslut'), findsOneWidget);
     expect(find.text('1 väntar på beslut'), findsOneWidget);
+    // Att hantera shows the waiting count on its tab.
+    expect(find.text('3'), findsWidgets);
+    await tester.tap(find.byKey(const ValueKey('club-admin-tabbar-teams')));
+    await tester.pumpAndSettle();
     expect(find.text('3 lag'), findsOneWidget);
-    // Not given: billing and referees stay hidden.
-    expect(find.byKey(const ValueKey('club-admin-billing')), findsNothing);
+    // Not given: referees stay hidden.
     expect(find.byKey(const ValueKey('club-admin-referees')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('club-admin-tabbar-club')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('club-admin-badge')), findsOneWidget);
+    // Not given: billing stays hidden.
+    expect(find.byKey(const ValueKey('club-admin-billing')), findsNothing);
     expect(overview.clubCalls, everyElement('club-ctx'));
+    await tester.tap(find.byKey(const ValueKey('club-admin-tabbar-pending')));
+    await tester.pumpAndSettle();
 
     await _tapVisible(
       tester,
@@ -388,6 +445,14 @@ void main() {
 }
 
 Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  // Klubb has tabs: open the one that holds the tile.
+  for (final tab in const ['pending', 'members', 'teams', 'club']) {
+    if (finder.evaluate().isNotEmpty) break;
+    final bar = find.byKey(ValueKey('club-admin-tabbar-$tab'));
+    if (bar.evaluate().isEmpty) continue;
+    await tester.tap(bar);
+    await tester.pumpAndSettle();
+  }
   await tester.ensureVisible(finder);
   await tester.pumpAndSettle();
   await tester.tap(finder);

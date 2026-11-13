@@ -296,6 +296,14 @@ void main() {
 }
 
 Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  // Klubb has tabs: open the one that holds the tile.
+  for (final tab in const ['pending', 'members', 'teams', 'club']) {
+    if (finder.evaluate().isNotEmpty) break;
+    final bar = find.byKey(ValueKey('club-admin-tabbar-$tab'));
+    if (bar.evaluate().isEmpty) continue;
+    await tester.tap(bar);
+    await tester.pumpAndSettle();
+  }
   await tester.ensureVisible(finder);
   await tester.pumpAndSettle();
   await tester.tap(finder);
