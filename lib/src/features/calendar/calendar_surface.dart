@@ -2978,6 +2978,7 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
               (event) =>
                   event.owningTeamId == summary.owningTeamId &&
                   !event.isRefereeAssignment &&
+                  event.state != 'cancelled' &&
                   event.endsAt.isAfter(now),
             )
             .toList()
