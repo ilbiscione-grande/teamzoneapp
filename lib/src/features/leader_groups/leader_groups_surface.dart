@@ -101,7 +101,7 @@ class _LeaderGroupsSurfaceState extends State<_LeaderGroupsSurface> {
     if (id == null || !mounted) return;
     messenger.showSnackBar(
       SnackBar(
-        content: Text('Mötet är bokat och syns i kalendern för ${group.name}.'),
+        content: Text('Mötet är bokat och ${group.name} har fått kallelser.'),
         action: SnackBarAction(
           label: 'Öppna',
           onPressed: () =>

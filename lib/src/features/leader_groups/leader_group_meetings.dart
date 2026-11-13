@@ -176,8 +176,9 @@ class _LeaderGroupMeetingDialogState extends State<_LeaderGroupMeetingDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Mötet hamnar i kalendern för alla ${widget.group.memberCount} '
-                'i gruppen.',
+                'Alla ${widget.group.memberCount} i gruppen får en kallelse och '
+                'mötet hamnar i deras kalender. Fler kan bjudas in under '
+                'Deltagare på mötet.',
               ),
               const SizedBox(height: 12),
               TextField(

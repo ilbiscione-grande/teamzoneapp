@@ -1,6 +1,7 @@
 import 'package:teamzone_app/src/features/calendar/booking_management_services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:teamzone_app/src/app/teamzone_app.dart';
@@ -553,6 +554,30 @@ void main() {
     expect(find.text('Här och nu'), findsOneWidget);
     expect(tester.takeException(), isNull);
     debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('a leader group meeting offers no whole-club selections', (
+    tester,
+  ) async {
+    await _openParticipants(tester, _GroupMeetingCalendar());
+    await tester.tap(find.byTooltip('Fler åtgärder'));
+    await tester.pumpAndSettle();
+    expect(find.text('Välj alla spelare'), findsNothing);
+    expect(find.text('Alla behöriga'), findsNothing);
+    expect(find.text('Behörighetsgrupp'), findsNothing);
+    expect(find.text('Generator'), findsNothing);
+    expect(find.text('Påminn alla obesvarade'), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(Tab, 'Info'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(
+        const ValueKey('event-info-leader-group'),
+        skipOffstage: false,
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('selection menu remains above compact list', (tester) async {
@@ -1691,15 +1716,17 @@ class _Calendar extends UnconfiguredCalendarServices {
               ),
             )
             .toList(),
-    callerActions: responseRole == 'self' ? const {} : const {
-      'save_squad',
-      'lock_squad',
-      'send_callups',
-      'cancel_callup',
-      'remind_callup',
-      'set_callup_visibility',
-      'record_attendance',
-    },
+    callerActions: responseRole == 'self'
+        ? const {}
+        : const {
+            'save_squad',
+            'lock_squad',
+            'send_callups',
+            'cancel_callup',
+            'remind_callup',
+            'set_callup_visibility',
+            'record_attendance',
+          },
     selectionSource: 'manual',
     selectionContext: const {},
     dispatchKind: 'initial',
@@ -1967,6 +1994,31 @@ class _ForeignContextIdentity extends _Identity {
   ];
 }
 
+// A leader group meeting (Ledargrupper): the whole club can be found, so
+// the whole-club selections are not offered.
+class _GroupMeetingCalendar extends _Calendar {
+  @override
+  Future<EventDetails> getEventDetails(String id) async {
+    final base = await super.getEventDetails(id);
+    return EventDetails(
+      id: base.id,
+      title: base.title,
+      description: base.description,
+      type: 'meeting',
+      state: base.state,
+      startsAt: base.startsAt,
+      endsAt: base.endsAt,
+      allDay: base.allDay,
+      timezone: base.timezone,
+      revision: base.revision,
+      callerActions: base.callerActions,
+      teams: base.teams,
+      audiences: base.audiences,
+      leaderGroupName: 'Herrsektionen',
+    );
+  }
+}
+
 class _ForeignContextCalendar extends _Calendar {
   @override
   Future<EventDetails> getEventDetails(String id) async {
@@ -2227,8 +2279,12 @@ class _ConflictCalendar extends _Calendar {
   @override
   Future<EventDetails> getEventDetails(String eventId) async => EventDetails(
     id: eventId,
-    clubId: (eventId == 'two' && responseRole == 'self') ? 'other-club' : 'club',
-    owningTeamId: (eventId == 'two' && responseRole == 'self') ? 'other-team' : 'team',
+    clubId: (eventId == 'two' && responseRole == 'self')
+        ? 'other-club'
+        : 'club',
+    owningTeamId: (eventId == 'two' && responseRole == 'self')
+        ? 'other-team'
+        : 'team',
     title: 'Aktivitet $eventId',
     description: null,
     type: 'training',
@@ -2241,8 +2297,12 @@ class _ConflictCalendar extends _Calendar {
     callerActions: responseRole == 'self' ? const {} : const {'revise'},
     teams: [
       {
-        'team_id': (eventId == 'two' && responseRole == 'self') ? 'other-team' : 'team',
-        'name': (eventId == 'two' && responseRole == 'self') ? 'Handboll' : 'Fotboll',
+        'team_id': (eventId == 'two' && responseRole == 'self')
+            ? 'other-team'
+            : 'team',
+        'name': (eventId == 'two' && responseRole == 'self')
+            ? 'Handboll'
+            : 'Fotboll',
         'relation': 'primary',
       },
     ],

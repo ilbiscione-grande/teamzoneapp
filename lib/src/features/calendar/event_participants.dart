@@ -72,6 +72,10 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
           _resolvedPermissions?.canCorrectLate == true);
   bool get _working => _busy || _reviewingReminders;
 
+  /// A leader group's meeting: anyone in the club can be found and called,
+  /// so the whole-club selections are left out.
+  bool get _groupMeeting => widget.event.leaderGroupName != null;
+
   /// Before the async permissions resolve: may this role record attendance?
   bool get _mayRecordAttendance =>
       !_readOnly &&
@@ -101,7 +105,9 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
             name: candidate.name,
             teamId: candidate.teamId ?? '',
             teamName: candidate.teamName ?? '',
-            rolePackage: candidate.rolePackage ?? 'player',
+            // A leader group meeting calls leaders and board members.
+            rolePackage:
+                candidate.rolePackage ?? (_groupMeeting ? 'leader' : 'player'),
             inDraft: false,
             isGuest: candidate.eligibilityKind != 'team_assignment',
           ),
@@ -1157,22 +1163,22 @@ class _ParticipantsTabState extends State<_ParticipantsTab> {
                     }
                   },
                   itemBuilder: (_) => [
-                    if (!_eventEnded)
+                    if (!_eventEnded && !_groupMeeting)
                       PopupMenuItem(
                         value: 'players',
                         child: Text(_s.feature('Välj alla spelare')),
                       ),
-                    if (!_eventEnded)
+                    if (!_eventEnded && !_groupMeeting)
                       PopupMenuItem(
                         value: 'all',
                         child: Text(_s.feature('Alla behöriga')),
                       ),
-                    if (!_eventEnded)
+                    if (!_eventEnded && !_groupMeeting)
                       PopupMenuItem(
                         value: 'group',
                         child: Text(_s.feature('Behörighetsgrupp')),
                       ),
-                    if (!_eventEnded)
+                    if (!_eventEnded && !_groupMeeting)
                       PopupMenuItem(
                         value: 'generate',
                         child: Text(_s.feature('Generator')),
