@@ -23,6 +23,7 @@ class LeaderGroup {
     required this.teams,
     required this.people,
     required this.memberCount,
+    this.meetings = const [],
   });
   factory LeaderGroup.fromJson(Map<String, dynamic> json) => LeaderGroup(
     id: '${json['id']}',
@@ -32,6 +33,11 @@ class LeaderGroup {
     teams: _refs(json['teams']),
     people: _refs(json['people']),
     memberCount: (json['member_count'] as num?)?.toInt() ?? 0,
+    meetings: [
+      for (final item in (json['meetings'] as List? ?? const []))
+        if (item is Map)
+          LeaderGroupMeeting.fromJson(Map<String, dynamic>.from(item)),
+    ],
   );
   final String id;
   final String name;
@@ -42,6 +48,37 @@ class LeaderGroup {
 
   /// Everyone in the group right now: the teams' leaders and the people.
   final int memberCount;
+
+  /// Coming meetings, soonest first; cancelled ones are left out.
+  final List<LeaderGroupMeeting> meetings;
+
+  /// A meeting is held by one of the group's teams, so a group of single
+  /// people only cannot book one.
+  bool get canBookMeetings => teams.isNotEmpty;
+}
+
+/// A group meeting: an activity in the members' calendars.
+class LeaderGroupMeeting {
+  const LeaderGroupMeeting({
+    required this.id,
+    required this.title,
+    required this.startsAt,
+    required this.endsAt,
+    this.location,
+  });
+  factory LeaderGroupMeeting.fromJson(Map<String, dynamic> json) =>
+      LeaderGroupMeeting(
+        id: '${json['id']}',
+        title: '${json['title'] ?? ''}',
+        startsAt: DateTime.parse('${json['starts_at']}').toLocal(),
+        endsAt: DateTime.parse('${json['ends_at']}').toLocal(),
+        location: json['location'] as String?,
+      );
+  final String id;
+  final String title;
+  final DateTime startsAt;
+  final DateTime endsAt;
+  final String? location;
 }
 
 /// Someone who can be added on their own: a leader or club functionary.
@@ -103,7 +140,7 @@ class LeaderGroupsOverview {
 class LeaderGroupException implements Exception {
   const LeaderGroupException(this.code);
 
-  /// name_taken, stale_revision, empty_group or invalid_name.
+  /// name_taken, stale_revision, empty_group, invalid_name or no_team.
   final String code;
   @override
   String toString() => 'LeaderGroupException($code)';

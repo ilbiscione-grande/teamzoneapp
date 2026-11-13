@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/leader_groups/leader_group_models.dart';
 
@@ -17,6 +19,16 @@ abstract interface class LeaderGroupServices {
   Future<void> archive({
     required String groupId,
     required int expectedRevision,
+  });
+
+  /// Books a meeting for the group; returns the new activity's id.
+  Future<String> createMeeting({
+    required String groupId,
+    required String title,
+    required DateTime startsAt,
+    required DateTime endsAt,
+    String? location,
+    String? agenda,
   });
 }
 
@@ -40,6 +52,15 @@ class UnconfiguredLeaderGroupServices implements LeaderGroupServices {
     required String groupId,
     required int expectedRevision,
   }) => _fail();
+  @override
+  Future<String> createMeeting({
+    required String groupId,
+    required String title,
+    required DateTime startsAt,
+    required DateTime endsAt,
+    String? location,
+    String? agenda,
+  }) => _fail();
 }
 
 class SupabaseLeaderGroupServices implements LeaderGroupServices {
@@ -51,6 +72,7 @@ class SupabaseLeaderGroupServices implements LeaderGroupServices {
     'stale_revision',
     'empty_group',
     'invalid_name',
+    'no_team',
   };
 
   Future<Object?> _rpc(String name, Map<String, Object?> params) async {
@@ -98,4 +120,41 @@ class SupabaseLeaderGroupServices implements LeaderGroupServices {
     'target_group_id': groupId,
     'expected_revision': expectedRevision,
   });
+
+  @override
+  Future<String> createMeeting({
+    required String groupId,
+    required String title,
+    required DateTime startsAt,
+    required DateTime endsAt,
+    String? location,
+    String? agenda,
+  }) async {
+    final value = await _rpc('create_leader_group_meeting', {
+      'target_group_id': groupId,
+      'new_title': title,
+      'new_starts_at': startsAt.toUtc().toIso8601String(),
+      'new_ends_at': endsAt.toUtc().toIso8601String(),
+      'new_timezone': 'Europe/Stockholm',
+      'location_name': location,
+      'new_agenda': agenda,
+      'idempotency_key': _uuid(),
+    });
+    if (value is! Map || value['event_id'] == null) {
+      throw const FormatException('Invalid meeting response.');
+    }
+    return '${value['event_id']}';
+  }
+}
+
+String _uuid() {
+  final random = Random.secure();
+  final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  final hex = bytes
+      .map((value) => value.toRadixString(16).padLeft(2, '0'))
+      .join();
+  return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
+      '${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
 }

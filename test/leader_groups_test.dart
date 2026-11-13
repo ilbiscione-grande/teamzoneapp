@@ -64,6 +64,69 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  testWidgets('the chair books a meeting for a group with a team', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final groups = _Groups()
+      ..seed('Herrsektionen', const ['a'])
+      ..seed('Valberedningen', const []);
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'audit'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: const _Chair(),
+          overview: _ClubOverview(),
+          leaderGroups: groups,
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _tap(tester, find.byKey(const ValueKey('drawer-tool-club')));
+    await _tap(tester, find.byKey(const ValueKey('club-admin-tabbar-teams')));
+    await _tap(tester, find.byKey(const ValueKey('club-admin-leader-groups')));
+
+    // A group of single people only has no team to hold the meeting.
+    final peopleOnly = find.byKey(const ValueKey('leader-group-book-g2'));
+    expect(tester.widget<TextButton>(peopleOnly).onPressed, isNull);
+    expect(
+      find.text('Lägg till ett lag i gruppen för att kunna boka möten.'),
+      findsOneWidget,
+    );
+
+    await _tap(tester, find.byKey(const ValueKey('leader-group-book-g1')));
+    expect(
+      find.byKey(const ValueKey('leader-group-meeting-dialog')),
+      findsOneWidget,
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('leader-group-meeting-place')),
+      'Klubbstugan',
+    );
+    await _tap(tester, find.byKey(const ValueKey('leader-group-meeting-save')));
+
+    expect(groups.meetings, [
+      'g1 Möte i Herrsektionen 18:30-20:00 Klubbstugan',
+    ]);
+    expect(
+      find.byKey(const ValueKey('leader-group-meeting-dialog')),
+      findsNothing,
+    );
+    expect(find.textContaining('Mötet är bokat'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('leader-group-meeting-e1')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
   testWidgets('a treasurer opens Klubb but sees no leader groups', (
     tester,
   ) async {
@@ -136,7 +199,46 @@ class _Chair implements IdentityServices {
 
 class _Groups extends UnconfiguredLeaderGroupServices {
   final saved = <String>[];
+  final meetings = <String>[];
   final _groups = <Map<String, dynamic>>[];
+
+  void seed(String name, List<String> teamIds) => _groups.add({
+    'id': 'g${_groups.length + 1}',
+    'name': name,
+    'revision': 1,
+    'thread_id': 't${_groups.length + 1}',
+    'teams': [
+      for (final id in teamIds) {'id': id, 'name': id.toUpperCase()},
+    ],
+    'people': [
+      {'id': 'ulf', 'name': 'Ulf Karlsson'},
+    ],
+    'member_count': 2,
+    'meetings': <Map<String, dynamic>>[],
+  });
+
+  @override
+  Future<String> createMeeting({
+    required String groupId,
+    required String title,
+    required DateTime startsAt,
+    required DateTime endsAt,
+    String? location,
+    String? agenda,
+  }) async {
+    String time(DateTime value) =>
+        '${value.hour}:${value.minute.toString().padLeft(2, '0')}';
+    meetings.add('$groupId $title ${time(startsAt)}-${time(endsAt)} $location');
+    final group = _groups.firstWhere((item) => item['id'] == groupId);
+    (group['meetings'] as List).add({
+      'id': 'e1',
+      'title': title,
+      'starts_at': startsAt.toUtc().toIso8601String(),
+      'ends_at': endsAt.toUtc().toIso8601String(),
+      'location': location,
+    });
+    return 'e1';
+  }
 
   @override
   Future<LeaderGroupsOverview> list(String clubId) async =>

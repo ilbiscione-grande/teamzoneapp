@@ -877,6 +877,13 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
             subtitle:
                 '${report.body}\n${report.published ? 'Publiceras tillsammans med synligt slutresultat' : 'Internt utkast'}',
           ),
+        if (event.leaderGroupName case final group?)
+          _EventInfoCard(
+            key: const ValueKey('event-info-leader-group'),
+            icon: Icons.groups_outlined,
+            title: group,
+            subtitle: strings.feature('Ledargruppens möte'),
+          ),
         if (ownerTeam != null)
           _EventInfoCard(
             icon: Icons.shield_outlined,

@@ -190,6 +190,7 @@ class EventDetails {
     this.matchNotes,
     this.meetingPurpose,
     this.meetingAgenda,
+    this.leaderGroupName,
   });
   final String id, title, type, state, timezone;
   final String? clubId, owningTeamId;
@@ -202,6 +203,9 @@ class EventDetails {
   final String? trainingTheme, trainingFocus, trainingPlan;
   final String? opponentName, homeAway, matchNotes;
   final String? meetingPurpose, meetingAgenda;
+
+  /// The leader group whose meeting this is (Ledargrupper), if any.
+  final String? leaderGroupName;
   final String? recurrenceId;
   final DateTime? archivedAt;
   final String? archiveReason;
@@ -265,6 +269,10 @@ class EventDetails {
       matchNotes: json['match_notes'] as String?,
       meetingPurpose: json['meeting_purpose'] as String?,
       meetingAgenda: json['meeting_agenda'] as String?,
+      leaderGroupName: switch (json['leader_group']) {
+        {'name': final String name} => name,
+        _ => null,
+      },
     );
   }
 }

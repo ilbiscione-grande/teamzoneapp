@@ -2054,6 +2054,7 @@ class AppStrings {
     'Dölj för mig': 'Hide for me',
     'Dela med andra lag': 'Share with other teams',
     'Ägande lag': 'Owning team',
+    'Ledargruppens möte': 'Leader group meeting',
     'Delat med detta lag': 'Shared with this team',
     'Ägande lag – eventet administreras härifrån':
         'Owning team – the event is managed from here',

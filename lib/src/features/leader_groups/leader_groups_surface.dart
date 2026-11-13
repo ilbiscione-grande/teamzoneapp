@@ -3,7 +3,8 @@ part of '../../app/teamzone_app.dart';
 /// Ledargrupper: the club's own groups of leaders across teams, e.g. a
 /// herrsektion with the men's teams, the oldest junior team and a few board
 /// members. Made by whoever holds members and teams or leads the board; each
-/// group gets a chat in the members' Inkorg.
+/// group gets a chat in the members' Inkorg and can book meetings that show
+/// in the members' calendars.
 class _LeaderGroupsSurface extends StatefulWidget {
   const _LeaderGroupsSurface({
     required this.clubId,
@@ -90,6 +91,27 @@ class _LeaderGroupsSurfaceState extends State<_LeaderGroupsSurface> {
     if (mounted) _reload();
   }
 
+  Future<void> _bookMeeting(LeaderGroup group) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final id = await showDialog<String>(
+      context: context,
+      builder: (_) =>
+          _LeaderGroupMeetingDialog(group: group, services: widget.services),
+    );
+    if (id == null || !mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('Mötet är bokat och syns i kalendern för ${group.name}.'),
+        action: SnackBarAction(
+          label: 'Öppna',
+          onPressed: () =>
+              widget.onNavigate(ProductRouteContract.calendarEvent(id)),
+        ),
+      ),
+    );
+    _reload();
+  }
+
   @override
   Widget build(BuildContext context) => FutureBuilder<LeaderGroupsOverview>(
     future: _overview,
@@ -129,7 +151,8 @@ class _LeaderGroupsSurfaceState extends State<_LeaderGroupsSurface> {
                       'Samla ledare från flera lag, till exempel en herrsektion '
                       'med herrlagens ledare, äldsta juniorlaget och några '
                       'ur styrelsen. Lagens ledare följer med automatiskt när '
-                      'de byts ut. Varje grupp får en egen chatt i Inkorgen.',
+                      'de byts ut. Varje grupp får en egen chatt i Inkorgen '
+                      'och kan boka möten som syns i medlemmarnas kalender.',
                     ),
                     const SizedBox(height: 16),
                     if (overview.groups.isEmpty)
@@ -144,6 +167,10 @@ class _LeaderGroupsSurfaceState extends State<_LeaderGroupsSurface> {
                         group: group,
                         onEdit: () => _edit(overview, group),
                         onArchive: () => _archive(group),
+                        onBookMeeting: () => _bookMeeting(group),
+                        onOpenMeeting: (meeting) => widget.onNavigate(
+                          ProductRouteContract.calendarEvent(meeting.id),
+                        ),
                         onOpenChat: group.threadId == null
                             ? null
                             : () => widget.onNavigate(
@@ -164,11 +191,15 @@ class _LeaderGroupCard extends StatelessWidget {
     required this.onEdit,
     required this.onArchive,
     required this.onOpenChat,
+    required this.onBookMeeting,
+    required this.onOpenMeeting,
   });
   final LeaderGroup group;
   final VoidCallback onEdit;
   final VoidCallback onArchive;
   final VoidCallback? onOpenChat;
+  final VoidCallback onBookMeeting;
+  final ValueChanged<LeaderGroupMeeting> onOpenMeeting;
 
   @override
   Widget build(BuildContext context) {
@@ -213,14 +244,22 @@ class _LeaderGroupCard extends StatelessWidget {
                 icon: Icons.person_outline,
                 text: group.people.map((person) => person.name).join(', '),
               ),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                key: ValueKey('leader-group-chat-${group.id}'),
-                onPressed: onOpenChat,
-                icon: const Icon(Icons.forum_outlined),
-                label: const Text('Öppna chatten'),
-              ),
+            _LeaderGroupMeetings(group: group, onOpen: onOpenMeeting),
+            Wrap(
+              children: [
+                TextButton.icon(
+                  key: ValueKey('leader-group-chat-${group.id}'),
+                  onPressed: onOpenChat,
+                  icon: const Icon(Icons.forum_outlined),
+                  label: const Text('Öppna chatten'),
+                ),
+                TextButton.icon(
+                  key: ValueKey('leader-group-book-${group.id}'),
+                  onPressed: group.canBookMeetings ? onBookMeeting : null,
+                  icon: const Icon(Icons.event_available_outlined),
+                  label: const Text('Nytt möte'),
+                ),
+              ],
             ),
           ],
         ),

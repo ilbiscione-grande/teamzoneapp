@@ -125,6 +125,7 @@ part '../features/legal/legal_acceptance_surface.dart';
 part '../features/billing/billing_surface.dart';
 part '../features/board/board_surface.dart';
 part '../features/leader_groups/leader_groups_surface.dart';
+part '../features/leader_groups/leader_group_meetings.dart';
 part '../features/calendar/calendar_surface.dart';
 part '../features/calendar/calendar_agenda.dart';
 part '../features/calendar/calendar_month.dart';
