@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/membership/club_fees.dart';
 import 'package:teamzone_app/src/features/membership/club_register.dart';
+import 'package:teamzone_app/src/features/membership/club_register_add.dart';
 import 'package:teamzone_app/src/features/membership/membership_models.dart';
 
 abstract interface class MembershipServices {
@@ -478,6 +479,33 @@ class SupabaseMembershipServices
     personId: personId,
     email: email,
   );
+
+  @override
+  Future<String> createClubPerson({
+    required String clubId,
+    required String name,
+    String? email,
+    required List<String> clubRoles,
+    required List<String> leaderTeamIds,
+    String? leaderTitle,
+    required String idempotencyKey,
+  }) => createClubPersonWith(
+    _client,
+    clubId: clubId,
+    name: name,
+    email: email,
+    clubRoles: clubRoles,
+    leaderTeamIds: leaderTeamIds,
+    leaderTitle: leaderTitle,
+    idempotencyKey: idempotencyKey,
+  );
+
+  @override
+  Future<String> issueClubPersonInvitation({
+    required String personId,
+    required String email,
+  }) =>
+      issueClubPersonInvitationWith(_client, personId: personId, email: email);
 
   @override
   Future<void> setClubRole({

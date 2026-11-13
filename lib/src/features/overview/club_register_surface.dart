@@ -118,6 +118,19 @@ class _ClubRegisterPageState extends State<_ClubRegisterPage> {
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        key: const ValueKey('club-register-add-person'),
+        onPressed: () async {
+          final added = await _openClubRegisterAddPerson(
+            context,
+            clubId: widget.clubId,
+            services: widget.services,
+          );
+          if (added && mounted) _reload();
+        },
+        icon: const Icon(Icons.person_add_alt),
+        label: Text(strings.feature('Lägg till person')),
+      ),
       appBar: AppBar(
         title: Text(strings.feature('Medlemsregister')),
         actions: [

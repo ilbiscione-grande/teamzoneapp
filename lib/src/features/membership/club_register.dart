@@ -200,6 +200,25 @@ abstract interface class ClubRegisterServices {
   /// The club's active teams.
   Future<List<({String id, String name})>> listClubTeams(String clubId);
 
+  /// Adds a new person with [clubRoles] (club_functionary, member) and
+  /// leader roles in [leaderTeamIds], each with [leaderTitle]; returns the
+  /// person's id. Throws ClubPersonCreateException.
+  Future<String> createClubPerson({
+    required String clubId,
+    required String name,
+    String? email,
+    required List<String> clubRoles,
+    required List<String> leaderTeamIds,
+    String? leaderTitle,
+    required String idempotencyKey,
+  });
+
+  /// An invitation code for the person to connect their account.
+  Future<String> issueClubPersonInvitation({
+    required String personId,
+    required String email,
+  });
+
   /// Sets a player's captain role ([captainRole] null: none) and player
   /// council in a team; the armband moves from anyone else who has it.
   /// Throws [ClubRoleException].

@@ -397,6 +397,100 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  testWidgets('the register adds a new board member and a new coach', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final membership = _Membership();
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'audit'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _AdminIdentity(),
+          membership: membership,
+          overview: _ClubOverview(),
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _tapVisible(tester, find.byKey(const ValueKey('drawer-tool-club')));
+    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-admin-register')),
+    );
+    await tester.pumpAndSettle();
+
+    // A board member with an address: the code to hand over follows.
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-register-add-person')),
+    );
+    await tester.pumpAndSettle();
+    final save = find.byKey(const ValueKey('club-register-add-save'));
+    expect(tester.widget<FilledButton>(save).onPressed, isNull);
+    await tester.enterText(
+      find.byKey(const ValueKey('club-register-add-name')),
+      'Karin Ek',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('club-register-add-email')),
+      'karin@example.com',
+    );
+    await tester.pumpAndSettle();
+    await _tapVisible(tester, save);
+    await tester.pumpAndSettle();
+    expect(membership.created, [
+      'Karin Ek karin@example.com club_functionary  null',
+    ]);
+    expect(find.text('code-for-new-person'), findsOneWidget);
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-register-add-done')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('club-register-add')), findsNothing);
+
+    // A goalkeeper coach in team A, without an address.
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-register-add-person')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('club-register-add-name')),
+      'Per Ek',
+    );
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-register-add-role-club_functionary')),
+    );
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-register-add-team-a')),
+    );
+    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('club-register-add-title')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Målvaktstränare').last);
+    await tester.pumpAndSettle();
+    await _tapVisible(tester, save);
+    await tester.pumpAndSettle();
+    expect(membership.created.last, 'Per Ek null  a goalkeeper_coach');
+    expect(find.byKey(const ValueKey('club-register-add')), findsNothing);
+    expect(tester.takeException(), isNull);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
   testWidgets('a club code lets someone apply to the club as board', (
     tester,
   ) async {
@@ -619,6 +713,29 @@ class _Membership extends UnconfiguredMembershipServices
 
   final emails = <String>[];
   final roles = <String>[];
+  final created = <String>[];
+
+  @override
+  Future<String> createClubPerson({
+    required String clubId,
+    required String name,
+    String? email,
+    required List<String> clubRoles,
+    required List<String> leaderTeamIds,
+    String? leaderTitle,
+    required String idempotencyKey,
+  }) async {
+    created.add(
+      '$name $email ${clubRoles.join('+')} ${leaderTeamIds.join('+')} $leaderTitle',
+    );
+    return 'new-person';
+  }
+
+  @override
+  Future<String> issueClubPersonInvitation({
+    required String personId,
+    required String email,
+  }) async => 'code-for-$personId';
 
   @override
   Future<void> setClubRole({

@@ -2446,6 +2446,17 @@ class AppStrings {
     'Andra klubbar': 'Other clubs',
     'Uppdrag': 'Roles',
     'Ledargrupper': 'Leader groups',
+    'är tillagd.': 'has been added.',
+    'Skicka inbjudningskoden till personen. När hen har skapat ett konto med samma e-postadress klistrar hen in koden under Inställningar → Använd kod. Koden gäller i 14 dagar.':
+        'Send the invitation code to the person. Once they have an account with the same e-mail address, they paste the code under Settings → Use code. The code is valid for 14 days.',
+    'E-post (valfritt)': 'E-mail (optional)',
+    'Med e-post får du en inbjudningskod att skicka, så att personen kan koppla sitt konto.':
+        'With an e-mail address you get an invitation code to send, so the person can connect their account.',
+    'I klubben': 'In the club',
+    'Styrelseposten registreras sedan under Uppdrag → Styrelse.':
+        'The board office is then registered under Roles → Board.',
+    'Ledare i lag': 'Leader in teams',
+    'Titel i laget': 'Title in the team',
     'Sektioner och grupper med ledare från flera lag':
         'Sections and groups with leaders from several teams',
     'Utseende och status': 'Look and status',
