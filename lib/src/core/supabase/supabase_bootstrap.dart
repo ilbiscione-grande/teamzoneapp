@@ -17,6 +17,7 @@ import 'package:teamzone_app/src/features/assistant_coach/assistant_identity.dar
 import 'package:teamzone_app/src/features/assistant_coach/assistant_presentation.dart';
 import 'package:teamzone_app/src/features/billing/billing_services.dart';
 import 'package:teamzone_app/src/features/board/board_services.dart';
+import 'package:teamzone_app/src/features/leader_groups/leader_group_services.dart';
 import 'package:teamzone_app/src/features/development/development_services.dart';
 import 'package:teamzone_app/src/features/economy/economy_services.dart';
 import 'package:teamzone_app/src/features/overview/overview_services.dart';
@@ -57,6 +58,7 @@ class AppServices {
     this.modules = const UnconfiguredModuleServices(),
     this.economy = const UnconfiguredEconomyServices(),
     this.board = const UnconfiguredBoardServices(),
+    this.leaderGroups = const UnconfiguredLeaderGroupServices(),
     this.editorial = const UnconfiguredEditorialServices(),
     this.assistantIdentity = const UnconfiguredAssistantIdentityServices(),
     this.assistantPresentation =
@@ -84,6 +86,7 @@ class AppServices {
   final ModuleServices modules;
   final EconomyServices economy;
   final BoardServices board;
+  final LeaderGroupServices leaderGroups;
   final EditorialServices editorial;
   final AssistantIdentityServices assistantIdentity;
   final AssistantPresentationServices assistantPresentation;
@@ -151,6 +154,7 @@ class SupabaseBootstrap {
       modules: SupabaseModuleServices(Supabase.instance.client),
       economy: SupabaseEconomyServices(Supabase.instance.client),
       board: SupabaseBoardServices(Supabase.instance.client),
+      leaderGroups: SupabaseLeaderGroupServices(Supabase.instance.client),
       editorial: SupabaseEditorialServices(Supabase.instance.client),
       assistantIdentity: SupabaseAssistantIdentityServices(
         Supabase.instance.client,

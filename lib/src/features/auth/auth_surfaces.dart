@@ -823,6 +823,7 @@ class _ContextBootstrapState extends State<_ContextBootstrap> {
           modules: widget.services.modules,
           economy: widget.services.economy,
           board: widget.services.board,
+          leaderGroups: widget.services.leaderGroups,
           editorial: widget.services.editorial,
           assistantIdentity: widget.services.assistantIdentity,
           assistantPresentation: widget.services.assistantPresentation,
@@ -1809,6 +1810,7 @@ class _ContextSelector extends StatefulWidget {
     required this.billing,
     required this.economy,
     required this.board,
+    this.leaderGroups = const UnconfiguredLeaderGroupServices(),
     required this.editorial,
     required this.assistantIdentity,
     required this.assistantPresentation,
@@ -1837,6 +1839,7 @@ class _ContextSelector extends StatefulWidget {
   final BillingServices billing;
   final EconomyServices economy;
   final BoardServices board;
+  final LeaderGroupServices leaderGroups;
   final EditorialServices editorial;
   final AssistantIdentityServices assistantIdentity;
   final AssistantPresentationServices assistantPresentation;
@@ -1968,6 +1971,7 @@ class _ContextSelectorState extends State<_ContextSelector> {
       billing: widget.billing,
       economy: widget.economy,
       board: widget.board,
+      leaderGroups: widget.leaderGroups,
       editorial: widget.editorial,
       assistantIdentity: widget.assistantIdentity,
       assistantPresentation: widget.assistantPresentation,

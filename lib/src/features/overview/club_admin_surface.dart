@@ -324,6 +324,18 @@ class _ClubAdminSurfaceState extends State<_ClubAdminSurface> {
                         onTap: () =>
                             widget.onNavigate(ProductRouteContract.board),
                       ),
+                    if (admin || contextValue.can('board.manage'))
+                      _ClubAdminTile(
+                        key: const ValueKey('club-admin-leader-groups'),
+                        icon: Icons.diversity_3_outlined,
+                        title: strings.feature('Ledargrupper'),
+                        subtitle: strings.feature(
+                          'Sektioner och grupper med ledare från flera lag',
+                        ),
+                        onTap: () => widget.onNavigate(
+                          ProductRouteContract.leaderGroups,
+                        ),
+                      ),
                     _ClubAdminTile(
                       key: const ValueKey('club-admin-permissions'),
                       icon: Icons.admin_panel_settings_outlined,

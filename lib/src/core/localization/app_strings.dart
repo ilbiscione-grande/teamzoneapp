@@ -2444,6 +2444,9 @@ class AppStrings {
     'Ledarkontakt': 'Coach contact',
     'Andra klubbar': 'Other clubs',
     'Uppdrag': 'Roles',
+    'Ledargrupper': 'Leader groups',
+    'Sektioner och grupper med ledare från flera lag':
+        'Sections and groups with leaders from several teams',
     'Utseende och status': 'Look and status',
     'Ordförande, kassör och övriga mandat': 'Chair, treasurer and other mandates',
     'Öppna laget': 'Open the team',

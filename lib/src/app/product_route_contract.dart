@@ -24,6 +24,9 @@ class ProductRouteContract {
   /// The club's areas given to its functionaries.
   static const clubPermissions = '/club-permissions';
 
+  /// Ledargrupper: the club's groups of leaders across teams.
+  static const leaderGroups = '/leader-groups';
+
   /// Klubb: the club administrator's work in one place.
   static const club = '/club';
 
@@ -50,6 +53,7 @@ class ProductRouteContract {
     editorial,
     publication,
     clubPermissions,
+    leaderGroups,
     club,
     fees,
     settings,

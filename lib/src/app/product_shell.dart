@@ -28,6 +28,7 @@ class _ProductShell extends StatefulWidget {
     required this.matchSpaceV2,
     this.push = const UnconfiguredPushServices(),
     this.modules = const UnconfiguredModuleServices(),
+    this.leaderGroups = const UnconfiguredLeaderGroupServices(),
     this.onOpenInContext,
     this.openAfterSwitch,
     super.key,
@@ -59,6 +60,7 @@ class _ProductShell extends StatefulWidget {
   final bool matchSpaceV2;
   final PushServices push;
   final ModuleServices modules;
+  final LeaderGroupServices leaderGroups;
 
   /// Opens a page in another of your contexts: the shell is rebuilt there
   /// and opens [openAfterSwitch] on top of Home.
@@ -505,6 +507,14 @@ class _ProductShellState extends State<_ProductShell> {
         builder: (_, _) => _ClubPermissionsSurface(
           clubId: widget.contextValue.clubId,
           roster: widget.roster,
+        ),
+      ),
+      GoRoute(
+        path: ProductRouteContract.leaderGroups,
+        builder: (_, _) => _LeaderGroupsSurface(
+          clubId: widget.contextValue.clubId,
+          services: widget.leaderGroups,
+          onNavigate: _navigateFromSurface,
         ),
       ),
       GoRoute(
