@@ -135,7 +135,7 @@ class _PlayerInjuryCardState extends State<_PlayerInjuryCard> {
                             )
                           : _tdpText(
                               context,
-                              'Jag godkänner att ledarna registrerar ${person.name}s skador',
+                              'Jag godkänner att ledarna registrerar ${swedishGenitive(person.name)} skador',
                               'I agree that the leaders register ${person.name}\'s injuries',
                             ),
                     ),

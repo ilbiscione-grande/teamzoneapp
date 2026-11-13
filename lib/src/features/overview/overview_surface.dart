@@ -737,7 +737,7 @@ class _GuardianHomeContent extends StatelessWidget {
           calendar: calendar,
           onNavigate: onNavigate,
           onChanged: onChanged,
-          callupTitle: '${child.displayName}s kallelser',
+          callupTitle: '${swedishGenitive(child.displayName)} kallelser',
           actingAsName: child.displayName,
         ),
       ],

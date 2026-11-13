@@ -704,6 +704,7 @@ class _AppNavigationPanel extends StatelessWidget {
                         trailing: club.canManage && club.pendingReports > 0
                             ? _NavPanelCount(club.pendingReports)
                             : null,
+                        selected: currentLocation == _refereeBoardRoute,
                         onTap: () => onOpenRefereeBoard!(club),
                       );
                     },

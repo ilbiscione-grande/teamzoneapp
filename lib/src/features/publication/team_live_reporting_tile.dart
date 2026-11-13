@@ -72,7 +72,9 @@ class _TeamLiveReportingTileState extends State<_TeamLiveReportingTile> {
     return SwitchListTile(
       key: ValueKey('team-live-reporting-${widget.teamId}'),
       contentPadding: const EdgeInsets.only(left: 32, right: 16),
-      title: Text('Rapportera ${widget.teamName}s matcher live'),
+      title: Text(
+        'Rapportera ${swedishGenitive(widget.teamName)} matcher live',
+      ),
       subtitle: const Text(
         'Publicerade matcher visas live på lagsidan med ställning, klocka och '
         'matchens gång. Spelare nämns bara med namnsamtycke. Det går att '

@@ -545,7 +545,7 @@ class _PublicationSelfServiceSurfaceState
                 leading: const Icon(Icons.public),
                 title: Text('${club['name']}'),
                 subtitle: Text(
-                  '${club['official'] == true ? 'Officiellt verifierad' : 'Inofficiell klubb'} · ${_publicationModeLabel(club['mode'])} · /${club['slug']}',
+                  '${club['official'] == true ? 'Officiellt verifierad' : 'Inofficiell klubb'} · ${_publicationModeLabel(club['mode'])}',
                 ),
                 trailing: canManage
                     ? OutlinedButton(
@@ -573,7 +573,7 @@ class _PublicationSelfServiceSurfaceState
               ListTile(
                 title: Text('${team['name']}'),
                 subtitle: Text(
-                  'Sida: ${team['mode'] == 'published' && club['mode'] != 'published' ? 'Dold – klubbsidan är inte publicerad (lagets publiceringsval är sparat)' : _publicationModeLabel(team['mode'])} · Ansökan: ${_publicationRequestLabel(team['request_status'])}'
+                  'Sida: ${team['mode'] == 'published' && club['mode'] != 'published' ? 'Dold – klubbsidan är inte publicerad (lagets publiceringsval är sparat)' : _publicationModeLabel(team['mode'])}${team['request_status'] == null ? '' : ' · Ansökan: ${_publicationRequestLabel(team['request_status'])}'}'
                   '${team['request_status'] == 'approved' && team['mode'] != 'published' ? '\nKlubben har godkänt ansökan. Sidan väntar på att klubben väljer publik synlighet.' : ''}',
                 ),
                 trailing: canManage
@@ -608,7 +608,9 @@ class _PublicationSelfServiceSurfaceState
                 SwitchListTile(
                   key: ValueKey('team-contact-${team['id']}'),
                   contentPadding: const EdgeInsets.only(left: 32, right: 16),
-                  title: Text('Kontaktformulär på ${team['name']}s sida'),
+                  title: Text(
+                    'Kontaktformulär på ${swedishGenitive('${team['name']}')} sida',
+                  ),
                   subtitle: const Text(
                     'Meddelanden går till lagets ledare i inkorgen.',
                   ),

@@ -576,7 +576,7 @@ class _ClubRefereeBoardPageState extends State<ClubRefereeBoardPage> {
     final title = widget.canManage ? 'Domartillsättning' : 'Domarersättning';
     if (tabs.length == 1) {
       return Scaffold(
-        appBar: AppBar(title: Text('$title · ${widget.clubName}')),
+        appBar: AppBar(title: Text(title)),
         body: tabs.single.$2,
       );
     }
@@ -584,10 +584,12 @@ class _ClubRefereeBoardPageState extends State<ClubRefereeBoardPage> {
       length: tabs.length,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('$title · ${widget.clubName}'),
+          title: Text(title),
           bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
+            // Five tabs fit a narrow column too.
+            labelPadding: const EdgeInsets.symmetric(horizontal: 10),
             tabs: [for (final tab in tabs) Tab(text: tab.$1)],
           ),
         ),
@@ -610,6 +612,17 @@ class _ClubRefereeBoardPageState extends State<ClubRefereeBoardPage> {
     final missing = inScope
         .where((item) => item.refereeKind == 'club' && item.missing > 0)
         .length;
+    final withClubReferee = inScope
+        .where((item) => item.refereeKind == 'club')
+        .length;
+    // Nothing to say about the referees when there are no matches.
+    final status = inScope.isEmpty
+        ? null
+        : withClubReferee == 0
+        ? 'Inga matcher med föreningsdomare i perioden.'
+        : missing == 0
+        ? 'Alla matcher med föreningsdomare är tillsatta.'
+        : '$missing matcher saknar föreningsdomare.';
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
@@ -642,11 +655,7 @@ class _ClubRefereeBoardPageState extends State<ClubRefereeBoardPage> {
         Row(
           children: [
             Expanded(
-              child: Text(
-                missing == 0
-                    ? 'Alla matcher med föreningsdomare är tillsatta.'
-                    : '$missing matcher saknar föreningsdomare.',
-              ),
+              child: status == null ? const SizedBox.shrink() : Text(status),
             ),
             if (widget.teamId != null)
               Padding(

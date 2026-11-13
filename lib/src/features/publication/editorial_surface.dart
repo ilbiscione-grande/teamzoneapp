@@ -294,7 +294,7 @@ class _EditorialSurfaceState extends State<_EditorialSurface> {
                   leading: Icon(_articleIcon(article.state)),
                   title: Text(article.title),
                   subtitle: Text(
-                    '${strings.domainValue(article.state)} · /${article.slug}'
+                    '${strings.domainValue(article.state)}'
                     '${article.mediaStatus == 'none' ? '' : ' · ${strings.feature(_heroStateLabel(article.mediaStatus))}'}\n'
                     '${_whereShown(strings, article.publishToClub, article.teamIds)}',
                   ),

@@ -2398,8 +2398,7 @@ class AppStrings {
     'Skapa ytterligare lag': 'Create another team',
     'Aktivt lag': 'Active team',
     'Byt till': 'Switch to',
-    'Lägg till ett nytt lag i den aktiva klubben.':
-        'Add a new team to the active club.',
+    'Lägg till ett nytt lag i klubben.': 'Add a new team to the club.',
     'Skicka en förfrågan till klubbens administratör.':
         'Send a request to the club administrator.',
     'Förfrågningar om nya lag': 'New team requests',
@@ -2444,6 +2443,7 @@ class AppStrings {
     'Kontaktförfrågningar': 'Contact requests',
     'Ledarkontakt': 'Coach contact',
     'Andra klubbar': 'Other clubs',
+    'Öppna laget': 'Open the team',
     'klubbsidan': 'the club page',
     'en lagsida': 'a team page',
     'Visas inte på någon sida': 'Not shown on any page',

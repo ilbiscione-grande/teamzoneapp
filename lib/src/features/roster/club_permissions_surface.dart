@@ -157,15 +157,18 @@ class _ClubPermissionsSurfaceState extends State<_ClubPermissionsSurface> {
                         if (_includedInMembers(person.capabilities, area))
                           // The server lets members and teams handle the
                           // referees too; a switch of its own would mislead.
-                          SwitchListTile(
+                          ListTile(
                             key: ValueKey(
                               'club-permission-${person.personId}-$area',
                             ),
                             dense: true,
                             title: Text(_clubAreaLabels[area]!.$1),
                             subtitle: const Text('Ingår i Medlemmar och lag.'),
-                            value: true,
-                            onChanged: null,
+                            trailing: Icon(
+                              Icons.check_circle,
+                              color: Theme.of(context).colorScheme.primary,
+                              semanticLabel: 'Har behörigheten',
+                            ),
                           )
                         else
                           SwitchListTile(

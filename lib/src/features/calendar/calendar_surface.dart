@@ -11,6 +11,7 @@ class _CalendarSurface extends StatefulWidget {
     required this.matchSpaceV2,
     this.initialAction,
     this.initialEventType,
+    this.roster,
   });
 
   final TeamZoneContext contextValue;
@@ -27,6 +28,9 @@ class _CalendarSurface extends StatefulWidget {
 
   /// Event type preselected by a create shortcut (`&type=match`).
   final String? initialEventType;
+
+  /// Opens a team read-only from an activity the viewer cannot open.
+  final RosterServices? roster;
 
   @override
   State<_CalendarSurface> createState() => _CalendarSurfaceState();
@@ -2443,6 +2447,12 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
   // _changeDate) instead of being fixed around today.
   late DateTime _windowAnchor = _selectedDate;
   Set<String>? _teamFilter;
+
+  /// Teams seen only through a club context (a club functionary's view of
+  /// every team): learned from the activities loaded, so the team filter
+  /// can offer them and filter them here, since the server filters by
+  /// context.
+  final Map<String, String> _clubTeamNames = {};
   String? _eventTypeFilter;
   bool _showArchived = false;
   static const _showWeekNumbersKey = 'calendar.showWeekNumbers';
@@ -2564,10 +2574,45 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
 
   List<String> get _filteredContextIds {
     final teamIds = _teamFilter;
+    final wantsClubTeam =
+        teamIds != null && teamIds.any(_clubTeamNames.containsKey);
     return widget.contexts
-        .where((item) => teamIds == null || teamIds.contains(item.teamId))
+        .where(
+          (item) =>
+              teamIds == null ||
+              teamIds.contains(item.teamId) ||
+              (item.teamId == null && wantsClubTeam),
+        )
         .map((item) => item.id)
         .toList(growable: false);
+  }
+
+  /// Remembers the teams that come only through a club context.
+  void _learnClubTeams(List<CalendarEventSummary> events) {
+    final own = {
+      for (final item in widget.contexts)
+        if (item.teamId != null) item.teamId!,
+    };
+    if (!widget.contexts.any((item) => item.teamId == null)) return;
+    for (final event in events) {
+      if (event.isRefereeAssignment || own.contains(event.owningTeamId)) {
+        continue;
+      }
+      if (event.owningTeamId.isEmpty || event.teamName.isEmpty) continue;
+      _clubTeamNames[event.owningTeamId] = event.teamName;
+    }
+  }
+
+  /// A club team's activities follow the team filter here.
+  bool _passesClubTeamFilter(CalendarEventSummary event) {
+    final teamIds = _teamFilter;
+    if (teamIds == null || event.isRefereeAssignment) return true;
+    if (teamIds.contains(event.owningTeamId)) return true;
+    if (_clubTeamNames.containsKey(event.owningTeamId)) return false;
+    // With a club team chosen the club context loads every team: an own
+    // team left out comes through it too, unless shared to a chosen one.
+    final wantsClubTeam = teamIds.any(_clubTeamNames.containsKey);
+    return !wantsClubTeam || event.isShared;
   }
 
   @override
@@ -2649,6 +2694,7 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
       from: from,
       to: to,
     );
+    _learnClubTeams(events);
     // The first load runs from initState: the locale is read only after it.
     if (!mounted) return events;
     final strings = AppStrings.of(context);
@@ -2922,12 +2968,49 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
     widget.onNavigate(ProductRouteContract.calendarEvent(summary.id));
   }
 
+  /// The team behind an activity, read-only, with its coming activities
+  /// from the calendar already loaded.
+  void _openTeamOf(CalendarEventSummary summary) {
+    final now = DateTime.now();
+    final upcoming =
+        (_data.state.data ?? const <CalendarEventSummary>[])
+            .where(
+              (event) =>
+                  event.owningTeamId == summary.owningTeamId &&
+                  !event.isRefereeAssignment &&
+                  event.endsAt.isAfter(now),
+            )
+            .toList()
+          ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+    _openClubTeam(
+      context,
+      ClubHomeTeam(
+        teamId: summary.owningTeamId,
+        name: summary.teamName,
+        memberCount: 0,
+        upcoming: [
+          for (final event in upcoming.take(5))
+            ClubTeamEvent(
+              title: event.title,
+              eventType: event.type,
+              startsAt: event.startsAt,
+              endsAt: event.endsAt,
+              allDay: event.allDay,
+              locationName: event.locationName,
+            ),
+        ],
+      ),
+      widget.roster,
+    );
+  }
+
   /// A team activity a club functionary sees but cannot open: what, when,
   /// where and which team.
   Future<void> _showTeamActivity(CalendarEventSummary summary) {
     final strings = AppStrings.of(context);
     final material = MaterialLocalizations.of(context);
     final start = summary.startsAt.toLocal();
+    final cancelled = summary.state == 'cancelled';
     return showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
@@ -2939,10 +3022,14 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ListTile(
-              leading: const Icon(Icons.event_outlined),
+              leading: Icon(
+                cancelled ? Icons.event_busy : Icons.event_outlined,
+                color: cancelled ? Theme.of(context).colorScheme.error : null,
+              ),
               title: Text(summary.title),
               subtitle: Text(
                 [
+                  if (cancelled) strings.feature('Inställd'),
                   summary.teamName,
                   summary.allDay
                       ? material.formatMediumDate(start)
@@ -2952,13 +3039,26 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Text(
                 strings.feature(
                   'Lagets ledare och spelare ser detaljerna. Du ser vad, när och var.',
                 ),
               ),
             ),
+            if (widget.roster != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: FilledButton.tonalIcon(
+                  key: const ValueKey('calendar-team-activity-open-team'),
+                  icon: const Icon(Icons.groups_outlined),
+                  label: Text(strings.feature('Öppna laget')),
+                  onPressed: () {
+                    Navigator.of(sheetContext).pop();
+                    _openTeamOf(summary);
+                  },
+                ),
+              ),
           ],
         ),
       ),
@@ -3052,13 +3152,16 @@ class _CalendarSurfaceState extends State<_CalendarSurface>
                 ],
               );
             }
-            final events = state.data ?? const [];
+            final events = (state.data ?? const <CalendarEventSummary>[])
+                .where(_passesClubTeamFilter)
+                .toList(growable: false);
             return _CalendarWorkspace(
               events: events,
               teams: {
                 for (final item in widget.contexts)
                   if (item.teamId != null && item.teamName != null)
                     item.teamId!: item.teamName!,
+                ..._clubTeamNames,
               },
               mode: _viewMode,
               selectedDate: _selectedDate,

@@ -115,6 +115,8 @@ void main() {
         matching: find.byType(Scrollable),
       ),
     );
+    await tester.ensureVisible(find.text('Godkänn'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Godkänn'));
     await tester.pumpAndSettle();
     expect(editorial.status, 'approved');

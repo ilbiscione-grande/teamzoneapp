@@ -247,6 +247,8 @@ class _ProductShellState extends State<_ProductShell> {
     _scaffoldKey.currentState?.closeDrawer();
     final navigator = _productNavigatorKey.currentState;
     if (navigator == null) return;
+    // The menu marks the referee board while it is open over the page.
+    setState(() => _refereeBoardOpen = true);
     await navigator.push(
       MaterialPageRoute<void>(
         builder: (_) => ClubRefereeBoardPage(
@@ -262,9 +264,12 @@ class _ProductShellState extends State<_ProductShell> {
     );
     if (!mounted) return;
     setState(() {
+      _refereeBoardOpen = false;
       _refereeSummary = _loadRefereeSummary();
     });
   }
+
+  bool _refereeBoardOpen = false;
 
   /// Your current name and picture for the menu. Reloaded after you edit
   /// your details; falls back to the name from sign-in.
@@ -687,6 +692,7 @@ class _ProductShellState extends State<_ProductShell> {
                   matchSpaceV2: widget.matchSpaceV2,
                   initialAction: state.uri.queryParameters['action'],
                   initialEventType: state.uri.queryParameters['type'],
+                  roster: widget.roster,
                 )
               : destination.path == '/inbox'
               ? _InboxSurface(
@@ -1299,7 +1305,7 @@ class _ProductShellState extends State<_ProductShell> {
           profile: widget.profile,
           contextValue: widget.contextValue,
           contexts: widget.contexts,
-          currentLocation: location,
+          currentLocation: _refereeBoardOpen ? _refereeBoardRoute : location,
           onNavigate: _openAction,
           onContextChanged: widget.onContextChanged,
           membership: widget.membership,
@@ -1722,7 +1728,7 @@ Future<void> _showContextPicker({
               subtitle: Text(
                 strings.feature(
                   activeContext.can('club.memberships.manage')
-                      ? 'Lägg till ett nytt lag i den aktiva klubben.'
+                      ? 'Lägg till ett nytt lag i klubben.'
                       : 'Skicka en förfrågan till klubbens administratör.',
                 ),
               ),
@@ -2104,6 +2110,7 @@ extension on _QuickAction {
 const _refereeBoardRoute = 'teamzone:referee-board';
 const _clubTeamRequestsRoute = '/team?action=team-requests';
 const _ownProfileRoute = 'teamzone:own-profile';
+
 const _tournamentsRoute = 'teamzone:tournaments';
 
 /// What the fifth button "Mer" holds, by role and capability. Leaders find

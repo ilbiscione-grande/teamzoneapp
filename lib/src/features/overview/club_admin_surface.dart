@@ -295,7 +295,7 @@ class _ClubAdminSurfaceState extends State<_ClubAdminSurface> {
                         icon: Icons.add_circle_outline,
                         title: strings.feature('Skapa ytterligare lag'),
                         subtitle: strings.feature(
-                          'Lägg till ett nytt lag i den aktiva klubben.',
+                          'Lägg till ett nytt lag i klubben.',
                         ),
                         onTap: () => _createTeamFromContextPicker(
                           context: context,

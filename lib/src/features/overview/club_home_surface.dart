@@ -506,7 +506,7 @@ class _ClubTeamPageState extends State<_ClubTeamPage> {
               Text(
                 [
                   ?overview?.clubName,
-                  '${team.memberCount} ${strings.feature('lagmedlemmar')}',
+                  '${overview?.memberCount ?? team.memberCount} ${strings.feature('lagmedlemmar')}',
                 ].join(' · '),
               ),
               section(strings.feature('Kommande')),

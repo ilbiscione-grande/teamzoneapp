@@ -320,7 +320,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Domarersättning · IF Eksjö Fotboll'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Domarersättning'), findsOneWidget);
     expect(find.text('Matcher'), findsNothing);
     expect(find.textContaining('3 godkända uppdrag'), findsOneWidget);
     expect(find.text('Lena Kassör'), findsOneWidget);

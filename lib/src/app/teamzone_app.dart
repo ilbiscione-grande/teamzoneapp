@@ -25,6 +25,7 @@ import 'package:teamzone_app/src/core/identity/session_persistence.dart';
 import 'package:teamzone_app/src/core/localization/app_strings.dart';
 import 'package:teamzone_app/src/core/localization/board_strings.dart';
 import 'package:teamzone_app/src/core/localization/economy_strings.dart';
+import 'package:teamzone_app/src/core/localization/swedish_genitive.dart';
 import 'package:teamzone_app/src/core/preferences/calendar_preferences.dart';
 import 'package:teamzone_app/src/core/preferences/language_preferences.dart';
 import 'package:teamzone_app/src/core/preferences/navigation_preferences.dart';
