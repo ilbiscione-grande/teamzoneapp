@@ -24,6 +24,7 @@ class LeaderGroup {
     required this.people,
     required this.memberCount,
     this.meetings = const [],
+    this.isMember = false,
   });
   factory LeaderGroup.fromJson(Map<String, dynamic> json) => LeaderGroup(
     id: '${json['id']}',
@@ -33,6 +34,7 @@ class LeaderGroup {
     teams: _refs(json['teams']),
     people: _refs(json['people']),
     memberCount: (json['member_count'] as num?)?.toInt() ?? 0,
+    isMember: json['is_member'] == true,
     meetings: [
       for (final item in (json['meetings'] as List? ?? const []))
         if (item is Map)
@@ -48,6 +50,9 @@ class LeaderGroup {
 
   /// Everyone in the group right now: the teams' leaders and the people.
   final int memberCount;
+
+  /// Whether the viewer is in the group; only members can open its chat.
+  final bool isMember;
 
   /// Coming meetings, soonest first; cancelled ones are left out.
   final List<LeaderGroupMeeting> meetings;

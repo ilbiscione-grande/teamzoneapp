@@ -93,6 +93,9 @@ void main() {
     await _tap(tester, find.byKey(const ValueKey('club-admin-leader-groups')));
 
     // A group of single people only has no team to hold the meeting.
+    // Only a group the chair is in offers its chat.
+    expect(find.byKey(const ValueKey('leader-group-chat-g1')), findsNothing);
+    expect(find.byKey(const ValueKey('leader-group-chat-g2')), findsOneWidget);
     final peopleOnly = find.byKey(const ValueKey('leader-group-book-g2'));
     expect(tester.widget<TextButton>(peopleOnly).onPressed, isNull);
     expect(
@@ -214,6 +217,7 @@ class _Groups extends UnconfiguredLeaderGroupServices {
       {'id': 'ulf', 'name': 'Ulf Karlsson'},
     ],
     'member_count': 2,
+    'is_member': teamIds.isEmpty,
     'meetings': <Map<String, dynamic>>[],
   });
 

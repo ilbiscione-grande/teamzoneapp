@@ -247,12 +247,14 @@ class _LeaderGroupCard extends StatelessWidget {
             _LeaderGroupMeetings(group: group, onOpen: onOpenMeeting),
             Wrap(
               children: [
-                TextButton.icon(
-                  key: ValueKey('leader-group-chat-${group.id}'),
-                  onPressed: onOpenChat,
-                  icon: const Icon(Icons.forum_outlined),
-                  label: const Text('Öppna chatten'),
-                ),
+                // The chat lets members only, so others do not see the way in.
+                if (group.isMember)
+                  TextButton.icon(
+                    key: ValueKey('leader-group-chat-${group.id}'),
+                    onPressed: onOpenChat,
+                    icon: const Icon(Icons.forum_outlined),
+                    label: const Text('Öppna chatten'),
+                  ),
                 TextButton.icon(
                   key: ValueKey('leader-group-book-${group.id}'),
                   onPressed: group.canBookMeetings ? onBookMeeting : null,
