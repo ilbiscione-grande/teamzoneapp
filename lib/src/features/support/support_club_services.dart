@@ -68,6 +68,7 @@ class SupportClubSummary {
 
 class SupportClubPerson {
   const SupportClubPerson({
+    this.personId,
     required this.name,
     required this.hasAccount,
     this.office,
@@ -76,12 +77,15 @@ class SupportClubPerson {
 
   factory SupportClubPerson.fromJson(Map<String, dynamic> json) =>
       SupportClubPerson(
+        personId: json['person_id'] as String?,
         name: json['name'] as String? ?? '',
         hasAccount: json['has_account'] == true,
         office: json['office'] as String?,
         endsAt: _date(json['ends_at']),
       );
 
+  /// Set for admins (support can take the right away).
+  final String? personId;
   final String name;
   final bool hasAccount;
   final String? office;
@@ -90,6 +94,7 @@ class SupportClubPerson {
 
 class SupportBoardChange {
   const SupportBoardChange({
+    this.id = '',
     required this.action,
     required this.office,
     required this.name,
@@ -99,6 +104,7 @@ class SupportBoardChange {
 
   factory SupportBoardChange.fromJson(Map<String, dynamic> json) =>
       SupportBoardChange(
+        id: json['id'] as String? ?? '',
         action: json['action'] as String? ?? '',
         office: json['office'] as String? ?? '',
         name: json['name'] as String? ?? '',
@@ -106,11 +112,32 @@ class SupportBoardChange {
         approvals: _int(json['approvals']),
       );
 
+  final String id;
   final String action;
   final String office;
   final String name;
   final DateTime createdAt;
   final int approvals;
+}
+
+/// Someone in the club who can sign in: whom support can make club admin.
+class SupportClubAccount {
+  const SupportClubAccount({
+    required this.personId,
+    required this.name,
+    required this.isAdmin,
+  });
+
+  factory SupportClubAccount.fromJson(Map<String, dynamic> json) =>
+      SupportClubAccount(
+        personId: json['person_id'] as String,
+        name: json['name'] as String? ?? '',
+        isAdmin: json['is_admin'] == true,
+      );
+
+  final String personId;
+  final String name;
+  final bool isAdmin;
 }
 
 class SupportClubTeam {
@@ -144,6 +171,7 @@ class SupportClubDetail {
     required this.board,
     required this.pendingBoardChanges,
     required this.teams,
+    this.peopleWithAccount = const [],
   });
 
   factory SupportClubDetail.fromJson(Map<String, dynamic> json) {
@@ -166,6 +194,10 @@ class SupportClubDetail {
         SupportBoardChange.fromJson,
       ),
       teams: list('teams', SupportClubTeam.fromJson),
+      peopleWithAccount: list(
+        'people_with_account',
+        SupportClubAccount.fromJson,
+      ),
     );
   }
 
@@ -182,6 +214,11 @@ class SupportClubDetail {
   final List<SupportClubPerson> board;
   final List<SupportBoardChange> pendingBoardChanges;
   final List<SupportClubTeam> teams;
+  final List<SupportClubAccount> peopleWithAccount;
+
+  /// Admins who count: an account and no end date.
+  int get countingAdmins =>
+      admins.where((admin) => admin.hasAccount && admin.endsAt == null).length;
 }
 
 /// The Supabase calls, used by SupabaseMembershipServices.

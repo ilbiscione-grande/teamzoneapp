@@ -1,6 +1,6 @@
 # Adminsida för TeamZones support
 
-**Status: del 1, 2 och 4 byggda 2026-11-14, och sidan är bruten loss från appen. Del 3 och 5 planerade.**
+**Status: del 1–4 byggda 2026-11-14, och sidan är bruten loss från appen. Del 5 planerad.**
 
 Sidan är för plattformens egna supportadministratörer (`internal.support_admins`, spärren `internal.actor_is_support_admin()`), inte för klubbadmin.
 
@@ -28,7 +28,7 @@ Byta till supportkontot: skapa kontot, lägg till det under Supportadmins med de
 |---|---|---|---|
 | 1. Klubbar (läsa) | Alla klubbar: status, verifiering, lag, personer, konton, klubbadmins med konto, styrelsemandat, styrelse under bildning, väntande styrelseändringar. De som behöver hjälp först. En klubb öppnas med namn på admins, styrelse, väntande ändringar och lag. | `api.list_clubs_for_support()`, `api.get_club_for_support(club)` (loggar `support.club_viewed`) | Byggd 2026-11-14 |
 | 2. Statistik | Konton (totalt, typ, nya, kopplade till klubb), aktiva (i dag, 7 och 30 dagar, i perioden), aktiva konton per dag, appar (webben, Android, iPhone, Tacticsboard, Webtools), klubbar och lag, användning per område (aktiviteter, kallelsesvar, närvaro, meddelanden, Tacticsboard-projekt och livelektioner, bokningar), Tacticsboard-prenumerationer och enheter med push. Perioden 7, 30, 90 eller 365 dagar. Bara antal, inga namn. | `api.get_platform_usage_for_support(period_days)`, `api.record_app_activity(app)` och tabellen `core.profile_activity_apps` | Byggd 2026-11-14. Aktiva dagar finns sedan 2026-09-30, vilken app först från 2026-11-14. Kvar: Webtools och Tacticsboard anropar ännu inte `record_app_activity`, så de räknas inte som appar. |
-| 3. Klubbar (åtgärder) | Utse klubbadmin bland personer med konto, verkställa eller avbryta en styrelseändring som fastnat, nödundantaget `teamzone.allow_no_club_admin` som loggad funktion med motivering. | `api.support_grant_club_admin`, `api.support_resolve_board_change`, `api.support_end_assignment_without_admin` | Planerad |
+| 3. Klubbar (åtgärder) | I klubbens vy: utse klubbadmin bland personer i klubben med konto, ta bort en klubbadmin (nödundantaget när klubben då står utan klubbadmin med konto), verkställa eller avbryta en styrelseändring som fastnat. Varje åtgärd kräver motivering (5–500 tecken) och loggas. | `api.support_grant_club_admin(club, person, reason)`, `api.support_remove_club_admin(club, person, reason)`, `api.support_resolve_board_change(change, apply\|cancel, reason)` (loggar `support.club_admin_granted`, `support.club_admin_removed`, `support.board_change_applied`, `support.board_change_cancelled`) | Byggd 2026-11-14 |
 | 4. Supportadmins | Lista, lägga till (befintliga konton) och ta bort; den sista kan inte tas bort. | `api.list_support_admins`, `api.grant_support_admin(email, reason)`, `api.revoke_support_admin(profile, reason)` (loggar `support.admin_granted` och `support.admin_revoked`, felkod `last_support_admin`) | Byggd 2026-11-14 |
 | 5. Logg | Supportens egna åtgärder ur `audit.command_events`. | `api.list_support_actions` | Planerad |
 
@@ -47,3 +47,12 @@ Alla funktioner kräver supportadmin, nekar andra med `insufficient_privilege` (
 - `lib/src/features/support/support_usage_services.dart` och `support_usage_tab.dart`: fliken Statistik.
 - `SupabaseProfileServices.recordActivity` anropar `record_app_activity` med `web`, `android` eller `ios` (skrivbordsbyggen använder det gamla anropet).
 - Test: `test/support_platform_usage_test.dart`.
+
+## Del 3 i appen
+
+- Migration `20270320090000_support_club_actions.sql`. Klubbens vy (`api.get_club_for_support`) har nu också id för admins och väntande ändringar, och personerna i klubben med konto.
+- **Utse klubbadmin:** personen får Medlemmar och lag över klubben genom en klubbroll (`club_functionary`), som Klubbens roller gör. Rollen skapas om personen saknar den. Bara Medlemmar och lag ges; den nya admin kan sedan dela ut det den själv har.
+- **Ta bort klubbadmin:** personens Medlemmar och lag avslutas, övriga roller finns kvar. Planen sa `support_end_assignment_without_admin`, men att ta bara rättigheten är snävare än att avsluta hela uppdraget. Om klubben då står utan klubbadmin med konto används nödundantaget: `teamzone.allow_no_club_admin` sätts, spärrens trigger kontrolleras direkt (`set constraints ... immediate`) och inställningen stängs av igen innan funktionen är klar. Loggen visar `left_without_admin`.
+- **Styrelseändring som fastnat:** verkställs med samma kontroller som styrelsens egen (uppdraget aktivt, ingen överlappande post), men utan styrelsens godkännanden; loggen visar hur många godkännanden ändringen hade. Avbryta sätter den till avbruten.
+- `lib/src/features/support/support_club_actions.dart`: tjänst (`SupportClubActionServices`, implementeras av `SupabaseMembershipServices`) och dialogerna. Knapparna sitter i `SupportClubDetailSheet`.
+- Test: `test/support_club_actions_test.dart`. Provad mot databasen i en transaktion som rullades tillbaka (nekas för andra, motivering, utse, igen ger PT409, ta bort, nödundantaget, spärren håller för andra ändringar, verkställa och avbryta).

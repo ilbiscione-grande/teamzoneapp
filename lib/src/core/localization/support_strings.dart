@@ -211,6 +211,56 @@ class SupportStrings {
   String get removed => isSwedish
       ? 'Supportadministratören är borttagen.'
       : 'The support administrator was removed.';
+  // Part 3: actions on clubs.
+  String get grantClubAdmin =>
+      isSwedish ? 'Utse klubbadmin' : 'Appoint club admin';
+  String get grantClubAdminBody => isSwedish
+      ? 'Personen får Medlemmar och lag över klubben, via en klubbroll. Bara personer i klubben med konto kan väljas.'
+      : 'The person gets Members and teams over the club, through a club role. Only people in the club with an account can be chosen.';
+  String get grantClubAdminConfirm => isSwedish ? 'Utse' : 'Appoint';
+  String get personLabel => isSwedish ? 'Person' : 'Person';
+  String get choosePerson => isSwedish ? 'Välj en person.' : 'Choose a person.';
+  String get noCandidates => isSwedish
+      ? 'Ingen mer i klubben har konto.'
+      : 'Nobody else in the club has an account.';
+  String get removeClubAdmin => isSwedish ? 'Ta bort' : 'Remove';
+  String get removeClubAdminTitle =>
+      isSwedish ? 'Ta bort klubbadmin' : 'Remove club admin';
+  String removeClubAdminBody(String name) => isSwedish
+      ? '$name förlorar Medlemmar och lag över klubben. Personens övriga roller finns kvar.'
+      : '$name loses Members and teams over the club. Their other roles stay.';
+  String get lastAdminWarning => isSwedish
+      ? 'Klubben står då utan klubbadmin med konto. Det är ett nödundantag och loggas med din motivering.'
+      : 'The club is then left without a club admin with an account. This is an emergency exception and is logged with your reason.';
+  String get applyChange => isSwedish ? 'Verkställ' : 'Apply';
+  String get cancelChange => isSwedish ? 'Avbryt ändringen' : 'Cancel change';
+  String get applyChangeTitle =>
+      isSwedish ? 'Verkställ styrelseändringen' : 'Apply the board change';
+  String get applyChangeBody => isSwedish
+      ? 'Ändringen genomförs utan styrelsens godkännanden. Gör det bara när styrelsen inte kan godkänna själv.'
+      : "The change is made without the board's approvals. Only do this when the board cannot approve it itself.";
+  String get cancelChangeTitle =>
+      isSwedish ? 'Avbryt styrelseändringen' : 'Cancel the board change';
+  String get cancelChangeBody => isSwedish
+      ? 'Ändringen avbryts och genomförs inte. Styrelsen kan föreslå den igen.'
+      : 'The change is cancelled and not made. The board can propose it again.';
+  String get clubAdminGranted =>
+      isSwedish ? 'Klubbadmin är utsedd.' : 'The club admin is appointed.';
+  String get clubAdminRemoved =>
+      isSwedish ? 'Klubbadmin är borttagen.' : 'The club admin is removed.';
+  String get clubLeftWithoutAdmin => isSwedish
+      ? 'Klubbadmin är borttagen. Klubben saknar nu klubbadmin med konto.'
+      : 'The club admin is removed. The club now has no club admin with an account.';
+  String get changeApplied => isSwedish
+      ? 'Styrelseändringen är verkställd.'
+      : 'The board change is applied.';
+  String get changeCancelled => isSwedish
+      ? 'Styrelseändringen är avbruten.'
+      : 'The board change is cancelled.';
+  String get actionsLogged => isSwedish
+      ? 'Åtgärder kräver motivering och loggas.'
+      : 'Actions need a reason and are logged.';
+
   String refusal(String? code) => switch (code) {
     'last_support_admin' =>
       isSwedish
@@ -228,7 +278,35 @@ class SupportStrings {
       isSwedish
           ? 'Kontot är inte längre supportadministratör.'
           : 'The account is no longer a support administrator.',
-    'reason_required' => reasonTooShort,
+    'reason_required' || 'invalid_reason' => reasonTooShort,
+    'person_without_account' =>
+      isSwedish
+          ? 'Personen har inget konto i klubben.'
+          : 'The person has no account in the club.',
+    'already_club_admin' =>
+      isSwedish
+          ? 'Personen är redan klubbadmin.'
+          : 'The person is already club admin.',
+    'not_club_admin' =>
+      isSwedish
+          ? 'Personen är inte längre klubbadmin.'
+          : 'The person is no longer club admin.',
+    'board_change_not_pending' =>
+      isSwedish
+          ? 'Styrelseändringen väntar inte längre.'
+          : 'The board change is no longer waiting.',
+    'mandate_target_inactive' =>
+      isSwedish
+          ? 'Personen har inget aktivt uppdrag i klubben, eller mandatet har redan gått ut.'
+          : 'The person has no active assignment in the club, or the mandate has already ended.',
+    'mandate_overlap' =>
+      isSwedish
+          ? 'Personen har redan den posten under samma tid.'
+          : 'The person already holds that office for the same period.',
+    'invalid_state' =>
+      isSwedish
+          ? 'Mandatet finns inte längre.'
+          : 'The mandate no longer exists.',
     _ =>
       isSwedish
           ? 'Ändringen kunde inte sparas.'

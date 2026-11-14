@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:teamzone_app/src/core/localization/board_strings.dart';
 import 'package:teamzone_app/src/core/localization/support_strings.dart';
 import 'package:teamzone_app/src/core/observability/app_errors.dart';
+import 'package:teamzone_app/src/features/support/support_club_actions.dart';
 import 'package:teamzone_app/src/features/support/support_club_services.dart';
 
 /// Klubbar on the support admin page: every club, those needing support
@@ -97,8 +98,12 @@ class _SupportClubsTabState extends State<SupportClubsTab> {
                     showDragHandle: true,
                     builder: (_) => SupportClubDetailSheet(
                       services: widget.services,
+                      actions: widget.services is SupportClubActionServices
+                          ? widget.services as SupportClubActionServices
+                          : null,
                       clubId: club.clubId,
                       name: club.name,
+                      onChanged: _reload,
                     ),
                   ),
                 ),
@@ -166,16 +171,24 @@ class _ClubCard extends StatelessWidget {
 }
 
 /// A club's admins, board, pending board changes and teams, with names.
+/// With [actions], support can appoint or remove a club admin and apply or
+/// cancel a stuck board change (part 3), each with a logged reason.
 class SupportClubDetailSheet extends StatefulWidget {
   const SupportClubDetailSheet({
     super.key,
     required this.services,
     required this.clubId,
     required this.name,
+    this.actions,
+    this.onChanged,
   });
   final SupportClubServices services;
+  final SupportClubActionServices? actions;
   final String clubId;
   final String name;
+
+  /// Called after an action, so the club list is fresh.
+  final VoidCallback? onChanged;
 
   @override
   State<SupportClubDetailSheet> createState() => _SupportClubDetailSheetState();
@@ -184,9 +197,102 @@ class SupportClubDetailSheet extends StatefulWidget {
 class _SupportClubDetailSheetState extends State<SupportClubDetailSheet> {
   late Future<SupportClubDetail> _detail = _load();
 
+  bool _saving = false;
+
   Future<SupportClubDetail> _load() => widget.services
       .getClubForSupport(clubId: widget.clubId)
       .timeout(const Duration(seconds: 15));
+
+  Future<void> _run(Future<String> Function() action) async {
+    final strings = SupportStrings.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _saving = true);
+    try {
+      final done = await action();
+      messenger.showSnackBar(SnackBar(content: Text(done)));
+      widget.onChanged?.call();
+      if (mounted) setState(() => _detail = _load());
+    } catch (error) {
+      final code = supportClubActionRefusal(error);
+      if (code == null) AppErrors.caught('support_clubs_tab.action', error);
+      messenger.showSnackBar(SnackBar(content: Text(strings.refusal(code))));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _grant(SupportClubDetail club) async {
+    final actions = widget.actions!;
+    final strings = SupportStrings.of(context);
+    final candidates = club.peopleWithAccount
+        .where((person) => !person.isAdmin)
+        .toList(growable: false);
+    if (candidates.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(strings.noCandidates)));
+      return;
+    }
+    final input = await askNewClubAdmin(context, candidates);
+    if (input == null || !mounted) return;
+    await _run(() async {
+      await actions.grantClubAdmin(
+        clubId: club.clubId,
+        personId: input.personId,
+        reason: input.reason,
+      );
+      return strings.clubAdminGranted;
+    });
+  }
+
+  Future<void> _remove(SupportClubDetail club, SupportClubPerson admin) async {
+    final actions = widget.actions!;
+    final strings = SupportStrings.of(context);
+    final counts = admin.hasAccount && admin.endsAt == null;
+    final reason = await askSupportReason(
+      context,
+      title: strings.removeClubAdminTitle,
+      body: strings.removeClubAdminBody(admin.name),
+      confirm: strings.removeClubAdmin,
+      warning: counts && club.countingAdmins <= 1
+          ? strings.lastAdminWarning
+          : null,
+    );
+    if (reason == null || !mounted) return;
+    await _run(() async {
+      final leftWithout = await actions.removeClubAdmin(
+        clubId: club.clubId,
+        personId: admin.personId!,
+        reason: reason,
+      );
+      return leftWithout
+          ? strings.clubLeftWithoutAdmin
+          : strings.clubAdminRemoved;
+    });
+  }
+
+  Future<void> _resolve(
+    SupportBoardChange change, {
+    required bool apply,
+  }) async {
+    final actions = widget.actions!;
+    final strings = SupportStrings.of(context);
+    final reason = await askSupportReason(
+      context,
+      title: apply ? strings.applyChangeTitle : strings.cancelChangeTitle,
+      body: apply ? strings.applyChangeBody : strings.cancelChangeBody,
+      confirm: apply ? strings.applyChange : strings.cancelChange,
+    );
+    if (reason == null || !mounted) return;
+    await _run(() async {
+      await actions.resolveBoardChange(
+        changeId: change.id,
+        apply: apply,
+        reason: reason,
+      );
+      return apply ? strings.changeApplied : strings.changeCancelled;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -210,11 +316,16 @@ class _SupportClubDetailSheetState extends State<SupportClubDetailSheet> {
           );
         }
         final club = snapshot.requireData;
+        final canAct = widget.actions != null && !_saving;
         Widget heading(String text) => Padding(
           padding: const EdgeInsets.only(top: 16, bottom: 4),
           child: Text(text, style: theme.textTheme.titleSmall),
         );
-        Widget person(SupportClubPerson item, {String? title}) => ListTile(
+        Widget person(
+          SupportClubPerson item, {
+          String? title,
+          Widget? trailing,
+        }) => ListTile(
           dense: true,
           contentPadding: EdgeInsets.zero,
           leading: Icon(
@@ -228,6 +339,7 @@ class _SupportClubDetailSheetState extends State<SupportClubDetailSheet> {
                 strings.endsOn(supportDate(item.endsAt!)),
             ].join(' · '),
           ),
+          trailing: trailing,
         );
         return ListView(
           key: const ValueKey('support-club-detail'),
@@ -256,7 +368,29 @@ class _SupportClubDetailSheetState extends State<SupportClubDetailSheet> {
             heading(strings.adminsHeading),
             Text(strings.adminsExplained, style: theme.textTheme.bodySmall),
             if (club.admins.isEmpty) Text(strings.none),
-            for (final admin in club.admins) person(admin),
+            for (final admin in club.admins)
+              person(
+                admin,
+                trailing: widget.actions != null && admin.personId != null
+                    ? TextButton(
+                        key: ValueKey(
+                          'support-club-admin-remove-${admin.personId}',
+                        ),
+                        onPressed: canAct ? () => _remove(club, admin) : null,
+                        child: Text(strings.removeClubAdmin),
+                      )
+                    : null,
+              ),
+            if (widget.actions != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  key: const ValueKey('support-club-admin-grant'),
+                  onPressed: canAct ? () => _grant(club) : null,
+                  icon: const Icon(Icons.person_add_alt),
+                  label: Text(strings.grantClubAdmin),
+                ),
+              ),
             heading(strings.boardHeading),
             if (club.board.isEmpty) Text(strings.none),
             for (final member in club.board)
@@ -278,11 +412,38 @@ class _SupportClubDetailSheetState extends State<SupportClubDetailSheet> {
                       change.name,
                     ),
                   ),
-                  subtitle: Text(
-                    strings.approvals(
-                      change.approvals,
-                      supportDate(change.createdAt),
-                    ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        strings.approvals(
+                          change.approvals,
+                          supportDate(change.createdAt),
+                        ),
+                      ),
+                      if (widget.actions != null && change.id.isNotEmpty)
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            TextButton(
+                              key: ValueKey('support-board-apply-${change.id}'),
+                              onPressed: canAct
+                                  ? () => _resolve(change, apply: true)
+                                  : null,
+                              child: Text(strings.applyChange),
+                            ),
+                            TextButton(
+                              key: ValueKey(
+                                'support-board-cancel-${change.id}',
+                              ),
+                              onPressed: canAct
+                                  ? () => _resolve(change, apply: false)
+                                  : null,
+                              child: Text(strings.cancelChange),
+                            ),
+                          ],
+                        ),
+                    ],
                   ),
                 ),
             ],
@@ -298,6 +459,8 @@ class _SupportClubDetailSheetState extends State<SupportClubDetailSheet> {
               ),
             const SizedBox(height: 12),
             Text(strings.viewLogged, style: theme.textTheme.bodySmall),
+            if (widget.actions != null)
+              Text(strings.actionsLogged, style: theme.textTheme.bodySmall),
           ],
         );
       },

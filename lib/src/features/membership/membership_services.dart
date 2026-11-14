@@ -6,6 +6,7 @@ import 'package:teamzone_app/src/features/membership/club_register.dart';
 import 'package:teamzone_app/src/features/membership/club_register_add.dart';
 import 'package:teamzone_app/src/features/membership/membership_models.dart';
 import 'package:teamzone_app/src/features/support/support_admin_services.dart';
+import 'package:teamzone_app/src/features/support/support_club_actions.dart';
 import 'package:teamzone_app/src/features/support/support_club_services.dart';
 import 'package:teamzone_app/src/features/support/support_usage_services.dart';
 
@@ -342,7 +343,8 @@ class SupabaseMembershipServices
         ClubJoinServices,
         SupportClubServices,
         SupportUsageServices,
-        SupportAdminServices {
+        SupportAdminServices,
+        SupportClubActionServices {
   const SupabaseMembershipServices(this._client);
 
   final SupabaseClient _client;
@@ -376,6 +378,27 @@ class SupabaseMembershipServices
     required String profileId,
     required String reason,
   }) => sendRevokeSupportAdmin(_client, profileId, reason);
+
+  @override
+  Future<void> grantClubAdmin({
+    required String clubId,
+    required String personId,
+    required String reason,
+  }) => sendSupportGrantClubAdmin(_client, clubId, personId, reason);
+
+  @override
+  Future<bool> removeClubAdmin({
+    required String clubId,
+    required String personId,
+    required String reason,
+  }) => sendSupportRemoveClubAdmin(_client, clubId, personId, reason);
+
+  @override
+  Future<void> resolveBoardChange({
+    required String changeId,
+    required bool apply,
+    required String reason,
+  }) => sendSupportResolveBoardChange(_client, changeId, apply, reason);
 
   @override
   Future<String> applyToClub({
