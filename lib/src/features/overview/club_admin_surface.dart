@@ -12,6 +12,12 @@ bool _canHandleClubFees(TeamZoneContext context) =>
     context.can('club.memberships.manage') ||
     (context.teamId == null && context.can('economy.manage'));
 
+/// Klubb opens for the club administrator, the treasurer (the fees) and
+/// those who manage the board, the chair and secretary (Styrelse and
+/// Ledargrupper).
+bool _canOpenClub(TeamZoneContext context) =>
+    _canHandleClubFees(context) || context.can('board.manage');
+
 /// The club's own context (no team) for [active]'s club, if you have one.
 TeamZoneContext? _clubContextFor(
   TeamZoneContext active,
@@ -136,7 +142,8 @@ class _ClubAdminSurfaceState extends State<_ClubAdminSurface> {
     final contextValue = widget.contextValue;
     final title = strings.feature('Klubb');
     final admin = contextValue.can('club.memberships.manage');
-    if (!admin && !_canHandleClubFees(contextValue)) {
+    final board = contextValue.can('board.manage');
+    if (!_canOpenClub(contextValue)) {
       return Scaffold(
         appBar: AppBar(title: Text(title)),
         body: Padding(
@@ -277,7 +284,7 @@ class _ClubAdminSurfaceState extends State<_ClubAdminSurface> {
               ),
             ],
           ),
-          if (admin)
+          if (admin || board)
             _ClubAdminTab(
               id: 'teams',
               label: strings.feature('Lag och uppdrag'),
@@ -285,7 +292,7 @@ class _ClubAdminSurfaceState extends State<_ClubAdminSurface> {
                 (
                   title: strings.feature('Lag'),
                   tiles: [
-                    if (home != null)
+                    if (admin && home != null)
                       _ClubAdminTile(
                         key: const ValueKey('club-admin-teams'),
                         icon: Icons.groups_outlined,
@@ -294,20 +301,21 @@ class _ClubAdminSurfaceState extends State<_ClubAdminSurface> {
                             '${home.teams.length} ${strings.feature('lag')}',
                         onTap: () => _openTeams(home.teams),
                       ),
-                    _ClubAdminTile(
-                      key: const ValueKey('club-admin-create-team'),
-                      icon: Icons.add_circle_outline,
-                      title: strings.feature('Skapa ytterligare lag'),
-                      subtitle: strings.feature(
-                        'Lägg till ett nytt lag i klubben.',
+                    if (admin)
+                      _ClubAdminTile(
+                        key: const ValueKey('club-admin-create-team'),
+                        icon: Icons.add_circle_outline,
+                        title: strings.feature('Skapa ytterligare lag'),
+                        subtitle: strings.feature(
+                          'Lägg till ett nytt lag i klubben.',
+                        ),
+                        onTap: () => _createTeamFromContextPicker(
+                          context: context,
+                          activeContext: _clubContext,
+                          membership: widget.membership,
+                          onTeamCreated: widget.onTeamCreated,
+                        ),
                       ),
-                      onTap: () => _createTeamFromContextPicker(
-                        context: context,
-                        activeContext: _clubContext,
-                        membership: widget.membership,
-                        onTeamCreated: widget.onTeamCreated,
-                      ),
-                    ),
                   ],
                 ),
                 (
@@ -324,7 +332,7 @@ class _ClubAdminSurfaceState extends State<_ClubAdminSurface> {
                         onTap: () =>
                             widget.onNavigate(ProductRouteContract.board),
                       ),
-                    if (admin || contextValue.can('board.manage'))
+                    if (admin || board)
                       _ClubAdminTile(
                         key: const ValueKey('club-admin-leader-groups'),
                         icon: Icons.diversity_3_outlined,
@@ -336,17 +344,18 @@ class _ClubAdminSurfaceState extends State<_ClubAdminSurface> {
                           ProductRouteContract.leaderGroups,
                         ),
                       ),
-                    _ClubAdminTile(
-                      key: const ValueKey('club-admin-permissions'),
-                      icon: Icons.admin_panel_settings_outlined,
-                      title: strings.feature('Klubbens behörigheter'),
-                      subtitle: strings.feature(
-                        'Vem som sköter publicering, medlemmar, anslag och domare',
+                    if (admin)
+                      _ClubAdminTile(
+                        key: const ValueKey('club-admin-permissions'),
+                        icon: Icons.admin_panel_settings_outlined,
+                        title: strings.feature('Klubbens behörigheter'),
+                        subtitle: strings.feature(
+                          'Vem som sköter publicering, medlemmar, anslag och domare',
+                        ),
+                        onTap: () => widget.onNavigate(
+                          ProductRouteContract.clubPermissions,
+                        ),
                       ),
-                      onTap: () => widget.onNavigate(
-                        ProductRouteContract.clubPermissions,
-                      ),
-                    ),
                     if (contextValue.can('club.referees.manage'))
                       _ClubAdminTile(
                         key: const ValueKey('club-admin-referees'),

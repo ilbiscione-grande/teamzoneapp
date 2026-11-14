@@ -2153,8 +2153,9 @@ List<_QuickAction> _moreActionsFor(
         route: ProductRouteContract.teamStatistics,
       ),
     // Klubb: the club administrator's work in one place.
-    // The treasurer sees it for the fees.
-    if (_canHandleClubFees(contextValue))
+    // The treasurer sees it for the fees, the chair and secretary for
+    // Styrelse and Ledargrupper.
+    if (_canOpenClub(contextValue))
       (
         icon: Icons.domain_outlined,
         label: strings.feature('Klubb'),

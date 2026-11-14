@@ -257,7 +257,7 @@ class _LeaderGroupCard extends StatelessWidget {
                   ),
                 TextButton.icon(
                   key: ValueKey('leader-group-book-${group.id}'),
-                  onPressed: group.canBookMeetings ? onBookMeeting : null,
+                  onPressed: onBookMeeting,
                   icon: const Icon(Icons.event_available_outlined),
                   label: const Text('Nytt möte'),
                 ),

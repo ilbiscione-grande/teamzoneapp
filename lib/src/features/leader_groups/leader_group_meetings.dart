@@ -34,14 +34,6 @@ class _LeaderGroupMeetings extends StatelessWidget {
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ),
-      if (!group.canBookMeetings)
-        Padding(
-          padding: const EdgeInsets.only(top: 6, right: 8),
-          child: Text(
-            'Lägg till ett lag i gruppen för att kunna boka möten.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ),
     ],
   );
 }
@@ -151,7 +143,7 @@ class _LeaderGroupMeetingDialogState extends State<_LeaderGroupMeetingDialog> {
         SnackBar(
           content: Text(
             code == 'no_team'
-                ? 'Lägg till ett lag i gruppen för att kunna boka möten.'
+                ? 'Klubben behöver minst ett lag för att boka möten.'
                 : 'Mötet kunde inte bokas. Försök igen.',
           ),
         ),

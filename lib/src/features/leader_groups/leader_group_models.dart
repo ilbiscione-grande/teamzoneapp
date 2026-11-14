@@ -56,10 +56,6 @@ class LeaderGroup {
 
   /// Coming meetings, soonest first; cancelled ones are left out.
   final List<LeaderGroupMeeting> meetings;
-
-  /// A meeting is held by one of the group's teams, so a group of single
-  /// people only cannot book one.
-  bool get canBookMeetings => teams.isNotEmpty;
 }
 
 /// A group meeting: an activity in the members' calendars.
@@ -145,7 +141,8 @@ class LeaderGroupsOverview {
 class LeaderGroupException implements Exception {
   const LeaderGroupException(this.code);
 
-  /// name_taken, stale_revision, empty_group, invalid_name or no_team.
+  /// name_taken, stale_revision, empty_group, invalid_name or no_team (the
+  /// club has no team to hold a meeting).
   final String code;
   @override
   String toString() => 'LeaderGroupException($code)';

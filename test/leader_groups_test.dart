@@ -92,16 +92,12 @@ void main() {
     await _tap(tester, find.byKey(const ValueKey('club-admin-tabbar-teams')));
     await _tap(tester, find.byKey(const ValueKey('club-admin-leader-groups')));
 
-    // A group of single people only has no team to hold the meeting.
+    // A group of single people books meetings too.
     // Only a group the chair is in offers its chat.
     expect(find.byKey(const ValueKey('leader-group-chat-g1')), findsNothing);
     expect(find.byKey(const ValueKey('leader-group-chat-g2')), findsOneWidget);
     final peopleOnly = find.byKey(const ValueKey('leader-group-book-g2'));
-    expect(tester.widget<TextButton>(peopleOnly).onPressed, isNull);
-    expect(
-      find.text('Lägg till ett lag i gruppen för att kunna boka möten.'),
-      findsOneWidget,
-    );
+    expect(tester.widget<TextButton>(peopleOnly).onPressed, isNotNull);
 
     await _tap(tester, find.byKey(const ValueKey('leader-group-book-g1')));
     expect(
@@ -203,6 +199,42 @@ void main() {
       find.byKey(const ValueKey('club-admin-leader-groups')),
       findsNothing,
     );
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('a chair without Medlemmar och lag opens Klubb for the board', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'audit'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: const _Chair(
+            capabilities: {'board.read', 'board.manage', 'board.approve'},
+          ),
+          overview: _ClubOverview(),
+          leaderGroups: _Groups()..seed('Herrsektionen', const []),
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _tap(tester, find.byKey(const ValueKey('drawer-tool-club')));
+    // Styrelse and Ledargrupper, not the administrator's teams and rights.
+    expect(find.byKey(const ValueKey('club-admin-board')), findsOneWidget);
+    expect(find.byKey(const ValueKey('club-admin-teams')), findsNothing);
+    expect(find.byKey(const ValueKey('club-admin-create-team')), findsNothing);
+    expect(find.byKey(const ValueKey('club-admin-permissions')), findsNothing);
+    expect(find.byKey(const ValueKey('club-admin-register')), findsNothing);
+    await _tap(tester, find.byKey(const ValueKey('club-admin-leader-groups')));
+    expect(find.text('Herrsektionen'), findsOneWidget);
+    expect(tester.takeException(), isNull);
     debugDefaultTargetPlatformOverride = null;
   });
 }

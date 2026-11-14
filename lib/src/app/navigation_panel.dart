@@ -544,7 +544,7 @@ class _AppNavigationPanel extends StatelessWidget {
         hasReferees ||
         canTournaments ||
         canPublicPages ||
-        _canHandleClubFees(contextValue) ||
+        _canOpenClub(contextValue) ||
         contextValue.can('publication.manage');
     const chevron = Icon(Icons.chevron_right);
     // A short window gets a tighter footer, so the menu rows keep room.
@@ -645,7 +645,7 @@ class _AppNavigationPanel extends StatelessWidget {
                   divider,
                   _NavPanelSection(strings.feature('Verktyg')),
                 ],
-                if (_canHandleClubFees(contextValue))
+                if (_canOpenClub(contextValue))
                   _NavPanelRow(
                     key: const Key('drawer-tool-club'),
                     icon: Icons.domain_outlined,
