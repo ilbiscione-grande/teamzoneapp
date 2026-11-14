@@ -195,3 +195,12 @@ class _ClubPermissionsSurfaceState extends State<_ClubPermissionsSurface> {
     ),
   );
 }
+
+/// Every club keeps an admin who can sign in (migration
+/// 20270316090000_club_keeps_an_admin.sql): taking Medlemmar och lag from
+/// the last one, ending their role or unlinking their account is refused.
+bool _isLastClubAdmin(Object error) =>
+    error.toString().contains('last_memberships_manager');
+
+const _lastClubAdminMessage =
+    'Klubben måste ha minst en administratör med Medlemmar och lag. Ge först någon annan Medlemmar och lag under Klubbens behörigheter.';

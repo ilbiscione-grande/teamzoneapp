@@ -1510,7 +1510,9 @@ class _RosterLifecycleSheetState extends State<_RosterLifecycleSheet> {
       debugPrint('TEAM-08 archive failed: $error\n$stackTrace');
       await _showActionError(
         'Arkivera från laget',
-        'Åtgärden kunde inte sparas. Ladda om och försök igen.',
+        _isLastClubAdmin(error)
+            ? _lastClubAdminMessage
+            : 'Åtgärden kunde inte sparas. Ladda om och försök igen.',
       );
     } finally {
       if (mounted) setState(() => _pending = false);
@@ -4876,7 +4878,9 @@ Future<void> _archivePersonFromDetails({
         title: Text(strings.feature('Avsluta i laget')),
         content: Text(
           strings.feature(
-            'Åtgärden kunde inte sparas. Ladda om och försök igen.',
+            _isLastClubAdmin(error)
+                ? _lastClubAdminMessage
+                : 'Åtgärden kunde inte sparas. Ladda om och försök igen.',
           ),
         ),
         actions: [

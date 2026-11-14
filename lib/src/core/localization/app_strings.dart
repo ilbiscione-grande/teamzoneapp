@@ -2419,6 +2419,10 @@ class AppStrings {
     'Vårdnadshavare': 'Guardian',
     'Styrelse och funktionärer': 'Board and officials',
     'Medlemmar i klubben': 'Members of the club',
+    'Du är klubbens sista administratör. Ge någon annan Medlemmar och lag under Klubbens behörigheter innan du ber om att få kontot raderat.':
+        'You are the club\'s last administrator. Give someone else Members and teams under Club permissions before asking to have your account erased.',
+    'Klubben måste ha minst en administratör med Medlemmar och lag. Ge först någon annan Medlemmar och lag under Klubbens behörigheter.':
+        'The club must keep at least one administrator with Members and teams. First give someone else Members and teams under Club permissions.',
     'Radera kontot för gott?': 'Erase the account for good?',
     'Det här går inte att ångra. {name} kan inte logga in igen, och kontot kan inte återställas.':
         'This cannot be undone. {name} can no longer sign in, and the account cannot be restored.',

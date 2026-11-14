@@ -389,7 +389,9 @@ class _ProfileSettingsSurfaceState extends State<_ProfileSettingsSurface> {
           title: Text(strings.feature('Begäran kunde inte skickas')),
           content: Text(
             strings.feature(
-              'Det kan redan finnas ett öppet ärende. Försök igen senare eller kontakta TeamZone.',
+              _isLastClubAdmin(error)
+                  ? 'Du är klubbens sista administratör. Ge någon annan Medlemmar och lag under Klubbens behörigheter innan du ber om att få kontot raderat.'
+                  : 'Det kan redan finnas ett öppet ärende. Försök igen senare eller kontakta TeamZone.',
             ),
           ),
           actions: [

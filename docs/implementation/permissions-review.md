@@ -37,6 +37,6 @@ Behörigheterna har vuxit fram område för område: ledarbehörigheter per lag 
 1. En samlad karta över alla behörigheter: vad var och en tillåter, vem som har den som standard och var den delas ut.
 2. Ett beslut om vilka roller och mallar nya klubbar och lag får, och om styrelseposter ska ge behörigheter.
 3. Ett gränssnitt (eller få) där klubben ser och ändrar behörigheter samlat, i stället för tre spridda ställen, inklusive de som saknar gränssnitt idag.
-4. Spärrar som gäller överallt: man delar bara ut det man har, och ingen klubb eller inget lag kan bli utan den som förvaltar behörigheterna.
+4. Spärrar som gäller överallt: man delar bara ut det man har, och ingen klubb eller inget lag kan bli utan den som förvaltar behörigheterna. Klubbdelen är byggd 2026-11-14 (migration `20270316090000_club_keeps_an_admin.sql`): varje aktiv klubb behåller minst en med Medlemmar och lag som har konto och varken behörighet eller uppdrag med slutdatum. Spärren sitter som uppskjutna triggers på behörigheter, uppdrag och kontokopplingar (felkod `last_memberships_manager`), och den sista administratören kan inte begära att kontot raderas. Support kan släppa igenom en ändring med `set_config('teamzone.allow_no_club_admin', 'on', true)`. Kvar: samma spärr för lag (den som förvaltar lagets behörigheter).
 5. Att klientens synlighet följer servern direkt efter en ändring.
 6. Underlag till produktägaren som ett eget beslutspaket innan något byggs.
