@@ -156,7 +156,7 @@ void main() {
     final services = File(
       'lib/src/features/membership/membership_services.dart',
     ).readAsStringSync();
-    expect(services, contains('SupportClubServices {'));
+    expect(services, contains('SupportClubServices,'));
     expect(services, contains('fetchClubsForSupport(_client)'));
     final surface = File(
       'lib/src/features/auth/support_admin_surface.dart',

@@ -51,6 +51,8 @@ import 'package:teamzone_app/src/features/assistant_coach/assistant_task_prefere
 import 'package:teamzone_app/src/features/assistant_coach/assistant_task_feedback.dart';
 import 'package:teamzone_app/src/features/support/support_club_services.dart';
 import 'package:teamzone_app/src/features/support/support_clubs_tab.dart';
+import 'package:teamzone_app/src/features/support/support_usage_services.dart';
+import 'package:teamzone_app/src/features/support/support_usage_tab.dart';
 import 'package:teamzone_app/src/core/localization/support_strings.dart';
 import 'package:teamzone_app/src/features/assistant_coach/assistant_task_badge.dart';
 import 'package:teamzone_app/src/features/assistant_coach/assistant_queue.dart';

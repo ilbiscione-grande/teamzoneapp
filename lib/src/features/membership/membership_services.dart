@@ -6,6 +6,7 @@ import 'package:teamzone_app/src/features/membership/club_register.dart';
 import 'package:teamzone_app/src/features/membership/club_register_add.dart';
 import 'package:teamzone_app/src/features/membership/membership_models.dart';
 import 'package:teamzone_app/src/features/support/support_club_services.dart';
+import 'package:teamzone_app/src/features/support/support_usage_services.dart';
 
 abstract interface class MembershipServices {
   Future<List<ClubTeamSearchResult>> search({required String query});
@@ -338,7 +339,8 @@ class SupabaseMembershipServices
         ClubFeesProvider,
         DisplayNameServices,
         ClubJoinServices,
-        SupportClubServices {
+        SupportClubServices,
+        SupportUsageServices {
   const SupabaseMembershipServices(this._client);
 
   final SupabaseClient _client;
@@ -353,6 +355,10 @@ class SupabaseMembershipServices
   @override
   Future<SupportClubDetail> getClubForSupport({required String clubId}) =>
       fetchClubForSupport(_client, clubId);
+
+  @override
+  Future<PlatformUsage> getPlatformUsage({int periodDays = 30}) =>
+      fetchPlatformUsage(_client, periodDays);
 
   @override
   Future<String> applyToClub({

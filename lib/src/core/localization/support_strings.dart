@@ -85,4 +85,82 @@ class SupportStrings {
   String get viewLogged => isSwedish
       ? 'Att du öppnade klubben sparas i supportens logg.'
       : 'That you opened the club is saved in the support log.';
+
+  // Statistik (part 2).
+  String get usageTab => isSwedish ? 'Statistik' : 'Statistics';
+  String get usageFailed => isSwedish
+      ? 'Statistiken kunde inte laddas.'
+      : 'The statistics could not be loaded.';
+  String periodDays(int days) => isSwedish ? '$days dagar' : '$days days';
+  String get accountsHeading => isSwedish ? 'Konton' : 'Accounts';
+  String get activeHeading => isSwedish ? 'Aktiva' : 'Active';
+  String get appsHeading => isSwedish ? 'Appar' : 'Apps';
+  String get clubsHeading => isSwedish ? 'Klubbar och lag' : 'Clubs and teams';
+  String get areasHeading =>
+      isSwedish ? 'Användning per område' : 'Use per area';
+  String get productsHeading =>
+      isSwedish ? 'Prenumerationer och enheter' : 'Subscriptions and devices';
+  String get dailyHeading =>
+      isSwedish ? 'Aktiva konton per dag' : 'Active accounts per day';
+  String get total => isSwedish ? 'Totalt' : 'Total';
+  String get newInPeriod => isSwedish ? 'Nya i perioden' : 'New in period';
+  String get linkedToClub =>
+      isSwedish ? 'Kopplade till klubb' : 'Linked to a club';
+  String get today => isSwedish ? 'I dag' : 'Today';
+  String get last7 => isSwedish ? 'Senaste 7 dagarna' : 'Last 7 days';
+  String get last30 => isSwedish ? 'Senaste 30 dagarna' : 'Last 30 days';
+  String get inPeriod => isSwedish ? 'I perioden' : 'In period';
+  String accountType(String value) => switch (value) {
+    'member' => isSwedish ? 'Medlemskonton' : 'Member accounts',
+    'follower' => isSwedish ? 'Följarkonton' : 'Follower accounts',
+    _ => isSwedish ? 'Övriga konton' : 'Other accounts',
+  };
+  String app(String value) => switch (value) {
+    'web' => isSwedish ? 'Webben' : 'Web',
+    'android' => 'Android',
+    'ios' => 'iPhone',
+    'tacticsboard' => 'Tacticsboard',
+    'webtools' => 'Webtools',
+    _ => value,
+  };
+  String club(String key) => switch (key) {
+    'active' => isSwedish ? 'Aktiva klubbar' : 'Active clubs',
+    'official' => isSwedish ? 'Officiella klubbar' : 'Official clubs',
+    'new_in_period' => isSwedish ? 'Nya klubbar' : 'New clubs',
+    'teams' => isSwedish ? 'Lag' : 'Teams',
+    'people' => isSwedish ? 'Personer i klubbar' : 'People in clubs',
+    _ => key,
+  };
+  String area(String key) => switch (key) {
+    'events_created' => isSwedish ? 'Aktiviteter skapade' : 'Events created',
+    'callup_answers' => isSwedish ? 'Svar på kallelser' : 'Call-up answers',
+    'attendance_recorded' =>
+      isSwedish ? 'Närvaro registrerad' : 'Attendance recorded',
+    'messages_sent' => isSwedish ? 'Meddelanden skickade' : 'Messages sent',
+    'tactics_projects_created' =>
+      isSwedish
+          ? 'Tacticsboard-projekt skapade'
+          : 'Tacticsboard projects created',
+    'tactics_live_sessions' =>
+      isSwedish ? 'Livelektioner i Tacticsboard' : 'Tacticsboard live lessons',
+    'bookings_created' => isSwedish ? 'Bokningar skapade' : 'Bookings created',
+    _ => key,
+  };
+  String subscription(String key) => switch (key) {
+    'webtool.tacticsboard' =>
+      isSwedish ? 'Tacticsboard, aktiva' : 'Tacticsboard, active',
+    _ => key,
+  };
+  String pushDevices(String platform) => isSwedish
+      ? 'Enheter med push (${app(platform)})'
+      : 'Devices with push (${app(platform)})';
+  String get noApps => isSwedish
+      ? 'Ingen app registrerad i perioden ännu.'
+      : 'No app recorded in the period yet.';
+  String sinceNote(String activity, String? apps) => isSwedish
+      ? 'Aktiva dagar sparas sedan $activity${apps == null ? '' : ', vilken app sedan $apps'}. Bara antal, inga namn.'
+      : 'Active days are recorded since $activity${apps == null ? '' : ', which app since $apps'}. Counts only, no names.';
+  String dayTooltip(String date, int active, int created) => isSwedish
+      ? '$date: $active aktiva, $created nya konton'
+      : '$date: $active active, $created new accounts';
 }

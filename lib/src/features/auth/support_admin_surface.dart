@@ -398,25 +398,23 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
     final clubs = membership is SupportClubServices
         ? membership as SupportClubServices
         : null;
+    // Statistik: how the apps are used (part 2).
+    final usage = membership is SupportUsageServices
+        ? membership as SupportUsageServices
+        : null;
+    final tabs = [
+      Tab(key: const ValueKey('support-tab-cases'), text: support.casesTab),
+      if (clubs != null)
+        Tab(key: const ValueKey('support-tab-clubs'), text: support.clubsTab),
+      if (usage != null)
+        Tab(key: const ValueKey('support-tab-usage'), text: support.usageTab),
+    ];
     return DefaultTabController(
-      length: clubs == null ? 1 : 2,
+      length: tabs.length,
       child: Scaffold(
         appBar: AppBar(
           title: Text(strings.feature('Supportärenden')),
-          bottom: clubs == null
-              ? null
-              : TabBar(
-                  tabs: [
-                    Tab(
-                      key: const ValueKey('support-tab-cases'),
-                      text: support.casesTab,
-                    ),
-                    Tab(
-                      key: const ValueKey('support-tab-clubs'),
-                      text: support.clubsTab,
-                    ),
-                  ],
-                ),
+          bottom: tabs.length == 1 ? null : TabBar(tabs: tabs),
           actions: [
             if (widget.assistant != null)
               IconButton(
@@ -885,6 +883,7 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
               ],
             ),
             if (clubs != null) SupportClubsTab(services: clubs),
+            if (usage != null) SupportUsageTab(services: usage),
           ],
         ),
       ),

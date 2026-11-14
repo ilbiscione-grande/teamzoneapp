@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/account/profile_models.dart';
 
@@ -669,7 +671,13 @@ class SupabaseProfileServices implements ProfileServices {
   }
 
   @override
-  Future<void> recordActivity() => _rpc('record_activity');
+  Future<void> recordActivity() {
+    // Since 2026-11-14 also which app (support statistics).
+    final app = activityApp();
+    return app == null
+        ? _rpc('record_activity')
+        : _rpc('record_app_activity', {'app': app});
+  }
 
   @override
   Future<ClubColors> getClubColors(String clubId) async {
@@ -701,4 +709,15 @@ class SupabaseProfileServices implements ProfileServices {
     'badge_action': 'remove',
     'staged_badge_id': null,
   });
+}
+
+/// The app an active day is recorded from, or null when not one TeamZone
+/// counts (desktop builds).
+String? activityApp() {
+  if (kIsWeb) return 'web';
+  return switch (defaultTargetPlatform) {
+    TargetPlatform.android => 'android',
+    TargetPlatform.iOS => 'ios',
+    _ => null,
+  };
 }
