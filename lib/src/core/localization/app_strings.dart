@@ -2417,6 +2417,8 @@ class AppStrings {
     'Sökningen kunde inte genomföras. Försök igen.':
         'The search could not be completed. Please try again.',
     'Vårdnadshavare': 'Guardian',
+    'Styrelse och funktionärer': 'Board and officials',
+    'Medlemmar i klubben': 'Members of the club',
     'Dra tillbaka ansökan': 'Withdraw application',
     'Acceptera som guardian': 'Accept as guardian',
     'Acceptera': 'Accept',
@@ -2461,7 +2463,8 @@ class AppStrings {
     'Sektioner och grupper med ledare från flera lag':
         'Sections and groups with leaders from several teams',
     'Utseende och status': 'Look and status',
-    'Ordförande, kassör och övriga mandat': 'Chair, treasurer and other mandates',
+    'Ordförande, kassör och övriga mandat':
+        'Chair, treasurer and other mandates',
     'Öppna laget': 'Open the team',
     'klubbsidan': 'the club page',
     'en lagsida': 'a team page',

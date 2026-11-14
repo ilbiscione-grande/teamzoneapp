@@ -2965,10 +2965,15 @@ class _ComposeDialogState extends State<_ComposeDialog> {
           spacing: 8,
           runSpacing: 4,
           children: [
-            for (final audience in const [
+            for (final audience in [
               ('player', 'Spelare'),
               ('leader', 'Ledare'),
               ('guardian', 'Vårdnadshavare'),
+              // Club-wide only: they have no team.
+              if (_scope == 'club') ...const [
+                ('club_functionary', 'Styrelse och funktionärer'),
+                ('member', 'Medlemmar i klubben'),
+              ],
               ('all', 'Alla'),
             ])
               FilterChip(
@@ -3011,8 +3016,13 @@ class _ComposeDialogState extends State<_ComposeDialog> {
               ButtonSegment(value: 'club', label: Text(widget.clubName)),
             ],
             selected: {_scope},
-            onSelectionChanged: (value) =>
-                setState(() => _scope = value.single),
+            onSelectionChanged: (value) => setState(() {
+              _scope = value.single;
+              // A team has no club-wide roles to reach.
+              if (_scope != 'club') {
+                _audienceRoles.removeAll(const ['club_functionary', 'member']);
+              }
+            }),
           ),
         ] else
           Text(

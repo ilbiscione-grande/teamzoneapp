@@ -15,6 +15,9 @@ void main() {
   final roleGroupGrantMigration = File(
     'supabase/migrations/20260922074609_msg03_grant_role_group_announcement_execution.sql',
   ).readAsStringSync();
+  final clubMembersMigration = File(
+    'supabase/migrations/20270314090000_announcements_reach_club_members.sql',
+  ).readAsStringSync();
   final immutableAnnouncementMigration = File(
     'supabase/migrations/20260922131951_msg03_close_announcement_after_initial_message.sql',
   ).readAsStringSync();
@@ -109,6 +112,13 @@ void main() {
     );
     expect(roleGroupGrantMigration, contains('to authenticated'));
     expect(surface, contains("('all', 'Alla')"));
+    // Club-wide announcements reach members without a team too.
+    expect(
+      clubMembersMigration,
+      contains("''guardian'', ''club_functionary'', ''member''];"),
+    );
+    expect(surface, contains("('member', 'Medlemmar i klubben')"));
+    expect(surface, contains("if (_scope == 'club') ...const ["));
     expect(surface, contains("feature('Meddelande')"));
     expect(surface, contains("message.contains('no_recipients')"));
     expect(surface, contains('Serverkod: {code}'));
