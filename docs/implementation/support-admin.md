@@ -58,7 +58,12 @@ Alla funktioner kräver supportadmin, nekar andra med `insufficient_privilege` (
 - Hemligheter i appens projekt, som ägaren sätter: `TACTICSBOARD_STATS_URL` (`https://zfxcblgnemuenaqjkaic.supabase.co`) och `TACTICSBOARD_STATS_SECRET_KEY` (en hemlig nyckel för produktionsprojektet, gärna en egen nyckel bara för detta så att den kan bytas för sig).
 - Appen: `support_tacticsboard_services.dart`, `support_tacticsboard_tab.dart`, texterna i `support_tacticsboard_strings.dart`. Korten återanvänder `UsageSection` och `UsageTile` från Statistik.
 - Test: `test/support_tacticsboard_usage_test.dart`. Funktionen provad i appens databas (andra än servern nekas).
-- Aktiva per dag saknas: Webtools sparar inga aktiva dagar. Det kräver att Webtools anropar `record_app_activity` (migration `20270318090000`, som inte finns i produktionen än).
+- **Mer detaljer (2026-11-14), migration `20270323090000_webtools_usage_tracking.sql`:**
+  - Ur det som redan finns: verktyg på tavlorna (objekt per sort i alla bilder), tavlor (animerade, bilder, planvy), mallar och bibliotek (TeamZones övningar, egna mallar, favoriter, mappar, fästa projekt, sparade versioner), det som händer i livelektionerna (chatt, frågor, svar, ritningar) och de delade övningar som flest har som favorit (med titel).
+  - Ny mätning i Webtools: `core.webtools_presence` (en rad per konto med senaste gången en synlig flik sa till, ungefär varje minut; ger "just nu", senaste 5 minuterna), `core.webtools_activity_days` (konto och dag; ger aktiva per dag) och `core.webtools_usage_counts` (dag, sort och nyckel med antal, utan konto: sidvisningar per sidmönster, färdiga tavlor, egna mallar och delade övningar som används). Webtools anropar `api.record_webtools_presence()` och `api.record_webtools_use(kind, key)`; gäster i livelektioner räknas inte.
+  - Webtools: `lib/usage.ts` (sidmönster, aldrig adresser med id), `components/usage-tracker.tsx` i `app/layout.tsx`, och anrop när ett projekt eller en tavla börjar från en färdig tavla, egen mall eller biblioteket (`SharedLibrary.tsx`, `home/NewProjectDialog.tsx`, `BoardMenu.tsx`). Test `webtools/tests/usage.test.ts`.
+  - De nya siffrorna läggs till i `api.get_tacticsboard_usage_for_server` (via `internal.get_tacticsboard_usage_more_for_server`), så kantfunktionen är oförändrad. Fliken visar dem som kort och listor (mest använda färdiga tavlor, mest använt ur biblioteket, flest favoriter, mest besökta sidor).
+  - Aktiva, sidor och användning räknas från den dag Webtools med mätningen driftsätts i produktionen.
 
 ## Del 3 i appen
 

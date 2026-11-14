@@ -3,6 +3,7 @@ import "./globals.css";
 import { AccountProvider } from "../components/account";
 import { LanguageProvider } from "../components/language";
 import { Footer, Header } from "../components/shell";
+import { UsageTracker } from "../components/usage-tracker";
 import { englishOpen, serverLocale, serverT } from "../lib/i18n/server";
 
 const display = Barlow_Condensed({ subsets: ["latin"], weight: ["600", "700", "800"], variable: "--wt-display", display: "swap" });
@@ -25,6 +26,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       <body>
         <LanguageProvider locale={locale} switchable={englishOpen()}>
           <AccountProvider>
+            <UsageTracker />
             <div className="wt-shell">
               <Header />
               <main className="wt-main">{children}</main>

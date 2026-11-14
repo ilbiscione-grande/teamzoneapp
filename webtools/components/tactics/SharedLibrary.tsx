@@ -15,6 +15,7 @@ import { boardsFromLibrary, libraryKindLabels, noFilters, projectKindOf, type Sh
 import type { ProjectSummary } from "../../lib/tactics/model.ts";
 import { boardsFromTemplate } from "../../lib/tactics/templates.ts";
 import { useAccount } from "../account";
+import { recordUse } from "../../lib/usage";
 import { useSharedLibrary } from "./use-shared-library.ts";
 import { HomeFilterBar } from "./home/HomeFilterBar.tsx";
 import { LibraryCard } from "./home/LibraryCard.tsx";
@@ -66,6 +67,7 @@ export function SharedLibrary() {
     });
     setBusy(null);
     if (createError) { setNotice(t("Projektet kunde inte skapas. Försök igen.")); return; }
+    recordUse(client, "shared", item.id);
     router.push(`/tacticsboard/${(data as ProjectSummary).id}`);
   };
 

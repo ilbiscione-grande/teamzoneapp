@@ -16,6 +16,7 @@ import type { Board, ExercisePart, ProjectKind, ProjectSummary } from "../../../
 import { boardsFromTemplate, defaultStarterKeys, starterBoard, starterSets, type TemplateSummary } from "../../../lib/tactics/templates.ts";
 import type { LeaderTeam } from "../../../lib/tournament";
 import { useAccount } from "../../account";
+import { recordUse } from "../../../lib/usage";
 import { useT } from "../../language";
 import { kindLabels } from "../TopBar.tsx";
 import { detailsText, NewProjectDetailsFields } from "./NewProjectDetails.tsx";
@@ -107,6 +108,9 @@ export function NewProjectDialog({ teams, folder, templates, templateBoards, rem
     });
     if (createError) { setBusy(false); setError(t("Projektet kunde inte skapas. Försök igen.")); return; }
     const created = (data as ProjectSummary).id;
+    if (start === "ready") starterSets[kind].filter(item => picked.includes(item.key)).forEach(item => recordUse(client, "starter", `${kind}.${item.key}`));
+    else if (favorite) recordUse(client, "shared", favorite.id);
+    else if (template) recordUse(client, "template", "own");
     // Not put in the folder, the project is still made; the folder page tells.
     if (folder) await addToFolder(folder.id, created);
     router.push(folder ? `/tacticsboard/${created}?mapp=${folder.id}` : `/tacticsboard/${created}`);

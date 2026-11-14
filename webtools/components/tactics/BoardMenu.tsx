@@ -7,6 +7,8 @@ import { useEffect, useRef, useState } from "react";
 import { newBoard } from "../../lib/tactics/document.ts";
 import type { Board } from "../../lib/tactics/model.ts";
 import { boardsFromTemplate, starterBoard, starterSets } from "../../lib/tactics/templates.ts";
+import { recordUse } from "../../lib/usage";
+import { useAccount } from "../account";
 import { activeBoard, useEditor, NONE } from "./store.ts";
 import { useTemplates } from "./use-templates.ts";
 import { useT } from "../language";
@@ -21,6 +23,7 @@ export function BoardMenu() {
   const boards = useEditor(state => state.document?.boards ?? NONE);
   const current = useEditor(activeBoard);
   const { templates, error, boardsOf } = useTemplates(open);
+  const { client } = useAccount();
 
   useEffect(() => {
     if (!open) return;
@@ -48,7 +51,9 @@ export function BoardMenu() {
   const home = boards[0]?.teams.home.name, away = boards[0]?.teams.away.name;
   const fromTemplate = async (id: string) => {
     const found = await boardsOf(id);
-    if (found) add(boardsFromTemplate(found, meta?.teamName ?? undefined));
+    if (!found) return;
+    add(boardsFromTemplate(found, meta?.teamName ?? undefined));
+    recordUse(client, "template", "own");
   };
 
   return (
@@ -60,7 +65,7 @@ export function BoardMenu() {
           {current && <button type="button" role="menuitem" onClick={() => { useEditor.getState().duplicateBoard(current.id); setOpen(false); }}>{t("Kopia av {name}", { name: current.name || t("tavlan") })}</button>}
           <span className="tb-menu-heading">{t("Färdiga tavlor")}</span>
           {starterSets[meta?.kind ?? "match"].map(item => (
-            <button key={item.key} type="button" role="menuitem" onClick={() => add([starterBoard({ ...item, name: t(item.name) }, home, away)])}>{t(item.name)}</button>
+            <button key={item.key} type="button" role="menuitem" onClick={() => { add([starterBoard({ ...item, name: t(item.name) }, home, away)]); recordUse(client, "starter", `${meta?.kind ?? "match"}.${item.key}`); }}>{t(item.name)}</button>
           ))}
           <span className="tb-menu-heading">{t("Dina mallar")}</span>
           {error && <span className="tb-menu-note">{error}</span>}

@@ -22,6 +22,25 @@ TacticsboardUsage _usage(int periodDays) => TacticsboardUsage.fromJson({
   'projects': {'total': 11, 'new_in_period': 6},
   'live': {'sessions_in_period': 2},
   'sharing': {'open_reports': 1},
+  'active': {'now': 3, 'today': 5},
+  'tools': {'ball': 103, 'player': 1802, 'cone': 6},
+  'activity_recorded_since': '2026-11-14',
+  'rankings': {
+    'starters': [
+      {'key': 'match.corner-for', 'value': 9},
+      {'key': 'training.warm-up', 'value': 4},
+    ],
+    'shared': [
+      {'key': 'x1', 'label': 'Aktiveringsrondo 6 mot 2', 'value': 7},
+    ],
+    'favorites': <Object>[],
+    'pages': [
+      {'key': '/tacticsboard/[id]', 'value': 120},
+    ],
+  },
+  'daily_more': [
+    {'day': '2026-11-14', 'active': 5, 'page_views': 120, 'uses': 13},
+  ],
   'daily': [
     {'day': '2026-11-13', 'new_projects': 1, 'new_accounts': 0},
     {'day': '2026-11-14', 'new_projects': 5, 'new_accounts': 2},
@@ -63,6 +82,30 @@ void main() {
     // Not recorded in this database: no card.
     expect(find.text('Ångrade köp i perioden'), findsNothing);
     expect(find.textContaining('zfxcblgnemuenaqjkaic'), findsOneWidget);
+    expect(find.text('Just nu (senaste 5 min)'), findsOneWidget);
+
+    // Tools, the most used first.
+    final players = tester.getTopLeft(find.text('Spelare'));
+    final balls = tester.getTopLeft(find.text('Bollar'));
+    expect(players.dy < balls.dy || players.dx < balls.dx, isTrue);
+
+    // Ranked lists with readable names, never ids or addresses.
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('support-tacticsboard-ranking-pages')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Hörna anfall · Match'), findsOneWidget);
+    expect(find.text('Uppvärmning · Träning'), findsOneWidget);
+    expect(find.text('Aktiveringsrondo 6 mot 2'), findsOneWidget);
+    expect(find.text('Tacticsboard, ett projekt'), findsOneWidget);
+    expect(find.text('Inget i perioden än.'), findsOneWidget);
+    expect(find.textContaining('räknas sedan 2026-11-14'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('support-tacticsboard-period-90')),
+      -200,
+      scrollable: find.byType(Scrollable).first,
+    );
 
     await tester.tap(
       find.byKey(const ValueKey('support-tacticsboard-period-90')),
@@ -98,6 +141,35 @@ void main() {
     expect(
       find.byKey(const ValueKey('support-tacticsboard-not-configured')),
       findsOneWidget,
+    );
+  });
+
+  test('the two lists per day are merged by day', () {
+    final usage = _usage(30);
+    expect(usage.series('active').last.value, 5);
+    expect(usage.series('new_projects').last.value, 5);
+    expect(usage.series('active').first.value, 0);
+    expect(tacticsboardSeries('uses', 'page'), 'page_views');
+    expect(tacticsboardSeries('active', 'now'), 'active');
+  });
+
+  test('usage is recorded without saying who, and guests are not counted', () {
+    final migration = File(
+      'supabase/migrations/20270323090000_webtools_usage_tracking.sql',
+    ).readAsStringSync();
+    final counts = migration.substring(
+      migration.indexOf(
+        'create table if not exists core.webtools_usage_counts',
+      ),
+      migration.indexOf('alter table core.webtools_presence'),
+    );
+    expect(counts, isNot(contains('profile_id')));
+    expect(migration, contains("auth.jwt() ->> 'is_anonymous'"));
+    expect(
+      migration,
+      contains(
+        'grant execute on function internal.get_tacticsboard_usage_more_for_server(integer) to service_role;',
+      ),
     );
   });
 

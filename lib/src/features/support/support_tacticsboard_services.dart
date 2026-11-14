@@ -17,13 +17,26 @@ class TacticsboardUsageNotConfigured implements Exception {
 
 /// The sections the server returns, in the order the tab shows them.
 const tacticsboardSections = [
+  'active',
   'accounts',
   'billing',
   'subscriptions',
   'projects',
+  'boards',
+  'tools',
+  'uses',
+  'library',
   'live',
+  'live_activity',
   'sharing',
 ];
+
+/// The ranked lists, in the order the tab shows them.
+const tacticsboardRankings = ['starters', 'shared', 'favorites', 'pages'];
+
+/// One row of a ranked list: a key (a page, a ready board, an item id), the
+/// item's title when it is a shared library item, and its count.
+typedef TacticsboardRank = ({String key, String? label, int value});
 
 class TacticsboardUsage {
   const TacticsboardUsage({
@@ -31,6 +44,8 @@ class TacticsboardUsage {
     required this.source,
     required this.sections,
     required this.daily,
+    this.rankings = const {},
+    this.activitySince,
   });
 
   factory TacticsboardUsage.fromJson(
@@ -46,15 +61,44 @@ class TacticsboardUsage {
           '${entry.key}': entry.value == null ? null : usageInt(entry.value),
       };
     }
+    // The base numbers and the ones added later each have a list per day.
+    final days = <DateTime, Map<String, int>>{};
+    for (final list in [json['daily'], json['daily_more']]) {
+      for (final row
+          in (list as List? ?? const [])
+              .whereType<Map<String, dynamic>>()
+              .map(TacticsboardDay.fromJson)
+              .whereType<TacticsboardDay>()) {
+        (days[row.day] ??= {}).addAll(row.values);
+      }
+    }
+    final rankings = <String, List<TacticsboardRank>>{};
+    final ranked = json['rankings'];
+    if (ranked is Map) {
+      for (final name in tacticsboardRankings) {
+        final rows = ranked[name];
+        if (rows is! List) continue;
+        rankings[name] = [
+          for (final row in rows.whereType<Map>())
+            (
+              key: '${row['key'] ?? ''}',
+              label: row['label'] as String?,
+              value: usageInt(row['value']),
+            ),
+        ];
+      }
+    }
+    final ordered = days.keys.toList()..sort();
     return TacticsboardUsage(
       periodDays: usageInt(json['period_days']),
       source: source,
       sections: sections,
-      daily: (json['daily'] as List? ?? const [])
-          .whereType<Map<String, dynamic>>()
-          .map(TacticsboardDay.fromJson)
-          .whereType<TacticsboardDay>()
-          .toList(growable: false),
+      daily: [
+        for (final day in ordered)
+          TacticsboardDay(day: day, values: days[day]!),
+      ],
+      rankings: rankings,
+      activitySince: DateTime.tryParse('${json['activity_recorded_since']}'),
     );
   }
 
@@ -66,6 +110,12 @@ class TacticsboardUsage {
   /// Section → key → count. A null count is not recorded there.
   final Map<String, Map<String, int?>> sections;
   final List<TacticsboardDay> daily;
+
+  /// starters, shared, favorites, pages: the most used first.
+  final Map<String, List<TacticsboardRank>> rankings;
+
+  /// Webtools records active days since then; null before the first.
+  final DateTime? activitySince;
 
   /// One series from [daily], for a bar chart.
   List<({DateTime day, int value})> series(String key) => [
@@ -91,7 +141,7 @@ class TacticsboardDay {
   final DateTime day;
 
   /// new_accounts, trials_started, new_subscriptions, new_projects,
-  /// live_sessions.
+  /// live_sessions, active, page_views, uses.
   final Map<String, int> values;
 }
 
@@ -101,6 +151,8 @@ String? tacticsboardSeries(String section, String key) => switch (section) {
   'billing' when key.startsWith('trials_started') => 'trials_started',
   'subscriptions' when key != 'withdrawals_in_period' => 'new_subscriptions',
   'projects' => 'new_projects',
+  'active' => 'active',
+  'uses' => key == 'page' ? 'page_views' : 'uses',
   'live' when key != 'guests_in_period' && key != 'participants_in_period' =>
     'live_sessions',
   _ => null,

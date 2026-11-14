@@ -114,7 +114,7 @@ class _SupportTacticsboardTabState extends State<SupportTacticsboardTab> {
                     title: tb.section(entry.key),
                     onOpen: (tile) => _open(usage, tile),
                     tiles: [
-                      for (final count in entry.value.entries)
+                      for (final count in _ordered(entry.key, entry.value))
                         // Not recorded in this database (e.g. withdrawals).
                         if (count.value != null)
                           UsageTile(
@@ -125,8 +125,36 @@ class _SupportTacticsboardTabState extends State<SupportTacticsboardTab> {
                           ),
                     ],
                   ),
+                for (final name in tacticsboardRankings)
+                  if (usage.rankings[name] case final rows?)
+                    _Ranking(
+                      key: ValueKey('support-tacticsboard-ranking-$name'),
+                      title: tb.ranking(name),
+                      rows: [
+                        for (final row in rows)
+                          (
+                            label: switch (name) {
+                              'starters' => tb.starter(row.key),
+                              'pages' => tb.page(row.key),
+                              _ => row.label ?? row.key,
+                            },
+                            value: row.value,
+                          ),
+                      ],
+                    ),
                 Padding(
                   padding: const EdgeInsets.only(top: 16),
+                  child: Text(
+                    tb.activitySince(
+                      usage.activitySince == null
+                          ? null
+                          : supportDate(usage.activitySince!),
+                    ),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
                   child: Text(
                     tb.sourceNote(usage.source),
                     style: theme.textTheme.bodySmall,
@@ -137,6 +165,92 @@ class _SupportTacticsboardTabState extends State<SupportTacticsboardTab> {
           },
         ),
       ],
+    );
+  }
+}
+
+/// Tools are shown the most used first; other sections as the server
+/// gives them.
+Iterable<MapEntry<String, int?>> _ordered(
+  String section,
+  Map<String, int?> counts,
+) => section == 'tools'
+    ? (counts.entries.toList()
+        ..sort((a, b) => (b.value ?? 0).compareTo(a.value ?? 0)))
+    : counts.entries;
+
+/// A ranked list: a name and a count, the most first.
+class _Ranking extends StatelessWidget {
+  const _Ranking({super.key, required this.title, required this.rows});
+  final String title;
+  final List<({String label, int value})> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final tb = SupportTacticsboardStrings.of(context);
+    final theme = Theme.of(context);
+    final peak = rows.fold<int>(
+      0,
+      (top, row) => row.value > top ? row.value : top,
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(title, style: theme.textTheme.titleSmall),
+          const SizedBox(height: 8),
+          if (rows.isEmpty)
+            Text(tb.rankingEmpty, style: theme.textTheme.bodySmall),
+          for (final row in rows)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 5,
+                    child: Text(row.label, overflow: TextOverflow.ellipsis),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 3,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) => Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          height: 8,
+                          width: peak == 0
+                              ? 0
+                              : (constraints.maxWidth * row.value / peak).clamp(
+                                  2,
+                                  constraints.maxWidth,
+                                ),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary,
+                            borderRadius: const BorderRadius.horizontal(
+                              right: Radius.circular(4),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 48,
+                    child: Text(
+                      '${row.value}',
+                      textAlign: TextAlign.end,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
