@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -91,5 +93,18 @@ void main() {
     expect(find.text('Registrera styrelsemandat'), findsOneWidget);
     expect(tester.takeException(), isNull);
     debugDefaultTargetPlatformOverride = null;
+  });
+
+  test('the board forms until three with a mandate can sign in', () {
+    final migration = File(
+      'supabase/migrations/20270315090000_board_forming_counts_accounts.sql',
+    ).readAsStringSync();
+    // Only mandate holders with an active account in the club count.
+    expect(migration, contains("link.state = 'active')) < 3"));
+    // A change still pending is applied without approvals meanwhile.
+    expect(
+      migration,
+      contains('if not internal.board_forming(change_row.club_id) and'),
+    );
   });
 }

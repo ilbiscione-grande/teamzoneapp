@@ -380,7 +380,12 @@ class _BoardSurfaceState extends State<_BoardSurface> {
                         if (change.state == 'pending' &&
                             widget.contextValue.can('board.manage'))
                           IconButton(
-                            tooltip: copy.applyAfterApprovals,
+                            key: ValueKey('board-apply-${change.id}'),
+                            // While the board is forming no approvals are
+                            // needed (fewer than three can sign in).
+                            tooltip: data.forming
+                                ? copy.applyNow
+                                : copy.applyAfterApprovals,
                             onPressed: _busy
                                 ? null
                                 : () => _run(

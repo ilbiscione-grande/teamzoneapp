@@ -32,8 +32,8 @@ class BoardStrings {
   String get formingTitle =>
       isSwedish ? 'Styrelsen bildas' : 'The board is being formed';
   String get formingMessage => isSwedish
-      ? 'Tills tre personer har ett mandat registreras ändringar direkt. Därefter behöver varje ändring två godkännanden från styrelsen.'
-      : 'Until three people hold a mandate, changes are registered at once. After that, each change needs two approvals from the board.';
+      ? 'Tills tre personer med mandat har konto i TeamZone registreras ändringar direkt. Därefter behöver varje ändring två godkännanden från styrelsen.'
+      : 'Until three people with a mandate have an account in TeamZone, changes are registered at once. After that, each change needs two approvals from the board.';
   String get officesExplained => isSwedish
       ? 'Mandatet ger rättigheterna under sin period. Ordförande och sekreterare hanterar styrelsen, kassören klubbens ekonomi, ledamöter godkänner och revisorn granskar.'
       : 'A mandate gives its rights for its period. The chair and secretary run the board, the treasurer the club\'s economy, members approve and the auditor reviews.';
@@ -56,6 +56,7 @@ class BoardStrings {
   String get approve => isSwedish ? 'Godkänn' : 'Approve';
   String get approveChange =>
       isSwedish ? 'Godkänn mandatändring' : 'Approve mandate change';
+  String get applyNow => isSwedish ? 'Verkställ' : 'Apply';
   String get applyAfterApprovals =>
       isSwedish ? 'Verkställ efter 2 godkännanden' : 'Apply after 2 approvals';
   String approvals(int count) =>
