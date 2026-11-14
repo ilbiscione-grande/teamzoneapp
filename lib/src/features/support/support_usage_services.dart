@@ -6,6 +6,97 @@ abstract interface class SupportUsageServices {
   Future<PlatformUsage> getPlatformUsage({int periodDays = 30});
 }
 
+/// More about one card in Statistik: a value per day in the period and a
+/// few breakdowns. Counts only; the only names are club names.
+abstract interface class SupportUsageDetailServices {
+  Future<UsageDetail> getUsageDetail({
+    required String metric,
+    required String item,
+    int periodDays = 30,
+  });
+}
+
+class UsageRow {
+  const UsageRow({required this.key, required this.value, this.label});
+
+  factory UsageRow.fromJson(Map<String, dynamic> json) => UsageRow(
+    key: '${json['key'] ?? ''}',
+    label: json['label'] as String?,
+    value: usageInt(json['value']),
+  );
+
+  final String key;
+
+  /// Set for clubs (their name); other keys are codes.
+  final String? label;
+  final int value;
+}
+
+class UsageGroup {
+  const UsageGroup({required this.group, required this.rows});
+
+  factory UsageGroup.fromJson(Map<String, dynamic> json) => UsageGroup(
+    group: json['group'] as String? ?? '',
+    rows: (json['rows'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(UsageRow.fromJson)
+        .toList(growable: false),
+  );
+
+  final String group;
+  final List<UsageRow> rows;
+}
+
+class UsageDetail {
+  const UsageDetail({
+    required this.metric,
+    required this.item,
+    required this.daily,
+    required this.groups,
+  });
+
+  factory UsageDetail.fromJson(Map<String, dynamic> json) => UsageDetail(
+    metric: json['metric'] as String? ?? '',
+    item: json['item'] as String? ?? '',
+    daily: [
+      for (final day
+          in (json['daily'] as List? ?? const [])
+              .whereType<Map<String, dynamic>>())
+        (
+          day: DateTime.parse(day['day'] as String),
+          value: usageInt(day['value']),
+        ),
+    ],
+    groups: (json['groups'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(UsageGroup.fromJson)
+        .toList(growable: false),
+  );
+
+  final String metric;
+  final String item;
+  final List<({DateTime day, int value})> daily;
+  final List<UsageGroup> groups;
+}
+
+Future<UsageDetail> fetchUsageDetail(
+  SupabaseClient client,
+  String metric,
+  String item,
+  int periodDays,
+) async {
+  final value = await client
+      .schema('api')
+      .rpc<Object?>(
+        'get_usage_detail_for_support',
+        params: {'metric': metric, 'item': item, 'period_days': periodDays},
+      );
+  if (value is! Map<String, dynamic>) {
+    throw const FormatException('Invalid usage detail.');
+  }
+  return UsageDetail.fromJson(value);
+}
+
 class UsageDay {
   const UsageDay({
     required this.day,

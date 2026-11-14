@@ -3,10 +3,12 @@ import 'package:teamzone_app/src/core/localization/support_strings.dart';
 import 'package:teamzone_app/src/core/observability/app_errors.dart';
 import 'package:teamzone_app/src/features/support/support_clubs_tab.dart'
     show supportDate;
+import 'package:teamzone_app/src/features/support/support_usage_detail.dart';
 import 'package:teamzone_app/src/features/support/support_usage_services.dart';
 
 /// Statistik on the support admin page: accounts, active accounts, apps,
-/// clubs and use per area for a chosen period. Counts only.
+/// clubs and use per area for a chosen period. Counts only. A card opens
+/// to a value per day and breakdowns, when the services can give them.
 class SupportUsageTab extends StatefulWidget {
   const SupportUsageTab({super.key, required this.services});
   final SupportUsageServices services;
@@ -75,7 +77,28 @@ class _SupportUsageTabState extends State<SupportUsageTab> {
                 ),
               );
             }
-            return _UsageBody(usage: snapshot.requireData);
+            final details = widget.services is SupportUsageDetailServices
+                ? widget.services as SupportUsageDetailServices
+                : null;
+            return _UsageBody(
+              usage: snapshot.requireData,
+              onOpen: details == null
+                  ? null
+                  : (tile) => showModalBottomSheet<void>(
+                      context: context,
+                      isScrollControlled: true,
+                      useSafeArea: true,
+                      showDragHandle: true,
+                      builder: (_) => SupportUsageDetailSheet(
+                        services: details,
+                        metric: tile.metric,
+                        item: tile.item,
+                        title: tile.label,
+                        value: tile.value,
+                        periodDays: _period,
+                      ),
+                    ),
+            );
           },
         ),
       ],
@@ -84,8 +107,9 @@ class _SupportUsageTabState extends State<SupportUsageTab> {
 }
 
 class _UsageBody extends StatelessWidget {
-  const _UsageBody({required this.usage});
+  const _UsageBody({required this.usage, this.onOpen});
   final PlatformUsage usage;
+  final ValueChanged<_Tile>? onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -97,57 +121,101 @@ class _UsageBody extends StatelessWidget {
       children: [
         _Section(
           title: strings.accountsHeading,
+          onOpen: onOpen,
           tiles: [
-            _Tile(strings.total, usage.accounts),
-            _Tile(strings.newInPeriod, usage.newAccounts),
-            _Tile(strings.linkedToClub, usage.linkedAccounts),
+            _Tile(strings.total, usage.accounts, 'accounts', 'total'),
+            _Tile(strings.newInPeriod, usage.newAccounts, 'accounts', 'new'),
+            _Tile(
+              strings.linkedToClub,
+              usage.linkedAccounts,
+              'accounts',
+              'linked',
+            ),
             for (final entry in usage.accountTypes.entries)
-              _Tile(strings.accountType(entry.key), entry.value),
+              _Tile(
+                strings.accountType(entry.key),
+                entry.value,
+                'account_type',
+                entry.key,
+              ),
           ],
         ),
         _Section(
           title: strings.activeHeading,
+          onOpen: onOpen,
           tiles: [
-            _Tile(strings.today, usage.activeToday),
-            _Tile(strings.last7, usage.active7),
-            _Tile(strings.last30, usage.active30),
-            _Tile(strings.inPeriod, usage.activeInPeriod),
+            _Tile(strings.today, usage.activeToday, 'active', 'today'),
+            _Tile(strings.last7, usage.active7, 'active', 'last_7_days'),
+            _Tile(strings.last30, usage.active30, 'active', 'last_30_days'),
+            _Tile(
+              strings.inPeriod,
+              usage.activeInPeriod,
+              'active',
+              'in_period',
+            ),
           ],
         ),
         Padding(
           padding: const EdgeInsets.only(top: 8, bottom: 8),
           child: Text(strings.dailyHeading, style: theme.textTheme.titleSmall),
         ),
-        _DailyBars(days: usage.daily),
+        UsageBars(
+          key: const ValueKey('support-usage-daily'),
+          days: [
+            for (final day in usage.daily) (day: day.day, value: day.active),
+          ],
+          tooltip: (bar) {
+            final day = usage.daily.firstWhere((d) => d.day == bar.day);
+            return strings.dayTooltip(
+              supportDate(day.day),
+              day.active,
+              day.newAccounts,
+            );
+          },
+        ),
         _Section(
           title: strings.appsHeading,
           empty: strings.noApps,
+          onOpen: onOpen,
           tiles: [
             for (final entry in usage.apps.entries)
-              _Tile(strings.app(entry.key), entry.value),
+              _Tile(strings.app(entry.key), entry.value, 'app', entry.key),
           ],
         ),
         _Section(
           title: strings.clubsHeading,
+          onOpen: onOpen,
           tiles: [
             for (final entry in usage.clubs.entries)
-              _Tile(strings.club(entry.key), entry.value),
+              _Tile(strings.club(entry.key), entry.value, 'clubs', entry.key),
           ],
         ),
         _Section(
           title: strings.areasHeading,
+          onOpen: onOpen,
           tiles: [
             for (final entry in usage.areas.entries)
-              _Tile(strings.area(entry.key), entry.value),
+              _Tile(strings.area(entry.key), entry.value, 'area', entry.key),
           ],
         ),
         _Section(
           title: strings.productsHeading,
+          onOpen: onOpen,
           tiles: [
             for (final entry in usage.subscriptions.entries)
-              _Tile(strings.subscription(entry.key), entry.value),
+              _Tile(
+                strings.subscription(entry.key),
+                entry.value,
+                'subscription',
+                entry.key,
+              ),
             for (final entry in usage.pushDevices.entries)
-              _Tile(strings.pushDevices(entry.key), entry.value),
+              _Tile(
+                strings.pushDevices(entry.key),
+                entry.value,
+                'push',
+                entry.key,
+              ),
           ],
         ),
         if (since != null)
@@ -167,16 +235,26 @@ class _UsageBody extends StatelessWidget {
 }
 
 class _Tile {
-  const _Tile(this.label, this.value);
+  const _Tile(this.label, this.value, this.metric, this.item);
   final String label;
   final int value;
+
+  /// What the server calls the card, for its details.
+  final String metric;
+  final String item;
 }
 
 class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.tiles, this.empty});
+  const _Section({
+    required this.title,
+    required this.tiles,
+    this.empty,
+    this.onOpen,
+  });
   final String title;
   final List<_Tile> tiles;
   final String? empty;
+  final ValueChanged<_Tile>? onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -198,116 +276,46 @@ class _Section extends StatelessWidget {
                 SizedBox(
                   width: 160,
                   child: Card(
+                    key: ValueKey('support-usage-${tile.metric}-${tile.item}'),
                     margin: EdgeInsets.zero,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${tile.value}',
-                            style: theme.textTheme.headlineSmall,
-                          ),
-                          Text(
-                            tile.label,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: onOpen == null ? null : () => onOpen!(tile),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${tile.value}',
+                                    style: theme.textTheme.headlineSmall,
+                                  ),
+                                ),
+                                if (onOpen != null)
+                                  Icon(
+                                    Icons.chevron_right,
+                                    size: 18,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                              ],
                             ),
-                          ),
-                        ],
+                            Text(
+                              tile.label,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One thin bar per day, rounded at the top and anchored to the baseline;
-/// a tooltip on each day gives the numbers.
-class _DailyBars extends StatelessWidget {
-  const _DailyBars({required this.days});
-  final List<UsageDay> days;
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = SupportStrings.of(context);
-    final scheme = Theme.of(context).colorScheme;
-    final peak = days.fold<int>(
-      0,
-      (top, day) => day.active > top ? day.active : top,
-    );
-    const height = 120.0;
-    return SizedBox(
-      key: const ValueKey('support-usage-daily'),
-      height: height + 20,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            height: height,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                for (final day in days)
-                  Expanded(
-                    child: Tooltip(
-                      message: strings.dayTooltip(
-                        supportDate(day.day),
-                        day.active,
-                        day.newAccounts,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 1),
-                        child: Container(
-                          // The whole column height is the hit target.
-                          height: height,
-                          alignment: Alignment.bottomCenter,
-                          color: Colors.transparent,
-                          child: Container(
-                            height: peak == 0
-                                ? 0
-                                : (height * day.active / peak).clamp(2, height),
-                            decoration: BoxDecoration(
-                              color: scheme.primary,
-                              borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(4),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Container(height: 1, color: scheme.outlineVariant),
-          if (days.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    supportDate(days.first.day),
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-                  Text(
-                    'max $peak',
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-                  Text(
-                    supportDate(days.last.day),
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-                ],
-              ),
-            ),
         ],
       ),
     );

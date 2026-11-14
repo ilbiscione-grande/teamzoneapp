@@ -164,6 +164,147 @@ class SupportStrings {
       ? '$date: $active aktiva, $created nya konton'
       : '$date: $active active, $created new accounts';
 
+  // A statistics card, opened.
+  String detailCounts(String metric, String item) => isSwedish
+      ? switch ('$metric.$item') {
+          'accounts.total' => 'Alla konton som finns.',
+          'accounts.new' => 'Konton som skapats i perioden.',
+          'accounts.linked' =>
+            'Konton som är kopplade till en person i minst en klubb.',
+          'active.today' => 'Konton som använt appen i dag.',
+          'active.last_7_days' =>
+            'Konton som använt appen någon gång de senaste 7 dagarna.',
+          'active.last_30_days' =>
+            'Konton som använt appen någon gång de senaste 30 dagarna.',
+          'active.in_period' =>
+            'Konton som använt appen någon gång i perioden.',
+          'clubs.active' => 'Klubbar som är aktiva.',
+          'clubs.official' =>
+            'Aktiva klubbar som är verifierade som officiella.',
+          'clubs.new_in_period' => 'Klubbar som skapats i perioden.',
+          'clubs.teams' => 'Aktiva lag i alla klubbar.',
+          'clubs.people' => 'Aktiva personer i alla klubbars register.',
+          _ => switch (metric) {
+            'account_type' => 'Konton av den här typen.',
+            'app' => 'Konton som använt den här appen i perioden.',
+            'area' => 'Antal i perioden.',
+            'subscription' => 'Aktiva prenumerationer.',
+            'push' => 'Aktiva enheter som kan få push.',
+            _ => '',
+          },
+        }
+      : switch ('$metric.$item') {
+          'accounts.total' => 'All accounts there are.',
+          'accounts.new' => 'Accounts created in the period.',
+          'accounts.linked' =>
+            'Accounts linked to a person in at least one club.',
+          'active.today' => 'Accounts that used the app today.',
+          'active.last_7_days' =>
+            'Accounts that used the app in the last 7 days.',
+          'active.last_30_days' =>
+            'Accounts that used the app in the last 30 days.',
+          'active.in_period' => 'Accounts that used the app in the period.',
+          'clubs.active' => 'Clubs that are active.',
+          'clubs.official' => 'Active clubs verified as official.',
+          'clubs.new_in_period' => 'Clubs created in the period.',
+          'clubs.teams' => 'Active teams in all clubs.',
+          'clubs.people' => 'Active people in all club registers.',
+          _ => switch (metric) {
+            'account_type' => 'Accounts of this type.',
+            'app' => 'Accounts that used this app in the period.',
+            'area' => 'Number in the period.',
+            'subscription' => 'Active subscriptions.',
+            'push' => 'Active devices that can get push.',
+            _ => '',
+          },
+        };
+  String detailDaily(String metric, String item) => isSwedish
+      ? switch (metric) {
+          'accounts' when item == 'linked' =>
+            'Nya kopplingar till klubb per dag',
+          'accounts' || 'account_type' => 'Nya konton per dag',
+          'active' => 'Aktiva konton per dag',
+          'app' => 'Aktiva konton i appen per dag',
+          'clubs' when item == 'teams' => 'Nya lag per dag',
+          'clubs' when item == 'people' => 'Nya personer per dag',
+          'clubs' => 'Nya klubbar per dag',
+          'subscription' => 'Nya prenumerationer per dag',
+          'push' => 'Nya enheter per dag',
+          _ => 'Per dag',
+        }
+      : switch (metric) {
+          'accounts' when item == 'linked' => 'New links to a club per day',
+          'accounts' || 'account_type' => 'New accounts per day',
+          'active' => 'Active accounts per day',
+          'app' => 'Active accounts in the app per day',
+          'clubs' when item == 'teams' => 'New teams per day',
+          'clubs' when item == 'people' => 'New people per day',
+          'clubs' => 'New clubs per day',
+          'subscription' => 'New subscriptions per day',
+          'push' => 'New devices per day',
+          _ => 'Per day',
+        };
+  String get detailNoneInPeriod =>
+      isSwedish ? 'Inget i perioden.' : 'Nothing in the period.';
+  String detailGroup(String group) => switch (group) {
+    'by_type' => isSwedish ? 'Kontotyp' : 'Account type',
+    'linked' => isSwedish ? 'Kopplade till klubb' : 'Linked to a club',
+    'clubs' => isSwedish ? 'Klubbar med flest' : 'Clubs with the most',
+    'clubs_by_people' =>
+      isSwedish ? 'Klubbar efter antal personer' : 'Clubs by number of people',
+    'by_app' => isSwedish ? 'Per app' : 'Per app',
+    'by_verification' => isSwedish ? 'Verifiering' : 'Verification',
+    'by_sport' => isSwedish ? 'Sport' : 'Sport',
+    'by_event_type' => isSwedish ? 'Typ av aktivitet' : 'Kind of event',
+    'by_response' => isSwedish ? 'Svar' : 'Answer',
+    'by_status' || 'by_state' => isSwedish ? 'Status' : 'Status',
+    'by_kind' => isSwedish ? 'Typ' : 'Kind',
+    'team_link' => isSwedish ? 'Kopplade till lag' : 'Linked to a team',
+    'by_interval' => isSwedish ? 'Betalperiod' : 'Billing period',
+    'last_seen' => isSwedish ? 'Senast sedd' : 'Last seen',
+    _ => group,
+  };
+  String detailKey(String group, String key) => switch (group) {
+    'by_type' => accountType(key),
+    'by_app' => app(key),
+    'by_verification' => verification(key),
+    _ => switch (key) {
+      'linked' => isSwedish ? 'Kopplade' : 'Linked',
+      'not_linked' => isSwedish ? 'Inte kopplade' : 'Not linked',
+      'training' => isSwedish ? 'Träning' : 'Training',
+      'match' => isSwedish ? 'Match' : 'Match',
+      'meeting' => isSwedish ? 'Möte' : 'Meeting',
+      'other' => isSwedish ? 'Övrigt' : 'Other',
+      'accepted' || 'yes' => isSwedish ? 'Kommer' : 'Coming',
+      'declined' || 'no' => isSwedish ? 'Kommer inte' : 'Not coming',
+      'present' => isSwedish ? 'Närvarande' : 'Present',
+      'absent' => isSwedish ? 'Frånvarande' : 'Absent',
+      'late' => isSwedish ? 'Sen' : 'Late',
+      'excused' => isSwedish ? 'Anmäld frånvaro' : 'Excused',
+      'pending' => isSwedish ? 'Väntar' : 'Pending',
+      'approved' || 'confirmed' => isSwedish ? 'Godkänd' : 'Approved',
+      'rejected' => isSwedish ? 'Avslagen' : 'Rejected',
+      'cancelled' || 'canceled' => isSwedish ? 'Avbruten' : 'Cancelled',
+      'active' => isSwedish ? 'Aktiv' : 'Active',
+      'ended' => isSwedish ? 'Avslutad' : 'Ended',
+      'ending' =>
+        isSwedish ? 'Avslutas vid periodens slut' : 'Ends at period end',
+      'month' || 'monthly' => isSwedish ? 'Månad' : 'Month',
+      'year' || 'yearly' => isSwedish ? 'År' : 'Year',
+      'seen_30_days' =>
+        isSwedish ? 'Sedd senaste 30 dagarna' : 'Seen in the last 30 days',
+      'not_seen_30_days' =>
+        isSwedish ? 'Inte sedd på 30 dagar' : 'Not seen in 30 days',
+      'football' => isSwedish ? 'Fotboll' : 'Football',
+      'handball' => isSwedish ? 'Handboll' : 'Handball',
+      'activity' => isSwedish ? 'Aktivitet' : 'Activity',
+      'partial' => isSwedish ? 'Delvis' : 'Partly',
+      'education' => isSwedish ? 'Utbildning' : 'Education',
+      'unknown' => isSwedish ? 'Okänd' : 'Unknown',
+      _ => key,
+    },
+  };
+
   // Supportadmins (part 4).
   String get adminsTab => isSwedish ? 'Supportadmins' : 'Support admins';
   String get adminsFailed => isSwedish

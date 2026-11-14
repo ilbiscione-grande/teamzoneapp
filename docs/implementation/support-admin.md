@@ -47,6 +47,7 @@ Alla funktioner kräver supportadmin, nekar andra med `insufficient_privilege` (
 - `lib/src/features/support/support_usage_services.dart` och `support_usage_tab.dart`: fliken Statistik.
 - `SupabaseProfileServices.recordActivity` anropar `record_app_activity` med `web`, `android` eller `ios` (skrivbordsbyggen använder det gamla anropet).
 - Test: `test/support_platform_usage_test.dart`.
+- **Mer om ett kort (2026-11-14):** varje kort i Statistik går att klicka på. Det visar vad som räknas, ett värde per dag i perioden (nya konton, aktiva, nya klubbar, antal i området och så vidare) och uppdelningar: kontotyp, kopplade till klubb, per app, verifiering, sport, typ av aktivitet, svar, status, betalperiod, och de 15 klubbar som har flest. Serverfunktion `api.get_usage_detail_for_support(metric, item, period_days)` (migration `20270321090000_support_usage_details.sql`); bara antal, och de enda namnen är klubbnamn. Appen: `support_usage_detail.dart` (`SupportUsageDetailSheet`, `UsageBars`), test `test/support_usage_detail_test.dart`.
 
 ## Del 3 i appen
 

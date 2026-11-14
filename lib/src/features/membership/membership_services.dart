@@ -344,7 +344,8 @@ class SupabaseMembershipServices
         SupportClubServices,
         SupportUsageServices,
         SupportAdminServices,
-        SupportClubActionServices {
+        SupportClubActionServices,
+        SupportUsageDetailServices {
   const SupabaseMembershipServices(this._client);
 
   final SupabaseClient _client;
@@ -363,6 +364,13 @@ class SupabaseMembershipServices
   @override
   Future<PlatformUsage> getPlatformUsage({int periodDays = 30}) =>
       fetchPlatformUsage(_client, periodDays);
+
+  @override
+  Future<UsageDetail> getUsageDetail({
+    required String metric,
+    required String item,
+    int periodDays = 30,
+  }) => fetchUsageDetail(_client, metric, item, periodDays);
 
   @override
   Future<List<SupportAdmin>> listSupportAdmins() => fetchSupportAdmins(_client);
