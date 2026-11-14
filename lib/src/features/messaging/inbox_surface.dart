@@ -870,17 +870,9 @@ class _InboxSurfaceState extends State<_InboxSurface>
     }
   }
 
-  /// The support queue is a desktop/web workspace, as before when it sat in
-  /// the navigation panel.
-  bool _supportQueueFits(BuildContext context) =>
-      MediaQuery.sizeOf(context).width >= AppBreakpoints.desktop &&
-      (kIsWeb ||
-          defaultTargetPlatform == TargetPlatform.windows ||
-          defaultTargetPlatform == TargetPlatform.macOS ||
-          defaultTargetPlatform == TargetPlatform.linux);
-
+  /// The support queue, for support administrators on every device. Erasing
+  /// an account asks twice (see _confirmErasureFinal).
   Widget _supportQueueEntry(BuildContext context) {
-    if (!_supportQueueFits(context)) return const SizedBox.shrink();
     return FutureBuilder<int?>(
       future: _supportQueue,
       builder: (context, snapshot) {

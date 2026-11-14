@@ -226,6 +226,8 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
       ),
     );
     if (confirmed != true || !mounted) return;
+    if (approve && !await _confirmErasureFinal(context, item)) return;
+    if (!mounted) return;
     try {
       final state = await widget.membership.decideGlobalPersonErasure(
         requestId: item.id,
@@ -1473,6 +1475,8 @@ class _GlobalPersonErasureAdminSheetState
       ),
     );
     if (confirmed != true || !mounted) return;
+    if (approve && !await _confirmErasureFinal(context, item)) return;
+    if (!mounted) return;
 
     setState(() => _pending = true);
     try {
@@ -1637,4 +1641,77 @@ class _GlobalPersonErasureAdminSheetState
       ),
     );
   }
+}
+
+/// The second warning before an account is erased: it cannot be undone.
+/// Erasing needs the person's name typed, so it is never one tap away,
+/// on a phone least of all.
+Future<bool> _confirmErasureFinal(
+  BuildContext context,
+  GlobalPersonErasureCase item,
+) async {
+  final strings = AppStrings.of(context);
+  final name = item.requesterName.trim();
+  final confirmed = await showDialog<bool>(
+    context: context,
+    useRootNavigator: true,
+    builder: (dialogContext) {
+      var typed = '';
+      return StatefulBuilder(
+        builder: (dialogContext, setState) => AlertDialog(
+          key: const ValueKey('support-erasure-final-warning'),
+          icon: Icon(
+            Icons.warning_amber_rounded,
+            color: Theme.of(dialogContext).colorScheme.error,
+          ),
+          title: Text(strings.feature('Radera kontot för gott?')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                strings
+                    .feature(
+                      'Det här går inte att ångra. {name} kan inte logga in igen, och kontot kan inte återställas.',
+                    )
+                    .replaceFirst('{name}', name),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                strings
+                    .feature('Skriv {name} för att radera.')
+                    .replaceFirst('{name}', name),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                key: const ValueKey('support-erasure-final-name'),
+                autofocus: true,
+                onChanged: (value) => setState(() => typed = value),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(strings.cancel),
+            ),
+            FilledButton(
+              key: const ValueKey('support-erasure-final-confirm'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(dialogContext).colorScheme.error,
+                foregroundColor: Theme.of(dialogContext).colorScheme.onError,
+              ),
+              onPressed:
+                  typed.trim().toLowerCase() == name.toLowerCase() &&
+                      name.isNotEmpty
+                  ? () => Navigator.pop(dialogContext, true)
+                  : null,
+              child: Text(strings.feature('Ja, radera kontot')),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+  return confirmed == true;
 }

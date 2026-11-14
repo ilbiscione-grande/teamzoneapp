@@ -2419,6 +2419,11 @@ class AppStrings {
     'Vårdnadshavare': 'Guardian',
     'Styrelse och funktionärer': 'Board and officials',
     'Medlemmar i klubben': 'Members of the club',
+    'Radera kontot för gott?': 'Erase the account for good?',
+    'Det här går inte att ångra. {name} kan inte logga in igen, och kontot kan inte återställas.':
+        'This cannot be undone. {name} can no longer sign in, and the account cannot be restored.',
+    'Skriv {name} för att radera.': 'Type {name} to erase.',
+    'Ja, radera kontot': 'Yes, erase the account',
     'Dra tillbaka ansökan': 'Withdraw application',
     'Acceptera som guardian': 'Accept as guardian',
     'Acceptera': 'Accept',

@@ -204,6 +204,75 @@ void main() {
     });
   }
 
+  testWidgets('on a phone the support queue opens and erasing asks twice', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final membership = _MembershipFake()
+      ..supportAdmin = true
+      ..erasures = [
+        GlobalPersonErasureCase(
+          id: 'erasure',
+          requesterName: 'Anna Andersson',
+          state: 'requested',
+          reason: 'Jag vill inte vara kvar.',
+          requestedAt: DateTime.utc(2026, 11, 13),
+          reviewedAt: null,
+          completedAt: null,
+          revision: 1,
+        ),
+      ];
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'audit'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _CoachIdentity(),
+          membership: membership,
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _tapVisible(tester, find.text('Inkorg').first);
+    await tester.pumpAndSettle();
+    await _tapVisible(tester, find.byKey(const Key('inbox-support-queue')));
+    await tester.pumpAndSettle();
+
+    // The first warning: what happens, and a decision note.
+    await _tapVisible(tester, find.text('Godkänn och radera').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextFormField).last,
+      'Begärt av personen',
+    );
+    await tester.tap(find.text('Godkänn och radera').last);
+    await tester.pumpAndSettle();
+
+    // The second: nothing is erased until the name is typed.
+    final confirm = find.byKey(const ValueKey('support-erasure-final-confirm'));
+    expect(
+      find.byKey(const ValueKey('support-erasure-final-warning')),
+      findsOneWidget,
+    );
+    expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
+    await tester.enterText(
+      find.byKey(const ValueKey('support-erasure-final-name')),
+      'anna andersson',
+    );
+    await tester.pump();
+    expect(membership.erasureDecisions, isEmpty);
+    await tester.tap(confirm);
+    await tester.pumpAndSettle();
+    expect(membership.erasureDecisions, [true]);
+    expect(tester.takeException(), isNull);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
   test('club verification tolerates a deleted requester profile name', () {
     final request = ClubVerificationRequest.fromJson({
       'request_id': 'request',
@@ -825,6 +894,8 @@ class _MembershipFake implements MembershipServices {
 
   bool supportAdmin = false;
   List<ProtectedNameSupportCase> supportQueue = const [];
+  List<GlobalPersonErasureCase> erasures = const [];
+  final List<bool> erasureDecisions = [];
 
   @override
   Future<bool> isSupportAdmin() async => supportAdmin;
@@ -880,14 +951,17 @@ class _MembershipFake implements MembershipServices {
 
   @override
   Future<List<GlobalPersonErasureCase>> listGlobalPersonErasureCases() async =>
-      const [];
+      erasures;
 
   @override
   Future<String> decideGlobalPersonErasure({
     required String requestId,
     required bool approve,
     required String reason,
-  }) async => approve ? 'completed' : 'rejected';
+  }) async {
+    erasureDecisions.add(approve);
+    return approve ? 'completed' : 'rejected';
+  }
 
   @override
   Future<String> requestClubVerification({
