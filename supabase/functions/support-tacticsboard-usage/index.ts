@@ -11,34 +11,47 @@
 //   TACTICSBOARD_STATS_SECRET_KEY  the production project's secret key
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-import { allowedWebOrigins } from "../_shared/sign_in_limits.ts";
 import {
   correlationId,
   sanitizedLog,
   withCorrelation,
 } from "../_shared/observability.ts";
 
-const origins = allowedWebOrigins(Deno.env.get("TEAMZONE_EXTRA_WEB_ORIGINS"));
 const periods = new Set([7, 30, 90, 365]);
 
-function headersFor(origin: string | null): Record<string, string> {
-  const headers: Record<string, string> = {
+// Any origin, as for person-erasure-worker: the answer needs a support
+// administrator's session, which a page cannot borrow (no cookies). The
+// preflight allows the headers the browser asks for, so a client that adds
+// one is not stopped before the request.
+function headersFor(requested: string | null): Record<string, string> {
+  const allowed = (requested ?? "")
+    .split(",")
+    .map((name) => name.trim().toLowerCase())
+    .filter((name) => /^[a-z0-9-]{1,64}$/.test(name));
+  return {
     "content-type": "application/json",
     "cache-control": "no-store",
+    "access-control-allow-origin": "*",
     "access-control-allow-methods": "POST, OPTIONS",
-    "access-control-allow-headers":
-      "authorization, apikey, content-type, x-client-info, x-correlation-id",
-    "vary": "Origin",
+    "access-control-allow-headers": [
+      ...new Set([
+        "authorization",
+        "apikey",
+        "content-type",
+        "x-client-info",
+        "x-correlation-id",
+        ...allowed,
+      ]),
+    ].join(", "),
+    "access-control-max-age": "600",
   };
-  if (origin && origins.has(origin)) {
-    headers["access-control-allow-origin"] = origin;
-  }
-  return headers;
 }
 
 Deno.serve(async (request) => {
   const requestId = correlationId(request);
-  const headers = headersFor(request.headers.get("origin"));
+  const headers = headersFor(
+    request.headers.get("access-control-request-headers"),
+  );
   const respond = (status: number, body: unknown) =>
     withCorrelation(
       new Response(JSON.stringify(body), { status, headers }),
