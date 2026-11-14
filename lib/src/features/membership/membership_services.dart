@@ -5,6 +5,7 @@ import 'package:teamzone_app/src/features/membership/club_fees.dart';
 import 'package:teamzone_app/src/features/membership/club_register.dart';
 import 'package:teamzone_app/src/features/membership/club_register_add.dart';
 import 'package:teamzone_app/src/features/membership/membership_models.dart';
+import 'package:teamzone_app/src/features/support/support_admin_services.dart';
 import 'package:teamzone_app/src/features/support/support_club_services.dart';
 import 'package:teamzone_app/src/features/support/support_usage_services.dart';
 
@@ -340,7 +341,8 @@ class SupabaseMembershipServices
         DisplayNameServices,
         ClubJoinServices,
         SupportClubServices,
-        SupportUsageServices {
+        SupportUsageServices,
+        SupportAdminServices {
   const SupabaseMembershipServices(this._client);
 
   final SupabaseClient _client;
@@ -359,6 +361,21 @@ class SupabaseMembershipServices
   @override
   Future<PlatformUsage> getPlatformUsage({int periodDays = 30}) =>
       fetchPlatformUsage(_client, periodDays);
+
+  @override
+  Future<List<SupportAdmin>> listSupportAdmins() => fetchSupportAdmins(_client);
+
+  @override
+  Future<void> grantSupportAdmin({
+    required String email,
+    required String reason,
+  }) => sendGrantSupportAdmin(_client, email, reason);
+
+  @override
+  Future<void> revokeSupportAdmin({
+    required String profileId,
+    required String reason,
+  }) => sendRevokeSupportAdmin(_client, profileId, reason);
 
   @override
   Future<String> applyToClub({

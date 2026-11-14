@@ -163,4 +163,92 @@ class SupportStrings {
   String dayTooltip(String date, int active, int created) => isSwedish
       ? '$date: $active aktiva, $created nya konton'
       : '$date: $active active, $created new accounts';
+
+  // Supportadmins (part 4).
+  String get adminsTab => isSwedish ? 'Supportadmins' : 'Support admins';
+  String get adminsFailed => isSwedish
+      ? 'Supportadministratörerna kunde inte laddas.'
+      : 'The support administrators could not be loaded.';
+  String get adminsIntro => isSwedish
+      ? 'Supporten sköts bäst från ett eget konto utan roller i klubbar. Aktiva supportadministratörer får också supportens e-post.'
+      : 'Support is best done from an account of its own with no roles in clubs. Active support administrators also receive the support emails.';
+  String get addAdmin => isSwedish
+      ? 'Lägg till supportadministratör'
+      : 'Add support administrator';
+  String get removeAdmin => isSwedish ? 'Ta bort' : 'Remove';
+  String get removeAdminTitle => isSwedish
+      ? 'Ta bort supportadministratör?'
+      : 'Remove support administrator?';
+  String removeAdminBody(String name, bool self) => isSwedish
+      ? self
+            ? 'Du tar bort din egen supporträtt. Supportsidan stängs för det här kontot.'
+            : '$name kan inte längre använda supportsidan.'
+      : self
+      ? 'You remove your own support right. The support page closes for this account.'
+      : '$name can no longer use the support page.';
+  String get emailLabel =>
+      isSwedish ? 'Kontots inloggningsadress' : 'The account’s sign-in address';
+  String get emailHint => isSwedish
+      ? 'Kontot måste redan finnas i TeamZone.'
+      : 'The account must already exist in TeamZone.';
+  String get reasonLabel => isSwedish ? 'Motivering' : 'Reason';
+  String get reasonTooShort =>
+      isSwedish ? 'Ange minst 5 tecken.' : 'Enter at least 5 characters.';
+  String get cancel => isSwedish ? 'Avbryt' : 'Cancel';
+  String get add => isSwedish ? 'Lägg till' : 'Add';
+  String get you => isSwedish ? 'du' : 'you';
+  String get activeAdmin => isSwedish ? 'Aktiv' : 'Active';
+  String revokedOn(String date) =>
+      isSwedish ? 'Borttagen $date' : 'Removed $date';
+  String sinceDate(String date) => isSwedish ? 'sedan $date' : 'since $date';
+  String clubRoles(int count) => isSwedish
+      ? 'Har roller i ${count == 1 ? '1 klubb' : '$count klubbar'}'
+      : 'Has roles in ${count == 1 ? '1 club' : '$count clubs'}';
+  String get earlier => isSwedish ? 'Tidigare' : 'Earlier';
+  String get added => isSwedish
+      ? 'Supportadministratören är tillagd.'
+      : 'The support administrator was added.';
+  String get removed => isSwedish
+      ? 'Supportadministratören är borttagen.'
+      : 'The support administrator was removed.';
+  String refusal(String? code) => switch (code) {
+    'last_support_admin' =>
+      isSwedish
+          ? 'Den sista supportadministratören kan inte tas bort. Lägg till en annan först.'
+          : 'The last support administrator cannot be removed. Add another one first.',
+    'account_not_found' =>
+      isSwedish
+          ? 'Det finns inget konto med den adressen.'
+          : 'There is no account with that address.',
+    'already_support_admin' =>
+      isSwedish
+          ? 'Kontot är redan supportadministratör.'
+          : 'The account is already a support administrator.',
+    'not_support_admin' =>
+      isSwedish
+          ? 'Kontot är inte längre supportadministratör.'
+          : 'The account is no longer a support administrator.',
+    'reason_required' => reasonTooShort,
+    _ =>
+      isSwedish
+          ? 'Ändringen kunde inte sparas.'
+          : 'The change could not be saved.',
+  };
+
+  // The support site.
+  String get siteTitle => isSwedish ? 'TeamZone Support' : 'TeamZone Support';
+  String get signOut => isSwedish ? 'Logga ut' : 'Sign out';
+  String get notSupportTitle => isSwedish
+      ? 'Kontot är inte supportadministratör'
+      : 'The account is not a support administrator';
+  String get notSupportBody => isSwedish
+      ? 'Supportsidan är bara för TeamZones supportadministratörer. Logga in med supportkontot, eller använd appen på app.teamzoneapp.se.'
+      : 'The support page is only for TeamZone’s support administrators. Sign in with the support account, or use the app at app.teamzoneapp.se.';
+  String get movedTitle =>
+      isSwedish ? 'Supporten har flyttat' : 'Support has moved';
+  String get movedBody => isSwedish
+      ? 'Supportsidan finns nu på support.teamzoneapp.se. Logga in där med supportkontot.'
+      : 'The support page is now at support.teamzoneapp.se. Sign in there with the support account.';
+  String get openSupport =>
+      isSwedish ? 'Öppna supportsidan' : 'Open the support page';
 }

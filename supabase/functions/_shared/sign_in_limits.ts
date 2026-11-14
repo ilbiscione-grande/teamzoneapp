@@ -10,6 +10,8 @@ export const productionWebOrigins = [
   // The public site; public.teamzoneapp.se redirects there (2026-10-16).
   "https://teamzoneapp.se",
   "https://public.teamzoneapp.se",
+  // TeamZone's support site, split from the app (2026-11-14).
+  "https://support.teamzoneapp.se",
 ];
 
 export function allowedWebOrigins(

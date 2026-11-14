@@ -50,6 +50,8 @@ import 'package:teamzone_app/src/features/assistant_coach/assistant_tasks.dart';
 import 'package:teamzone_app/src/features/assistant_coach/assistant_task_preferences.dart';
 import 'package:teamzone_app/src/features/assistant_coach/assistant_task_feedback.dart';
 import 'package:teamzone_app/src/features/support/support_club_services.dart';
+import 'package:teamzone_app/src/features/support/support_admin_services.dart';
+import 'package:teamzone_app/src/features/support/support_admins_tab.dart';
 import 'package:teamzone_app/src/features/support/support_clubs_tab.dart';
 import 'package:teamzone_app/src/features/support/support_usage_services.dart';
 import 'package:teamzone_app/src/features/support/support_usage_tab.dart';
@@ -127,6 +129,7 @@ part '../features/auth/auth_surfaces.dart';
 part '../features/auth/auth_style.dart';
 part '../features/auth/invitation_flow.dart';
 part '../features/auth/support_admin_surface.dart';
+part '../features/support/support_site.dart';
 part '../features/legal/legal_acceptance_surface.dart';
 part '../features/billing/billing_surface.dart';
 part '../features/board/board_surface.dart';
@@ -249,12 +252,17 @@ class TeamZoneApp extends StatefulWidget {
     required this.environment,
     required this.services,
     this.locale,
+    this.supportSite = false,
     super.key,
   });
 
   final AppEnvironment environment;
   final AppServices services;
   final Locale? locale;
+
+  /// The support site (support.teamzoneapp.se): after sign-in only the
+  /// support page, for support administrators.
+  final bool supportSite;
 
   @override
   State<TeamZoneApp> createState() => _TeamZoneAppState();
@@ -424,11 +432,16 @@ class _TeamZoneAppState extends State<TeamZoneApp> {
         ? _LegalBootstrap(
             legal: widget.services.legal,
             onSignOut: _signOut,
-            child: _ContextBootstrap(
-              services: widget.services,
-              matchSpaceV2: widget.environment.matchSpaceV2,
-              onSignOut: _signOut,
-            ),
+            child: widget.supportSite
+                ? _SupportSiteShell(
+                    services: widget.services,
+                    onSignOut: _signOut,
+                  )
+                : _ContextBootstrap(
+                    services: widget.services,
+                    matchSpaceV2: widget.environment.matchSpaceV2,
+                    onSignOut: _signOut,
+                  ),
           )
         : _SignInScreen(
             identity: widget.services.identity,

@@ -9,6 +9,7 @@ Deno.test("only production origins unless extra ones are configured", () => {
   const production = allowedWebOrigins(undefined);
   assert(production.has("https://app.teamzoneapp.se"));
   assert(production.has("https://teamzoneapp.se"));
+  assert(production.has("https://support.teamzoneapp.se"));
   assert(!production.has("http://localhost:5000"));
   const test = allowedWebOrigins(
     "http://localhost, http://localhost:5000 ,not a url,javascript:alert(1)",

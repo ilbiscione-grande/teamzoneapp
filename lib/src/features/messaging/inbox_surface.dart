@@ -906,7 +906,8 @@ class _InboxSurfaceState extends State<_InboxSurface>
                   const Icon(Icons.chevron_right),
                 ],
               ),
-              onTap: () => widget.onNavigate(ProductRouteContract.support),
+              // Support has its own site since 2026-11-14.
+              onTap: openSupportSite,
             ),
           ),
         );

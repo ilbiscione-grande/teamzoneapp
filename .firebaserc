@@ -10,8 +10,12 @@
         ],
         "production": [
           "teamzoneapp-production"
+        ],
+        "support": [
+          "teamzoneapp-support"
         ]
       }
     }
-  }
+  },
+  "etags": {}
 }

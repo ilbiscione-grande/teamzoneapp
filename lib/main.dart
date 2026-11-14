@@ -90,7 +90,13 @@ Future<void> main() async {
   await runZonedGuarded(
     () async {
       final services = await SupabaseBootstrap.initialize(environment);
-      runApp(TeamZoneApp(environment: environment, services: services));
+      runApp(
+        TeamZoneApp(
+          environment: environment,
+          services: services,
+          supportSite: kIsWeb && isSupportSiteHost(Uri.base.host),
+        ),
+      );
     },
     (error, stack) => report('flutter.async', error, fatal: true, stack: stack),
   );

@@ -197,14 +197,12 @@ void main() {
       }
       expect(queue, findsOneWidget);
       expect(find.text('2 nya meddelanden från användare'), findsOneWidget);
-      await _tapVisible(tester, queue);
-      await tester.pumpAndSettle();
-      expect(find.byKey(const Key('inbox-support-queue')), findsNothing);
+      // The card opens support.teamzoneapp.se (support_site.dart).
       debugDefaultTargetPlatformOverride = null;
     });
   }
 
-  testWidgets('on a phone the support queue opens and erasing asks twice', (
+  testWidgets('on the support site at phone width erasing asks twice', (
     tester,
   ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
@@ -230,6 +228,7 @@ void main() {
       TeamZoneApp(
         environment: const AppEnvironment(name: 'audit'),
         locale: const Locale('sv'),
+        supportSite: true,
         services: AppServices(
           identity: _CoachIdentity(),
           membership: membership,
@@ -237,10 +236,6 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
-    await _tapVisible(tester, find.text('Inkorg').first);
-    await tester.pumpAndSettle();
-    await _tapVisible(tester, find.byKey(const Key('inbox-support-queue')));
     await tester.pumpAndSettle();
 
     // The first warning: what happens, and a decision note.

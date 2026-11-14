@@ -566,14 +566,8 @@ class _ProductShellState extends State<_ProductShell> {
       ),
       GoRoute(
         path: ProductRouteContract.support,
-        builder: (_, _) => _SupportAdminSurface(
-          membership: widget.membership,
-          profile: widget.profileServices,
-          messaging: widget.messaging,
-          assistant: widget.overview is AssistantTaskSupportServices
-              ? widget.overview as AssistantTaskSupportServices
-              : null,
-        ),
+        // Support has its own site since 2026-11-14 (support_site.dart).
+        builder: (_, _) => const _SupportMovedSurface(),
       ),
       GoRoute(
         path: ProductRouteContract.assistant,

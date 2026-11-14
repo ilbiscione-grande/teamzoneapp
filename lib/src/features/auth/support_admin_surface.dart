@@ -6,7 +6,12 @@ class _SupportAdminSurface extends StatefulWidget {
     required this.profile,
     this.assistant,
     this.messaging,
+    this.onSignOut,
   });
+
+  /// On the support site (support.teamzoneapp.se): sign out, also after
+  /// removing one's own support right.
+  final VoidCallback? onSignOut;
 
   final MembershipServices membership;
   final ProfileServices profile;
@@ -402,20 +407,38 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
     final usage = membership is SupportUsageServices
         ? membership as SupportUsageServices
         : null;
+    final admins = membership is SupportAdminServices
+        ? membership as SupportAdminServices
+        : null;
     final tabs = [
       Tab(key: const ValueKey('support-tab-cases'), text: support.casesTab),
       if (clubs != null)
         Tab(key: const ValueKey('support-tab-clubs'), text: support.clubsTab),
       if (usage != null)
         Tab(key: const ValueKey('support-tab-usage'), text: support.usageTab),
+      if (admins != null)
+        Tab(key: const ValueKey('support-tab-admins'), text: support.adminsTab),
     ];
     return DefaultTabController(
       length: tabs.length,
       child: Scaffold(
         appBar: AppBar(
           title: Text(strings.feature('Supportärenden')),
-          bottom: tabs.length == 1 ? null : TabBar(tabs: tabs),
+          bottom: tabs.length == 1
+              ? null
+              : TabBar(
+                  tabs: tabs,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                ),
           actions: [
+            if (widget.onSignOut != null)
+              IconButton(
+                key: const ValueKey('support-sign-out'),
+                tooltip: support.signOut,
+                icon: const Icon(Icons.logout),
+                onPressed: widget.onSignOut,
+              ),
             if (widget.assistant != null)
               IconButton(
                 key: const ValueKey('support-assistant-kinds'),
@@ -884,6 +907,11 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
             ),
             if (clubs != null) SupportClubsTab(services: clubs),
             if (usage != null) SupportUsageTab(services: usage),
+            if (admins != null)
+              SupportAdminsTab(
+                services: admins,
+                onSelfRemoved: widget.onSignOut,
+              ),
           ],
         ),
       ),
