@@ -407,6 +407,10 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
     final usage = membership is SupportUsageServices
         ? membership as SupportUsageServices
         : null;
+    // Tacticsboard: its own database, read through an edge function.
+    final tacticsboard = membership is SupportTacticsboardServices
+        ? membership as SupportTacticsboardServices
+        : null;
     final admins = membership is SupportAdminServices
         ? membership as SupportAdminServices
         : null;
@@ -416,6 +420,11 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
         Tab(key: const ValueKey('support-tab-clubs'), text: support.clubsTab),
       if (usage != null)
         Tab(key: const ValueKey('support-tab-usage'), text: support.usageTab),
+      if (tacticsboard != null)
+        Tab(
+          key: const ValueKey('support-tab-tacticsboard'),
+          text: SupportTacticsboardStrings.of(context).tab,
+        ),
       if (admins != null)
         Tab(key: const ValueKey('support-tab-admins'), text: support.adminsTab),
     ];
@@ -907,6 +916,8 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
             ),
             if (clubs != null) SupportClubsTab(services: clubs),
             if (usage != null) SupportUsageTab(services: usage),
+            if (tacticsboard != null)
+              SupportTacticsboardTab(services: tacticsboard),
             if (admins != null)
               SupportAdminsTab(
                 services: admins,

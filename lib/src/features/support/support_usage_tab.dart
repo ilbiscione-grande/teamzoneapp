@@ -109,7 +109,7 @@ class _SupportUsageTabState extends State<SupportUsageTab> {
 class _UsageBody extends StatelessWidget {
   const _UsageBody({required this.usage, this.onOpen});
   final PlatformUsage usage;
-  final ValueChanged<_Tile>? onOpen;
+  final ValueChanged<UsageTile>? onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -119,20 +119,25 @@ class _UsageBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Section(
+        UsageSection(
           title: strings.accountsHeading,
           onOpen: onOpen,
           tiles: [
-            _Tile(strings.total, usage.accounts, 'accounts', 'total'),
-            _Tile(strings.newInPeriod, usage.newAccounts, 'accounts', 'new'),
-            _Tile(
+            UsageTile(strings.total, usage.accounts, 'accounts', 'total'),
+            UsageTile(
+              strings.newInPeriod,
+              usage.newAccounts,
+              'accounts',
+              'new',
+            ),
+            UsageTile(
               strings.linkedToClub,
               usage.linkedAccounts,
               'accounts',
               'linked',
             ),
             for (final entry in usage.accountTypes.entries)
-              _Tile(
+              UsageTile(
                 strings.accountType(entry.key),
                 entry.value,
                 'account_type',
@@ -140,14 +145,14 @@ class _UsageBody extends StatelessWidget {
               ),
           ],
         ),
-        _Section(
+        UsageSection(
           title: strings.activeHeading,
           onOpen: onOpen,
           tiles: [
-            _Tile(strings.today, usage.activeToday, 'active', 'today'),
-            _Tile(strings.last7, usage.active7, 'active', 'last_7_days'),
-            _Tile(strings.last30, usage.active30, 'active', 'last_30_days'),
-            _Tile(
+            UsageTile(strings.today, usage.activeToday, 'active', 'today'),
+            UsageTile(strings.last7, usage.active7, 'active', 'last_7_days'),
+            UsageTile(strings.last30, usage.active30, 'active', 'last_30_days'),
+            UsageTile(
               strings.inPeriod,
               usage.activeInPeriod,
               'active',
@@ -173,44 +178,54 @@ class _UsageBody extends StatelessWidget {
             );
           },
         ),
-        _Section(
+        UsageSection(
           title: strings.appsHeading,
           empty: strings.noApps,
           onOpen: onOpen,
           tiles: [
             for (final entry in usage.apps.entries)
-              _Tile(strings.app(entry.key), entry.value, 'app', entry.key),
+              UsageTile(strings.app(entry.key), entry.value, 'app', entry.key),
           ],
         ),
-        _Section(
+        UsageSection(
           title: strings.clubsHeading,
           onOpen: onOpen,
           tiles: [
             for (final entry in usage.clubs.entries)
-              _Tile(strings.club(entry.key), entry.value, 'clubs', entry.key),
+              UsageTile(
+                strings.club(entry.key),
+                entry.value,
+                'clubs',
+                entry.key,
+              ),
           ],
         ),
-        _Section(
+        UsageSection(
           title: strings.areasHeading,
           onOpen: onOpen,
           tiles: [
             for (final entry in usage.areas.entries)
-              _Tile(strings.area(entry.key), entry.value, 'area', entry.key),
+              UsageTile(
+                strings.area(entry.key),
+                entry.value,
+                'area',
+                entry.key,
+              ),
           ],
         ),
-        _Section(
+        UsageSection(
           title: strings.productsHeading,
           onOpen: onOpen,
           tiles: [
             for (final entry in usage.subscriptions.entries)
-              _Tile(
+              UsageTile(
                 strings.subscription(entry.key),
                 entry.value,
                 'subscription',
                 entry.key,
               ),
             for (final entry in usage.pushDevices.entries)
-              _Tile(
+              UsageTile(
                 strings.pushDevices(entry.key),
                 entry.value,
                 'push',
@@ -234,8 +249,9 @@ class _UsageBody extends StatelessWidget {
   }
 }
 
-class _Tile {
-  const _Tile(this.label, this.value, this.metric, this.item);
+/// One card: a count and what it is. Also used by the Tacticsboard tab.
+class UsageTile {
+  const UsageTile(this.label, this.value, this.metric, this.item);
   final String label;
   final int value;
 
@@ -244,17 +260,19 @@ class _Tile {
   final String item;
 }
 
-class _Section extends StatelessWidget {
-  const _Section({
+/// A heading and its cards; a card opens with [onOpen] when given.
+class UsageSection extends StatelessWidget {
+  const UsageSection({
+    super.key,
     required this.title,
     required this.tiles,
     this.empty,
     this.onOpen,
   });
   final String title;
-  final List<_Tile> tiles;
+  final List<UsageTile> tiles;
   final String? empty;
-  final ValueChanged<_Tile>? onOpen;
+  final ValueChanged<UsageTile>? onOpen;
 
   @override
   Widget build(BuildContext context) {
