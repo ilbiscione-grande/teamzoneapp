@@ -394,6 +394,320 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
     if (mounted) _reload();
   }
 
+  /// Club verifications, in their own column or tab.
+  Widget _verificationBlock(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return FutureBuilder<List<ClubVerificationRequest>>(
+      future: _verifications,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        strings.feature(
+                          'Klubbverifieringarna kunde inte laddas.',
+                        ),
+                      ),
+                    ),
+                    TextButton(onPressed: _reload, child: Text(strings.retry)),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+        final items = (snapshot.data ?? const [])
+            .where(_showVerification)
+            .toList(growable: false);
+        if (items.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                strings.feature('Inga klubbverifieringar i vald status.'),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          itemCount: items.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 8),
+          itemBuilder: (context, index) {
+            final item = items[index];
+            return Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Chip(
+                      avatar: const Icon(Icons.verified_outlined, size: 18),
+                      label: Text(strings.feature('Officiell klubb')),
+                    ),
+                    Text(
+                      item.clubName,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    Text(
+                      '${item.requesterName} · ${strings.domainValue(item.status)}',
+                    ),
+                    const SizedBox(height: 10),
+                    SelectableText(item.evidenceSummary),
+                    if (item.decisionReason != null) ...[
+                      const SizedBox(height: 10),
+                      Text(item.decisionReason!),
+                    ],
+                    if (item.status == 'pending') ...[
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          FilledButton.icon(
+                            onPressed: () =>
+                                _decideVerification(item, approve: true),
+                            icon: const Icon(Icons.verified_outlined),
+                            label: Text(strings.feature('Godkänn')),
+                          ),
+                          TextButton(
+                            onPressed: () =>
+                                _decideVerification(item, approve: false),
+                            child: Text(strings.feature('Avslå')),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Account erasures and protected club names, in their own column or tab.
+  Widget _caseBlock(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return FutureBuilder<List<ProtectedNameSupportCase>>(
+      future: _cases,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    strings.feature('Supportkön är inte tillgänglig'),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    strings.feature(
+                      'Du saknar supportbehörighet eller så kunde kön inte laddas.',
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: _reload,
+                    child: Text(strings.retry),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        final items = snapshot.data ?? const [];
+        return FutureBuilder<List<GlobalPersonErasureCase>>(
+          future: _erasures,
+          builder: (context, erasureSnapshot) {
+            if (erasureSnapshot.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (erasureSnapshot.hasError) {
+              return Center(
+                child: OutlinedButton(
+                  onPressed: _reload,
+                  child: Text(strings.retry),
+                ),
+              );
+            }
+            final erasures = (erasureSnapshot.data ?? const [])
+                .where(_showErasure)
+                .toList(growable: false);
+            if (items.isEmpty && erasures.isEmpty) {
+              return Center(
+                child: Text(
+                  strings.feature('Inga supportärenden i vald status.'),
+                ),
+              );
+            }
+            return RefreshIndicator(
+              onRefresh: () async {
+                _reload();
+                await Future.wait([_cases!, _erasures!, _verifications!]);
+              },
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                itemCount: erasures.length + items.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  if (index < erasures.length) {
+                    final item = erasures[index];
+                    final actionable = item.state == 'requested';
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Chip(
+                              avatar: const Icon(
+                                Icons.person_remove_outlined,
+                                size: 18,
+                              ),
+                              label: Text(
+                                strings.feature('Kontoradering · hög risk'),
+                              ),
+                            ),
+                            Text(
+                              item.requesterName,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            Text(strings.domainValue(item.state)),
+                            const SizedBox(height: 8),
+                            SelectableText(item.reason),
+                            if (actionable) ...[
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  FilledButton(
+                                    onPressed: () =>
+                                        _decideErasure(item, approve: true),
+                                    child: Text(
+                                      strings.feature('Godkänn och radera'),
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        _decideErasure(item, approve: false),
+                                    child: Text(strings.feature('Avslå')),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  final item = items[index - erasures.length];
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Chip(
+                            avatar: const Icon(
+                              Icons.domain_verification_outlined,
+                              size: 18,
+                            ),
+                            label: Text(strings.feature('Skyddat klubbnamn')),
+                          ),
+                          Text(
+                            item.clubName,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          Text(
+                            '${item.teamName} · ${strings.domainValue(item.status)}',
+                          ),
+                          const SizedBox(height: 12),
+                          SelectableText(item.message),
+                          if (item.resolutionNote != null) ...[
+                            const SizedBox(height: 12),
+                            Text(item.resolutionNote!),
+                          ],
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            onPressed: () => _openConversation(item),
+                            icon: Badge.count(
+                              count: item.unreadCount,
+                              isLabelVisible: item.unreadCount > 0,
+                              child: const Icon(Icons.forum_outlined),
+                            ),
+                            label: Text(
+                              strings.feature(
+                                item.status == 'pending' ||
+                                        item.status == 'in_review'
+                                    ? 'Svara eller be om uppgifter'
+                                    : 'Visa meddelanden',
+                              ),
+                            ),
+                          ),
+                          if (item.status == 'pending' ||
+                              item.status == 'in_review') ...[
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                if (item.status == 'pending')
+                                  OutlinedButton(
+                                    onPressed: () => _update(item, 'in_review'),
+                                    child: Text(
+                                      strings.feature('Påbörja granskning'),
+                                    ),
+                                  ),
+                                FilledButton.icon(
+                                  onPressed: () => _update(item, 'approved'),
+                                  icon: const Icon(Icons.domain_add_outlined),
+                                  label: Text(
+                                    strings.feature('Godkänn och registrera'),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () => _update(item, 'rejected'),
+                                  child: Text(strings.feature('Avslå ärende')),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
@@ -411,6 +725,10 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
     final tacticsboard = membership is SupportTacticsboardServices
         ? membership as SupportTacticsboardServices
         : null;
+    // Logg: what support has done (part 5).
+    final log = membership is SupportLogServices
+        ? membership as SupportLogServices
+        : null;
     final admins = membership is SupportAdminServices
         ? membership as SupportAdminServices
         : null;
@@ -427,6 +745,11 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
         ),
       if (admins != null)
         Tab(key: const ValueKey('support-tab-admins'), text: support.adminsTab),
+      if (log != null)
+        Tab(
+          key: const ValueKey('support-tab-log'),
+          text: SupportLogStrings.of(context).tab,
+        ),
     ];
     return DefaultTabController(
       length: tabs.length,
@@ -540,376 +863,10 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
                     },
                   ),
                 ),
-                FutureBuilder<List<ClubVerificationRequest>>(
-                  future: _verifications,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState != ConnectionState.done) {
-                      return const SizedBox.shrink();
-                    }
-                    if (snapshot.hasError) {
-                      return Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.error_outline),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    strings.feature(
-                                      'Klubbverifieringarna kunde inte laddas.',
-                                    ),
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: _reload,
-                                  child: Text(strings.retry),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-                    final items = (snapshot.data ?? const [])
-                        .where(_showVerification)
-                        .toList(growable: false);
-                    if (items.isEmpty) return const SizedBox.shrink();
-                    return ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 310),
-                      child: ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                        itemCount: items.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 8),
-                        itemBuilder: (context, index) {
-                          final item = items[index];
-                          return Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Chip(
-                                    avatar: const Icon(
-                                      Icons.verified_outlined,
-                                      size: 18,
-                                    ),
-                                    label: Text(
-                                      strings.feature('Officiell klubb'),
-                                    ),
-                                  ),
-                                  Text(
-                                    item.clubName,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleMedium,
-                                  ),
-                                  Text(
-                                    '${item.requesterName} · ${strings.domainValue(item.status)}',
-                                  ),
-                                  const SizedBox(height: 10),
-                                  SelectableText(item.evidenceSummary),
-                                  if (item.decisionReason != null) ...[
-                                    const SizedBox(height: 10),
-                                    Text(item.decisionReason!),
-                                  ],
-                                  if (item.status == 'pending') ...[
-                                    const SizedBox(height: 12),
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: [
-                                        FilledButton.icon(
-                                          onPressed: () => _decideVerification(
-                                            item,
-                                            approve: true,
-                                          ),
-                                          icon: const Icon(
-                                            Icons.verified_outlined,
-                                          ),
-                                          label: Text(
-                                            strings.feature('Godkänn'),
-                                          ),
-                                        ),
-                                        TextButton(
-                                          onPressed: () => _decideVerification(
-                                            item,
-                                            approve: false,
-                                          ),
-                                          child: Text(strings.feature('Avslå')),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
                 Expanded(
-                  child: FutureBuilder<List<ProtectedNameSupportCase>>(
-                    future: _cases,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState != ConnectionState.done) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      if (snapshot.hasError) {
-                        return Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  strings.feature(
-                                    'Supportkön är inte tillgänglig',
-                                  ),
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.titleMedium,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  strings.feature(
-                                    'Du saknar supportbehörighet eller så kunde kön inte laddas.',
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 12),
-                                OutlinedButton(
-                                  onPressed: _reload,
-                                  child: Text(strings.retry),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-                      final items = snapshot.data ?? const [];
-                      return FutureBuilder<List<GlobalPersonErasureCase>>(
-                        future: _erasures,
-                        builder: (context, erasureSnapshot) {
-                          if (erasureSnapshot.connectionState !=
-                              ConnectionState.done) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          }
-                          if (erasureSnapshot.hasError) {
-                            return Center(
-                              child: OutlinedButton(
-                                onPressed: _reload,
-                                child: Text(strings.retry),
-                              ),
-                            );
-                          }
-                          final erasures = (erasureSnapshot.data ?? const [])
-                              .where(_showErasure)
-                              .toList(growable: false);
-                          if (items.isEmpty && erasures.isEmpty) {
-                            return Center(
-                              child: Text(
-                                strings.feature(
-                                  'Inga supportärenden i vald status.',
-                                ),
-                              ),
-                            );
-                          }
-                          return RefreshIndicator(
-                            onRefresh: () async {
-                              _reload();
-                              await Future.wait([
-                                _cases!,
-                                _erasures!,
-                                _verifications!,
-                              ]);
-                            },
-                            child: ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                              itemCount: erasures.length + items.length,
-                              separatorBuilder: (_, _) =>
-                                  const SizedBox(height: 12),
-                              itemBuilder: (context, index) {
-                                if (index < erasures.length) {
-                                  final item = erasures[index];
-                                  final actionable = item.state == 'requested';
-                                  return Card(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Chip(
-                                            avatar: const Icon(
-                                              Icons.person_remove_outlined,
-                                              size: 18,
-                                            ),
-                                            label: Text(
-                                              strings.feature(
-                                                'Kontoradering · hög risk',
-                                              ),
-                                            ),
-                                          ),
-                                          Text(
-                                            item.requesterName,
-                                            style: Theme.of(
-                                              context,
-                                            ).textTheme.titleMedium,
-                                          ),
-                                          Text(strings.domainValue(item.state)),
-                                          const SizedBox(height: 8),
-                                          SelectableText(item.reason),
-                                          if (actionable) ...[
-                                            const SizedBox(height: 12),
-                                            Wrap(
-                                              spacing: 8,
-                                              runSpacing: 8,
-                                              children: [
-                                                FilledButton(
-                                                  onPressed: () =>
-                                                      _decideErasure(
-                                                        item,
-                                                        approve: true,
-                                                      ),
-                                                  child: Text(
-                                                    strings.feature(
-                                                      'Godkänn och radera',
-                                                    ),
-                                                  ),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      _decideErasure(
-                                                        item,
-                                                        approve: false,
-                                                      ),
-                                                  child: Text(
-                                                    strings.feature('Avslå'),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                }
-                                final item = items[index - erasures.length];
-                                return Card(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Chip(
-                                          avatar: const Icon(
-                                            Icons.domain_verification_outlined,
-                                            size: 18,
-                                          ),
-                                          label: Text(
-                                            strings.feature(
-                                              'Skyddat klubbnamn',
-                                            ),
-                                          ),
-                                        ),
-                                        Text(
-                                          item.clubName,
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.titleMedium,
-                                        ),
-                                        Text(
-                                          '${item.teamName} · ${strings.domainValue(item.status)}',
-                                        ),
-                                        const SizedBox(height: 12),
-                                        SelectableText(item.message),
-                                        if (item.resolutionNote != null) ...[
-                                          const SizedBox(height: 12),
-                                          Text(item.resolutionNote!),
-                                        ],
-                                        const SizedBox(height: 12),
-                                        OutlinedButton.icon(
-                                          onPressed: () =>
-                                              _openConversation(item),
-                                          icon: Badge.count(
-                                            count: item.unreadCount,
-                                            isLabelVisible:
-                                                item.unreadCount > 0,
-                                            child: const Icon(
-                                              Icons.forum_outlined,
-                                            ),
-                                          ),
-                                          label: Text(
-                                            strings.feature(
-                                              item.status == 'pending' ||
-                                                      item.status == 'in_review'
-                                                  ? 'Svara eller be om uppgifter'
-                                                  : 'Visa meddelanden',
-                                            ),
-                                          ),
-                                        ),
-                                        if (item.status == 'pending' ||
-                                            item.status == 'in_review') ...[
-                                          const SizedBox(height: 12),
-                                          Wrap(
-                                            spacing: 8,
-                                            runSpacing: 8,
-                                            children: [
-                                              if (item.status == 'pending')
-                                                OutlinedButton(
-                                                  onPressed: () => _update(
-                                                    item,
-                                                    'in_review',
-                                                  ),
-                                                  child: Text(
-                                                    strings.feature(
-                                                      'Påbörja granskning',
-                                                    ),
-                                                  ),
-                                                ),
-                                              FilledButton.icon(
-                                                onPressed: () =>
-                                                    _update(item, 'approved'),
-                                                icon: const Icon(
-                                                  Icons.domain_add_outlined,
-                                                ),
-                                                label: Text(
-                                                  strings.feature(
-                                                    'Godkänn och registrera',
-                                                  ),
-                                                ),
-                                              ),
-                                              TextButton(
-                                                onPressed: () =>
-                                                    _update(item, 'rejected'),
-                                                child: Text(
-                                                  strings.feature(
-                                                    'Avslå ärende',
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          );
-                        },
-                      );
-                    },
+                  child: SupportCasesLayout(
+                    verifications: _verificationBlock(context),
+                    cases: _caseBlock(context),
                   ),
                 ),
               ],
@@ -923,6 +880,7 @@ class _SupportAdminSurfaceState extends State<_SupportAdminSurface> {
                 services: admins,
                 onSelfRemoved: widget.onSignOut,
               ),
+            if (log != null) SupportLogTab(services: log),
           ],
         ),
       ),

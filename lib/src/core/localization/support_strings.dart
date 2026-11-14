@@ -11,6 +11,10 @@ class SupportStrings {
 
   String get casesTab => isSwedish ? 'Ärenden' : 'Cases';
   String get clubsTab => isSwedish ? 'Klubbar' : 'Clubs';
+  String get casesQueueHeading =>
+      isSwedish ? 'Supportkö' : 'Support queue';
+  String get verificationsHeading =>
+      isSwedish ? 'Klubbverifieringar' : 'Club verifications';
   String get retry => isSwedish ? 'Försök igen' : 'Try again';
   String get searchClubs => isSwedish ? 'Sök klubb' : 'Search clubs';
   String get onlyAttention =>

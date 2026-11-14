@@ -8,6 +8,7 @@ import 'package:teamzone_app/src/features/membership/membership_models.dart';
 import 'package:teamzone_app/src/features/support/support_admin_services.dart';
 import 'package:teamzone_app/src/features/support/support_club_actions.dart';
 import 'package:teamzone_app/src/features/support/support_club_services.dart';
+import 'package:teamzone_app/src/features/support/support_log_services.dart';
 import 'package:teamzone_app/src/features/support/support_tacticsboard_services.dart';
 import 'package:teamzone_app/src/features/support/support_usage_services.dart';
 
@@ -347,7 +348,8 @@ class SupabaseMembershipServices
         SupportAdminServices,
         SupportClubActionServices,
         SupportUsageDetailServices,
-        SupportTacticsboardServices {
+        SupportTacticsboardServices,
+        SupportLogServices {
   const SupabaseMembershipServices(this._client);
 
   final SupabaseClient _client;
@@ -377,6 +379,18 @@ class SupabaseMembershipServices
   @override
   Future<TacticsboardUsage> getTacticsboardUsage({int periodDays = 30}) =>
       fetchTacticsboardUsage(_client, periodDays);
+
+  @override
+  Future<SupportLogPage> listSupportActions({
+    String? area,
+    bool includeViews = false,
+    DateTime? before,
+  }) => fetchSupportActions(
+    _client,
+    area: area,
+    includeViews: includeViews,
+    before: before,
+  );
 
   @override
   Future<List<SupportAdmin>> listSupportAdmins() => fetchSupportAdmins(_client);

@@ -31,7 +31,7 @@ Byta till supportkontot: skapa kontot, lägg till det under Supportadmins med de
 | 3. Klubbar (åtgärder) | I klubbens vy: utse klubbadmin bland personer i klubben med konto, ta bort en klubbadmin (nödundantaget när klubben då står utan klubbadmin med konto), verkställa eller avbryta en styrelseändring som fastnat. Varje åtgärd kräver motivering (5–500 tecken) och loggas. | `api.support_grant_club_admin(club, person, reason)`, `api.support_remove_club_admin(club, person, reason)`, `api.support_resolve_board_change(change, apply\|cancel, reason)` (loggar `support.club_admin_granted`, `support.club_admin_removed`, `support.board_change_applied`, `support.board_change_cancelled`) | Byggd 2026-11-14 |
 | 4. Supportadmins | Lista, lägga till (befintliga konton) och ta bort; den sista kan inte tas bort. | `api.list_support_admins`, `api.grant_support_admin(email, reason)`, `api.revoke_support_admin(profile, reason)` (loggar `support.admin_granted` och `support.admin_revoked`, felkod `last_support_admin`) | Byggd 2026-11-14 |
 | 2b. Tacticsboard | Tacticsboards egna siffror från produktionens databas (där kunderna köper på webtools.teamzoneapp.se): konton och inloggade, provperioder, abonnemang (månad, år, uppsagda, misslyckad betalning, avslutade, nya, ångrade köp), projekt (per typ), livelektioner, delningslänkar, bibliotek och anmälningar. Kort öppnas med vad de räknar och ett värde per dag. Bara antal. | Kantfunktionen `support-tacticsboard-usage` i appens projekt kontrollerar `api.is_support_admin`, och anropar sedan `api.get_tacticsboard_usage_for_server(period_days)` i produktionen med dess hemliga nyckel (bara `service_role` får anropa den) | Byggd och driftsatt 2026-11-14 (migrationen i båda databaserna, kantfunktionen i appens projekt). Kvar: hemligheterna `TACTICSBOARD_STATS_URL` och `TACTICSBOARD_STATS_SECRET_KEY` |
-| 5. Logg | Supportens egna åtgärder ur `audit.command_events`. | `api.list_support_actions` | Planerad |
+| 5. Logg | Supportens egna åtgärder ur `audit.command_events`, nyast först och per dag: vem i supporten, när, i vilken klubb, om vem och med vilken motivering. Filter: allt, klubbar, supportadmins, ärenden; öppnade klubbar bara på begäran. 50 åt gången, "Visa äldre" hämtar fler. | `api.list_support_actions(area, include_views, before, page_size)` | Byggd 2026-11-14 |
 
 Alla funktioner kräver supportadmin, nekar andra med `insufficient_privilege` (`not_found`), och ändringar kräver motivering, loggas och använder PT409 vid konflikt. Vidgade rättigheter skrivs in i [permissions-review.md](permissions-review.md).
 
@@ -64,6 +64,13 @@ Alla funktioner kräver supportadmin, nekar andra med `insufficient_privilege` (
   - Webtools: `lib/usage.ts` (sidmönster, aldrig adresser med id), `components/usage-tracker.tsx` i `app/layout.tsx`, och anrop när ett projekt eller en tavla börjar från en färdig tavla, egen mall eller biblioteket (`SharedLibrary.tsx`, `home/NewProjectDialog.tsx`, `BoardMenu.tsx`). Test `webtools/tests/usage.test.ts`.
   - De nya siffrorna läggs till i `api.get_tacticsboard_usage_for_server` (via `internal.get_tacticsboard_usage_more_for_server`), så kantfunktionen är oförändrad. Fliken visar dem som kort och listor (mest använda färdiga tavlor, mest använt ur biblioteket, flest favoriter, mest besökta sidor).
   - Aktiva, sidor och användning räknas från den dag Webtools med mätningen driftsätts i produktionen.
+
+## Del 5 i appen
+
+- Migration `20270324090000_support_action_log.sql`: `api.list_support_actions` och ett delindex på `audit.command_events` för `support.%`.
+- Med: `support.*`-händelser. Utan: det som de som ber om hjälp skrivit (`support.protected_name.request.v1` och deras egna meddelanden), och `support.club_viewed` om man inte ber om det. Av metadata skickas bara kända nycklar vidare (t.ex. `left_without_admin`, `office`, `approvals`, `decision`, `status`), aldrig id.
+- Appen: `support_log_services.dart`, `support_log_tab.dart`, texterna i `support_log_strings.dart`. Fliken Logg i `_SupportAdminSurface`.
+- Test: `test/support_log_test.dart`. Provad mot databasen i en transaktion som rullades tillbaka (andra nekas, okänt område nekas, sidindelning, filtret supportadmins).
 
 ## Del 3 i appen
 

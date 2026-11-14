@@ -1948,6 +1948,8 @@ class AppStrings {
         'You do not have support access or the queue could not be loaded.',
     'Inga supportärenden i vald status.':
         'There are no support cases with the selected status.',
+    'Inga klubbverifieringar i vald status.':
+        'There are no club verifications with the selected status.',
     'Klubbnamnet kan inte användas. Kontrollera namnet och försök igen.':
         'The club name cannot be used. Check the name and try again.',
     'Villkor kunde inte kontrolleras': 'Terms could not be checked',
