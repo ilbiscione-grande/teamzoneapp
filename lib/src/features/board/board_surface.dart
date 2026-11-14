@@ -243,6 +243,141 @@ class _BoardSurfaceState extends State<_BoardSurface> {
         final data = snapshot.requireData;
         final canChange =
             widget.contextValue.can('board.manage') || data.canRegister;
+        // Who sits on the board today, chair first; mandates to come; and
+        // revoked or ended ones, folded away.
+        final now = DateTime.now();
+        bool running(BoardMandate mandate) =>
+            mandate.state == 'active' && mandate.endsAt.isAfter(now);
+        final current =
+            data.mandates
+                .where((m) => running(m) && !m.startsAt.isAfter(now))
+                .toList()
+              ..sort((a, b) {
+                final byOffice = _officeOrder(
+                  a.office,
+                ).compareTo(_officeOrder(b.office));
+                return byOffice != 0 ? byOffice : a.name.compareTo(b.name);
+              });
+        final coming = data.mandates
+            .where((m) => running(m) && m.startsAt.isAfter(now))
+            .toList();
+        final past = data.mandates.where((m) => !running(m)).toList();
+        final pendingChanges = data.changes
+            .where((change) => change.state == 'pending')
+            .toList();
+        final pastChanges = data.changes
+            .where((change) => change.state != 'pending')
+            .toList();
+        Widget mandateCard(BoardMandate mandate, {bool past = false}) {
+          // The end is exclusive: the last day is the one before.
+          final lastDay = _date(
+            context,
+            mandate.endsAt.subtract(const Duration(seconds: 1)),
+          );
+          return Card(
+            key: ValueKey('board-mandate-${mandate.id}'),
+            child: ListTile(
+              leading: Icon(
+                past ? Icons.history : Icons.badge_outlined,
+                color: past ? Theme.of(context).disabledColor : null,
+              ),
+              title: Text(
+                past
+                    ? '${mandate.name} · ${copy.office(mandate.office)}'
+                    : copy.office(mandate.office),
+                style: past ? null : Theme.of(context).textTheme.labelLarge,
+              ),
+              subtitle: Text(
+                past
+                    ? '${copy.state(mandate.state == 'active' ? 'ended' : mandate.state)} · ${_date(context, mandate.startsAt)} – $lastDay'
+                    : '${mandate.name} · ${copy.until(lastDay)}',
+                style: past ? null : Theme.of(context).textTheme.titleMedium,
+              ),
+              trailing: !past && canChange
+                  ? IconButton(
+                      tooltip: data.forming
+                          ? copy.endMandate
+                          : copy.proposeRevocation,
+                      onPressed: _busy
+                          ? null
+                          : () => _revoke(mandate, forming: data.forming),
+                      icon: const Icon(Icons.person_remove_outlined),
+                    )
+                  : null,
+            ),
+          );
+        }
+
+        Widget changeCard(BoardMandateChange change) => Card(
+          child: ListTile(
+            leading: Icon(
+              change.action == 'grant'
+                  ? Icons.person_add_alt
+                  : Icons.person_remove_outlined,
+            ),
+            title: Text(
+              '${change.action == 'grant' ? copy.assign : copy.revoke} ${copy.office(change.office)} · ${change.name}',
+            ),
+            subtitle: Text(
+              [
+                // Registered at once while the board was forming.
+                change.state == 'applied' && change.approvalCount == 0
+                    ? copy.registeredDirectly
+                    : '${copy.state(change.state)} · ${copy.approvals(change.approvalCount)}',
+                if (change.approvers.isNotEmpty)
+                  change.approvers.map((item) => item.displayName).join(', '),
+              ].join(' · '),
+            ),
+            trailing: Wrap(
+              spacing: 4,
+              children: [
+                if (change.state == 'pending' &&
+                    widget.contextValue.can('board.approve'))
+                  IconButton(
+                    tooltip: change.currentActorApproved
+                        ? copy.alreadyApproved
+                        : copy.approve,
+                    onPressed: _busy || change.currentActorApproved
+                        ? null
+                        : () async {
+                            final reason = await _reason(copy.approveChange);
+                            if (reason != null) {
+                              await _run(
+                                () => widget.board.approve(
+                                  changeId: change.id,
+                                  decision: 'approved',
+                                  reason: reason,
+                                  idempotencyKey: _newUuid(),
+                                ),
+                              );
+                            }
+                          },
+                    icon: const Icon(Icons.approval_outlined),
+                  ),
+                if (change.state == 'pending' &&
+                    widget.contextValue.can('board.manage'))
+                  IconButton(
+                    key: ValueKey('board-apply-${change.id}'),
+                    // While the board is forming no approvals are
+                    // needed (fewer than three can sign in).
+                    tooltip: data.forming
+                        ? copy.applyNow
+                        : copy.applyAfterApprovals,
+                    onPressed: _busy
+                        ? null
+                        : () => _run(
+                            () => widget.board.apply(
+                              changeId: change.id,
+                              idempotencyKey: _newUuid(),
+                            ),
+                          ),
+                    icon: const Icon(Icons.check_circle_outline),
+                  ),
+              ],
+            ),
+          ),
+        );
+
         return Scaffold(
           body: ListView(
             padding: const EdgeInsets.all(24),
@@ -284,37 +419,32 @@ class _BoardSurfaceState extends State<_BoardSurface> {
               ],
               const SizedBox(height: 16),
               Text(
-                copy.mandatesHeading,
+                copy.currentHeading,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              if (data.mandates.isEmpty)
+              if (current.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: Text(copy.noMandates),
+                  child: Text(copy.noCurrent),
                 ),
-              for (final mandate in data.mandates)
-                Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.badge_outlined),
-                    title: Text(
-                      '${mandate.name} · ${copy.office(mandate.office)}',
-                    ),
-                    subtitle: Text(
-                      // The end is exclusive: the last day is the one before.
-                      '${copy.state(mandate.state)} · ${_date(context, mandate.startsAt)} – ${_date(context, mandate.endsAt.subtract(const Duration(seconds: 1)))}',
-                    ),
-                    trailing: mandate.state == 'active' && canChange
-                        ? IconButton(
-                            tooltip: data.forming
-                                ? copy.endMandate
-                                : copy.proposeRevocation,
-                            onPressed: _busy
-                                ? null
-                                : () => _revoke(mandate, forming: data.forming),
-                            icon: const Icon(Icons.person_remove_outlined),
-                          )
-                        : null,
-                  ),
+              for (final mandate in current) mandateCard(mandate),
+              if (coming.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  copy.comingHeading,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                for (final mandate in coming) mandateCard(mandate),
+              ],
+              if (past.isNotEmpty)
+                ExpansionTile(
+                  key: const ValueKey('board-past-mandates'),
+                  tilePadding: EdgeInsets.zero,
+                  title: Text('${copy.pastHeading} (${past.length})'),
+                  children: [
+                    for (final mandate in past)
+                      mandateCard(mandate, past: true),
+                  ],
                 ),
               const SizedBox(height: 16),
               Text(
@@ -326,79 +456,17 @@ class _BoardSurfaceState extends State<_BoardSurface> {
                   padding: const EdgeInsets.symmetric(vertical: 20),
                   child: Text(copy.noChanges),
                 ),
-              for (final change in data.changes)
-                Card(
-                  child: ListTile(
-                    leading: Icon(
-                      change.action == 'grant'
-                          ? Icons.person_add_alt
-                          : Icons.person_remove_outlined,
-                    ),
-                    title: Text(
-                      '${change.action == 'grant' ? copy.assign : copy.revoke} ${copy.office(change.office)} · ${change.name}',
-                    ),
-                    subtitle: Text(
-                      [
-                        // Registered at once while the board was forming.
-                        change.state == 'applied' && change.approvalCount == 0
-                            ? copy.registeredDirectly
-                            : '${copy.state(change.state)} · ${copy.approvals(change.approvalCount)}',
-                        if (change.approvers.isNotEmpty)
-                          change.approvers
-                              .map((item) => item.displayName)
-                              .join(', '),
-                      ].join(' · '),
-                    ),
-                    trailing: Wrap(
-                      spacing: 4,
-                      children: [
-                        if (change.state == 'pending' &&
-                            widget.contextValue.can('board.approve'))
-                          IconButton(
-                            tooltip: change.currentActorApproved
-                                ? copy.alreadyApproved
-                                : copy.approve,
-                            onPressed: _busy || change.currentActorApproved
-                                ? null
-                                : () async {
-                                    final reason = await _reason(
-                                      copy.approveChange,
-                                    );
-                                    if (reason != null) {
-                                      await _run(
-                                        () => widget.board.approve(
-                                          changeId: change.id,
-                                          decision: 'approved',
-                                          reason: reason,
-                                          idempotencyKey: _newUuid(),
-                                        ),
-                                      );
-                                    }
-                                  },
-                            icon: const Icon(Icons.approval_outlined),
-                          ),
-                        if (change.state == 'pending' &&
-                            widget.contextValue.can('board.manage'))
-                          IconButton(
-                            key: ValueKey('board-apply-${change.id}'),
-                            // While the board is forming no approvals are
-                            // needed (fewer than three can sign in).
-                            tooltip: data.forming
-                                ? copy.applyNow
-                                : copy.applyAfterApprovals,
-                            onPressed: _busy
-                                ? null
-                                : () => _run(
-                                    () => widget.board.apply(
-                                      changeId: change.id,
-                                      idempotencyKey: _newUuid(),
-                                    ),
-                                  ),
-                            icon: const Icon(Icons.check_circle_outline),
-                          ),
-                      ],
-                    ),
+              for (final change in pendingChanges) changeCard(change),
+              if (pastChanges.isNotEmpty)
+                ExpansionTile(
+                  key: const ValueKey('board-past-changes'),
+                  tilePadding: EdgeInsets.zero,
+                  title: Text(
+                    '${copy.pastChangesHeading} (${pastChanges.length})',
                   ),
+                  children: [
+                    for (final change in pastChanges) changeCard(change),
+                  ],
                 ),
             ],
           ),
@@ -414,3 +482,13 @@ String _date(BuildContext context, DateTime value) {
   final local = value.toLocal();
   return '${MaterialLocalizations.of(context).formatMediumDate(local)} ${local.year}';
 }
+
+/// Chair, secretary, treasurer, members and then the auditor.
+int _officeOrder(String office) => switch (office) {
+  'chair' => 0,
+  'secretary' => 1,
+  'treasurer' => 2,
+  'member' => 3,
+  'auditor' => 4,
+  _ => 5,
+};

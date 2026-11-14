@@ -37,11 +37,17 @@ class BoardStrings {
   String get officesExplained => isSwedish
       ? 'Mandatet ger rättigheterna under sin period. Ordförande och sekreterare hanterar styrelsen, kassören klubbens ekonomi, ledamöter godkänner och revisorn granskar.'
       : 'A mandate gives its rights for its period. The chair and secretary run the board, the treasurer the club\'s economy, members approve and the auditor reviews.';
-  String get mandatesHeading => isSwedish
-      ? 'Aktiva och historiska mandat'
-      : 'Active and historical mandates';
-  String get noMandates =>
-      isSwedish ? 'Inga styrelsemandat ännu.' : 'No board mandates yet.';
+  String get currentHeading =>
+      isSwedish ? 'Sitter i styrelsen idag' : 'On the board today';
+  String get noCurrent => isSwedish
+      ? 'Ingen har ett mandat just nu.'
+      : 'Nobody holds a mandate right now.';
+  String get comingHeading => isSwedish ? 'Kommande mandat' : 'Coming mandates';
+  String get pastHeading => isSwedish ? 'Tidigare mandat' : 'Past mandates';
+  String get pastChangesHeading => isSwedish
+      ? 'Genomförda och avslutade ändringar'
+      : 'Applied and closed changes';
+  String until(String date) => isSwedish ? 'Till och med $date' : 'Until $date';
   String get changesHeading =>
       isSwedish ? 'Mandatändringar' : 'Mandate changes';
   String get noChanges => isSwedish
