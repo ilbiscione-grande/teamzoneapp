@@ -20,8 +20,12 @@ class _TrainingExerciseMobile extends StatelessWidget {
     required this.onAddUnnamed,
     this.onLinkBoard,
     this.onOpenBoard,
+    this.boardPicture,
   });
   final TrainingBlock block;
+
+  /// The saved picture of the linked board, while it loads; null without.
+  final Future<TrainingBoardPicture?>? boardPicture;
   final String editorKey;
   final int tab;
   final List<TrainingBlockPlayer> roster;
@@ -155,6 +159,7 @@ class _TrainingExerciseMobile extends StatelessWidget {
                 aspectRatio: 1.15,
                 child: _ExerciseIllustration(
                   board: block.board,
+                  picture: boardPicture,
                   onLink: onLinkBoard,
                   onOpen: onOpenBoard,
                   onUnlink: () => onChanged(block.copyWith(clearBoard: true)),

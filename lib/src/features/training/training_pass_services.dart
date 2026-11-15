@@ -141,6 +141,10 @@ abstract interface class TrainingPassServices {
 
   /// A short link of your own to the board linked to a saved block.
   Future<String> openBlockBoard(String blockId);
+
+  /// The picture Tacticsboard saved of a saved block's linked board, or
+  /// null when it has none (yet).
+  Future<TrainingBoardPicture?> blockBoardPicture(String blockId);
 }
 
 /// Training services that also handle passes.
@@ -227,4 +231,12 @@ class SupabaseTrainingPassServices implements TrainingPassServices {
     if (path is! String) throw const FormatException('Invalid board link.');
     return path;
   }
+
+  @override
+  Future<TrainingBoardPicture?> blockBoardPicture(String blockId) async =>
+      TrainingBoardPicture.fromJson(
+        await _rpc('training_block_board_picture', {
+          'target_block_id': blockId,
+        }),
+      );
 }

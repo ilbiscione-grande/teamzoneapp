@@ -1051,6 +1051,9 @@ class _Passes implements TrainingPassServices {
   }
 
   @override
+  Future<TrainingBoardPicture?> blockBoardPicture(String blockId) async => null;
+
+  @override
   Future<String> openBlockBoard(String blockId) async {
     openedBoard = blockId;
     return '/delad/$blockId';

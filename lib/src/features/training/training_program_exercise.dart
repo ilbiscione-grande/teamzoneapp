@@ -13,8 +13,12 @@ class _TrainingExercisePanel extends StatelessWidget {
     required this.onGuide,
     this.onLinkBoard,
     this.onOpenBoard,
+    this.boardPicture,
   });
   final TrainingBlock? block;
+
+  /// The saved picture of the linked board, while it loads; null without.
+  final Future<TrainingBoardPicture?>? boardPicture;
 
   /// Links a board from the library; null without the library.
   final VoidCallback? onLinkBoard;
@@ -66,6 +70,7 @@ class _TrainingExercisePanel extends StatelessWidget {
     );
     final illustration = _ExerciseIllustration(
       board: block.board,
+      picture: boardPicture,
       onLink: onLinkBoard,
       onOpen: onOpenBoard,
       onUnlink: () => onChanged(block.copyWith(clearBoard: true)),
@@ -334,112 +339,118 @@ class _TrainingNotesFieldState extends State<_TrainingNotesField> {
   }
 }
 
-/// A placeholder diagram until the app shows boards, with the board linked
-/// from Tacticsboard's library and the buttons to open, link or unlink one.
+/// The exercise's board: the picture Tacticsboard saved of a linked board,
+/// else the app's own drawing of its first frame, else a drawn pitch; under
+/// it the board's name and the buttons to open, link or unlink one.
 class _ExerciseIllustration extends StatelessWidget {
   const _ExerciseIllustration({
     this.board,
+    this.picture,
     this.onLink,
     this.onUnlink,
     this.onOpen,
   });
   final TrainingBoardLink? board;
+
+  /// The saved picture of the linked board, while it loads; null without.
+  final Future<TrainingBoardPicture?>? picture;
   final VoidCallback? onLink, onUnlink, onOpen;
 
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
+    final colors = Theme.of(context).colorScheme;
     final board = this.board;
-    const white = TextStyle(color: Colors.white, fontSize: 13);
     final label = board == null
         ? strings.feature('Tom tavla')
         : strings.formatFeature('Tavla: {name}', {'name': board.name});
+    final drawn = board?.preview == null
+        ? const CustomPaint(painter: _ExercisePitchPainter())
+        : CustomPaint(
+            key: const Key('training-board-preview'),
+            painter: TrainingBoardPreviewPainter(board!.preview!),
+          );
     return Semantics(
       label: label,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (board?.preview case final preview?)
-              CustomPaint(
-                key: const Key('training-board-preview'),
-                painter: TrainingBoardPreviewPainter(preview),
-              )
-            else
-              const CustomPaint(painter: _ExercisePitchPainter()),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Container(
-                margin: const EdgeInsets.all(12),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: .45),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      board == null ? Icons.draw_outlined : Icons.link,
-                      size: 16,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        label,
-                        key: const Key('training-board-name'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: white,
-                      ),
-                    ),
-                    if (board != null && onOpen != null)
-                      TextButton(
-                        key: const Key('training-board-open'),
-                        onPressed: onOpen,
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        child: Text(strings.feature('Visa tavla')),
-                      ),
-                    if (onLink != null)
-                      TextButton(
-                        key: const Key('training-board-link'),
-                        onPressed: onLink,
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        child: Text(
-                          strings.feature(
-                            board == null ? 'Länka tavla' : 'Byt tavla',
-                          ),
-                        ),
-                      ),
-                    if (board != null && onUnlink != null)
-                      IconButton(
-                        key: const Key('training-board-unlink'),
-                        tooltip: strings.feature('Ta bort länken'),
-                        onPressed: onUnlink,
-                        visualDensity: VisualDensity.compact,
-                        icon: const Icon(
-                          Icons.link_off,
-                          size: 18,
-                          color: Colors.white,
-                        ),
-                      ),
-                  ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: ColoredBox(
+                color: const Color(0xFF2F7D46),
+                child: FutureBuilder<TrainingBoardPicture?>(
+                  future: picture,
+                  builder: (context, snapshot) {
+                    final saved = snapshot.data;
+                    if (saved == null) return drawn;
+                    return Image.memory(
+                      saved.bytes,
+                      key: const Key('training-board-picture'),
+                      fit: BoxFit.contain,
+                      gaplessPlayback: true,
+                      errorBuilder: (_, _, _) => drawn,
+                    );
+                  },
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(
+                board == null ? Icons.draw_outlined : Icons.link,
+                size: 16,
+                color: colors.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  key: const Key('training-board-name'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              if (board != null && onOpen != null)
+                TextButton(
+                  key: const Key('training-board-open'),
+                  onPressed: onOpen,
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  child: Text(strings.feature('Visa tavla')),
+                ),
+              if (onLink != null)
+                TextButton(
+                  key: const Key('training-board-link'),
+                  onPressed: onLink,
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  child: Text(
+                    strings.feature(
+                      board == null ? 'Länka tavla' : 'Byt tavla',
+                    ),
+                  ),
+                ),
+              if (board != null && onUnlink != null)
+                IconButton(
+                  key: const Key('training-board-unlink'),
+                  tooltip: strings.feature('Ta bort länken'),
+                  onPressed: onUnlink,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.link_off, size: 18),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

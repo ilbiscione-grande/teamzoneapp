@@ -360,6 +360,31 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
     _blocks = [...session.blocks];
     _published = session.published;
     _dirty = false;
+    // A save or a reload may bring new pictures from Tacticsboard.
+    _boardPictures.clear();
+  }
+
+  /// The pictures Tacticsboard saved of the linked boards, one fetch each.
+  final _boardPictures = <String, Future<TrainingBoardPicture?>>{};
+
+  /// The saved picture of a block's linked board: only a saved link (it has
+  /// a preview then) to a board from a project.
+  Future<TrainingBoardPicture?>? _boardPicture(TrainingBlock? block) {
+    final passes = _passes, id = block?.id, board = block?.board;
+    if (passes == null ||
+        id == null ||
+        board == null ||
+        board.preview == null ||
+        board.source != 'mine') {
+      return null;
+    }
+    return _boardPictures.putIfAbsent(
+      '$id:${board.ref}:${board.boardId}',
+      () => passes.blockBoardPicture(id).catchError((Object error) {
+        AppErrors.caught('training_session._boardPicture', error);
+        return null;
+      }),
+    );
   }
 
   Future<void> _load() async {
@@ -727,6 +752,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
             : null,
         onLinkBoard: _passes == null ? null : () => _linkBoard(selected),
         onOpenBoard: _boardOpener(_blocks[selected]),
+        boardPicture: _boardPicture(_blocks[selected]),
       ),
     );
   }
@@ -940,6 +966,7 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
                             ? null
                             : () => _linkBoard(selected!),
                         onOpenBoard: block == null ? null : _boardOpener(block),
+                        boardPicture: _boardPicture(block),
                       ),
                     ),
                   ),

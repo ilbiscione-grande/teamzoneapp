@@ -4,11 +4,39 @@
 /// objects placed by their centre.
 library;
 
+import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
 const _pitchLength = 105.0, _pitchWidth = 68.0, _margin = 3.0;
+
+/// The picture Tacticsboard saved of a board's first frame, drawn by the
+/// board itself (bild av tavlan, 2026-11-15).
+class TrainingBoardPicture {
+  const TrainingBoardPicture({
+    required this.bytes,
+    required this.width,
+    required this.height,
+  });
+
+  static TrainingBoardPicture? fromJson(Object? json) {
+    if (json is! Map || json['data'] is! String) return null;
+    try {
+      return TrainingBoardPicture(
+        bytes: base64Decode(json['data'] as String),
+        width: (json['width'] as num?)?.toInt() ?? 0,
+        height: (json['height'] as num?)?.toInt() ?? 0,
+      );
+    } on FormatException {
+      return null;
+    }
+  }
+
+  final Uint8List bytes;
+  final int width, height;
+}
 
 class TrainingBoardPreview {
   const TrainingBoardPreview({
