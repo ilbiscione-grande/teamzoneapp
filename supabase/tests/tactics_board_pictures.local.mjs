@@ -30,12 +30,14 @@ create function internal.training_session_can_edit(event_row core.events) return
   select auth.uid() = '${owner}' $$;
 grant usage on schema api, internal, core, auth to authenticated;`);
 await db.exec(read('supabase/migrations/20270328090000_tactics_board_pictures.sql'));
+await db.exec(read('supabase/migrations/20270330090000_tactics_board_picture_base64.sql'));
 const as = async (who, sql, params = []) => {
   await db.query("select set_config('request.jwt.claim.sub',$1,false)", [who ?? '']);
   await db.exec('set role authenticated');
   try { return (await db.query(sql, params)).rows[0]?.r; } finally { await db.exec('reset role'); }
 };
-const png = Buffer.from('89504e470d0a1a0a', 'hex').toString('base64');
+// Long enough that Postgres would break its base64 into lines.
+const png = Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.alloc(300, 7)]).toString('base64');
 const save = (who, pictures) => as(who, 'select api.save_tactics_board_pictures($1, $2) r', [project, JSON.stringify(pictures)]);
 const picture = (who, target) => as(who, 'select api.training_block_board_picture($1) r', [target]);
 
@@ -52,6 +54,7 @@ await assert.rejects(save(owner, [{ board_id: 'board-1', media_type: 'image/png'
 const got = await picture(viewer, block);
 assert.equal(got.media_type, 'image/webp');
 assert.equal(got.data, png);
+assert.ok(!got.data.includes('\n'), 'one line, as the app decodes it');
 assert.deepEqual([got.width, got.height], [600, 380]);
 assert.equal(await picture(viewer, libraryBlock), null);
 // An unpublished session's exercise is not for its players.
