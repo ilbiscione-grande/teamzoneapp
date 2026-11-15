@@ -32,6 +32,7 @@ import { PhoneToolbar, PickMany } from "./panels/PhoneToolbar.tsx";
 import { activeBoard, useEditor } from "./store.ts";
 import { TopBar } from "./TopBar.tsx";
 import { useAutosave } from "./use-autosave.ts";
+import { BoardPictures } from "./BoardPictures.tsx";
 import { useLiveHost } from "./live/use-live-host.ts";
 import { useShortcuts } from "./use-shortcuts.ts";
 import { Timeline } from "./timeline/Timeline.tsx";
@@ -168,5 +169,5 @@ export function TacticsEditor({ id }: { id: string }) {
   if (error) return <div className="wt-wrap wt-section"><p className="wt-error" role="alert">{error}</p><Link className="wt-link" href="/tacticsboard">{t("Till projekten")}</Link></div>;
   if (watching) return <WatchProject project={watching} />;
   if (!loaded) return <p className="wt-wrap wt-section wt-status">{t("Laddar…")}</p>;
-  return <TacticsWorkspace />;
+  return <><TacticsWorkspace /><BoardPictures client={client} /></>;
 }

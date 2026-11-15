@@ -11,7 +11,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { Group, Layer, Stage } from "react-konva";
 import { ballHolders } from "../../../lib/tactics/ball.ts";
 import { fitView, marginFor, shownRect } from "../../../lib/tactics/geometry.ts";
-import { pictureRatio } from "../../../lib/tactics/pdf-layout.ts";
+import { pictureSize } from "../../../lib/tactics/board-picture.ts";
 import { drawnGround, groundReach, projector } from "../../../lib/tactics/projection.ts";
 import type { Board, TacticsObject } from "../../../lib/tactics/model.ts";
 import type { Trail } from "../../../lib/tactics/marks.ts";
@@ -31,19 +31,20 @@ const LONG_SIDE = 1500;
 const SHARPNESS = 1.4;
 const WHOLE = { x: 0, y: 0, scale: 1 };
 
-/** moves: dashed arrows of how things moved into the frame (MoveArrows), drawn under the objects. tilted: in 3D. */
-export default function OffscreenBoard({ board, objects, moves = [], tilted = false, onPicture }: {
+/**
+ * moves: dashed arrows of how things moved into the frame (MoveArrows), drawn under the objects. tilted: in 3D.
+ * longSide, sharpness, type and quality: the picture's size and format, by default for the PDF.
+ */
+export default function OffscreenBoard({ board, objects, moves = [], tilted = false, onPicture, longSide = LONG_SIDE, sharpness = SHARPNESS, type = "image/jpeg", quality = 0.9 }: {
   board: Board; objects: TacticsObject[]; moves?: Trail[]; tilted?: boolean; onPicture: (dataUrl: string) => void;
+  longSide?: number; sharpness?: number; type?: string; quality?: number;
 }) {
   const stage = useRef<Konva.Stage>(null);
   const figures = useRef<Konva.Stage | null>(null);
   const nodes = useRef(new Map<string, Konva.Node>());
   const content = useRef<Konva.Group>(null);
   const branding = useEditor(state => state.document?.branding);
-  const ratio = pictureRatio(board);
-  const size = ratio >= 1
-    ? { width: LONG_SIDE, height: Math.round(LONG_SIDE / ratio) }
-    : { width: Math.round(LONG_SIDE * ratio), height: LONG_SIDE };
+  const size = pictureSize(board, longSide);
   // The board's crop where it has one: the part of the pitch the PDF is to show.
   const fit = fitView(shownRect(board, marginFor(board.surroundings), true), size.width, size.height, false, !!board.crop);
   const holders = ballHolders(objects);
@@ -58,7 +59,7 @@ export default function OffscreenBoard({ board, objects, moves = [], tilted = fa
     let second = 0;
     const first = requestAnimationFrame(() => {
       second = requestAnimationFrame(() => {
-        const picture = tilted ? tiltedPicture() : stage.current?.toDataURL({ mimeType: "image/jpeg", quality: 0.9, pixelRatio: SHARPNESS });
+        const picture = tilted ? tiltedPicture() : stage.current?.toDataURL({ mimeType: type, quality, pixelRatio: sharpness });
         if (picture) onPicture(picture);
       });
     });
@@ -67,12 +68,12 @@ export default function OffscreenBoard({ board, objects, moves = [], tilted = fa
 
   function tiltedPicture() {
     const canvas = document.createElement("canvas");
-    canvas.width = Math.round(size.width * SHARPNESS);
-    canvas.height = Math.round(size.height * SHARPNESS);
+    canvas.width = Math.round(size.width * sharpness);
+    canvas.height = Math.round(size.height * sharpness);
     const context = canvas.getContext("2d");
     if (!context || !stage.current) return null;
     drawTilted(context, { ground: layerCanvases(stage.current), offset, figures: layerCanvases(figures.current), width: size.width, height: size.height });
-    return canvas.toDataURL("image/jpeg", 0.9);
+    return canvas.toDataURL(type, quality);
   }
 
   return (
