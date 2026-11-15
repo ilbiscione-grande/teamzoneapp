@@ -101,9 +101,13 @@ class TrainingPassState {
   final int? version;
   final String? clubName, link;
 
-  /// The address to send: the app opens the pass from it.
-  static Uri linkUri(String token) =>
-      Uri.parse('https://app.teamzoneapp.se/pass/$token');
+  /// The address to send: the app opens the pass from it, in the same
+  /// environment, since the pass only exists in its own database.
+  static Uri linkUri(String token) => Uri.parse('$_appOrigin/pass/$token');
+  static const _appOrigin =
+      String.fromEnvironment('TEAMZONE_ENV') == 'production'
+      ? 'https://app.teamzoneapp.se'
+      : 'https://test.teamzoneapp.se';
 }
 
 /// Saving a session as a pass in Tacticsboard's library, sharing it with

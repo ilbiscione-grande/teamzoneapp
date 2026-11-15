@@ -1,6 +1,31 @@
 # Production provisioning (X-OPS-01)
 
-## Current checkpoint – 2026-10-25
+## Current checkpoint – 2026-11-15: the web app moves to production
+
+The live Supabase project `zfxcblgnemuenaqjkaic` (eu-north-1) has served
+Tacticsboard on `webtools.teamzoneapp.se` since 2026-11-04
+([tacticsboard-production.md](../implementation/tacticsboard-production.md)).
+On 2026-11-15 the product owner decided to move the TeamZone web app there
+too, so that boards made in Tacticsboard can be linked in the app.
+
+Decisions: the live app starts without clubs (test data stays in audit),
+`app.teamzoneapp.se` becomes live and the test app moves to
+`test.teamzoneapp.se`, web now and Android later, invite only.
+
+| Step | State |
+|---|---|
+| Invite only | `core.club_creation_policy` (no row = open, as in audit; live has `open = false`) and `core.club_creators` (accounts allowed anyway; the product owner's account is listed). Migrations `20270325090000`, `20270326090000` |
+| Schema | All migrations pushed to live with `npx supabase db push --remote=zfxcblgnemuenaqjkaic --skip-vault --include-all`; the dry run says up to date |
+| Edge Functions | `auth-password-sign-in`, `fee-email-worker` and `fee-email-unsubscribe` deployed to live. The live sign-in also accepts `https://teamzoneapp-production.web.app`; the audit sign-in and `invitation-preview` accept `https://test.teamzoneapp.se` |
+| Hosting | Site `teamzoneapp-production` created; `ops/environments.json` and the production CSP in `firebase.json` name the live project |
+| Web build | Built from a `git archive` export with `TEAMZONE_ENV=production`, the live URL and publishable key (as in `webtools/apphosting.production.yaml`) and `WEBTOOLS_ORIGIN=https://webtools.teamzoneapp.se`; `npx firebase-tools deploy --only hosting:production`. Club creation tried by the product owner |
+| Addresses | `app.teamzoneapp.se` moved to `teamzoneapp-production` and `test.teamzoneapp.se` added to `teamzoneapp-b02a2`; certificates pending on 2026-11-15. The audit project's Site URL is `https://test.teamzoneapp.se` |
+| Left | Push notifications and other integrations on live, one at a time; Android (phase 5); the public site still runs against audit |
+
+Audit web builds still use the audit flags; the test app is served on
+`https://test.teamzoneapp.se`.
+
+## Checkpoint – 2026-10-25 (historical)
 
 Separate production is **not provisioned**: `ops/environments.json` still has
 `status: not_provisioned` and no production project ref, and the reviewed

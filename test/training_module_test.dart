@@ -633,7 +633,7 @@ void main() {
     ));
     expect(find.text('Delat med Testklubben'), findsOneWidget);
     expect(
-      find.text('https://app.teamzoneapp.se/pass/token-1'),
+      find.text('https://test.teamzoneapp.se/pass/token-1'),
       findsOneWidget,
     );
     await tester.tap(find.byKey(const Key('training-pass-stop-link')));

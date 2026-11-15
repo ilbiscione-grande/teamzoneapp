@@ -12,9 +12,11 @@
       "name": "Firebase",
       "project": "teamzoneapp-b02a2",
       "purpose": ["flutter-web-hosting", "public-site-app-hosting", "webtools-app-hosting", "push-fcm", "crash-reporting", "operations-functions"],
-      "notes": "As checked 2026-10-25, app.teamzoneapp.se, teamzoneapp.se/public.teamzoneapp.se and the new Webtools hosted.app origin use audit. Separate production is not provisioned; see docs/implementation/current_status.md.",
+      "notes": "Since 2026-11-15 app.teamzoneapp.se is the live app (production, zfxcblgnemuenaqjkaic) and the test app is test.teamzoneapp.se. webtools.teamzoneapp.se is live since 2026-11-04. teamzoneapp.se/public.teamzoneapp.se and the Webtools hosted.app origin still use audit.",
       "deployments": [
-        {"backend": "teamzoneapp-b02a2", "kind": "hosting", "origin": "https://app.teamzoneapp.se", "environment": "audit"},
+        {"backend": "teamzoneapp-b02a2", "kind": "hosting", "origin": "https://test.teamzoneapp.se", "environment": "audit"},
+        {"backend": "teamzoneapp-production", "kind": "hosting", "origin": "https://app.teamzoneapp.se", "aliases": ["https://teamzoneapp-production.web.app"], "environment": "production"},
+        {"backend": "teamzoneapp-webtools-prod", "kind": "app-hosting", "origin": "https://webtools.teamzoneapp.se", "environment": "production"},
         {"backend": "teamzoneapp-public", "kind": "app-hosting", "origin": "https://teamzoneapp.se", "aliases": ["https://public.teamzoneapp.se"], "environment": "audit"},
         {"backend": "teamzoneapp-webtools", "kind": "app-hosting", "origin": "https://teamzoneapp-webtools--teamzoneapp-b02a2.europe-west4.hosted.app", "environment": "audit"}
       ]
