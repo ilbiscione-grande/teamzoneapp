@@ -170,7 +170,10 @@ async function record(): Promise<{ blob: Blob; extension: string } | null> {
   await done;
   useEditor.setState({ loop });
   const mime = recorder.mimeType || type || "video/webm";
-  return { blob: new Blob(chunks, { type: mime }), extension: mime.includes("mp4") ? "mp4" : "webm" };
+  const mp4 = mime.includes("mp4");
+  // Loaded only now: the rewriting library is large and only a video needs it.
+  const { finishVideo } = await import("./video-file.ts");
+  return { blob: await finishVideo(new Blob(chunks, { type: mime }), mp4), extension: mp4 ? "mp4" : "webm" };
 }
 
 export function download(blob: Blob, name: string) {
