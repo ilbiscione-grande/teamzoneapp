@@ -37,6 +37,26 @@ export function recordUse(client: SupabaseClient | null, kind: UseKind, key: str
   void client.schema("api").rpc("record_webtools_use", { kind, key }).then(() => undefined, () => undefined);
 }
 
+/** Which app a page belongs to in TeamZone's statistics. */
+export function appFor(pattern: string): "tacticsboard" | "webtools" {
+  return /^\/(tacticsboard|live|delad|support\/tacticsboard)(\/|$)/.test(pattern) ? "tacticsboard" : "webtools";
+}
+
+const appsToday = new Set<string>();
+
+/**
+ * Counts the account as active today in this app, once a day per tab.
+ * Only where Webtools shares TeamZone's database: the Tacticsboard-only
+ * site has its own, and its customers are counted in its own statistics.
+ */
+export function recordAppActivity(client: SupabaseClient | null, app: "tacticsboard" | "webtools", today = new Date()): boolean {
+  const key = `${today.toLocaleDateString("sv-SE", { timeZone: "Europe/Stockholm" })}:${app}`;
+  if (!client || appsToday.has(key)) return false;
+  appsToday.add(key);
+  void client.schema("api").rpc("record_app_activity", { app }).then(() => undefined, () => undefined);
+  return true;
+}
+
 /** Says this tab is open; a failure is ignored. */
 export function recordPresence(client: SupabaseClient | null): void {
   if (!client) return;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { pagePattern } from "../lib/usage.ts";
+import { appFor, pagePattern, recordAppActivity } from "../lib/usage.ts";
 
 // Support's statistics count pages by pattern, never by an address with
 // ids, tokens or codes in it.
@@ -15,6 +15,35 @@ test("a page is counted by its pattern", () => {
   assert.equal(pagePattern("/delad/0123456789abcdef"), "/delad/[token]");
   assert.equal(pagePattern("/live/ABC234"), "/live/[code]");
   assert.equal(pagePattern("/nagot/annat/helt"), "other");
+});
+
+test("a page counts as Tacticsboard or Webtools in TeamZone's apps", () => {
+  assert.equal(appFor("/tacticsboard"), "tacticsboard");
+  assert.equal(appFor("/tacticsboard/[id]"), "tacticsboard");
+  assert.equal(appFor("/live/[code]"), "tacticsboard");
+  assert.equal(appFor("/delad/[token]"), "tacticsboard");
+  assert.equal(appFor("/support/tacticsboard"), "tacticsboard");
+  assert.equal(appFor("/bokningar/[org]"), "webtools");
+  assert.equal(appFor("/turneringar"), "webtools");
+  assert.equal(appFor("/"), "webtools");
+  assert.equal(appFor("/tacticsboardx"), "webtools");
+});
+
+test("an app's active day is sent once a day", () => {
+  const calls: unknown[] = [];
+  const client = { schema: () => ({ rpc: (name: string, args: unknown) => { calls.push([name, args]); return Promise.resolve({}); } }) };
+  const day = new Date("2026-11-15T10:00:00Z");
+  assert.equal(recordAppActivity(client as never, "webtools", day), true);
+  assert.equal(recordAppActivity(client as never, "webtools", day), false);
+  assert.equal(recordAppActivity(client as never, "tacticsboard", day), true);
+  assert.equal(recordAppActivity(client as never, "webtools", new Date("2026-11-16T10:00:00Z")), true);
+  assert.deepEqual(calls[0], ["record_app_activity", { app: "webtools" }]);
+  assert.equal(calls.length, 3);
+});
+
+test("the Tacticsboard-only site does not send TeamZone app days", () => {
+  const tracker = readFileSync(new URL("../components/usage-tracker.tsx", import.meta.url), "utf8");
+  assert.ok(tracker.includes("if (!links.tacticsboardOnly) recordAppActivity(client, appFor(pattern));"));
 });
 
 test("every pattern passes the server's check", () => {
