@@ -23,6 +23,8 @@ if (Deno.env.get("SUPABASE_URL") === "https://hgcshgunvooyudvrcpig.supabase.co")
   allowedWebOrigins.add("https://teamzoneapp-b02a2--booking-safety-5hsymkm1.web.app");
   // The support site's Firebase address, until support.teamzoneapp.se is connected.
   allowedWebOrigins.add("https://teamzoneapp-support.web.app");
+  // The test app's address once app.teamzoneapp.se is the live app (2026-11-15).
+  allowedWebOrigins.add("https://test.teamzoneapp.se");
 }
 // The live app's Firebase address, for trying it before app.teamzoneapp.se
 // moves over (2026-11-15).

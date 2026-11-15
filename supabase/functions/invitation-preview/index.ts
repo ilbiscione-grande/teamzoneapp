@@ -13,6 +13,10 @@ const allowedWebOrigins = webOrigins(
   Deno.env.get("TEAMZONE_EXTRA_WEB_ORIGINS"),
   ["https://app.teamzoneapp.se"],
 );
+// The test app's address once app.teamzoneapp.se is the live app (2026-11-15).
+if (Deno.env.get("SUPABASE_URL") === "https://hgcshgunvooyudvrcpig.supabase.co") {
+  allowedWebOrigins.add("https://test.teamzoneapp.se");
+}
 
 function corsHeaders(origin: string | null): Record<string, string> {
   const headers: Record<string, string> = {
