@@ -16,12 +16,28 @@ insert into auth.users values ('${owner}'),('${stranger}');
 create table core.created(actor uuid, name text);
 create function internal.create_club_with_first_team_for_actor(club_name text, team_name text, idempotency_key uuid)
 returns jsonb language plpgsql security definer set search_path = '' as $$
-begin insert into core.created values (auth.uid(), club_name); return jsonb_build_object('club', club_name); end $$;
+begin
+  -- Like the real one, it names its parameter through the function's name.
+  perform 1 where create_club_with_first_team_for_actor.idempotency_key is not null;
+  insert into core.created values (auth.uid(), club_name); return jsonb_build_object('club', club_name);
+end $$;
 create function api.create_club_with_first_team(club_name text, team_name text, idempotency_key uuid)
 returns jsonb language sql set search_path = '' as $$select internal.create_club_with_first_team_for_actor(club_name,team_name,idempotency_key)$$;
 grant usage on schema api, internal, core, auth to authenticated;
 grant execute on function api.create_club_with_first_team(text, text, uuid) to authenticated;`);
 await db.exec(read('supabase/migrations/20270325090000_club_creation_invite_only.sql'));
+// The rename left the old name inside the body; 20270326090000 recreates the
+// real function with its new name (only created here, its tables are not).
+const unchecked = async () => (await db.query(
+  "select prosrc from pg_proc where proname = 'create_club_with_first_team_unchecked_for_actor'")).rows[0].prosrc;
+assert.match(await unchecked(), /create_club_with_first_team_for_actor\.idempotency_key/);
+await db.exec(read('supabase/migrations/20270326090000_club_creation_unchecked_name.sql'));
+assert.doesNotMatch(await unchecked(), /create_club_with_first_team_for_actor\./);
+assert.match(await unchecked(), /create_club_with_first_team_unchecked_for_actor\.idempotency_key/);
+// Put the stub back under the new name for the checks below.
+await db.exec(`create or replace function internal.create_club_with_first_team_unchecked_for_actor(club_name text, team_name text, idempotency_key uuid)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+begin insert into core.created values (auth.uid(), club_name); return jsonb_build_object('club', club_name); end $$;`);
 const create = async (who, name) => {
   await db.query("select set_config('request.jwt.claim.sub',$1,false)", [who]);
   await db.exec('set role authenticated');
