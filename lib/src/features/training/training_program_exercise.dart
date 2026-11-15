@@ -361,8 +361,13 @@ class _ExerciseIllustration extends StatelessWidget {
     final strings = AppStrings.of(context);
     final colors = Theme.of(context).colorScheme;
     final board = this.board;
+    final missing = board?.missing ?? false;
     final label = board == null
         ? strings.feature('Tom tavla')
+        : missing
+        ? strings.formatFeature('Tavlan {name} finns inte längre', {
+            'name': board.name,
+          })
         : strings.formatFeature('Tavla: {name}', {'name': board.name});
     final drawn = board?.preview == null
         ? const CustomPaint(painter: _ExercisePitchPainter())
@@ -401,9 +406,13 @@ class _ExerciseIllustration extends StatelessWidget {
           Row(
             children: [
               Icon(
-                board == null ? Icons.draw_outlined : Icons.link,
+                board == null
+                    ? Icons.draw_outlined
+                    : missing
+                    ? Icons.link_off
+                    : Icons.link,
                 size: 16,
-                color: colors.onSurfaceVariant,
+                color: missing ? colors.error : colors.onSurfaceVariant,
               ),
               const SizedBox(width: 6),
               Expanded(
@@ -414,11 +423,11 @@ class _ExerciseIllustration extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 13,
-                    color: colors.onSurfaceVariant,
+                    color: missing ? colors.error : colors.onSurfaceVariant,
                   ),
                 ),
               ),
-              if (board != null && onOpen != null)
+              if (board != null && !missing && onOpen != null)
                 TextButton(
                   key: const Key('training-board-open'),
                   onPressed: onOpen,

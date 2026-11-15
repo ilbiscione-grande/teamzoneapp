@@ -80,6 +80,7 @@ class TrainingBoardLink {
     required this.boardId,
     this.name = '',
     this.preview,
+    this.missing = false,
   });
   static TrainingBoardLink? fromJson(Object? json) {
     if (json is! Map) return null;
@@ -93,6 +94,7 @@ class TrainingBoardLink {
       boardId: boardId,
       name: json['name'] as String? ?? '',
       preview: TrainingBoardPreview.fromJson(json['preview']),
+      missing: json['missing'] == true,
     );
   }
 
@@ -106,6 +108,10 @@ class TrainingBoardLink {
   /// The board's first frame as saved, for its picture; null for a board
   /// linked since the last save. Read only: a save sends the link alone.
   final TrainingBoardPreview? preview;
+
+  /// Saved, but its project or board is gone (such as an original removed
+  /// after saving a copy): it no longer opens and needs linking again.
+  final bool missing;
 
   Map<String, Object?> toJson() => {
     'source': source,

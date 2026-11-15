@@ -284,6 +284,7 @@ class AppStrings {
     'Välj övningen vars tavla du vill länka.':
         'Choose the exercise whose board you want to link.',
     'Tom tavla': 'Empty board',
+    'Tavlan {name} finns inte längre': 'The board {name} no longer exists',
     'Visa tavla': 'Show board',
     'Tavlan kunde inte öppnas.': 'The board could not be opened.',
     'Tavla: {name}': 'Board: {name}',

@@ -1214,7 +1214,10 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
   /// the library's yet.
   VoidCallback? _boardOpener(TrainingBlock block) {
     final passes = _passes, id = block.id;
-    if (passes == null || id == null || block.board?.source != 'mine') {
+    if (passes == null ||
+        id == null ||
+        block.board?.source != 'mine' ||
+        block.board!.missing) {
       return null;
     }
     return () async {

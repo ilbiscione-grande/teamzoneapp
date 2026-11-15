@@ -56,6 +56,15 @@ void main() {
     expect(preview.teamColors['home'], const Color(0xFF1D4ED8));
     expect(preview.numberColors['away'], const Color(0xFF000000));
     expect(link.toJson().containsKey('preview'), isFalse);
+    expect(link.missing, isFalse);
+    // A saved link whose project is gone says so, and never sends it back.
+    final gone = TrainingBoardLink.fromJson({
+      ...json,
+      'preview': null,
+      'missing': true,
+    })!;
+    expect(gone.missing, isTrue);
+    expect(gone.toJson().containsKey('missing'), isFalse);
     // Without a preview (linked since the last save) the link still reads.
     expect(
       TrainingBoardLink.fromJson({...json, 'preview': null})?.preview,
