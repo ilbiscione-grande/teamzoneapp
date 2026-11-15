@@ -361,7 +361,13 @@ class _ExerciseIllustration extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            const CustomPaint(painter: _ExercisePitchPainter()),
+            if (board?.preview case final preview?)
+              CustomPaint(
+                key: const Key('training-board-preview'),
+                painter: TrainingBoardPreviewPainter(preview),
+              )
+            else
+              const CustomPaint(painter: _ExercisePitchPainter()),
             Align(
               alignment: Alignment.bottomCenter,
               child: Container(

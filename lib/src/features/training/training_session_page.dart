@@ -1191,6 +1191,18 @@ class _TrainingSessionPageState extends State<_TrainingSessionPage> {
       return null;
     }
     return () async {
+      // The server opens the saved block's board: a board linked since the
+      // last save is not there yet.
+      if (_dirty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppStrings.of(context).feature('Spara passet först.'),
+            ),
+          ),
+        );
+        return;
+      }
       try {
         final path = await passes.openBlockBoard(id);
         await launchUrl(

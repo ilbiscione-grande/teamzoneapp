@@ -3,6 +3,9 @@
 library;
 
 import 'package:teamzone_app/src/features/team_development/team_development_models.dart';
+import 'package:teamzone_app/src/features/training/training_board_preview.dart';
+
+export 'package:teamzone_app/src/features/training/training_board_preview.dart';
 
 /// The part of the session a block is in, as the old app's sessions.
 enum TrainingPart {
@@ -76,6 +79,7 @@ class TrainingBoardLink {
     required this.ref,
     required this.boardId,
     this.name = '',
+    this.preview,
   });
   static TrainingBoardLink? fromJson(Object? json) {
     if (json is! Map) return null;
@@ -88,6 +92,7 @@ class TrainingBoardLink {
       ref: ref,
       boardId: boardId,
       name: json['name'] as String? ?? '',
+      preview: TrainingBoardPreview.fromJson(json['preview']),
     );
   }
 
@@ -97,6 +102,10 @@ class TrainingBoardLink {
   /// The pass's id, and the board's within it.
   final String ref, boardId;
   final String name;
+
+  /// The board's first frame as saved, for its picture; null for a board
+  /// linked since the last save. Read only: a save sends the link alone.
+  final TrainingBoardPreview? preview;
 
   Map<String, Object?> toJson() => {
     'source': source,
