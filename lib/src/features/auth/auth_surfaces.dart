@@ -1254,11 +1254,16 @@ class _CreateClubSheetState extends State<_CreateClubSheet> {
       if (mounted) widget.onCreated(result);
     } catch (error) {
       AppErrors.caught('auth_surfaces._submit', error);
-
+      // Until TeamZone opens, only invited accounts and a chosen few.
+      final closed =
+          error is PostgrestException &&
+          error.message == 'club_creation_closed';
       if (mounted) {
         setState(
           () => _error = AppStrings.of(context).feature(
-            'Klubben kunde inte skapas. Kontrollera namnen och försök igen.',
+            closed
+                ? 'TeamZone är inte öppet för nya klubbar än. Du kan gå med i en klubb när du blir inbjuden.'
+                : 'Klubben kunde inte skapas. Kontrollera namnen och försök igen.',
           ),
         );
       }

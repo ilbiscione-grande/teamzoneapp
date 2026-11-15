@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/app/teamzone_app.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
@@ -351,6 +352,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(membership.createdClubName, 'Nya Klubben');
     expect(membership.createdTeamName, 'F2014');
+  });
+
+  testWidgets('club creation closed until TeamZone opens', (tester) async {
+    final membership = _MembershipFake()..creationClosed = true;
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'audit'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _WaitingIdentity(),
+          membership: membership,
+          isConfigured: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _tapVisible(tester, find.text('Skapa klubb och första lag'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), 'Nya Klubben');
+    await tester.enterText(find.byType(TextFormField).at(1), 'F2014');
+    await _tapVisible(tester, find.text('Skapa klubb och lag'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('TeamZone är inte öppet för nya klubbar än'),
+      findsOneWidget,
+    );
+    expect(membership.createdClubName, isNull);
   });
 
   testWidgets('protected club name is stopped before creation', (tester) async {
@@ -775,6 +803,7 @@ class _WaitingIdentity implements IdentityServices {
 class _MembershipFake implements MembershipServices {
   String? appliedTeamId;
   String? createdClubName;
+  bool creationClosed = false;
   String? createdTeamName;
   String? supportClubName;
   String? supportTeamName;
@@ -833,6 +862,9 @@ class _MembershipFake implements MembershipServices {
     required String teamName,
     required String idempotencyKey,
   }) async {
+    if (creationClosed) {
+      throw const PostgrestException(message: 'club_creation_closed');
+    }
     createdClubName = clubName;
     createdTeamName = teamName;
     return const ClubCreationResult(

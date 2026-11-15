@@ -2383,6 +2383,8 @@ class AppStrings {
     '{count} ärenden totalt': '{count} items in total',
     'Lagbild för {team}': 'Team image for {team}',
     'Klubb eller lag': 'Club or team',
+    'TeamZone är inte öppet för nya klubbar än. Du kan gå med i en klubb när du blir inbjuden.':
+        'TeamZone is not open for new clubs yet. You can join a club once you are invited.',
     'Klubben kunde inte skapas. Kontrollera namnen och försök igen.':
         'The club could not be created. Check the names and try again.',
     'Klubben skapas som inofficiell. Du blir klubbadministratör och får en aktiv lagkontext.':
