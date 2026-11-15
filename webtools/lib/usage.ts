@@ -46,8 +46,8 @@ const appsToday = new Set<string>();
 
 /**
  * Counts the account as active today in this app, once a day per tab.
- * Only where Webtools shares TeamZone's database: the Tacticsboard-only
- * site has its own, and its customers are counted in its own statistics.
+ * Since 2026-11-15 the live app and webtools.teamzoneapp.se share one
+ * database, so every Webtools site sends it.
  */
 export function recordAppActivity(client: SupabaseClient | null, app: "tacticsboard" | "webtools", today = new Date()): boolean {
   const key = `${today.toLocaleDateString("sv-SE", { timeZone: "Europe/Stockholm" })}:${app}`;

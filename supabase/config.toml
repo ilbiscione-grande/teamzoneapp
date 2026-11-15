@@ -403,10 +403,6 @@ verify_jwt = false
 [functions.person-erasure-worker]
 verify_jwt = true
 
-# Support reads Tacticsboard counts from the production project.
-[functions.support-tacticsboard-usage]
-verify_jwt = true
-
 [functions.support-email-worker]
 verify_jwt = false
 

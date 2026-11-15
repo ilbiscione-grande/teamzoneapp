@@ -111,7 +111,7 @@
     },
     {
       "target": "support",
-      "public": "build/web",
+      "public": "build/web-production",
       "ignore": [
         "firebase.json",
         "**/.*",
@@ -150,7 +150,7 @@
             },
             {
               "key": "Content-Security-Policy-Report-Only",
-              "value": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://hgcshgunvooyudvrcpig.supabase.co; font-src 'self' data: https://fonts.gstatic.com; connect-src https://europe-west1-teamzoneapp-b02a2.cloudfunctions.net 'self' https://hgcshgunvooyudvrcpig.supabase.co wss://hgcshgunvooyudvrcpig.supabase.co https://www.gstatic.com https://fonts.gstatic.com; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'"
+              "value": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://zfxcblgnemuenaqjkaic.supabase.co; font-src 'self' data: https://fonts.gstatic.com; connect-src https://europe-west1-teamzoneapp-b02a2.cloudfunctions.net 'self' https://zfxcblgnemuenaqjkaic.supabase.co wss://zfxcblgnemuenaqjkaic.supabase.co https://www.gstatic.com https://fonts.gstatic.com; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'"
             },
             {
               "key": "Permissions-Policy",

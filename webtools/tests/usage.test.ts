@@ -41,9 +41,10 @@ test("an app's active day is sent once a day", () => {
   assert.equal(calls.length, 3);
 });
 
-test("the Tacticsboard-only site does not send TeamZone app days", () => {
+test("every Webtools site sends the app day with the page", () => {
   const tracker = readFileSync(new URL("../components/usage-tracker.tsx", import.meta.url), "utf8");
-  assert.ok(tracker.includes("if (!links.tacticsboardOnly) recordAppActivity(client, appFor(pattern));"));
+  assert.ok(tracker.includes("    recordAppActivity(client, appFor(pattern));"));
+  assert.ok(!tracker.includes("tacticsboardOnly"));
 });
 
 test("every pattern passes the server's check", () => {

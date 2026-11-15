@@ -45,17 +45,14 @@ TacticsboardUsage _usage(int periodDays) => TacticsboardUsage.fromJson({
     {'day': '2026-11-13', 'new_projects': 1, 'new_accounts': 0},
     {'day': '2026-11-14', 'new_projects': 5, 'new_accounts': 2},
   ],
-}, source: 'zfxcblgnemuenaqjkaic');
+});
 
 class _Fake implements SupportTacticsboardServices {
-  _Fake({this.configured = true});
-  final bool configured;
   final asked = <int>[];
 
   @override
   Future<TacticsboardUsage> getTacticsboardUsage({int periodDays = 30}) async {
     asked.add(periodDays);
-    if (!configured) throw const TacticsboardUsageNotConfigured();
     return _usage(periodDays);
   }
 }
@@ -81,7 +78,7 @@ void main() {
     expect(find.text('Betalar per månad'), findsOneWidget);
     // Not recorded in this database: no card.
     expect(find.text('Ångrade köp i perioden'), findsNothing);
-    expect(find.textContaining('zfxcblgnemuenaqjkaic'), findsOneWidget);
+    expect(find.textContaining('i samma databas som'), findsOneWidget);
     expect(find.text('Just nu (senaste 5 min)'), findsOneWidget);
 
     // Tools, the most used first.
@@ -133,17 +130,6 @@ void main() {
     expect(find.byTooltip('2026-11-14: 5'), findsOneWidget);
   });
 
-  testWidgets('says when the database is not connected', (tester) async {
-    await tester.pumpWidget(
-      _app(SupportTacticsboardTab(services: _Fake(configured: false))),
-    );
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const ValueKey('support-tacticsboard-not-configured')),
-      findsOneWidget,
-    );
-  });
-
   test('the two lists per day are merged by day', () {
     final usage = _usage(30);
     expect(usage.series('active').last.value, 5);
@@ -183,11 +169,18 @@ void main() {
     expect(migration, isNot(contains('display_name')));
     expect(migration, isNot(contains('customer_email')));
 
-    final function = File(
-      'supabase/functions/support-tacticsboard-usage/index.ts',
+    final direct = File(
+      'supabase/migrations/20270331090000_tacticsboard_usage_in_app_db.sql',
     ).readAsStringSync();
-    expect(function, contains('.rpc("is_support_admin")'));
-    expect(function, contains('isSupportAdmin !== true'));
-    expect(function, contains('"not_configured"'));
+    expect(direct, contains('if not internal.actor_is_support_admin() then'));
+    expect(
+      direct,
+      contains("raise insufficient_privilege using message = 'not_found'"),
+    );
+    expect(direct, contains('from public, anon, authenticated;'));
+    expect(
+      Directory('supabase/functions/support-tacticsboard-usage').existsSync(),
+      isFalse,
+    );
   });
 }

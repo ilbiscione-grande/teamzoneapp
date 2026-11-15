@@ -11,18 +11,11 @@ class SupportTacticsboardStrings {
       );
 
   String get tab => 'Tacticsboard';
-  String get notConfigured => isSwedish
-      ? 'Tacticsboards databas är inte ansluten än. När produktionens adress '
-            'och nyckel finns som hemligheter i appens projekt visas siffrorna '
-            'här.'
-      : "Tacticsboard's database is not connected yet. The numbers appear "
-            "here once the production project's address and key are set as "
-            "secrets in the app's project.";
-  String sourceNote(String source) => isSwedish
-      ? 'Från Tacticsboards databas ($source), där kunderna köper på '
-            'webtools.teamzoneapp.se. Bara antal.'
-      : "From Tacticsboard's database ($source), where customers buy on "
-            'webtools.teamzoneapp.se. Counts only.';
+  String get sourceNote => isSwedish
+      ? 'Från Tacticsboard på webtools.teamzoneapp.se, i samma databas som '
+            'appen. Bara antal.'
+      : 'From Tacticsboard on webtools.teamzoneapp.se, in the same database '
+            'as the app. Counts only.';
 
   String section(String name) => switch (name) {
     'accounts' => isSwedish ? 'Konton' : 'Accounts',

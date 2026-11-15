@@ -79,13 +79,6 @@ class _SupportTacticsboardTabState extends State<SupportTacticsboardTab> {
                 child: Center(child: CircularProgressIndicator()),
               );
             }
-            if (snapshot.error is TacticsboardUsageNotConfigured) {
-              return Padding(
-                key: const ValueKey('support-tacticsboard-not-configured'),
-                padding: const EdgeInsets.all(24),
-                child: Text(tb.notConfigured),
-              );
-            }
             if (snapshot.hasError) {
               AppErrors.caught(
                 'support_tacticsboard_tab.load',
@@ -155,10 +148,7 @@ class _SupportTacticsboardTabState extends State<SupportTacticsboardTab> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    tb.sourceNote(usage.source),
-                    style: theme.textTheme.bodySmall,
-                  ),
+                  child: Text(tb.sourceNote, style: theme.textTheme.bodySmall),
                 ),
               ],
             );

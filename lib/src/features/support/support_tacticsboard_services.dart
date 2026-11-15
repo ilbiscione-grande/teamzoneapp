@@ -2,17 +2,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/support/support_usage_services.dart'
     show usageInt;
 
-/// TeamZone support only: Tacticsboard's counts (2026-11-14). Tacticsboard
-/// is sold from its own database (the production project), so the app
-/// project's edge function support-tacticsboard-usage checks the caller and
-/// fetches them from there. Counts only, never names.
+/// TeamZone support only: Tacticsboard's counts (2026-11-14). Since
+/// 2026-11-15 the app and Tacticsboard share the live database, so they are
+/// read directly with api.get_tacticsboard_usage_for_support, which only
+/// support administrators may call. Counts only, never names.
 abstract interface class SupportTacticsboardServices {
   Future<TacticsboardUsage> getTacticsboardUsage({int periodDays = 30});
-}
-
-/// The edge function has no address or key for the production project yet.
-class TacticsboardUsageNotConfigured implements Exception {
-  const TacticsboardUsageNotConfigured();
 }
 
 /// The sections the server returns, in the order the tab shows them.
@@ -41,17 +36,13 @@ typedef TacticsboardRank = ({String key, String? label, int value});
 class TacticsboardUsage {
   const TacticsboardUsage({
     required this.periodDays,
-    required this.source,
     required this.sections,
     required this.daily,
     this.rankings = const {},
     this.activitySince,
   });
 
-  factory TacticsboardUsage.fromJson(
-    Map<String, dynamic> json, {
-    String source = '',
-  }) {
+  factory TacticsboardUsage.fromJson(Map<String, dynamic> json) {
     final sections = <String, Map<String, int?>>{};
     for (final name in tacticsboardSections) {
       final value = json[name];
@@ -91,7 +82,6 @@ class TacticsboardUsage {
     final ordered = days.keys.toList()..sort();
     return TacticsboardUsage(
       periodDays: usageInt(json['period_days']),
-      source: source,
       sections: sections,
       daily: [
         for (final day in ordered)
@@ -103,9 +93,6 @@ class TacticsboardUsage {
   }
 
   final int periodDays;
-
-  /// The project the numbers come from (its ref).
-  final String source;
 
   /// Section → key → count. A null count is not recorded there.
   final Map<String, Map<String, int?>> sections;
@@ -162,27 +149,14 @@ Future<TacticsboardUsage> fetchTacticsboardUsage(
   SupabaseClient client,
   int periodDays,
 ) async {
-  final FunctionResponse response;
-  try {
-    response = await client.functions.invoke(
-      'support-tacticsboard-usage',
-      body: {'period_days': periodDays},
-    );
-  } on FunctionException catch (error) {
-    final details = error.details;
-    if (error.status == 503 &&
-        details is Map &&
-        details['error'] == 'not_configured') {
-      throw const TacticsboardUsageNotConfigured();
-    }
-    rethrow;
-  }
-  final value = response.data;
-  if (value is! Map || value['usage'] is! Map<String, dynamic>) {
+  final value = await client
+      .schema('api')
+      .rpc<Object?>(
+        'get_tacticsboard_usage_for_support',
+        params: {'period_days': periodDays},
+      );
+  if (value is! Map<String, dynamic>) {
     throw const FormatException('Invalid Tacticsboard usage.');
   }
-  return TacticsboardUsage.fromJson(
-    value['usage'] as Map<String, dynamic>,
-    source: '${value['source'] ?? ''}',
-  );
+  return TacticsboardUsage.fromJson(value);
 }
