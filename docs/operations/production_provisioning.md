@@ -19,7 +19,7 @@ Decisions: the live app starts without clubs (test data stays in audit),
 | Edge Functions | `auth-password-sign-in`, `fee-email-worker` and `fee-email-unsubscribe` deployed to live. The live sign-in also accepts `https://teamzoneapp-production.web.app`; the audit sign-in and `invitation-preview` accept `https://test.teamzoneapp.se` |
 | Hosting | Site `teamzoneapp-production` created; `ops/environments.json` and the production CSP in `firebase.json` name the live project |
 | Web build | Built from a `git archive` export with `TEAMZONE_ENV=production`, the live URL and publishable key (as in `webtools/apphosting.production.yaml`) and `WEBTOOLS_ORIGIN=https://webtools.teamzoneapp.se`; `npx firebase-tools deploy --only hosting:production`. Club creation tried by the product owner |
-| Addresses | `app.teamzoneapp.se` moved to `teamzoneapp-production` and `test.teamzoneapp.se` added to `teamzoneapp-b02a2`; certificates pending on 2026-11-15. The audit project's Site URL is `https://test.teamzoneapp.se` |
+| Addresses | `app.teamzoneapp.se` moved to `teamzoneapp-production` and `test.teamzoneapp.se` added to `teamzoneapp-b02a2`; both serve their builds since the evening of 2026-11-15, and sign-in answers on both. The audit project's Site URL is `https://test.teamzoneapp.se` |
 | Left | Push notifications and other integrations on live, one at a time; Android (phase 5); the public site still runs against audit |
 
 Audit web builds still use the audit flags; the test app is served on
