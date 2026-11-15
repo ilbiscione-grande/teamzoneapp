@@ -24,6 +24,11 @@ if (Deno.env.get("SUPABASE_URL") === "https://hgcshgunvooyudvrcpig.supabase.co")
   // The support site's Firebase address, until support.teamzoneapp.se is connected.
   allowedWebOrigins.add("https://teamzoneapp-support.web.app");
 }
+// The live app's Firebase address, for trying it before app.teamzoneapp.se
+// moves over (2026-11-15).
+if (Deno.env.get("SUPABASE_URL") === "https://zfxcblgnemuenaqjkaic.supabase.co") {
+  allowedWebOrigins.add("https://teamzoneapp-production.web.app");
+}
 
 function corsHeaders(origin: string | null): Record<string, string> {
   const headers: Record<string, string> = {

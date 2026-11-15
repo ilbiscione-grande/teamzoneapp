@@ -15,8 +15,8 @@
       "androidApplicationId": "com.teamzone.teamzone.test"
     },
     "production": {
-      "status": "not_provisioned",
-      "supabaseProjectRef": null,
+      "status": "provisioned",
+      "supabaseProjectRef": "zfxcblgnemuenaqjkaic",
       "supabaseRegion": "eu-north-1",
       "firebaseProject": "teamzoneapp-b02a2",
       "firebaseShared": true,

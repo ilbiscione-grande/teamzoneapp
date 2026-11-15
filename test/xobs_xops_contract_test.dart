@@ -48,7 +48,7 @@ void main() {
     expect(environments['schemaVersion'], 1);
     expect(
       environments['environments']['production']['status'],
-      'not_provisioned',
+      'provisioned',
     );
   });
 
