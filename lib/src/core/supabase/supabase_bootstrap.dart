@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/core/config/app_environment.dart';
+import 'package:teamzone_app/src/core/identity/account_presence.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
 import 'package:teamzone_app/src/core/identity/identity_services.dart';
 import 'package:teamzone_app/src/core/identity/auth_entry_services.dart';
@@ -197,7 +198,11 @@ class ToggleableSessionStorage extends LocalStorage {
 }
 
 class SupabaseIdentityServices
-    implements IdentityServices, AuthEntryServices, SessionPersistenceControl {
+    implements
+        IdentityServices,
+        AuthEntryServices,
+        SessionPersistenceControl,
+        AccountPresenceCheck {
   SupabaseIdentityServices(this._client, {this.sessionStorage});
 
   final SupabaseClient _client;
@@ -320,7 +325,24 @@ class SupabaseIdentityServices
   }
 
   @override
+  Future<bool> signOutIfAccountGone() async {
+    if (_client.auth.currentSession == null) return false;
+    try {
+      await _client.auth.getUser();
+      return false;
+    } on AuthException catch (error) {
+      // Deleted (user_not_found) or signed out everywhere (session_not_found).
+      final removed = error.code == 'user_not_found';
+      if (!removed && error.code != 'session_not_found') return false;
+      if (removed) accountRemovedNotice.value = true;
+      await _client.auth.signOut(scope: SignOutScope.local);
+      return true;
+    }
+  }
+
+  @override
   Future<TeamZoneProfile> getProfile() async {
+    if (await signOutIfAccountGone()) throw const AccountRemovedException();
     final value = await _client.schema('api').rpc<Object?>('get_profile');
     final row = _singleRow(value);
     return TeamZoneProfile.fromJson(row);

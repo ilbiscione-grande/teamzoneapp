@@ -33,6 +33,7 @@ class _SignInScreenState extends State<_SignInScreen> {
   String? _error;
   String? _message;
   bool _sharedDevice = false;
+  bool _accountRemoved = false;
 
   Future<void> _prepareSessionPersistence() async {
     final identity = widget.identity;
@@ -50,6 +51,9 @@ class _SignInScreenState extends State<_SignInScreen> {
     _password.addListener(_submission.markDirty);
     _confirmPassword.addListener(_submission.markDirty);
     _code.addListener(_submission.markDirty);
+    // Signed out because the account was deleted: say so once.
+    _accountRemoved = accountRemovedNotice.value;
+    accountRemovedNotice.value = false;
     _challengeTimer = Timer.periodic(
       const Duration(seconds: 1),
       (_) => _challenge.tick(),
@@ -312,7 +316,16 @@ class _SignInScreenState extends State<_SignInScreen> {
                               message: strings.backendInstructions,
                             )
                           else ...[
-                            if (widget.sessionEnded) ...[
+                            if (_accountRemoved) ...[
+                              _StateCard(
+                                icon: Icons.person_off_outlined,
+                                title: strings.feature('Kontot är raderat'),
+                                message: strings.feature(
+                                  'Du har loggats ut. Kontot och dina uppgifter är borttagna. Du kan skapa ett nytt konto om du vill börja om.',
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ] else if (widget.sessionEnded) ...[
                               _StateCard(
                                 icon: Icons.lock_clock_outlined,
                                 title: strings.feature(
@@ -739,14 +752,32 @@ class _ContextBootstrap extends StatefulWidget {
   State<_ContextBootstrap> createState() => _ContextBootstrapState();
 }
 
-class _ContextBootstrapState extends State<_ContextBootstrap> {
+class _ContextBootstrapState extends State<_ContextBootstrap>
+    with WidgetsBindingObserver {
   late Future<({TeamZoneProfile profile, List<TeamZoneContext> contexts})>
   _load;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _retry();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Back in the foreground: an account deleted meanwhile is signed out.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final identity = widget.services.identity;
+    if (state == AppLifecycleState.resumed &&
+        identity is AccountPresenceCheck) {
+      unawaited((identity as AccountPresenceCheck).signOutIfAccountGone());
+    }
   }
 
   void _retry() {

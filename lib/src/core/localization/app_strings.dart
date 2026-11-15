@@ -1948,6 +1948,9 @@ class AppStrings {
         'You do not have support access or the queue could not be loaded.',
     'Inga supportärenden i vald status.':
         'There are no support cases with the selected status.',
+    'Kontot är raderat': 'The account has been deleted',
+    'Du har loggats ut. Kontot och dina uppgifter är borttagna. Du kan skapa ett nytt konto om du vill börja om.':
+        'You have been signed out. The account and your details are removed. You can create a new account if you want to start again.',
     'Inga klubbverifieringar i vald status.':
         'There are no club verifications with the selected status.',
     'Klubbnamnet kan inte användas. Kontrollera namnet och försök igen.':
