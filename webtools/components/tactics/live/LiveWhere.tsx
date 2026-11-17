@@ -2,9 +2,12 @@
 
 // Under a participant's board: the question on the pitch (and how to
 // answer it, or that the answers are shown), where the lesson is (board,
-// frame), who has the floor, and why something could not be sent.
+// frame), who has the floor or which group one is in, and why something
+// could not be sent.
 import { activeBoard, isBetween, useEditor, NONE } from "../store.ts";
 import { useDraw } from "./draw-store.ts";
+import { useChat } from "./chat-store.ts";
+import { useGroup } from "./group-store.ts";
 import { latestQuestion, useQuestions } from "./question-store.ts";
 import { useT } from "../../language";
 
@@ -19,7 +22,23 @@ export function LiveWhere({ hasFloor }: { hasFloor: boolean }) {
   const error = useDraw(store => store.error);
   const question = useQuestions(latestQuestion);
   const questionError = useQuestions(store => store.error);
+  const group = useGroup(store => store.group);
+  const selfId = useChat(store => store.selfId);
   if (!board) return null;
+  if (group) {
+    const others = group.members.filter(member => member.profile_id !== selfId).map(member => member.name);
+    return (
+      <div className="tb-live-where" aria-live="polite">
+        <p className="tb-live-floor tb-live-group">
+          <strong>{t("Grupparbete · grupp {number}", { number: group.number })}</strong>{" "}
+          {others.length > 0 ? t("Du och {names} flyttar spelarna och objekten på gruppens egen kopia.", { names: others.join(", ") }) : t("Flytta spelarna och objekten på gruppens egen kopia.")}
+          <span> {t("Kopian försvinner när läraren tar ordet igen.")}</span>
+        </p>
+        {error && <p className="tb-live-floor" role="alert">{t(error)}</p>}
+        <strong>{board.name || t("Tavla")}</strong>{board.frames.length > 1 && <span> · {t("Frame {number} av {count}", { number: Math.round(playhead) + 1, count: board.frames.length })}</span>}
+      </div>
+    );
+  }
   const frame = Math.floor(playhead) + 1;
   const where = between ? t("Mellan frame {first} och {second}", { first: frame, second: frame + 1 }) : t("Frame {number} av {count}", { number: Math.round(playhead) + 1, count: board.frames.length });
   return (

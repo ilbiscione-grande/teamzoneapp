@@ -82,3 +82,10 @@
 .tb-summary-pitch { width: 100%; max-width: 360px; border-radius: 4px; }
 .tb-summary-chat { max-height: none; }
 .tb-live-history { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+
+/* Group work: the host's groups, and a participant's group under the board. */
+.tb-live-groups { display: grid; gap: 8px; }
+.tb-live-group-list { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 4px; font-size: .88rem; }
+.tb-live-group-list span { color: var(--wt-muted); }
+.tb-live-status[data-group="true"] { background: rgba(59, 130, 246, .25); color: #dbeafe; }
+.tb-live-group strong { color: #bfdbfe; }

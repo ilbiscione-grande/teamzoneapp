@@ -41,6 +41,8 @@ export function useLiveHost(client: SupabaseClient | null) {
     if (!client || !sessionId) return;
     let channel: RealtimeChannel | null = null;
     let ready = false;
+    // Gone before the channel was made (a quick remount): the next run makes it, not this one.
+    let disposed = false;
     let lastView: LiveView | null = null;
     let lastBoard: unknown = null;
     const sendQuietly = (event: string, payload: object) => { if (ready) void channel?.send({ type: "broadcast", event, payload }); };
@@ -87,6 +89,7 @@ export function useLiveHost(client: SupabaseClient | null) {
 
     void (async () => {
       await client.realtime.setAuth();
+      if (disposed) return;
       channel = client.channel(liveTopic(sessionId), { config: { private: true, presence: { key: "host" } } });
       channel
         .on("presence", { event: "sync" }, () => useLive.getState().set({ participants: participantsOf(channel!.presenceState()) }))
@@ -110,6 +113,7 @@ export function useLiveHost(client: SupabaseClient | null) {
     })();
 
     return () => {
+      disposed = true;
       ready = false;
       clearInterval(heartbeat);
       unsubscribe();

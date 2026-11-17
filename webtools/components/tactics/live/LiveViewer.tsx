@@ -3,7 +3,8 @@
 // A participant's live lesson: the board as the host shows it, with the
 // host's pointer, the board's description beside it and where the lesson
 // is (board, frame) under it. Nothing is changed or played here; the board
-// follows the host.
+// follows the host. In group work the board is the group's own copy, and
+// everyone in the group moves objects on it.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
@@ -23,6 +24,8 @@ import { LiveAnswers } from "./LiveAnswers.tsx";
 import { useQuestions } from "./question-store.ts";
 import { LiveDrawButtons, LiveWhere } from "./LiveWhere.tsx";
 import { useFloorMoves } from "./use-floor.ts";
+import { useGroup } from "./group-store.ts";
+import { useLiveGroup } from "./use-live-group.ts";
 import { LiveBadge } from "./LiveBadge.tsx";
 import { useLive } from "./live-store.ts";
 import { useLiveFollow } from "./use-live-follow.ts";
@@ -50,6 +53,7 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
     useChat.getState().set({ messages: [], unread: 0, chatMode: joined.chat_mode, hands: joined.hands, muted: joined.muted });
     useQuestions.getState().set({ questions: [], error: "" });
     useDraw.getState().set({ strokes: [], own: [], pen: false, error: "", drawMode: joined.draw_mode, floorHolder: joined.floor_holder, floorName: joined.floor_name });
+    useGroup.getState().set({ group: null, hostBoard: null, pendingBoards: {}, pendingView: null });
     setAside(hasBoardText(useEditor.getState()) ? "text" : null);
     setReady(true);
   }, [joined]);
@@ -63,7 +67,10 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
   const hostHere = useLive(store => store.hostHere);
   const selfId = useChat(store => store.selfId);
   const hasFloor = useDraw(store => !!store.floorHolder && store.floorHolder === selfId);
-  useFloorMoves(client, joined.id, hasFloor);
+  const groupNumber = useGroup(store => store.group?.number ?? null);
+  const grouped = groupNumber !== null;
+  useFloorMoves(client, joined.id, grouped ? "group" : hasFloor ? "floor" : null);
+  useLiveGroup(client, joined.id);
 
   if (state === "ended" || state === "removed" || state === "failed") {
     return (
@@ -86,14 +93,14 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
           <span className="tb-spacer" />
           {/* On a phone the row scrolls sideways rather than lose a button. */}
           <div className="tb-live-actions">
-            <span className="tb-live-status" data-host={hostHere}>{state === "connecting" ? t("Ansluter…") : hostHere ? t("Följer läraren") : t("Väntar på läraren")}</span>
+            <span className="tb-live-status" data-host={hostHere} data-group={grouped}>{state === "connecting" ? t("Ansluter…") : grouped ? t("Grupp {number}", { number: groupNumber }) : hostHere ? t("Följer läraren") : t("Väntar på läraren")}</span>
             {handsAllowed && state === "following" && (
               <button type="button" className="tb-present-toggle" aria-pressed={!!hand} onClick={() => setHand(!hand)} title={hand ? t("Sänk handen") : t("Räck upp handen")}>✋</button>
             )}
             {(chatMode !== "off" || hasMessages) && (
               <button type="button" className="tb-present-toggle" aria-pressed={aside === "chat"} onClick={() => toggle("chat")}><LiveBadge label={t("Chatt")} /></button>
             )}
-            {state === "following" && <LiveDrawButtons />}
+            {state === "following" && !grouped && <LiveDrawButtons />}
             <button type="button" className="tb-present-toggle" aria-pressed={aside === "text"} onClick={() => toggle("text")}>{t("Beskrivning")}</button>
           </div>
         </div>
@@ -101,8 +108,9 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
       <div className="tb-present-body">
         <div className="tb-center">
           <ErrorBoundary label={t("Tavlan")}>
-            <BoardStage editable={hasFloor} moveOnly
-              extra={<><LiveStrokes pen={selfId ? { client, sessionId: joined.id, selfId } : undefined} /><LiveAnswers answering={{ client }} /><Laser /></>} />
+            {/* In a group, the class's drawings, answers and the host's pointer are not on the group's copy. */}
+            <BoardStage editable={hasFloor || grouped} moveOnly
+              extra={grouped ? null : <><LiveStrokes pen={selfId ? { client, sessionId: joined.id, selfId } : undefined} /><LiveAnswers answering={{ client }} /><Laser /></>} />
           </ErrorBoundary>
           <LiveWhere hasFloor={hasFloor} />
         </div>

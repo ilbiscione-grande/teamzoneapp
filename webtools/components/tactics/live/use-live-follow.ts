@@ -5,7 +5,9 @@
 // playing board is played on here from where the host was); a board
 // replaces the participant's copy; a drag moves objects on the way; the
 // pointer shows where the host points. The chat's events go to the chat,
-// and the participant's raised hand is part of their presence.
+// and the participant's raised hand is part of their presence. While the
+// participant works in a group, the host's board and view are kept aside
+// (group-store) and shown when the group work ends.
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "../../../lib/tactics/live-chat.ts";
@@ -15,6 +17,7 @@ import type { Board, Point, ProjectDocument } from "../../../lib/tactics/model.t
 import { useEditor } from "../store.ts";
 import { listenChat, useChat } from "./chat-store.ts";
 import { listenDraw, useDraw } from "./draw-store.ts";
+import { inGroup, keepBoard, listenGroups, loadGroup, useGroup } from "./group-store.ts";
 import { listenQuestions, loadQuestions } from "./question-store.ts";
 import { useLive } from "./live-store.ts";
 
@@ -30,6 +33,9 @@ function applyView(view: LiveView) {
     useEditor.setState({ ...common, playing: false, playhead: view.playhead, frameIndex: view.frameIndex });
   }
 }
+
+/** The board the participant's group works on, when in a group. */
+const groupBoardId = () => useGroup.getState().group?.board_id ?? null;
 
 /** A change to the participant's copy of the document (never saved). */
 function edit(change: (document: ProjectDocument) => ProjectDocument) {
@@ -55,9 +61,17 @@ export function useLiveFollow(client: SupabaseClient, sessionId: string, me: Liv
       const channel = client.channel(liveTopic(sessionId), { config: { private: true, presence: { key: selfId } } });
       channelRef.current = channel;
       channel
-        .on("broadcast", { event: "view" }, ({ payload }) => applyView(payload as LiveView))
-        .on("broadcast", { event: "board" }, ({ payload }) => edit(document => applyBoard(document, (payload as { board: Board }).board)))
-        .on("broadcast", { event: "drag" }, ({ payload }) => edit(document => applyMoves(document, payload as LiveDrag)))
+        .on("broadcast", { event: "view" }, ({ payload }) => {
+          if (inGroup()) useGroup.getState().set({ pendingView: payload as LiveView }); else applyView(payload as LiveView);
+        })
+        .on("broadcast", { event: "board" }, ({ payload }) => {
+          const { board } = payload as { board: Board };
+          if (board.id === groupBoardId()) keepBoard(board); else edit(document => applyBoard(document, board));
+        })
+        .on("broadcast", { event: "drag" }, ({ payload }) => {
+          // The host's drag on the group's board shows in the host's board when it comes back as a board.
+          if ((payload as LiveDrag).boardId !== groupBoardId()) edit(document => applyMoves(document, payload as LiveDrag));
+        })
         .on("broadcast", { event: "pointer" }, ({ payload }) => useLive.getState().set({ pointer: (payload as { point: Point | null }).point }))
         .on("broadcast", { event: "ended" }, () => { setState("ended"); void channel.unsubscribe(); })
         .on("broadcast", { event: "guests-off" }, () => { if (me.guest) { setState("removed"); void channel.unsubscribe(); } })
@@ -69,6 +83,7 @@ export function useLiveFollow(client: SupabaseClient, sessionId: string, me: Liv
       // The floor's moves, but not this participant's own coming back (the drag is still under their finger).
       listenDraw(channel, move => { if (move.by !== selfId) edit(document => applyMoves(document, move)); });
       listenQuestions(channel);
+      listenGroups(channel, client, sessionId, applyView);
       channel.subscribe(async (status, error) => {
         if (status === "SUBSCRIBED") {
           setState(current => current === "connecting" ? "following" : current);
@@ -79,6 +94,7 @@ export function useLiveFollow(client: SupabaseClient, sessionId: string, me: Liv
           useChat.getState().add((data as ChatMessage[] | null) ?? []);
           useDraw.getState().addStrokes((strokes as Stroke[] | null) ?? []);
           void loadQuestions(client, sessionId);
+          void loadGroup(client, sessionId, applyView);
           if (!useChat.getState().open) useChat.getState().set({ unread: 0 });
         }
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {

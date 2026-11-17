@@ -3,7 +3,7 @@
 // Running a live lesson, for the host: the chat's mode, whether hands may
 // be raised and how participants may draw (with clearing the shared
 // drawings), the hands in the order they went up (lowered with a click),
-// who is in (LivePeople) and the chat itself. In the editor's side panel,
+// group work (GroupWork), who is in (LivePeople) and the chat itself. In the editor's side panel,
 // and beside the board when presenting.
 import { useState } from "react";
 import { chatModeLabels, raisedHands, type ChatMode } from "../../../lib/tactics/live-chat.ts";
@@ -14,6 +14,7 @@ import { useEditor } from "../store.ts";
 import { useChat } from "./chat-store.ts";
 import { ChatPanel } from "./ChatPanel.tsx";
 import { useDraw } from "./draw-store.ts";
+import { GroupWork } from "./GroupWork.tsx";
 import { HostNotes } from "./HostNotes.tsx";
 import { LivePeople } from "./LivePeople.tsx";
 import { LiveQuestion } from "./LiveQuestion.tsx";
@@ -87,6 +88,8 @@ export function LivePanel() {
       )}
       <h3>{t("Fråga på planen")}</h3>
       <LiveQuestion client={client} sessionId={session.id} />
+      <h3>{t("Grupparbete")}</h3>
+      <GroupWork client={client} session={session} />
       <h3>{t("Med nu ({count})", { count: participants.length })}</h3>
       <LivePeople client={client} session={session} onError={setError} />
       {error && <p className="wt-error" role="alert">{error}</p>}
