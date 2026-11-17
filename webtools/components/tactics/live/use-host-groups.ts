@@ -2,10 +2,13 @@
 
 // The host listens on every group's channel, so the overview's pictures of
 // the groups' copies move as the groups move objects: on the way and where
-// dropped. The database's moves come back whenever the list is read again.
+// dropped, and what the groups draw and write in their chats. The
+// database's copies come back whenever the list is read again.
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { useEffect } from "react";
-import { groupTopic, mergeGroupMoves, type GroupMove } from "../../../lib/tactics/live-groups.ts";
+import { mergeMessages, type ChatMessage } from "../../../lib/tactics/live-chat.ts";
+import { mergeStrokes, type Stroke } from "../../../lib/tactics/live-draw.ts";
+import { groupTopic, mergeGroupMoves, type GroupMove, type HostGroup } from "../../../lib/tactics/live-groups.ts";
 import { useGroup } from "./group-store.ts";
 
 export function useHostGroups(client: SupabaseClient) {
@@ -20,11 +23,16 @@ export function useHostGroups(client: SupabaseClient) {
       if (disposed) return;
       for (const id of ids.split(",")) {
         const channel = client.channel(groupTopic(id), { config: { private: true } });
+        const change = (next: (group: HostGroup) => HostGroup) => {
+          const { groups, set } = useGroup.getState();
+          set({ groups: groups.map(group => group.id === id ? next(group) : group) });
+        };
         channel.on("broadcast", { event: "group-move" }, ({ payload }) => {
           const move = payload as GroupMove;
-          const { groups, set } = useGroup.getState();
-          set({ groups: groups.map(group => group.id === id ? { ...group, moves: mergeGroupMoves(group.moves, move.frameIndex, move.moves) } : group) });
+          change(group => ({ ...group, moves: mergeGroupMoves(group.moves, move.frameIndex, move.moves) }));
         });
+        channel.on("broadcast", { event: "group-stroke" }, ({ payload }) => change(group => ({ ...group, strokes: mergeStrokes(group.strokes, [payload as Stroke]) })));
+        channel.on("broadcast", { event: "group-chat" }, ({ payload }) => change(group => ({ ...group, messages: mergeMessages(group.messages, [payload as ChatMessage]) })));
         channel.subscribe();
         channels.push(channel);
       }

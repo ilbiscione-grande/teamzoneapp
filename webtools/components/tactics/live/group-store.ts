@@ -8,11 +8,13 @@
 // keeps the groups with their copies, and the one being followed.
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { create } from "zustand";
-import { groupBoard, mergeGroupMoves, type GroupMove, type HostGroup, type LiveGroup } from "../../../lib/tactics/live-groups.ts";
+import { mergeStrokes, type Stroke } from "../../../lib/tactics/live-draw.ts";
+import { deadlineFrom, groupBoard, mergeGroupMoves, type GroupMove, type HostGroup, type LiveGroup } from "../../../lib/tactics/live-groups.ts";
 import { applyBoard, applyMoves, type LiveView } from "../../../lib/tactics/live.ts";
 import type { Board } from "../../../lib/tactics/model.ts";
 import { useEditor } from "../store.ts";
 import { useChat } from "./chat-store.ts";
+import { useDraw } from "./draw-store.ts";
 
 type GroupState = {
   /** Participating: the group this participant is in, or null. */
@@ -26,6 +28,8 @@ type GroupState = {
   /** Hosting: the groups with their copies, empty when there is no group work, and the one the host follows. */
   groups: HostGroup[];
   watching: string | null;
+  /** Both: when the group work's time runs out, in this browser's clock; null when there is no time set. */
+  deadline: number | null;
   set: (changes: Partial<Omit<GroupState, "set">>) => void;
 };
 
@@ -37,6 +41,7 @@ export const useGroup = create<GroupState>(set => ({
   pendingView: null,
   groups: [],
   watching: null,
+  deadline: null,
   set: changes => set(changes),
 }));
 
@@ -69,7 +74,7 @@ export function enterGroup(group: LiveGroup) {
   if (useGroup.getState().group && useGroup.getState().group?.board_id !== group.board_id) leaveGroup();
   const state = useGroup.getState();
   const hostBoard = state.group ? state.hostBoard : useEditor.getState().document?.boards.find(board => board.id === group.board_id) ?? null;
-  useGroup.getState().set({ group, hostBoard, ...(state.group ? {} : { pendingBoards: {}, pendingView: null }) });
+  useGroup.getState().set({ group, hostBoard, deadline: deadlineFrom(group.ends_in), ...(state.group ? {} : { pendingBoards: {}, pendingView: null }) });
   render();
 }
 
@@ -82,8 +87,10 @@ export function setShown(shown: LiveGroup | null) {
 /** Out of the group: the group's copy goes and the board is the host's again. The host's latest view, to show where the host is now. */
 export function leaveGroup(): LiveView | null {
   const { group, hostBoard, pendingBoards, pendingView } = useGroup.getState();
-  useGroup.getState().set({ shown: null });
+  useGroup.getState().set({ shown: null, deadline: null });
   if (!group) return null;
+  // The pen out on the group's copy is not out on the class's board.
+  useDraw.getState().set({ pen: false });
   useGroup.getState().set({ group: null, hostBoard: null, pendingBoards: {}, pendingView: null });
   const { document } = useEditor.getState();
   if (!document) return pendingView;
@@ -134,6 +141,12 @@ export function listenGroups(channel: RealtimeChannel, client: SupabaseClient, s
     if (profileId === useChat.getState().selfId || group?.id === groupId || group?.members.some(member => member.profile_id === profileId)) {
       void loadGroup(client, sessionId, onView);
     }
+  });
+  channel.on("broadcast", { event: "groups-timer" }, ({ payload }) => useGroup.getState().set({ deadline: deadlineFrom((payload as { seconds: number | null }).seconds) }));
+  channel.on("broadcast", { event: "shown-stroke" }, ({ payload }) => {
+    const stroke = payload as Stroke & { group_id: string };
+    const state = useGroup.getState();
+    if (state.shown && state.shown.id === stroke.group_id && otherShown(state)) state.set({ shown: { ...state.shown, strokes: mergeStrokes(state.shown.strokes, [stroke]) } });
   });
   channel.on("broadcast", { event: "group-shown" }, () => void loadShown(client, sessionId));
   channel.on("broadcast", { event: "shown-move" }, ({ payload }) => {

@@ -1,11 +1,14 @@
 "use client";
 
 // A participant in a group listens to the group's channel: what the others
-// in the group move shows on the group's copy, on the way and where dropped.
+// in the group move shows on the group's copy, on the way and where dropped,
+// and what they draw and write in the group's chat comes in.
 // Once the channel is open the group is read again, so moves made before it
 // opened are not missed.
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { useEffect } from "react";
+import { mergeMessages, type ChatMessage } from "../../../lib/tactics/live-chat.ts";
+import { mergeStrokes, type Stroke } from "../../../lib/tactics/live-draw.ts";
 import { groupTopic, mergeGroupMoves } from "../../../lib/tactics/live-groups.ts";
 import { applyMoves } from "../../../lib/tactics/live.ts";
 import { useEditor } from "../store.ts";
@@ -32,6 +35,14 @@ export function useLiveGroup(client: SupabaseClient, sessionId: string) {
         if (move.by === useChat.getState().selfId || displayedGroup(useGroup.getState())?.id !== groupId) return;
         const { document } = useEditor.getState();
         if (document) useEditor.setState({ document: applyMoves(document, move) });
+      });
+      channel.on("broadcast", { event: "group-stroke" }, ({ payload }) => {
+        const { group } = useGroup.getState();
+        if (group?.id === groupId) useGroup.getState().set({ group: { ...group, strokes: mergeStrokes(group.strokes, [payload as Stroke]) } });
+      });
+      channel.on("broadcast", { event: "group-chat" }, ({ payload }) => {
+        const { group } = useGroup.getState();
+        if (group?.id === groupId) useGroup.getState().set({ group: { ...group, messages: mergeMessages(group.messages, [payload as ChatMessage]) } });
       });
       channel.subscribe(async status => {
         if (status !== "SUBSCRIBED") return;

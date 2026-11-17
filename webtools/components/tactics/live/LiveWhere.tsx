@@ -8,6 +8,7 @@ import { activeBoard, isBetween, useEditor, NONE } from "../store.ts";
 import { useDraw } from "./draw-store.ts";
 import { useChat } from "./chat-store.ts";
 import { displayedGroup, useGroup } from "./group-store.ts";
+import { TimeLeft } from "./GroupTime.tsx";
 import { latestQuestion, useQuestions } from "./question-store.ts";
 import { useT } from "../../language";
 
@@ -31,7 +32,7 @@ export function LiveWhere({ hasFloor }: { hasFloor: boolean }) {
       <div className="tb-live-where" aria-live="polite">
         <p className="tb-live-floor tb-live-group">
           <strong>{t("Grupp {number} visas för alla", { number: watched.number })}</strong>{" "}
-          {t("Du ser gruppens kopia. Du kommer tillbaka till din egen grupp när läraren slutar visa den.")}
+          {t("Du ser gruppens kopia. Du kommer tillbaka till din egen grupp när läraren slutar visa den.")} <TimeLeft />
         </p>
         <strong>{board.name || t("Tavla")}</strong>
       </div>
@@ -44,7 +45,7 @@ export function LiveWhere({ hasFloor }: { hasFloor: boolean }) {
         <p className="tb-live-floor tb-live-group">
           <strong>{t("Grupparbete · grupp {number}", { number: group.number })}</strong>{" "}
           {others.length > 0 ? t("Du och {names} flyttar spelarna och objekten på gruppens egen kopia.", { names: others.join(", ") }) : t("Flytta spelarna och objekten på gruppens egen kopia.")}
-          <span> {t("Kopian försvinner när läraren tar ordet igen.")}</span>
+          <span> {t("Kopian försvinner när läraren tar ordet igen.")}</span> <TimeLeft />
         </p>
         {error && <p className="tb-live-floor" role="alert">{t(error)}</p>}
         <strong>{board.name || t("Tavla")}</strong>{board.frames.length > 1 && <span> · {t("Frame {number} av {count}", { number: Math.round(playhead) + 1, count: board.frames.length })}</span>}

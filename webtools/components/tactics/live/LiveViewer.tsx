@@ -4,7 +4,8 @@
 // host's pointer, the board's description beside it and where the lesson
 // is (board, frame) under it. Nothing is changed or played here; the board
 // follows the host. In group work the board is the group's own copy, and
-// everyone in the group moves objects on it.
+// everyone in the group moves objects and draws on it and has a chat of
+// the group's own.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
@@ -25,6 +26,8 @@ import { useQuestions } from "./question-store.ts";
 import { LiveDrawButtons, LiveWhere } from "./LiveWhere.tsx";
 import { useFloorMoves } from "./use-floor.ts";
 import { useGroup, worksOnOwn } from "./group-store.ts";
+import { GroupChat } from "./GroupChat.tsx";
+import { GroupStrokes } from "./GroupStrokes.tsx";
 import { useLiveGroup } from "./use-live-group.ts";
 import { LiveBadge } from "./LiveBadge.tsx";
 import { useLive } from "./live-store.ts";
@@ -42,7 +45,7 @@ const ended = {
 export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; joined: LiveJoined; guest: boolean }) {
   const t = useT();
   const [ready, setReady] = useState(false);
-  const [aside, setAside] = useState<"text" | "chat" | null>(null);
+  const [chosenAside, setAside] = useState<"text" | "chat" | "group" | null>(null);
   const me = useMemo<LivePresence>(() => ({ role: "participant", name: joined.participant_name, guest }), [joined.participant_name, guest]);
   useEffect(() => {
     const document = normalizeDocument(joined.document);
@@ -53,7 +56,7 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
     useChat.getState().set({ messages: [], unread: 0, chatMode: joined.chat_mode, hands: joined.hands, muted: joined.muted });
     useQuestions.getState().set({ questions: [], error: "" });
     useDraw.getState().set({ strokes: [], own: [], pen: false, error: "", drawMode: joined.draw_mode, floorHolder: joined.floor_holder, floorName: joined.floor_name });
-    useGroup.getState().set({ group: null, shown: null, hostBoard: null, pendingBoards: {}, pendingView: null });
+    useGroup.getState().set({ group: null, shown: null, hostBoard: null, pendingBoards: {}, pendingView: null, deadline: null });
     setAside(hasBoardText(useEditor.getState()) ? "text" : null);
     setReady(true);
   }, [joined]);
@@ -61,7 +64,7 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
   const chatMode = useChat(store => store.chatMode);
   const handsAllowed = useChat(store => store.hands);
   const hasMessages = useChat(store => store.messages.length > 0);
-  const toggle = (which: "text" | "chat") => setAside(aside === which ? null : which);
+  const toggle = (which: "text" | "chat" | "group") => setAside(aside === which ? null : which);
   usePlayback();
   const board = useEditor(activeBoard);
   const hostHere = useLive(store => store.hostHere);
@@ -74,6 +77,10 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
   const shownNumber = useGroup(store => grouped && !ownCopy ? store.shown?.number ?? null : null);
   useFloorMoves(client, joined.id, grouped ? (ownCopy ? "group" : null) : hasFloor ? "floor" : null);
   useLiveGroup(client, joined.id);
+  const groupMessages = useGroup(store => store.group?.messages ?? null);
+  const pen = useDraw(store => store.pen);
+  // The group's chat closes with the group work.
+  const aside = chosenAside === "group" && !grouped ? null : chosenAside;
 
   if (state === "ended" || state === "removed" || state === "failed") {
     return (
@@ -104,6 +111,13 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
               <button type="button" className="tb-present-toggle" aria-pressed={aside === "chat"} onClick={() => toggle("chat")}><LiveBadge label={t("Chatt")} /></button>
             )}
             {state === "following" && !grouped && <LiveDrawButtons />}
+            {grouped && (
+              <button type="button" className="tb-present-toggle" aria-pressed={aside === "group"} onClick={() => toggle("group")}>{t("Gruppens chatt")}</button>
+            )}
+            {grouped && ownCopy && (
+              <button type="button" className="tb-present-toggle" aria-pressed={pen} onClick={() => useDraw.getState().set({ pen: !pen, error: "" })}
+                title={t("Rita på gruppens kopia, gruppen ser det")}>{t("✏️ Rita")}</button>
+            )}
             <button type="button" className="tb-present-toggle" aria-pressed={aside === "text"} onClick={() => toggle("text")}>{t("Beskrivning")}</button>
           </div>
         </div>
@@ -113,11 +127,14 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
           <ErrorBoundary label={t("Tavlan")}>
             {/* In a group, the class's drawings, answers and the host's pointer are not on the group's copy. */}
             <BoardStage editable={grouped ? ownCopy : hasFloor} moveOnly
-              extra={grouped ? null : <><LiveStrokes pen={selfId ? { client, sessionId: joined.id, selfId } : undefined} /><LiveAnswers answering={{ client }} /><Laser /></>} />
+              extra={grouped ? <GroupStrokes client={client} sessionId={joined.id} selfId={selfId} /> : <><LiveStrokes pen={selfId ? { client, sessionId: joined.id, selfId } : undefined} /><LiveAnswers answering={{ client }} /><Laser /></>} />
           </ErrorBoundary>
           <LiveWhere hasFloor={hasFloor} />
         </div>
         {aside === "text" && <BoardText emptyHint={t("Tavlan har ingen beskrivning.")} />}
+        {aside === "group" && groupMessages && groupNumber !== null && (
+          <aside className="tb-present-text tb-present-live"><GroupChat messages={groupMessages} number={groupNumber} writing={{ client, sessionId: joined.id }} /></aside>
+        )}
         {aside === "chat" && <aside className="tb-present-text tb-present-live"><ChatPanel client={client} sessionId={joined.id} host={false} /></aside>}
       </div>
     </div>

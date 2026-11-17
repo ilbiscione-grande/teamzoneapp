@@ -97,3 +97,10 @@
 .tb-modal-card.tb-live-group-watch { width: min(900px, 100%); }
 .tb-live-status[data-group="true"] { background: rgba(59, 130, 246, .25); color: #dbeafe; }
 .tb-live-group strong { color: #bfdbfe; }
+
+/* Group work, step 3: the time, and a group's chat. */
+.tb-live-group-time { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+.tb-live-time { display: inline-block; padding: 1px 8px; border-radius: 999px; background: rgba(59, 130, 246, .2); font-weight: 700; font-variant-numeric: tabular-nums; }
+.tb-live-time[data-out="true"] { background: #fee2e2; color: #991b1b; }
+.tb-group-chat h3 { margin: 0 0 6px; font-size: .9rem; }
+.tb-live-group-watch .tb-group-chat .tb-chat-list { max-height: 180px; }

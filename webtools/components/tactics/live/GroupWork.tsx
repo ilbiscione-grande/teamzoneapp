@@ -3,15 +3,17 @@
 // Group work, for the host: how many groups, started on the board and frame
 // in hand (each group gets its own copy, the project is not touched). While
 // the groups work, an overview of their copies as they change: following a
-// group, showing one to everyone, moving someone to another group. Ending
-// it throws the copies away and brings everyone back to the host's board.
+// group, showing one to everyone, moving someone to another group, the
+// time, and saving a group's copy as a new board. Ending it throws the
+// copies away and brings everyone back to the host's board.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
-import { groupCounts, groupError, type HostGroup } from "../../../lib/tactics/live-groups.ts";
+import { deadlineFrom, groupCounts, groupError, groupSolution, type HostGroup } from "../../../lib/tactics/live-groups.ts";
 import type { LiveSession } from "../../../lib/tactics/live.ts";
 import { activeBoard, useEditor } from "../store.ts";
 import { useDraw } from "./draw-store.ts";
 import { GroupTile, type GroupActions } from "./GroupTile.tsx";
+import { GroupTimeControl } from "./GroupTime.tsx";
 import { GroupWatch } from "./GroupWatch.tsx";
 import { useGroup } from "./group-store.ts";
 import { useLive } from "./live-store.ts";
@@ -33,7 +35,9 @@ export function GroupWork({ client, session }: { client: SupabaseClient; session
   // The groups after a reload, and again when someone comes or goes (someone new is placed in a group when they come in).
   useEffect(() => {
     void client.schema("api").rpc("list_tactics_live_groups", { target_session_id: session.id }).then(({ data }) => {
-      if (data) useGroup.getState().set({ groups: data as HostGroup[] });
+      if (!data) return;
+      const listed = data as HostGroup[];
+      useGroup.getState().set({ groups: listed, deadline: deadlineFrom(listed[0]?.ends_in) });
     });
   }, [client, session.id, participantCount]);
 
@@ -58,14 +62,14 @@ export function GroupWork({ client, session }: { client: SupabaseClient; session
       return result;
     });
     if (!ok) return;
-    useGroup.getState().set({ groups: started, watching: null });
+    useGroup.getState().set({ groups: started, watching: null, deadline: null });
     useDraw.getState().set({ floorHolder: null, floorName: null });
     useLive.getState().set({ session: { ...session, floor_holder: null, floor_name: null } });
   };
 
   const end = async () => {
     if (!await run(() => client.schema("api").rpc("end_tactics_live_groups", { target_session_id: session.id }))) return;
-    useGroup.getState().set({ groups: [], watching: null });
+    useGroup.getState().set({ groups: [], watching: null, deadline: null });
     // Everyone back where the host is: the board in hand and the view, as when someone joins.
     const state = useEditor.getState();
     const board = activeBoard(state);
@@ -89,6 +93,13 @@ export function GroupWork({ client, session }: { client: SupabaseClient; session
       if (result.data) useGroup.getState().set({ groups: result.data as HostGroup[] });
       return result;
     }),
+    save: groupId => {
+      const group = useGroup.getState().groups.find(item => item.id === groupId);
+      if (!group) return;
+      const name = t("{board} – grupp {number}", { board: group.board.name || t("Tavla"), number: group.number });
+      // Last in the project, and the host stays on the board in hand (the participants follow it).
+      useEditor.getState().change(document => ({ ...document, boards: [...document.boards, groupSolution(group, name)] }));
+    },
   };
 
   if (!active) {
@@ -110,6 +121,7 @@ export function GroupWork({ client, session }: { client: SupabaseClient; session
   }
   return (
     <div className="tb-live-groups">
+      <GroupTimeControl client={client} sessionId={session.id} />
       <ol className="tb-live-group-list">
         {groups.map(group => <GroupTile key={group.id} group={group} groups={groups} actions={actions} />)}
       </ol>

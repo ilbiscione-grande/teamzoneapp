@@ -4,6 +4,7 @@
 // boards shows an empty pitch.
 import { ballPattern, svgPoints } from "../../../lib/tactics/ball-look.ts";
 import { teamColors } from "../../../lib/tactics/document.ts";
+import { viewRect } from "../../../lib/tactics/geometry.ts";
 import type { Board } from "../../../lib/tactics/model.ts";
 import { previewOf } from "../../../lib/tactics/preview.ts";
 
@@ -13,12 +14,18 @@ export type BoardPreview = { view: Board["view"] | null; teams: Partial<Board["t
 const BALL = 1.6;
 const ball = ballPattern(BALL);
 
+/** Lines drawn over the pitch, in metres: a live lesson's group's drawing. */
+export type ThumbStroke = { id: string; points: number[]; color: string };
+
 /** labels: the players' numbers too, for a picture large enough to read them (a live lesson's group followed by the host). */
-export function ProjectThumb({ preview, labels = false }: { preview: BoardPreview | null | undefined; labels?: boolean }) {
+export function ProjectThumb({ preview, labels = false, strokes = [] }: { preview: BoardPreview | null | undefined; labels?: boolean; strokes?: ThumbStroke[] }) {
   const teams = { home: { ...teamColors.home, ...preview?.teams?.home }, away: { ...teamColors.away, ...preview?.teams?.away } };
   const board = { view: preview?.view ?? "full", teams, frames: [{ objects: preview?.objects ?? [] }] } as unknown as Board;
   const { lines, dots, aspect } = previewOf(board);
   const width = 100, height = width / aspect;
+  // As previewOf places the pitch: the board's view with a margin.
+  const rect = viewRect(board.view === "empty" ? "full" : board.view, 3);
+  const at = (points: number[]) => points.map((value, index) => index % 2 === 0 ? (value - rect.x) / rect.width * width : (value - rect.y) / rect.height * height).join(" ");
   return (
     <svg className="tb-thumb" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
       <defs><clipPath id="tb-thumb-ball"><circle r={BALL} /></clipPath></defs>
@@ -31,6 +38,7 @@ export function ProjectThumb({ preview, labels = false }: { preview: BoardPrevie
             ? <line key={index} x1={line.left * width} y1={line.top * height} x2={line.left * width} y2={(line.top + line.height) * height} />
             : <rect key={index} x={line.left * width} y={line.top * height} width={line.width * width} height={line.height * height} />)}
       </g>
+      {strokes.map(stroke => <polyline key={stroke.id} points={at(stroke.points)} fill="none" stroke={stroke.color} strokeWidth={0.6} strokeLinecap="round" strokeLinejoin="round" />)}
       {dots.map((dot, index) => dot.ball ? (
         // A football, as on the board.
         <g key={`d${index}`} transform={`translate(${dot.left * width} ${dot.top * height})`}>

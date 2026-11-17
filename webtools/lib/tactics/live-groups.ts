@@ -2,8 +2,11 @@
 // sandbox thrown away when the host takes the floor back. A group's copy is
 // the board as it was when the work started, plus where each moved object
 // stands now, per frame. Pure, so it can be tested.
-import { updateFrame } from "./document.ts";
-import type { Board, Point, ProjectDocument } from "./model.ts";
+import { newId, updateFrame } from "./document.ts";
+import type { ChatMessage } from "./live-chat.ts";
+import type { Stroke } from "./live-draw.ts";
+import type { Board, FreehandObject, Point, ProjectDocument } from "./model.ts";
+import { copyBoard } from "./templates.ts";
 
 /** Where moved objects stand: by frame index, then object id. */
 export type GroupMoves = Record<string, Record<string, Point>>;
@@ -14,7 +17,13 @@ export type GroupMember = { profile_id: string; name: string };
 export type LiveGroupSummary = { id: string; number: number; board_id: string; frame_index: number; members: GroupMember[] };
 
 /** A group with its board and the moves so far: a participant's own, the one shown to everyone, or one in the host's overview. */
-export type LiveGroup = LiveGroupSummary & { board: Board; moves: GroupMoves };
+export type LiveGroup = LiveGroupSummary & {
+  board: Board; moves: GroupMoves;
+  /** What the group drew on its copy, and its own chat (step 3). */
+  strokes: Stroke[]; messages: ChatMessage[];
+  /** Seconds left of the group work's time when read, 0 once out, null when there is none. */
+  ends_in: number | null;
+};
 
 /** A group in the host's overview: whether it is shown to everyone. */
 export type HostGroup = LiveGroup & { shown: boolean };
@@ -57,10 +66,44 @@ export function groupPreview(group: LiveGroup): { view: Board["view"]; teams: Bo
   return { view: board.view, teams: board.teams, objects: board.frames[group.frame_index]?.objects ?? [] };
 }
 
+/** A group's strokes as freehand lines on a board: placed at their first point, as the editor draws them. */
+export function strokesAsFreehand(strokes: Stroke[]): FreehandObject[] {
+  return strokes.filter(stroke => stroke.points.length >= 4).map(stroke => {
+    const [x, y] = stroke.points;
+    return {
+      id: newId(), type: "freehand", x, y, rotation: 0, locked: false, hidden: false,
+      points: stroke.points.map((value, index) => value - (index % 2 === 0 ? x : y)),
+      arrow: "none", dashed: false, color: stroke.color, width: 0.3,
+    };
+  });
+}
+
+/** A group's solution as a board of its own for the project: the copy as it stands, the group's drawing on the group's frame, new ids. */
+export function groupSolution(group: LiveGroup, name: string): Board {
+  const board = copyBoard(groupBoard(group.board, group.moves));
+  const drawn = strokesAsFreehand(group.strokes);
+  return {
+    ...board, name: name.slice(0, 60),
+    frames: board.frames.map((frame, index) => index === group.frame_index ? { ...frame, objects: [...frame.objects, ...drawn] } : frame),
+  };
+}
+
+/** When the time runs out, in this browser's clock, from the seconds left when it was read. */
+export const deadlineFrom = (seconds: number | null | undefined, now = Date.now()) => seconds === null || seconds === undefined ? null : now + seconds * 1000;
+
+/** Time left as minutes and seconds, "0:00" once out. */
+export function timeLeft(deadline: number, now = Date.now()): string {
+  const seconds = Math.max(0, Math.ceil((deadline - now) / 1000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
 export function groupError(message: string): string {
   if (message.includes("invalid_group_count")) return "Välj mellan 2 och 6 grupper.";
   if (message.includes("invalid_board")) return "Tavlan kunde inte skickas till grupperna.";
   if (message.includes("invalid_group") || message.includes("invalid_participant")) return "Gruppen eller deltagaren finns inte längre.";
+  if (message.includes("too_fast")) return "Vänta en stund innan du skickar mer.";
+  if (message.includes("muted")) return "Läraren har stängt av chatten för dig.";
+  if (message.includes("invalid_stroke")) return "Det du ritade kunde inte skickas.";
   if (message.includes("no_group")) return "Du är inte med i någon grupp längre.";
   return "Grupparbetet kunde inte ändras.";
 }

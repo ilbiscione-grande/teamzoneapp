@@ -1,6 +1,6 @@
 # Tacticsboard: grupparbete i livelektionen – plan
 
-**Status: steg 1 och 2 byggda 2026-11-17 och testade i webbläsaren mot testdatabasen. Migreringarna `20270401090000_tactics_live_groups` och `20270402090000_tactics_live_group_overview` är körda i testdatabasen, inte i produktion, och inget är deployat. Steg 3–4 återstår.**
+**Status: steg 1–3 byggda 2026-11-17 och testade i webbläsaren mot testdatabasen. Steg 1–2 är i produktion, och deras migreringar är körda där och deployade till webtools.teamzoneapp.se. Steg 3 (`20270403090000_tactics_live_group_extras`) är bara kört i testdatabasen. Steg 4 återstår.**
 
 Under en livelektion delar läraren in deltagarna i grupper. Varje grupp får en egen kopia av tavlan och ändrar den tillsammans, som en sandlåda. När läraren tar ordet igen går alla tillbaka till lärarens vy och sandlådorna kastas. Det passar särskilt ledarutbildningar, som är det långsiktiga målet med livelektionerna.
 
@@ -96,6 +96,13 @@ Typiskt är det 3–6 grupper med 2–4 personer var. Rörelser bromsas som i da
    - *Visa för alla* sparas i `tactics_live_sessions.shown_group`. Den visade gruppens flyttar går även ut på lektionens kanal som `shown-move`. Den visade gruppen fortsätter arbeta, och de andra tittar. När läraren slutar visa kommer alla tillbaka till sin egen grupp.
    - Att flytta en deltagare sänder `group-assigned`. Deltagaren byter då kopia och kanal direkt.
 3. **Mer i grupperna.** Ritning och chatt inom gruppen, nedräkning och *Spara som ny tavla*.
+
+   Så blev det byggt:
+   - Streck och meddelanden får `group_id` och raderas med gruppen. Klassens ritlager och chatt hämtar och rensar bara sina egna rader.
+   - Gruppen ritar alltid på sin kopia, oavsett klassens ritläge. Gruppchatten stoppas bara om läraren har stängt av chatten för deltagaren. Läraren läser gruppens chatt i *Följ*.
+   - Nedräkningen ligger i `tactics_live_sessions.groups_ends_at`. Läraren väljer 2–15 minuter eller ingen tid. Inget händer automatiskt när tiden är ute; läraren avgör när grupperna är klara.
+   - *Spara som ny tavla* görs i lärarens editor från kopian läraren redan har. Tavlan läggs sist i projektet, och gruppens streck blir frihandslinjer på gruppens frame. Läraren stannar på tavlan som visas.
+   - Läraren kan fortfarande inte flytta objekt i en grupps kopia. Det kräver en egen tavla för läraren, utanför projektet. Det hör ihop med steg 4.
 4. **Senare, om det behövs:** full redigering i grupperna, alltså att lägga till och ta bort spelare, pilar och zoner. Det kräver en enklare redigerare för deltagarna och att ändringarna skickas som ändringar av tavlan, inte bara som rörelser. Det är det största steget och tas bara om flytt och ritning inte räcker.
 
 ## Öppna frågor

@@ -4,6 +4,7 @@
 // strokes and a participant's own notes for the board in hand, and, while
 // the pen is out, a layer that turns a finger or the mouse into a stroke.
 // A finished stroke is kept here (own notes) or sent (the shared layer).
+// The capture is shared with a group's drawing (GroupStrokes).
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type Konva from "konva";
 import { useRef } from "react";
@@ -12,7 +13,7 @@ import { colorFor, drawError, thinStroke, type Stroke } from "../../../lib/tacti
 import { useEditor } from "../store.ts";
 import { useDraw } from "./draw-store.ts";
 
-const LINE = { strokeWidth: 0.4, lineCap: "round" as const, lineJoin: "round" as const, tension: 0.35, listening: false, perfectDrawEnabled: false };
+export const LINE = { strokeWidth: 0.4, lineCap: "round" as const, lineJoin: "round" as const, tension: 0.35, listening: false, perfectDrawEnabled: false };
 
 export function LiveStrokes({ pen }: { pen?: { client: SupabaseClient; sessionId: string; selfId: string } }) {
   const boardId = useEditor(state => state.boardId);
@@ -23,25 +24,15 @@ export function LiveStrokes({ pen }: { pen?: { client: SupabaseClient; sessionId
   return (
     <Group>
       {shown.map(stroke => <Line key={stroke.id} points={stroke.points} stroke={stroke.color} {...LINE} />)}
-      {pen && drawing && boardId && <Capture boardId={boardId} {...pen} />}
+      {pen && drawing && boardId && <ClassCapture boardId={boardId} {...pen} />}
     </Group>
   );
 }
 
-function Capture({ client, sessionId, selfId, boardId }: { client: SupabaseClient; sessionId: string; selfId: string; boardId: string }) {
-  const line = useRef<Konva.Line>(null);
-  const points = useRef<number[]>([]);
-  const pointer = useRef<number | null>(null);
+/** The class's pen: own notes kept here, or a stroke on the shared layer. */
+function ClassCapture({ client, sessionId, selfId, boardId }: { client: SupabaseClient; sessionId: string; selfId: string; boardId: string }) {
   const color = colorFor(selfId);
-  const at = (event: Konva.KonvaEventObject<PointerEvent>) => event.target.getParent()?.getRelativePointerPosition() ?? null;
-
-  const finish = async () => {
-    const drawn = thinStroke(points.current);
-    points.current = [];
-    pointer.current = null;
-    line.current?.points([]);
-    line.current?.getLayer()?.batchDraw();
-    if (drawn.length < 4) return;
+  const onStroke = async (drawn: number[]) => {
     const { drawMode } = useDraw.getState();
     if (drawMode === "own") {
       const stroke: Stroke = { id: `own-${Date.now()}`, board_id: boardId, profile_id: selfId, name: "", color, points: drawn, created_at: new Date().toISOString() };
@@ -52,6 +43,25 @@ function Capture({ client, sessionId, selfId, boardId }: { client: SupabaseClien
     if (error) { useDraw.getState().set({ error: drawError(error.message) }); return; }
     useDraw.getState().set({ error: "" });
     useDraw.getState().addStrokes([data as Stroke]);
+  };
+  return <StrokeCapture color={color} onStroke={onStroke} />;
+}
+
+/** Turns a finger or the mouse over the pitch into a stroke, thinned, handed on when finished. */
+export function StrokeCapture({ color, onStroke }: { color: string; onStroke: (points: number[]) => void | Promise<void> }) {
+  const line = useRef<Konva.Line>(null);
+  const points = useRef<number[]>([]);
+  const pointer = useRef<number | null>(null);
+  const at = (event: Konva.KonvaEventObject<PointerEvent>) => event.target.getParent()?.getRelativePointerPosition() ?? null;
+
+  const finish = async () => {
+    const drawn = thinStroke(points.current);
+    points.current = [];
+    pointer.current = null;
+    line.current?.points([]);
+    line.current?.getLayer()?.batchDraw();
+    if (drawn.length < 4) return;
+    await onStroke(drawn);
   };
 
   return (

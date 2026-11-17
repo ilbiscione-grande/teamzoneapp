@@ -12,6 +12,8 @@ export type GroupActions = {
   show: (groupId: string | null) => void;
   watch: (groupId: string) => void;
   assign: (profileId: string, groupId: string) => void;
+  /** The group's copy as a new board in the project. */
+  save: (groupId: string) => void;
 };
 
 export function GroupTile({ group, groups, actions }: { group: HostGroup; groups: HostGroup[]; actions: GroupActions }) {
@@ -19,7 +21,7 @@ export function GroupTile({ group, groups, actions }: { group: HostGroup; groups
   return (
     <li className="tb-live-group-tile" data-shown={group.shown}>
       <button type="button" className="tb-live-group-picture" onClick={() => actions.watch(group.id)} aria-label={t("Följ grupp {number}", { number: group.number })}>
-        <ProjectThumb preview={groupPreview(group)} />
+        <ProjectThumb preview={groupPreview(group)} strokes={group.strokes} />
       </button>
       <div className="tb-row">
         <strong>{t("Grupp {number}", { number: group.number })}</strong>
