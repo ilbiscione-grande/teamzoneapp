@@ -9,9 +9,10 @@
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { create } from "zustand";
 import { mergeStrokes, type Stroke } from "../../../lib/tactics/live-draw.ts";
+import { applyFrameEdit, mergeGroupEdits, type FrameEdit } from "../../../lib/tactics/live-group-edits.ts";
 import { deadlineFrom, groupBoard, mergeGroupMoves, type GroupMove, type HostGroup, type LiveGroup } from "../../../lib/tactics/live-groups.ts";
 import { applyBoard, applyMoves, type LiveView } from "../../../lib/tactics/live.ts";
-import type { Board } from "../../../lib/tactics/model.ts";
+import type { Board, ProjectDocument } from "../../../lib/tactics/model.ts";
 import { useEditor } from "../store.ts";
 import { useChat } from "./chat-store.ts";
 import { useDraw } from "./draw-store.ts";
@@ -25,6 +26,8 @@ type GroupState = {
   hostBoard: Board | null;
   pendingBoards: Record<string, Board>;
   pendingView: LiveView | null;
+  /** Participating: one's own group's copy as last sent or received; what the board has beyond it is one's own change, still to send. Null while another group is on the board. */
+  synced: Board | null;
   /** Hosting: the groups with their copies, empty when there is no group work, and the one the host follows. */
   groups: HostGroup[];
   watching: string | null;
@@ -39,6 +42,7 @@ export const useGroup = create<GroupState>(set => ({
   hostBoard: null,
   pendingBoards: {},
   pendingView: null,
+  synced: null,
   groups: [],
   watching: null,
   deadline: null,
@@ -59,11 +63,14 @@ export const worksOnOwn = (state: Pick<GroupState, "group" | "shown">) => state.
 
 /** The displayed copy on the board, on its frame, standing still. */
 function render() {
-  const shownGroup = displayedGroup(useGroup.getState());
+  const state = useGroup.getState();
+  const shownGroup = displayedGroup(state);
   const { document } = useEditor.getState();
   if (!shownGroup || !document) return;
+  const board = groupBoard(shownGroup.board, shownGroup.moves, shownGroup.edits);
+  state.set({ synced: worksOnOwn(state) ? board : null });
   useEditor.setState({
-    document: applyBoard(document, groupBoard(shownGroup.board, shownGroup.moves)),
+    document: applyBoard(document, board),
     boardId: shownGroup.board_id, frameIndex: shownGroup.frame_index, playhead: shownGroup.frame_index, playing: false, stopAt: null, selection: [],
   });
 }
@@ -87,7 +94,7 @@ export function setShown(shown: LiveGroup | null) {
 /** Out of the group: the group's copy goes and the board is the host's again. The host's latest view, to show where the host is now. */
 export function leaveGroup(): LiveView | null {
   const { group, hostBoard, pendingBoards, pendingView } = useGroup.getState();
-  useGroup.getState().set({ shown: null, deadline: null });
+  useGroup.getState().set({ shown: null, deadline: null, synced: null });
   if (!group) return null;
   // The pen out on the group's copy is not out on the class's board.
   useDraw.getState().set({ pen: false });
@@ -98,6 +105,25 @@ export function leaveGroup(): LiveView | null {
   for (const board of Object.values(pendingBoards)) next = applyBoard(next, board);
   useEditor.setState({ document: next });
   return pendingView;
+}
+
+/** Someone else's change to one's own group's copy: on the board, and counted as synced so it is not sent back. */
+export function applyRemote(change: (board: Board) => Board) {
+  const { synced, group } = useGroup.getState();
+  const { document } = useEditor.getState();
+  const board = document?.boards.find(item => item.id === group?.board_id);
+  if (!document || !board) return;
+  useEditor.setState({ document: applyBoard(document, change(board)) });
+  if (synced) useGroup.getState().set({ synced: change(synced) });
+}
+
+/** One frame's changes to a board, as applyFrameEdit does them to a document. */
+export const editBoard = (edit: FrameEdit) => (board: Board) => applyFrameEdit({ boards: [board] } as ProjectDocument, board.id, edit).boards[0];
+
+/** One's own group again from the database, after a change that did not reach it. */
+export async function reloadGroup(client: SupabaseClient, sessionId: string) {
+  const { data } = await client.schema("api").rpc("get_tactics_live_group", { target_session_id: sessionId });
+  if (data) enterGroup(data as LiveGroup);
 }
 
 /** A board from the host while in a group: kept for later. */
@@ -147,6 +173,14 @@ export function listenGroups(channel: RealtimeChannel, client: SupabaseClient, s
     const stroke = payload as Stroke & { group_id: string };
     const state = useGroup.getState();
     if (state.shown && state.shown.id === stroke.group_id && otherShown(state)) state.set({ shown: { ...state.shown, strokes: mergeStrokes(state.shown.strokes, [stroke]) } });
+  });
+  channel.on("broadcast", { event: "shown-edit" }, ({ payload }) => {
+    const edit = payload as FrameEdit & { groupId: string };
+    const state = useGroup.getState();
+    if (!state.shown || state.shown.id !== edit.groupId || !otherShown(state)) return;
+    state.set({ shown: { ...state.shown, edits: mergeGroupEdits(state.shown.edits, edit) } });
+    const { document } = useEditor.getState();
+    if (document) useEditor.setState({ document: applyFrameEdit(document, state.shown.board_id, edit) });
   });
   channel.on("broadcast", { event: "group-shown" }, () => void loadShown(client, sessionId));
   channel.on("broadcast", { event: "shown-move" }, ({ payload }) => {

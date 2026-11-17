@@ -1,6 +1,6 @@
 # Tacticsboard: grupparbete i livelektionen – plan
 
-**Status: steg 1–3 byggda 2026-11-17 och testade i webbläsaren mot testdatabasen. Steg 1–2 är i produktion, och deras migreringar är körda där och deployade till webtools.teamzoneapp.se. Steg 3 (`20270403090000_tactics_live_group_extras`) är bara kört i testdatabasen. Steg 4 återstår.**
+**Status: alla fyra stegen byggda 2026-11-17 och testade i webbläsaren mot testdatabasen. Steg 1–3 är i produktion. Steg 4 (`20270404090000_tactics_live_group_edits`) är bara kört i testdatabasen.**
 
 Under en livelektion delar läraren in deltagarna i grupper. Varje grupp får en egen kopia av tavlan och ändrar den tillsammans, som en sandlåda. När läraren tar ordet igen går alla tillbaka till lärarens vy och sandlådorna kastas. Det passar särskilt ledarutbildningar, som är det långsiktiga målet med livelektionerna.
 
@@ -104,6 +104,14 @@ Typiskt är det 3–6 grupper med 2–4 personer var. Rörelser bromsas som i da
    - *Spara som ny tavla* görs i lärarens editor från kopian läraren redan har. Tavlan läggs sist i projektet, och gruppens streck blir frihandslinjer på gruppens frame. Läraren stannar på tavlan som visas.
    - Läraren kan fortfarande inte flytta objekt i en grupps kopia. Det kräver en egen tavla för läraren, utanför projektet. Det hör ihop med steg 4.
 4. **Senare, om det behövs:** full redigering i grupperna, alltså att lägga till och ta bort spelare, pilar och zoner. Det kräver en enklare redigerare för deltagarna och att ändringarna skickas som ändringar av tavlan, inte bara som rörelser. Det är det största steget och tas bara om flytt och ritning inte räcker.
+
+   Så blev det byggt (2026-11-17, på produktägarens begäran):
+   - Deltagaren får redigerarens egna verktyg på sin grupps kopia: verktygsraden, eller på telefon telefonens verktyg. Med dem kan deltagaren placera, rita linjer och ytor, flytta och ta bort. Tangenterna är Delete, Ctrl D och Escape. Ångra finns inte i grupper, eftersom det skulle ta tillbaka de andras ändringar också.
+   - En ändring skickas per objekt, i sin helhet eller som borttagen, en stund efter att den gjorts. Klienten jämför tavlan med kopian som den senast synkades, så andras ändringar skickas inte tillbaka.
+   - Databasen sparar ändringarna i `tactics_live_groups.edits` per frame. En ändring av ett objekt ersätter en äldre flytt av samma objekt, och den senaste ändringen av samma objekt gäller.
+   - Om en ändring inte når fram läses gruppens kopia om från databasen.
+   - Lärarens bilder av grupperna (rutorna och *Följ*) visar nu också linjer, ytor, koner och annan utrustning. *Spara som ny tavla* tar med allt.
+   - Läraren kan fortfarande inte redigera i en grupps kopia, utan följer den. Det kräver en egen tavla för läraren, utanför projektet, och får tas om det efterfrågas.
 
 ## Öppna frågor
 

@@ -104,3 +104,7 @@
 .tb-live-time[data-out="true"] { background: #fee2e2; color: #991b1b; }
 .tb-group-chat h3 { margin: 0 0 6px; font-size: .9rem; }
 .tb-live-group-watch .tb-group-chat .tb-chat-list { max-height: 180px; }
+
+/* Group work, step 4: the editor's tools beside the group's copy. */
+.tb-live[data-tools="true"] .tb-present-body { grid-template-columns: auto minmax(0, 1fr); }
+.tb-live[data-tools="true"][data-text="true"] .tb-present-body { grid-template-columns: auto minmax(0, 1fr) minmax(260px, 30%); }

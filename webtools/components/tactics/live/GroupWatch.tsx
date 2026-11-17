@@ -27,7 +27,7 @@ export function GroupWatch({ group, groups, actions, onClose }: { group: HostGro
           <h2>{t("Grupp {number}", { number: group.number })}{group.shown && <span className="tb-live-group-shown">{t("Visas för alla")}</span>}</h2>
           <button type="button" className="tb-modal-close" aria-label={t("Stäng")} onClick={onClose}>×</button>
         </div>
-        <ProjectThumb preview={groupPreview(group)} labels strokes={group.strokes} />
+        <ProjectThumb preview={groupPreview(group)} detail labels strokes={group.strokes} />
         <p className="tb-hint">{t("Gruppens kopia, som den ser ut just nu. Du följer bara gruppen här; ditt projekt ändras inte.")}</p>
         <GroupMembers group={group} groups={groups} actions={actions} />
         <GroupChat messages={group.messages} number={group.number} />

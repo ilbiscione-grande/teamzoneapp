@@ -4,6 +4,7 @@
 // stands now, per frame. Pure, so it can be tested.
 import { newId, updateFrame } from "./document.ts";
 import type { ChatMessage } from "./live-chat.ts";
+import { applyGroupEdits, type GroupEdits } from "./live-group-edits.ts";
 import type { Stroke } from "./live-draw.ts";
 import type { Board, FreehandObject, Point, ProjectDocument } from "./model.ts";
 import { copyBoard } from "./templates.ts";
@@ -19,6 +20,8 @@ export type LiveGroupSummary = { id: string; number: number; board_id: string; f
 /** A group with its board and the moves so far: a participant's own, the one shown to everyone, or one in the host's overview. */
 export type LiveGroup = LiveGroupSummary & {
   board: Board; moves: GroupMoves;
+  /** Objects placed, changed and removed on the copy (step 4). */
+  edits: GroupEdits;
   /** What the group drew on its copy, and its own chat (step 3). */
   strokes: Stroke[]; messages: ChatMessage[];
   /** Seconds left of the group work's time when read, 0 once out, null when there is none. */
@@ -42,13 +45,13 @@ export function groupCounts(participants: number): number[] {
   return Array.from({ length: most - MIN_GROUPS + 1 }, (_, index) => MIN_GROUPS + index);
 }
 
-/** The group's board as it stands: the starting board with the moves in place, balls and lines settled. */
-export function groupBoard(board: Board, moves: GroupMoves): Board {
+/** The group's board as it stands: the starting board with the edits, then the moves in place, balls and lines settled. */
+export function groupBoard(board: Board, moves: GroupMoves, edits: GroupEdits = {}): Board {
   // updateFrame works on a document; only the boards matter to it.
-  let document = { boards: [board] } as ProjectDocument;
+  let document = { boards: [applyGroupEdits(board, edits)] } as ProjectDocument;
   for (const [frame, objects] of Object.entries(moves)) {
     const index = Number(frame);
-    if (!Number.isInteger(index) || !board.frames[index]) continue;
+    if (!Number.isInteger(index) || !board.frames[index] || Object.keys(objects).length === 0) continue;
     document = updateFrame(document, board.id, index, items => items.map(item => objects[item.id] ? { ...item, ...objects[item.id] } : item));
   }
   return document.boards[0];
@@ -62,7 +65,7 @@ export function mergeGroupMoves(moves: GroupMoves, frameIndex: number, incoming:
 
 /** What a small picture of the group's copy needs: the view, the teams and the objects on the group's frame as they stand. */
 export function groupPreview(group: LiveGroup): { view: Board["view"]; teams: Board["teams"]; objects: Board["frames"][number]["objects"] } {
-  const board = groupBoard(group.board, group.moves);
+  const board = groupBoard(group.board, group.moves, group.edits);
   return { view: board.view, teams: board.teams, objects: board.frames[group.frame_index]?.objects ?? [] };
 }
 
@@ -80,7 +83,7 @@ export function strokesAsFreehand(strokes: Stroke[]): FreehandObject[] {
 
 /** A group's solution as a board of its own for the project: the copy as it stands, the group's drawing on the group's frame, new ids. */
 export function groupSolution(group: LiveGroup, name: string): Board {
-  const board = copyBoard(groupBoard(group.board, group.moves));
+  const board = copyBoard(groupBoard(group.board, group.moves, group.edits));
   const drawn = strokesAsFreehand(group.strokes);
   return {
     ...board, name: name.slice(0, 60),
@@ -101,6 +104,7 @@ export function groupError(message: string): string {
   if (message.includes("invalid_group_count")) return "Välj mellan 2 och 6 grupper.";
   if (message.includes("invalid_board")) return "Tavlan kunde inte skickas till grupperna.";
   if (message.includes("invalid_group") || message.includes("invalid_participant")) return "Gruppen eller deltagaren finns inte längre.";
+  if (message.includes("invalid_edit") || message.includes("too_large")) return "Ändringen kunde inte sparas i gruppens kopia.";
   if (message.includes("too_fast")) return "Vänta en stund innan du skickar mer.";
   if (message.includes("muted")) return "Läraren har stängt av chatten för dig.";
   if (message.includes("invalid_stroke")) return "Det du ritade kunde inte skickas.";

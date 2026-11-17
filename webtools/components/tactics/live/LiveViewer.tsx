@@ -4,8 +4,8 @@
 // host's pointer, the board's description beside it and where the lesson
 // is (board, frame) under it. Nothing is changed or played here; the board
 // follows the host. In group work the board is the group's own copy, and
-// everyone in the group moves objects and draws on it and has a chat of
-// the group's own.
+// everyone in the group edits it with the editor's own tools, draws on it
+// and has a chat of the group's own.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
@@ -28,6 +28,10 @@ import { useFloorMoves } from "./use-floor.ts";
 import { useGroup, worksOnOwn } from "./group-store.ts";
 import { GroupChat } from "./GroupChat.tsx";
 import { GroupStrokes } from "./GroupStrokes.tsx";
+import { useGroupEdits } from "./use-group-edits.ts";
+import { Toolbar } from "../panels/Toolbar.tsx";
+import { PhoneToolbar } from "../panels/PhoneToolbar.tsx";
+import { usePhone } from "../ViewerTools.tsx";
 import { useLiveGroup } from "./use-live-group.ts";
 import { LiveBadge } from "./LiveBadge.tsx";
 import { useLive } from "./live-store.ts";
@@ -79,6 +83,10 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
   useLiveGroup(client, joined.id);
   const groupMessages = useGroup(store => store.group?.messages ?? null);
   const pen = useDraw(store => store.pen);
+  // One's own group's copy is edited in full; the floor only moves objects on the host's board.
+  const editing = grouped && ownCopy;
+  useGroupEdits(client, joined.id, editing);
+  const phone = usePhone();
   // The group's chat closes with the group work.
   const aside = chosenAside === "group" && !grouped ? null : chosenAside;
 
@@ -92,7 +100,7 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
   }
   if (!ready || !board) return null;
   return (
-    <div className="tb-editor tb-viewer tb-live" data-text={aside !== null}>
+    <div className="tb-editor tb-viewer tb-live" data-text={aside !== null} data-tools={editing && !phone}>
       <header className="tb-top">
         <div className="tb-top-row">
           <span className="tb-viewer-mark" aria-hidden="true">TZ</span>
@@ -123,10 +131,12 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
         </div>
       </header>
       <div className="tb-present-body">
+        {editing && !phone && <Toolbar homeColor={board.teams.home.color} awayColor={board.teams.away.color} />}
         <div className="tb-center">
           <ErrorBoundary label={t("Tavlan")}>
             {/* In a group, the class's drawings, answers and the host's pointer are not on the group's copy. */}
-            <BoardStage editable={grouped ? ownCopy : hasFloor} moveOnly
+            <BoardStage editable={grouped ? ownCopy : hasFloor} moveOnly={!editing}
+              phoneTools={editing && phone ? <PhoneToolbar homeColor={board.teams.home.color} awayColor={board.teams.away.color} /> : undefined}
               extra={grouped ? <GroupStrokes client={client} sessionId={joined.id} selfId={selfId} /> : <><LiveStrokes pen={selfId ? { client, sessionId: joined.id, selfId } : undefined} /><LiveAnswers answering={{ client }} /><Laser /></>} />
           </ErrorBoundary>
           <LiveWhere hasFloor={hasFloor} />

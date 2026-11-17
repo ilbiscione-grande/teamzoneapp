@@ -105,7 +105,7 @@ export function GroupWork({ client, session }: { client: SupabaseClient; session
   if (!active) {
     return (
       <div className="tb-live-groups">
-        <p className="tb-hint">{t("Dela in deltagarna i grupper. Varje grupp får en egen kopia av tavlan som den ser ut nu och flyttar spelarna tillsammans. Ditt projekt ändras inte.")}</p>
+        <p className="tb-hint">{t("Dela in deltagarna i grupper. Varje grupp får en egen kopia av tavlan som den ser ut nu och ändrar den tillsammans. Ditt projekt ändras inte.")}</p>
         <div className="tb-row">
           <label className="tb-field">{t("Antal grupper")}
             <select value={Math.min(count, counts[counts.length - 1])} onChange={event => setCount(Number(event.target.value))}>

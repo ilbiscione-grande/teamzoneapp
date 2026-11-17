@@ -44,7 +44,7 @@ export function LiveWhere({ hasFloor }: { hasFloor: boolean }) {
       <div className="tb-live-where" aria-live="polite">
         <p className="tb-live-floor tb-live-group">
           <strong>{t("Grupparbete · grupp {number}", { number: group.number })}</strong>{" "}
-          {others.length > 0 ? t("Du och {names} flyttar spelarna och objekten på gruppens egen kopia.", { names: others.join(", ") }) : t("Flytta spelarna och objekten på gruppens egen kopia.")}
+          {others.length > 0 ? t("Du och {names} ändrar gruppens egen kopia: flytta, lägg till och ta bort spelare, linjer och ytor.", { names: others.join(", ") }) : t("Ändra gruppens egen kopia: flytta, lägg till och ta bort spelare, linjer och ytor.")}
           <span> {t("Kopian försvinner när läraren tar ordet igen.")}</span> <TimeLeft />
         </p>
         {error && <p className="tb-live-floor" role="alert">{t(error)}</p>}

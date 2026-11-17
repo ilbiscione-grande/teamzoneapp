@@ -34,7 +34,7 @@ test("live groups: the picture shows the group's frame as it stands", () => {
   const board = newDocument("Tavla 1").boards[0];
   const player = createPlayer({ x: 10, y: 10 }, "home", []);
   const start = { ...board, frames: [{ ...board.frames[0], objects: [] }, { ...board.frames[0], objects: [player] }] };
-  const group = { id: "g", number: 1, board_id: start.id, frame_index: 1, members: [], board: start, moves: { 1: { [player.id]: { x: 40, y: 30 } } }, strokes: [], messages: [], ends_in: null };
+  const group = { id: "g", number: 1, board_id: start.id, frame_index: 1, members: [], board: start, moves: { 1: { [player.id]: { x: 40, y: 30 } } }, edits: {}, strokes: [], messages: [], ends_in: null };
   const preview = groupPreview(group);
   assert.deepEqual([preview.objects.length, preview.objects[0].x, preview.view], [1, 40, start.view]);
   assert.deepEqual(groupPreview({ ...group, frame_index: 9 }).objects, [], "a frame that is gone shows nothing");
@@ -53,7 +53,7 @@ test("live groups: a group's solution is a new board with the moves and the draw
   const player = createPlayer({ x: 10, y: 10 }, "home", []);
   const start = { ...board, frames: [{ ...board.frames[0], objects: [player] }, { ...board.frames[0], objects: [player] }] };
   const group = { id: "g", number: 2, board_id: start.id, frame_index: 1, members: [], board: start, moves: { 1: { [player.id]: { x: 40, y: 30 } } },
-    strokes: [stroke([5, 5, 9, 9])], messages: [], ends_in: null };
+    edits: {}, strokes: [stroke([5, 5, 9, 9])], messages: [], ends_in: null };
   const saved = groupSolution(group, "Tavla 1 – grupp 2");
   assert.notEqual(saved.id, start.id);
   assert.equal(saved.name, "Tavla 1 – grupp 2");

@@ -2,11 +2,13 @@
 
 // The host listens on every group's channel, so the overview's pictures of
 // the groups' copies move as the groups move objects: on the way and where
-// dropped, and what the groups draw and write in their chats. The
+// dropped, what they place, change and remove, and what the groups draw
+// and write in their chats. The
 // database's copies come back whenever the list is read again.
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { useEffect } from "react";
 import { mergeMessages, type ChatMessage } from "../../../lib/tactics/live-chat.ts";
+import { mergeGroupEdits, type FrameEdit } from "../../../lib/tactics/live-group-edits.ts";
 import { mergeStrokes, type Stroke } from "../../../lib/tactics/live-draw.ts";
 import { groupTopic, mergeGroupMoves, type GroupMove, type HostGroup } from "../../../lib/tactics/live-groups.ts";
 import { useGroup } from "./group-store.ts";
@@ -31,6 +33,7 @@ export function useHostGroups(client: SupabaseClient) {
           const move = payload as GroupMove;
           change(group => ({ ...group, moves: mergeGroupMoves(group.moves, move.frameIndex, move.moves) }));
         });
+        channel.on("broadcast", { event: "group-edit" }, ({ payload }) => change(group => ({ ...group, edits: mergeGroupEdits(group.edits, payload as FrameEdit) })));
         channel.on("broadcast", { event: "group-stroke" }, ({ payload }) => change(group => ({ ...group, strokes: mergeStrokes(group.strokes, [payload as Stroke]) })));
         channel.on("broadcast", { event: "group-chat" }, ({ payload }) => change(group => ({ ...group, messages: mergeMessages(group.messages, [payload as ChatMessage]) })));
         channel.subscribe();

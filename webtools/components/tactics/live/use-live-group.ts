@@ -2,7 +2,8 @@
 
 // A participant in a group listens to the group's channel: what the others
 // in the group move shows on the group's copy, on the way and where dropped,
-// and what they draw and write in the group's chat comes in.
+// and what they place, change, remove, draw and write in the group's chat
+// comes in. Their changes count as synced, so they are not sent back.
 // Once the channel is open the group is read again, so moves made before it
 // opened are not missed.
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
@@ -11,9 +12,10 @@ import { mergeMessages, type ChatMessage } from "../../../lib/tactics/live-chat.
 import { mergeStrokes, type Stroke } from "../../../lib/tactics/live-draw.ts";
 import { groupTopic, mergeGroupMoves } from "../../../lib/tactics/live-groups.ts";
 import { applyMoves } from "../../../lib/tactics/live.ts";
-import { useEditor } from "../store.ts";
+import { mergeGroupEdits, type FrameEdit } from "../../../lib/tactics/live-group-edits.ts";
+import type { ProjectDocument } from "../../../lib/tactics/model.ts";
 import { useChat } from "./chat-store.ts";
-import { displayedGroup, enterGroup, useGroup } from "./group-store.ts";
+import { applyRemote, displayedGroup, editBoard, enterGroup, useGroup } from "./group-store.ts";
 import type { GroupMove, LiveGroup } from "../../../lib/tactics/live-groups.ts";
 
 export function useLiveGroup(client: SupabaseClient, sessionId: string) {
@@ -33,8 +35,16 @@ export function useLiveGroup(client: SupabaseClient, sessionId: string) {
         if (move.dropped) useGroup.getState().set({ group: { ...group, moves: mergeGroupMoves(group.moves, move.frameIndex, move.moves) } });
         // This participant's own move is still under their finger; another group shown to everyone is on the board meanwhile.
         if (move.by === useChat.getState().selfId || displayedGroup(useGroup.getState())?.id !== groupId) return;
-        const { document } = useEditor.getState();
-        if (document) useEditor.setState({ document: applyMoves(document, move) });
+        applyRemote(board => applyMoves({ boards: [board] } as ProjectDocument, move).boards[0]);
+      });
+      channel.on("broadcast", { event: "group-edit" }, ({ payload }) => {
+        const edit = payload as FrameEdit & { by: string };
+        const { group } = useGroup.getState();
+        if (!group || group.id !== groupId) return;
+        useGroup.getState().set({ group: { ...group, edits: mergeGroupEdits(group.edits, edit) } });
+        // One's own change is on the board already.
+        if (edit.by === useChat.getState().selfId || displayedGroup(useGroup.getState())?.id !== groupId) return;
+        applyRemote(editBoard(edit));
       });
       channel.on("broadcast", { event: "group-stroke" }, ({ payload }) => {
         const { group } = useGroup.getState();

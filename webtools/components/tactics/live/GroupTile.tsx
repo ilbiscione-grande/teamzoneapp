@@ -21,7 +21,7 @@ export function GroupTile({ group, groups, actions }: { group: HostGroup; groups
   return (
     <li className="tb-live-group-tile" data-shown={group.shown}>
       <button type="button" className="tb-live-group-picture" onClick={() => actions.watch(group.id)} aria-label={t("Följ grupp {number}", { number: group.number })}>
-        <ProjectThumb preview={groupPreview(group)} strokes={group.strokes} />
+        <ProjectThumb preview={groupPreview(group)} detail strokes={group.strokes} />
       </button>
       <div className="tb-row">
         <strong>{t("Grupp {number}", { number: group.number })}</strong>
