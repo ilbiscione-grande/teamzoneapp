@@ -157,3 +157,8 @@ i releasekvittot.
 
 Detaljer, säkerhetskontrollens omfattning och historiska källor finns i
 [rapporten 25 oktober](../evidence/app_status_review_2026-10-25.md).
+
+## Planerade förbättringar
+
+- [Göra ett befintligt event till en serie](event-to-series.md) – planerad
+  2026-11-17, inte byggd.
