@@ -1,6 +1,6 @@
 # Tacticsboard: grupparbete i livelektionen – plan
 
-**Status: alla fyra stegen byggda 2026-11-17 och testade i webbläsaren mot testdatabasen. Steg 1–3 är i produktion. Steg 4 (`20270404090000_tactics_live_group_edits`) är bara kört i testdatabasen.**
+**Status: alla fyra stegen byggda 2026-11-17, testade i webbläsaren mot testdatabasen och i produktion (migreringarna körda i båda databaserna, deployade till webtools.teamzoneapp.se).**
 
 Under en livelektion delar läraren in deltagarna i grupper. Varje grupp får en egen kopia av tavlan och ändrar den tillsammans, som en sandlåda. När läraren tar ordet igen går alla tillbaka till lärarens vy och sandlådorna kastas. Det passar särskilt ledarutbildningar, som är det långsiktiga målet med livelektionerna.
 
