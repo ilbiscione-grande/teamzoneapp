@@ -7,7 +7,7 @@
 import { activeBoard, isBetween, useEditor, NONE } from "../store.ts";
 import { useDraw } from "./draw-store.ts";
 import { useChat } from "./chat-store.ts";
-import { useGroup } from "./group-store.ts";
+import { displayedGroup, useGroup } from "./group-store.ts";
 import { latestQuestion, useQuestions } from "./question-store.ts";
 import { useT } from "../../language";
 
@@ -23,8 +23,20 @@ export function LiveWhere({ hasFloor }: { hasFloor: boolean }) {
   const question = useQuestions(latestQuestion);
   const questionError = useQuestions(store => store.error);
   const group = useGroup(store => store.group);
+  const watched = useGroup(store => displayedGroup(store) !== store.group ? store.shown : null);
   const selfId = useChat(store => store.selfId);
   if (!board) return null;
+  if (group && watched) {
+    return (
+      <div className="tb-live-where" aria-live="polite">
+        <p className="tb-live-floor tb-live-group">
+          <strong>{t("Grupp {number} visas för alla", { number: watched.number })}</strong>{" "}
+          {t("Du ser gruppens kopia. Du kommer tillbaka till din egen grupp när läraren slutar visa den.")}
+        </p>
+        <strong>{board.name || t("Tavla")}</strong>
+      </div>
+    );
+  }
   if (group) {
     const others = group.members.filter(member => member.profile_id !== selfId).map(member => member.name);
     return (

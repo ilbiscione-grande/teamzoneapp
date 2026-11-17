@@ -1,6 +1,6 @@
 # Tacticsboard: grupparbete i livelektionen – plan
 
-**Status: steg 1 byggt 2026-11-17 och testat i webbläsaren mot testdatabasen. Migreringen `20270401090000_tactics_live_groups` är körd i testdatabasen, inte i produktion, och inget är deployat. Steg 2–4 återstår.**
+**Status: steg 1 och 2 byggda 2026-11-17 och testade i webbläsaren mot testdatabasen. Migreringarna `20270401090000_tactics_live_groups` och `20270402090000_tactics_live_group_overview` är körda i testdatabasen, inte i produktion, och inget är deployat. Steg 3–4 återstår.**
 
 Under en livelektion delar läraren in deltagarna i grupper. Varje grupp får en egen kopia av tavlan och ändrar den tillsammans, som en sandlåda. När läraren tar ordet igen går alla tillbaka till lärarens vy och sandlådorna kastas. Det passar särskilt ledarutbildningar, som är det långsiktiga målet med livelektionerna.
 
@@ -89,6 +89,12 @@ Typiskt är det 3–6 grupper med 2–4 personer var. Rörelser bromsas som i da
 
    Sandlådan kastas när grupparbetet avslutas.
 2. **Lärarens översikt.** Rutnätet med grupperna, *Gå in i grupp*, *Visa grupp för alla* och att flytta deltagare mellan grupper.
+
+   Så blev det byggt:
+   - Översikten visar en liten bild per grupp som uppdateras live. Läraren lyssnar på alla gruppkanaler.
+   - *Gå in i grupp* blev *Följ*: gruppens kopia stor, med nummer, medlemmar och *Visa för alla*. Läraren kan bara titta där, inte flytta. Lärarens tavla är projektet och sparas automatiskt, så den kan inte bära en grupps kopia. Att hjälpa till i en grupp kräver en egen tavla för läraren, utanför projektet, och hör till steg 3 eller 4.
+   - *Visa för alla* sparas i `tactics_live_sessions.shown_group`. Den visade gruppens flyttar går även ut på lektionens kanal som `shown-move`. Den visade gruppen fortsätter arbeta, och de andra tittar. När läraren slutar visa kommer alla tillbaka till sin egen grupp.
+   - Att flytta en deltagare sänder `group-assigned`. Deltagaren byter då kopia och kanal direkt.
 3. **Mer i grupperna.** Ritning och chatt inom gruppen, nedräkning och *Spara som ny tavla*.
 4. **Senare, om det behövs:** full redigering i grupperna, alltså att lägga till och ta bort spelare, pilar och zoner. Det kräver en enklare redigerare för deltagarna och att ändringarna skickas som ändringar av tavlan, inte bara som rörelser. Det är det största steget och tas bara om flytt och ritning inte räcker.
 

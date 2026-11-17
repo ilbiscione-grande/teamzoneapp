@@ -13,7 +13,8 @@ export type BoardPreview = { view: Board["view"] | null; teams: Partial<Board["t
 const BALL = 1.6;
 const ball = ballPattern(BALL);
 
-export function ProjectThumb({ preview }: { preview: BoardPreview | null | undefined }) {
+/** labels: the players' numbers too, for a picture large enough to read them (a live lesson's group followed by the host). */
+export function ProjectThumb({ preview, labels = false }: { preview: BoardPreview | null | undefined; labels?: boolean }) {
   const teams = { home: { ...teamColors.home, ...preview?.teams?.home }, away: { ...teamColors.away, ...preview?.teams?.away } };
   const board = { view: preview?.view ?? "full", teams, frames: [{ objects: preview?.objects ?? [] }] } as unknown as Board;
   const { lines, dots, aspect } = previewOf(board);
@@ -41,7 +42,10 @@ export function ProjectThumb({ preview }: { preview: BoardPreview | null | undef
           <circle r={BALL} fill="none" stroke="#111827" strokeWidth={0.25} />
         </g>
       ) : (
-        <circle key={`d${index}`} cx={dot.left * width} cy={dot.top * height} r={2.2} fill={dot.fill} stroke="#ffffff" strokeWidth={0.4} />
+        <g key={`d${index}`}>
+          <circle cx={dot.left * width} cy={dot.top * height} r={2.2} fill={dot.fill} stroke="#ffffff" strokeWidth={0.4} />
+          {labels && dot.label && <text x={dot.left * width} y={dot.top * height} dy="0.35em" textAnchor="middle" fontSize={2.2} fontWeight={700} fill={dot.ink}>{dot.label}</text>}
+        </g>
       ))}
     </svg>
   );

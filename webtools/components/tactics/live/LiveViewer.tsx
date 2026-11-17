@@ -24,7 +24,7 @@ import { LiveAnswers } from "./LiveAnswers.tsx";
 import { useQuestions } from "./question-store.ts";
 import { LiveDrawButtons, LiveWhere } from "./LiveWhere.tsx";
 import { useFloorMoves } from "./use-floor.ts";
-import { useGroup } from "./group-store.ts";
+import { useGroup, worksOnOwn } from "./group-store.ts";
 import { useLiveGroup } from "./use-live-group.ts";
 import { LiveBadge } from "./LiveBadge.tsx";
 import { useLive } from "./live-store.ts";
@@ -53,7 +53,7 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
     useChat.getState().set({ messages: [], unread: 0, chatMode: joined.chat_mode, hands: joined.hands, muted: joined.muted });
     useQuestions.getState().set({ questions: [], error: "" });
     useDraw.getState().set({ strokes: [], own: [], pen: false, error: "", drawMode: joined.draw_mode, floorHolder: joined.floor_holder, floorName: joined.floor_name });
-    useGroup.getState().set({ group: null, hostBoard: null, pendingBoards: {}, pendingView: null });
+    useGroup.getState().set({ group: null, shown: null, hostBoard: null, pendingBoards: {}, pendingView: null });
     setAside(hasBoardText(useEditor.getState()) ? "text" : null);
     setReady(true);
   }, [joined]);
@@ -69,7 +69,10 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
   const hasFloor = useDraw(store => !!store.floorHolder && store.floorHolder === selfId);
   const groupNumber = useGroup(store => store.group?.number ?? null);
   const grouped = groupNumber !== null;
-  useFloorMoves(client, joined.id, grouped ? "group" : hasFloor ? "floor" : null);
+  // While the host shows another group to everyone, that group's copy is only watched.
+  const ownCopy = useGroup(worksOnOwn);
+  const shownNumber = useGroup(store => grouped && !ownCopy ? store.shown?.number ?? null : null);
+  useFloorMoves(client, joined.id, grouped ? (ownCopy ? "group" : null) : hasFloor ? "floor" : null);
   useLiveGroup(client, joined.id);
 
   if (state === "ended" || state === "removed" || state === "failed") {
@@ -93,7 +96,7 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
           <span className="tb-spacer" />
           {/* On a phone the row scrolls sideways rather than lose a button. */}
           <div className="tb-live-actions">
-            <span className="tb-live-status" data-host={hostHere} data-group={grouped}>{state === "connecting" ? t("Ansluter…") : grouped ? t("Grupp {number}", { number: groupNumber }) : hostHere ? t("Följer läraren") : t("Väntar på läraren")}</span>
+            <span className="tb-live-status" data-host={hostHere} data-group={grouped}>{state === "connecting" ? t("Ansluter…") : shownNumber !== null ? t("Grupp {number} visas", { number: shownNumber }) : grouped ? t("Grupp {number}", { number: groupNumber }) : hostHere ? t("Följer läraren") : t("Väntar på läraren")}</span>
             {handsAllowed && state === "following" && (
               <button type="button" className="tb-present-toggle" aria-pressed={!!hand} onClick={() => setHand(!hand)} title={hand ? t("Sänk handen") : t("Räck upp handen")}>✋</button>
             )}
@@ -109,7 +112,7 @@ export function LiveViewer({ client, joined, guest }: { client: SupabaseClient; 
         <div className="tb-center">
           <ErrorBoundary label={t("Tavlan")}>
             {/* In a group, the class's drawings, answers and the host's pointer are not on the group's copy. */}
-            <BoardStage editable={hasFloor || grouped} moveOnly
+            <BoardStage editable={grouped ? ownCopy : hasFloor} moveOnly
               extra={grouped ? null : <><LiveStrokes pen={selfId ? { client, sessionId: joined.id, selfId } : undefined} /><LiveAnswers answering={{ client }} /><Laser /></>} />
           </ErrorBoundary>
           <LiveWhere hasFloor={hasFloor} />

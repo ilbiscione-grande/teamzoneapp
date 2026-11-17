@@ -85,7 +85,15 @@
 
 /* Group work: the host's groups, and a participant's group under the board. */
 .tb-live-groups { display: grid; gap: 8px; }
-.tb-live-group-list { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 4px; font-size: .88rem; }
-.tb-live-group-list span { color: var(--wt-muted); }
+.tb-live-group-list { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; font-size: .88rem; }
+.tb-live-group-tile { display: grid; gap: 6px; padding: 6px; border: 1px solid var(--wt-line, rgba(0, 0, 0, .12)); border-radius: 6px; }
+.tb-live-group-tile[data-shown="true"] { border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; }
+.tb-live-group-picture { display: block; padding: 0; border: 0; background: none; cursor: pointer; }
+.tb-live-group-tile .tb-thumb, .tb-live-group-watch .tb-thumb { display: block; width: 100%; height: auto; border-radius: 4px; }
+.tb-live-group-members { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.tb-live-group-members li { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.tb-live-group-members select { font-size: .8rem; max-width: 50%; }
+.tb-live-group-shown { margin-left: 8px; padding: 1px 6px; border-radius: 999px; background: #dbeafe; color: #1e40af; font-size: .75rem; font-weight: 600; vertical-align: middle; }
+.tb-modal-card.tb-live-group-watch { width: min(900px, 100%); }
 .tb-live-status[data-group="true"] { background: rgba(59, 130, 246, .25); color: #dbeafe; }
 .tb-live-group strong { color: #bfdbfe; }

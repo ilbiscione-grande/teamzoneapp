@@ -10,9 +10,8 @@ import { groupTopic, mergeGroupMoves } from "../../../lib/tactics/live-groups.ts
 import { applyMoves } from "../../../lib/tactics/live.ts";
 import { useEditor } from "../store.ts";
 import { useChat } from "./chat-store.ts";
-import type { FloorMove } from "./draw-store.ts";
-import { enterGroup, useGroup } from "./group-store.ts";
-import type { LiveGroup } from "../../../lib/tactics/live-groups.ts";
+import { displayedGroup, enterGroup, useGroup } from "./group-store.ts";
+import type { GroupMove, LiveGroup } from "../../../lib/tactics/live-groups.ts";
 
 export function useLiveGroup(client: SupabaseClient, sessionId: string) {
   const groupId = useGroup(store => store.group?.id ?? null);
@@ -25,12 +24,12 @@ export function useLiveGroup(client: SupabaseClient, sessionId: string) {
       if (disposed) return;
       channel = client.channel(groupTopic(groupId), { config: { private: true } });
       channel.on("broadcast", { event: "group-move" }, ({ payload }) => {
-        const move = payload as FloorMove;
+        const move = payload as GroupMove;
         const { group } = useGroup.getState();
         if (!group || group.id !== groupId) return;
         if (move.dropped) useGroup.getState().set({ group: { ...group, moves: mergeGroupMoves(group.moves, move.frameIndex, move.moves) } });
-        // This participant's own move is still under their finger.
-        if (move.by === useChat.getState().selfId) return;
+        // This participant's own move is still under their finger; another group shown to everyone is on the board meanwhile.
+        if (move.by === useChat.getState().selfId || displayedGroup(useGroup.getState())?.id !== groupId) return;
         const { document } = useEditor.getState();
         if (document) useEditor.setState({ document: applyMoves(document, move) });
       });

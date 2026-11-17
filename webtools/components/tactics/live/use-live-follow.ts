@@ -17,7 +17,7 @@ import type { Board, Point, ProjectDocument } from "../../../lib/tactics/model.t
 import { useEditor } from "../store.ts";
 import { listenChat, useChat } from "./chat-store.ts";
 import { listenDraw, useDraw } from "./draw-store.ts";
-import { inGroup, keepBoard, listenGroups, loadGroup, useGroup } from "./group-store.ts";
+import { inGroup, keepBoard, listenGroups, loadGroups, useGroup } from "./group-store.ts";
 import { listenQuestions, loadQuestions } from "./question-store.ts";
 import { useLive } from "./live-store.ts";
 
@@ -94,7 +94,7 @@ export function useLiveFollow(client: SupabaseClient, sessionId: string, me: Liv
           useChat.getState().add((data as ChatMessage[] | null) ?? []);
           useDraw.getState().addStrokes((strokes as Stroke[] | null) ?? []);
           void loadQuestions(client, sessionId);
-          void loadGroup(client, sessionId, applyView);
+          void loadGroups(client, sessionId, applyView);
           if (!useChat.getState().open) useChat.getState().set({ unread: 0 });
         }
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {

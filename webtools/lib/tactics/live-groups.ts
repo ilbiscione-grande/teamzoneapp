@@ -13,8 +13,14 @@ export type GroupMember = { profile_id: string; name: string };
 /** A group as the host lists it. */
 export type LiveGroupSummary = { id: string; number: number; board_id: string; frame_index: number; members: GroupMember[] };
 
-/** A participant's own group, with its board and the moves so far. */
+/** A group with its board and the moves so far: a participant's own, the one shown to everyone, or one in the host's overview. */
 export type LiveGroup = LiveGroupSummary & { board: Board; moves: GroupMoves };
+
+/** A group in the host's overview: whether it is shown to everyone. */
+export type HostGroup = LiveGroup & { shown: boolean };
+
+/** A move in a group, on the group's channel, and on the lesson's while the group is shown. */
+export type GroupMove = { groupId: string; boardId: string; frameIndex: number; moves: Record<string, Point>; dropped: boolean; by: string };
 
 export const groupTopic = (groupId: string) => `tactics-live-group:${groupId}`;
 
@@ -45,9 +51,16 @@ export function mergeGroupMoves(moves: GroupMoves, frameIndex: number, incoming:
   return { ...moves, [key]: { ...moves[key], ...incoming } };
 }
 
+/** What a small picture of the group's copy needs: the view, the teams and the objects on the group's frame as they stand. */
+export function groupPreview(group: LiveGroup): { view: Board["view"]; teams: Board["teams"]; objects: Board["frames"][number]["objects"] } {
+  const board = groupBoard(group.board, group.moves);
+  return { view: board.view, teams: board.teams, objects: board.frames[group.frame_index]?.objects ?? [] };
+}
+
 export function groupError(message: string): string {
   if (message.includes("invalid_group_count")) return "Välj mellan 2 och 6 grupper.";
   if (message.includes("invalid_board")) return "Tavlan kunde inte skickas till grupperna.";
+  if (message.includes("invalid_group") || message.includes("invalid_participant")) return "Gruppen eller deltagaren finns inte längre.";
   if (message.includes("no_group")) return "Du är inte med i någon grupp längre.";
   return "Grupparbetet kunde inte ändras.";
 }
