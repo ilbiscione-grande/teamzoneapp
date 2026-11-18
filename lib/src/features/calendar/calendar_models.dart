@@ -857,6 +857,21 @@ DateTime calendarAddDays(DateTime date, int days) => DateTime(
   date.microsecond,
 );
 
+/// Whole calendar days from [from] to [to], ignoring the clock time. Counted
+/// in UTC so a summer-time change cannot make a day 23 hours short.
+int calendarDaysBetween(DateTime from, DateTime to) => DateTime.utc(
+  to.year,
+  to.month,
+  to.day,
+).difference(DateTime.utc(from.year, from.month, from.day)).inDays;
+
+/// The last day an all-day event covers. Its end is stored as midnight after
+/// that day, so a camp through Sunday ends at 00:00 on Monday.
+DateTime calendarAllDayLastDay(DateTime end) {
+  final day = DateTime(end.year, end.month, end.day);
+  return end.isAtSameMomentAs(day) ? calendarAddDays(day, -1) : day;
+}
+
 /// ISO-8601 week number, counted in UTC calendar days: local midnights
 /// across the end of summer time are 23 hours short of whole days.
 int calendarIsoWeek(DateTime date) {

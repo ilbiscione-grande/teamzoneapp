@@ -254,7 +254,7 @@ class _CalendarAgendaRow extends StatelessWidget {
     final match = event.type == 'match';
     final cancelled = event.state == 'cancelled';
     final time = event.allDay
-        ? strings.feature('Heldag')
+        ? _eventAllDayLabel(context, start, end)
         : _eventTimeRange(context, start, end);
     final details = [
       time,

@@ -193,7 +193,7 @@ class _TeamOverviewEventCard extends StatelessWidget {
         event.scoreUs != null &&
         event.scoreOpponent != null;
     final time = event.allDay
-        ? strings.feature('Heldag')
+        ? _eventAllDayLabel(context, start, event.endsAt.toLocal())
         : _eventTimeRange(context, start, event.endsAt.toLocal());
     final details = [
       if (hasResult) strings.domainValue(event.type) else time,

@@ -985,9 +985,10 @@ class _EventDetailsBodyState extends State<_EventDetailsBody>
     final end = event.endsAt.toLocal();
     final sameDay = DateUtils.isSameDay(start, end);
     if (event.allDay) {
-      return sameDay
-          ? AppStrings.of(context).feature('Heldag')
-          : '– ${localizations.formatFullDate(end)}';
+      final last = calendarAllDayLastDay(end);
+      return last.isAfter(DateUtils.dateOnly(start))
+          ? '– ${localizations.formatFullDate(last)}'
+          : AppStrings.of(context).feature('Heldag');
     }
     final startTime = localizations.formatTimeOfDay(
       TimeOfDay.fromDateTime(start),

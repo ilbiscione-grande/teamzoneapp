@@ -1124,6 +1124,17 @@ String _eventTimeRange(BuildContext context, DateTime start, DateTime end) {
       '${localizations.formatShortMonthDay(end)} $to';
 }
 
+/// "Heldag" for one day, otherwise the first and last day it covers.
+String _eventAllDayLabel(BuildContext context, DateTime start, DateTime end) {
+  final last = calendarAllDayLastDay(end);
+  if (!last.isAfter(DateUtils.dateOnly(start))) {
+    return AppStrings.of(context).feature('Heldag');
+  }
+  final localizations = MaterialLocalizations.of(context);
+  return '${localizations.formatShortMonthDay(start)} – '
+      '${localizations.formatShortMonthDay(last)}';
+}
+
 class _CalendarEventTile extends StatelessWidget {
   const _CalendarEventTile({required this.event, required this.onTap});
   final CalendarEventSummary event;
@@ -1134,7 +1145,7 @@ class _CalendarEventTile extends StatelessWidget {
     final start = event.startsAt.toLocal();
     final end = event.endsAt.toLocal();
     final time = event.allDay
-        ? strings.feature('Heldag')
+        ? _eventAllDayLabel(context, start, end)
         : _eventTimeRange(context, start, end);
     final cancelled = event.state == 'cancelled';
     return ColoredBox(
@@ -1390,12 +1401,20 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
   /// Training and meetings last 90 minutes, activities 120 and matches as
   /// long as the team's match format says (11v11: 120). The end follows the
   /// start (and the type) until the end is changed by hand; a new start
-  /// time resets it to this default again.
+  /// time resets it to this default again, unless the event ends on a later
+  /// day.
   Duration _defaultDuration(String type) => switch (type) {
     'training' || 'meeting' => const Duration(minutes: 90),
     'match' => Duration(minutes: _matchFormat.defaultMatchMinutes),
     _ => const Duration(minutes: 120),
   };
+
+  bool get _endsOnStartDay => DateUtils.isSameDay(_startsAt, _endsAt);
+
+  /// The day shown as "Till". An all-day event's stored end is the midnight
+  /// after it.
+  DateTime get _lastDay =>
+      _allDay ? calendarAllDayLastDay(_endsAt) : DateUtils.dateOnly(_endsAt);
 
   /// 18:00 on the day selected in the calendar, or tomorrow without one.
   static DateTime _defaultStart(DateTime? day) {
@@ -1532,7 +1551,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
       _periodCount = format.periodMinutes.length;
       _periodLength.text = '${format.periodMinutes.first}';
     }
-    if (widget.initial == null && !_allDay) {
+    if (widget.initial == null && !_allDay && _endsOnStartDay) {
       _endsAt = _startsAt.add(_defaultDuration('match'));
     }
     _matchSettingsChanged = true;
@@ -1724,6 +1743,8 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     return null;
   }
 
+  /// A new first day moves the whole event: the number of days and both
+  /// clock times stay.
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -1733,15 +1754,9 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     );
     if (picked == null || !mounted) return;
     setState(() {
-      final duration = _endsAt.difference(_startsAt);
-      _startsAt = DateTime(
-        picked.year,
-        picked.month,
-        picked.day,
-        _startsAt.hour,
-        _startsAt.minute,
-      );
-      _endsAt = _startsAt.add(duration);
+      final moved = calendarDaysBetween(_startsAt, picked);
+      _startsAt = calendarAddDays(_startsAt, moved);
+      _endsAt = calendarAddDays(_endsAt, moved);
       if (_seriesEndsOn.isBefore(DateUtils.dateOnly(_startsAt))) {
         _seriesEndsOn = DateUtils.dateOnly(
           _startsAt.add(const Duration(days: 28)),
@@ -1751,26 +1766,40 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     });
   }
 
+  /// The last day of the event. A timed event keeps its end time, unless
+  /// that would put the end before the start on the same day.
   Future<void> _pickEndDate() async {
     final first = DateUtils.dateOnly(_startsAt);
     final picked = await showDatePicker(
       context: context,
-      initialDate: _endsAt.isBefore(first) ? first : _endsAt,
+      initialDate: _lastDay.isBefore(first) ? first : _lastDay,
       firstDate: first,
-      lastDate: first.add(const Duration(days: 3650)),
+      lastDate: calendarAddDays(first, 3650),
     );
     if (picked == null || !mounted) return;
     setState(() {
-      _endsAt = DateTime(picked.year, picked.month, picked.day);
-      if (!_endsAt.isAfter(_startsAt)) {
-        _endsAt = _startsAt.add(const Duration(days: 1));
+      if (_allDay) {
+        _endsAt = calendarAddDays(DateUtils.dateOnly(picked), 1);
+      } else {
+        _endsAt = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+          _endsAt.hour,
+          _endsAt.minute,
+        );
+        if (!_endsAt.isAfter(_startsAt)) {
+          _endsAt = _startsAt.add(_defaultDuration(_type));
+        }
       }
       _draft.markDirty();
     });
   }
 
-  /// Start keeps the length; end on the same day, or the next when it is
-  /// earlier than the start (an evening event past midnight).
+  /// A new start resets a one-day event to its default length and leaves the
+  /// end of a longer one. A new end stays on the end date, or moves to the
+  /// next day when it would be before the start (an evening event past
+  /// midnight).
   Future<void> _pickTime({required bool start}) async {
     final picked = await showTimePicker(
       context: context,
@@ -1779,6 +1808,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     if (picked == null || !mounted) return;
     setState(() {
       if (start) {
+        final oneDay = _endsOnStartDay;
         _startsAt = DateTime(
           _startsAt.year,
           _startsAt.month,
@@ -1786,16 +1816,18 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
           picked.hour,
           picked.minute,
         );
-        _endsAt = _startsAt.add(_defaultDuration(_type));
+        if (oneDay || !_endsAt.isAfter(_startsAt)) {
+          _endsAt = _startsAt.add(_defaultDuration(_type));
+        }
       } else {
         var end = DateTime(
-          _startsAt.year,
-          _startsAt.month,
-          _startsAt.day,
+          _endsAt.year,
+          _endsAt.month,
+          _endsAt.day,
           picked.hour,
           picked.minute,
         );
-        if (!end.isAfter(_startsAt)) end = end.add(const Duration(days: 1));
+        if (!end.isAfter(_startsAt)) end = calendarAddDays(end, 1);
         _endsAt = end;
       }
       _draft.markDirty();
@@ -1863,13 +1895,12 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     );
   }
 
-  /// Two rows: date and all-day, then start, end and assembly (or the end
-  /// date for an all-day event).
+  /// First day and all-day, then the last day and, unless the event is all
+  /// day, start, end and assembly.
   Widget _whenFields(AppStrings strings) {
     final localizations = MaterialLocalizations.of(context);
     String time(DateTime value) =>
         TimeOfDay.fromDateTime(value).format(context);
-    final nextDay = !DateUtils.isSameDay(_startsAt, _endsAt);
     final assembly = int.tryParse(_assembly.text);
     final assemblyAt = assembly == null
         ? null
@@ -1879,7 +1910,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
         Expanded(
           child: _pickerField(
             key: const ValueKey('event-date'),
-            label: strings.feature(_allDay ? 'Från' : 'Datum'),
+            label: strings.feature('Från'),
             value: localizations.formatMediumDate(_startsAt),
             icon: Icons.calendar_today_outlined,
             onTap: _pickDate,
@@ -1894,71 +1925,80 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
         ),
       ],
     );
-    final Widget secondRow = _allDay
-        ? _pickerField(
-            key: const ValueKey('event-end-date'),
-            label: strings.feature('Till'),
-            value: localizations.formatMediumDate(_endsAt),
-            icon: Icons.calendar_today_outlined,
-            onTap: _pickEndDate,
-          )
-        : Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _pickerField(
-                  key: const ValueKey('event-start-time'),
-                  label: strings.feature('Start'),
-                  value: time(_startsAt),
-                  onTap: () => _pickTime(start: true),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _pickerField(
-                  key: const ValueKey('event-end-time'),
-                  label: strings.feature('Slut'),
-                  value: nextDay ? '${time(_endsAt)} (+1)' : time(_endsAt),
-                  onTap: () => _pickTime(start: false),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextFormField(
-                  key: const ValueKey('event-assembly'),
-                  controller: _assembly,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: strings.feature('Samling'),
-                    border: const OutlineInputBorder(),
-                    isDense: true,
-                    suffixText: 'min',
-                    helperText: assemblyAt == null
-                        ? null
-                        : '${strings.feature('kl.')} ${time(assemblyAt)}',
-                  ),
-                  onChanged: (_) => setState(() {}),
-                ),
-              ),
-            ],
-          );
+    final endDate = _pickerField(
+      key: const ValueKey('event-end-date'),
+      label: strings.feature('Till'),
+      value: localizations.formatMediumDate(_lastDay),
+      icon: Icons.calendar_today_outlined,
+      onTap: _pickEndDate,
+    );
+    final times = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: _pickerField(
+            key: const ValueKey('event-start-time'),
+            label: strings.feature('Start'),
+            value: time(_startsAt),
+            onTap: () => _pickTime(start: true),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _pickerField(
+            key: const ValueKey('event-end-time'),
+            label: strings.feature('Slut'),
+            value: time(_endsAt),
+            onTap: () => _pickTime(start: false),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: TextFormField(
+            key: const ValueKey('event-assembly'),
+            controller: _assembly,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: strings.feature('Samling'),
+              border: const OutlineInputBorder(),
+              isDense: true,
+              suffixText: 'min',
+              helperText: assemblyAt == null
+                  ? null
+                  : '${strings.feature('kl.')} ${time(assemblyAt)}',
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+        ),
+      ],
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [firstRow, const SizedBox(height: 12), secondRow],
+      children: [
+        firstRow,
+        const SizedBox(height: 12),
+        endDate,
+        if (!_allDay) ...[const SizedBox(height: 12), times],
+      ],
     );
   }
 
+  /// Switching keeps the days the event covers.
   void _setAllDay(bool value) {
     _allDay = value;
+    // A timed end at midnight also belongs to the day before.
+    final last = calendarAllDayLastDay(_endsAt);
     if (value) {
-      _startsAt = DateTime(_startsAt.year, _startsAt.month, _startsAt.day);
-      _endsAt = DateTime(_endsAt.year, _endsAt.month, _endsAt.day);
-      if (!_endsAt.isAfter(_startsAt)) {
-        _endsAt = _startsAt.add(const Duration(days: 1));
-      }
+      _startsAt = DateUtils.dateOnly(_startsAt);
+      _endsAt = calendarAddDays(last, 1);
     } else {
       _startsAt = DateTime(_startsAt.year, _startsAt.month, _startsAt.day, 18);
-      _endsAt = _startsAt.add(_defaultDuration(_type));
+      _endsAt = DateTime(
+        last.year,
+        last.month,
+        last.day,
+        18,
+      ).add(_defaultDuration(_type));
     }
     _draft.markDirty();
   }
@@ -2050,7 +2090,9 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
                       }
                       _type = value;
                       // A new event's end follows the type's default length.
-                      if (widget.initial == null && !_allDay) {
+                      if (widget.initial == null &&
+                          !_allDay &&
+                          _endsOnStartDay) {
                         _endsAt = _startsAt.add(_defaultDuration(value));
                       }
                       _error = null;

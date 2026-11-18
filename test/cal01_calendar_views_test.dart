@@ -217,6 +217,39 @@ void main() {
     }
   });
 
+  test('a weekend camp covers its days and no more', () {
+    // Friday to Sunday: the stored end is the midnight after Sunday.
+    final camp = _event(
+      id: 'camp',
+      startsAt: DateTime(2026, 10, 23),
+      endsAt: DateTime(2026, 10, 26),
+      allDay: true,
+    );
+    final projection = CalendarProjection(
+      events: [camp],
+      mode: CalendarViewMode.month,
+      selectedDate: DateTime(2026, 10, 1),
+    );
+    for (final day in [23, 24, 25]) {
+      expect(projection.eventsOn(DateTime(2026, 10, day)), [camp]);
+    }
+    expect(projection.eventsOn(DateTime(2026, 10, 26)), isEmpty);
+    expect(
+      calendarAllDayLastDay(DateTime(2026, 10, 26)),
+      DateTime(2026, 10, 25),
+    );
+    // A timed end stays on its own day.
+    expect(
+      calendarAllDayLastDay(DateTime(2026, 10, 25, 14)),
+      DateTime(2026, 10, 25),
+    );
+    // The end of summer time falls inside the camp.
+    expect(
+      calendarDaysBetween(DateTime(2026, 10, 23, 18), DateTime(2026, 10, 26)),
+      3,
+    );
+  });
+
   test('overnight, all-day and DST instants retain correct boundaries', () {
     final overnight = _event(
       id: 'overnight',

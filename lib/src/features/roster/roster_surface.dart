@@ -6467,7 +6467,7 @@ class _TeamEventCard extends StatelessWidget {
     final end = event.endsAt.toLocal();
     final date = localizations.formatFullDate(start);
     final time = event.allDay
-        ? strings.feature('Heldag')
+        ? _eventAllDayLabel(context, start, end)
         : '${TimeOfDay.fromDateTime(start).format(context)}–'
               '${TimeOfDay.fromDateTime(end).format(context)}';
     final hasResult =
