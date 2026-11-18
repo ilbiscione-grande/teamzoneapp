@@ -12,6 +12,8 @@ import { host, liveDb, member } from './tactics-live-db.mjs';
 const dir = new URL('../migrations/', import.meta.url);
 const gate = readFileSync(new URL('20270206090000_tacticsboard_write_gate.sql', dir), 'utf8');
 const gated = [...gate.matchAll(/create or replace function api\.([a-z_]+)\(/g)].map(m => m[1]);
+// Functions that came later and got the lock in their own migration.
+gated.push('save_tactics_board_pictures');
 assert.ok(gated.length >= 44, `gated ${gated.length}`);
 for (const name of ['create_tactics_project', 'save_tactics_project', 'get_tactics_project', 'list_my_tactics_projects',
   'publish_tactics_item', 'start_tactics_live', 'create_tactics_share_link', 'search_tactics_shared_items']) {

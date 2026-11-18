@@ -16,7 +16,7 @@ Deno.test("only production origins unless extra ones are configured", () => {
   );
   assert(test.has("http://localhost"));
   assert(test.has("http://localhost:5000"));
-  assertEquals(test.size, 5);
+  assertEquals(test.size, production.size + 2);
   // A function may narrow the production list (invitation-preview).
   assertEquals(
     [...allowedWebOrigins(undefined, ["https://app.teamzoneapp.se"])],
