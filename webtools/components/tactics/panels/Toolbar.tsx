@@ -52,6 +52,7 @@ export const groups: { title: string; items: Item[] }[] = [
       { tool: "freehand", label: "Frihand", short: "Frihand", icon: "〰" },
       { tool: "rect", label: "Yta", short: "Yta", icon: "▭" },
       { tool: "ellipse", label: "Zon", short: "Zon", icon: "◯" },
+      { tool: "zone", label: "Egen zon: tryck ut hörnen", short: "Egen zon", icon: "⬠" },
     ],
   },
   { title: "Mät", items: [{ tool: "ruler", label: "Linjal: mät från en punkt till en annan", short: "Linjal", icon: "📏" }] },

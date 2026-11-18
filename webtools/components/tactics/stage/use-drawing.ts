@@ -15,7 +15,8 @@ export type Draft = { tool: Tool; start: Point; current: Point; path: number[] }
 
 const DRAW_TOOLS = new Set<Tool>(["arrow", "run", "dribble", "line", "freehand", "rect", "ellipse", "ruler"]);
 export const isDrawTool = (tool: Tool) => DRAW_TOOLS.has(tool);
-export const isPlaceTool = (tool: Tool) => tool !== "select" && !DRAW_TOOLS.has(tool);
+/** A zone of one's own is drawn corner by corner (use-zone-draw.ts), neither dragged nor placed at once. */
+export const isPlaceTool = (tool: Tool) => tool !== "select" && tool !== "zone" && !DRAW_TOOLS.has(tool);
 
 const base = (point: Point) => ({ id: newId(), x: point.x, y: point.y, rotation: 0, locked: false, hidden: false });
 

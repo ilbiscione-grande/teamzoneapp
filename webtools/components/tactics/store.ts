@@ -15,7 +15,7 @@ import type { Board, LeaderAccess, Point, Project, ProjectAccess, ProjectDocumen
 export type Tool =
   | "select"
   | "player-home" | "player-away" | "ball" | "cone" | "pole" | "mannequin" | "goal" | "text"
-  | "arrow" | "run" | "dribble" | "line" | "freehand" | "rect" | "ellipse"
+  | "arrow" | "run" | "dribble" | "line" | "freehand" | "rect" | "ellipse" | "zone"
   | "ruler";
 
 export type SaveState = "saved" | "dirty" | "saving" | "error" | "conflict";

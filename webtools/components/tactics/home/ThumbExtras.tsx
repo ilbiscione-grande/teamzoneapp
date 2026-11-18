@@ -30,6 +30,10 @@ export function ThumbExtras({ objects, at, metre }: { objects: TacticsObject[]; 
               ? <rect key={item.id} x={x} y={y} width={width} height={height} {...look} />
               : <ellipse key={item.id} cx={x + width / 2} cy={y + height / 2} rx={width / 2} ry={height / 2} {...look} />;
           }
+          case "zone": {
+            const points = item.points.map((value, index) => value + (index % 2 === 0 ? item.x : item.y));
+            return <polygon key={item.id} points={line(points)} stroke={item.color} strokeWidth={0.4} fill={item.color} fillOpacity={Math.min(0.5, item.fill)} strokeDasharray={item.dashed ? "1.5 1" : undefined} />;
+          }
           case "chain": {
             const points = item.players.map(id => byId.get(id)).filter(Boolean).flatMap(player => [player!.x, player!.y]);
             if (points.length < 4) return null;

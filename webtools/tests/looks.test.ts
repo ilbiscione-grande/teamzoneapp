@@ -72,3 +72,16 @@ test("the spotlight darkens round its objects, stays on the frame and lifts over
   near(at(1.5)!.amount, 0);
   assert.equal(at(2), null);
 });
+
+test("a highlight, a ring and the spotlight show while a frame stands, the first one too, and the glow fades on the way on", () => {
+  const player = createPlayer({ x: 10, y: 10 }, "home", []);
+  const lit = withEffects(player, "highlight", "ring", "spotlight");
+  const frames = [frame([lit]), frame([player])];
+  const standing = objectsAt(frames, 0)[0];
+  assert.equal(standing.glow, 0.4);
+  assert.deepEqual(standing.ring, { opacity: 1, grow: 1 });
+  assert.deepEqual(spotlightAt(frames, 0, objectsAt(frames, 0)), { amount: 1, spots: [{ x: 10, y: 10 }] });
+  near(objectsAt(frames, 0.5)[0].glow!, 0.2);
+  assert.equal(objectsAt(frames, 1)[0].glow, undefined, "gone in the next frame");
+  assert.equal(objectsAt([frame([lit])], 0)[0].glow, 0.4, "a board of one frame");
+});

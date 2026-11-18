@@ -187,6 +187,18 @@ export type ChainObject = Base & {
   rings?: boolean;
 };
 
+/** An area of one's own shape: corners placed one by one, joined and closed round. */
+export type ZoneObject = Base & {
+  type: "zone";
+  /** The corners, relative to x and y: x1, y1, x2, y2, …, at least three. */
+  points: number[];
+  color: string;
+  /** 0–1: how much the area is filled. */
+  fill: number;
+  dashed: boolean;
+  pattern?: AreaPattern;
+};
+
 export type TacticsObject =
   | PlayerObject
   | BallObject
@@ -194,6 +206,7 @@ export type TacticsObject =
   | LineObject
   | FreehandObject
   | ShapeObject
+  | ZoneObject
   | TextObject
   | ChainObject;
 

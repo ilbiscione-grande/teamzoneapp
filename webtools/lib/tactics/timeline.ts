@@ -68,6 +68,21 @@ const lerpAngle = (a: number, b: number, t: number) => {
 
 type Look = { opacity?: number; grow?: number; drawn?: number; glow?: number };
 
+/**
+ * Effects that stay while a frame is shown, not only as the board plays into
+ * it: a glow, a ring (marks.ts) and the spotlight. They can be chosen on the
+ * first frame too, and on a board of one frame.
+ */
+export const STILL_EFFECTS = new Set<Effect>(["highlight", "ring", "spotlight"]);
+
+/** How much a highlighted object glows while its frame is shown: where the effect's move ends. */
+const STEADY_GLOW = 0.4;
+
+/** A frame's objects as they stand, a highlighted one glowing. */
+function standing(objects: TacticsObject[]): Rendered[] {
+  return objects.map(item => (effectsOf(item).includes("highlight") ? { ...item, glow: STEADY_GLOW } : item));
+}
+
 /** Effects drawn along the move or on the view (marks.ts), not on the object. */
 const MARKS = new Set<Effect>(["trail", "arrow", "ring", "zoom", "spotlight"]);
 
@@ -134,7 +149,7 @@ export function blendFrames(from: Frame, to: Frame, t: number): Rendered[] {
       const control = prev.control && next.control ? lerpPoint(prev.control, next.control, eased) : next.control;
       blended = { ...blended, points, control } as LineObject;
     }
-    if (next.type === "freehand" && prev.type === "freehand" && next.points.length === prev.points.length) {
+    if ((next.type === "freehand" || next.type === "zone") && prev.type === next.type && next.points.length === prev.points.length) {
       blended = { ...blended, points: prev.points.map((value, i) => lerp(value, next.points[i], eased)) } as TacticsObject;
     }
     if ((next.type === "rect" || next.type === "ellipse") && prev.type === next.type) {
@@ -156,6 +171,11 @@ export function blendFrames(from: Frame, to: Frame, t: number): Rendered[] {
   // Gone in the next frame: fades out where it was.
   for (const prev of from.objects) {
     if (!after.has(prev.id)) result.push({ ...prev, opacity: 1 - t });
+  }
+  // A glow from the frame left fades over the move.
+  for (const [index, item] of result.entries()) {
+    const prev = before.get(item.id);
+    if (prev && effectsOf(prev).includes("highlight")) result[index] = { ...item, glow: Math.max(item.glow ?? 0, STEADY_GLOW * (1 - t)) };
   }
 
   // Balls: held by the same player in both frames, the ball rides with them;
@@ -188,6 +208,6 @@ export function objectsAt(frames: Frame[], playhead: number): Rendered[] {
   if (frames.length === 0) return [];
   const index = Math.min(frames.length - 1, Math.max(0, Math.floor(playhead)));
   const t = playhead - index;
-  const shown: Rendered[] = index >= frames.length - 1 || t <= 0 ? frames[index].objects : blendFrames(frames[index], frames[index + 1], t);
+  const shown: Rendered[] = index >= frames.length - 1 || t <= 0 ? standing(frames[index].objects) : blendFrames(frames[index], frames[index + 1], t);
   return withMarks(frames, playhead, shown);
 }

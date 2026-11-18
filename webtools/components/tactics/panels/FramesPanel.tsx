@@ -10,7 +10,7 @@ import {
 } from "../../../lib/tactics/document.ts";
 import { effectsLast, hasEffectEveryFrame, setEffectEveryFrame, setLastingEffects } from "../../../lib/tactics/every-frame.ts";
 import type { Board, Easing, Effect, TacticsObject, ZoomLevel, ZoomSpeed } from "../../../lib/tactics/model.ts";
-import { effectsOf } from "../../../lib/tactics/timeline.ts";
+import { effectsOf, STILL_EFFECTS } from "../../../lib/tactics/timeline.ts";
 import { activeObjects, useEditor } from "../store.ts";
 import { AllFrames } from "./AllFrames.tsx";
 import { FrameCarousel } from "./FrameCarousel.tsx";
@@ -57,8 +57,8 @@ export function FramesPanel({ board }: { board: Board }) {
   /** One frame to take: its number, the move's time, its effects and note. */
   const card = (index: number) => {
     const item = frames[index];
-    // The first frame has no move into it, so an effect chosen for all frames plays from the second.
-    const count = index === 0 ? 0 : item.objects.reduce((sum, object) => sum + effectsOf(object).length, 0);
+    // The first frame has no move into it: only the effects that stay while it is shown count there.
+    const count = item.objects.reduce((sum, object) => sum + effectsOf(object).filter(kind => index > 0 || STILL_EFFECTS.has(kind)).length, 0);
     return (
       <button type="button" aria-current={index === frameIndex} onClick={() => setFrame(index)}>
         <strong>Frame {index + 1}</strong>
@@ -69,7 +69,10 @@ export function FramesPanel({ board }: { board: Board }) {
 
   const before = new Set(frames[frameIndex - 1]?.objects.map(item => item.id) ?? []);
   const selected = frame.objects.filter(item => selection.includes(item.id));
-  const withEffect = frame.objects.filter(item => effectsOf(item).length > 0);
+  // The first frame has no move into it: there only the effects that stay while it is shown.
+  const first = frameIndex === 0;
+  const kinds = first ? effectKinds.filter(kind => STILL_EFFECTS.has(kind)) : effectKinds;
+  const withEffect = frame.objects.filter(item => effectsOf(item).some(kind => kinds.includes(kind)));
   /** Whether an object has an effect: here, or in every frame when that is what is being chosen. */
   const hasEffect = (item: TacticsObject, kind: Effect) => allFrames ? hasEffectEveryFrame(board, item.id, kind) : effectsOf(item).includes(kind);
   /** One effect on or off for these objects where it suits, read as they are now (quick clicks build on each other). */
@@ -122,18 +125,17 @@ export function FramesPanel({ board }: { board: Board }) {
       </label>
 
       <h3>{t("Effekter")}</h3>
-      {frameIndex === 0 ? (
-        <p className="tb-hint">{frames.length < 2 ? t("Effekter spelas när tavlan går in i en frame. Välj frame 2 eller senare, eller lägg till en ny frame.") : t("Effekter spelas när tavlan går in i en frame. Välj frame 2 eller senare.")}</p>
-      ) : (
-        <>
+      {first && <p className="tb-hint">{t("I första framen finns Lys upp, Markera och Strålkastare. De syns så länge framen visas, också på en tavla med en enda frame. Övriga effekter spelas när tavlan går in i en senare frame.")}</p>}
           {selected.length === 0 ? (
             <p className="tb-hint">{t("Markera ett eller flera objekt på planen för att ge dem en effekt i frame {number}.", { number: frameIndex + 1 })}</p>
           ) : (
             <>
-              <p className="tb-hint">{t("{what}: välj en eller flera effekter när frame {number} nås.", { what: selected.length === 1 ? objectLabel(selected[0], board, t) : t("{count} markerade", { count: selected.length }), number: frameIndex + 1 })}</p>
+              <p className="tb-hint">{first
+                ? t("{what}: välj effekter som syns i frame {number}.", { what: selected.length === 1 ? objectLabel(selected[0], board, t) : t("{count} markerade", { count: selected.length }), number: frameIndex + 1 })
+                : t("{what}: välj en eller flera effekter när frame {number} nås.", { what: selected.length === 1 ? objectLabel(selected[0], board, t) : t("{count} markerade", { count: selected.length }), number: frameIndex + 1 })}</p>
               <AllFrames />
               <div className="tb-effects">
-                {effectKinds.map(kind => {
+                {kinds.map(kind => {
                   const suited = selected.filter(item => effectSuits(kind, item));
                   const all = suited.length > 0 && suited.every(item => hasEffect(item, kind));
                   return (
@@ -157,7 +159,7 @@ export function FramesPanel({ board }: { board: Board }) {
                     <small>{before.has(item.id) ? t("finns sedan förut") : t("ny i framen")}</small>
                   </button>
                   <span className="tb-effect-toggles" role="group" aria-label={t("Effekter för {name}", { name: objectLabel(item, board, t) })}>
-                    {effectKinds.filter(kind => effectSuits(kind, item)).map(kind => {
+                    {kinds.filter(kind => effectSuits(kind, item)).map(kind => {
                       const on = hasEffect(item, kind);
                       return (
                         <button key={kind} type="button" aria-pressed={on} title={t(effects[kind].label)} aria-label={t(effects[kind].label)}
@@ -193,12 +195,12 @@ export function FramesPanel({ board }: { board: Board }) {
               ))}
             </ul>
           )}
-          <div className="tb-actions">
-            <button type="button" className="wt-button secondary small" disabled={playing} onClick={() => preview(frameIndex)}>{t("▶ Spela frame {from} → {to}", { from: frameIndex, to: frameIndex + 1 })}</button>
-          </div>
-          <p className="tb-hint">{t("Nya objekt tonar in och borttagna tonar ut av sig själva.")}</p>
-        </>
-      )}
+          {!first && <>
+            <div className="tb-actions">
+              <button type="button" className="wt-button secondary small" disabled={playing} onClick={() => preview(frameIndex)}>{t("▶ Spela frame {from} → {to}", { from: frameIndex, to: frameIndex + 1 })}</button>
+            </div>
+            <p className="tb-hint">{t("Nya objekt tonar in och borttagna tonar ut av sig själva.")}</p>
+          </>}
     </div>
   );
 }

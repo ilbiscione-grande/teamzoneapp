@@ -118,6 +118,8 @@ export const editorPanels: Record<string, string> = {
   "Markera ett eller flera objekt på planen för att ge dem en effekt i frame {number}.": "Select one or more objects on the pitch to give them an effect in frame {number}.",
   "{count} objekt": "{count} objects",
   "{what}: välj en eller flera effekter när frame {number} nås.": "{what}: choose one or more effects for when frame {number} is reached.",
+  "{what}: välj effekter som syns i frame {number}.": "{what}: choose effects shown in frame {number}.",
+  "I första framen finns Lys upp, Markera och Strålkastare. De syns så länge framen visas, också på en tavla med en enda frame. Övriga effekter spelas när tavlan går in i en senare frame.": "The first frame has Glow, Select and Spotlight. They show as long as the frame is shown, also on a board with a single frame. The other effects play as the board moves into a later frame.",
   "Effekter i framen": "Effects in the frame",
   "Effekter på {name}": "Effects on {name}",
 
@@ -216,6 +218,7 @@ export const editorPanels: Record<string, string> = {
   "Bollar": "Balls",
   "Rektangel": "Rectangle",
   "Ellips": "Ellipse",
+  "Dra i hörnen för att ändra formen.": "Drag the corners to change the shape.",
   "Linje mellan spelare": "Line between players",
   "Yta mellan spelare": "Area between players",
 

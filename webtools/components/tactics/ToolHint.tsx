@@ -23,6 +23,7 @@ const tips: Partial<Record<Tool, string>> = {
   rect: "Dra från ett hörn till det motsatta. Måttet syns medan du drar om Mått är på.",
   ellipse: "Dra från ett hörn till det motsatta. Måttet syns medan du drar om Mått är på.",
   ruler: "Dra mellan två punkter för att se avståndet i meter.",
+  zone: "Tryck ut zonens hörn ett i taget. Tryck på första hörnet, dubbeltryck eller tryck Enter för att stänga zonen. Esc tar bort hörnen.",
 };
 
 type Seen = { off?: boolean; tools: string[] };

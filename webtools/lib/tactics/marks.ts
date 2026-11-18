@@ -98,8 +98,9 @@ export function withMarks<T extends TacticsObject>(frames: Frame[], playhead: nu
     if (index > 0) {
       const left = trailOf(frames[index - 1], frames[index], item.id, 1);
       if (left) trails.push({ points: left, opacity: 1 - t });
-      if (has(frames[index], item.id, "ring")) ring = { opacity: 1 - t, grow: 1 };
     }
+    // A ring stays on its frame, the first one too.
+    if (has(frames[index], item.id, "ring")) ring = { opacity: 1 - t, grow: 1 };
     if (moving) {
       const [from, to] = [frames[index], frames[index + 1]];
       const trail = trailOf(from, to, item.id, ease(to.easing, t));
@@ -192,7 +193,7 @@ export function spotlightAt(frames: Frame[], playhead: number, shown: TacticsObj
   const index = Math.min(frames.length - 1, Math.max(0, Math.floor(playhead)));
   const t = playhead - index;
   const moving = index < frames.length - 1 && t > 0;
-  const here = index > 0 ? lit(frames[index]) : [];
+  const here = lit(frames[index]);
   const next = moving ? lit(frames[index + 1]) : [];
   const where = (ids: string[], frame: Frame) => ids.flatMap(id => {
     const item = shown.find(other => other.id === id) ?? frame.objects.find(other => other.id === id);

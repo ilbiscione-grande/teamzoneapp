@@ -83,7 +83,7 @@ export function createPlayer(point: Point, side: Side, objects: TacticsObject[],
 }
 
 /** A new object of a placeable kind at a point. */
-export function createObject(type: Exclude<ObjectType, "player" | "line" | "freehand" | "rect" | "ellipse" | "chain">, point: Point): TacticsObject {
+export function createObject(type: Exclude<ObjectType, "player" | "line" | "freehand" | "rect" | "ellipse" | "chain" | "zone">, point: Point): TacticsObject {
   if (type === "ball") return { ...base(point), type: "ball", attachedTo: null, offset: null };
   if (type === "text") return { ...base(point), type: "text", text: "Text", size: 2.2, color: "#ffffff", background: true, onPitch: true };
   const colors: Record<EquipmentKind, string> = { cone: "#f97316", pole: "#facc15", mannequin: "#1e293b", goal: "#ffffff" };
@@ -92,7 +92,7 @@ export function createObject(type: Exclude<ObjectType, "player" | "line" | "free
 
 const kindNames: Record<ObjectType, string> = {
   player: "Spelare", ball: "Boll", cone: "Kon", pole: "Pinne", mannequin: "Docka", goal: "Mål",
-  line: "Linje", freehand: "Frihand", rect: "Rektangel", ellipse: "Ellips", text: "Text", chain: "Linje mellan spelare",
+  line: "Linje", freehand: "Frihand", rect: "Rektangel", ellipse: "Ellips", zone: "Egen zon", text: "Text", chain: "Linje mellan spelare",
 };
 
 /** The object as the object list names it. */

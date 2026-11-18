@@ -15,7 +15,7 @@ import type { Point } from "../../../lib/tactics/model.ts";
 import { layered } from "../../../lib/tactics/document.ts";
 import { cameraAt, spotlightAt } from "../../../lib/tactics/marks.ts";
 import { lookOf } from "../../../lib/tactics/pitch-style.ts";
-import { objectsAt } from "../../../lib/tactics/timeline.ts";
+import { objectsAt, type Rendered } from "../../../lib/tactics/timeline.ts";
 import { ObjectNode } from "../objects/ObjectNode.tsx";
 import { activeBoard, activeObjects, isBetween, useEditor } from "../store.ts";
 import { DraftNode } from "./DraftNode.tsx";
@@ -37,6 +37,8 @@ import { tiltHolder } from "./tilt-picture.ts";
 import { useBand } from "./use-band.ts";
 import { useSwipe } from "./use-swipe.ts";
 import { isDrawTool, isPlaceTool, useDrawing } from "./use-drawing.ts";
+import { useZoneDraw } from "./use-zone-draw.ts";
+import { ZoneDraft } from "./ZoneDraft.tsx";
 import { IDENTITY, useViewport } from "./use-viewport.ts";
 import { useReveal } from "./use-reveal.ts";
 import { useT } from "../../language";
@@ -146,6 +148,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
   useReveal(view, fit, size.width, size.height, tilt);
   const drawing = useDrawing(() => content.current?.getRelativePointerPosition() ?? null, () => -fit.rotation);
   const cropDraw = useCropDraw(() => content.current?.getRelativePointerPosition() ?? null, board?.id);
+  const zoneDraw = useZoneDraw(() => content.current?.getRelativePointerPosition() ?? null, () => shared.metresPerPixel());
 
   if (!board) return <div ref={frame} className="tb-stage" />;
   const upright = -fit.rotation;
@@ -155,8 +158,11 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
   const bandable = fullEdit && tool === "select" && !zoomedIn && !cropping;
   // Sizes are for editing; a shared board and a played move show none.
   const measure = measureOn && fullEdit;
-  // Hidden objects stay in the list, not on the pitch. Playing shows the moves.
-  const shown = playing || between ? objectsAt(board.frames, playhead) : objects;
+  // Hidden objects stay in the list, not on the pitch. Playing shows the moves;
+  // a frame shown standing has its glows and rings, without the trail left on
+  // the way there (the ghosts' paths show it).
+  const shown = playing || between ? objectsAt(board.frames, playhead)
+    : objectsAt(board.frames, frameIndex).map(({ trails: _trails, ...item }) => item as Rendered);
   // One being reshaped is drawn at the size its handles give it.
   const visible = shown.filter(item => !item.hidden)
     .map(item => (reshaping?.id === item.id ? { ...item, ...reshaping.patch } as typeof item : item));
@@ -178,12 +184,13 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
   tiltHolder.offset = offset;
   const project = tilt ? projector(fit, sight, size.width, size.height) : null;
   tiltHolder.project = project;
-  const spotlight = playing || between ? spotlightAt(board.frames, playhead, shown) : null;
+  const spotlight = spotlightAt(board.frames, playing || between ? playhead : frameIndex, shown);
   // 3D: the ground keeps what lies on it; what stands up is drawn upright over it.
   // Drawn in layers: lines, areas and equipment, then the players, the balls on top.
   const onGround = layered(tilt ? visible.filter(item => !STANDING.has(item.type)) : visible);
   const tapGrass = (target: Konva.Node) => {
     if (isPlaceTool(tool)) drawing.place();
+    else if (tool === "zone") zoneDraw.tap();
     else if (tool === "select" && target.name() === "grass") { useEditor.getState().select([]); onGrass?.(); }
   };
 
@@ -228,6 +235,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
             onPointerMove={event => {
               if (cropping) { cropDraw.move(); return; }
               drawing.move();
+              zoneDraw.move();
               band.move(event);
               if (pitchPointer.size) { const at = content.current?.getRelativePointerPosition() ?? null; pitchPointer.forEach(listen => listen(at)); }
             }}
@@ -265,6 +273,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
                   {fullEdit && !tilt && (cropping || !recording) && (
                     <CropFrame crop={cropDraw.draft ?? board.crop ?? null} active={cropping} pixel={shared.metresPerPixel()} upright={upright} />
                   )}
+                  {zoneDraw.corners.length > 0 && <ZoneDraft corners={zoneDraw.corners} hover={zoneDraw.hover} pixel={shared.metresPerPixel()} />}
                   {drawing.draft && <DraftNode draft={drawing.draft} ink={lookOf(board.pitch).ink} measure={measure} upright={upright} />}
                   {fullEdit && ruler && !drawing.draft && <RulerNode from={ruler.from} to={ruler.to} upright={upright} />}
                   {extra}

@@ -6,6 +6,7 @@ import { lookOf } from "../../../lib/tactics/pitch-style.ts";
 import type { Rendered } from "../../../lib/tactics/timeline.ts";
 import { BallNode } from "./BallNode.tsx";
 import { ChainNode } from "./ChainNode.tsx";
+import { ZoneNode } from "./ZoneNode.tsx";
 import { EquipmentNode } from "./EquipmentNode.tsx";
 import { FreehandNode, LineNode } from "./LineNode.tsx";
 import { PlayerNode } from "./PlayerNode.tsx";
@@ -22,6 +23,7 @@ export function ObjectNode({ item, board, selected, upright, holding = false, ob
     case "freehand": return <FreehandNode item={item} selected={selected} look={lookOf(board.pitch)} measure={measure} upright={upright} />;
     case "rect":
     case "ellipse": return <ShapeNode item={item} measure={measure} upright={upright} />;
+    case "zone": return <ZoneNode item={item} selected={selected} measure={measure} upright={upright} />;
     case "chain": return <ChainNode item={item} objects={objects} selected={selected} upright={upright} measure={measure} />;
     case "text": return <TextNode item={item} board={board} />;
     default: return <EquipmentNode item={item} />;
