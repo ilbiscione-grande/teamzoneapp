@@ -218,8 +218,12 @@ export const editorPanels: Record<string, string> = {
   "Bollar": "Balls",
   "Rektangel": "Rectangle",
   "Ellips": "Ellipse",
-  "Dra i hörnen för att ändra formen, och i mitten av en sida för att böja den. Dubbeltryck på mitten gör sidan rak igen. Ctrl-klicka eller tryck länge på kanten för att lägga till ett hörn där.": "Drag the corners to change the shape, and the middle of a side to bend it. Double-tap the middle to make the side straight again. Ctrl-click or long-press the edge to add a corner there.",
+  "Dra i hörnen för att ändra formen, och i mitten av en sida för att böja den. Dubbeltryck på mitten gör sidan rak igen. Ctrl-klicka eller tryck länge på kanten för att lägga till ett hörn där, och Alt-klicka eller tryck länge på ett hörn för att ta bort det.": "Drag the corners to change the shape, and the middle of a side to bend it. Double-tap the middle to make the side straight again. Ctrl-click or long-press the edge to add a corner there, and Alt-click or long-press a corner to remove it.",
   "Lägg till hörn": "Add corner",
+  "Visa zonen som": "Show the zone as",
+  "Fylld yta": "Filled area",
+  "Ljus zon": "Lit zone",
+  "Planen utanför zonen dimmas, så att zonen lyfts fram. Spelarna syns som vanligt.": "The pitch outside the zone is dimmed, so the zone stands out. The players show as usual.",
   "Linje mellan spelare": "Line between players",
   "Yta mellan spelare": "Area between players",
 

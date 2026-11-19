@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { newFrame } from "../lib/tactics/document.ts";
 import type { Frame, ZoneObject } from "../lib/tactics/model.ts";
 import { objectsAt, type Rendered } from "../lib/tactics/timeline.ts";
-import { addCorner, bendSide, bendsAfterCorner, cornersOf, insertCorner, moveCorner, sideMiddle, tapCorner, zoneFrom, zoneOutline } from "../lib/tactics/zone.ts";
+import { addCorner, bendSide, bendsAfterCorner, blendZones, cornersOf, insertCorner, moveCorner, removeCorner, sideMiddle, tapCorner, zoneFrom, zoneOutline } from "../lib/tactics/zone.ts";
 
 const corners = [{ x: 10, y: 10 }, { x: 30, y: 10 }, { x: 20, y: 30 }];
 
@@ -84,4 +84,32 @@ test("a corner more goes in the middle of the longest side", () => {
   assert.equal(cornersOf(more).length, 4);
   assert.deepEqual(cornersOf(more)[2], { x: 0, y: 0 }, "the long slanted side, at its middle");
   assert.equal(cornersOf(addCorner(more)).length, 5);
+});
+
+test("a corner taken away joins its two sides into one straight side, never below three corners", () => {
+  const zone = zoneFrom([{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }])!; // relative: (-10,-10) (10,-10) (10,10) (-10,10)
+  assert.equal(removeCorner(zoneFrom(corners)!, 0), null, "a three-cornered zone keeps its corners");
+  const three = removeCorner(zone, 1)!;
+  assert.deepEqual(three.points, [-10, -10, 10, 10, -10, 10]);
+  assert.equal(three.bends, undefined);
+  const bent = { ...zone, bends: [{ x: 0, y: -14 }, { x: 14, y: 0 }, { x: 0, y: 14 }, null] };
+  assert.deepEqual(removeCorner(bent, 1)!.bends, [null, { x: 0, y: 14 }, null], "the joined side straight, the others as they were");
+  assert.deepEqual(removeCorner(bent, 0)!.bends, [{ x: 14, y: 0 }, { x: 0, y: 14 }, null], "the first corner: the closing side is the joined one");
+});
+
+test("a zone flows into a shape of other corners: ends as it was and as it will be, between them in between", () => {
+  const square = { points: [-10, -10, 10, -10, 10, 10, -10, 10] };
+  const triangle = { points: [0, -12, 12, 10, -12, 10] }; // drawn the same way round
+  assert.deepEqual(blendZones(square, triangle, 0), square);
+  assert.deepEqual(blendZones(square, triangle, 1), triangle);
+  const half = blendZones(square, triangle, 0.5);
+  assert.equal(half.points.length % 2, 0);
+  assert.ok(half.points.length / 2 > 20, "drawn in many points");
+  const ring = cornersOf(half);
+  const top = Math.min(...ring.map(point => point.y)), bottom = Math.max(...ring.map(point => point.y));
+  assert.ok(top < -10 && top > -12, `the top between the two (${top})`);
+  assert.ok(Math.abs(bottom - 10) < 0.01, "the bottom where both have it");
+  const backwards = blendZones({ points: [-10, 10, 10, 10, 10, -10, -10, -10] }, triangle, 0.5);
+  const area = (points: { x: number; y: number }[]) => Math.abs(points.reduce((sum, point, index) => { const next = points[(index + 1) % points.length]; return sum + point.x * next.y - next.x * point.y; }, 0)) / 2;
+  assert.ok(Math.abs(area(cornersOf(backwards)) - area(ring)) < 1, "drawn the other way round, it does not turn inside out");
 });

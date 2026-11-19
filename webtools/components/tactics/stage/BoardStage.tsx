@@ -27,6 +27,7 @@ import { Marks } from "./Marks.tsx";
 import { MeMarker } from "./MeMarker.tsx";
 import { isMe } from "../../../lib/tactics/me.ts";
 import { SpotlightLayer } from "./SpotlightLayer.tsx";
+import { ZoneDim, ZoneDimLayer } from "./ZoneDim.tsx";
 import { Figures3D, STANDING } from "./Figures3D.tsx";
 import { drawnGround, groundReach, projector, TILT, tiltOrigin, tiltTransform, unproject, type Reach } from "../../../lib/tactics/projection.ts";
 import { contentHolder, pitchPointer, StageContext, stageHolder, type StageShared } from "./stage-context.ts";
@@ -261,6 +262,8 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
             <Layer {...offset}>
               <Group ref={view.objectView} {...zoomed}>
                 <Group ref={node => { content.current = node; if (editable && !moveOnly) contentHolder.current = node; }} {...fitted}>
+                  {/* In 3D the figures stand over the ground on their own; the dimming lies on the ground beneath them. */}
+                  {tilt && <ZoneDim objects={visible} />}
                   {previous && !recording && <Ghosts previous={previous} current={objects} selection={selection} editable={canEdit} ink={lookOf(board.pitch).ink} />}
                   <Marks objects={visible} board={board} />
                   {visible.filter(item => isMe(item, me)).map(item => <MeMarker key={`me-${item.id}`} at={item} upright={upright} label={!tilt} />)}
@@ -280,6 +283,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
                 </Group>
               </Group>
             </Layer>
+            {!tilt && <ZoneDimLayer objects={visible} zoomed={zoomed} fitted={fitted} offset={offset} viewRef={view.overView} />}
             {!tilt && <SpotlightLayer spotlight={spotlight} zoomed={zoomed} fitted={fitted} />}
             {fullEdit && (
               <Layer listening={false}>

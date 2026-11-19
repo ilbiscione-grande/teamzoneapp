@@ -7,7 +7,7 @@ import { airSide } from "./path.ts";
 import { withMarks, type Marks } from "./marks.ts";
 import type { BallFlight, BallObject, Effect, Frame, LineObject, PlayerObject, Point, ShapeObject, TacticsObject } from "./model.ts";
 import { curvePoint, ease, effectsOf, lerp, lerpPoint } from "./motion.ts";
-import { blendBends } from "./zone.ts";
+import { blendZones } from "./zone.ts";
 
 export { curvePoint, ease, easeInOut, effectsOf } from "./motion.ts";
 export type { Trail } from "./marks.ts";
@@ -150,10 +150,11 @@ export function blendFrames(from: Frame, to: Frame, t: number): Rendered[] {
       const control = prev.control && next.control ? lerpPoint(prev.control, next.control, eased) : next.control;
       blended = { ...blended, points, control } as LineObject;
     }
-    if ((next.type === "freehand" || next.type === "zone") && prev.type === next.type && next.points.length === prev.points.length) {
+    if (next.type === "freehand" && prev.type === "freehand" && next.points.length === prev.points.length) {
       blended = { ...blended, points: prev.points.map((value, i) => lerp(value, next.points[i], eased)) } as TacticsObject;
-      if (next.type === "zone" && prev.type === "zone") blended = { ...blended, bends: blendBends(prev, next, eased) } as TacticsObject;
     }
+    // A zone flows into its next shape, though it has more or fewer corners there.
+    if (next.type === "zone" && prev.type === "zone") blended = { ...blended, ...blendZones(prev, next, eased) } as TacticsObject;
     if ((next.type === "rect" || next.type === "ellipse") && prev.type === next.type) {
       const shape = prev as ShapeObject;
       blended = { ...blended, width: lerp(shape.width, next.width, eased), height: lerp(shape.height, next.height, eased) } as ShapeObject;

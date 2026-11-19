@@ -169,3 +169,71 @@ export function splitSide(zone: Pick<ZoneObject, "points" | "bends">, side: numb
   bends.splice(side, 1, first, second);
   return { points, bends };
 }
+
+/**
+ * The zone without one corner, its two sides joined into one straight side;
+ * null when it would have too few corners left.
+ */
+export function removeCorner(zone: Pick<ZoneObject, "points" | "bends">, index: number): Pick<ZoneObject, "points" | "bends"> | null {
+  const corners = cornersOf(zone);
+  if (corners.length <= MIN_CORNERS) return null;
+  const count = corners.length;
+  const before = (index - 1 + count) % count;
+  const points = corners.filter((_, at) => at !== index).flatMap(point => [point.x, point.y]);
+  if (!zone.bends) return { points, bends: zone.bends };
+  const bends = Array.from({ length: count }, (_, side) => zone.bends?.[side] ?? null);
+  bends[before] = null;
+  bends.splice(index, 1);
+  return { points, bends };
+}
+
+/** How many points a zone's edge is drawn with while it changes into a zone of other corners. */
+const MORPH_POINTS = 96;
+
+/** Twice the area inside a ring of points, signed by the way round it goes. */
+const signedArea = (ring: Point[]) => ring.reduce((sum, point, index) => {
+  const next = ring[(index + 1) % ring.length];
+  return sum + point.x * next.y - next.x * point.y;
+}, 0);
+
+/** count points evenly along a closed edge, from its first corner. */
+function evenly(edge: Point[], count: number): Point[] {
+  const lengths = edge.map((point, index) => { const next = edge[(index + 1) % edge.length]; return Math.hypot(next.x - point.x, next.y - point.y); });
+  const total = lengths.reduce((sum, length) => sum + length, 0) || 1;
+  const ring: Point[] = [];
+  let side = 0, before = 0;
+  for (let step = 0; step < count; step++) {
+    const along = (step / count) * total;
+    while (side < edge.length - 1 && before + lengths[side] < along) before += lengths[side++];
+    const t = lengths[side] ? (along - before) / lengths[side] : 0;
+    ring.push(lerpPoint(edge[side], edge[(side + 1) % edge.length], Math.min(1, t)));
+  }
+  return ring;
+}
+
+/**
+ * Two frames' copies of a zone part of the way, t from 0 to 1. With as many
+ * corners in each, corner to corner and bend to bend; else each edge laid out
+ * in as many points, the same way round and turned to fit the other best, so
+ * the one shape flows into the other.
+ */
+export function blendZones(prev: Pick<ZoneObject, "points" | "bends">, next: Pick<ZoneObject, "points" | "bends">, t: number): Pick<ZoneObject, "points" | "bends"> {
+  if (prev.points.length === next.points.length) {
+    return { points: prev.points.map((value, index) => value + (next.points[index] - value) * t), bends: blendBends(prev, next, t) };
+  }
+  if (t <= 0) return prev;
+  if (t >= 1) return next;
+  const to = evenly(zoneOutline(next), MORPH_POINTS);
+  let from = evenly(zoneOutline(prev), MORPH_POINTS);
+  if (Math.sign(signedArea(from)) !== Math.sign(signedArea(to))) from = [from[0], ...from.slice(1).reverse()];
+  let turn = 0, best = Infinity;
+  for (let shift = 0; shift < MORPH_POINTS; shift++) {
+    let cost = 0;
+    for (let index = 0; index < MORPH_POINTS && cost < best; index++) {
+      const a = from[(index + shift) % MORPH_POINTS], b = to[index];
+      cost += (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
+    }
+    if (cost < best) { best = cost; turn = shift; }
+  }
+  return { points: to.flatMap((point, index) => { const a = from[(index + turn) % MORPH_POINTS]; return [a.x + (point.x - a.x) * t, a.y + (point.y - a.y) * t]; }), bends: undefined };
+}

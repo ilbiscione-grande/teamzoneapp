@@ -199,6 +199,8 @@ export type ZoneObject = Base & {
   fill: number;
   dashed: boolean;
   pattern?: AreaPattern;
+  /** Lit: the zone left clear and the pitch round it dimmed (stage/ZoneDim.tsx), rather than the zone filled. */
+  dim?: boolean;
 };
 
 export type TacticsObject =

@@ -5,8 +5,8 @@
 // selected on a board being edited, each corner has a handle to drag on its
 // own, and each side one in its middle that bends it, as an arrow is bent; a
 // double tap there makes the side straight again. Ctrl-clicking the edge, or
-// a long press on it, puts a corner there. With measuring on it shows the
-// ground it covers.
+// a long press on it, puts a corner there; Alt-clicking a corner, or a long
+// press on it, takes it away. With measuring on it shows the ground it covers.
 import { useRef, useState } from "react";
 import type { Context } from "konva/lib/Context";
 import type { KonvaEventObject } from "konva/lib/Node";
@@ -14,7 +14,7 @@ import { Circle, Group, Line } from "react-konva";
 import { polygonArea, squareMetres } from "../../../lib/tactics/measure.ts";
 import type { Point, ZoneObject } from "../../../lib/tactics/model.ts";
 import type { Rendered } from "../../../lib/tactics/timeline.ts";
-import { bendSide, bendsAfterCorner, cornersOf, insertCorner, moveCorner, nearestOnEdge, sideMiddle, zoneOutline } from "../../../lib/tactics/zone.ts";
+import { bendSide, bendsAfterCorner, cornersOf, insertCorner, moveCorner, nearestOnEdge, removeCorner, sideMiddle, zoneOutline } from "../../../lib/tactics/zone.ts";
 import { useEditor } from "../store.ts";
 import { nodeRef, useStage } from "../stage/stage-context.ts";
 import { useObjectDrag } from "../stage/use-object-drag.ts";
@@ -75,6 +75,15 @@ export function ZoneNode({ item, selected, measure = false, upright = 0 }: { ite
     event.evt.preventDefault();
     write(insertCorner(item, at));
   };
+  const takeCorner = (index: number) => { const fewer = removeCorner(item, index); if (fewer) write(fewer); };
+  // A finger held still on a corner: that corner away. Moved, it drags the corner.
+  const cornerTouchStart = (event: KonvaEventObject<TouchEvent>, index: number) => {
+    own(event);
+    letGo();
+    if (event.evt.touches.length > 1 || corners.length <= 3) return;
+    const node = event.target;
+    press.current = setTimeout(() => { press.current = null; if (!node.isDragging()) takeCorner(index); }, LONG_PRESS);
+  };
   // A finger held still on the edge: a corner there. Moved, it drags the zone as ever.
   const edgeTouchStart = (event: KonvaEventObject<TouchEvent>) => {
     letGo();
@@ -89,7 +98,8 @@ export function ZoneNode({ item, selected, measure = false, upright = 0 }: { ite
   };
   return (
     <Group ref={nodeRef(shared, item.id)} x={item.x} y={item.y} rotation={item.rotation} {...look(item)} {...drag}>
-      <AreaFill box={box} outline={outline} color={item.color} fill={item.fill} pattern={item.pattern} />
+      {/* Lit, the zone is the pitch left clear, the dimming round it drawn under everything (stage/ZoneDim.tsx). */}
+      {!item.dim && <AreaFill box={box} outline={outline} color={item.color} fill={item.fill} pattern={item.pattern} />}
       {/* A soft glow outside the edge, as television marks an area. */}
       <Line {...line} stroke={item.color} strokeWidth={0.8} opacity={0.25} listening={false} />
       <Line {...line} stroke={item.color} strokeWidth={0.25} dash={item.dashed ? [0.9, 0.6] : undefined} fill="rgba(0,0,0,0)"
@@ -108,7 +118,14 @@ export function ZoneNode({ item, selected, measure = false, upright = 0 }: { ite
       })}
       {editable && corners.map((corner, index) => (
         <Circle key={`corner-${index}`} x={corner.x} y={corner.y} radius={handle} fill="#ffffff" stroke="#111827" strokeWidth={handle * 0.25} draggable
-          onMouseDown={own} onTouchStart={own} onDragStart={own}
+          onMouseDown={event => {
+            own(event);
+            if (!event.evt.altKey) return;
+            event.evt.preventDefault();
+            event.target.stopDrag();
+            takeCorner(index);
+          }}
+          onTouchStart={event => cornerTouchStart(event, index)} onTouchEnd={letGo} onDragStart={event => { own(event); letGo(); }}
           onDragMove={event => { own(event); setMoving({ kind: "corner", index, at: pointOf(event) }); }}
           onDragEnd={event => {
             own(event);

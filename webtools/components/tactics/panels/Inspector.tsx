@@ -105,16 +105,29 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
     case "zone":
       return (
         <>
-          {item.type === "zone" && <p className="tb-hint">{t("Dra i hörnen för att ändra formen, och i mitten av en sida för att böja den. Dubbeltryck på mitten gör sidan rak igen. Ctrl-klicka eller tryck länge på kanten för att lägga till ett hörn där.")}</p>}
+          {item.type === "zone" && <p className="tb-hint">{t("Dra i hörnen för att ändra formen, och i mitten av en sida för att böja den. Dubbeltryck på mitten gör sidan rak igen. Ctrl-klicka eller tryck länge på kanten för att lägga till ett hörn där, och Alt-klicka eller tryck länge på ett hörn för att ta bort det.")}</p>}
           {item.type === "zone" && <button type="button" className="wt-button secondary small" onClick={() => patch(addCorner(item))}>{t("Lägg till hörn")}</button>}
-          <label className="tb-field">{t("Fyllning")}
-            <input type="range" min={0} max={1} step={0.05} value={item.fill} onChange={event => patch({ fill: Number(event.target.value) })} />
-          </label>
-          <label className="tb-field">{t("Mönster")}
-            <select value={item.pattern ?? "solid"} onChange={event => patch({ pattern: event.target.value as AreaPattern })}>
-              <option value="solid">{t("Fylld")}</option><option value="stripes">{t("Randig")}</option>
-            </select>
-          </label>
+          {item.type === "zone" && (
+            <div className="tb-field">{t("Visa zonen som")}
+              <div className="tb-aligns" style={{ gridTemplateColumns: "1fr 1fr" }} role="group" aria-label={t("Visa zonen som")}>
+                <button type="button" aria-pressed={!item.dim} onClick={() => patch({ dim: false })}>{t("Fylld yta")}</button>
+                <button type="button" aria-pressed={!!item.dim} onClick={() => patch({ dim: true })}>{t("Ljus zon")}</button>
+              </div>
+              {item.dim && <p className="tb-hint">{t("Planen utanför zonen dimmas, så att zonen lyfts fram. Spelarna syns som vanligt.")}</p>}
+            </div>
+          )}
+          {!(item.type === "zone" && item.dim) && (
+            <>
+              <label className="tb-field">{t("Fyllning")}
+                <input type="range" min={0} max={1} step={0.05} value={item.fill} onChange={event => patch({ fill: Number(event.target.value) })} />
+              </label>
+              <label className="tb-field">{t("Mönster")}
+                <select value={item.pattern ?? "solid"} onChange={event => patch({ pattern: event.target.value as AreaPattern })}>
+                  <option value="solid">{t("Fylld")}</option><option value="stripes">{t("Randig")}</option>
+                </select>
+              </label>
+            </>
+          )}
           <label className="tb-check"><input type="checkbox" checked={item.dashed} onChange={event => patch({ dashed: event.target.checked })} />{t("Streckad kant")}</label>
           <ObjectSwatches label={t("Färg")} value={item.color} onChange={paint} />
         </>
