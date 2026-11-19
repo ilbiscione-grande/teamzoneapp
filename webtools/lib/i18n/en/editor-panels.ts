@@ -223,7 +223,7 @@ export const editorPanels: Record<string, string> = {
   "Visa zonen som": "Show the zone as",
   "Fylld yta": "Filled area",
   "Ljus zon": "Lit zone",
-  "Planen utanför zonen dimmas, så att zonen lyfts fram. Spelarna syns som vanligt.": "The pitch outside the zone is dimmed, so the zone stands out. The players show as usual.",
+  "Allt utanför zonen dimmas, så att zonen lyfts fram.": "Everything outside the zone is dimmed, so the zone stands out.",
   "Linje mellan spelare": "Line between players",
   "Yta mellan spelare": "Area between players",
 

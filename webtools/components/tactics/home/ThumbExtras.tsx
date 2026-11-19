@@ -26,7 +26,7 @@ export function ThumbExtras({ objects, at, metre }: { objects: TacticsObject[]; 
           case "ellipse": {
             const [x, y] = at([item.x - item.width / 2, item.y - item.height / 2]);
             const width = item.width * metre, height = item.height * metre;
-            const look = { stroke: item.color, strokeWidth: 0.4, fill: item.color, fillOpacity: Math.min(0.5, item.fill), strokeDasharray: item.dashed ? "1.5 1" : undefined };
+            const look = { stroke: item.color, strokeWidth: 0.4, fill: item.color, fillOpacity: item.dim ? 0 : Math.min(0.5, item.fill), strokeDasharray: item.dashed ? "1.5 1" : undefined };
             return item.type === "rect"
               ? <rect key={item.id} x={x} y={y} width={width} height={height} {...look} />
               : <ellipse key={item.id} cx={x + width / 2} cy={y + height / 2} rx={width / 2} ry={height / 2} {...look} />;

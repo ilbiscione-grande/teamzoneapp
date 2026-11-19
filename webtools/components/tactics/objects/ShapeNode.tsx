@@ -32,7 +32,8 @@ export function ShapeNode({ item, measure = false, upright = 0 }: { item: ShapeO
   };
   return (
     <Group ref={nodeRef(shared, item.id)} x={item.x} y={item.y} rotation={item.rotation} {...look(item)} {...drag}>
-      <AreaFill box={{ x: -width / 2, y: -height / 2, width, height }} outline={outline} color={item.color} fill={item.fill} pattern={item.pattern} />
+      {/* Lit, the area is left clear, the dimming round it drawn over everything (stage/ZoneDim.tsx). */}
+      {!item.dim && <AreaFill box={{ x: -width / 2, y: -height / 2, width, height }} outline={outline} color={item.color} fill={item.fill} pattern={item.pattern} />}
       {item.type === "rect"
         ? <><Rect width={width} height={height} offsetX={width / 2} offsetY={height / 2} cornerRadius={0.4} {...glow} />
           <Rect width={width} height={height} offsetX={width / 2} offsetY={height / 2} cornerRadius={0.4} fill="rgba(0,0,0,0)" {...edge} /></>

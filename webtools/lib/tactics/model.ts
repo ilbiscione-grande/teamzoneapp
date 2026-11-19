@@ -128,6 +128,8 @@ export type ShapeObject = Base & {
   dashed: boolean;
   /** How the area is filled: evenly (when missing) or hatched in stripes. */
   pattern?: AreaPattern;
+  /** Lit: the area left clear and everything round it dimmed (stage/ZoneDim.tsx), rather than the area filled. */
+  dim?: boolean;
 };
 
 export type AreaPattern = "solid" | "stripes";
@@ -199,7 +201,7 @@ export type ZoneObject = Base & {
   fill: number;
   dashed: boolean;
   pattern?: AreaPattern;
-  /** Lit: the zone left clear and the pitch round it dimmed (stage/ZoneDim.tsx), rather than the zone filled. */
+  /** Lit: the zone left clear and everything round it dimmed (stage/ZoneDim.tsx), rather than the zone filled. */
   dim?: boolean;
 };
 
