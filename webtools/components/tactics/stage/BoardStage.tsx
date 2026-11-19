@@ -263,7 +263,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
               <Group ref={view.objectView} {...zoomed}>
                 <Group ref={node => { content.current = node; if (editable && !moveOnly) contentHolder.current = node; }} {...fitted}>
                   {/* In 3D the figures stand over the ground on their own; the dimming lies on the ground beneath them. */}
-                  {tilt && <ZoneDim objects={visible} />}
+                  {tilt && <ZoneDim objects={visible} selected={fullEdit ? selection : undefined} />}
                   {previous && !recording && <Ghosts previous={previous} current={objects} selection={selection} editable={canEdit} ink={lookOf(board.pitch).ink} />}
                   <Marks objects={visible} board={board} />
                   {visible.filter(item => isMe(item, me)).map(item => <MeMarker key={`me-${item.id}`} at={item} upright={upright} label={!tilt} />)}
@@ -283,7 +283,7 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
                 </Group>
               </Group>
             </Layer>
-            {!tilt && <ZoneDimLayer objects={visible} zoomed={zoomed} fitted={fitted} offset={offset} viewRef={view.overView} />}
+            {!tilt && <ZoneDimLayer objects={visible} selected={fullEdit ? selection : undefined} zoomed={zoomed} fitted={fitted} offset={offset} viewRef={view.overView} />}
             {!tilt && <SpotlightLayer spotlight={spotlight} zoomed={zoomed} fitted={fitted} />}
             {fullEdit && (
               <Layer listening={false}>

@@ -2,8 +2,8 @@
 
 // Lit areas (a zone, rectangle or ellipse with dim set): everything round
 // them dimmed, players too, each area left clear with the dark fading in
-// softly past its edge, as the spotlight's does; the edge itself drawn again
-// over the dark. On a canvas of its own (ZoneDimLayer) over the objects, so
+// softly past its edge, as the spotlight's does. No edge is drawn, but round
+// a selected area, over the dark, to show where it is being changed. On a canvas of its own (ZoneDimLayer) over the objects, so
 // its holes cut only its own dark; fading areas fade the dark with them.
 import type Konva from "konva";
 import type { Ref } from "react";
@@ -31,7 +31,7 @@ function Area({ item, ...attrs }: { item: Lit } & Record<string, unknown>) {
 }
 
 /** The dark and its holes, in pitch metres. */
-export function ZoneDim({ objects }: { objects: Rendered[] }) {
+export function ZoneDim({ objects, selected = [] }: { objects: Rendered[]; selected?: string[] }) {
   const lit = litAreas(objects);
   const strength = Math.max(0, ...lit.map(item => item.opacity ?? 1));
   if (strength <= 0) return null;
@@ -44,7 +44,7 @@ export function ZoneDim({ objects }: { objects: Rendered[] }) {
           {/* Clear inside; the shadow clears less and less past the edge, so the dark comes in softly. */}
           <Area item={item} {...quiet} fill="#000000" opacity={(item.opacity ?? 1) / strength} globalCompositeOperation="destination-out"
             shadowColor="#000000" shadowBlur={FEATHER} shadowOpacity={1} shadowForStrokeEnabled={false} />
-          <Area item={item} {...quiet} stroke={item.color} strokeWidth={0.25} opacity={item.opacity ?? 1} dash={item.dashed ? [0.9, 0.6] : undefined} lineJoin="round" />
+          {selected.includes(item.id) && <Area item={item} {...quiet} stroke={item.color} strokeWidth={0.25} opacity={item.opacity ?? 1} dash={item.dashed ? [0.9, 0.6] : undefined} lineJoin="round" />}
         </Group>
       ))}
     </Group>
@@ -52,15 +52,15 @@ export function ZoneDim({ objects }: { objects: Rendered[] }) {
 }
 
 /** Lit areas' dimming over the board's objects, moved and zoomed as they are. */
-export function ZoneDimLayer({ objects, zoomed, fitted, offset, viewRef }: {
-  objects: Rendered[]; zoomed: Transform; fitted: Transform; offset?: { x: number; y: number }; viewRef?: Ref<Konva.Group>;
+export function ZoneDimLayer({ objects, selected, zoomed, fitted, offset, viewRef }: {
+  objects: Rendered[]; selected?: string[]; zoomed: Transform; fitted: Transform; offset?: { x: number; y: number }; viewRef?: Ref<Konva.Group>;
 }) {
   if (litAreas(objects).length === 0) return null;
   return (
     <Layer listening={false} {...offset}>
       <Group ref={viewRef} {...zoomed}>
         <Group {...fitted}>
-          <ZoneDim objects={objects} />
+          <ZoneDim objects={objects} selected={selected} />
         </Group>
       </Group>
     </Layer>

@@ -21,9 +21,10 @@ export function ShapeNode({ item, measure = false, upright = 0 }: { item: ShapeO
   const shared = useStage();
   const drag = useObjectDrag(item);
   const [width, height] = [item.width, item.height];
-  const edge = { stroke: item.color, strokeWidth: 0.25, dash: item.dashed ? [0.9, 0.6] : undefined, perfectDrawEnabled: false };
+  // Lit, the edge is still there to be pressed, unseen: the dimming shows it when selected (stage/ZoneDim.tsx).
+  const edge = { stroke: item.dim ? "rgba(0,0,0,0)" : item.color, strokeWidth: 0.25, dash: item.dashed ? [0.9, 0.6] : undefined, perfectDrawEnabled: false };
   // A soft glow outside the edge, as television marks an area.
-  const glow = { stroke: item.color, strokeWidth: 0.8, opacity: 0.25, listening: false, perfectDrawEnabled: false };
+  const glow = { stroke: item.color, strokeWidth: 0.8, opacity: item.dim ? 0 : 0.25, listening: false, perfectDrawEnabled: false };
   const outline = (context: Context) => {
     context.beginPath();
     if (item.type === "rect") context.roundRect(-width / 2, -height / 2, width, height, 0.4);

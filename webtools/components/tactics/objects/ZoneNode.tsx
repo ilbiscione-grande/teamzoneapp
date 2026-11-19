@@ -101,8 +101,9 @@ export function ZoneNode({ item, selected, measure = false, upright = 0 }: { ite
       {/* Lit, the zone is the pitch left clear, the dimming round it drawn under everything (stage/ZoneDim.tsx). */}
       {!item.dim && <AreaFill box={box} outline={outline} color={item.color} fill={item.fill} pattern={item.pattern} />}
       {/* A soft glow outside the edge, as television marks an area. */}
-      <Line {...line} stroke={item.color} strokeWidth={0.8} opacity={0.25} listening={false} />
-      <Line {...line} stroke={item.color} strokeWidth={0.25} dash={item.dashed ? [0.9, 0.6] : undefined} fill="rgba(0,0,0,0)"
+      {!item.dim && <Line {...line} stroke={item.color} strokeWidth={0.8} opacity={0.25} listening={false} />}
+      {/* Lit, the edge is still there to be pressed, unseen: the dimming shows it when selected. */}
+      <Line {...line} stroke={item.dim ? "rgba(0,0,0,0)" : item.color} strokeWidth={0.25} dash={item.dashed ? [0.9, 0.6] : undefined} fill="rgba(0,0,0,0)"
         {...(editable ? { hitStrokeWidth: handle * 2.5, onMouseDown: edgeMouseDown, onTouchStart: edgeTouchStart, onTouchMove: letGo, onTouchEnd: letGo } : {})} />
       {measure && <MeasureTag at={middle} text={squareMetres(polygonArea(edge))} upright={upright} turn={item.rotation} />}
       {editable && corners.map((_, side) => {
