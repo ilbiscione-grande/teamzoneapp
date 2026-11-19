@@ -218,7 +218,7 @@ export const editorPanels: Record<string, string> = {
   "Bollar": "Balls",
   "Rektangel": "Rectangle",
   "Ellips": "Ellipse",
-  "Dra i hörnen för att ändra formen.": "Drag the corners to change the shape.",
+  "Dra i hörnen för att ändra formen, och i mitten av en sida för att böja den. Dubbeltryck på mitten gör sidan rak igen.": "Drag the corners to change the shape, and the middle of a side to bend it. Double-tap the middle to make the side straight again.",
   "Linje mellan spelare": "Line between players",
   "Yta mellan spelare": "Area between players",
 

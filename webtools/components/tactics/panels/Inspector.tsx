@@ -104,7 +104,7 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
     case "zone":
       return (
         <>
-          {item.type === "zone" && <p className="tb-hint">{t("Dra i hörnen för att ändra formen.")}</p>}
+          {item.type === "zone" && <p className="tb-hint">{t("Dra i hörnen för att ändra formen, och i mitten av en sida för att böja den. Dubbeltryck på mitten gör sidan rak igen.")}</p>}
           <label className="tb-field">{t("Fyllning")}
             <input type="range" min={0} max={1} step={0.05} value={item.fill} onChange={event => patch({ fill: Number(event.target.value) })} />
           </label>

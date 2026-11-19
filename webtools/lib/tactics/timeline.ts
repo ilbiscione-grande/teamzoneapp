@@ -7,6 +7,7 @@ import { airSide } from "./path.ts";
 import { withMarks, type Marks } from "./marks.ts";
 import type { BallFlight, BallObject, Effect, Frame, LineObject, PlayerObject, Point, ShapeObject, TacticsObject } from "./model.ts";
 import { curvePoint, ease, effectsOf, lerp, lerpPoint } from "./motion.ts";
+import { blendBends } from "./zone.ts";
 
 export { curvePoint, ease, easeInOut, effectsOf } from "./motion.ts";
 export type { Trail } from "./marks.ts";
@@ -151,6 +152,7 @@ export function blendFrames(from: Frame, to: Frame, t: number): Rendered[] {
     }
     if ((next.type === "freehand" || next.type === "zone") && prev.type === next.type && next.points.length === prev.points.length) {
       blended = { ...blended, points: prev.points.map((value, i) => lerp(value, next.points[i], eased)) } as TacticsObject;
+      if (next.type === "zone" && prev.type === "zone") blended = { ...blended, bends: blendBends(prev, next, eased) } as TacticsObject;
     }
     if ((next.type === "rect" || next.type === "ellipse") && prev.type === next.type) {
       const shape = prev as ShapeObject;

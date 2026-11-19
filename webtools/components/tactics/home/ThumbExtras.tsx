@@ -4,6 +4,7 @@
 // live lesson's group, which places and draws these itself. In metres,
 // placed as the picture places the pitch (`at`).
 import type { TacticsObject } from "../../../lib/tactics/model.ts";
+import { zoneOutline } from "../../../lib/tactics/zone.ts";
 
 type At = (points: number[]) => number[];
 
@@ -31,7 +32,7 @@ export function ThumbExtras({ objects, at, metre }: { objects: TacticsObject[]; 
               : <ellipse key={item.id} cx={x + width / 2} cy={y + height / 2} rx={width / 2} ry={height / 2} {...look} />;
           }
           case "zone": {
-            const points = item.points.map((value, index) => value + (index % 2 === 0 ? item.x : item.y));
+            const points = zoneOutline(item).flatMap(point => [point.x + item.x, point.y + item.y]);
             return <polygon key={item.id} points={line(points)} stroke={item.color} strokeWidth={0.4} fill={item.color} fillOpacity={Math.min(0.5, item.fill)} strokeDasharray={item.dashed ? "1.5 1" : undefined} />;
           }
           case "chain": {

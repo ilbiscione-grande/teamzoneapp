@@ -2,9 +2,12 @@
 // the pitch and joined, closed when the first corner is tapped again, the
 // last one tapped twice or Enter pressed. Placed at the middle of its
 // corners, which are kept relative to it, so it moves as one; a corner can
-// be dragged on its own afterwards.
+// be dragged on its own afterwards, and each side bent by its middle, as an
+// arrow is.
 import { newId } from "./document.ts";
 import type { Point, ZoneObject } from "./model.ts";
+import { curvePoint, lerpPoint } from "./motion.ts";
+import { controlThrough, curveMiddle } from "./path.ts";
 
 /** The least a zone has. */
 export const MIN_CORNERS = 3;
@@ -31,6 +34,64 @@ export function cornersOf(zone: Pick<ZoneObject, "points">): Point[] {
 /** The zone's points with one corner moved to a place relative to x and y. */
 export function moveCorner(zone: Pick<ZoneObject, "points">, index: number, to: Point): number[] {
   return zone.points.map((value, at) => (at === index * 2 ? to.x : at === index * 2 + 1 ? to.y : value));
+}
+
+/**
+ * The bends once a corner has moved: the two sides it ends keep their bend,
+ * moved half as far, so a bent side keeps its shape as it is stretched.
+ */
+export function bendsAfterCorner(zone: Pick<ZoneObject, "points" | "bends">, index: number, to: Point): (Point | null)[] | undefined {
+  if (!zone.bends) return zone.bends;
+  const count = cornersOf(zone).length;
+  const from = cornersOf(zone)[index];
+  const shift = { x: (to.x - from.x) / 2, y: (to.y - from.y) / 2 };
+  const before = (index - 1 + count) % count;
+  return zone.bends.map((bend, side) => (bend && (side === index || side === before) ? { x: bend.x + shift.x, y: bend.y + shift.y } : bend));
+}
+
+/** Side `side` of a zone: from its corner to the next, with its bend. */
+export function sideOf(zone: Pick<ZoneObject, "points" | "bends">, side: number): { from: Point; to: Point; control: Point | null } {
+  const corners = cornersOf(zone);
+  return { from: corners[side], to: corners[(side + 1) % corners.length], control: zone.bends?.[side] ?? null };
+}
+
+/** The point halfway along a side: where its handle is. */
+export const sideMiddle = (zone: Pick<ZoneObject, "points" | "bends">, side: number) => {
+  const { from, to, control } = sideOf(zone, side);
+  return curveMiddle(from, to, control);
+};
+
+/** The bends with one side bent through a point (relative to x and y), or straightened with null. */
+export function bendSide(zone: Pick<ZoneObject, "points" | "bends">, side: number, through: Point | null): (Point | null)[] {
+  const count = cornersOf(zone).length;
+  const bends = Array.from({ length: count }, (_, index) => zone.bends?.[index] ?? null);
+  const { from, to } = sideOf(zone, side);
+  bends[side] = through ? controlThrough(from, to, through) : null;
+  return bends;
+}
+
+/** The zone's edge as points relative to x and y, a bent side in short steps; closed back to the first. */
+export function zoneOutline(zone: Pick<ZoneObject, "points" | "bends">, steps = 16): Point[] {
+  const count = cornersOf(zone).length;
+  const outline: Point[] = [];
+  for (let side = 0; side < count; side++) {
+    const { from, to, control } = sideOf(zone, side);
+    outline.push(from);
+    if (control) for (let step = 1; step < steps; step++) outline.push(curvePoint(from, to, control, step / steps));
+  }
+  return outline;
+}
+
+/** The bends between two frames' copies of a zone: each side's bend part of the way, a straight side bending from its middle. */
+export function blendBends(prev: Pick<ZoneObject, "points" | "bends">, next: Pick<ZoneObject, "points" | "bends">, t: number): (Point | null)[] | undefined {
+  if (!prev.bends && !next.bends) return undefined;
+  const count = cornersOf(next).length;
+  return Array.from({ length: count }, (_, side) => {
+    const a = prev.bends?.[side] ?? null, b = next.bends?.[side] ?? null;
+    if (!a && !b) return null;
+    const straight = (zone: typeof prev) => { const { from, to } = sideOf(zone, side); return lerpPoint(from, to, 0.5); };
+    return lerpPoint(a ?? straight(prev), b ?? straight(next), t);
+  });
 }
 
 /**

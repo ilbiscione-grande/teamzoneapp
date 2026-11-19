@@ -192,6 +192,8 @@ export type ZoneObject = Base & {
   type: "zone";
   /** The corners, relative to x and y: x1, y1, x2, y2, …, at least three. */
   points: number[];
+  /** Each side's bend, from its corner to the next: a curve's control point relative to x and y, or null when straight; all straight when missing. */
+  bends?: (Point | null)[];
   color: string;
   /** 0–1: how much the area is filled. */
   fill: number;
