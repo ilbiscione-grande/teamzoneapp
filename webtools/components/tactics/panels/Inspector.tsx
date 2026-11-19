@@ -5,6 +5,7 @@
 import { kindName, objectLabel, setBallFlight, stack, updateBoard, type Stacking } from "../../../lib/tactics/document.ts";
 import { oneGroup } from "../../../lib/tactics/grouping.ts";
 import { addCorner } from "../../../lib/tactics/zone.ts";
+import { AreaShape, MorphFrom } from "./AreaShape.tsx";
 import type { AreaPattern, BallFlight, Board, TacticsObject } from "../../../lib/tactics/model.ts";
 import { effectsOf, standingFacing } from "../../../lib/tactics/timeline.ts";
 import { facings, facingToRotation, normalAngle } from "../../../lib/tactics/facing.ts";
@@ -107,6 +108,8 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
         <>
           {item.type === "zone" && <p className="tb-hint">{t("Dra i hörnen för att ändra formen, och i mitten av en sida för att böja den. Dubbeltryck på mitten gör sidan rak igen. Ctrl-klicka eller tryck länge på kanten för att lägga till ett hörn där, och Alt-klicka eller tryck länge på ett hörn för att ta bort det.")}</p>}
           {item.type === "zone" && <button type="button" className="wt-button secondary small" onClick={() => patch(addCorner(item))}>{t("Lägg till hörn")}</button>}
+          <AreaShape item={item} board={board} />
+          <MorphFrom item={item} board={board} />
           <div className="tb-field">{t("Visa zonen som")}
             <div className="tb-aligns" style={{ gridTemplateColumns: "1fr 1fr" }} role="group" aria-label={t("Visa zonen som")}>
               <button type="button" aria-pressed={!item.dim} onClick={() => patch({ dim: false })}>{t("Fylld yta")}</button>

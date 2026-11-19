@@ -130,6 +130,8 @@ export type ShapeObject = Base & {
   pattern?: AreaPattern;
   /** Lit: the area left clear and everything round it dimmed (stage/ZoneDim.tsx), rather than the area filled. */
   dim?: boolean;
+  /** New in its frame: the area of the frame before, gone from this one, that it is formed out of as the frames play (area-morph.ts). */
+  morphFrom?: string | null;
 };
 
 export type AreaPattern = "solid" | "stripes";
@@ -203,6 +205,8 @@ export type ZoneObject = Base & {
   pattern?: AreaPattern;
   /** Lit: the zone left clear and everything round it dimmed (stage/ZoneDim.tsx), rather than the zone filled. */
   dim?: boolean;
+  /** New in its frame: the area of the frame before, gone from this one, that it is formed out of as the frames play (area-morph.ts). */
+  morphFrom?: string | null;
 };
 
 export type TacticsObject =

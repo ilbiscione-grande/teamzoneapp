@@ -11,7 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Group, Layer, Rect, Stage } from "react-konva";
 import { ballHolders } from "../../../lib/tactics/ball.ts";
 import { blendViewport, fitView, marginFor, shownRect, zoomTo, type Viewport } from "../../../lib/tactics/geometry.ts";
-import type { Point } from "../../../lib/tactics/model.ts";
+import type { Point, ZoneObject } from "../../../lib/tactics/model.ts";
 import { layered } from "../../../lib/tactics/document.ts";
 import { cameraAt, spotlightAt } from "../../../lib/tactics/marks.ts";
 import { lookOf } from "../../../lib/tactics/pitch-style.ts";
@@ -27,7 +27,8 @@ import { Marks } from "./Marks.tsx";
 import { MeMarker } from "./MeMarker.tsx";
 import { isMe } from "../../../lib/tactics/me.ts";
 import { SpotlightLayer } from "./SpotlightLayer.tsx";
-import { ZoneDim, ZoneDimLayer } from "./ZoneDim.tsx";
+import { ZoneDim } from "./ZoneDim.tsx";
+import { ZoneHandles } from "../objects/ZoneHandles.tsx";
 import { Figures3D, STANDING } from "./Figures3D.tsx";
 import { drawnGround, groundReach, projector, TILT, tiltOrigin, tiltTransform, unproject, type Reach } from "../../../lib/tactics/projection.ts";
 import { contentHolder, pitchPointer, StageContext, stageHolder, type StageShared } from "./stage-context.ts";
@@ -263,13 +264,18 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
               <Group ref={view.objectView} {...zoomed}>
                 <Group ref={node => { content.current = node; if (editable && !moveOnly) contentHolder.current = node; }} {...fitted}>
                   {/* In 3D the figures stand over the ground on their own; the dimming lies on the ground beneath them. */}
-                  {tilt && <ZoneDim objects={visible} selected={fullEdit ? selection : undefined} />}
+                  {tilt && <ZoneDim objects={visible} />}
                   {previous && !recording && <Ghosts previous={previous} current={objects} selection={selection} editable={canEdit} ink={lookOf(board.pitch).ink} />}
                   <Marks objects={visible} board={board} />
                   {visible.filter(item => isMe(item, me)).map(item => <MeMarker key={`me-${item.id}`} at={item} upright={upright} label={!tilt} />)}
                   {onGround.map(item => (
                     <ObjectNode key={item.id} item={item} board={board} selected={selection.includes(item.id)} upright={upright} holding={holders.has(item.id)}
                       objects={visible} measure={measure} />
+                  ))}
+                  {/* Lit areas' dimming over the objects, players too; the selection's handles stay bright over it. */}
+                  {!tilt && <ZoneDim objects={visible} selected={fullEdit ? selection : undefined} />}
+                  {fullEdit && visible.filter(item => item.type === "zone" && selection.includes(item.id)).map(item => (
+                    <ZoneHandles key={"handles-" + item.id} item={item as ZoneObject} />
                   ))}
                   {fullEdit && <Selection objects={objects} selection={selection} upright={upright} facing={board.showFacing ?? false} />}
                   {previous && !cropping && !recording && <Ghosts part="handles" previous={previous} current={objects} selection={selection} editable={canEdit} />}
@@ -283,7 +289,6 @@ export default function BoardStage({ editable = true, moveOnly = false, extra, o
                 </Group>
               </Group>
             </Layer>
-            {!tilt && <ZoneDimLayer objects={visible} selected={fullEdit ? selection : undefined} zoomed={zoomed} fitted={fitted} offset={offset} viewRef={view.overView} />}
             {!tilt && <SpotlightLayer spotlight={spotlight} zoomed={zoomed} fitted={fitted} />}
             {fullEdit && (
               <Layer listening={false}>

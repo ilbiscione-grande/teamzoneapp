@@ -2,6 +2,7 @@
 // between two frames. The playhead counts frames: 2.4 is 40 % of the way
 // from frame 2 to frame 3. From the first Tacticsboard, as pure functions.
 // What is drawn along a move (trails, arrows, rings, the zoom) is in marks.ts.
+import { morphArea, pairAreas } from "./area-morph.ts";
 import { ballPosition } from "./ball.ts";
 import { airSide } from "./path.ts";
 import { withMarks, type Marks } from "./marks.ts";
@@ -127,9 +128,17 @@ export function blendFrames(from: Frame, to: Frame, t: number): Rendered[] {
   const before = new Map(from.objects.map(item => [item.id, item]));
   const after = new Map(to.objects.map(item => [item.id, item]));
   const result: Rendered[] = [];
+  // An area formed out of one gone from the frame before: the one turns into the other.
+  const turning = pairAreas(from, to);
+  const turned = new Set([...turning.values()].map(item => item.id));
 
   for (const next of to.objects) {
     const prev = before.get(next.id);
+    const source = turning.get(next.id);
+    if (source && (next.type === "zone" || next.type === "rect" || next.type === "ellipse")) {
+      result.push(withEffects(morphArea(source, next, eased), t, false));
+      continue;
+    }
     if (!prev || (prev.hidden && !next.hidden)) {
       // New in this frame, or shown again: in by its effects, fading by default.
       result.push(withEffects(next, t, true));
@@ -173,7 +182,7 @@ export function blendFrames(from: Frame, to: Frame, t: number): Rendered[] {
   }
   // Gone in the next frame: fades out where it was.
   for (const prev of from.objects) {
-    if (!after.has(prev.id)) result.push({ ...prev, opacity: 1 - t });
+    if (!after.has(prev.id) && !turned.has(prev.id)) result.push({ ...prev, opacity: 1 - t });
   }
   // A glow from the frame left fades over the move.
   for (const [index, item] of result.entries()) {

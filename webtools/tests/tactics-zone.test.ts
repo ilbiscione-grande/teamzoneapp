@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { newFrame } from "../lib/tactics/document.ts";
 import type { Frame, ZoneObject } from "../lib/tactics/model.ts";
 import { objectsAt, type Rendered } from "../lib/tactics/timeline.ts";
-import { addCorner, bendSide, bendsAfterCorner, blendZones, cornersOf, insertCorner, moveCorner, removeCorner, sideMiddle, tapCorner, zoneFrom, zoneOutline } from "../lib/tactics/zone.ts";
+import { addCorner, bendSide, bendsAfterCorner, blendZones, reshapeZone, shapePoints, sideMiddle as middleOfSide, zoneOfShape, cornersOf, insertCorner, moveCorner, removeCorner, sideMiddle, tapCorner, zoneFrom, zoneOutline } from "../lib/tactics/zone.ts";
 
 const corners = [{ x: 10, y: 10 }, { x: 30, y: 10 }, { x: 20, y: 30 }];
 
@@ -112,4 +112,24 @@ test("a zone flows into a shape of other corners: ends as it was and as it will 
   const backwards = blendZones({ points: [-10, 10, 10, 10, 10, -10, -10, -10] }, triangle, 0.5);
   const area = (points: { x: number; y: number }[]) => Math.abs(points.reduce((sum, point, index) => { const next = points[(index + 1) % points.length]; return sum + point.x * next.y - next.x * point.y; }, 0)) / 2;
   assert.ok(Math.abs(area(cornersOf(backwards)) - area(ring)) < 1, "drawn the other way round, it does not turn inside out");
+});
+
+test("a zone made round, square or three-cornered keeps its size; a rectangle or ellipse becomes a zone as it was", () => {
+  const round = shapePoints("circle", 20, 10);
+  assert.equal(cornersOf(round).length, 8);
+  assert.deepEqual(cornersOf(round)[0], { x: 0, y: -5 });
+  for (let side = 0; side < 8; side++) {
+    const at = middleOfSide(round, side);
+    assert.ok(Math.abs((at.x / 10) ** 2 + (at.y / 5) ** 2 - 1) < 0.01, "each side's middle on the curve");
+  }
+  const square = { x: 30, y: 20, rotation: 0, ...shapePoints("square", 20, 10) };
+  const triangle = reshapeZone(square, "triangle");
+  assert.deepEqual([triangle.x, triangle.y], [30, 20]);
+  assert.deepEqual(triangle.points, [0, -5, 10, 5, -10, 5]);
+  const ellipse = { id: "e", type: "ellipse" as const, x: 5, y: 6, rotation: 30, locked: false, hidden: false, width: 12, height: 8, color: "#fff", fill: 0.3, dashed: true, dim: true };
+  const zone = zoneOfShape(ellipse);
+  assert.equal(zone.type, "zone");
+  assert.deepEqual([zone.id, zone.x, zone.y, zone.rotation, zone.dashed, zone.dim], ["e", 5, 6, 30, true, true]);
+  assert.ok(!("width" in zone) && !("height" in zone));
+  assert.equal(cornersOf(zone).length, 8);
 });

@@ -19,8 +19,6 @@ export function useViewport(frame: React.RefObject<HTMLDivElement | null>, ready
   // The same zoom and pan on both layers: the pitch's group is dragged, the objects' group follows.
   const pitchView = useRef<Konva.Group>(null);
   const objectView = useRef<Konva.Group>(null);
-  // A layer over the objects (lit zones' dimming) follows as the objects do.
-  const overView = useRef<Konva.Group>(null);
   const [viewport, setViewport] = useState<Viewport>(IDENTITY);
   const live = useRef<Viewport>(IDENTITY);
   const pinch = useRef<{ distance: number; center: Point } | null>(null);
@@ -36,7 +34,7 @@ export function useViewport(frame: React.RefObject<HTMLDivElement | null>, ready
 
   const apply = (next: Viewport, commit: boolean) => {
     live.current = next;
-    for (const group of [pitchView.current, objectView.current, overView.current]) {
+    for (const group of [pitchView.current, objectView.current]) {
       group?.setAttrs({ x: next.x, y: next.y, scaleX: next.scale, scaleY: next.scale });
       group?.getLayer()?.batchDraw();
     }
@@ -85,15 +83,13 @@ export function useViewport(frame: React.RefObject<HTMLDivElement | null>, ready
   }, [frame, ready]);
 
   return {
-    viewport, live, pinch, pitchView, objectView, overView,
+    viewport, live, pinch, pitchView, objectView,
     apply,
     zoomBy: (factor: number, center: Point) => apply(zoomAround(live.current, factor, center), true),
     /** The pitch group dragged while zoomed in: the objects follow. */
     panMove: (at: Point) => {
       live.current = { ...live.current, ...at };
       objectView.current?.position(at);
-      overView.current?.position(at);
-      overView.current?.getLayer()?.batchDraw();
       if (everyStepRef.current) setViewport(live.current);
     },
     panEnd: () => setViewport(live.current),

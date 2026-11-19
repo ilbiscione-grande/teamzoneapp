@@ -22,7 +22,7 @@ import { useEditor } from "../store.ts";
 import { lookOf } from "../../../lib/tactics/pitch-style.ts";
 import { Figures3D, STANDING } from "../stage/Figures3D.tsx";
 import { Pitch, tiltedReach } from "../stage/Pitch.tsx";
-import { ZoneDim, ZoneDimLayer } from "../stage/ZoneDim.tsx";
+import { ZoneDim } from "../stage/ZoneDim.tsx";
 import { drawTilted, layerCanvases } from "../stage/tilt-picture.ts";
 import { StageContext, type StageShared } from "../stage/stage-context.ts";
 
@@ -93,10 +93,9 @@ export default function OffscreenBoard({ board, objects, moves = [], tilted = fa
               {shown.filter(item => !tilted || !STANDING.has(item.type)).map(item => (
                 <ObjectNode key={item.id} item={item} board={board} selected={false} upright={-fit.rotation} holding={holders.has(item.id)} objects={shown} />
               ))}
+              {!tilted && <ZoneDim objects={shown} />}
             </Group>
           </Layer>
-          {!tilted && <ZoneDimLayer objects={shown} zoomed={{ x: 0, y: 0, scaleX: 1, scaleY: 1 }} offset={offset}
-            fitted={{ x: fit.x, y: fit.y, scaleX: fit.scale, scaleY: fit.scale, rotation: fit.rotation }} />}
         </Stage>
         {tilted && (
           <Figures3D objects={shown} board={board} project={projector(fit, WHOLE, size.width, size.height)} spotlight={null}

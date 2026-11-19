@@ -5,7 +5,7 @@
 // be dragged on its own afterwards, and each side bent by its middle, as an
 // arrow is.
 import { newId } from "./document.ts";
-import type { Point, ZoneObject } from "./model.ts";
+import type { Point, ShapeObject, ZoneObject } from "./model.ts";
 import { curvePoint, lerpPoint } from "./motion.ts";
 import { controlThrough, curveMiddle } from "./path.ts";
 
@@ -236,4 +236,45 @@ export function blendZones(prev: Pick<ZoneObject, "points" | "bends">, next: Pic
     if (cost < best) { best = cost; turn = shift; }
   }
   return { points: to.flatMap((point, index) => { const a = from[(index + turn) % MORPH_POINTS]; return [a.x + (point.x - a.x) * t, a.y + (point.y - a.y) * t]; }), bends: undefined };
+}
+
+/** The shapes a zone can be made into at a tap, keeping its size. */
+export type ZoneShape = "circle" | "square" | "triangle";
+
+/** How many corners a zone made round has: its sides bent to the curve between them. */
+const ROUND_CORNERS = 8;
+
+/** A zone's corners and bends for a shape this wide and high, about its middle. */
+export function shapePoints(shape: ZoneShape, width: number, height: number): Pick<ZoneObject, "points" | "bends"> {
+  const [w, h] = [width / 2, height / 2];
+  if (shape === "square") return { points: [-w, -h, w, -h, w, h, -w, h], bends: undefined };
+  if (shape === "triangle") return { points: [0, -h, w, h, -w, h], bends: undefined };
+  const round = (value: number) => Math.round(value * 1000) / 1000 + 0;
+  const on = (angle: number) => ({ x: round(Math.cos(angle) * w), y: round(Math.sin(angle) * h) });
+  const step = (Math.PI * 2) / ROUND_CORNERS;
+  const corners = Array.from({ length: ROUND_CORNERS }, (_, index) => on(index * step - Math.PI / 2));
+  // Each side bent through the curve halfway between its corners.
+  const bends = corners.map((from, index) => controlThrough(from, corners[(index + 1) % ROUND_CORNERS], on((index + 0.5) * step - Math.PI / 2)));
+  return { points: corners.flatMap(point => [point.x, point.y]), bends };
+}
+
+/** The zone made into a shape the size of its edge now, about the middle of that. */
+export function reshapeZone(zone: Pick<ZoneObject, "x" | "y" | "rotation" | "points" | "bends">, shape: ZoneShape): Pick<ZoneObject, "x" | "y" | "points" | "bends"> {
+  const edge = zoneOutline(zone);
+  const xs = edge.map(point => point.x), ys = edge.map(point => point.y);
+  const [left, right, top, bottom] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  // The middle moves with the zone's own turn, as its points are turned with it.
+  const middle = { x: (left + right) / 2, y: (top + bottom) / 2 };
+  const turn = (zone.rotation * Math.PI) / 180;
+  return {
+    x: zone.x + middle.x * Math.cos(turn) - middle.y * Math.sin(turn),
+    y: zone.y + middle.x * Math.sin(turn) + middle.y * Math.cos(turn),
+    ...shapePoints(shape, Math.max(2, right - left), Math.max(2, bottom - top)),
+  };
+}
+
+/** A rectangle or ellipse as a zone of its own shape: the same place, size, look and everything else, so it can be reshaped. */
+export function zoneOfShape(item: ShapeObject): ZoneObject {
+  const { width, height, type, ...rest } = item;
+  return { ...rest, type: "zone", ...shapePoints(type === "ellipse" ? "circle" : "square", width, height) };
 }
