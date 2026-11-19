@@ -4,6 +4,7 @@
 // have in common. Nothing selected shows the board's settings.
 import { kindName, objectLabel, setBallFlight, stack, updateBoard, type Stacking } from "../../../lib/tactics/document.ts";
 import { oneGroup } from "../../../lib/tactics/grouping.ts";
+import { addCorner } from "../../../lib/tactics/zone.ts";
 import type { AreaPattern, BallFlight, Board, TacticsObject } from "../../../lib/tactics/model.ts";
 import { effectsOf, standingFacing } from "../../../lib/tactics/timeline.ts";
 import { facings, facingToRotation, normalAngle } from "../../../lib/tactics/facing.ts";
@@ -104,7 +105,8 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
     case "zone":
       return (
         <>
-          {item.type === "zone" && <p className="tb-hint">{t("Dra i hörnen för att ändra formen, och i mitten av en sida för att böja den. Dubbeltryck på mitten gör sidan rak igen.")}</p>}
+          {item.type === "zone" && <p className="tb-hint">{t("Dra i hörnen för att ändra formen, och i mitten av en sida för att böja den. Dubbeltryck på mitten gör sidan rak igen. Ctrl-klicka eller tryck länge på kanten för att lägga till ett hörn där.")}</p>}
+          {item.type === "zone" && <button type="button" className="wt-button secondary small" onClick={() => patch(addCorner(item))}>{t("Lägg till hörn")}</button>}
           <label className="tb-field">{t("Fyllning")}
             <input type="range" min={0} max={1} step={0.05} value={item.fill} onChange={event => patch({ fill: Number(event.target.value) })} />
           </label>

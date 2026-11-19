@@ -4,16 +4,17 @@
 // its edge, edged and glowing as the other areas are. Dragged as one;
 // selected on a board being edited, each corner has a handle to drag on its
 // own, and each side one in its middle that bends it, as an arrow is bent; a
-// double tap there makes the side straight again. With measuring on it shows
-// the ground it covers.
-import { useState } from "react";
+// double tap there makes the side straight again. Ctrl-clicking the edge, or
+// a long press on it, puts a corner there. With measuring on it shows the
+// ground it covers.
+import { useRef, useState } from "react";
 import type { Context } from "konva/lib/Context";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { Circle, Group, Line } from "react-konva";
 import { polygonArea, squareMetres } from "../../../lib/tactics/measure.ts";
 import type { Point, ZoneObject } from "../../../lib/tactics/model.ts";
 import type { Rendered } from "../../../lib/tactics/timeline.ts";
-import { bendSide, bendsAfterCorner, cornersOf, moveCorner, sideMiddle, zoneOutline } from "../../../lib/tactics/zone.ts";
+import { bendSide, bendsAfterCorner, cornersOf, insertCorner, moveCorner, nearestOnEdge, sideMiddle, zoneOutline } from "../../../lib/tactics/zone.ts";
 import { useEditor } from "../store.ts";
 import { nodeRef, useStage } from "../stage/stage-context.ts";
 import { useObjectDrag } from "../stage/use-object-drag.ts";
@@ -32,6 +33,9 @@ function shaped(item: ZoneObject, moving: Moving | null): Pick<ZoneObject, "poin
 }
 
 const pointOf = (event: KonvaEventObject<DragEvent>) => ({ x: event.target.x(), y: event.target.y() });
+/** How long a finger is held still on the edge to put a corner there, in ms. */
+const LONG_PRESS = 500;
+
 /** A handle's own press and drag, never the zone's. */
 const own = (event: KonvaEventObject<Event>) => { event.cancelBubble = true; };
 
@@ -39,6 +43,7 @@ export function ZoneNode({ item, selected, measure = false, upright = 0 }: { ite
   const shared = useStage();
   const drag = useObjectDrag(item);
   const [moving, setMoving] = useState<Moving | null>(null);
+  const press = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shape = shaped(item, moving);
   const corners = cornersOf(shape);
   if (corners.length < 3) return null;
@@ -56,12 +61,39 @@ export function ZoneNode({ item, selected, measure = false, upright = 0 }: { ite
   const editable = selected && shared.editable && !item.locked;
   const write = (changes: Partial<ZoneObject>) => { useEditor.getState().patch({ [item.id]: changes }); setMoving(null); };
   const straighten = (side: number) => write({ bends: bendSide(item, side, null) });
+  /** Where the pointer is on the edge, if it is near enough to it. */
+  const onEdge = (target: KonvaEventObject<Event>["target"]) => {
+    const at = target.getRelativePointerPosition();
+    return at && nearestOnEdge(item, at).distance <= handle * 2 ? at : null;
+  };
+  const letGo = () => { if (press.current) clearTimeout(press.current); press.current = null; };
+  // Ctrl or Cmd held, a press on the edge puts a corner rather than moving the zone.
+  const edgeMouseDown = (event: KonvaEventObject<MouseEvent>) => {
+    const at = event.evt.ctrlKey || event.evt.metaKey ? onEdge(event.target) : null;
+    if (!at) return;
+    own(event);
+    event.evt.preventDefault();
+    write(insertCorner(item, at));
+  };
+  // A finger held still on the edge: a corner there. Moved, it drags the zone as ever.
+  const edgeTouchStart = (event: KonvaEventObject<TouchEvent>) => {
+    letGo();
+    if (event.evt.touches.length > 1) return;
+    const at = onEdge(event.target);
+    if (!at) return;
+    const group = event.target.getParent();
+    press.current = setTimeout(() => {
+      press.current = null;
+      if (!group?.isDragging()) write(insertCorner(item, at));
+    }, LONG_PRESS);
+  };
   return (
     <Group ref={nodeRef(shared, item.id)} x={item.x} y={item.y} rotation={item.rotation} {...look(item)} {...drag}>
       <AreaFill box={box} outline={outline} color={item.color} fill={item.fill} pattern={item.pattern} />
       {/* A soft glow outside the edge, as television marks an area. */}
       <Line {...line} stroke={item.color} strokeWidth={0.8} opacity={0.25} listening={false} />
-      <Line {...line} stroke={item.color} strokeWidth={0.25} dash={item.dashed ? [0.9, 0.6] : undefined} fill="rgba(0,0,0,0)" />
+      <Line {...line} stroke={item.color} strokeWidth={0.25} dash={item.dashed ? [0.9, 0.6] : undefined} fill="rgba(0,0,0,0)"
+        {...(editable ? { hitStrokeWidth: handle * 2.5, onMouseDown: edgeMouseDown, onTouchStart: edgeTouchStart, onTouchMove: letGo, onTouchEnd: letGo } : {})} />
       {measure && <MeasureTag at={middle} text={squareMetres(polygonArea(edge))} upright={upright} turn={item.rotation} />}
       {editable && corners.map((_, side) => {
         const at = sideMiddle(shape, side);

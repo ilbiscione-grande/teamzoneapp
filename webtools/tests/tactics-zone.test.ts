@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { newFrame } from "../lib/tactics/document.ts";
 import type { Frame, ZoneObject } from "../lib/tactics/model.ts";
 import { objectsAt, type Rendered } from "../lib/tactics/timeline.ts";
-import { bendSide, bendsAfterCorner, cornersOf, moveCorner, sideMiddle, tapCorner, zoneFrom, zoneOutline } from "../lib/tactics/zone.ts";
+import { addCorner, bendSide, bendsAfterCorner, cornersOf, insertCorner, moveCorner, sideMiddle, tapCorner, zoneFrom, zoneOutline } from "../lib/tactics/zone.ts";
 
 const corners = [{ x: 10, y: 10 }, { x: 30, y: 10 }, { x: 20, y: 30 }];
 
@@ -56,4 +56,32 @@ test("a side bends from straight between frames", () => {
   const half = objectsAt([frame(zone), frame(bent)], 0.5)[0] as Rendered & ZoneObject;
   const middle = sideMiddle(half, 0);
   assert.ok(middle.y < -10 && middle.y > -14, "part of the way");
+});
+
+test("a corner put on a side splits it there; a bent side into two halves that keep its shape", () => {
+  const zone = zoneFrom(corners)!; // corners relative: (-10,-10) (10,-10) (0,10)
+  const straight = insertCorner(zone, { x: 0, y: -9 });
+  assert.equal(cornersOf(straight).length, 4);
+  assert.deepEqual(cornersOf(straight)[1], { x: 0, y: -10 }, "on the top side, not off it");
+  assert.equal(straight.bends, undefined, "no bends made where there were none");
+  const last = insertCorner(zone, { x: -6, y: 1 });
+  assert.equal(cornersOf(last).length, 4);
+  assert.ok(Math.abs(cornersOf(last)[3].x + 5) < 0.3 && Math.abs(cornersOf(last)[3].y) < 0.6, "the closing side gets it at the end");
+  const bent = { ...zone, bends: bendSide(zone, 0, { x: 0, y: -16 }) };
+  const top = sideMiddle(bent, 0);
+  const split = insertCorner(bent, top);
+  assert.ok(Math.hypot(cornersOf(split)[1].x - top.x, cornersOf(split)[1].y - top.y) < 0.05);
+  assert.equal(split.bends!.length, 4);
+  assert.ok(split.bends![0] && split.bends![1] && !split.bends![2] && !split.bends![3]);
+  const before = zoneOutline(bent, 800), after = zoneOutline(split, 16);
+  const off = Math.max(...after.map(point => Math.min(...before.map(other => Math.hypot(point.x - other.x, point.y - other.y)))));
+  assert.ok(off < 0.05, `the edge stays where it was (${off})`);
+});
+
+test("a corner more goes in the middle of the longest side", () => {
+  const zone = zoneFrom([{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 0, y: 10 }])!; // relative: (-20,-5) (20,-5) (-20,5)
+  const more = addCorner(zone);
+  assert.equal(cornersOf(more).length, 4);
+  assert.deepEqual(cornersOf(more)[2], { x: 0, y: 0 }, "the long slanted side, at its middle");
+  assert.equal(cornersOf(addCorner(more)).length, 5);
 });

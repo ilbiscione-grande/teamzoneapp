@@ -105,3 +105,67 @@ export function tapCorner(corners: Point[], at: Point, reach: number): { corners
   if (near(corners[corners.length - 1])) return { corners, close: false };
   return { corners: [...corners, at], close: false };
 }
+
+/** Where on a side a point is nearest: the side, how far along it (0 to 1) and how far off, relative to x and y. */
+export function nearestOnEdge(zone: Pick<ZoneObject, "points" | "bends">, at: Point, steps = 48): { side: number; t: number; distance: number } {
+  const count = cornersOf(zone).length;
+  let best = { side: 0, t: 0.5, distance: Infinity };
+  for (let side = 0; side < count; side++) {
+    const { from, to, control } = sideOf(zone, side);
+    for (let step = 1; step < steps; step++) {
+      const t = step / steps;
+      const point = control ? curvePoint(from, to, control, t) : lerpPoint(from, to, t);
+      const distance = Math.hypot(point.x - at.x, point.y - at.y);
+      if (distance < best.distance) best = { side, t, distance };
+    }
+  }
+  return best;
+}
+
+/**
+ * The zone with a corner put on its edge where it is nearest a point, the
+ * side it is on split in two there: a bent side into two bent halves, so the
+ * shape stays as it was.
+ */
+export function insertCorner(zone: Pick<ZoneObject, "points" | "bends">, at: Point): Pick<ZoneObject, "points" | "bends"> {
+  const { side, t } = nearestOnEdge(zone, at);
+  return splitSide(zone, side, t);
+}
+
+/** How long a side is along its bend. */
+function sideLength(zone: Pick<ZoneObject, "points" | "bends">, side: number, steps = 16): number {
+  const { from, to, control } = sideOf(zone, side);
+  let length = 0, last = from;
+  for (let step = 1; step <= steps; step++) {
+    const point = control ? curvePoint(from, to, control, step / steps) : lerpPoint(from, to, step / steps);
+    length += Math.hypot(point.x - last.x, point.y - last.y);
+    last = point;
+  }
+  return length;
+}
+
+/** The zone with a corner more, in the middle of its longest side. */
+export function addCorner(zone: Pick<ZoneObject, "points" | "bends">): Pick<ZoneObject, "points" | "bends"> {
+  const count = cornersOf(zone).length;
+  let longest = 0;
+  for (let side = 1; side < count; side++) if (sideLength(zone, side) > sideLength(zone, longest)) longest = side;
+  return splitSide(zone, longest, 0.5);
+}
+
+/** The zone with side `side` split in two by a corner t of the way along it. */
+export function splitSide(zone: Pick<ZoneObject, "points" | "bends">, side: number, t: number): Pick<ZoneObject, "points" | "bends"> {
+  const { from, to, control } = sideOf(zone, side);
+  const corners = cornersOf(zone);
+  let corner: Point, first: Point | null = null, second: Point | null = null;
+  if (control) {
+    first = lerpPoint(from, control, t);
+    second = lerpPoint(control, to, t);
+    corner = lerpPoint(first, second, t);
+  } else corner = lerpPoint(from, to, t);
+  corners.splice(side + 1, 0, corner);
+  const points = corners.flatMap(point => [point.x, point.y]);
+  if (!zone.bends && !control) return { points, bends: zone.bends };
+  const bends = Array.from({ length: corners.length - 1 }, (_, index) => zone.bends?.[index] ?? null);
+  bends.splice(side, 1, first, second);
+  return { points, bends };
+}
