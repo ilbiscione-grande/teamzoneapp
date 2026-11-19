@@ -22,8 +22,10 @@ import { useStage } from "./stage-context.ts";
 export const ZONE_DIM = 0.55;
 /** How wide the soft rim between dark and clear is, about, in metres; half of it inside the edge. */
 const FEATHER = 4;
-/** How far off the canvas the dark's shape is drawn, past its own width, in canvas pixels. */
-const AWAY = 2000;
+/** How far past the canvas's right edge the dark's shape is drawn, beyond its blur, in canvas pixels. */
+const AWAY = 200;
+/** The dark's shape: the pitch and well round it, in metres. */
+const DARK = { x: -200, y: -200, width: PITCH_LENGTH + 400, height: PITCH_WIDTH + 400 };
 /** Round an ellipse in this many points. */
 const ROUND = 64;
 
@@ -68,14 +70,18 @@ export function ZoneDim({ objects, selected = [] }: { objects: Rendered[]; selec
     const holes = lit.filter(item => (item.opacity ?? 1) >= strength / 2).map(item => edgeOf(item, placeOf(item)));
     const native = context._context as CanvasRenderingContext2D;
     const m = native.getTransform();
-    const away = native.canvas.width + AWAY;
+    const blur = FEATHER * Math.hypot(m.a, m.b);
+    // Wholly off the canvas, however far in it is zoomed: its leftmost corner past the right edge.
+    const corners = [[DARK.x, DARK.y], [DARK.x + DARK.width, DARK.y], [DARK.x, DARK.y + DARK.height], [DARK.x + DARK.width, DARK.y + DARK.height]];
+    const left = Math.min(...corners.map(([x, y]) => m.a * x + m.c * y + m.e));
+    const away = Math.max(0, native.canvas.width - left) + blur * 3 + AWAY;
     native.save();
     native.setTransform(m.a, m.b, m.c, m.d, m.e + away, m.f);
     native.beginPath();
-    native.rect(-200, -200, PITCH_LENGTH + 400, PITCH_WIDTH + 400);
+    native.rect(DARK.x, DARK.y, DARK.width, DARK.height);
     for (const hole of holes) trace(native, hole);
     native.shadowColor = `rgba(5,8,12,${ZONE_DIM * strength})`;
-    native.shadowBlur = FEATHER * Math.hypot(m.a, m.b);
+    native.shadowBlur = blur;
     native.shadowOffsetX = -away;
     native.shadowOffsetY = 0;
     native.fillStyle = "#000000";
