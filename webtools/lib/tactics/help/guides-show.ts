@@ -46,7 +46,7 @@ export const showGuides: Guide[] = [
       },
       {
         title: { sv: "Planen och lagen", en: "The pitch and the teams" },
-        text: { sv: "Under Inställningar väljer du planens utseende och omgivning, lagens namn och färger, om spelarnas namn, positioner och blickriktning visas, och om bollen fäster vid spelare.", en: "Under Settings you choose the pitch's look and surroundings, the teams' names and colours, whether the players' names, positions and facing show, and whether the ball sticks to players." },
+        text: { sv: "Under Inställningar väljer du planens utseende och omgivning, lagens namn och färger, om spelarnas nummer, namn, positioner och blickriktning visas, och om bollen fäster vid spelare. Cirkeln visar en sak och resten står under: med nummer och namn står numret i cirkeln och K. Svensson under, med position och namn står positionen (som CDM) i cirkeln.", en: "Under Settings you choose the pitch's look and surroundings, the teams' names and colours, whether the players' numbers, names, positions and facing show, and whether the ball sticks to players. The disc shows one thing and the rest stands below: with number and name the number is in the disc and K. Svensson below, with position and name the position (such as CDM) is in the disc." },
       },
     ],
   },

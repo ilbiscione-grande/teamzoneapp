@@ -12,6 +12,7 @@ import { activeObjects, useEditor, NONE } from "../store.ts";
 import { useSquadFetch } from "../use-squad.ts";
 import { TeamVisibility } from "./TeamVisibility.tsx";
 import { useT } from "../../language";
+import { positionShort } from "../../../lib/tactics/player-label.ts";
 
 export function SquadPanel({ board }: { board: Board }) {
   const t = useT();
@@ -102,7 +103,7 @@ function SquadList({ players, placed, onPlace }: { players: SquadPlayer[]; place
               {player.name}
               {player.homeTeam && <small>{player.homeTeam}</small>}
             </span>
-            {player.position && <span className="tb-position">{player.position}</span>}
+            {player.position && <span className="tb-position">{positionShort(player.position)}</span>}
           </button>
         </li>
       ))}

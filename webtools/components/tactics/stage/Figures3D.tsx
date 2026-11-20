@@ -2,7 +2,7 @@
 
 // 3D: what stands up on the tilted pitch, drawn upright on a stage of its
 // own over the ground (lib/tactics/projection.ts). Players as figures with
-// the shirt number on the chest and a shadow at their feet, the ball in the
+// the number (or what the board shows, player-label.ts) on the chest and a shadow at their feet, the ball in the
 // air on a lofted pass with its shadow below, cones, poles, mannequins and
 // goals, and text. The far ones are drawn first, so the near ones stand in
 // front. The spotlight darkens the ground and the figures it leaves out.
@@ -16,6 +16,8 @@ import { standingFacing, type Rendered } from "../../../lib/tactics/timeline.ts"
 import { isMe } from "../../../lib/tactics/me.ts";
 import { ME_COLOUR } from "./MeMarker.tsx";
 import { Stands3D } from "./Stands3D.tsx";
+import { insideSize, playerLabel } from "../../../lib/tactics/player-label.ts";
+import { useLanguage } from "../../language";
 
 /** What stands up in 3D; lines, freehand and areas lie on the ground. */
 export const STANDING = new Set(["player", "ball", "cone", "pole", "mannequin", "goal", "text"]);
@@ -28,6 +30,7 @@ const foreshorten = Math.cos((TILT.degrees * Math.PI) / 180);
 export const FIGURE = 2.2;
 
 function Figure({ item, board, project }: { item: Rendered; board: Board; project: Projector }) {
+  const { locale } = useLanguage();
   const base = project(item);
   const unit = project.metre * TILT.scale * base.depth * (item.grow ?? 1) * FIGURE;
   const opacity = item.opacity ?? 1;
@@ -39,7 +42,7 @@ function Figure({ item, board, project }: { item: Rendered; board: Board; projec
       const team = board.teams[item.side];
       const fill = item.color ?? team.color;
       const height = 2.1 * unit, width = 1.25 * unit, head = 0.42 * unit;
-      const lastName = item.name?.trim().split(/\s+/).slice(-1)[0] ?? null;
+      const { inside, below } = playerLabel(item, board, locale);
       return (
         <Group opacity={opacity} listening={false}>
           {shadow(PLAYER_RADIUS * 0.75)}
@@ -47,13 +50,13 @@ function Figure({ item, board, project }: { item: Rendered; board: Board; projec
           <Rect x={base.x - width / 2} y={base.y - height + head} width={width} height={height - head} fill={fill} stroke="#ffffff" strokeWidth={Math.max(1, unit * 0.08)}
             cornerRadius={[width * 0.45, width * 0.45, width * 0.18, width * 0.18]} />
           <Circle x={base.x} y={base.y - height + head * 0.2} radius={head} fill={fill} stroke="#ffffff" strokeWidth={Math.max(1, unit * 0.07)} />
-          {item.number !== null && (
+          {inside && (
             // Two widths wide and on one line: on a small figure the smallest font is wider than the shirt.
-            <Text x={base.x - width} y={base.y - height * 0.62} width={width * 2} align="center" wrap="none" text={String(item.number)}
-              fontSize={Math.max(8, unit * 0.95)} fontStyle="bold" fill={team.numberColor} />
+            <Text x={base.x - width} y={base.y - height * 0.62} width={width * 2} align="center" wrap="none" text={inside}
+              fontSize={Math.max(8, unit * 0.95 * insideSize(inside) / 1.55)} fontStyle="bold" fill={team.numberColor} />
           )}
-          {board.showNames && lastName && (
-            <Text x={base.x - unit * 6} y={base.y + unit * 0.35} width={unit * 12} align="center" text={lastName} fontSize={Math.max(8, unit * 0.8)}
+          {below && (
+            <Text x={base.x - unit * 6} y={base.y + unit * 0.35} width={unit * 12} align="center" text={below} fontSize={Math.max(8, unit * 0.8)}
               fontStyle="bold" fill="#ffffff" stroke="rgba(11,17,28,0.9)" strokeWidth={Math.max(0.6, unit * 0.08)} fillAfterStrokeEnabled />
           )}
         </Group>

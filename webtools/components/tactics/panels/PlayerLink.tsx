@@ -8,6 +8,7 @@ import type { PlayerObject } from "../../../lib/tactics/model.ts";
 import { activeObjects, useEditor, NONE } from "../store.ts";
 import { useSquadFetch } from "../use-squad.ts";
 import { useT } from "../../language";
+import { positionShort } from "../../../lib/tactics/player-label.ts";
 
 export function PlayerLink({ item }: { item: PlayerObject }) {
   const t = useT();
@@ -43,7 +44,7 @@ export function PlayerLink({ item }: { item: PlayerObject }) {
         <option value="">{t("Ingen koppling")}</option>
         {squad.map(player => (
           <option key={player.personId} value={player.personId}>
-            {[player.number !== null ? `#${player.number}` : null, player.name, player.position, placed.has(player.personId) ? t("(på planen)") : null].filter(Boolean).join(" · ")}
+            {[player.number !== null ? `#${player.number}` : null, player.name, positionShort(player.position), placed.has(player.personId) ? t("(på planen)") : null].filter(Boolean).join(" · ")}
           </option>
         ))}
       </select>

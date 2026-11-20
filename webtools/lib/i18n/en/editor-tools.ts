@@ -192,6 +192,8 @@ export const editorTools: Record<string, string> = {
   "På planen": "On the pitch",
   "Visa spelarnas namn": "Show player names",
   "Visa spelarnas positioner": "Show player positions",
+  "Visa spelarnas nummer": "Show player numbers",
+  "Cirkeln visar en sak och resten står under, som K. Svensson. Namnet ensamt blir initialer i cirkeln.": "The disc shows one thing and the rest stands below, like K. Svensson. The name on its own becomes initials in the disc.",
   "Bollen fäster vid spelare": "The ball attaches to players",
   "Spara som mall…": "Save as template…",
   "Publicera i klubbens bibliotek och spara projektet som fil gör du under Dela.": "Publish to the club library and save the project as a file under Share.",

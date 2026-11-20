@@ -279,8 +279,10 @@ export type Board = {
   surroundings?: Surroundings;
   /** What the board shows, such as an exercise's set-up and coaching points: shown beside it when presenting. */
   description?: string;
-  /** Positions above the players; missing on boards made before it. */
+  /** Positions on the players; missing on boards made before it. What shows where is in player-label.ts. */
   showPositions?: boolean;
+  /** Shirt numbers on the players; missing (shown) on boards made before the choice. */
+  showNumbers?: boolean;
   /** Which way each player faces, as a cone in front; turned the way they run while playing. */
   showFacing?: boolean;
   /** In a training project: the board as an exercise (decision package 13); its organisation is the description. */

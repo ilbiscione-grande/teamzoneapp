@@ -74,7 +74,7 @@ export const editorMore: Record<string, string> = {
 
   "Klubb": "Club",
   "Var loggan visas": "Where the logo is shown",
-  "t.ex. MV": "e.g. GK",
+  "t.ex. CDM": "e.g. CDM",
   "Egen formation (frivilligt)": "Own formation (optional)",
   "Panel": "Panel",
   "Panelen": "The panel",

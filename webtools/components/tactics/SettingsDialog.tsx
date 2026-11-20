@@ -101,8 +101,10 @@ function PitchFields({ board }: { board: Board }) {
         </button>
       )}
       <h3 className="tb-settings-heading">{t("På planen")}</h3>
+      <label className="tb-check"><input type="checkbox" checked={board.showNumbers ?? true} onChange={event => set(current => ({ ...current, showNumbers: event.target.checked }))} />{t("Visa spelarnas nummer")}</label>
       <label className="tb-check"><input type="checkbox" checked={board.showNames} onChange={event => set(current => ({ ...current, showNames: event.target.checked }))} />{t("Visa spelarnas namn")}</label>
       <label className="tb-check"><input type="checkbox" checked={board.showPositions ?? false} onChange={event => set(current => ({ ...current, showPositions: event.target.checked }))} />{t("Visa spelarnas positioner")}</label>
+      <p className="tb-hint">{t("Cirkeln visar en sak och resten står under, som K. Svensson. Namnet ensamt blir initialer i cirkeln.")}</p>
       <label className="tb-check"><input type="checkbox" checked={board.showFacing ?? false} onChange={event => set(current => ({ ...current, showFacing: event.target.checked }))} />{t("Visa blickriktning (vrid spelaren med ramen)")}</label>
       <label className="tb-check"><input type="checkbox" checked={attachBall} onChange={event => setAttachBall(event.target.checked)} />{t("Bollen fäster vid spelare")}</label>
     </>

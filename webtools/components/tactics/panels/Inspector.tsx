@@ -41,7 +41,7 @@ function Fields({ item, board }: { item: TacticsObject; board: Board }) {
                 onChange={event => { const n = event.target.value.trim(); patch({ number: n === "" ? null : Number(n) || 0 }); }} />
             </label>
             <label className="tb-field">{t("Position")}
-              <input value={item.position ?? ""} maxLength={12} placeholder={t("t.ex. MV")} onChange={event => patch({ position: event.target.value || null })} />
+              <input value={item.position ?? ""} maxLength={12} placeholder={t("t.ex. CDM")} onChange={event => patch({ position: event.target.value || null })} />
             </label>
           </div>
           {item.personId && <p className="tb-hint">{t("Hämtat från laget när spelaren kopplades. Det du skriver här gäller på tavlan.")}</p>}

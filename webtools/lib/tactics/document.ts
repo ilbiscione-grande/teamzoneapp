@@ -36,6 +36,7 @@ export function newBoard(name: string, homeName = "Hemma", awayName = "Borta"): 
     overlay: "none",
     showNames: true,
     showPositions: false,
+    showNumbers: true,
     teams: {
       home: { name: homeName, ...teamColors.home },
       away: { name: awayName, ...teamColors.away },

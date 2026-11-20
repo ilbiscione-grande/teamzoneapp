@@ -1,13 +1,15 @@
 "use client";
 
-// A player: a disc in the team's colour with the shirt number, the name
-// below when the board shows names and the position above when it shows them.
+// A player: a disc in the team's colour with one short thing in it and, under
+// it, what else the board shows (number, name, position: player-label.ts).
 // Holding the ball, the player is lit like the ball. The text stays upright when the pitch
 // is turned on a tall screen. With the board's facing on, a cone shows which
 // way the player faces: their own turn, or the way they run while playing.
 import { Circle, Group, Text, Wedge } from "react-konva";
 import { PLAYER_RADIUS } from "../../../lib/tactics/ball.ts";
 import type { Board, PlayerObject } from "../../../lib/tactics/model.ts";
+import { insideSize, playerLabel } from "../../../lib/tactics/player-label.ts";
+import { useLanguage } from "../../language";
 import { standingFacing, type Rendered } from "../../../lib/tactics/timeline.ts";
 import { Glow, look } from "./look.tsx";
 import { nodeRef, useStage } from "../stage/stage-context.ts";
@@ -18,7 +20,7 @@ export function PlayerNode({ item, board, selected, upright, holding }: { item: 
   const drag = useObjectDrag(item);
   const team = board.teams[item.side];
   const fill = item.color ?? team.color;
-  const lastName = item.name?.trim().split(/\s+/).slice(-1)[0] ?? null;
+  const { inside, below } = playerLabel(item, board, useLanguage().locale);
   // The node turns with the player; the cone is set against that turn.
   const facing = (item.facing ?? standingFacing(item)) - item.rotation;
   return (
@@ -33,17 +35,13 @@ export function PlayerNode({ item, board, selected, upright, holding }: { item: 
       <Circle radius={PLAYER_RADIUS + 0.12} fill="rgba(0,0,0,0.28)" y={0.18} listening={false} perfectDrawEnabled={false} />
       <Circle radius={PLAYER_RADIUS} fill={fill} stroke="#ffffff" strokeWidth={0.22} perfectDrawEnabled={false} />
       <Group rotation={upright - item.rotation}>
-        {item.number !== null && (
-          <Text text={String(item.number)} fontSize={item.number > 99 ? 1.15 : 1.55} fontStyle="bold" fill={team.numberColor}
+        {inside && (
+          <Text text={inside} fontSize={insideSize(inside)} fontStyle="bold" fill={team.numberColor} wrap="none"
             width={PLAYER_RADIUS * 2} height={PLAYER_RADIUS * 2} offsetX={PLAYER_RADIUS} offsetY={PLAYER_RADIUS}
             align="center" verticalAlign="middle" listening={false} />
         )}
-        {board.showPositions && item.position && (
-          <Text text={item.position} fontSize={1} fontStyle="bold" fill="#facc15" width={10} offsetX={5} y={-PLAYER_RADIUS - 1.35}
-            align="center" stroke="rgba(11,17,28,0.9)" strokeWidth={0.12} fillAfterStrokeEnabled listening={false} perfectDrawEnabled={false} />
-        )}
-        {board.showNames && lastName && (
-          <Text text={lastName} fontSize={1.15} fontStyle="bold" fill="#ffffff" width={14} offsetX={7} y={PLAYER_RADIUS + 0.35}
+        {below && (
+          <Text text={below} fontSize={1.15} fontStyle="bold" fill="#ffffff" width={14} offsetX={7} y={PLAYER_RADIUS + 0.35}
             align="center" stroke="rgba(11,17,28,0.9)" strokeWidth={0.14} fillAfterStrokeEnabled listening={false} perfectDrawEnabled={false} />
         )}
       </Group>
