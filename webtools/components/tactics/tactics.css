@@ -114,6 +114,9 @@
 .tb-squad button:disabled { opacity: .45; cursor: default; }
 .tb-number { flex: none; width: 28px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 .tb-position { margin-left: auto; color: var(--wt-muted); font-size: .8rem; }
+.tb-squad-name { display: grid; min-width: 0; line-height: 1.2; }
+.tb-squad-name small { color: var(--wt-muted); font-size: .75rem; }
+.tb-squad-heading { margin: 10px 0 2px; color: var(--wt-muted); font-size: .8rem; font-weight: 600; }
 
 /* Phones: the board on top, the tools in a row below, the panel under them. */
 @media (max-width: 760px) {

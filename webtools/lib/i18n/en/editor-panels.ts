@@ -255,6 +255,7 @@ export const editorPanels: Record<string, string> = {
   "Koppla projektet till ett av dina lag i TeamZone under Inställningar, så kan du hämta truppen.": "Link the project to one of your teams in TeamZone under Settings to fetch the squad.",
   "T.ex. 3-1-4-2": "E.g. 3-1-4-2",
   "Hämta truppen igen": "Fetch the squad again",
+  "Kan representera laget": "Can represent the team",
   "Hämta truppen från {team}": "Fetch the squad from {team}",
   "laget": "the team",
   "Placering av texten": "Text alignment",

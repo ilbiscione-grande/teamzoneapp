@@ -291,7 +291,8 @@ export type Board = {
 };
 
 /** A player of the TeamZone team, as the project last read the squad. */
-export type SquadPlayer = { personId: string; name: string; number: number | null; position: string | null };
+/** `homeTeam` is set for a player who may represent the team but belongs to another (for example a junior). */
+export type SquadPlayer = { personId: string; name: string; number: number | null; position: string | null; homeTeam?: string | null };
 
 export type ProjectDocument = {
   schemaVersion: number;

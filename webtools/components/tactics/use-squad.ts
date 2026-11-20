@@ -23,8 +23,12 @@ export function useSquadFetch() {
     const { data, error: loadError } = await client.schema("api").rpc("list_tactics_team_players", { target_team_id: meta.teamId });
     setBusy(false);
     if (loadError) { setError(t("Truppen kunde inte hämtas.")); return; }
-    const players: SquadPlayer[] = (data as { person_id: string; name: string; number: number | null; position: string | null }[])
-      .map(player => ({ personId: player.person_id, name: player.name, number: player.number, position: player.position }));
+    // Players who may represent the team come with their home team ("" when it is not known).
+    const players: SquadPlayer[] = (data as { person_id: string; name: string; number: number | null; position: string | null; home_team?: string }[])
+      .map(player => ({
+        personId: player.person_id, name: player.name, number: player.number, position: player.position,
+        ...(player.home_team !== undefined ? { homeTeam: player.home_team } : {}),
+      }));
     change(document => {
       const withSquad = { ...document, squad: players };
       if (!meta.teamName || !boardId) return withSquad;

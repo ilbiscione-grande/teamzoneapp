@@ -28,11 +28,16 @@ export function SquadPanel({ board }: { board: Board }) {
   const hasTeams = (useAccount().connections?.length ?? 0) > 0;
   const placed = new Set(objects.flatMap(item => item.type === "player" && item.personId ? [item.personId] : []));
 
+  // Players from other teams who may represent this one are listed apart and
+  // put on the pitch by hand; a formation fills with the team's own.
+  const own = squad.filter(player => player.homeTeam == null);
+  const representatives = squad.filter(player => player.homeTeam != null);
+
   const lines = custom.trim() ? parseFormation(custom) : formations[formation];
   const place = () => {
     if (!lines) return;
     // The squad fills the home team; the away team is numbered.
-    changeObjects(current => applyFormation(current, side, lines, side === "home" ? squad : []));
+    changeObjects(current => applyFormation(current, side, lines, side === "home" ? own : []));
   };
 
 
@@ -73,21 +78,34 @@ export function SquadPanel({ board }: { board: Board }) {
             {squad.length ? t("Hämta truppen igen") : t("Hämta truppen från {team}", { team: meta.teamName ?? t("laget") })}
           </button>
           {error && <p className="wt-error" role="alert">{error}</p>}
-          {squad.length > 0 && (
-            <ul className="tb-squad">
-              {squad.map(player => (
-                <li key={player.personId}>
-                  <button type="button" disabled={placed.has(player.personId)} onClick={() => placeOne(player)}>
-                    <span className="tb-number">{player.number ?? "–"}</span>
-                    <span>{player.name}</span>
-                    {player.position && <span className="tb-position">{player.position}</span>}
-                  </button>
-                </li>
-              ))}
-            </ul>
+          {own.length > 0 && <SquadList players={own} placed={placed} onPlace={placeOne} />}
+          {representatives.length > 0 && (
+            <>
+              <h4 className="tb-squad-heading">{t("Kan representera laget")}</h4>
+              <SquadList players={representatives} placed={placed} onPlace={placeOne} />
+            </>
           )}
         </>
       )}
     </div>
+  );
+}
+
+function SquadList({ players, placed, onPlace }: { players: SquadPlayer[]; placed: Set<string>; onPlace: (player: SquadPlayer) => void }) {
+  return (
+    <ul className="tb-squad">
+      {players.map(player => (
+        <li key={player.personId}>
+          <button type="button" disabled={placed.has(player.personId)} onClick={() => onPlace(player)}>
+            <span className="tb-number">{player.number ?? "–"}</span>
+            <span className="tb-squad-name">
+              {player.name}
+              {player.homeTeam && <small>{player.homeTeam}</small>}
+            </span>
+            {player.position && <span className="tb-position">{player.position}</span>}
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }

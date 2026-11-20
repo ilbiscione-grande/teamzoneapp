@@ -130,7 +130,7 @@ export const showGuides: Guide[] = [
     sections: [
       {
         title: { sv: "Formationer och truppen", en: "Formations and the squad" },
-        text: { sv: "Under Lag ställer du upp laget i en formation, eller skriver en egen som 3-1-4-2. Är projektet kopplat till ett lag i TeamZone hämtar du truppen och lägger ut spelarna med namn.", en: "Under Team you line the team up in a formation, or write your own such as 3-1-4-2. If the project is linked to a team in TeamZone, you fetch the squad and put the players out with their names." },
+        text: { sv: "Under Lag ställer du upp laget i en formation, eller skriver en egen som 3-1-4-2. Är projektet kopplat till ett lag i TeamZone hämtar du truppen och lägger ut spelarna med namn. Spelare som får representera laget, till exempel juniorer, visas för sig under Kan representera laget med sitt eget lag, och du lägger ut dem en och en.", en: "Under Team you line the team up in a formation, or write your own such as 3-1-4-2. If the project is linked to a team in TeamZone, you fetch the squad and put the players out with their names. Players who may represent the team, juniors for example, are shown apart under Can represent the team with their own team, and you put them out one by one." },
       },
       {
         title: { sv: "Biblioteket", en: "The library" },

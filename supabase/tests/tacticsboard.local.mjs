@@ -34,7 +34,19 @@ insert into core.assignments(club_id, team_id, club_person_id, role_package) val
   ('${club}','${team}','${id(60)}','player'),('${club}','${team}','${id(61)}','player'),('${club}','${otherTeam}','${id(62)}','player');
 insert into core.assignments(club_id, team_id, club_person_id, role_package, ends_at) values ('${club}','${team}','${id(62)}','player', now()-interval '1 day');
 create table core.team_person_details(team_id uuid, club_person_id uuid, main_position text, positions text[], jersey_number smallint);
-insert into core.team_person_details values ('${team}','${id(60)}','Målvakt',null,null),('${team}','${id(61)}',null,array['Mittfält','Anfall'],7);
+insert into core.team_person_details values ('${team}','${id(60)}','Målvakt',null,null),('${team}','${id(61)}',null,array['Mittfält','Anfall'],7),
+  ('${otherTeam}','${id(62)}','Anfall',null,9);
+insert into core.club_people values ('${id(63)}','Dani');
+create table core.team_assignments(club_id uuid, team_id uuid, club_person_id uuid, state text default 'active',
+  starts_at timestamptz default now()-interval '1 year', ends_at timestamptz);
+insert into core.team_assignments(club_id, team_id, club_person_id) values ('${club}','${otherTeam}','${id(62)}'),('${club}','${otherTeam}','${id(63)}');
+create table core.play_eligibilities(club_id uuid, team_id uuid, club_person_id uuid, state text,
+  starts_at timestamptz, ends_at timestamptz, review_due_at timestamptz);
+insert into core.play_eligibilities values
+  ('${club}','${team}','${id(62)}','active',now()-interval '1 day',null,now()+interval '30 days'),
+  ('${club}','${team}','${id(60)}','active',now()-interval '1 day',now()+interval '30 days',null),
+  ('${club}','${team}','${id(63)}','active',now()-interval '30 days',now()-interval '1 day',null),
+  ('${club}','${team}','${id(63)}','pending',now()-interval '1 day',now()+interval '30 days',null);
 create table core.events(id uuid primary key);
 create function internal.booking_person_name(p uuid) returns text language sql stable as $$select null::text$$;
 create function internal.actor_can_read_event(e uuid) returns boolean language sql stable as $$select false$$;
@@ -44,6 +56,7 @@ await db.exec(read('supabase/migrations/20261119090000_tournament_planner.sql'))
 await db.exec(read('supabase/migrations/20261120090000_tournament_schedule.sql'));
 await db.exec(read('supabase/migrations/20261121090000_tournament_teamzone.sql'));
 await db.exec(read('supabase/migrations/20261123090000_tacticsboard.sql'));
+await db.exec(read('supabase/migrations/20270406090000_tactics_squad_representatives.sql'));
 await db.exec(read('supabase/migrations/20261124090000_tactics_share_links.sql'));
 await db.exec(read('supabase/migrations/20261125090000_tactics_templates.sql'));
 await db.exec('begin');
@@ -68,9 +81,11 @@ await fails(coach, "select api.save_tactics_project($1,2,'X','match',$2,$3)", [c
 const list = await call(coach, 'select api.list_my_tactics_projects()');
 assert.deepEqual(list.map(p => [p.name, p.board_count, p.revision]), [['Matchgenomgång v2', 2, 2]]);
 
-// The squad: active players of your team, with their main position.
-assert.deepEqual((await call(coach, 'select api.list_tactics_team_players($1)', [team])).map(p => [p.name, p.number, p.position]),
-  [['Bror', 7, 'Mittfält'], ['Alva', null, 'Målvakt']], 'numbered first');
+// The squad: active players of your team, with their main position, then
+// those who may represent it now with their home team (Alva, who is both,
+// once; Dani's representation has ended or waits).
+assert.deepEqual((await call(coach, 'select api.list_tactics_team_players($1)', [team])).map(p => [p.name, p.number, p.position, p.home_team ?? null]),
+  [['Bror', 7, 'Mittfält', null], ['Alva', null, 'Målvakt', null], ['Cleo', 9, 'Anfall', 'F2013']], 'numbered first, representatives last');
 await fails(coach, 'select api.list_tactics_team_players($1)', [otherTeam], /not_team_leader/);
 
 // Share links: the owner makes one per board (or the project), anyone
