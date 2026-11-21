@@ -253,14 +253,23 @@ void main() {
       find.descendant(of: find.byType(TabBar), matching: find.text('Trupp')),
     );
     await tester.pumpAndSettle();
+    // The squad page's Hantera menu is the team's: club settings live
+    // under Inställningar > Klubb and on the club's admin page.
     await tester.tap(find.byTooltip('Hantera'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('club-colors')),
-      100,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.tap(find.byKey(const ValueKey('club-colors')));
+    expect(find.byKey(const ValueKey('manage-add-person')), findsOneWidget);
+    expect(find.text('Klubbens färger'), findsNothing);
+    expect(find.text('Rosteråtgärder'), findsNothing);
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox());
+    await _openSettings(tester, profile, clubAdmin: true);
+    await tester.tap(find.widgetWithText(Tab, 'Klubb'));
+    await tester.pumpAndSettle();
+    final colors = find.byKey(const ValueKey('club-colors-club'));
+    await tester.ensureVisible(colors);
+    await tester.pumpAndSettle();
+    await tester.tap(colors);
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('club-colors-preview')), findsOneWidget);
     expect(

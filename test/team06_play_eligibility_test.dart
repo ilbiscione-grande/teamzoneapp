@@ -24,6 +24,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Hantera'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Representation i andra lag'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Representation i andra lag'));
     await tester.pumpAndSettle();
     expect(find.text('Ada Spelare'), findsOneWidget);

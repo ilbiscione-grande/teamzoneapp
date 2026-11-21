@@ -279,66 +279,6 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     );
   }
 
-  Future<void> _createTeam() async {
-    final strings = AppStrings.of(context);
-    var draftName = '';
-    final teamName = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(strings.feature('Skapa ytterligare lag')),
-        content: TextField(
-          autofocus: true,
-          textCapitalization: TextCapitalization.words,
-          onChanged: (value) => draftName = value,
-          decoration: InputDecoration(labelText: strings.feature('Lagnamn')),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(strings.feature('Avbryt')),
-          ),
-          FilledButton(
-            onPressed: () {
-              final value = draftName.trim();
-              if (value.isNotEmpty && value.length <= 120) {
-                Navigator.pop(dialogContext, value);
-              }
-            },
-            child: Text(strings.feature('Skapa lag')),
-          ),
-        ],
-      ),
-    );
-    if (teamName == null || !mounted) return;
-    try {
-      final teamId = await widget.membership
-          .createTeam(
-            clubId: widget.contextValue.clubId,
-            teamName: teamName,
-            idempotencyKey: _newUuid(),
-          )
-          .timeout(const Duration(seconds: 15));
-      await widget.onTeamCreated(teamId);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(strings.feature('Laget har skapats.'))),
-        );
-      }
-    } catch (error) {
-      AppErrors.caught('roster_surface._createTeam', error);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              strings.feature('Laget kunde inte skapas. Försök igen.'),
-            ),
-          ),
-        );
-      }
-    }
-  }
-
   @override
   void didUpdateWidget(covariant _RosterSurface oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -817,24 +757,57 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            // Ordered by how often a leader needs them. Club
+                            // settings (badge, colours, new teams,
+                            // verification) live on the club's admin page.
+                            _ManageMenuHeader(
+                              AppStrings.of(context).feature('Truppen'),
+                            ),
                             ListTile(
-                              leading: const Icon(Icons.shield_outlined),
+                              key: const ValueKey('manage-add-person'),
+                              leading: const Icon(Icons.group_add_outlined),
                               title: Text(
                                 AppStrings.of(
                                   context,
-                                ).feature('Ledare och roller'),
+                                ).feature('Lägg till person'),
                               ),
                               subtitle: Text(
                                 AppStrings.of(context).feature(
-                                  'Lägg till ledare, även dig själv eller klubbens befintliga ledare.',
+                                  'Lägg till en spelare eller ledare i laget.',
                                 ),
                               ),
                               onTap: () {
                                 Navigator.pop(sheetContext);
-                                _openTeamRoles();
+                                _openRosterPersonForm();
                               },
                             ),
                             ListTile(
+                              key: const ValueKey('manage-invitations'),
+                              leading: const Icon(
+                                Icons.mark_email_unread_outlined,
+                              ),
+                              title: Text(
+                                AppStrings.of(
+                                  context,
+                                ).feature('Inbjudningar och lagkoder'),
+                              ),
+                              onTap: () {
+                                Navigator.pop(sheetContext);
+                                showModalBottomSheet<void>(
+                                  context: context,
+                                  useRootNavigator: true,
+                                  isScrollControlled: true,
+                                  useSafeArea: true,
+                                  builder: (_) => _InvitationAdminSheet(
+                                    contextValue: widget.contextValue,
+                                    roster: widget.roster,
+                                    people: _data.state.data ?? const [],
+                                  ),
+                                );
+                              },
+                            ),
+                            ListTile(
+                              key: const ValueKey('manage-applications'),
                               leading: const Icon(Icons.how_to_reg_outlined),
                               title: Text(
                                 AppStrings.of(
@@ -874,31 +847,31 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                                 _openIntake();
                               },
                             ),
+                            _ManageMenuHeader(
+                              AppStrings.of(
+                                context,
+                              ).feature('Ledare och samarbete'),
+                            ),
                             ListTile(
-                              leading: const Icon(
-                                Icons.mark_email_unread_outlined,
-                              ),
+                              key: const ValueKey('manage-roles'),
+                              leading: const Icon(Icons.shield_outlined),
                               title: Text(
                                 AppStrings.of(
                                   context,
-                                ).feature('Inbjudningar och lagkoder'),
+                                ).feature('Ledare och roller'),
+                              ),
+                              subtitle: Text(
+                                AppStrings.of(context).feature(
+                                  'Lägg till ledare, även dig själv eller klubbens befintliga ledare.',
+                                ),
                               ),
                               onTap: () {
                                 Navigator.pop(sheetContext);
-                                showModalBottomSheet<void>(
-                                  context: context,
-                                  useRootNavigator: true,
-                                  isScrollControlled: true,
-                                  useSafeArea: true,
-                                  builder: (_) => _InvitationAdminSheet(
-                                    contextValue: widget.contextValue,
-                                    roster: widget.roster,
-                                    people: _data.state.data ?? const [],
-                                  ),
-                                );
+                                _openTeamRoles();
                               },
                             ),
                             ListTile(
+                              key: const ValueKey('manage-representation'),
                               leading: const Icon(Icons.compare_arrows),
                               title: Text(
                                 AppStrings.of(
@@ -919,7 +892,11 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                                 );
                               },
                             ),
+                            _ManageMenuHeader(
+                              AppStrings.of(context).feature('Mer sällan'),
+                            ),
                             ListTile(
+                              key: const ValueKey('manage-move'),
                               leading: const Icon(Icons.swap_horiz),
                               title: Text(
                                 AppStrings.of(
@@ -946,6 +923,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                               },
                             ),
                             ListTile(
+                              key: const ValueKey('manage-archive'),
                               leading: const Icon(Icons.archive_outlined),
                               title: Text(
                                 AppStrings.of(
@@ -971,132 +949,13 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                                 ).then((_) => _data.refresh());
                               },
                             ),
-                            ListTile(
-                              leading: const Icon(Icons.shield_outlined),
-                              title: Text(
-                                AppStrings.of(
-                                  context,
-                                ).feature('Rosteråtgärder'),
-                              ),
-                              subtitle: Text(
-                                AppStrings.of(context).feature(
-                                  'Skapa, invite, guardian och transfer körs som scopeade serverkommandon.',
-                                ),
-                              ),
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.group_add_outlined),
-                              title: Text(
-                                AppStrings.of(
-                                  context,
-                                ).feature('Lägg till person'),
-                              ),
-                              subtitle: Text(
-                                AppStrings.of(context).feature(
-                                  'Skapa en klubbägd rosterprofil i det här laget.',
-                                ),
-                              ),
-                              onTap: () {
-                                Navigator.pop(sheetContext);
-                                _openRosterPersonForm();
-                              },
-                            ),
-                            if (canManageClub) ...[
-                              ListTile(
-                                key: const ValueKey('manage-club-badge'),
-                                leading: const Icon(Icons.shield_outlined),
-                                title: Text(
-                                  AppStrings.of(context).feature('Klubbmärke'),
-                                ),
-                                subtitle: Text(
-                                  AppStrings.of(
-                                    context,
-                                  ).feature('Visas på klubbens medlemskort.'),
-                                ),
-                                onTap: () {
-                                  Navigator.pop(sheetContext);
-                                  showDialog<void>(
-                                    context: context,
-                                    useRootNavigator: true,
-                                    builder: (_) => _ClubBadgeDialog(
-                                      profile: widget.profileServices,
-                                      clubId: widget.contextValue.clubId,
-                                      clubName: widget.contextValue.clubName,
-                                    ),
-                                  );
-                                },
-                              ),
-                              ListTile(
-                                key: const ValueKey('club-colors'),
-                                leading: const Icon(Icons.palette_outlined),
-                                title: Text(
-                                  AppStrings.of(
-                                    context,
-                                  ).feature('Klubbens färger'),
-                                ),
-                                subtitle: Text(
-                                  AppStrings.of(context).feature(
-                                    'Färger på klubbens publika sidor.',
-                                  ),
-                                ),
-                                onTap: () {
-                                  Navigator.pop(sheetContext);
-                                  showDialog<bool>(
-                                    context: context,
-                                    useRootNavigator: true,
-                                    builder: (_) => _ClubColorsDialog(
-                                      profile: widget.profileServices,
-                                      clubId: widget.contextValue.clubId,
-                                      clubName: widget.contextValue.clubName,
-                                    ),
-                                  );
-                                },
-                              ),
-                              ListTile(
-                                leading: const Icon(Icons.group_add_outlined),
-                                title: Text(
-                                  AppStrings.of(
-                                    context,
-                                  ).feature('Skapa ytterligare lag'),
-                                ),
-                                onTap: () {
-                                  Navigator.pop(sheetContext);
-                                  _createTeam();
-                                },
-                              ),
-                              ListTile(
-                                leading: const Icon(Icons.verified_outlined),
-                                title: Text(
-                                  AppStrings.of(
-                                    context,
-                                  ).feature('Klubbverifiering'),
-                                ),
-                                subtitle: Text(
-                                  AppStrings.of(context).feature(
-                                    'Se officiell status eller skicka underlag till TeamZone.',
-                                  ),
-                                ),
-                                onTap: () {
-                                  Navigator.pop(sheetContext);
-                                  showModalBottomSheet<void>(
-                                    context: context,
-                                    useRootNavigator: true,
-                                    isScrollControlled: true,
-                                    useSafeArea: true,
-                                    builder: (_) => _ClubVerificationSheet(
-                                      clubId: widget.contextValue.clubId,
-                                      membership: widget.membership,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
                           ],
                         ),
                       ),
                     ),
                   ),
-                  child: const Icon(Icons.person_add_alt_1),
+                  // Opens the whole menu, so not an "add person" icon.
+                  child: const Icon(Icons.tune),
                 )
               : null,
         );
@@ -6592,6 +6451,29 @@ class _TeamEventCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A section heading in the squad page's Hantera menu.
+class _ManageMenuHeader extends StatelessWidget {
+  const _ManageMenuHeader(this.label);
+  final String label;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+    child: Semantics(
+      header: true,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            color: Theme.of(context).colorScheme.primary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _ClubVerificationSheet extends StatefulWidget {

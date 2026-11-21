@@ -3478,6 +3478,10 @@ class AppStrings {
     'Personen kunde inte uppdateras. Försök igen.':
         'The person could not be updated. Try again.',
     'Kontaktuppdatering': 'Contact update',
+    'Ledare och samarbete': 'Leaders and cooperation',
+    'Mer sällan': 'Less often',
+    'Lägg till en spelare eller ledare i laget.':
+        'Add a player or leader to the team.',
     'Tillfällig sida med QR-kod där personer fyller i sina uppgifter.':
         'A temporary page with a QR code where people fill in their details.',
     'Aktiva sidor': 'Active pages',
