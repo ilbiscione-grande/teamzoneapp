@@ -26,6 +26,15 @@ class _MatchLineupEditorState extends State<_MatchLineupEditor> {
   final _people = <String, LineupPlayer>{};
   final _answers = <String, String?>{};
 
+  /// The team's saved formations, for its leaders (null for others, who get
+  /// no Föreslå); the chosen one, and the last suggestion with its reasons.
+  TeamFormationList? _teamFormations;
+  String? _teamFormationId;
+  List<SuggestedPlace>? _suggestion;
+  bool _suggesting = false;
+
+  LineupSuggestionServices get _suggestions => LineupSuggestionFeature.services;
+
   @override
   void initState() {
     super.initState();
@@ -36,13 +45,20 @@ class _MatchLineupEditorState extends State<_MatchLineupEditor> {
     try {
       final lineup = await widget.calendar.matchPlans.getLineup(widget.eventId);
       SquadDetails? squad;
+      TeamFormationList? teamFormations;
       if (lineup?.canEdit == true) {
         squad = await widget.calendar
             .getEventSquad(widget.eventId)
             .then<SquadDetails?>((value) => value, onError: (_) => null);
+        teamFormations = await _suggestions
+            .formations(widget.eventId)
+            .then<TeamFormationList?>((value) => value, onError: (_) => null);
       }
       if (!mounted) return;
-      setState(() => _apply(lineup, squad));
+      setState(() {
+        _teamFormations = teamFormations;
+        _apply(lineup, squad);
+      });
     } catch (error) {
       if (mounted) setState(() => _error = error);
     }
@@ -86,10 +102,17 @@ class _MatchLineupEditorState extends State<_MatchLineupEditor> {
     for (final sub in lineup.substitutes) {
       _people.putIfAbsent(sub.personId, () => sub);
     }
+    // A team formation may have lines the presets lack (4-1-4-1).
     final formations = formationsFor(lineup.matchFormat);
-    _formation = formations.contains(lineup.formation)
-        ? lineup.formation!
+    final saved = lineup.formation;
+    _formation =
+        saved != null &&
+            formationSlots(saved, lineup.matchFormat).length ==
+                playersOnPitch(lineup.matchFormat)
+        ? saved
         : formations.first;
+    if (_teamFormation?.lines != _formation) _teamFormationId = null;
+    _suggestion = null;
     final slots = formationSlots(_formation, lineup.matchFormat);
     final codes = {for (final slot in slots) slot.code};
     final unplaced = <String>[];
@@ -148,7 +171,86 @@ class _MatchLineupEditorState extends State<_MatchLineupEditor> {
     _dirty = true;
   });
 
+  TeamFormationChoice? get _teamFormation => _teamFormations?.formations
+      .where((f) => f.id == _teamFormationId)
+      .firstOrNull;
+
+  /// The team's formations for this match format.
+  List<TeamFormationChoice> get _teamFormationsHere => [
+    for (final formation in _teamFormations?.formations ?? const [])
+      if (formation.matchFormat == (_format ?? '11v11')) formation,
+  ];
+
+  /// A preset's lines, or `team:<id>` for one of the team's formations.
+  void _chooseFormation(String value) {
+    if (value.startsWith('team:')) {
+      final chosen = _teamFormationsHere
+          .where((f) => 'team:${f.id}' == value)
+          .firstOrNull;
+      if (chosen == null) return;
+      setState(() => _teamFormationId = chosen.id);
+      if (chosen.lines != _formation) _changeFormation(chosen.lines);
+      return;
+    }
+    setState(() => _teamFormationId = null);
+    if (value != _formation) _changeFormation(value);
+  }
+
+  /// The players to suggest from: the called who have not declined, or,
+  /// with no one called, everyone who has not.
+  List<String> get _suggestionCandidates {
+    final called = [
+      for (final player in _choosable)
+        if (_answers[player.personId] case final answer?
+            when answer != 'declined')
+          player.personId,
+    ];
+    return called.isNotEmpty
+        ? called
+        : [
+            for (final player in _choosable)
+              if (_answers[player.personId] != 'declined') player.personId,
+          ];
+  }
+
+  Future<void> _suggest() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final failed = _attrText(
+      context,
+      'Förslaget kunde inte hämtas.',
+      'The suggestion could not be loaded.',
+    );
+    setState(() => _suggesting = true);
+    try {
+      final places = await _suggestions.suggest(
+        eventId: widget.eventId,
+        formationId: _teamFormationId,
+        lines: _formation,
+        matchFormat: _format ?? '11v11',
+        candidates: _suggestionCandidates,
+      );
+      if (!mounted) return;
+      _edit(() {
+        _slots.clear();
+        _places.clear();
+        for (final place in places) {
+          if (place.personId case final id? when _people.containsKey(id)) {
+            _slots[place.code] = id;
+          }
+        }
+        _bench.removeWhere(_slots.containsValue);
+        _suggestion = places;
+      });
+    } catch (error) {
+      AppErrors.caught('match_lineup.suggest', error);
+      messenger.showSnackBar(SnackBar(content: Text(failed)));
+    } finally {
+      if (mounted) setState(() => _suggesting = false);
+    }
+  }
+
   void _changeFormation(String formation) => _edit(() {
+    _suggestion = null;
     final slots = formationSlots(formation, _format);
     final placed = [
       for (final slot in _formationSlots)
@@ -319,13 +421,30 @@ class _MatchLineupEditorState extends State<_MatchLineupEditor> {
               child: edit
                   ? DropdownButtonFormField<String>(
                       key: const Key('lineup-formation'),
-                      initialValue: _formation,
+                      initialValue: _teamFormation != null
+                          ? 'team:${_teamFormation!.id}'
+                          : _formation,
+                      isExpanded: true,
                       decoration: InputDecoration(
                         labelText:
                             '${strings.feature('Formation')} · ${_format ?? '11v11'}',
                         isDense: true,
                       ),
                       items: [
+                        // The team's own formations, with what each place asks for.
+                        for (final formation in _teamFormationsHere)
+                          DropdownMenuItem(
+                            value: 'team:${formation.id}',
+                            child: Text(
+                              '${formation.name} (${formation.lines})',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        if (!formationsFor(_format).contains(_formation))
+                          DropdownMenuItem(
+                            value: _formation,
+                            child: Text(_formation),
+                          ),
                         for (final formation in formationsFor(_format))
                           DropdownMenuItem(
                             value: formation,
@@ -333,9 +452,7 @@ class _MatchLineupEditorState extends State<_MatchLineupEditor> {
                           ),
                       ],
                       onChanged: (value) {
-                        if (value != null && value != _formation) {
-                          _changeFormation(value);
-                        }
+                        if (value != null) _chooseFormation(value);
                       },
                     )
                   : Text(
@@ -354,6 +471,36 @@ class _MatchLineupEditorState extends State<_MatchLineupEditor> {
             ],
           ],
         ),
+        if (edit && _teamFormations != null) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              FilledButton.tonalIcon(
+                key: const Key('lineup-suggest'),
+                onPressed: _suggesting ? null : _suggest,
+                icon: const Icon(Icons.auto_awesome, size: 18),
+                label: Text(_attrText(context, 'Föreslå', 'Suggest')),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _teamFormation != null
+                      ? _attrText(
+                          context,
+                          'Bland de kallade, efter position och formationens krav.',
+                          'From the called players, by position and the formation\'s requirements.',
+                        )
+                      : _attrText(
+                          context,
+                          'Bland de kallade, efter position. Lagets formationer med krav sparas i Tacticsboard.',
+                          'From the called players, by position. The team\'s formations with requirements are saved in Tacticsboard.',
+                        ),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 8),
         if (edit)
           Text(
@@ -375,6 +522,16 @@ class _MatchLineupEditorState extends State<_MatchLineupEditor> {
           onTap: _chooseFor,
           onMoved: (slot, place) => _edit(() => _places[slot.code] = place),
         ),
+        if (_suggestion case final places?) ...[
+          const SizedBox(height: 12),
+          _SuggestionReasonsCard(
+            places: places,
+            slots: slots,
+            people: _people,
+            customLabels: _teamFormations?.customLabels ?? const {},
+            onClose: () => setState(() => _suggestion = null),
+          ),
+        ],
         const SizedBox(height: 16),
         _BenchCard(
           players: [for (final id in _bench) ?_people[id]],

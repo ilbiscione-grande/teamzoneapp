@@ -13,6 +13,9 @@ import { useSquadFetch } from "../use-squad.ts";
 import { TeamVisibility } from "./TeamVisibility.tsx";
 import { useT } from "../../language";
 import { positionShort } from "../../../lib/tactics/player-label.ts";
+import { linesOf } from "../../../lib/tactics/lineup.ts";
+import { useTeamFormations, type FormationDraft } from "../use-team-formations.ts";
+import { TeamLineup } from "./TeamLineup.tsx";
 
 export function SquadPanel({ board }: { board: Board }) {
   const t = useT();
@@ -34,7 +37,21 @@ export function SquadPanel({ board }: { board: Board }) {
   const own = squad.filter(player => player.homeTeam == null);
   const representatives = squad.filter(player => player.homeTeam != null);
 
-  const lines = custom.trim() ? parseFormation(custom) : formations[formation];
+  // The team's own formations, with what each place asks for, for its leaders.
+  const team = useTeamFormations(meta?.teamId ?? null);
+  const teamFormation = !custom.trim() && formation.startsWith("team:")
+    ? team.formations.find(item => `team:${item.id}` === formation) ?? null : null;
+  const lines = custom.trim() ? parseFormation(custom) : teamFormation ? linesOf(teamFormation.lines) : formations[formation] ?? null;
+  const saveFormation = async (draft: FormationDraft) => {
+    const saved = await team.save(draft);
+    if (typeof saved === "string") return saved;
+    setFormation(`team:${saved.id}`);
+    setCustom("");
+    return null;
+  };
+  const deleteFormation = async (formationId: string) => {
+    if (await team.remove(formationId)) setFormation("4-3-3");
+  };
   const place = () => {
     if (!lines) return;
     // The squad fills the home team; the away team is numbered.
@@ -61,7 +78,16 @@ export function SquadPanel({ board }: { board: Board }) {
         </label>
         <label className="tb-field">{t("Formation")}
           <select value={formation} onChange={event => { setFormation(event.target.value); setCustom(""); }}>
-            {Object.keys(formations).map(name => <option key={name} value={name}>{name}</option>)}
+            {team.formations.length > 0 ? (
+              <>
+                <optgroup label={t("Lagets formationer")}>
+                  {team.formations.map(item => <option key={item.id} value={`team:${item.id}`}>{item.name}</option>)}
+                </optgroup>
+                <optgroup label={t("Vanliga formationer")}>
+                  {Object.keys(formations).map(name => <option key={name} value={name}>{name}</option>)}
+                </optgroup>
+              </>
+            ) : Object.keys(formations).map(name => <option key={name} value={name}>{name}</option>)}
           </select>
         </label>
       </div>
@@ -69,6 +95,11 @@ export function SquadPanel({ board }: { board: Board }) {
       {custom.trim() && !lines && <p className="tb-hint">{t("Skriv raderna bakifrån, t.ex. 4-4-2, med 3–10 utespelare.")}</p>}
       <button type="button" className="wt-button small" disabled={!lines} onClick={place}>{t("Ställ upp laget")}</button>
       <p className="tb-hint">{t("Lagets spelare flyttas till formationen, och saknade läggs till.")}</p>
+      {meta?.teamId && team.allowed && team.attributes && side === "home" && (
+        <TeamLineup lines={lines} formation={teamFormation} presetName={custom.trim() || formation}
+          attributes={team.attributes} squad={squad} onSave={saveFormation} onDelete={deleteFormation}
+          suggest={choice => team.suggest(choice, null)} />
+      )}
 
       {(meta?.teamId || hasTeams) && <h3>{t("Trupp")}</h3>}
       {!meta?.teamId ? (

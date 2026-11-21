@@ -77,6 +77,13 @@ export function positionName(position: string | null | undefined, locale: Locale
   return known ? known[locale === "en" ? "en" : "sv"] : text;
 }
 
+/** The positions a team of [sport] can ask for in a place, named; handball's start hb_, the goalkeeper is both sports'. */
+export function positionOptions(sport: string, locale: Locale): { key: string; name: string }[] {
+  return Object.entries(POSITIONS)
+    .filter(([key]) => key === "goalkeeper" || (sport === "handball") === key.startsWith("hb_"))
+    .map(([key, names]) => ({ key, name: names[locale === "en" ? "en" : "sv"] }));
+}
+
 /** The font size in the disc, in metres: smaller the more letters (CDM, 100, NAA). */
 export const insideSize = (text: string) => {
   const length = Array.from(text).length;

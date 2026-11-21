@@ -380,3 +380,22 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
   .wt-header-slot .tb-top .tb-narrow-only { display: inline-flex; }
   .wt-header-slot .tb-save[data-state="saved"], .wt-header-slot .tb-save[data-state="dirty"], .wt-header-slot .tb-save[data-state="saving"] { display: none; }
 }
+
+/* A team's formations: suggesting players and what each place asks for. */
+.tb-team-lineup { display: grid; gap: 8px; }
+.tb-requirements-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tb-suggestion, .tb-slots { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.tb-suggestion li { display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: .9rem; }
+.tb-slot-code { flex: none; min-width: 34px; padding: 2px 4px; border-radius: 6px; background: var(--wt-line); font-size: .75rem; font-weight: 700; text-align: center; }
+.tb-requirements { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--wt-line); border-radius: 8px; }
+.tb-requirements h3 { margin: 0; }
+.tb-slots { gap: 10px; }
+.tb-slots > li { display: grid; gap: 4px; padding-bottom: 8px; border-bottom: 1px solid var(--wt-line); }
+.tb-slots > li:last-child { border-bottom: 0; }
+.tb-slot-head { display: flex; align-items: center; gap: 8px; }
+.tb-slots select { min-width: 0; flex: 1; min-height: 32px; padding: 4px 6px; border: 1px solid var(--wt-line); border-radius: 6px; background: white; color: var(--wt-text); font: inherit; font-size: .85rem; }
+.tb-requirement-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.tb-requirement-list li { display: inline-flex; align-items: center; gap: 4px; padding: 2px 2px 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--wt-brand) 12%, white); font-size: .8rem; }
+.tb-requirement-list button { border: 0; border-radius: 999px; padding: 2px 8px; background: white; color: var(--wt-muted); font: inherit; font-size: .75rem; cursor: pointer; }
+.tb-requirement-list button.is-very { background: var(--wt-brand); color: white; font-weight: 600; }
+.tb-requirement-list .tb-requirement-remove { padding: 2px 6px; background: none; font-size: .9rem; }
