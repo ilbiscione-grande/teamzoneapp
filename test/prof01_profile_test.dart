@@ -605,8 +605,16 @@ void main() {
     await _openMember(tester, _Profile());
     await tester.tap(find.widgetWithText(Tab, 'Egenskaper'));
     await tester.pumpAndSettle();
-    expect(find.text('Huvudspel'), findsOneWidget);
     expect(find.text('Inga ibockade ännu'), findsNWidgets(2));
+    await tester.scrollUntilVisible(
+      find.text('Huvudspel'),
+      200,
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('player-attributes')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.text('Huvudspel'), findsOneWidget);
     await tester.ensureVisible(
       find.byKey(const ValueKey('attribute-heading-strength')),
     );
@@ -624,6 +632,61 @@ void main() {
     expect(
       find.descendant(of: summary, matching: find.text('Huvudspel')),
       findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a leader sets the preferred foot, both with the better one', (
+    tester,
+  ) async {
+    final attributes = _Attributes();
+    PlayerAttributesFeature.services = attributes;
+    addTearDown(
+      () => PlayerAttributesFeature.services =
+          const UnconfiguredPlayerAttributesServices(),
+    );
+    await _openMember(tester, _Profile());
+    await tester.tap(find.widgetWithText(Tab, 'Egenskaper'));
+    await tester.pumpAndSettle();
+    Future<void> tap(String key) async {
+      await tester.scrollUntilVisible(
+        find.byKey(ValueKey(key)),
+        200,
+        scrollable: find.descendant(
+          of: find.byKey(const ValueKey('player-attributes')),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ValueKey(key)));
+      await tester.pumpAndSettle();
+    }
+
+    expect(find.text('Hur bra med båda?'), findsNothing);
+    await tap('foot-left');
+    await tap('foot-both');
+    expect(find.text('Hur bra med båda?'), findsOneWidget);
+    await tap('foot-both_right');
+    expect(find.text('Hyfsad med den svagare foten.'), findsOneWidget);
+    // Tapping the better foot again: both, equally good; Båda again: none.
+    await tap('foot-both_right');
+    await tap('foot-both');
+    expect(attributes.feet, [
+      'left',
+      'both_equal',
+      'both_right',
+      'both_equal',
+      null,
+    ]);
+    // A tick keeps the foot.
+    await tap('foot-right');
+    await tap('attribute-heading-strength');
+    expect(attributes.feet.last, 'right');
+    expect(
+      tester
+          .widget<ChoiceChip>(find.byKey(const ValueKey('foot-right')))
+          .selected,
+      isTrue,
     );
     expect(tester.takeException(), isNull);
   });
@@ -1071,8 +1134,25 @@ class _Attributes extends UnconfiguredPlayerAttributesServices {
           name: 'Ada Spelare',
           strengths: strengths,
           development: development,
+          foot: _data.players.first.foot,
         ),
       ],
+    );
+  }
+
+  final feet = <String?>[];
+  @override
+  Future<TeamPlayerAttributes> setFoot({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required String? foot,
+  }) async {
+    feet.add(foot);
+    return _data = TeamPlayerAttributes(
+      sport: _data.sport,
+      options: _data.options,
+      players: [_data.players.first.withFoot(foot)],
     );
   }
 }

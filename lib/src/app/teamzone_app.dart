@@ -209,6 +209,7 @@ part '../features/team_development/team_development_load.dart';
 part '../features/team_development/team_development_markdown.dart';
 part '../features/team_development/session_effort_card.dart';
 part '../features/roster/player_attributes_tab.dart';
+part '../features/roster/player_foot_card.dart';
 part '../features/match_workspace/match_lineup_suggestion.dart';
 part '../features/team_development/team_development_injuries.dart';
 part '../features/team_development/player_injury_card.dart';

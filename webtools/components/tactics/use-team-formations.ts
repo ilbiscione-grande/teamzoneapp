@@ -15,6 +15,8 @@ export function useTeamFormations(teamId: string | null) {
   // Asked again once signed in: asked before, it would be turned away.
   const userId = session?.user.id ?? null;
   const [formations, setFormations] = useState<TeamFormation[]>([]);
+  // Ready-made formations with requirements on every place; copied to change.
+  const [templates, setTemplates] = useState<TeamFormation[]>([]);
   const [attributes, setAttributes] = useState<TeamAttributes | null>(null);
   const [allowed, setAllowed] = useState(false);
 
@@ -27,7 +29,9 @@ export function useTeamFormations(teamId: string | null) {
     ]);
     if (listed.error || team.error) { setAllowed(false); return; }
     setAllowed(true);
-    setFormations((listed.data as { formations: TeamFormation[] }).formations);
+    const lists = listed.data as { formations: TeamFormation[]; templates?: TeamFormation[] };
+    setFormations(lists.formations);
+    setTemplates(lists.templates ?? []);
     const data = team.data as TeamAttributes;
     setAttributes({ sport: data.sport, catalog: data.catalog, custom: data.custom });
   }, [client, teamId, userId]);
@@ -55,6 +59,7 @@ export function useTeamFormations(teamId: string | null) {
     const { data, error } = await client.schema("api").rpc("delete_team_formation", { target_club_id: null, target_team_id: teamId, formation_id: formationId });
     if (error) return false;
     setFormations((data as { formations: TeamFormation[] }).formations);
+    setTemplates(current => (data as { templates?: TeamFormation[] }).templates ?? current);
     return true;
   };
 
@@ -71,5 +76,5 @@ export function useTeamFormations(teamId: string | null) {
     return error ? null : data as Suggestion;
   };
 
-  return { formations, attributes, allowed, save, remove, suggest, reload: load };
+  return { formations, templates, attributes, allowed, save, remove, suggest, reload: load };
 }

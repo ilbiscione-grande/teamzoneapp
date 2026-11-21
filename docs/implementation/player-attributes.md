@@ -48,3 +48,12 @@ Ledarna bockar för spelarnas styrkor och utvecklingsområden i TeamZone-truppen
    - **Urval:** de kallade som inte har tackat nej. Om ingen är kallad används alla som inte har tackat nej. Spelare som inte längre får spela för laget hoppar databasen över.
    - **Databas:** `20270411090000_event_lineup_suggestion.sql`, med `api.list_event_team_formations` och `api.suggest_event_lineup`. Båda utgår från matchen.
    - **Kod:** `lib/src/features/match_workspace/lineup_suggestion_services.dart`, `match_lineup_suggestion.dart` och `match_lineup_editor.dart`. Test: `test/match_lineup_suggest_test.dart`.
+
+## Tillägg 2026-11-21
+
+- **Fler egenskaper i fotboll** (`20270412100000_more_football_attributes.sql`): Brytningar, Tacklingar, Markering, Blockeringar, Hemlöpningar, Spela felvänd och Driva boll framåt.
+- **Fot** (`20270413090000_preferred_foot.sql`, `core.player_feet`, `api.set_player_foot`): Vänster, Höger eller Båda, och för Båda om de är lika bra eller om den ena är bättre (då är den svagare hyfsad). Värdena är `left`, `right`, `both_equal`, `both_left` och `both_right`. Foten sätts på fliken *Egenskaper*, gäller per lag, syns bara för ledarna och tas bort när spelaren slutar i laget. Den används inte i förslagen än.
+- **Mallar och formationsdialog** (`20270414090000_formation_templates.sql`, `core.formation_templates`, 21 fotbollsformationer från 5 mot 5 till 11 mot 11). Varje mall har position och viktiga egenskaper på alla platser, efter platsens roll (målvakt, mittback, ytterback, wingback, defensiv/central/offensiv mittfältare, yttermittfältare, ytter, anfallare). Rollernas krav står överst i migrationen. Mallar kan inte ändras: *Gör en egen kopia* sparar en kopia med laget, som sedan ändras. `api.list_team_formations` ger `templates` bredvid `formations`, och förslagen kan utgå från en mall.
+  - Tacticsboard: *Lag → Formationer…* öppnar en dialog med lagets formationer och mallarna per format, en plan där man klickar på en plats och vad platsen kräver, samt *Ställ upp laget* och *Föreslå spelare*. Formationsvalet visar lagets formationer och mallarna, och varje tavla kommer ihåg sitt val (`board.formation`).
+  - Appen: laguttagningen visar mallarna ("4-3-3 · mall") i stället för motsvarande enkla formation, och väljer mallen automatiskt, så att *Föreslå* använder dess krav.
+  - Att det "inte sparades" berodde på att tavlan glömde valet och visade den tomma standardformationen "4-3-3" efter omladdning. Lagets formation var sparad.

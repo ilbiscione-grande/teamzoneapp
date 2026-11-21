@@ -27,6 +27,9 @@ create function internal.actor_has_capability(c uuid, t uuid, cap text) returns 
   select auth.uid() = '${coach}'::uuid and cap = 'team.roster.manage' and t = '${team}'::uuid $$;
 grant usage on schema api, internal, core, auth to authenticated;`);
 await db.exec(read('supabase/migrations/20270407090000_player_attributes.sql'));
+await db.exec(read('supabase/migrations/20270412100000_more_football_attributes.sql'));
+await db.exec("create function internal.club_of_team(c uuid, t uuid) returns uuid language sql stable as $$ select coalesce(c, (select club_id from core.teams where id = t)) $$");
+await db.exec(read('supabase/migrations/20270413090000_preferred_foot.sql'));
 await db.exec('begin');
 
 const as = who => db.query("select set_config('request.jwt.claim.sub',$1,false)", [who]);
@@ -46,6 +49,7 @@ let list = await get();
 assert.equal(list.sport, 'football');
 assert.ok(list.catalog.length >= 25, 'football list');
 assert.deepEqual(list.catalog.slice(0, 2).map(a => a.key), ['acceleration', 'speed'], 'in list order');
+assert.ok(['interceptions', 'tackling', 'back_to_goal', 'ball_carrying'].every(key => list.catalog.some(a => a.key === key)), 'defending and attacking play');
 assert.deepEqual(list.players.map(p => p.name), ['Ada', 'Bo'], 'players only, not leaders');
 assert.deepEqual(player(list, ada).strengths, []);
 
@@ -97,4 +101,19 @@ await db.query(`update core.assignments set state='ended' where club_person_id=$
 assert.equal((await one('select count(*)::int n from core.player_attributes where club_person_id=$1', [ada])).n, 0);
 await db.exec('set role authenticated');
 assert.deepEqual((await get()).players.map(p => p.name), ['Bo']);
+
+// The preferred foot: one foot, or both with which is better.
+const foot = (person, value) => one('select api.set_player_foot($1,$2,$3,$4) v', [club, team, person, value]).then(r => r.v);
+assert.equal(player(await get(), bo).foot, null);
+assert.equal(player(await foot(bo, 'both_left'), bo).foot, 'both_left');
+assert.equal(player(await foot(bo, 'right'), bo).foot, 'right');
+await rejects(() => foot(bo, 'middle'), 'invalid_foot');
+await rejects(() => foot(leaderPerson, 'left'), 'attributes_need_player_role');
+assert.equal(player(await foot(bo, null), bo).foot, null);
+await foot(bo, 'both_equal');
+await db.query("select set_config('request.jwt.claim.sub',$1,false)", [playerLogin]);
+await rejects(() => foot(bo, 'left'), 'not_found');
+await db.exec('reset role');
+await db.query(`update core.assignments set state='ended' where club_person_id=$1 and team_id=$2`, [bo, team]);
+assert.equal((await one('select count(*)::int n from core.player_feet where club_person_id=$1', [bo])).n, 0, 'the foot goes with the role');
 console.log('player attributes: ok');

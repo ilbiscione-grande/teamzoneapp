@@ -7,15 +7,18 @@ library;
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// A formation the team saved, by name, with its lines ("4-3-3").
+/// A formation the team saved, or a ready-made one ([template]) with what
+/// each place asks for, by name, with its lines ("4-3-3").
 class TeamFormationChoice {
   const TeamFormationChoice({
     required this.id,
     required this.name,
     required this.lines,
     required this.matchFormat,
+    this.template = false,
   });
   final String id, name, lines, matchFormat;
+  final bool template;
 }
 
 class TeamFormationList {
@@ -25,20 +28,20 @@ class TeamFormationList {
   });
   factory TeamFormationList.fromJson(Object? json) {
     final map = json is Map ? json : const {};
-    final rows = [
-      for (final row in (map['formations'] as List? ?? const []))
-        if (row is Map) row,
-    ];
-    return TeamFormationList(
-      formations: [
-        for (final row in rows)
+    List<TeamFormationChoice> read(String key, {bool template = false}) => [
+      for (final row in (map[key] as List? ?? const []))
+        if (row is Map)
           TeamFormationChoice(
             id: row['id'] as String? ?? '',
             name: row['name'] as String? ?? '',
             lines: row['lines'] as String? ?? '',
             matchFormat: row['match_format'] as String? ?? '11v11',
+            template: template,
           ),
-      ],
+    ];
+    return TeamFormationList(
+      // The team's own first, then the templates.
+      formations: [...read('formations'), ...read('templates', template: true)],
       customLabels: {
         for (final row in (map['custom'] as List? ?? const []))
           if (row is Map)

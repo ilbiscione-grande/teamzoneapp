@@ -12,89 +12,88 @@ import 'package:teamzone_app/src/features/team_development/team_development_serv
 import 'package:teamzone_app/src/features/workspaces/module_services.dart';
 
 void main() {
-  testWidgets(
-    'Föreslå fills the line-up from the team formation, with reasons',
-    (tester) async {
-      tester.view.physicalSize = const Size(420, 1400);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.reset);
-      final suggestions = _Suggestions();
-      LineupSuggestionFeature.services = suggestions;
-      addTearDown(
-        () => LineupSuggestionFeature.services =
-            const UnconfiguredLineupSuggestionServices(),
-      );
-      await tester.pumpWidget(
-        TeamZoneApp(
-          environment: const AppEnvironment(name: 'verification'),
-          locale: const Locale('sv'),
-          services: AppServices(
-            identity: _Identity(),
-            modules: _Modules(),
-            calendar: _Calendar(),
-            isConfigured: true,
-          ),
+  testWidgets('Föreslå fills the line-up from the team formation, with reasons', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(420, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final suggestions = _Suggestions();
+    LineupSuggestionFeature.services = suggestions;
+    addTearDown(
+      () => LineupSuggestionFeature.services =
+          const UnconfiguredLineupSuggestionServices(),
+    );
+    await tester.pumpWidget(
+      TeamZoneApp(
+        environment: const AppEnvironment(name: 'verification'),
+        locale: const Locale('sv'),
+        services: AppServices(
+          identity: _Identity(),
+          modules: _Modules(),
+          calendar: _Calendar(),
+          isConfigured: true,
         ),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('bottom-nav-more')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Arbetsytor'));
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.byKey(const Key('workspace-module-module.match_workspace')),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('module-open-next-match')));
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('bottom-nav-more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Arbetsytor'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('workspace-module-module.match_workspace')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('module-open-next-match')));
+    await tester.pumpAndSettle();
 
-      // Without a team formation: by position, from everyone not declined.
-      await tester.tap(find.byKey(const Key('lineup-suggest')));
-      await tester.pumpAndSettle();
-      expect(
-        suggestions.calls.single.toString(),
-        "(null, 2-3-1, 7v7, [ali, mia])",
-      );
-      final reasons = find.byKey(const Key('lineup-suggestion-reasons'));
-      expect(reasons, findsOneWidget);
-      expect(
-        find.descendant(of: reasons, matching: find.textContaining('Mia')),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: reasons,
-          matching: find.textContaining('Huvudposition · + Huvudspel'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: reasons,
-          matching: find.textContaining('− Långa inkast'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.text(
-          '2/7 på planen · tryck för att välja spelare, dra för att flytta',
-        ),
-        findsOneWidget,
-      );
+    // Without a team formation: by position, from everyone not declined.
+    await tester.tap(find.byKey(const Key('lineup-suggest')));
+    await tester.pumpAndSettle();
+    expect(suggestions.calls.single.toString(), "(t1, 2-3-1, 7v7, [ali, mia])");
+    final reasons = find.byKey(const Key('lineup-suggestion-reasons'));
+    expect(reasons, findsOneWidget);
+    expect(
+      find.descendant(of: reasons, matching: find.textContaining('Mia')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: reasons,
+        matching: find.textContaining('Huvudposition · + Huvudspel'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: reasons,
+        matching: find.textContaining('− Långa inkast'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        '2/7 på planen · tryck för att välja spelare, dra för att flytta',
+      ),
+      findsOneWidget,
+    );
 
-      // The team's formation is offered and used.
-      await tester.tap(find.byKey(const Key('lineup-formation')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Press (3-2-1)').last);
-      await tester.pumpAndSettle();
-      expect(find.byKey(const Key('lineup-suggestion-reasons')), findsNothing);
-      await tester.tap(find.byKey(const Key('lineup-suggest')));
-      await tester.pumpAndSettle();
-      expect(suggestions.calls.last.$1, 'f1');
-      expect(suggestions.calls.last.$2, '3-2-1');
-      expect(tester.takeException(), isNull);
-    },
-  );
+    // The team's formation is offered and used; the template stands for its preset.
+    await tester.tap(find.byKey(const Key('lineup-formation')));
+    await tester.pumpAndSettle();
+    expect(find.text('2-3-1 · mall'), findsWidgets);
+    expect(find.text('2-3-1'), findsNothing);
+    expect(find.text('Elva (4-3-3)'), findsNothing, reason: 'another format');
+    await tester.tap(find.text('Press (3-2-1)').last);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('lineup-suggestion-reasons')), findsNothing);
+    await tester.tap(find.byKey(const Key('lineup-suggest')));
+    await tester.pumpAndSettle();
+    expect(suggestions.calls.last.$1, 'f1');
+    expect(suggestions.calls.last.$2, '3-2-1');
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _Suggestions implements LineupSuggestionServices {
@@ -106,6 +105,11 @@ class _Suggestions implements LineupSuggestionServices {
     'formations': [
       {'id': 'f1', 'name': 'Press', 'lines': '3-2-1', 'match_format': '7v7'},
       {'id': 'f2', 'name': 'Elva', 'lines': '4-3-3', 'match_format': '11v11'},
+    ],
+    // The saved 2-3-1 has a template: it is chosen, and asks for its places.
+    'templates': [
+      {'id': 't1', 'name': '2-3-1', 'lines': '2-3-1', 'match_format': '7v7'},
+      {'id': 't2', 'name': '4-3-3', 'lines': '4-3-3', 'match_format': '11v11'},
     ],
     'custom': [
       {'id': 'c1', 'label': 'Långa inkast'},

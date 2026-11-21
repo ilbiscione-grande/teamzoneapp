@@ -25,6 +25,7 @@ class PlayerAttributeEntry {
     required this.name,
     this.strengths = const [],
     this.development = const [],
+    this.foot,
   });
   factory PlayerAttributeEntry.fromJson(Map<String, dynamic> json) =>
       PlayerAttributeEntry(
@@ -32,9 +33,14 @@ class PlayerAttributeEntry {
         name: json['name'] as String? ?? '',
         strengths: _strings(json['strengths']),
         development: _strings(json['development']),
+        foot: json['foot'] as String?,
       );
   final String personId, name;
   final List<String> strengths, development;
+
+  /// The preferred foot: left, right, both_equal, both_left (both, better
+  /// with the left) or both_right; null when not set.
+  final String? foot;
 
   AttributeAssessment? assessmentOf(String key) => strengths.contains(key)
       ? AttributeAssessment.strength
@@ -57,8 +63,30 @@ class PlayerAttributeEntry {
       ...development.where((k) => k != key),
       if (assessment == AttributeAssessment.development) key,
     ],
+    foot: foot,
+  );
+
+  /// As this entry with [foot] as the preferred foot.
+  PlayerAttributeEntry withFoot(String? foot) => PlayerAttributeEntry(
+    personId: personId,
+    name: name,
+    strengths: strengths,
+    development: development,
+    foot: foot,
   );
 }
+
+/// The preferred foot in words: "Vänster", "Båda, bättre med höger" …
+String? footLabel(String? foot, bool swedish) => switch (foot) {
+  'left' => swedish ? 'Vänster' : 'Left',
+  'right' => swedish ? 'Höger' : 'Right',
+  'both_equal' => swedish ? 'Båda, lika bra' : 'Both, equally good',
+  'both_left' =>
+    swedish ? 'Båda, bättre med vänster' : 'Both, better with the left',
+  'both_right' =>
+    swedish ? 'Båda, bättre med höger' : 'Both, better with the right',
+  _ => null,
+};
 
 /// The squad's attributes: the lists and each active player's ticks.
 class TeamPlayerAttributes {
@@ -139,6 +167,14 @@ abstract interface class PlayerAttributesServices {
     required String teamId,
     required String attributeId,
   });
+
+  /// Sets the player's preferred foot; null takes it away.
+  Future<TeamPlayerAttributes> setFoot({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required String? foot,
+  });
 }
 
 class UnconfiguredPlayerAttributesServices implements PlayerAttributesServices {
@@ -169,6 +205,13 @@ class UnconfiguredPlayerAttributesServices implements PlayerAttributesServices {
     required String clubId,
     required String teamId,
     required String attributeId,
+  }) async => _missing();
+  @override
+  Future<TeamPlayerAttributes> setFoot({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required String? foot,
   }) async => _missing();
 }
 
@@ -233,6 +276,19 @@ class SupabasePlayerAttributesServices implements PlayerAttributesServices {
     'target_team_id': teamId,
     'attribute_id': attributeId,
   });
+
+  @override
+  Future<TeamPlayerAttributes> setFoot({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required String? foot,
+  }) => _rpc('set_player_foot', {
+    'target_club_id': clubId,
+    'target_team_id': teamId,
+    'target_person_id': personId,
+    'new_foot': foot,
+  });
 }
 
 /// Where the player profile finds the services, configured at start.
@@ -260,20 +316,27 @@ const playerAttributeLabels = <String, (String, String)>{
   'long_passing': ('Långa passningar', 'Long passing'),
   'first_touch': ('Mottagning', 'First touch'),
   'dribbling': ('Dribbling', 'Dribbling'),
+  'ball_carrying': ('Driva boll framåt', 'Carrying the ball forward'),
   'feints': ('Finter', 'Feints'),
   'weak_foot': ('Svagare foten', 'Weaker foot'),
+  'tackling': ('Tacklingar', 'Tackling'),
+  'back_to_goal': ('Spela felvänd', 'Playing with the back to goal'),
   'finishing': ('Avslut', 'Finishing'),
   'set_pieces': ('Fasta situationer', 'Set pieces'),
   'goalkeeping': ('Målvaktsspel', 'Goalkeeping'),
   'goalkeeping_hands': ('Målvakt – räddningar', 'Goalkeeper – saves'),
   'goalkeeping_feet': ('Målvakt – fotspel', 'Goalkeeper – footwork'),
   'defending_1v1': ('1 mot 1 i försvar', '1v1 defending'),
+  'interceptions': ('Brytningar', 'Interceptions'),
+  'marking': ('Markering', 'Marking'),
+  'blocking': ('Blockeringar', 'Blocking'),
   'attacking_1v1': ('1 mot 1 i anfall', '1v1 attacking'),
   'positioning': ('Positionsspel', 'Positioning'),
   'game_reading': ('Spelförståelse', 'Reading the game'),
   'pressing': ('Press', 'Pressing'),
   'duels': ('Närkamper', 'Duels'),
   'runs_in_behind': ('Djupledslöpningar', 'Runs in behind'),
+  'recovery_runs': ('Hemlöpningar', 'Recovery runs'),
   'fast_breaks': ('Kontringar', 'Fast breaks'),
   'leadership': ('Ledarskap', 'Leadership'),
   'communication': ('Kommunikation', 'Communication'),

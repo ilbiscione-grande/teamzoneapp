@@ -399,3 +399,38 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
 .tb-requirement-list button { border: 0; border-radius: 999px; padding: 2px 8px; background: white; color: var(--wt-muted); font: inherit; font-size: .75rem; cursor: pointer; }
 .tb-requirement-list button.is-very { background: var(--wt-brand); color: white; font-weight: 600; }
 .tb-requirement-list .tb-requirement-remove { padding: 2px 6px; background: none; font-size: .9rem; }
+
+/* The formations dialog: the list on the left, the chosen formation's pitch and places on the right. */
+.tb-modal-card.tb-formations { width: min(1080px, 100%); min-height: min(640px, calc(100dvh - 32px)); align-content: start; }
+.tb-formations-body { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 20px; min-height: 0; }
+.tb-formations-list { display: grid; gap: 14px; align-content: start; max-height: calc(100dvh - 140px); overflow-y: auto; padding-right: 4px; }
+.tb-formations-group h3 { margin: 0 0 4px; color: var(--wt-muted); font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.tb-formations-group ul { list-style: none; margin: 0 0 4px; padding: 0; display: grid; gap: 2px; }
+.tb-formations-group li button { width: 100%; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-height: 32px; padding: 4px 8px; border: 0; border-radius: 6px; background: none; color: var(--wt-text); font: inherit; font-size: .9rem; text-align: left; cursor: pointer; }
+.tb-formations-group li button:hover { background: var(--wt-line); }
+.tb-formations-group li button[data-chosen="true"] { background: color-mix(in srgb, var(--wt-brand) 14%, white); color: var(--wt-brand); font-weight: 700; }
+.tb-formations-group li small { color: var(--wt-muted); font-size: .75rem; font-weight: 400; }
+.tb-formations-new { display: grid; gap: 6px; }
+.tb-formations-new input, .tb-formations-title input { min-height: 34px; padding: 6px 8px; border: 1px solid var(--wt-line); border-radius: 6px; font: inherit; }
+.tb-formations-detail { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.tb-formations-title { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.tb-formations-title h3 { margin: 0; font-size: 1.25rem; }
+.tb-formations-title input { font-size: 1.1rem; font-weight: 700; min-width: 0; flex: 1 1 220px; }
+.tb-badge { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: var(--wt-bg-alt); color: var(--wt-muted); font-size: .72rem; font-weight: 700; text-transform: uppercase; vertical-align: middle; }
+.tb-formations-work { display: grid; grid-template-columns: minmax(240px, 380px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.tb-formation-pitch { width: 100%; height: auto; display: block; }
+.tb-formation-spot { cursor: pointer; outline: none; }
+.tb-formation-spot:focus-visible circle:first-child { stroke: #facc15; stroke-width: .9; }
+.tb-slot-editor { display: grid; gap: 10px; align-content: start; }
+.tb-slot-editor h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 1.05rem; }
+.tb-slot-editor h4 { margin: 4px 0 0; color: var(--wt-muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+.tb-slot-editor select { min-height: 34px; padding: 4px 6px; border: 1px solid var(--wt-line); border-radius: 6px; background: white; font: inherit; font-size: .9rem; }
+.tb-requirement-weight { padding: 2px 8px; border-radius: 999px; background: white; color: var(--wt-muted); font-size: .75rem; }
+.tb-requirement-weight.is-very { background: var(--wt-brand); color: white; font-weight: 600; }
+.tb-formations-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 10px; border-top: 1px solid var(--wt-line); }
+.tb-formations-use { display: flex; gap: 8px; margin-left: auto; }
+@media (max-width: 760px) {
+  .tb-formations-body, .tb-formations-work { grid-template-columns: minmax(0, 1fr); }
+  .tb-formations-list { max-height: 220px; }
+  .tb-formations-use { margin-left: 0; }
+}

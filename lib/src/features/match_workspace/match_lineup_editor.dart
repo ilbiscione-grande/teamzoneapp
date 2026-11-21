@@ -58,6 +58,8 @@ class _MatchLineupEditorState extends State<_MatchLineupEditor> {
       setState(() {
         _teamFormations = teamFormations;
         _apply(lineup, squad);
+        // A formation with a template asks for what the template's places do.
+        _teamFormationId ??= _templateFor(_formation)?.id;
       });
     } catch (error) {
       if (mounted) setState(() => _error = error);
@@ -179,6 +181,17 @@ class _MatchLineupEditorState extends State<_MatchLineupEditor> {
   List<TeamFormationChoice> get _teamFormationsHere => [
     for (final formation in _teamFormations?.formations ?? const [])
       if (formation.matchFormat == (_format ?? '11v11')) formation,
+  ];
+
+  /// The template with [lines] for this match format, if any.
+  TeamFormationChoice? _templateFor(String lines) => _teamFormationsHere
+      .where((f) => f.template && f.lines == lines)
+      .firstOrNull;
+
+  /// The presets that have no template (those are offered as templates).
+  List<String> get _presetsHere => [
+    for (final formation in formationsFor(_format))
+      if (_templateFor(formation) == null) formation,
   ];
 
   /// A preset's lines, or `team:<id>` for one of the team's formations.
@@ -432,20 +445,25 @@ class _MatchLineupEditorState extends State<_MatchLineupEditor> {
                       ),
                       items: [
                         // The team's own formations, with what each place asks for.
+                        // Then the templates, which ask for something on
+                        // every place, and the presets without one.
                         for (final formation in _teamFormationsHere)
                           DropdownMenuItem(
                             value: 'team:${formation.id}',
                             child: Text(
-                              '${formation.name} (${formation.lines})',
+                              formation.template
+                                  ? '${formation.name} · ${_attrText(context, 'mall', 'template')}'
+                                  : '${formation.name} (${formation.lines})',
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        if (!formationsFor(_format).contains(_formation))
+                        if (_teamFormation == null &&
+                            !_presetsHere.contains(_formation))
                           DropdownMenuItem(
                             value: _formation,
                             child: Text(_formation),
                           ),
-                        for (final formation in formationsFor(_format))
+                        for (final formation in _presetsHere)
                           DropdownMenuItem(
                             value: formation,
                             child: Text(formation),

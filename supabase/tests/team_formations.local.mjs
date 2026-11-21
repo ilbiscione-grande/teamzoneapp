@@ -104,4 +104,48 @@ await as(coach);
 await rejects(() => one('select api.list_team_formations($1,$2) v', [club, other]), 'not_found');
 await rejects(() => db.query('select * from core.team_formations'), 'permission denied for table team_formations');
 assert.deepEqual((await one('select api.delete_team_formation($1,$2,$3) v', [club, team, small.id])).v.formations.map(f => f.name), ['4-3-3 press']);
+
+// Ready-made formations: each place asks for something; a copy can be changed.
+await db.exec('reset role');
+await db.exec(`insert into core.sport_positions values ('football','goalkeeper','general',null,0),
+  ('football','midfielder','general',null,5),('football','forward','general',null,6),
+  ('football','left_back','detailed','defender',7),('football','right_back','detailed','defender',8),
+  ('football','wing_back','detailed','defender',9),('football','defensive_midfielder','detailed','midfielder',10),
+  ('football','central_midfielder','detailed','midfielder',11),('football','attacking_midfielder','detailed','midfielder',12),
+  ('football','left_winger','detailed','forward',13),('football','right_winger','detailed','forward',14)`);
+await db.exec(read('supabase/migrations/20270412100000_more_football_attributes.sql'));
+await db.exec(read('supabase/migrations/20270414090000_formation_templates.sql'));
+assert.equal((await one('select count(*)::int n from core.formation_templates')).n, 21);
+await db.exec('set role authenticated');
+const listed = (await one('select api.list_team_formations($1,$2) v', [club, team])).v;
+assert.deepEqual(listed.formations.map(f => f.name), ['4-3-3 press'], 'the team\'s own stay apart');
+const templates = listed.templates;
+assert.equal(templates.length, 21);
+assert.ok(templates.every(t => t.template === true && t.revision === 0));
+const t433 = templates.find(t => t.lines === '4-3-3' && t.match_format === '11v11');
+const place = (formation, code) => formation.slots.find(s => s.code === code);
+const roles = code => [place(t433, code).position, place(t433, code).requirements.map(r => `${r.attribute}:${r.weight}`).join(',')];
+assert.deepEqual(roles('GK'), ['goalkeeper', 'goalkeeping_hands:2,goalkeeping_feet:1,communication:1']);
+assert.deepEqual(roles('1A'), ['left_back', 'defending_1v1:2,speed:1,crossing:1,endurance:1']);
+assert.deepEqual(roles('1B'), ['centre_back', 'heading:2,defending_1v1:1,interceptions:1,positioning:1']);
+assert.deepEqual(roles('1D'), ['right_back', 'defending_1v1:2,speed:1,crossing:1,endurance:1']);
+assert.deepEqual(roles('2B'), ['central_midfielder', 'passing:2,game_reading:1,endurance:1,work_rate:1']);
+assert.deepEqual(roles('3A'), ['left_winger', 'speed:2,attacking_1v1:2,dribbling:1,crossing:1']);
+assert.deepEqual(roles('3B'), ['striker', 'finishing:2,back_to_goal:1,runs_in_behind:1']);
+const t4231 = templates.find(t => t.lines === '4-2-3-1');
+assert.equal(place(t4231, '2A').position, 'defensive_midfielder');
+assert.equal(place(t4231, '3B').position, 'attacking_midfielder');
+assert.equal(place(t4231, '3A').position, 'left_winger');
+assert.deepEqual(place(t4231, '4A').requirements.map(r => r.attribute), ['finishing', 'back_to_goal', 'runs_in_behind', 'heading'], 'alone up front: heading too');
+const t352 = templates.find(t => t.lines === '3-5-2');
+assert.equal(place(t352, '2A').position, 'wing_back');
+assert.equal(place(t352, '1A').position, 'centre_back', 'three at the back are centre-backs');
+assert.equal(place(templates.find(t => t.lines === '4-4-2'), '2A').position, null, 'a wide midfielder asks for its line');
+assert.ok(templates.filter(t => t.match_format === '7v7').every(t => t.slots.length === 7));
+// A copy of a template is the team's own and can be changed.
+const copy = await save(null, '4-3-3 (kopia)', t433.lines, t433.match_format, t433.slots.map(s => ({ code: s.code, position: s.position, requirements: s.requirements })));
+assert.equal(place(copy, '3B').requirements[0].attribute, 'finishing');
+assert.equal((await list()).length, 2);
+await db.exec('set role authenticated');
+await rejects(() => db.query("update core.formation_templates set name='x' where false"), 'permission denied for table formation_templates');
 console.log('team formations: ok');

@@ -12,7 +12,20 @@ export type Requirement = { attribute: string; weight: 1 | 2 };
 export type FormationSlot = { code: string; group: string; position: string | null; requirements: Requirement[] };
 export type TeamFormation = {
   id: string; name: string; lines: string; match_format: MatchFormat | "3v3"; revision: number; slots: FormationSlot[];
+  /** A ready-made formation: read-only, copied to change. */
+  template?: boolean;
 };
+
+const FORMAT_ORDER = ["11v11", "9v9", "7v7", "5v5", "3v3"];
+
+/** Formations grouped by match format, the largest first. */
+export function byFormat(formations: TeamFormation[]): [string, TeamFormation[]][] {
+  return FORMAT_ORDER.map(format => [format, formations.filter(item => item.match_format === format)] as [string, TeamFormation[]])
+    .filter(([, items]) => items.length > 0);
+}
+
+/** "11 mot 11" for 11v11. */
+export const formatName = (format: string, english = false) => format.replace("v", english ? " v " : " mot ");
 
 export type SuggestedSlot = {
   code: string; group: string; locked: boolean;

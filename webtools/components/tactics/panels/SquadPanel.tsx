@@ -4,28 +4,32 @@
 // team's squad: fetched into the project and put on the pitch one by one or
 // by a formation.
 import { useState } from "react";
-import { applyFormation, createPlayer } from "../../../lib/tactics/document.ts";
+import { applyFormation, createPlayer, updateBoard } from "../../../lib/tactics/document.ts";
 import { formations, parseFormation } from "../../../lib/tactics/formations.ts";
 import type { Board, Side, SquadPlayer } from "../../../lib/tactics/model.ts";
 import { useAccount } from "../../account";
 import { activeObjects, useEditor, NONE } from "../store.ts";
 import { useSquadFetch } from "../use-squad.ts";
 import { TeamVisibility } from "./TeamVisibility.tsx";
-import { useT } from "../../language";
+import { useLanguage } from "../../language";
 import { positionShort } from "../../../lib/tactics/player-label.ts";
-import { linesOf } from "../../../lib/tactics/lineup.ts";
-import { useTeamFormations, type FormationDraft } from "../use-team-formations.ts";
-import { TeamLineup } from "./TeamLineup.tsx";
+import { applySuggestion, byFormat, formatName, linesOf, matchFormat, type TeamFormation } from "../../../lib/tactics/lineup.ts";
+import { useTeamFormations } from "../use-team-formations.ts";
+import { FormationsDialog, type FormationUse } from "../formations/FormationsDialog.tsx";
+import { TeamLineup, type SuggestionResult } from "./TeamLineup.tsx";
 
 export function SquadPanel({ board }: { board: Board }) {
-  const t = useT();
+  const { t, locale } = useLanguage();
   const meta = useEditor(state => state.meta);
   const squad = useEditor(state => state.document?.squad ?? NONE);
   const objects = useEditor(activeObjects);
   const frameIndex = useEditor(state => state.frameIndex);
   const [side, setSide] = useState<Side>("home");
-  const [formation, setFormation] = useState("4-3-3");
   const [custom, setCustom] = useState("");
+  const [dialog, setDialog] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState("");
+  const [result, setResult] = useState<SuggestionResult | null>(null);
   const { fetchSquad, busy, error } = useSquadFetch();
   const { changeObjects } = useEditor.getState();
   // The squad comes from a team in TeamZone; without one only the formations show.
@@ -37,25 +41,47 @@ export function SquadPanel({ board }: { board: Board }) {
   const own = squad.filter(player => player.homeTeam == null);
   const representatives = squad.filter(player => player.homeTeam != null);
 
-  // The team's own formations, with what each place asks for, for its leaders.
+  // For the team's leaders the formations are the team's own and the
+  // ready-made ones, with what each place asks for; else the presets. The
+  // board keeps its choice.
   const team = useTeamFormations(meta?.teamId ?? null);
-  const teamFormation = !custom.trim() && formation.startsWith("team:")
-    ? team.formations.find(item => `team:${item.id}` === formation) ?? null : null;
+  const teamMode = !!meta?.teamId && team.allowed && !!team.attributes;
+  const choices = [...team.formations, ...team.templates];
+  const fallback = teamMode
+    ? (team.templates.find(item => item.lines === "4-3-3" && item.match_format === "11v11") ?? choices[0])?.id ?? "4-3-3"
+    : "4-3-3";
+  const known = (value: string | undefined) => !!value && (teamMode ? choices.some(item => item.id === value) : value in formations);
+  const formation = known(board.formation) ? board.formation! : fallback;
+  const teamFormation = teamMode && !custom.trim() ? choices.find(item => item.id === formation) ?? null : null;
   const lines = custom.trim() ? parseFormation(custom) : teamFormation ? linesOf(teamFormation.lines) : formations[formation] ?? null;
-  const saveFormation = async (draft: FormationDraft) => {
-    const saved = await team.save(draft);
-    if (typeof saved === "string") return saved;
-    setFormation(`team:${saved.id}`);
+  const choose = (value: string) => {
     setCustom("");
-    return null;
+    setResult(null);
+    const { change, boardId } = useEditor.getState();
+    if (boardId) change(document => updateBoard(document, boardId, current => ({ ...current, formation: value })));
   };
-  const deleteFormation = async (formationId: string) => {
-    if (await team.remove(formationId)) setFormation("4-3-3");
-  };
-  const place = () => {
-    if (!lines) return;
+  const place = (chosen = lines, onSide = side) => {
+    if (!chosen) return;
     // The squad fills the home team; the away team is numbered.
-    changeObjects(current => applyFormation(current, side, lines, side === "home" ? own : []));
+    changeObjects(current => applyFormation(current, onSide, chosen, onSide === "home" ? own : []));
+  };
+  const suggest = async (chosen: TeamFormation | null, chosenLines: number[] | null) => {
+    const format = chosenLines ? matchFormat(chosenLines) : null;
+    if (!chosenLines || !format) return;
+    setSuggesting(true);
+    setSuggestError("");
+    const suggestion = await team.suggest(chosen ? { formationId: chosen.id } : { lines: chosenLines.join("-"), matchFormat: format }, null);
+    setSuggesting(false);
+    if (!suggestion) { setSuggestError(t("Förslaget kunde inte hämtas.")); return; }
+    setResult({ lines: chosenLines, suggestion });
+    changeObjects(current => applySuggestion(current, "home", chosenLines, suggestion.slots, squad));
+  };
+  const applyChosen = (chosen: TeamFormation, how: FormationUse) => {
+    setDialog(false);
+    choose(chosen.id);
+    setSide("home");
+    if (how === "place") place(linesOf(chosen.lines), "home");
+    else void suggest(chosen, linesOf(chosen.lines));
   };
 
 
@@ -77,15 +103,19 @@ export function SquadPanel({ board }: { board: Board }) {
           </select>
         </label>
         <label className="tb-field">{t("Formation")}
-          <select value={formation} onChange={event => { setFormation(event.target.value); setCustom(""); }}>
-            {team.formations.length > 0 ? (
+          <select value={formation} onChange={event => choose(event.target.value)}>
+            {teamMode ? (
               <>
-                <optgroup label={t("Lagets formationer")}>
-                  {team.formations.map(item => <option key={item.id} value={`team:${item.id}`}>{item.name}</option>)}
-                </optgroup>
-                <optgroup label={t("Vanliga formationer")}>
-                  {Object.keys(formations).map(name => <option key={name} value={name}>{name}</option>)}
-                </optgroup>
+                {team.formations.length > 0 && (
+                  <optgroup label={t("Lagets formationer")}>
+                    {team.formations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  </optgroup>
+                )}
+                {byFormat(team.templates).map(([format, items]) => (
+                  <optgroup key={format} label={t("Mallar · {format}", { format: formatName(format, locale === "en") })}>
+                    {items.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  </optgroup>
+                ))}
               </>
             ) : Object.keys(formations).map(name => <option key={name} value={name}>{name}</option>)}
           </select>
@@ -93,12 +123,15 @@ export function SquadPanel({ board }: { board: Board }) {
       </div>
       <label className="tb-field">{t("Egen formation (frivilligt)")}<input value={custom} placeholder={t("T.ex. 3-1-4-2")} onChange={event => setCustom(event.target.value)} /></label>
       {custom.trim() && !lines && <p className="tb-hint">{t("Skriv raderna bakifrån, t.ex. 4-4-2, med 3–10 utespelare.")}</p>}
-      <button type="button" className="wt-button small" disabled={!lines} onClick={place}>{t("Ställ upp laget")}</button>
+      <button type="button" className="wt-button small" disabled={!lines} onClick={() => place()}>{t("Ställ upp laget")}</button>
       <p className="tb-hint">{t("Lagets spelare flyttas till formationen, och saknade läggs till.")}</p>
-      {meta?.teamId && team.allowed && team.attributes && side === "home" && (
-        <TeamLineup lines={lines} formation={teamFormation} presetName={custom.trim() || formation}
-          attributes={team.attributes} squad={squad} onSave={saveFormation} onDelete={deleteFormation}
-          suggest={choice => team.suggest(choice, null)} />
+      {teamMode && side === "home" && (
+        <TeamLineup formation={teamFormation} canSuggest={!!lines && !!matchFormat(lines)} busy={suggesting} error={suggestError}
+          result={result} attributes={team.attributes!} onSuggest={() => void suggest(teamFormation, lines)} onOpen={() => setDialog(true)} />
+      )}
+      {dialog && team.attributes && (
+        <FormationsDialog formations={team.formations} templates={team.templates} attributes={team.attributes}
+          initial={teamFormation?.id ?? null} onSave={team.save} onDelete={team.remove} onUse={applyChosen} onClose={() => setDialog(false)} />
       )}
 
       {(meta?.teamId || hasTeams) && <h3>{t("Trupp")}</h3>}

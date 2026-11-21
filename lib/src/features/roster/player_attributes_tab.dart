@@ -56,21 +56,39 @@ class _PlayerAttributesViewState extends State<_PlayerAttributesView> {
     });
   }
 
-  void _tick(String key, AttributeAssessment? assessment) {
-    final entry = _entry!.withAssessment(key, assessment);
+  void _tick(String key, AttributeAssessment? assessment) => _save(
+    _entry!.withAssessment(key, assessment),
+    (entry) => _services.set(
+      clubId: widget.clubId,
+      teamId: widget.teamId,
+      personId: widget.personId,
+      strengths: entry.strengths,
+      development: entry.development,
+    ),
+  );
+
+  void _setFoot(String? foot) => _save(
+    _entry!.withFoot(foot),
+    (entry) => _services.setFoot(
+      clubId: widget.clubId,
+      teamId: widget.teamId,
+      personId: widget.personId,
+      foot: entry.foot,
+    ),
+  );
+
+  /// Shows [entry] at once and saves it after the saves before it.
+  void _save(
+    PlayerAttributeEntry entry,
+    Future<TeamPlayerAttributes> Function(PlayerAttributeEntry entry) call,
+  ) {
     setState(() {
       _entry = entry;
       _pending++;
     });
     _queue = _queue.then((_) async {
       try {
-        final data = await _services.set(
-          clubId: widget.clubId,
-          teamId: widget.teamId,
-          personId: widget.personId,
-          strengths: entry.strengths,
-          development: entry.development,
-        );
+        final data = await call(entry);
         if (_pending == 1) _apply(data);
       } catch (error) {
         AppErrors.caught('player_attributes.set', error);
@@ -253,6 +271,8 @@ class _PlayerAttributesViewState extends State<_PlayerAttributesView> {
           )
         else ...[
           _AttributeSummary(data: data, entry: entry, swedish: swedish),
+          const SizedBox(height: 12),
+          _PlayerFootCard(foot: entry.foot, onChanged: _setFoot),
           const SizedBox(height: 8),
           _AttributeNotice(
             icon: Icons.lock_outline,

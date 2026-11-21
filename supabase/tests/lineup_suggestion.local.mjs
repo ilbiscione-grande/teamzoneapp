@@ -165,3 +165,17 @@ await assert.rejects(() => one('select api.list_event_team_formations($1) v', [i
 await db.query("select set_config('request.jwt.claim.sub',$1,false)", [outsider]);
 await assert.rejects(() => one('select api.suggest_event_lineup($1,null,$2,$3,null,$4::jsonb) v', [match, '2-3-1', '7v7', '{}']), e => e.message === 'not_found');
 console.log('lineup suggestion by event: ok');
+
+// Suggesting from a ready-made formation, by its id.
+await db.exec('reset role');
+await db.exec(read('supabase/migrations/20270412100000_more_football_attributes.sql'));
+await db.exec(read('supabase/migrations/20270414090000_formation_templates.sql'));
+const template = (await one("select id from core.formation_templates where lines = '2-3-1' and match_format = '7v7'")).id;
+await db.exec('set role authenticated');
+await db.query("select set_config('request.jwt.claim.sub',$1,false)", [coach]);
+await one('select api.set_player_attributes($1,$2,$3,$4::text[],$5::text[]) v', [club, team, p.finisher, ['finishing'], []]);
+const fromTemplate = (await one('select api.suggest_lineup($1,$2,$3,null,null,null,$4::jsonb) v', [club, team, template, '{}'])).v;
+assert.equal(fromTemplate.slots.find(s => s.code === 'GK').person_id, p.keeper);
+assert.equal(fromTemplate.slots.find(s => s.code === '3A').person_id, p.finisher);
+assert.deepEqual(fromTemplate.slots.find(s => s.code === '3A').strengths, ['finishing'], 'the template asks for finishing up front');
+console.log('lineup suggestion from a template: ok');

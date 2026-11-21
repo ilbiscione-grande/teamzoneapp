@@ -289,6 +289,8 @@ export type Board = {
   exercise?: ExerciseDetails;
   /** A part of the pitch, in metres, that presenting, shared links, the PDF and the video show instead of the whole view; missing for all of it. */
   crop?: { x: number; y: number; width: number; height: number } | null;
+  /** The formation last chosen on the board: a preset's name, or a TeamZone team formation's or template's id. */
+  formation?: string;
   frames: Frame[];
 };
 
