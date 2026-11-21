@@ -155,7 +155,13 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     // club-wide queues itself, so this would open a second sheet.
     if (widget.contextValue.teamId == null) return;
     final action = widget.initialAction;
-    if (!const {'invite', 'applications', 'roles', 'intake'}.contains(action) ||
+    if (!const {
+          'invite',
+          'applications',
+          'roles',
+          'intake',
+          'representation',
+        }.contains(action) ||
         _openedInitialAction) {
       return;
     }
@@ -182,7 +188,13 @@ class _RosterSurfaceState extends State<_RosterSurface> {
         useRootNavigator: true,
         isScrollControlled: true,
         useSafeArea: true,
-        builder: (_) => action == 'applications'
+        builder: (_) => action == 'representation'
+            // From the assistant: requests to approve, players to add.
+            ? _PlayEligibilitySheet(
+                contextValue: widget.contextValue,
+                roster: widget.roster,
+              )
+            : action == 'applications'
             ? _MembershipReviewSheet(
                 contextValue: widget.contextValue,
                 membership: widget.membership,

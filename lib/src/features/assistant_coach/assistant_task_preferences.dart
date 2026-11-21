@@ -11,6 +11,10 @@ const assistantTaskTypes = <String, String>{
   'missing_match_result': 'Matchresultat som saknas',
   'missing_match_report': 'Matchrapporter som saknas',
   'unfinished_preparation': 'Återstående förberedelser',
+  'team_representation_requests': 'Representationer att godkänna',
+  'team_representation_available': 'Spelare som kan representera laget',
+  'inbox_messages': 'Olästa meddelanden och anslag',
+  'inbox_notices': 'Olästa notiser',
 };
 
 class AssistantTaskPreferences {

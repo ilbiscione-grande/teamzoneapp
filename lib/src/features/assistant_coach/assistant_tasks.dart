@@ -7,6 +7,7 @@ import '../../core/identity/identity_models.dart';
 import '../calendar/calendar_models.dart';
 import '../calendar/calendar_services.dart';
 import '../calendar/callup_reminders.dart';
+import 'assistant_inbox_tasks.dart';
 import 'assistant_task_feedback.dart';
 import 'assistant_preparation_checklist.dart';
 import 'assistant_task_preferences.dart';
@@ -28,6 +29,8 @@ String _localizedAssistantTitle(BuildContext context, AssistantTask item) {
     'unfinished_preparation' => 'Förberedelser återstår',
     'missing_attendance' => 'Närvaro saknas',
     'pending_callups' => 'Obesvarade kallelser',
+    'team_representation_requests' => 'Representation att godkänna',
+    'team_representation_available' => 'Spelare som kan representera laget',
     _ => null,
   };
   return title == null
@@ -54,6 +57,14 @@ String _localizedAssistantExplanation(
       '$count team goals in Team Development Plan await a check-in.',
     'club_referee_control' =>
       'The referee assigner asks whether ${item.task.title} refereed the match. Answer Yes or No under Referees on the match Info tab.',
+    'team_representation_requests' =>
+      '$count requests from other teams for your players to represent them. A representation applies only once your team approves it.',
+    'team_representation_available' =>
+      '$count players in the club\'s other teams were made available to represent other teams in the last 14 days. Add them under New if your team wants to use them; their own team then approves.',
+    'inbox_messages' =>
+      'An unread message or announcement in your inbox. It is marked read when you open it.',
+    'inbox_notices' =>
+      'An unread notice in your inbox, such as news, a result or a changed time. It is marked read when you open it.',
     'personal_calendar_conflict' =>
       'Your invitations across teams overlap within the next seven days. Two accepted invitations mean a double booking; an unanswered invitation means a possible conflict. This comparison is private and is not shared with team coaches.',
     'calendar_conflict' =>
@@ -114,11 +125,14 @@ class AssistantPageContext {
           task.overlappingEvent?.id == currentEventId;
     }
     return switch (path) {
-      ProductRouteContract.calendar => true,
+      ProductRouteContract.calendar => !task.isInbox,
+      ProductRouteContract.inbox => task.isInbox,
       ProductRouteContract.team => {
         'pending_callups',
         'missing_callups',
         'missing_attendance',
+        'team_representation_requests',
+        'team_representation_available',
       }.contains(task.task.kind),
       _ when path.startsWith('${ProductRouteContract.team}/member/') => {
         'pending_callups',
@@ -167,9 +181,15 @@ class AssistantTask {
 
   /// DR-01: a task of your club role (board, economy, applications), not
   /// of an activity. It opens its page; it has no snooze or archive.
-  // A module's reminders are duties too: no snooze or archive.
+  // A module's reminders are duties too: no snooze or archive. So are a
+  // team's roster questions (representation) and your unread inbox: they
+  // go away when handled or read.
   bool get isClubDuty =>
-      task.kind.startsWith('club_') || task.kind.startsWith('module_');
+      task.kind.startsWith('club_') ||
+      task.kind.startsWith('module_') ||
+      task.kind.startsWith('team_') ||
+      isInbox;
+  bool get isInbox => isAssistantInboxKind(task.kind);
   bool get isImportant {
     if (task.kind == 'calendar_conflict' || isPersonalConflict) return true;
     if (!{
@@ -239,6 +259,9 @@ class AssistantTask {
     'club_booking_requests' => 'Granska bokningar',
     'club_referee_control' => 'Svara på kontrollfrågan',
     'module_tdp_checkins' => 'Stäm av lagets mål',
+    'team_representation_requests' => 'Granska representationer',
+    'team_representation_available' => 'Visa representationer',
+    'inbox_messages' || 'inbox_notices' => 'Läs',
     'personal_calendar_conflict' => 'Öppna aktivitet och hantera krock',
     'calendar_conflict' => 'Välj aktivitet och ändra tid',
     'unfinished_preparation' => 'Öppna förberedelser',
@@ -266,6 +289,18 @@ class AssistantTask {
           : '${task.count} av lagets mål i Team Development Plan väntar på avstämning.',
     'club_referee_control' =>
       'Domaransvarig undrar om ${task.title} dömde matchen. Svara Ja eller Nej under Domare på matchens Info-flik.',
+    'team_representation_requests' =>
+      task.count == 1
+          ? 'Ett annat lag vill att en av lagets spelare ska kunna representera dem. Representationen gäller först när ni godkänner den.'
+          : 'Andra lag vill att ${task.count} av lagets spelare ska kunna representera dem. Representationerna gäller först när ni godkänner dem.',
+    'team_representation_available' =>
+      task.count == 1
+          ? 'En spelare i ett annat lag i klubben har de senaste 14 dagarna markerats som tillgänglig att representera andra lag. Lägg till spelaren under Ny om laget vill använda spelaren; spelarens lag godkänner sedan.'
+          : '${task.count} spelare i klubbens andra lag har de senaste 14 dagarna markerats som tillgängliga att representera andra lag. Lägg till dem under Ny om laget vill använda dem; spelarnas lag godkänner sedan.',
+    'inbox_messages' =>
+      'Ett oläst meddelande eller anslag i din inkorg. Det markeras som läst när du öppnar det.',
+    'inbox_notices' =>
+      'En oläst notis i din inkorg, till exempel en nyhet, ett resultat eller en ändrad tid. Den markeras som läst när du öppnar den.',
     'personal_calendar_conflict' =>
       'Dina egna kallelser i olika lag överlappar under kommande sju dagar. '
           'Två ja-svar innebär dubbelbokning; ett obesvarat svar innebär en möjlig krock. '
@@ -800,15 +835,34 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
       personalFailed = true;
     }
   }
+  for (final item in [
+    ...await loadAssistantRepresentationTasks(
+      contexts: contexts,
+      activeContext: activeContext,
+      overview: overview,
+      preferences: preferences,
+    ),
+    ...await loadAssistantInboxTasks(
+      contexts: contexts,
+      activeContext: activeContext,
+      overview: overview,
+      preferences: preferences,
+    ),
+  ]) {
+    tasks[item.key] = item;
+  }
   final sorted = tasks.values.toList()
     ..sort((a, b) {
       int rank(AssistantTask item) => switch (item.task.kind) {
         _ when item.isImportant => 0,
         'missing_attendance' => 1,
+        _ when item.isInbox => 3,
         _ => 2,
       };
       final kind = rank(a).compareTo(rank(b));
       if (kind != 0) return kind;
+      // The inbox reads newest first.
+      if (a.isInbox) return b.generatedAt.compareTo(a.generatedAt);
       final date = (a.startsAt ?? a.generatedAt).compareTo(
         b.startsAt ?? b.generatedAt,
       );
@@ -1196,6 +1250,17 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
   Future<void> _open(AssistantTask task) async {
     setState(() => _opening = true);
     try {
+      // An inbox item opened here is read, as when opened in the inbox.
+      if (task.isInbox && widget.overview is InboxAttentionServices) {
+        try {
+          await (widget.overview as InboxAttentionServices).markInboxItemRead(
+            task.eventId,
+            _newKey(),
+          );
+        } catch (error) {
+          AppErrors.caught('assistant_tasks._open.markRead', error);
+        }
+      }
       await widget.onOpen(task);
     } catch (error) {
       AppErrors.caught('assistant_tasks._open', error);
@@ -1687,6 +1752,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
     final title =
         item.task.kind == 'missing_callups' ||
             item.isMatchFollowup ||
+            item.isInbox ||
             item.overlappingEvent != null
         ? item.task.title
         : '${_localizedAssistantTitle(context, item)} (${item.task.count})';
@@ -1722,6 +1788,8 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                     child: Text(
                       grouped
                           ? title
+                          : item.isInbox
+                          ? AppStrings.of(context).feature('Inkorgen')
                           : [
                                   item.context.clubName,
                                   if (item.context.teamName != null)
@@ -1908,7 +1976,15 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
                     ),
                   const SizedBox(height: 8),
                   Text(
-                    item.isClubDuty
+                    item.isInbox
+                        ? '${AppStrings.of(context).isSwedish ? 'Källa: din inkorg.' : 'Source: your inbox.'} '
+                              '${AppStrings.of(context).isSwedish ? 'Skickat' : 'Sent'} ${material.formatShortDate(observed)} '
+                              '${material.formatTimeOfDay(TimeOfDay.fromDateTime(observed))}.'
+                        : item.task.kind.startsWith('team_representation')
+                        ? '${AppStrings.of(context).isSwedish ? 'Källa: lagets trupp och representationer.' : 'Source: team roster and representations.'} '
+                              '${AppStrings.of(context).isSwedish ? 'Hämtat' : 'Retrieved'} ${material.formatShortDate(observed)} '
+                              '${material.formatTimeOfDay(TimeOfDay.fromDateTime(observed))}.'
+                        : item.isClubDuty
                         ? '${AppStrings.of(context).isSwedish ? 'Källa: klubbens styrelse, ekonomi och ansökningar.' : 'Source: club board, finances and applications.'} '
                               '${AppStrings.of(context).isSwedish ? 'Hämtat' : 'Retrieved'} ${material.formatShortDate(observed)} '
                               '${material.formatTimeOfDay(TimeOfDay.fromDateTime(observed))}.'

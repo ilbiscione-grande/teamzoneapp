@@ -5,6 +5,7 @@ import 'package:teamzone_app/src/app/product_route_contract.dart';
 import 'package:teamzone_app/src/core/identity/identity_models.dart';
 import 'package:teamzone_app/src/features/assistant_coach/assistant_tasks.dart';
 import 'package:teamzone_app/src/features/calendar/calendar_models.dart';
+import 'package:teamzone_app/src/features/messaging/messaging_models.dart';
 import 'package:teamzone_app/src/features/overview/overview_models.dart';
 import 'package:teamzone_app/src/features/overview/overview_services.dart';
 
@@ -854,6 +855,115 @@ void main() {
       });
     },
   );
+
+  test('representation requests and available players open the team '
+      'representation sheet in that team', () async {
+    final lead = TeamZoneContext(
+      id: 'lead',
+      clubId: 'club-a',
+      clubName: 'Klubb A',
+      teamId: 'p2012',
+      teamName: 'P2012',
+      rolePackage: 'leader',
+      capabilities: const {'team.roster.manage'},
+    );
+    final snapshot = await loadAssistantTasks(
+      contexts: [team('x'), lead],
+      activeContext: team('x'),
+      overview: _RepresentationOverview(),
+      loadEvent: event,
+    );
+    final tasks = {for (final t in snapshot.tasks) t.task.kind: t};
+    expect(tasks.keys.toSet(), {
+      'team_representation_requests',
+      'team_representation_available',
+    });
+    final requests = tasks['team_representation_requests']!;
+    expect(requests.isClubDuty, isTrue, reason: 'no snooze or archive');
+    expect(requests.context.id, 'lead');
+    expect(requests.explanation, startsWith('Andra lag vill att 2'));
+    expect(
+      tasks['team_representation_available']!.explanation,
+      startsWith('En spelare'),
+    );
+    final route = Uri.parse(requests.route);
+    expect(route.path, ProductRouteContract.team);
+    expect(route.queryParameters, {
+      'action': 'representation',
+      'context': 'lead',
+    });
+    expect(AssistantPageContext('/team').isRelevant(requests), isTrue);
+  });
+
+  test(
+    'unread messages and notices show newest first and open their link',
+    () async {
+      final active = team('a');
+      final overview = _InboxOverview();
+      final snapshot = await loadAssistantTasks(
+        contexts: [active],
+        activeContext: active,
+        overview: overview,
+        loadEvent: event,
+      );
+      final inbox = snapshot.tasks.where((t) => t.isInbox).toList();
+      expect(inbox.map((t) => t.eventId), ['n3', 'n1'], reason: 'read skipped');
+      expect(inbox.first.task.kind, 'inbox_notices');
+      expect(inbox.last.task.kind, 'inbox_messages');
+      expect(inbox.last.route, '/inbox/thread/t1');
+      expect(inbox.last.eventTitle, 'Anna: Samling 17.30');
+      expect(inbox.last.isClubDuty, isTrue);
+      expect(AssistantPageContext('/inbox').isRelevant(inbox.last), isTrue);
+      expect(AssistantPageContext('/calendar').isRelevant(inbox.last), isFalse);
+    },
+  );
+}
+
+class _RepresentationOverview extends Overview
+    implements RepresentationTaskServices {
+  @override
+  Future<List<({String clubId, String teamId, String kind, int count})>>
+  listMyRepresentationTasks() async => const [
+    (clubId: 'club-a', teamId: 'p2012', kind: 'decide', count: 2),
+    (clubId: 'club-a', teamId: 'p2012', kind: 'available', count: 1),
+    // A team without your context.
+    (clubId: 'club-z', teamId: 'z', kind: 'decide', count: 1),
+  ];
+}
+
+class _InboxOverview extends Overview implements InboxAttentionServices {
+  final read = <String>[];
+  @override
+  Future<NotificationCenter> listInboxAttention() async =>
+      NotificationCenter.fromJson({
+        'unread_count': 2,
+        'items': [
+          for (final (id, category, unread, at) in [
+            ('n1', 'message', true, '2026-10-01T10:00:00Z'),
+            ('n2', 'message', false, '2026-10-02T10:00:00Z'),
+            ('n3', 'general', true, '2026-10-03T10:00:00Z'),
+          ])
+            <String, dynamic>{
+              'id': id,
+              'event_type': category == 'message'
+                  ? 'message.message.sent.v1'
+                  : 'team.news.v1',
+              'category': category,
+              'title': category == 'message' ? 'Anslag' : 'Nyhet från P2012',
+              'preview': 'Samling 17.30',
+              'deep_link': category == 'message'
+                  ? '/inbox/thread/t1'
+                  : 'https://public.teamzoneapp.se/a/b#nyheter',
+              'unread': unread,
+              'canonical_key': 'key-$id',
+              'sender_name': category == 'message' ? 'Anna' : null,
+              'created_at': at,
+            },
+        ],
+      });
+  @override
+  Future<void> markInboxItemRead(String id, String idempotencyKey) async =>
+      read.add(id);
 }
 
 class _DueOverview extends Overview implements TeamDevelopmentDueServices {

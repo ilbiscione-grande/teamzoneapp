@@ -1,6 +1,8 @@
 import 'package:teamzone_app/src/shared/async/booking_command.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:teamzone_app/src/features/overview/overview_models.dart';
+import 'package:teamzone_app/src/features/messaging/messaging_models.dart';
+import 'package:teamzone_app/src/core/supabase/measured_rpc.dart';
 import '../assistant_coach/assistant_task_feedback.dart';
 import '../assistant_coach/assistant_task_preferences.dart';
 import 'package:teamzone_app/src/core/observability/app_errors.dart';
@@ -25,6 +27,21 @@ abstract interface class ClubHomeServices {
 abstract interface class TeamDevelopmentDueServices {
   Future<List<({String clubId, String teamId, int due})>>
   listMyTeamDevelopmentCheckinsDue();
+}
+
+/// Representation in other teams, for the teams you lead: requests from
+/// other teams waiting for your approval ('decide'), and players recently
+/// made available by their own team, not yet requested here ('available').
+abstract interface class RepresentationTaskServices {
+  Future<List<({String clubId, String teamId, String kind, int count})>>
+  listMyRepresentationTasks();
+}
+
+/// Your inbox in the assistant: unread messages, announcements and other
+/// notices, marked read when opened from there.
+abstract interface class InboxAttentionServices {
+  Future<NotificationCenter> listInboxAttention();
+  Future<void> markInboxItemRead(String id, String idempotencyKey);
 }
 
 /// Kontrollfrågor om domaren: the matches you manage whose referee
@@ -121,6 +138,8 @@ class SupabaseOverviewServices
         TeamPageRequestServices,
         RefereeControlServices,
         TeamDevelopmentDueServices,
+        RepresentationTaskServices,
+        InboxAttentionServices,
         FreshLeaderOverviewServices,
         PersonalCalendarConflictServices,
         AssistantTaskPreferencesServices,
@@ -350,6 +369,50 @@ class SupabaseOverviewServices
           due: (row['due'] as num?)?.toInt() ?? 0,
         ),
     ];
+  }
+
+  @override
+  Future<List<({String clubId, String teamId, String kind, int count})>>
+  listMyRepresentationTasks() async {
+    final value = await _client
+        .schema('api')
+        .rpc<Object?>('list_my_representation_tasks')
+        .timeout(const Duration(seconds: 15));
+    if (value is! List) {
+      throw const FormatException('Invalid representation tasks.');
+    }
+    return [
+      for (final row in value.whereType<Map<String, dynamic>>())
+        (
+          clubId: row['club_id'] as String,
+          teamId: row['team_id'] as String,
+          kind: row['kind'] as String,
+          count: (row['count'] as num?)?.toInt() ?? 0,
+        ),
+    ];
+  }
+
+  @override
+  Future<NotificationCenter> listInboxAttention() async =>
+      NotificationCenter.fromJson(
+        await _client
+            .schema('api')
+            .rpc<Object?>('list_notification_center')
+            .timeout(const Duration(seconds: 15)),
+      );
+
+  @override
+  Future<void> markInboxItemRead(String id, String idempotencyKey) async {
+    // The same measured command as reading it in the inbox.
+    await measuredRpc(
+      _client,
+      operation: 'set_notification_state',
+      params: {
+        'notification_id': id,
+        'state': 'read',
+        'idempotency_key': idempotencyKey,
+      },
+    ).timeout(const Duration(seconds: 15));
   }
 
   @override
