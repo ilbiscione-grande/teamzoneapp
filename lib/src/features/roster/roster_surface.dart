@@ -4725,27 +4725,53 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
                     personId: person.id,
                   ),
                 );
-                if (person == null || !showStats) return view;
+                // Strengths and areas to develop, for the team's leaders.
+                final showAttributes =
+                    person != null &&
+                    !person.isSelf &&
+                    person.homeMember &&
+                    person.assignmentState == 'active' &&
+                    contextValue.can('team.roster.manage');
+                if (person == null || (!showStats && !showAttributes)) {
+                  return view;
+                }
                 final tabs = <(String, Widget)>[
                   (strings.feature('Översikt'), view),
-                  (
-                    strings.feature('Statistik'),
-                    _PersonStatisticsView(
-                      key: ValueKey('stats-$_generation'),
-                      profile: widget.profileServices,
-                      clubId: contextValue.clubId,
-                      teamId: person.teamId,
-                      personId: person.id,
-                      homeMember: person.homeMember,
-                      initial: stats,
-                      header: _PersonProfileHero(
-                        person: person,
-                        clubName: contextValue.clubName,
-                        roles: _roles,
-                        contact: _contact,
+                  if (showStats)
+                    (
+                      strings.feature('Statistik'),
+                      _PersonStatisticsView(
+                        key: ValueKey('stats-$_generation'),
+                        profile: widget.profileServices,
+                        clubId: contextValue.clubId,
+                        teamId: person.teamId,
+                        personId: person.id,
+                        homeMember: person.homeMember,
+                        initial: stats,
+                        header: _PersonProfileHero(
+                          person: person,
+                          clubName: contextValue.clubName,
+                          roles: _roles,
+                          contact: _contact,
+                        ),
                       ),
                     ),
-                  ),
+                  if (showAttributes)
+                    (
+                      _attrText(context, 'Egenskaper', 'Attributes'),
+                      _PlayerAttributesView(
+                        key: ValueKey('attributes-$_generation'),
+                        clubId: contextValue.clubId,
+                        teamId: person.teamId,
+                        personId: person.id,
+                        header: _PersonProfileHero(
+                          person: person,
+                          clubName: contextValue.clubName,
+                          roles: _roles,
+                          contact: _contact,
+                        ),
+                      ),
+                    ),
                 ];
                 final palette = AppPalette.of(context);
                 return DefaultTabController(

@@ -10,6 +10,7 @@ import 'package:teamzone_app/src/core/preferences/theme_persistence.dart';
 import 'package:teamzone_app/src/core/supabase/supabase_bootstrap.dart';
 import 'package:teamzone_app/src/features/account/profile_models.dart';
 import 'package:teamzone_app/src/features/account/profile_services.dart';
+import 'package:teamzone_app/src/features/roster/player_attributes_services.dart';
 import 'package:teamzone_app/src/features/roster/roster_models.dart';
 import 'package:teamzone_app/src/features/roster/roster_services.dart';
 
@@ -585,6 +586,39 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('a leader ticks strengths and areas to develop', (tester) async {
+    final attributes = _Attributes();
+    PlayerAttributesFeature.services = attributes;
+    addTearDown(
+      () => PlayerAttributesFeature.services =
+          const UnconfiguredPlayerAttributesServices(),
+    );
+    await _openMember(tester, _Profile());
+    await tester.tap(find.widgetWithText(Tab, 'Egenskaper'));
+    await tester.pumpAndSettle();
+    expect(find.text('Huvudspel'), findsOneWidget);
+    expect(find.text('Inga ibockade ännu'), findsNWidgets(2));
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('attribute-heading-strength')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('attribute-heading-strength')));
+    await tester.pumpAndSettle();
+    expect(attributes.saved, ['strengths heading; develop ']);
+    // A strength moved to develop is no longer a strength.
+    await tester.tap(
+      find.byKey(const ValueKey('attribute-heading-development')),
+    );
+    await tester.pumpAndSettle();
+    expect(attributes.saved.last, 'strengths ; develop heading');
+    final summary = find.byKey(const ValueKey('player-attributes-summary'));
+    expect(
+      find.descendant(of: summary, matching: find.text('Huvudspel')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('own profile adds app statistics and personal settings', (
     tester,
   ) async {
@@ -988,4 +1022,48 @@ class _Identity implements IdentityServices {
   }) async {}
   @override
   Future<void> signOut() async {}
+}
+
+class _Attributes extends UnconfiguredPlayerAttributesServices {
+  final saved = <String>[];
+  var _data = TeamPlayerAttributes.fromJson({
+    'sport': 'football',
+    'catalog': [
+      {'key': 'speed', 'area': 'physical'},
+      {'key': 'heading', 'area': 'technical'},
+    ],
+    'custom': [],
+    'players': [
+      {'person_id': 'ada', 'name': 'Ada Spelare'},
+    ],
+  });
+  @override
+  Future<TeamPlayerAttributes> get({
+    required String clubId,
+    required String teamId,
+  }) async => _data;
+  @override
+  Future<TeamPlayerAttributes> set({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required List<String> strengths,
+    required List<String> development,
+  }) async {
+    saved.add(
+      'strengths ${strengths.join(',')}; develop ${development.join(',')}',
+    );
+    return _data = TeamPlayerAttributes(
+      sport: _data.sport,
+      options: _data.options,
+      players: [
+        PlayerAttributeEntry(
+          personId: personId,
+          name: 'Ada Spelare',
+          strengths: strengths,
+          development: development,
+        ),
+      ],
+    );
+  }
 }
