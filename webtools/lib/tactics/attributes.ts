@@ -46,8 +46,9 @@ const ATTRIBUTES: Record<string, { sv: string; en: string }> = {
   composure: { sv: "Lugn under press", en: "Composure" },
 };
 
-/** The team's list: the sport's attributes in order, then its own. */
-export type TeamAttributes = { sport: string; catalog: { key: string; area: string }[]; custom: { id: string; label: string }[] };
+/** The team's list: the sport's attributes in order, each with what it means and the positions it matters most for, then the team's own. */
+export type CatalogAttribute = { key: string; area: string; about_sv?: string; about_en?: string; positions?: string[] };
+export type TeamAttributes = { sport: string; catalog: CatalogAttribute[]; custom: { id: string; label: string }[] };
 
 export function attributeName(key: string, attributes: TeamAttributes | null, locale: Locale): string {
   const own = attributes?.custom.find(item => item.id === key);
@@ -62,4 +63,11 @@ export function attributeOptions(attributes: TeamAttributes, locale: Locale): { 
     ...attributes.catalog.map(item => ({ key: item.key, name: attributeName(item.key, attributes, locale) })),
     ...attributes.custom.map(item => ({ key: item.id, name: item.label })),
   ];
+}
+
+/** What an attribute means and the positions it matters most for; null for the team's own. */
+export function attributeHelp(key: string, attributes: TeamAttributes | null, locale: Locale): { about: string; positions: string[] } | null {
+  const item = attributes?.catalog.find(entry => entry.key === key);
+  const about = locale === "en" ? item?.about_en : item?.about_sv;
+  return item && about ? { about, positions: item.positions ?? [] } : null;
 }

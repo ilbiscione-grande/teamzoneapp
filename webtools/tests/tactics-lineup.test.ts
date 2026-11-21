@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { attributeName, attributeOptions } from "../lib/tactics/attributes.ts";
+import { attributeHelp, attributeName, attributeOptions } from "../lib/tactics/attributes.ts";
 import { createPlayer } from "../lib/tactics/document.ts";
 import { formationPositions } from "../lib/tactics/formations.ts";
 import { applySuggestion, formationSlots, matchFormat, slotLabel, type SuggestedSlot } from "../lib/tactics/lineup.ts";
@@ -71,4 +71,16 @@ test("a suggestion puts each player at their place, moving those on the board", 
   assert.deepEqual({ x: numbered.x, y: numbered.y }, spots[6]);
   assert.equal(home.length, 7);
   assert.ok(next.some(item => item.type === "player" && item.side === "away"), "the away team stays");
+});
+
+test("an attribute explains itself in the team's language; the team's own do not", () => {
+  const attributes = {
+    sport: "football",
+    catalog: [{ key: "heading", area: "technical", about_sv: "Att vinna nickar.", about_en: "Winning headers.", positions: ["centre_back", "striker"] }],
+    custom: [{ id: "c1", label: "Långa inkast" }],
+  };
+  assert.deepEqual(attributeHelp("heading", attributes, "sv"), { about: "Att vinna nickar.", positions: ["centre_back", "striker"] });
+  assert.equal(attributeHelp("heading", attributes, "en")?.about, "Winning headers.");
+  assert.equal(attributeHelp("c1", attributes, "sv"), null);
+  assert.equal(attributeHelp("speed", attributes, "sv"), null);
 });

@@ -44,8 +44,8 @@ export function useTeamFormations(teamId: string | null) {
     const { data, error } = await client.schema("api").rpc("save_team_formation", {
       target_club_id: null, target_team_id: teamId, formation_id: draft.id, new_name: draft.name,
       new_lines: draft.lines, new_match_format: draft.matchFormat,
-      new_slots: draft.slots.filter(slot => slot.position || slot.requirements.length)
-        .map(slot => ({ code: slot.code, position: slot.position, requirements: slot.requirements })),
+      new_slots: draft.slots.filter(slot => slot.position || slot.foot || slot.requirements.length)
+        .map(slot => ({ code: slot.code, position: slot.position, foot: slot.foot ?? null, requirements: slot.requirements })),
       expected_revision: draft.revision,
     });
     if (error) return error.message;

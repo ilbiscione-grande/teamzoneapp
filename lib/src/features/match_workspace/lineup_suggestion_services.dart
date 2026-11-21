@@ -62,6 +62,8 @@ class SuggestedPlace {
     this.personId,
     this.score,
     this.positionFit,
+    this.foot,
+    this.footFit,
     this.strengths = const [],
     this.development = const [],
   });
@@ -70,6 +72,8 @@ class SuggestedPlace {
     personId: json['person_id'] as String?,
     score: (json['score'] as num?)?.toInt(),
     positionFit: json['position_fit'] as String?,
+    foot: json['foot'] as String?,
+    footFit: json['foot_fit'] as String?,
     strengths: [
       for (final key in json['strengths'] as List? ?? const [])
         if (key is String) key,
@@ -81,6 +85,10 @@ class SuggestedPlace {
   );
   final String code;
   final String? personId, positionFit;
+
+  /// The foot the place asks for (left, right) and how the player's fits:
+  /// good, both, weaker or wrong.
+  final String? foot, footFit;
   final int? score;
   final List<String> strengths, development;
 }

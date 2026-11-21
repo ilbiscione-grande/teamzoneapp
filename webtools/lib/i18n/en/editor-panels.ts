@@ -327,4 +327,15 @@ export const editorPanels: Record<string, string> = {
   "{name} (kopia {n})": "{name} (copy {n})",
   "{name} (kopia)": "{name} (copy)",
   "Ångra ändringarna": "Undo the changes",
+  // Feet and help in the formations dialog.
+  "Fot": "Foot",
+  "Vänsterfotad": "Left-footed",
+  "Högerfotad": "Right-footed",
+  "Spelar ingen roll": "Does not matter",
+  "Viktigast för": "Matters most for",
+  "+ Vänsterfot": "+ Left foot",
+  "+ Högerfot": "+ Right foot",
+  "Hyfsad vänsterfot": "Decent left foot",
+  "Hyfsad högerfot": "Decent right foot",
+  "− Fel fot": "− Wrong foot",
 };

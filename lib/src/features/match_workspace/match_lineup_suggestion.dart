@@ -34,6 +34,7 @@ class _SuggestionReasonsCard extends StatelessWidget {
       },
       for (final key in place.strengths) '+ ${_attribute(key, swedish)}',
       for (final key in place.development) '− ${_attribute(key, swedish)}',
+      ?_footReason(context, place),
     ].whereType<String>().join(' · ');
 
     return Card(
@@ -116,4 +117,22 @@ class _SuggestionReasonsCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The foot in a suggestion's reasons: "+ Vänsterfot" when it fits, "− Fel
+/// fot" when it does not; nothing when the place asks for none.
+String? _footReason(BuildContext context, SuggestedPlace place) {
+  final left = place.foot == 'left';
+  return switch (place.footFit) {
+    'good' || 'both' =>
+      left
+          ? _attrText(context, '+ Vänsterfot', '+ Left foot')
+          : _attrText(context, '+ Högerfot', '+ Right foot'),
+    'weaker' =>
+      left
+          ? _attrText(context, 'Hyfsad vänsterfot', 'Decent left foot')
+          : _attrText(context, 'Hyfsad högerfot', 'Decent right foot'),
+    'wrong' => _attrText(context, '− Fel fot', '− Wrong foot'),
+    _ => null,
+  };
 }

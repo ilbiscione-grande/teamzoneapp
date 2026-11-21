@@ -616,7 +616,32 @@ class _AttributeRow extends StatelessWidget {
                       ),
                     ),
                   )
-                : label,
+                : option.about(swedish).isEmpty
+                ? label
+                // The sport's attributes explain themselves on a tap.
+                : Align(
+                    alignment: Alignment.centerLeft,
+                    child: InkWell(
+                      key: ValueKey('attribute-help-${option.key}'),
+                      borderRadius: BorderRadius.circular(6),
+                      onTap: () => _showAttributeHelp(context, option),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(child: label),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.info_outline,
+                              size: 16,
+                              color: palette.muted,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
           ),
           Wrap(
             spacing: 6,

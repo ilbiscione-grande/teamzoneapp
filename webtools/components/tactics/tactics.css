@@ -434,3 +434,7 @@ body:has(.tb-editor) .wt-main { display: flex; flex-direction: column; min-heigh
   .tb-formations-list { max-height: 220px; }
   .tb-formations-use { margin-left: 0; }
 }
+.tb-requirement-list .tb-requirement-name { padding: 0; background: none; color: var(--wt-text); font-size: .8rem; text-align: left; }
+.tb-requirement-list .tb-requirement-name span { color: var(--wt-muted); }
+.tb-attribute-help { display: grid; gap: 4px; padding: 10px 12px; border-left: 3px solid var(--wt-brand); border-radius: 6px; background: var(--wt-bg-alt); font-size: .88rem; }
+.tb-attribute-help p { margin: 0; }

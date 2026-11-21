@@ -179,3 +179,39 @@ assert.equal(fromTemplate.slots.find(s => s.code === 'GK').person_id, p.keeper);
 assert.equal(fromTemplate.slots.find(s => s.code === '3A').person_id, p.finisher);
 assert.deepEqual(fromTemplate.slots.find(s => s.code === '3A').strengths, ['finishing'], 'the template asks for finishing up front');
 console.log('lineup suggestion from a template: ok');
+
+// The foot a place asks for, against the player's.
+await db.exec('reset role');
+await db.exec(read('supabase/migrations/20270413090000_preferred_foot.sql'));
+await db.exec(read('supabase/migrations/20270415090000_attribute_help_and_slot_foot.sql'));
+const help = (await db.query("select key, about_sv, about_en, positions from core.sport_attributes where sport = 'football'")).rows;
+assert.deepEqual(help.filter(h => !h.about_sv || !h.about_en).map(h => h.key), [], 'every football attribute explains itself');
+assert.deepEqual(help.find(h => h.key === 'heading').positions, ['centre_back', 'striker']);
+const t433 = (await one("select slots from core.formation_templates where lines = '4-3-3' and match_format = '11v11'")).slots;
+assert.deepEqual(['1A', '1B', '1D', '3A'].map(code => t433.find(s => s.code === code).foot ?? null), ['left', null, 'right', null],
+  'full-backs on their side, wingers free');
+const t352 = (await one("select slots from core.formation_templates where lines = '3-5-2'")).slots;
+assert.deepEqual(['2A', '2E'].map(code => t352.find(s => s.code === code).foot), ['left', 'right'], 'wing-backs too');
+await db.exec('set role authenticated');
+await db.query("select set_config('request.jwt.claim.sub',$1,false)", [coach]);
+const feetFormation = (await one('select api.save_team_formation($1,$2,null,$3,$4,$5,$6::jsonb,null) v', [club, team,
+  'Fötter', '2-3-1', '7v7', JSON.stringify([{ code: '1A', foot: 'left' }, { code: '1B', foot: 'right' }])])).v;
+assert.equal(feetFormation.slots.find(s => s.code === '1A').foot, 'left');
+assert.equal(feetFormation.slots.find(s => s.code === 'GK').foot, null);
+await assert.rejects(() => one('select api.save_team_formation($1,$2,null,$3,$4,$5,$6::jsonb,null) v', [club, team,
+  'Fel fot', '2-3-1', '7v7', JSON.stringify([{ code: '1A', foot: 'middle' }])]), e => e.message === 'invalid_slots');
+// Two defenders alike but for the foot: each goes to the side of their foot.
+const setFoot = (person, foot) => one('select api.set_player_foot($1,$2,$3,$4) v', [club, team, person, foot]);
+await setFoot(p.stopper, 'right');
+await setFoot(p.back, 'both_left');
+const footed = (await one('select api.suggest_lineup($1,$2,$3,null,null,$4::uuid[],$5::jsonb) v',
+  [club, team, feetFormation.id, [p.keeper, p.stopper, p.back], '{}'])).v;
+const footAt = code => footed.slots.find(s => s.code === code);
+assert.equal(footAt('1A').person_id, p.back, 'both, better with the left: left side');
+assert.equal(footAt('1A').foot_fit, 'good');
+assert.equal(footAt('1B').person_id, p.stopper, 'right-footed: right side');
+await setFoot(p.back, 'right');
+const wrong = (await one('select api.suggest_lineup($1,$2,$3,null,null,$4::uuid[],$5::jsonb) v',
+  [club, team, feetFormation.id, [p.keeper, p.back], '{}'])).v;
+assert.equal(wrong.slots.find(s => s.code === '1B').person_id, p.back, 'the right side rather than the wrong foot');
+console.log('lineup suggestion with feet: ok');

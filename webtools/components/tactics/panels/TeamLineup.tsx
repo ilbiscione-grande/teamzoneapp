@@ -24,6 +24,9 @@ export function TeamLineup({ formation, canSuggest, busy, error, result, attribu
     slot.position_fit === "main" ? t("Huvudposition") : slot.position_fit === "other" ? t("Kan positionen") : slot.position_fit === "group" ? t("Rätt lagdel") : null,
     ...(slot.strengths ?? []).map(key => "+ " + attributeName(key, attributes, locale)),
     ...(slot.development ?? []).map(key => "− " + attributeName(key, attributes, locale)),
+    slot.foot_fit === "good" || slot.foot_fit === "both" ? (slot.foot === "left" ? t("+ Vänsterfot") : t("+ Högerfot"))
+      : slot.foot_fit === "weaker" ? (slot.foot === "left" ? t("Hyfsad vänsterfot") : t("Hyfsad högerfot"))
+      : slot.foot_fit === "wrong" ? t("− Fel fot") : null,
   ].filter(Boolean).join(" · ");
 
   return (

@@ -38,6 +38,12 @@ export function FormationPitch({ lines, slots, selected, english, onSelect }: {
             onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(slot.code); } }}>
             <circle cx={cx} cy={cy} r={chosen ? 3.9 : 3.4} fill={chosen ? "#facc15" : "#0f172a"} stroke="white" strokeWidth={0.5} />
             <text x={cx} y={cy + 0.9} textAnchor="middle" fontSize={label.length > 2 ? 2.1 : 2.5} fontWeight={700} fill={chosen ? "#0f172a" : "white"}>{label}</text>
+            {slot.foot && (
+              // The foot the place asks for: V/H, L/R in English.
+              <text x={cx + 4.6} y={cy - 2.4} fontSize={2.2} fontWeight={700} fill="#facc15">
+                {slot.foot === "left" ? (english ? "L" : "V") : (english ? "R" : "H")}
+              </text>
+            )}
             {slot.requirements.map((requirement, dot) => (
               <circle key={requirement.attribute} cx={cx - (slot.requirements.length - 1) * 0.9 + dot * 1.8} cy={cy + 5.2}
                 r={requirement.weight === 2 ? 0.75 : 0.5} fill={requirement.weight === 2 ? "#facc15" : "white"} />

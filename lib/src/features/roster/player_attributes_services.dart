@@ -13,10 +13,23 @@ enum AttributeAssessment { strength, development }
 /// One attribute the team can tick: from the sport's list ([area] set) or
 /// one of the team's own ([custom], keyed by its id).
 class PlayerAttributeOption {
-  const PlayerAttributeOption({required this.key, this.area, this.customLabel});
+  const PlayerAttributeOption({
+    required this.key,
+    this.area,
+    this.customLabel,
+    this.aboutSv = '',
+    this.aboutEn = '',
+    this.positions = const [],
+  });
   final String key;
   final String? area, customLabel;
+
+  /// What the attribute means, and the positions it matters most for
+  /// (position keys); empty for the team's own.
+  final String aboutSv, aboutEn;
+  final List<String> positions;
   bool get custom => customLabel != null;
+  String about(bool swedish) => swedish ? aboutSv : aboutEn;
 }
 
 class PlayerAttributeEntry {
@@ -108,6 +121,9 @@ class TeamPlayerAttributes {
           PlayerAttributeOption(
             key: row['key'] as String? ?? '',
             area: row['area'] as String? ?? 'technical',
+            aboutSv: row['about_sv'] as String? ?? '',
+            aboutEn: row['about_en'] as String? ?? '',
+            positions: _strings(row['positions']),
           ),
         for (final row in rows(map['custom']))
           PlayerAttributeOption(

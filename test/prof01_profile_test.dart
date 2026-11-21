@@ -636,6 +636,48 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('an attribute explains itself and where it matters most', (
+    tester,
+  ) async {
+    PlayerAttributesFeature.services = _Attributes();
+    addTearDown(
+      () => PlayerAttributesFeature.services =
+          const UnconfiguredPlayerAttributesServices(),
+    );
+    await _openMember(tester, _Profile());
+    await tester.tap(find.widgetWithText(Tab, 'Egenskaper'));
+    await tester.pumpAndSettle();
+    final help = find.byKey(const ValueKey('attribute-help-heading'));
+    await tester.scrollUntilVisible(
+      help,
+      200,
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('player-attributes')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.byKey(const ValueKey('attribute-help-speed')), findsNothing);
+    await tester.tap(help);
+    await tester.pumpAndSettle();
+    final sheet = find.byKey(const ValueKey('attribute-help-sheet-heading'));
+    expect(
+      find.descendant(
+        of: sheet,
+        matching: find.text('Att vinna och styra nickar.'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheet, matching: find.text('Viktigast för')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheet, matching: find.byType(Chip)),
+      findsNWidgets(2),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a leader sets the preferred foot, both with the better one', (
     tester,
   ) async {
@@ -1102,7 +1144,13 @@ class _Attributes extends UnconfiguredPlayerAttributesServices {
     'sport': 'football',
     'catalog': [
       {'key': 'speed', 'area': 'physical'},
-      {'key': 'heading', 'area': 'technical'},
+      {
+        'key': 'heading',
+        'area': 'technical',
+        'about_sv': 'Att vinna och styra nickar.',
+        'about_en': 'Winning and directing headers.',
+        'positions': ['centre_back', 'striker'],
+      },
     ],
     'custom': [],
     'players': [

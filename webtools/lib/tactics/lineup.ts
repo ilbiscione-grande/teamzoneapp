@@ -9,7 +9,8 @@ import type { PlayerObject, Side, SquadPlayer, TacticsObject } from "./model.ts"
 
 export type MatchFormat = "5v5" | "7v7" | "9v9" | "11v11";
 export type Requirement = { attribute: string; weight: 1 | 2 };
-export type FormationSlot = { code: string; group: string; position: string | null; requirements: Requirement[] };
+/** A place: its code, the general position of its line, and what it asks for (a position, a foot, attributes). */
+export type FormationSlot = { code: string; group: string; position: string | null; foot?: "left" | "right" | null; requirements: Requirement[] };
 export type TeamFormation = {
   id: string; name: string; lines: string; match_format: MatchFormat | "3v3"; revision: number; slots: FormationSlot[];
   /** A ready-made formation: read-only, copied to change. */
@@ -32,6 +33,8 @@ export type SuggestedSlot = {
   person_id: string | null; name?: string | null; number?: number | null;
   score?: number; position_fit?: "main" | "other" | "group" | "none";
   strengths?: string[]; development?: string[];
+  /** The foot the place asks for, and how the player's fits it. */
+  foot?: "left" | "right" | null; foot_fit?: "good" | "both" | "weaker" | "wrong" | null;
   alternatives?: { person_id: string; name: string; score: number }[];
 };
 export type Suggestion = { slots: SuggestedSlot[]; bench: { person_id: string; name: string; number: number | null }[] };
