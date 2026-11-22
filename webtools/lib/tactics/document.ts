@@ -266,6 +266,16 @@ export function moveFrame(board: Board, index: number, step: 1 | -1): Board {
   return { ...board, frames };
 }
 
+/** The board at `from` taken out and put back so it ends up at `to`, the others keeping their order. */
+export function moveBoard(document: ProjectDocument, from: number, to: number): ProjectDocument {
+  const count = document.boards.length;
+  if (from === to || from < 0 || from >= count || to < 0 || to >= count) return document;
+  const boards = [...document.boards];
+  const [board] = boards.splice(from, 1);
+  boards.splice(to, 0, board);
+  return { ...document, boards };
+}
+
 export function setFrameDuration(board: Board, index: number, durationMs: number): Board {
   return { ...board, frames: board.frames.map((frame, i) => i === index ? { ...frame, durationMs: Math.min(10000, Math.max(200, durationMs)) } : frame) };
 }

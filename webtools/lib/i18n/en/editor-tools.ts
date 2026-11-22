@@ -101,6 +101,7 @@ export const editorTools: Record<string, string> = {
   "Byt namn…": "Rename…",
   "Ta bort tavlan…": "Remove the board…",
   "Dubbelklicka för att byta namn": "Double-click to rename",
+  "Dubbelklicka för att byta namn, dra för att flytta": "Double-click to rename, drag to move",
   "En annan ledare": "Another coach",
   "Visa i helskärm": "Show full screen",
   "Livelektion pågår": "Live session running",

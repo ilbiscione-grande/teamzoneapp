@@ -1,14 +1,15 @@
 "use client";
 
 // Above the board, on one row: back to the projects (or the folder it was
-// opened from), the boards as tabs (renamed by a double click; a list to choose from on a phone),
+// opened from), the boards as tabs (renamed by a double click, dragged sideways
+// to change their order; a list to choose from on a phone),
 // undo and redo, presenting, versions and settings, sharing (a link, PDF,
 // video and more, in one dialog) and how saving goes. The project's name, kind and team are under Inställningar.
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { LeaderAccess, ProjectKind } from "../../lib/tactics/model.ts";
 import { kindNames } from "../../lib/tactics/preview.ts";
-import { updateBoard } from "../../lib/tactics/document.ts";
+import { moveBoard, updateBoard } from "../../lib/tactics/document.ts";
 import type { LeaderTeam } from "../../lib/tournament";
 import { useAccount } from "../account";
 import { useEditor, type SaveState, NONE } from "./store.ts";
@@ -45,6 +46,9 @@ function Boards() {
   const projectId = useEditor(state => state.meta?.id);
   const { items } = useLibrary();
   const [renaming, setRenaming] = useState<string | null>(null);
+  // A tab being dragged to a new place among the others: which, and where it would land.
+  const [dragging, setDragging] = useState<number | null>(null);
+  const [landing, setLanding] = useState<number | null>(null);
   const phone = usePhone();
   // On a phone the tabs scroll sideways; the board you are on stays in view,
   // and on the last one so does "+" after it.
@@ -88,8 +92,24 @@ function Boards() {
   }
   return (
     <div className="tb-boards" role="tablist" aria-label={t("Tavlor")}>
-      {boards.map(board => (
-        <span key={board.id} className="tb-board-tab" data-active={board.id === boardId}>
+      {boards.map((board, index) => (
+        <span key={board.id} className="tb-board-tab" data-active={board.id === boardId}
+          data-dragging={dragging === index || undefined}
+          data-landing={landing === null || dragging === null || landing === dragging ? undefined : landing === index ? (landing < dragging ? "before" : "after") : undefined}
+          draggable={renaming !== board.id && boards.length > 1}
+          onDragStart={event => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", board.name); setDragging(index); setLanding(index); }}
+          onDragOver={event => {
+            if (dragging === null) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "move";
+            setLanding(index);
+          }}
+          onDrop={event => {
+            event.preventDefault();
+            if (dragging !== null && dragging !== index) change(document => moveBoard(document, dragging, index));
+            setDragging(null); setLanding(null);
+          }}
+          onDragEnd={() => { setDragging(null); setLanding(null); }}>
           {renaming === board.id ? (
             <input autoFocus defaultValue={board.name} maxLength={60} aria-label={t("Tavlans namn")} onFocus={event => event.target.select()}
               onBlur={event => { rename(board.id, event.target.value.trim() || board.name); setRenaming(null); }}
@@ -99,7 +119,7 @@ function Boards() {
               }} />
           ) : (
             <button type="button" role="tab" aria-selected={board.id === boardId} onClick={() => setBoard(board.id)}
-              onDoubleClick={() => { setBoard(board.id); setRenaming(board.id); }} title={t("Dubbelklicka för att byta namn")}>
+              onDoubleClick={() => { setBoard(board.id); setRenaming(board.id); }} title={t("Dubbelklicka för att byta namn, dra för att flytta")}>
               {board.name || t("Tavla")}
               {publishedFor(board.id).map(club => <PublishedIcon key={club} clubName={club || null} />)}
             </button>

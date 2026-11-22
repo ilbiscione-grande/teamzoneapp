@@ -18,6 +18,9 @@
 .tb-boards { flex: 1 1 auto; min-width: 0; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
 .tb-board-tab { display: inline-flex; align-items: center; border-radius: 6px 6px 0 0; }
 .tb-board-tab[data-active="true"] { background: #0f1a14; }
+.tb-board-tab[data-dragging] { opacity: .45; }
+.tb-board-tab[data-landing="before"] { box-shadow: inset 3px 0 0 var(--wt-accent); }
+.tb-board-tab[data-landing="after"] { box-shadow: inset -3px 0 0 var(--wt-accent); }
 .tb-board-tab button[role="tab"] { min-height: 40px; padding: 0 12px; border: 0; background: none; color: #a9b4c4; font: inherit; font-size: .9rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .tb-board-tab[data-active="true"] button[role="tab"] { color: white; }
 .tb-tab-close { border: 0; background: none; color: #a9b4c4; padding: 0 8px 0 0; cursor: pointer; font-size: 1.1rem; }
