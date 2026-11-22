@@ -3074,10 +3074,10 @@ class AppStrings {
         'Propose the person to another team in the club.',
     'Lagen kunde inte laddas. Försök igen.':
         'The teams could not be loaded. Try again.',
-    'Förfrågan skickad. Ditt lag behöver godkänna den innan '
-            'det andra laget kan använda spelaren.':
-        'Request sent. Your team needs to approve it before the other '
-        'team can use the player.',
+    'Förfrågan skickad. Det andra laget behöver godkänna den.':
+        'Request sent. The other team needs to approve it.',
+    'erbjuden till': 'offered to',
+    'erbjuden av': 'offered by',
     'Förfrågan kunde inte sparas. Kontrollera lag, period och överlapp.':
         'The request could not be saved. Check team, period and overlap.',
     'Redigera profil': 'Edit profile',

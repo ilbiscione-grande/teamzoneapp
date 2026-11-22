@@ -2332,13 +2332,15 @@ class _PlayEligibilitySheetState extends State<_PlayEligibilitySheet> {
                           AppStrings.of(context).domainValue(item.kind),
                           AppStrings.of(context).domainValue(item.validityKind),
                           AppStrings.of(context).domainValue(item.state),
+                          // Who started it: the home team offering its
+                          // player, or the other team asking for them.
                           if (item.homeTeamId == widget.contextValue.teamId &&
                               item.targetTeamId != widget.contextValue.teamId)
-                            '${AppStrings.of(context).feature('begärd av')} '
+                            '${AppStrings.of(context).feature(item.offeredByHome ? 'erbjuden till' : 'begärd av')} '
                                 '${item.targetTeamName}'
                           else if (item.homeTeamName != null &&
                               item.homeTeamId != widget.contextValue.teamId)
-                            '${AppStrings.of(context).feature('från')} '
+                            '${AppStrings.of(context).feature(item.offeredByHome ? 'erbjuden av' : 'från')} '
                                 '${item.homeTeamName}',
                         ].join(' · '),
                       ),
@@ -5048,19 +5050,10 @@ Future<void> _representFromProfile({
       59,
       59,
     );
-    // Sending the request is the consent: the player becomes available for
-    // representation first, so no separate setting is needed.
-    if (person.representationAvailable != true) {
-      await roster.setRepresentationAvailable(
-        clubId: contextValue.clubId,
-        teamId: contextValue.teamId!,
-        personId: person.id,
-        available: true,
-        expectedRevision: person.personRevision ?? 1,
-        idempotencyKey: _newUuid(),
-      );
-    }
+    // The home team offers its player: the offer itself makes the player
+    // available, and the receiving team approves or rejects it.
     await roster.createPlayEligibility(
+      offer: true,
       clubId: contextValue.clubId,
       teamId: targetTeamId,
       personId: person.id,
@@ -5076,12 +5069,20 @@ Future<void> _representFromProfile({
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            strings.feature(
-              'Förfrågan skickad. Ditt lag behöver godkänna den innan '
-              'det andra laget kan använda spelaren.',
+          content: Text(switch (options.teams
+              .where((team) => team.id == targetTeamId)
+              .firstOrNull
+              ?.name) {
+            final team? when strings.isSwedish =>
+              'Förfrågan skickad till $team. Spelaren kan representera '
+                  'laget när $team har godkänt den.',
+            final team? =>
+              'Request sent to $team. The player can represent the team '
+                  'once $team has approved it.',
+            _ => strings.feature(
+              'Förfrågan skickad. Det andra laget behöver godkänna den.',
             ),
-          ),
+          }),
         ),
       );
     }

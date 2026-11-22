@@ -866,7 +866,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a player menu offers actions; asking turns representation on', (
+  testWidgets('a player menu offers actions; the home team offers a player', (
     tester,
   ) async {
     final roster = _Roster(
@@ -911,7 +911,8 @@ void main() {
         reason: action,
       );
     }
-    // No switch first: sending the request makes the player available.
+    // No switch first: the home team offers the player in one step (the
+    // server makes them available) and the other team approves.
     await tester.tap(
       find.byKey(const ValueKey('roster-player-action-represent')),
     );
@@ -919,10 +920,8 @@ void main() {
     expect(find.text('Representation i annat lag'), findsOneWidget);
     await tester.tap(find.text('Skicka'));
     await tester.pumpAndSettle();
-    expect(roster.representationCalls, [
-      'available:ada:true',
-      'request:ada:team-p13',
-    ]);
+    expect(roster.representationCalls, ['offer:ada:team-p13']);
+    expect(find.textContaining('Förfrågan skickad till P13'), findsOneWidget);
 
     // The row itself still opens the profile.
     await tester.tap(find.text('Ada Spelare'));
@@ -1350,8 +1349,9 @@ class _Roster extends UnconfiguredRosterServices {
     DateTime? reviewDueAt,
     required String sourceNote,
     required String idempotencyKey,
+    bool offer = false,
   }) async {
-    representationCalls.add('request:$personId:$teamId');
+    representationCalls.add('${offer ? 'offer' : 'request'}:$personId:$teamId');
     return 'eligibility-1';
   }
 

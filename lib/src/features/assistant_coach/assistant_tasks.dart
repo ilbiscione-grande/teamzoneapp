@@ -60,7 +60,7 @@ String _localizedAssistantExplanation(
     'club_referee_control' =>
       'The referee assigner asks whether ${item.task.title} refereed the match. Answer Yes or No under Referees on the match Info tab.',
     'team_representation_requests' =>
-      '$count requests from other teams for your players to represent them. A representation applies only once your team approves it.',
+      '$count representations await your answer: other teams want to use your players or offer their players to you. A representation applies only once your team approves it.',
     'team_representation_available' =>
       '$count players in the club\'s other teams were made available to represent other teams in the last 14 days. Add them under New if your team wants to use them; their own team then approves.',
     'team_contact_details' =>
@@ -299,8 +299,8 @@ class AssistantTask {
       'Domaransvarig undrar om ${task.title} dömde matchen. Svara Ja eller Nej under Domare på matchens Info-flik.',
     'team_representation_requests' =>
       task.count == 1
-          ? 'Ett annat lag vill att en av lagets spelare ska kunna representera dem. Representationen gäller först när ni godkänner den.'
-          : 'Andra lag vill att ${task.count} av lagets spelare ska kunna representera dem. Representationerna gäller först när ni godkänner dem.',
+          ? 'En representation väntar på ert svar: ett annat lag vill använda en av era spelare, eller erbjuder en av sina spelare till er. Den gäller först när ni godkänner den.'
+          : '${task.count} representationer väntar på ert svar: andra lag vill använda era spelare eller erbjuder sina spelare till er. De gäller först när ni godkänner dem.',
     'team_representation_available' =>
       task.count == 1
           ? 'En spelare i ett annat lag i klubben har de senaste 14 dagarna markerats som tillgänglig att representera andra lag. Lägg till spelaren under Ny om laget vill använda spelaren; spelarens lag godkänner sedan.'

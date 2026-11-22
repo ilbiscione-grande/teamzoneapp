@@ -285,6 +285,7 @@ class PlayEligibilitySummary {
     this.homeTeamId,
     this.homeTeamName,
     this.canDecide = false,
+    this.deciderTeamId,
     this.endsAt,
     this.seasonEndsOn,
     this.reviewDueAt,
@@ -298,9 +299,16 @@ class PlayEligibilitySummary {
   // existed -- those rows are already 'active' and were never 'pending'.
   final String? homeTeamId;
   final String? homeTeamName;
-  // Whether the acting team is this row's home team AND the row is still
-  // 'pending' -- the only combination that may approve or reject it.
+  // Whether the viewed team decides this row and it is still 'pending'.
   final bool canDecide;
+
+  /// The team that approves or rejects: the home team for a request from
+  /// another team, the receiving team for an offer from the home team.
+  final String? deciderTeamId;
+
+  /// The home team offered the player (rather than being asked).
+  bool get offeredByHome =>
+      deciderTeamId != null && deciderTeamId == targetTeamId;
   bool get canEnd => state == 'active';
   bool get isPendingApproval => state == 'pending';
 
@@ -325,6 +333,7 @@ class PlayEligibilitySummary {
         homeTeamId: json['home_team_id'] as String?,
         homeTeamName: json['home_team_name'] as String?,
         canDecide: json['can_decide'] as bool? ?? false,
+        deciderTeamId: json['decider_team_id'] as String?,
       );
 }
 

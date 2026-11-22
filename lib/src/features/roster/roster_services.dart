@@ -208,6 +208,7 @@ abstract interface class RosterServices {
     DateTime? reviewDueAt,
     required String sourceNote,
     required String idempotencyKey,
+    bool offer = false,
   });
   Future<int> endPlayEligibility({
     required String eligibilityId,
@@ -598,6 +599,7 @@ class UnconfiguredRosterServices implements RosterServices {
     DateTime? reviewDueAt,
     required String sourceNote,
     required String idempotencyKey,
+    bool offer = false,
   }) => Future.error(StateError('Supabase is not configured.'));
   @override
   Future<int> endPlayEligibility({
@@ -1523,19 +1525,21 @@ class SupabaseRosterServices implements RosterServices {
     DateTime? reviewDueAt,
     required String sourceNote,
     required String idempotencyKey,
-  }) async => _uuidRpc('create_play_eligibility', {
-    'target_club_id': clubId,
-    'target_team_id': teamId,
-    'target_club_person_id': personId,
-    'eligibility_kind': kind,
-    'validity_kind': validityKind,
-    'starts_at': startsAt.toUtc().toIso8601String(),
-    'ends_at': endsAt?.toUtc().toIso8601String(),
-    'season_ends_on': seasonEndsOn?.toIso8601String().substring(0, 10),
-    'review_due_at': reviewDueAt?.toUtc().toIso8601String(),
-    'source_note': sourceNote,
-    'idempotency_key': idempotencyKey,
-  });
+    bool offer = false,
+  }) async =>
+      _uuidRpc(offer ? 'offer_play_eligibility' : 'create_play_eligibility', {
+        'target_club_id': clubId,
+        'target_team_id': teamId,
+        'target_club_person_id': personId,
+        'eligibility_kind': kind,
+        'validity_kind': validityKind,
+        'starts_at': startsAt.toUtc().toIso8601String(),
+        'ends_at': endsAt?.toUtc().toIso8601String(),
+        'season_ends_on': seasonEndsOn?.toIso8601String().substring(0, 10),
+        'review_due_at': reviewDueAt?.toUtc().toIso8601String(),
+        'source_note': sourceNote,
+        'idempotency_key': idempotencyKey,
+      });
   @override
   Future<int> endPlayEligibility({
     required String eligibilityId,

@@ -881,7 +881,10 @@ void main() {
     final requests = tasks['team_representation_requests']!;
     expect(requests.isClubDuty, isTrue, reason: 'no snooze or archive');
     expect(requests.context.id, 'lead');
-    expect(requests.explanation, startsWith('Andra lag vill att 2'));
+    expect(
+      requests.explanation,
+      startsWith('2 representationer väntar på ert svar'),
+    );
     expect(
       tasks['team_representation_available']!.explanation,
       startsWith('En spelare'),
