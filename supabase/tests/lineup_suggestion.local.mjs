@@ -215,3 +215,18 @@ const wrong = (await one('select api.suggest_lineup($1,$2,$3,null,null,$4::uuid[
   [club, team, feetFormation.id, [p.keeper, p.back], '{}'])).v;
 assert.equal(wrong.slots.find(s => s.code === '1B').person_id, p.back, 'the right side rather than the wrong foot');
 console.log('lineup suggestion with feet: ok');
+
+// More attributes: the goalkeeper's own, and the general ones in every sport.
+await db.exec('reset role');
+await db.exec(read('supabase/migrations/20270418090000_more_player_attributes.sql'));
+const football = (await db.query("select key, about_sv from core.sport_attributes where sport = 'football'")).rows;
+for (const key of ['goalkeeping_aerial', 'goalkeeping_reflexes', 'goalkeeping_1v1', 'goalkeeping_sweeping', 'goalkeeping_kicking',
+  'goalkeeping_throwing', 'long_shots', 'long_throws', 'balance', 'scanning', 'off_the_ball', 'creativity',
+  'concentration', 'determination', 'bravery', 'coachability']) assert.ok(football.some(row => row.key === key), key);
+assert.equal(football.length, 52);
+assert.deepEqual(football.filter(row => !row.about_sv).map(row => row.key), []);
+assert.ok((await one("select count(*)::int n from core.sport_attributes where sport = 'handball' and key in ('scanning','bravery','balance')")).n === 3);
+const keeper = (await one("select slots->0 v from core.formation_templates where lines = '4-3-3' and match_format = '11v11'")).v;
+assert.deepEqual(keeper.requirements.map(r => r.attribute), ['goalkeeping_hands', 'goalkeeping_aerial', 'goalkeeping_feet', 'communication']);
+assert.equal((await one("select slots->1->>'foot' v from core.formation_templates where lines = '4-3-3' and match_format = '11v11'")).v, 'left', 'the foot stays');
+console.log('more player attributes: ok');

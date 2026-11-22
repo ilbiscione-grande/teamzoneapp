@@ -60,3 +60,8 @@ Ledarna bockar för spelarnas styrkor och utvecklingsområden i TeamZone-truppen
 - **Förklaringar och fot per plats** (`20270415090000_attribute_help_and_slot_foot.sql`): varje egenskap har en förklaring på svenska och engelska och de positioner den är viktigast för (`about_sv`, `about_en` och `positions` i `core.sport_attributes`). Det visas när man trycker på egenskapen, i appen (fliken *Egenskaper*) och i Tacticsboards formationsdialog.
   - En plats kan be om en fot (`foot`: `left` eller `right`). Mallarnas ytterbackar, wingbackar och yttermittfältare ber om sin sida. Yttrar gör det inte, eftersom de ofta spelar på motsatt fot.
   - Förslaget (`internal.lineup_fit_v2`) räknar foten: rätt fot eller båda och bättre med den +3, båda lika bra +3, båda men bättre med den andra +1, bara den andra foten −2, ingen fot angiven 0. Skälen visar "+ Vänsterfot", "Hyfsad högerfot" eller "− Fel fot".
+- **Fler egenskaper efter en genomgång** (`20270418090000_more_player_attributes.sql`). Fotboll har 52 egenskaper.
+  - Målvakt: luftrum, reflexer, 1 mot 1, utrusningar, utsparkar och utkast. *Målvakt – fotspel* heter nu *Målvakt – kort passningsspel*, och inlägg hör till luftrum i stället för räddningar. Långa passningar gäller även målvakten.
+  - Utespelare: distansskott, långa inkast och balans.
+  - Alla sporter: scanning, spelbarhet, kreativitet, koncentration, vinnarskalle, mod och coachbarhet.
+  - Mallarnas målvakt ber om räddningar (mycket viktig), luftrum, kort passningsspel och kommunikation.
