@@ -90,6 +90,16 @@ void main() {
     // selected day's cards scroll under it with the grid, so every event
     // is reachable.
     expect(find.byKey(const Key('calendarMonthGrid')), findsOneWidget);
+    // Each row starts with its week number, like the other views name it.
+    final now = DateTime.now();
+    final monday = DateTime(now.year, now.month, now.day - now.weekday + 1);
+    final weekLabel = find.byKey(
+      ValueKey(
+        'calendarMonthWeek-${monday.year}-${monday.month}-${monday.day}',
+      ),
+    );
+    expect(weekLabel, findsOneWidget);
+    expect(tester.widget<Text>(weekLabel).data, '${calendarIsoWeek(now)}');
     expect(find.text('Kvällsträning'), findsOneWidget);
     await tester.dragUntilVisible(
       find.text('Extraevent 3'),

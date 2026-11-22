@@ -7,11 +7,13 @@ class _CalendarMonthView extends StatelessWidget {
     required this.projection,
     required this.onDate,
     required this.onEvent,
+    required this.showWeekNumbers,
   });
 
   final CalendarProjection projection;
   final ValueChanged<DateTime> onDate;
   final ValueChanged<CalendarEventSummary> onEvent;
+  final bool showWeekNumbers;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +29,11 @@ class _CalendarMonthView extends StatelessWidget {
       key: const Key('calendarMonthView'),
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       children: [
-        _CalendarMonthGrid(projection: projection, onDate: onDate),
+        _CalendarMonthGrid(
+          projection: projection,
+          onDate: onDate,
+          showWeekNumbers: showWeekNumbers,
+        ),
         const Divider(height: 24),
         _CalendarDayAndUpcoming(
           day: day,
@@ -40,10 +46,44 @@ class _CalendarMonthView extends StatelessWidget {
   }
 }
 
+/// Width of the week-number column left of the month grid.
+const double _calendarWeekNumberWidth = 28;
+
+/// The ISO week number in front of a row of the month grid.
+class _CalendarMonthWeekNumber extends StatelessWidget {
+  const _CalendarMonthWeekNumber({required this.weekStart});
+  final DateTime weekStart;
+
+  @override
+  Widget build(BuildContext context) {
+    final week = calendarIsoWeek(weekStart);
+    return SizedBox(
+      width: _calendarWeekNumberWidth,
+      child: Tooltip(
+        message: '${AppStrings.of(context).feature('Vecka')} $week',
+        child: Text(
+          '$week',
+          key: ValueKey(
+            'calendarMonthWeek-${weekStart.year}-${weekStart.month}-${weekStart.day}',
+          ),
+          textAlign: TextAlign.center,
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: AppPalette.of(context).muted),
+        ),
+      ),
+    );
+  }
+}
+
 /// Mån–Sön over the month grid.
 class _CalendarWeekdayHeader extends StatelessWidget {
-  const _CalendarWeekdayHeader({required this.weekStart});
+  const _CalendarWeekdayHeader({
+    required this.weekStart,
+    this.showWeekNumbers = false,
+  });
   final DateTime weekStart;
+  final bool showWeekNumbers;
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +96,7 @@ class _CalendarWeekdayHeader extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
+          if (showWeekNumbers) const SizedBox(width: _calendarWeekNumberWidth),
           for (var offset = 0; offset < 7; offset++)
             Expanded(
               child: Text(

@@ -216,6 +216,7 @@ class _CalendarWorkspace extends StatelessWidget {
                     projection: projection,
                     onDate: onDateChanged,
                     onEvent: onEvent,
+                    showWeekNumbers: showWeekNumbers,
                     showQuarterHourMarks: showQuarterHourMarks,
                     monthEventScope: monthEventScope,
                     onMonthEventScopeChanged: onMonthEventScopeChanged,
@@ -232,6 +233,7 @@ class _CalendarModeBody extends StatelessWidget {
     required this.projection,
     required this.onDate,
     required this.onEvent,
+    required this.showWeekNumbers,
     required this.showQuarterHourMarks,
     required this.monthEventScope,
     required this.onMonthEventScopeChanged,
@@ -240,7 +242,7 @@ class _CalendarModeBody extends StatelessWidget {
   final CalendarProjection projection;
   final ValueChanged<DateTime> onDate;
   final ValueChanged<CalendarEventSummary> onEvent;
-  final bool showQuarterHourMarks;
+  final bool showWeekNumbers, showQuarterHourMarks;
   final _MonthEventScope monthEventScope;
   final ValueChanged<_MonthEventScope> onMonthEventScopeChanged;
 
@@ -278,6 +280,7 @@ class _CalendarModeBody extends StatelessWidget {
                       child: _CalendarMonthGrid(
                         projection: projection,
                         onDate: onDate,
+                        showWeekNumbers: showWeekNumbers,
                         fillHeight: true,
                       ),
                     ),
@@ -287,6 +290,7 @@ class _CalendarModeBody extends StatelessWidget {
                     projection: projection,
                     onDate: onDate,
                     onEvent: onEvent,
+                    showWeekNumbers: showWeekNumbers,
                   ),
           CalendarViewMode.week =>
             twoColumns
@@ -1013,11 +1017,12 @@ class _CalendarMonthGrid extends StatelessWidget {
   const _CalendarMonthGrid({
     required this.projection,
     required this.onDate,
+    this.showWeekNumbers = false,
     this.fillHeight = false,
   });
   final CalendarProjection projection;
   final ValueChanged<DateTime> onDate;
-  final bool fillHeight;
+  final bool showWeekNumbers, fillHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -1033,40 +1038,58 @@ class _CalendarMonthGrid extends StatelessWidget {
         7;
     final grid = LayoutBuilder(
       builder: (context, constraints) {
-        final cellWidth = constraints.maxWidth / 7;
-        final cellHeight = constraints.maxHeight / weeks;
-        final aspectRatio = fillHeight && cellHeight > 0
-            ? cellWidth / cellHeight
-            : MediaQuery.sizeOf(context).width >= 600
-            ? 1.7
-            : 1.05;
-        return GridView.builder(
+        final daysWidth =
+            constraints.maxWidth -
+            (showWeekNumbers ? _calendarWeekNumberWidth : 0);
+        // Filling the height, rows share it; otherwise a fixed cell shape.
+        final rowHeight = fillHeight
+            ? null
+            : daysWidth /
+                  7 /
+                  (MediaQuery.sizeOf(context).width >= 600 ? 1.7 : 1.05);
+        Widget week(int row) {
+          final weekStart = calendarAddDays(gridStart, row * 7);
+          final cells = Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (showWeekNumbers)
+                Center(child: _CalendarMonthWeekNumber(weekStart: weekStart)),
+              for (var offset = 0; offset < 7; offset++)
+                Expanded(
+                  child: Builder(
+                    builder: (context) {
+                      final day = calendarAddDays(weekStart, offset);
+                      return _CalendarMonthDayCell(
+                        day: day,
+                        events: projection.eventsOn(day),
+                        dimmed: day.month != projection.selectedDate.month,
+                        isSelected: _isSameDay(day, selected),
+                        onTap: () => onDate(day),
+                      );
+                    },
+                  ),
+                ),
+            ],
+          );
+          return rowHeight == null
+              ? Expanded(child: cells)
+              : SizedBox(height: rowHeight, child: cells);
+        }
+
+        return Column(
           key: const Key('calendarMonthGrid'),
-          shrinkWrap: !fillHeight,
-          padding: EdgeInsets.zero,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 7,
-            childAspectRatio: aspectRatio,
-          ),
-          itemCount: weeks * 7,
-          itemBuilder: (context, index) {
-            final day = calendarAddDays(gridStart, index);
-            return _CalendarMonthDayCell(
-              day: day,
-              events: projection.eventsOn(day),
-              dimmed: day.month != projection.selectedDate.month,
-              isSelected: _isSameDay(day, selected),
-              onTap: () => onDate(day),
-            );
-          },
+          mainAxisSize: fillHeight ? MainAxisSize.max : MainAxisSize.min,
+          children: [for (var row = 0; row < weeks; row++) week(row)],
         );
       },
     );
     return Column(
       mainAxisSize: fillHeight ? MainAxisSize.max : MainAxisSize.min,
       children: [
-        _CalendarWeekdayHeader(weekStart: gridStart),
+        _CalendarWeekdayHeader(
+          weekStart: gridStart,
+          showWeekNumbers: showWeekNumbers,
+        ),
         if (fillHeight) Expanded(child: grid) else grid,
       ],
     );
