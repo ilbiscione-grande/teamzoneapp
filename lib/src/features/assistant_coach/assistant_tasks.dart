@@ -54,7 +54,7 @@ String _localizedAssistantExplanation(
     'club_booking_requests' =>
       '$count bookings await your approval in the Booking manager.',
     'module_tdp_checkins' =>
-      '$count team goals in Team Development Plan await a check-in.',
+      '$count team goals in Season planning await a check-in.',
     'club_referee_control' =>
       'The referee assigner asks whether ${item.task.title} refereed the match. Answer Yes or No under Referees on the match Info tab.',
     'team_representation_requests' =>
@@ -285,8 +285,8 @@ class AssistantTask {
       '${task.count} bokningar väntar på ditt godkännande i Bokningshanteraren.',
     'module_tdp_checkins' =>
       task.count == 1
-          ? 'Ett av lagets mål i Team Development Plan väntar på avstämning.'
-          : '${task.count} av lagets mål i Team Development Plan väntar på avstämning.',
+          ? 'Ett av lagets mål i Säsongsplaneringen väntar på avstämning.'
+          : '${task.count} av lagets mål i Säsongsplaneringen väntar på avstämning.',
     'club_referee_control' =>
       'Domaransvarig undrar om ${task.title} dömde matchen. Svara Ja eller Nej under Domare på matchens Info-flik.',
     'team_representation_requests' =>

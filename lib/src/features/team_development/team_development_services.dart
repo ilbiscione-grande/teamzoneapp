@@ -95,6 +95,25 @@ abstract interface class TeamDevelopmentServices {
   });
   Future<SeasonPlan> deleteBlock(SeasonPlan plan, String blockId);
 
+  /// A holiday, school break, vacation or other days off on the season's
+  /// calendar row; a new one when [itemId] is null.
+  Future<SeasonPlan> saveCalendarPeriod(
+    SeasonPlan plan, {
+    String? itemId,
+    required CalendarPeriodKind kind,
+    required String name,
+    required DateTime startsOn,
+    required DateTime endsOn,
+  });
+
+  /// Several at once (the suggestions); one already there with the same
+  /// kind, name and first day is kept as it is.
+  Future<SeasonPlan> addCalendarPeriods(
+    SeasonPlan plan,
+    List<CalendarPeriodDraft> items,
+  );
+  Future<SeasonPlan> deleteCalendarPeriod(SeasonPlan plan, String itemId);
+
   /// A new goal when [goalId] is null.
   Future<SeasonPlan> saveGoal(
     SeasonPlan plan, {
@@ -296,6 +315,23 @@ class UnconfiguredTeamDevelopmentServices implements TeamDevelopmentServices {
   }) => Future.error(_error);
   @override
   Future<SeasonPlan> deleteBlock(SeasonPlan plan, String blockId) =>
+      Future.error(_error);
+  @override
+  Future<SeasonPlan> saveCalendarPeriod(
+    SeasonPlan plan, {
+    String? itemId,
+    required CalendarPeriodKind kind,
+    required String name,
+    required DateTime startsOn,
+    required DateTime endsOn,
+  }) => Future.error(_error);
+  @override
+  Future<SeasonPlan> addCalendarPeriods(
+    SeasonPlan plan,
+    List<CalendarPeriodDraft> items,
+  ) => Future.error(_error);
+  @override
+  Future<SeasonPlan> deleteCalendarPeriod(SeasonPlan plan, String itemId) =>
       Future.error(_error);
   @override
   Future<SeasonPlan> saveGoal(
@@ -596,6 +632,58 @@ class SupabaseTeamDevelopmentServices implements TeamDevelopmentServices {
           'target_block_id': blockId,
         }),
       );
+
+  @override
+  Future<SeasonPlan> saveCalendarPeriod(
+    SeasonPlan plan, {
+    String? itemId,
+    required CalendarPeriodKind kind,
+    required String name,
+    required DateTime startsOn,
+    required DateTime endsOn,
+  }) async => SeasonPlan.fromJson(
+    await _rpc('save_team_development_calendar_period', {
+      'target_plan_id': plan.id,
+      'expected_revision': plan.revision,
+      'target_item_id': itemId,
+      'item_kind': kind.key,
+      'item_name': name,
+      'starts': _day(startsOn),
+      'ends': _day(endsOn),
+    }),
+  );
+
+  @override
+  Future<SeasonPlan> addCalendarPeriods(
+    SeasonPlan plan,
+    List<CalendarPeriodDraft> items,
+  ) async => SeasonPlan.fromJson(
+    await _rpc('add_team_development_calendar_periods', {
+      'target_plan_id': plan.id,
+      'expected_revision': plan.revision,
+      'items': [
+        for (final item in items)
+          {
+            'kind': item.kind.key,
+            'name': item.name,
+            'starts_on': _day(item.startsOn),
+            'ends_on': _day(item.endsOn),
+          },
+      ],
+    }),
+  );
+
+  @override
+  Future<SeasonPlan> deleteCalendarPeriod(
+    SeasonPlan plan,
+    String itemId,
+  ) async => SeasonPlan.fromJson(
+    await _rpc('delete_team_development_calendar_period', {
+      'target_plan_id': plan.id,
+      'expected_revision': plan.revision,
+      'target_item_id': itemId,
+    }),
+  );
 
   @override
   Future<SeasonPlan> saveGoal(

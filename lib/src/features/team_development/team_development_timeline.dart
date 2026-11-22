@@ -65,12 +65,21 @@ class _TdpTimelineEditor extends StatefulWidget {
     required this.picked,
     required this.onPick,
     required this.onLayout,
+    this.calendarHeader,
+    this.onOpenCalendar,
+    this.onCreateCalendar,
   });
   final SeasonPlan plan;
   final bool canEdit;
   final _TdpPick? picked;
   final ValueChanged<_TdpPick?> onPick;
   final Future<void> Function(_TdpLayout layout) onLayout;
+
+  /// The third row, holidays, school breaks and vacations (2026-11-22):
+  /// its heading, and what a tap on one and a drag on an empty stretch do.
+  final Widget? calendarHeader;
+  final ValueChanged<SeasonCalendarPeriod>? onOpenCalendar;
+  final void Function(DateTime startsOn, DateTime endsOn)? onCreateCalendar;
 
   @override
   State<_TdpTimelineEditor> createState() => _TdpTimelineEditorState();
@@ -368,6 +377,29 @@ class _TdpTimelineEditorState extends State<_TdpTimelineEditor> {
             Text(_tdpText(context, 'Block', 'Blocks'), style: label),
             const SizedBox(height: 4),
             lane(true, 40),
+            if (widget.onOpenCalendar case final open?) ...[
+              const SizedBox(height: 10),
+              widget.calendarHeader ??
+                  Text(
+                    _tdpText(
+                      context,
+                      'Lov, högtider och semestrar',
+                      'Breaks, holidays and vacations',
+                    ),
+                    style: label,
+                  ),
+              const SizedBox(height: 4),
+              _TdpCalendarLane(
+                plan: plan,
+                width: width,
+                canEdit: widget.canEdit && widget.onCreateCalendar != null,
+                x: (day) => _x(day, width),
+                dayAt: (dx) => _date(_dayAt(dx, width)),
+                weekStart: (dx) => _weekStart(_dayAt(dx, width)),
+                onOpen: open,
+                onCreate: (from, to) => widget.onCreateCalendar?.call(from, to),
+              ),
+            ],
           ],
         );
       },

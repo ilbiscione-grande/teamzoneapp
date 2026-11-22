@@ -73,22 +73,8 @@ class _TdpPlannerState extends State<_TdpPlanner> {
     );
   }
 
-  Future<void> _editSeason(SeasonPlan plan) async {
-    final draft = await _SeasonDialog.show(context, plan: plan);
-    if (draft == null || !mounted) return;
-    await controller.change(
-      context,
-      () => controller.services.savePlan(
-        plan,
-        title: draft.title,
-        startsOn: draft.startsOn,
-        endsOn: draft.endsOn,
-        vision: draft.vision,
-        checkinEveryDays: draft.checkinEveryDays,
-      ),
-      done: AppStrings.of(context).feature('Säsongen är sparad.'),
-    );
-  }
+  Future<void> _editSeason(SeasonPlan plan) =>
+      controller.editSeason(context, plan);
 
   /// A pick that is gone (deleted, or another season) is let go.
   _TdpPick? _pickIn(SeasonPlan plan) => switch (_picked) {
@@ -152,6 +138,26 @@ class _TdpPlannerState extends State<_TdpPlanner> {
                 picked: picked,
                 onPick: (pick) => setState(() => _picked = pick),
                 onLayout: (layout) => _layout(plan, layout),
+                calendarHeader: _TdpCalendarHeader(
+                  controller: controller,
+                  plan: plan,
+                ),
+                onOpenCalendar: (item) {
+                  if (!controller.canEdit) return;
+                  _TdpCalendarPeriodDialog.edit(
+                    context,
+                    controller,
+                    plan,
+                    item: item,
+                  );
+                },
+                onCreateCalendar: (from, to) => _TdpCalendarPeriodDialog.edit(
+                  context,
+                  controller,
+                  plan,
+                  startsOn: from,
+                  endsOn: to,
+                ),
               ),
             ],
           ),

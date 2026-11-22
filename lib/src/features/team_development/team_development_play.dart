@@ -21,6 +21,8 @@ class _TdpPlay extends StatelessWidget {
     builder: (plan) {
       final theme = Theme.of(context);
       return [
+        _TdpDevelopmentHead(controller: controller, plan: plan),
+        const SizedBox(height: 24),
         Row(
           children: [
             Expanded(

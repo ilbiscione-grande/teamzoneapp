@@ -6,6 +6,8 @@ part 'team_development_match_values.dart';
 part 'team_development_exercises.dart';
 part 'team_development_load_models.dart';
 part 'team_development_injury_models.dart';
+part 'season_calendar_periods.dart';
+part 'season_holidays.dart';
 
 DateTime _date(Object? value) => DateTime.parse(value as String);
 
@@ -206,6 +208,7 @@ class SeasonPlan {
     this.updatedBy,
     this.matches = const [],
     this.matchButtons = const [],
+    this.calendarPeriods = const [],
   });
   factory SeasonPlan.fromJson(Map<String, dynamic> json) => SeasonPlan(
     id: json['id'] as String,
@@ -255,6 +258,11 @@ class SeasonPlan {
           in (json['match_buttons'] as List? ?? const []).whereType<Map>())
         (id: row['id'] as String? ?? '', label: row['label'] as String? ?? ''),
     ],
+    calendarPeriods: [
+      for (final row
+          in (json['calendar_periods'] as List? ?? const []).whereType<Map>())
+        SeasonCalendarPeriod.fromJson(Map<String, dynamic>.from(row)),
+    ],
   );
   final String id, title, vision;
   final DateTime startsOn, endsOn;
@@ -284,6 +292,16 @@ class SeasonPlan {
 
   /// The team's own Live buttons, which a key figure can count.
   final List<({String id, String label})> matchButtons;
+
+  /// The holidays, school breaks and vacations that touch the season, by
+  /// first day.
+  final List<SeasonCalendarPeriod> calendarPeriods;
+
+  /// Those on [day].
+  List<SeasonCalendarPeriod> calendarPeriodsOn(DateTime day) => [
+    for (final item in calendarPeriods)
+      if (item.contains(day)) item,
+  ];
 
   /// A key figure's values, newest first: with a source, one per played
   /// match (the counted value, or the one set by hand for the match), and

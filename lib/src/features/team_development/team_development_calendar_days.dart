@@ -107,6 +107,7 @@ class _TdpWeekView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _TdpPlanNote(plan: plan, day: _tdpShift(monday, 3)),
+            _TdpCalendarNote(plan: plan, from: monday, to: days.last),
             const SizedBox(height: 12),
             Expanded(
               child: wide
@@ -303,6 +304,7 @@ class _TdpDayView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             _TdpPlanNote(plan: plan, day: day),
+            _TdpCalendarNote(plan: plan, from: day, to: day),
           ],
         ),
       ),

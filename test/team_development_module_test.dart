@@ -14,6 +14,73 @@ import 'package:teamzone_app/src/features/team_development/team_development_serv
 import 'package:teamzone_app/src/features/workspaces/module_services.dart';
 
 void main() {
+  test('the suggested holidays and school breaks fall on their days', () {
+    expect(SeasonHolidays.easter(2026), DateTime(2026, 4, 5));
+    expect(SeasonHolidays.easter(2027), DateTime(2027, 3, 28));
+    expect(SeasonHolidays.orthodoxEaster(2026), DateTime(2026, 4, 12));
+    expect(SeasonHolidays.orthodoxEaster(2027), DateTime(2027, 5, 2));
+    expect(SeasonHolidays.weekMonday(2027, 8), DateTime(2027, 2, 22));
+    expect(SeasonHolidays.weekMonday(2026, 1), DateTime(2025, 12, 29));
+    final year = SeasonHolidays.suggest(
+      from: DateTime(2027, 1, 1),
+      to: DateTime(2027, 12, 31),
+      sets: HolidaySet.values.toSet(),
+      schoolBreaks: (sportlovWeek: 9, easterBreakAfter: false),
+    );
+    CalendarPeriodDraft named(String name) =>
+        year.singleWhere((item) => item.name == name);
+    expect(named('Midsommar').startsOn, DateTime(2027, 6, 25));
+    expect(named('Alla helgons dag').startsOn, DateTime(2027, 11, 6));
+    expect(named('Kristi himmelsfärd').startsOn, DateTime(2027, 5, 6));
+    expect(named('Påskhelgen').endsOn, DateTime(2027, 3, 29));
+    expect(named('Sportlov').startsOn, DateTime(2027, 3, 1));
+    expect(named('Påsklov').startsOn, DateTime(2027, 3, 22));
+    expect(named('Höstlov').startsOn, DateTime(2027, 11, 1));
+    expect(named('Eid al-fitr').startsOn, DateTime(2027, 3, 10));
+    expect(named('Ramadan').endsOn, DateTime(2027, 3, 9));
+    expect(named('Pesach').endsOn, DateTime(2027, 4, 29));
+    expect(named('Diwali').startsOn, DateTime(2027, 10, 29));
+    // Jullov from the year before reaches into the season, and this year's.
+    expect(year.where((item) => item.name == 'Jullov'), hasLength(2));
+    for (final item in year) {
+      expect(item.endsOn.difference(item.startsOn).inDays, lessThan(121));
+    }
+    expect(
+      SeasonHolidays.tableCovers(DateTime(2031, 1, 1), DateTime(2031, 6, 1)),
+      isFalse,
+    );
+  });
+
+  test('the plan reads its holidays, breaks and vacations', () {
+    final plan = SeasonPlan.fromJson(const {
+      'id': 'p',
+      'title': 'Säsong 2027',
+      'starts_on': '2027-01-01',
+      'ends_on': '2027-12-31',
+      'revision': 1,
+      'calendar_periods': [
+        {
+          'id': 'c',
+          'kind': 'school_break',
+          'name': 'Sportlov',
+          'starts_on': '2027-02-22',
+          'ends_on': '2027-02-28',
+        },
+        {
+          'id': 'd',
+          'kind': 'something',
+          'name': 'Okänd',
+          'starts_on': '2027-02-24',
+          'ends_on': '2027-02-24',
+        },
+      ],
+    });
+    expect(plan.calendarPeriods.first.kind, CalendarPeriodKind.schoolBreak);
+    expect(plan.calendarPeriods.last.kind, CalendarPeriodKind.other);
+    expect(plan.calendarPeriodsOn(DateTime(2027, 2, 24)), hasLength(2));
+    expect(plan.calendarPeriodsOn(DateTime(2027, 3, 1)), isEmpty);
+  });
+
   test('the plan reads its season, periods and goals', () {
     final plan = SeasonPlan.fromJson(const {
       'id': 'p',
@@ -250,16 +317,27 @@ void main() {
       expect(find.text('Season goals (long-term)'), findsOneWidget);
       expect(find.text('Shared with players'), findsOneWidget);
       expect(find.textContaining('Nothing is shared yet.'), findsOneWidget);
-      await tester.tap(find.text('Playing philosophy'));
+      await tester.tap(find.text('Development plan'));
       await tester.pumpAndSettle();
       expect(find.text('Playing principles'), findsOneWidget);
       expect(find.text('New principle'), findsOneWidget);
       await tester.tap(find.byKey(const Key('tdp-new-principle')));
       await tester.pumpAndSettle();
       expect(find.text('Stage'), findsOneWidget);
-      expect(find.text('Creating chances and scoring'), findsWidgets);
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
+      // The stages under the vision and the season goals.
+      await tester.scrollUntilVisible(
+        find.text('Creating chances and scoring'),
+        300,
+        scrollable: find
+            .ancestor(
+              of: find.byKey(const Key('tdp-development-head')),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      expect(find.text('Creating chances and scoring'), findsWidgets);
       await tester.tap(find.text('Overview'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.byTooltip('Add goal').first);
@@ -348,7 +426,7 @@ void main() {
       strip.bottom,
       lessThan(tester.getTopLeft(find.byKey(const Key('tdp-now'))).dy),
     );
-    expect(strip.width, greaterThan(1250));
+    expect(strip.width, greaterThan(1150));
 
     // The season's months, then the month with the activities.
     await tester.tap(find.byKey(const Key('tdp-open-calendar')));
@@ -610,7 +688,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Spelidé: a principle and a key figure.
-    await tester.tap(find.text('Spelidé'));
+    await tester.tap(find.text('Utvecklingsplan'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('tdp-new-principle')));
     await tester.pumpAndSettle();
@@ -622,6 +700,16 @@ void main() {
     await tester.tap(find.byKey(const Key('tdp-principle-save')));
     await tester.pumpAndSettle();
     expect(find.text('Spela framåt när det går'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('tdp-new-kpi')),
+      300,
+      scrollable: find
+          .ancestor(
+            of: find.byKey(const Key('tdp-development-head')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     await tester.tap(find.byKey(const Key('tdp-new-kpi')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('tdp-kpi-title')), 'Avslut');
@@ -755,7 +843,7 @@ void main() {
     tester,
   ) async {
     final services = await openWithoutModel(tester);
-    await tester.tap(find.text('Spelidé'));
+    await tester.tap(find.text('Utvecklingsplan'));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('tdp-model-start')), findsOneWidget);
 
@@ -859,8 +947,18 @@ void main() {
         ),
       ],
     );
-    await tester.tap(find.text('Spelidé'));
+    await tester.tap(find.text('Utvecklingsplan'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('tdp-new-kpi')),
+      300,
+      scrollable: find
+          .ancestor(
+            of: find.byKey(const Key('tdp-development-head')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     await tester.tap(find.byKey(const Key('tdp-new-kpi')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('tdp-kpi-source')));
@@ -1289,6 +1387,82 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('holidays, breaks and vacations get a row of their own', (
+    tester,
+  ) async {
+    final services = await openWithoutModel(tester);
+    expect(find.text('Säsongsplanering'), findsWidgets);
+    await tester.tap(find.text('Planera'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('tdp-lane-calendar')), findsOneWidget);
+
+    // The suggestions: Swedish holidays and school breaks, and the Muslim.
+    await tester.tap(find.byKey(const Key('tdp-calendar-suggest')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-holiday-muslim')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-holiday-add')));
+    await tester.pumpAndSettle();
+    final plan = services.plan!;
+    final expected = SeasonHolidays.suggest(
+      from: plan.startsOn,
+      to: plan.endsOn,
+      sets: {HolidaySet.swedish, HolidaySet.schoolBreaks, HolidaySet.muslim},
+    );
+    expect(plan.calendarPeriods, hasLength(expected.length));
+    expect(plan.calendarPeriods, isNotEmpty);
+
+    // Nothing new the second time.
+    await tester.tap(find.byKey(const Key('tdp-calendar-suggest')));
+    await tester.pumpAndSettle();
+    expect(find.text('Inget nytt att lägga in.'), findsOneWidget);
+    await tester.tap(find.text('Avbryt'));
+    await tester.pumpAndSettle();
+
+    // A vacation of the team's own, changed and removed.
+    await tester.tap(find.byKey(const Key('tdp-calendar-add')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('tdp-calendar-name')), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('tdp-calendar-name')),
+      'Tränarens semester',
+    );
+    await tester.pump();
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const Key('tdp-calendar-save')))
+          .onPressed,
+      isNotNull,
+    );
+    await tester.tap(find.byKey(const Key('tdp-calendar-save')));
+    await tester.pumpAndSettle();
+    final own = services.plan!.calendarPeriods.singleWhere(
+      (p) => p.name == 'Tränarens semester',
+    );
+    expect(own.kind, CalendarPeriodKind.vacation);
+    await tester.tap(find.byKey(ValueKey('tdp-calendar-${own.id}')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tdp-calendar-delete')));
+    await tester.pumpAndSettle();
+    expect(
+      services.plan!.calendarPeriods.where((p) => p.id == own.id),
+      isEmpty,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the development plan holds the vision and the season goals', (
+    tester,
+  ) async {
+    await openWithoutModel(tester);
+    await tester.tap(find.text('Utvecklingsplan'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('tdp-development-head')), findsOneWidget);
+    expect(find.text('Lagets utvecklingsplan (TDP)'), findsOneWidget);
+    expect(find.text('Säsongsmål (långsiktiga)'), findsOneWidget);
+    expect(find.text('Spelprinciper'), findsOneWidget);
+  });
+
   testWidgets('a block\'s focus is written and shown as Markdown', (
     tester,
   ) async {
@@ -1392,8 +1566,10 @@ class _Plans implements TeamDevelopmentServices {
     List<TeamKpi>? kpis,
     List<TeamCheckin>? checkins,
     PlanSharing? sharing,
+    List<SeasonCalendarPeriod>? calendarPeriods,
     bool revise = true,
   }) => plan = SeasonPlan(
+    calendarPeriods: calendarPeriods ?? plan!.calendarPeriods,
     matches: plan!.matches,
     matchButtons: plan!.matchButtons,
     id: plan!.id,
@@ -1786,6 +1962,56 @@ class _Plans implements TeamDevelopmentServices {
   @override
   Future<SeasonPlan> deleteBlock(SeasonPlan plan, String blockId) async =>
       _with(blocks: [...plan.blocks.where((b) => b.id != blockId)]);
+
+  List<SeasonCalendarPeriod> _sorted(Iterable<SeasonCalendarPeriod> items) =>
+      [...items]..sort((a, b) => a.startsOn.compareTo(b.startsOn));
+
+  @override
+  Future<SeasonPlan> saveCalendarPeriod(
+    SeasonPlan plan, {
+    String? itemId,
+    required CalendarPeriodKind kind,
+    required String name,
+    required DateTime startsOn,
+    required DateTime endsOn,
+  }) async => _with(
+    calendarPeriods: _sorted([
+      ...plan.calendarPeriods.where((p) => p.id != itemId),
+      SeasonCalendarPeriod(
+        id: itemId ?? 'off-${++_ids}',
+        kind: kind,
+        name: name,
+        startsOn: startsOn,
+        endsOn: endsOn,
+      ),
+    ]),
+  );
+
+  @override
+  Future<SeasonPlan> addCalendarPeriods(
+    SeasonPlan plan,
+    List<CalendarPeriodDraft> items,
+  ) async => _with(
+    calendarPeriods: _sorted([
+      ...plan.calendarPeriods,
+      for (final item in items)
+        SeasonCalendarPeriod(
+          id: 'off-${++_ids}',
+          kind: item.kind,
+          name: item.name,
+          startsOn: item.startsOn,
+          endsOn: item.endsOn,
+        ),
+    ]),
+  );
+
+  @override
+  Future<SeasonPlan> deleteCalendarPeriod(
+    SeasonPlan plan,
+    String itemId,
+  ) async => _with(
+    calendarPeriods: [...plan.calendarPeriods.where((p) => p.id != itemId)],
+  );
 
   @override
   Future<SeasonPlan> saveGoal(

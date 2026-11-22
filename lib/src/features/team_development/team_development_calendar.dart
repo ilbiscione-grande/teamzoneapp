@@ -499,6 +499,7 @@ class _TdpMiniDay extends StatelessWidget {
       for (final event in events)
         if (DateUtils.isSameDay(_tdpDayOf(event), day)) event,
     ];
+    final off = plan.calendarPeriodsOn(day);
     final match = here.any((event) => event.type == 'match');
     final cell = Container(
       height: 26,
@@ -516,6 +517,20 @@ class _TdpMiniDay extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Text('${day.day}', style: theme.textTheme.labelSmall),
+          // A holiday, break or vacation: a line on top in its colour.
+          if (off.isNotEmpty)
+            Positioned(
+              top: 1,
+              left: 3,
+              right: 3,
+              child: Container(
+                height: 3,
+                decoration: BoxDecoration(
+                  color: _tdpCalendarColor(off.first.kind),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
           if (here.isNotEmpty)
             Positioned(
               bottom: 2,
@@ -533,9 +548,9 @@ class _TdpMiniDay extends StatelessWidget {
         ],
       ),
     );
-    if (here.isEmpty) return cell;
-    // A hover (a long press on a phone) lists the day's activities; the list
-    // goes when the pointer moves on.
+    if (here.isEmpty && off.isEmpty) return cell;
+    // A hover (a long press on a phone) lists the day's holidays and breaks
+    // and its activities; the list goes when the pointer moves on.
     return Tooltip(
       key: Key('tdp-cal-mini-${day.year}-${day.month}-${day.day}'),
       waitDuration: const Duration(milliseconds: 150),
@@ -548,6 +563,11 @@ class _TdpMiniDay extends StatelessWidget {
                 '${_tdpWeekdays(context)[day.weekday - 1]} ${_tdpDate(context, day)}',
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
+          for (final item in off)
+            TextSpan(
+              text: '\n${item.name}',
+              style: const TextStyle(fontStyle: FontStyle.italic),
+            ),
           for (final event in here)
             TextSpan(
               text: event.allDay
@@ -707,6 +727,9 @@ class _TdpMonthDay extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final block = plan.blockOn(day);
+    final off = inMonth
+        ? plan.calendarPeriodsOn(day)
+        : const <SeasonCalendarPeriod>[];
     final startsBlock =
         block != null &&
         (DateUtils.isSameDay(block.startsOn, day) || day.weekday == 1);
@@ -731,11 +754,13 @@ class _TdpMonthDay extends StatelessWidget {
                 : null,
             child: LayoutBuilder(
               builder: (context, constraints) {
-                // As many activities as there is room for, then a count.
-                final room = ((constraints.maxHeight - 36) / 18).floor().clamp(
-                  0,
-                  events.length,
-                );
+                // The holidays and breaks first, at most two, then as many
+                // activities as there is room for, then a count.
+                final marks = off.take(2).toList();
+                final room =
+                    ((constraints.maxHeight - 36 - marks.length * 16) / 18)
+                        .floor()
+                        .clamp(0, events.length);
                 final shown = room < events.length
                     ? (room - 1).clamp(0, events.length)
                     : room;
@@ -759,6 +784,17 @@ class _TdpMonthDay extends StatelessWidget {
                       )
                     else
                       const SizedBox(height: 14),
+                    for (final item in marks)
+                      Text(
+                        item.name,
+                        key: Key('tdp-cal-off-${item.id}-${day.day}'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: _tdpCalendarColor(item.kind),
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
                     for (final event in events.take(shown))
                       _TdpActivityLine(event: event),
                     if (shown < events.length)

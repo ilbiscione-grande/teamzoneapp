@@ -1,9 +1,14 @@
 part of '../../app/teamzone_app.dart';
 
-/// Team Development Plan (decision package 11, MFD-10; the new design of
-/// 2026-11-01) as its own app: Översikt, the team's development page with
+/// Säsongsplanering (decision package 11, MFD-10; the new design of
+/// 2026-11-01; named Team Development Plan until 2026-11-22, when the
+/// product owner made season planning its focus and the development plan
+/// a part of it) as its own app: Översikt, the team's development page with
 /// the block now, the season and the goals; Planera, the season planned on
-/// a timeline of periods and blocks; Spelidé, the way of playing.
+/// a timeline of periods, blocks and holidays, breaks and vacations;
+/// Utvecklingsplan (TDP), the vision, the season's goals and the way of
+/// playing. The keys (module.team_development, the tables) keep the old
+/// name.
 abstract final class _TeamDevelopmentModule {
   static const _key = 'module.team_development';
 
@@ -28,7 +33,7 @@ abstract final class _TeamDevelopmentModule {
     return _ModuleShell.open(
       context,
       _ModuleShell(
-        title: 'Team Development Plan',
+        title: 'Säsongsplanering',
         subtitle: team.teamName,
         actions: [_TdpSeasonSwitcher(controller: controller)],
         icon: Icons.event_note,
@@ -47,9 +52,9 @@ abstract final class _TeamDevelopmentModule {
             builder: (_) => _TdpPlanner(controller: controller),
           ),
           _ModuleSection(
-            label: 'Spelidé',
-            icon: Icons.lightbulb_outline,
-            selectedIcon: Icons.lightbulb,
+            label: 'Utvecklingsplan',
+            icon: Icons.trending_up_outlined,
+            selectedIcon: Icons.trending_up,
             builder: (_) => _TdpPlay(controller: controller),
           ),
         ],
@@ -176,6 +181,24 @@ class _TdpController extends ChangeNotifier {
       );
       return false;
     }
+  }
+
+  /// The season's name, dates and vision changed in the season dialog.
+  Future<void> editSeason(BuildContext context, SeasonPlan plan) async {
+    final draft = await _SeasonDialog.show(context, plan: plan);
+    if (draft == null || !context.mounted) return;
+    await change(
+      context,
+      () => services.savePlan(
+        plan,
+        title: draft.title,
+        startsOn: draft.startsOn,
+        endsOn: draft.endsOn,
+        vision: draft.vision,
+        checkinEveryDays: draft.checkinEveryDays,
+      ),
+      done: AppStrings.of(context).feature('Säsongen är sparad.'),
+    );
   }
 
   Future<void> createSeason(BuildContext context) async {

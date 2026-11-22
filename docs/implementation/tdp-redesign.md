@@ -1,4 +1,4 @@
-# Team Development Plan: ny utformning – plan
+# Säsongsplanering (tidigare Team Development Plan): ny utformning – plan
 
 **Status: riktningen beslutad 2026-11-01. Steg 1–8 är driftsatta på webben 2026-11-02, och steg 9 är byggt. Besluten för steg 8–9 (PAR-METHOD-01/02) togs 2026-11-02.** Skissen som godkändes ligger i [docs/ux/tdp-skiss.html](../ux/tdp-skiss.html). Den öppnas i en webbläsare.
 
@@ -176,3 +176,17 @@ Tidigare beslut (2026-10-07) lade lagets och spelarnas utveckling i träningsmod
 - Vem som granskar mallarna för spelidén innan de släpps. Fyra mallar finns som utkast (2026-11-02).
 - Hur IDP kopplas in. Beslutat att ta det senare (2026-11-01).
 - Om guidens frågor och regler (i `team_development_templates.dart`) behöver justeras efter granskningen.
+
+## Säsongsplanering (beslutat 2026-11-22)
+
+Produktägaren beslutade 2026-11-22 att modulen byter namn från Team Development Plan till **Säsongsplanering**. Säsongsplaneringen är modulens huvudfokus, och TDP blir en del av den.
+
+- **Namn:** modulen heter Säsongsplanering i menyn, i modulkatalogen och i assistenten. Nycklar, tabeller och funktioner behåller det gamla namnet (`module.team_development`, `team_development_*`).
+- **Flikar:** Översikt, Planera och **Utvecklingsplan**. Utvecklingsplan ersätter Spelidé. Den visar lagets utvecklingsplan (TDP): visionen, säsongens långsiktiga mål, spelprinciperna och nyckeltalen.
+- **Lov, högtider och semestrar:** tidslinjen i Planera har en tredje rad under perioder och block. Ledaren lägger in sådant som påverkar planeringen. Det finns fyra sorter: högtid, lov, semester och annat. De får överlappa varandra och perioderna. De syns också i årskalendern, i månad, vecka och dag. De delas inte med spelarna.
+- **Förslag:** knappen "Lägg in högtider och lov" fyller i det som ledaren väljer. Allt går att ändra eller ta bort efteråt, och det som redan finns läggs inte in igen.
+  - Svenska helgdagar räknas fram varje år: röda dagar, påsk, midsommar, jul och nyår.
+  - Skollov: sportlov i vald vecka (7–10), påsklov veckan före eller efter påsk, sommarlov vecka 25–33, höstlov vecka 44 och jullov 21 december–7 januari. Loven skiljer sig mellan kommuner, och dialogen säger det.
+  - Ortodox jul och påsk räknas fram.
+  - Muslimska (ramadan, Eid al-fitr, Eid al-adha), judiska (Pesach, Rosh hashana, Jom kippur) och hinduiska (Holi, Diwali) högtider kommer från en tabell för 2025–2030. De muslimska kan skilja en dag. Tabellen ligger i `season_holidays.dart` och behöver fyllas på för 2031.
+- **Data:** tabellen `core.team_development_calendar_periods` och migrationen `20270416090000_season_plan_calendar_periods`. Varje rad är högst 121 dagar och måste nå in i säsongen. En säsong har högst 150 rader.

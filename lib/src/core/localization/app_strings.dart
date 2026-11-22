@@ -234,7 +234,7 @@ class AppStrings {
     if (isSwedish) return fallback;
     return switch (key) {
       'module.match_workspace' => 'Match',
-      'module.team_development' => 'Team Development Plan',
+      'module.team_development' => 'Season planning',
       'module.training' => 'Training',
       'module.player_development' => 'IDP',
       _ => fallback,
@@ -252,7 +252,7 @@ class AppStrings {
       'module.match_workspace' =>
         'Match plan, pitch line-up, key metrics and match review',
       'module.team_development' =>
-        'Season goals, periods with development goals and team playing principles',
+        'Season periods and blocks, breaks and holidays, and the team development plan with goals and playing philosophy',
       'module.player_development' =>
         'Player development plans with goals, activities and check-ins',
       _ => fallback,
@@ -579,7 +579,8 @@ class AppStrings {
         'Rest and play, individual training and a review of the first part.',
     'Ändra mål': 'Edit goal',
     'Säsong': 'Season',
-    'Team Development Plan': 'Team Development Plan',
+    'Säsongsplanering': 'Season planning',
+    'Utvecklingsplan': 'Development plan',
     'Period': 'Period',
     'Lagplanering': 'Team planning',
     'Träningsstöd': 'Training support',

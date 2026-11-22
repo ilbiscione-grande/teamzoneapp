@@ -460,7 +460,7 @@ class _NavPanelTeamSwitcher extends StatelessWidget {
 const _drawerWorkspaceModules = [
   ('match_workspace', Icons.sports_soccer_outlined, 'Match'),
   ('training', Icons.fitness_center_outlined, 'Träning'),
-  ('team_development', Icons.event_note_outlined, 'Team Development Plan'),
+  ('team_development', Icons.event_note_outlined, 'Säsongsplanering'),
 ];
 
 /// Shared content for the mobile navigation drawer (opened via the app bar's
