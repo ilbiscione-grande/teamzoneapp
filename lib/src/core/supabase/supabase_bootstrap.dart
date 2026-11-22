@@ -27,6 +27,7 @@ import 'package:teamzone_app/src/features/publication/editorial_services.dart';
 import 'package:teamzone_app/src/features/attendance_export/attendance_export.dart';
 import 'package:teamzone_app/src/features/team_development/session_effort_services.dart';
 import 'package:teamzone_app/src/features/roster/player_attributes_services.dart';
+import 'package:teamzone_app/src/features/team_development/team_survey_services.dart';
 import 'package:teamzone_app/src/features/match_workspace/lineup_suggestion_services.dart';
 import 'package:teamzone_app/src/features/messaging/messaging_services.dart';
 import 'package:teamzone_app/src/features/match/match_services.dart';
@@ -136,6 +137,7 @@ class SupabaseBootstrap {
     AttendanceExportFeature.configure(Supabase.instance.client);
     SessionEffortFeature.configure(Supabase.instance.client);
     PlayerAttributesFeature.configure(Supabase.instance.client);
+    TeamSurveysFeature.configure(Supabase.instance.client);
     LineupSuggestionFeature.configure(Supabase.instance.client);
     return AppServices(
       identity: identity,

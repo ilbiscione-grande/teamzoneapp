@@ -73,6 +73,9 @@ class ProductRouteContract {
   static String trainingPassLink(String token) =>
       '$trainingPass/${Uri.encodeComponent(token)}';
 
+  /// A player's survey link from a notification; it opens Webtools.
+  static const survey = '/enkat';
+
   static String calendarEvent(String eventId) =>
       '$calendar/event/${Uri.encodeComponent(eventId)}';
 
@@ -143,6 +146,7 @@ class ProductRouteContract {
     if (path.startsWith('$calendar/event/')) return uri?.toString() ?? path;
     if (path.startsWith('$team/member/')) return path;
     if (path.startsWith('$trainingPass/')) return path;
+    if (path.startsWith('$survey/')) return path;
     if (!canonicalPaths.contains(path)) return home;
     if (path == team || path == calendar || path == inbox) {
       return uri?.toString() ?? path;
@@ -154,5 +158,6 @@ class ProductRouteContract {
       canonicalPaths.contains(path) ||
       path.startsWith('$calendar/event/') ||
       path.startsWith('$team/member/') ||
-      path.startsWith('$trainingPass/');
+      path.startsWith('$trainingPass/') ||
+      path.startsWith('$survey/');
 }

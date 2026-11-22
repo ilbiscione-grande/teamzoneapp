@@ -1,0 +1,18 @@
+/* Enkäter: the page a player answers on. */
+.sv-page { max-width: 720px; padding-bottom: 48px; }
+.sv-for { margin: -4px 0 8px; font-weight: 600; }
+.sv-intro { margin: 0 0 20px; white-space: pre-line; }
+.sv-form { gap: 18px; }
+.sv-questions { display: grid; gap: 22px; margin: 0; padding-left: 1.4em; }
+.sv-questions > li::marker { font-weight: 700; }
+.sv-question { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; font-weight: 600; }
+.sv-question legend { padding: 0; margin-bottom: 8px; font-weight: 600; }
+.sv-option { margin: 0 0 6px; font-weight: 400; }
+.sv-scale { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; max-width: 360px; }
+.sv-step { position: relative; display: block; }
+.sv-step input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.sv-step span { display: grid; place-items: center; min-height: 48px; border: 1px solid var(--wt-line); border-radius: 4px; background: white; font-size: 1.1rem; font-weight: 700; }
+.sv-step input:checked + span { background: var(--wt-ink); border-color: var(--wt-ink); color: var(--wt-accent); }
+.sv-step input:focus-visible + span { outline: 3px solid var(--wt-brand); outline-offset: 2px; }
+.sv-scale-words { display: flex; justify-content: space-between; gap: 12px; max-width: 360px; color: var(--wt-muted); font-size: .9rem; font-weight: 400; }
+.sv-sent h2 { font-size: 1.6rem; text-transform: uppercase; }

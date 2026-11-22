@@ -57,6 +57,12 @@ abstract final class _TeamDevelopmentModule {
             selectedIcon: Icons.trending_up,
             builder: (_) => _TdpPlay(controller: controller),
           ),
+          _ModuleSection(
+            label: 'Enkäter',
+            icon: Icons.quiz_outlined,
+            selectedIcon: Icons.quiz,
+            builder: (_) => _TdpSurveys(teamId: team.teamId!),
+          ),
         ],
       ),
     ).whenComplete(controller.dispose);

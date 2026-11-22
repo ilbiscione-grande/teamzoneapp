@@ -47,7 +47,8 @@ abstract interface class PushServices {
 abstract final class PushRoutes {
   static final _safe = RegExp(
     // /home: a referee's notifications open the referee home (REF-01).
-    r'^/(home|calendar/event/[0-9a-fA-F-]{36}(\?tab=participants&decline=[0-9a-fA-F-]{36})?|inbox(\?(thread|pool|poolad)=[0-9a-fA-F-]{36})?)$',
+    // /enkat: a player's survey link (it opens Webtools).
+    r'^/(home|calendar/event/[0-9a-fA-F-]{36}(\?tab=participants&decline=[0-9a-fA-F-]{36})?|inbox(\?(thread|pool|poolad)=[0-9a-fA-F-]{36})?|enkat/[0-9a-f]{32})$',
   );
 
   static String? safe(Object? route) =>

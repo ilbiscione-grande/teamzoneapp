@@ -4603,7 +4603,15 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
                     person.homeMember &&
                     person.assignmentState == 'active' &&
                     contextValue.can('team.roster.manage');
-                if (person == null || (!showStats && !showAttributes)) {
+                // The player's survey answers, for leaders with
+                // Säsongsplanering (development.manage).
+                final showSurveys =
+                    person != null &&
+                    !person.isSelf &&
+                    person.homeMember &&
+                    contextValue.can('development.manage');
+                if (person == null ||
+                    (!showStats && !showAttributes && !showSurveys)) {
                   return view;
                 }
                 final tabs = <(String, Widget)>[
@@ -4643,6 +4651,21 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
                         ),
                       ),
                     ),
+                  if (showSurveys)
+                    (
+                      _attrText(context, 'Enkäter', 'Surveys'),
+                      _PlayerSurveyAnswersView(
+                        key: ValueKey('surveys-$_generation'),
+                        teamId: person.teamId,
+                        personId: person.id,
+                        header: _PersonProfileHero(
+                          person: person,
+                          clubName: contextValue.clubName,
+                          roles: _roles,
+                          contact: _contact,
+                        ),
+                      ),
+                    ),
                 ];
                 final palette = AppPalette.of(context);
                 return DefaultTabController(
@@ -4651,6 +4674,11 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
                   child: Column(
                     children: [
                       TabBar(
+                        // Four tabs do not fit side by side on a phone.
+                        isScrollable: tabs.length > 3,
+                        tabAlignment: tabs.length > 3
+                            ? TabAlignment.start
+                            : null,
                         indicatorSize: TabBarIndicatorSize.label,
                         indicatorColor: palette.accent,
                         labelColor: palette.accent,

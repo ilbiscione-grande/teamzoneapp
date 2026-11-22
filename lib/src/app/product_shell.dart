@@ -597,6 +597,11 @@ class _ProductShellState extends State<_ProductShell> {
         ),
       ),
       GoRoute(
+        path: '${ProductRouteContract.survey}/:token',
+        builder: (_, state) =>
+            _SurveyLinkPage(token: state.pathParameters['token'] ?? ''),
+      ),
+      GoRoute(
         path: '${ProductRouteContract.calendar}/event/:eventId',
         builder: (_, state) {
           final requestedContext = state.uri.queryParameters['context'];
