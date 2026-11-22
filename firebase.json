@@ -173,7 +173,7 @@
         }
       ],
       "predeploy": [
-        "node ops/check_web_build.mjs audit"
+        "node ops/check_web_build.mjs production"
       ]
     },
     {
