@@ -20,7 +20,8 @@ Decisions: the live app starts without clubs (test data stays in audit),
 | Hosting | Site `teamzoneapp-production` created; `ops/environments.json` and the production CSP in `firebase.json` name the live project |
 | Web build | Built from a `git archive` export with `TEAMZONE_ENV=production`, the live URL and publishable key (as in `webtools/apphosting.production.yaml`) and `WEBTOOLS_ORIGIN=https://webtools.teamzoneapp.se`; `npx firebase-tools deploy --only hosting:production`. Club creation tried by the product owner |
 | Addresses | `app.teamzoneapp.se` moved to `teamzoneapp-production` and `test.teamzoneapp.se` added to `teamzoneapp-b02a2`; both serve their builds since the evening of 2026-11-15, and sign-in answers on both. The audit project's Site URL is `https://test.teamzoneapp.se` |
-| Left | Push notifications and other integrations on live, one at a time; Android (phase 5); the public site still runs against audit |
+| Public site | Since 2026-11-22 the existing backend `teamzoneapp-public` (`teamzoneapp.se`) reads live: `public-site/apphosting.yaml` has the live URL and publishable key, shares Webtools' secret `teamzoneapp-production-webtools-supabase-secret-key`, and `teamzoneapp-production-cache-invalidation-secret` equals the live Vault's `public_site_worker_token` (both set that day; Vault's `public_site_worker_url` is `https://teamzoneapp.se`). Reason: contact pages and other links made in the live app were not found. No test public site exists; the audit project's worker job now gets refused by the site |
+| Left | Push notifications and other integrations on live, one at a time; Android (phase 5); live publication is still off (`internal.publication_runtime_state`), so club and team pages, articles and search answer empty on `teamzoneapp.se`; live Auth redirect URLs for the public site's sign-up confirmation |
 
 Audit web builds still use the audit flags; the test app is served on
 `https://test.teamzoneapp.se`.

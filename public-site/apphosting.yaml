@@ -27,13 +27,15 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  # The live database since 2026-11-22, like the app (app.teamzoneapp.se) and
+  # Webtools; the test database has no public site of its own yet.
   - variable: SUPABASE_URL
-    value: https://hgcshgunvooyudvrcpig.supabase.co
+    value: https://zfxcblgnemuenaqjkaic.supabase.co
     availability:
       - BUILD
       - RUNTIME
   - variable: SUPABASE_PUBLISHABLE_KEY
-    value: sb_publishable_lOnfOqPc-jBxRE28IXmEhQ_sRKFNw8O
+    value: sb_publishable_ee93wzcJc65uepVKi6WLww_zf-YdwmK
     availability:
       - RUNTIME
   # TeamZone Webtools in production; the header and footer link to it.
@@ -58,8 +60,9 @@ env:
     value: "1"
     availability:
       - RUNTIME
+  # Shared with Webtools in production: the same live project.
   - variable: SUPABASE_SECRET_KEY
-    secret: teamzoneapp-supabase-secret-key
+    secret: teamzoneapp-production-webtools-supabase-secret-key
     availability:
       - RUNTIME
   - variable: PUBLIC_API_IP_HMAC_SECRET
@@ -70,9 +73,10 @@ env:
     secret: teamzoneapp-turnstile-secret-key
     availability:
       - RUNTIME
-  # The publication worker's token, the same as Vault's public_site_worker_token;
-  # the database calls the worker with it every minute.
+  # The publication worker's token, the same as the live Vault's
+  # public_site_worker_token (set 2026-11-22); the database calls the worker
+  # with it every minute.
   - variable: CACHE_INVALIDATION_SECRET
-    secret: teamzoneapp-cache-invalidation-secret
+    secret: teamzoneapp-production-cache-invalidation-secret
     availability:
       - RUNTIME
