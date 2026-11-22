@@ -186,6 +186,8 @@ part '../features/publication/publication_management_surface.dart';
 part '../features/publication/publication_self_service_surface.dart';
 part '../features/publication/domain_management_surface.dart';
 part '../features/roster/roster_surface.dart';
+part '../features/roster/roster_age_filter.dart';
+part '../features/roster/roster_player_menu.dart';
 part '../features/roster/team_statistics_view.dart';
 part '../features/roster/team_overview_cards.dart';
 part '../features/roster/person_profile_cards.dart';

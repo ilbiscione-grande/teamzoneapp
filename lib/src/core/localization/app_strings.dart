@@ -3064,15 +3064,6 @@ class AppStrings {
         'Everyone active in the roster already has a linked account. Add '
         'a new person to the roster if you want to invite someone '
         'else.',
-    'Tillåt representation i andra lag': 'Allow representing other teams',
-    'Gör personen valbar när ett annat lag i klubben '
-            'vill be om representation. Ingen börjar '
-            'representera automatiskt -- ditt lag godkänner '
-            'varje sådan begäran för sig.':
-        'Makes the person selectable when another team in the club wants '
-        'to request representation. No one starts representing '
-        'automatically -- your team approves each such request on '
-        'its own.',
     'begärd av': 'requested by',
     'från': 'from',
     'Bjud in': 'Invite',
@@ -3081,10 +3072,6 @@ class AppStrings {
     'Representation i annat lag': 'Representation on another team',
     'Föreslå personen för ett annat lag i klubben.':
         'Propose the person to another team in the club.',
-    'Slå på "Tillåt representation i andra lag" under Redigera person '
-            'innan du fortsätter här.':
-        'Turn on "Allow representing other teams" under Edit person '
-        'before continuing here.',
     'Lagen kunde inte laddas. Försök igen.':
         'The teams could not be loaded. Try again.',
     'Förfrågan skickad. Ditt lag behöver godkänna den innan '
@@ -3783,6 +3770,19 @@ class AppStrings {
     'Sortera': 'Sort',
     'Namn A–Ö': 'Name A–Z',
     'Alla positioner': 'All positions',
+    'Alla åldrar': 'All ages',
+    'Visa profil': 'Show profile',
+    'Nya kontaktuppgifter': 'New contact details',
+    'Granska kontaktuppgifter': 'Review contact details',
+    'Redigera uppgifter': 'Edit details',
+    'Position och titel': 'Position and title',
+    'Representera annat lag': 'Represent another team',
+    'Spelaren kunde inte laddas. Försök igen.':
+        'The player could not be loaded. Try again.',
+    'Ett år': 'One year',
+    'Spann': 'Span',
+    'Yngre än': 'Younger than',
+    'Äldre än': 'Older than',
     'Spelare och ledare': 'Players and leaders',
     'Bara spelare': 'Only players',
     'Bara ledare': 'Only leaders',

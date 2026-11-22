@@ -64,6 +64,92 @@ void main() {
     expect(find.text('Tidigare 00'), findsOneWidget);
   });
 
+  testWidgets('the squad filters on one birth year, a span, younger, older', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(_app(role: 'leader', canView: true));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Laget'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(of: find.byType(TabBar), matching: find.text('Trupp')),
+    );
+    await tester.pumpAndSettle();
+
+    Future<void> openFilter() async {
+      await tester.tap(find.byKey(const ValueKey('roster-filter')));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> closeFilter() async {
+      Navigator.of(
+        tester.element(find.byKey(const ValueKey('roster-age-mode-all'))),
+      ).pop();
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> mode(String name) async {
+      await tester.ensureVisible(find.byKey(ValueKey('roster-age-mode-$name')));
+      await tester.tap(find.byKey(ValueKey('roster-age-mode-$name')));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> pick(String field, int year) async {
+      final finder = find.byWidgetPredicate(
+        (widget) =>
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'roster-age-$field-',
+            ),
+      );
+      await tester.ensureVisible(finder);
+      await tester.tap(finder);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('$year').last);
+      await tester.pumpAndSettle();
+    }
+
+    // One year.
+    await openFilter();
+    await mode('exact');
+    await pick('År', 2012);
+    await closeFilter();
+    expect(find.text('Person 10'), findsOneWidget);
+    expect(find.text('Person 00'), findsNothing);
+    expect(find.text('Person 20'), findsNothing);
+
+    // A span, here picked newest first.
+    await openFilter();
+    await mode('range');
+    await pick('Från', 2014);
+    await pick('Till', 2012);
+    await closeFilter();
+    expect(find.text('Person 00'), findsNothing);
+    expect(find.text('Person 10'), findsOneWidget);
+
+    // Younger than 2012 is born after it; older is born before it.
+    await openFilter();
+    await mode('younger');
+    await pick('År', 2012);
+    expect(find.text('Födda 2013 och senare'), findsOneWidget);
+    await closeFilter();
+    expect(find.text('Person 00'), findsNothing);
+    expect(find.text('Person 10'), findsNothing);
+    expect(find.text('Person 20'), findsOneWidget);
+
+    await openFilter();
+    await mode('older');
+    await closeFilter();
+    expect(find.text('Person 00'), findsOneWidget);
+    expect(find.text('Person 10'), findsNothing);
+    expect(find.text('Person 20'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('desktop uses the same routed member details page', (
     tester,
   ) async {
@@ -159,7 +245,8 @@ class _Roster extends UnconfiguredRosterServices {
       RosterPersonSummary(
         id: 'active-$index',
         displayName: 'Person ${index.toString().padLeft(2, '0')}',
-        ageClass: '2012',
+        // Born 2010 (00–09), 2012 (10–19) and 2014 (20–34).
+        ageClass: '${index < 10 ? 2010 : (index < 20 ? 2012 : 2014)}',
         teamId: 'team',
         teamName: 'F2012',
         assignmentState: 'active',

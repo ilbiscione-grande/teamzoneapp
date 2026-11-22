@@ -580,6 +580,7 @@ class _ProductShellState extends State<_ProductShell> {
           onOpenTask: _openAssistantTask,
           onOpenSettings: () => _openAssistant(settings: true),
           settingsOnly: state.uri.queryParameters['settings'] == '1',
+          loadIntake: _loadIntake,
           assistantIdentity: widget.assistantIdentity,
           assistantPresentation: widget.assistantPresentation,
           overview: widget.overview,
@@ -808,6 +809,10 @@ class _ProductShellState extends State<_ProductShell> {
       });
     }
   }
+
+  /// New contact details for the assistant, from the roster's intake overview.
+  Future<IntakeOverview> _loadIntake(String clubId) =>
+      widget.roster.getIntakeOverview(clubId: clubId);
 
   Future<void> _openAssistantTask(AssistantTask task) async {
     // Bookings to approve are decided in the app; Webtools stays one tap away.
@@ -1495,6 +1500,7 @@ class _ProductShellState extends State<_ProductShell> {
                                       overview: widget.overview,
                                       loadEvent:
                                           widget.calendar.getEventDetails,
+                                      loadIntake: _loadIntake,
                                     ),
                                     child: _AssistantCoachMobileFab(
                                       onPressed: _openAssistant,
@@ -1521,6 +1527,7 @@ class _ProductShellState extends State<_ProductShell> {
                             page: AssistantPageContext(_currentPageLocation),
                             overview: widget.overview,
                             loadEvent: widget.calendar.getEventDetails,
+                            loadIntake: _loadIntake,
                             preparation: widget.calendar.preparation,
                             calendar: widget.calendar,
                             onOpen: _openAssistantTask,

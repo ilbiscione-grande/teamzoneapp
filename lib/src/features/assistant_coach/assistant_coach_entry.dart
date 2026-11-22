@@ -165,7 +165,11 @@ class _AssistantCoachHoldingSurface extends StatefulWidget {
     required this.onOpenTask,
     required this.onOpenSettings,
     this.settingsOnly = false,
+    this.loadIntake,
   });
+
+  /// The roster's intake overview for a club, for new contact details.
+  final Future<IntakeOverview> Function(String clubId)? loadIntake;
 
   final AssistantIdentityServices assistantIdentity;
   final AssistantPresentationServices assistantPresentation;
@@ -437,6 +441,7 @@ class _AssistantCoachHoldingSurfaceState
                                 page: widget.page,
                                 overview: widget.overview,
                                 loadEvent: widget.calendar.getEventDetails,
+                                loadIntake: widget.loadIntake,
                                 preparation: widget.calendar.preparation,
                                 calendar: widget.calendar,
                                 onOpen: widget.onOpenTask,

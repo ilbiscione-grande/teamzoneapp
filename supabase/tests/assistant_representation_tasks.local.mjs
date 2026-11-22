@@ -85,6 +85,13 @@ try {
     ['inbox_messages', 'team_representation_available']);
   await assert.rejects(save(['unknown'], 1), /invalid_preferences/);
   await assert.rejects(save(['inbox_notices'], 0), (error) => error.code === 'PT409');
+  // New contact details can be hidden once the next migration has run.
+  await assert.rejects(save(['team_contact_details'], 1), /invalid_preferences/);
+  await db.exec(fs.readFileSync('supabase/migrations/20270419090000_assistant_contact_details_task.sql', 'utf8'));
+  await save(['team_contact_details', 'inbox_messages'], 1);
+  assert.deepEqual((await db.query('select hidden_kinds from internal.assistant_task_preferences')).rows[0].hidden_kinds,
+    ['inbox_messages', 'team_contact_details']);
+  await assert.rejects(save(['unknown'], 2), /invalid_preferences/);
   console.log('assistant representation tasks: ok');
 } finally {
   await db.close();

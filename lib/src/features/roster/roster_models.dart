@@ -22,6 +22,13 @@ class RosterPersonSummary {
   // roster person to invite as a new claim should exclude these.
   final bool accountLinked;
 
+  /// The server sends the birth year as [ageClass] when the person has one
+  /// (`coalesce(birth_year::text, age_class)`), otherwise the age class.
+  int? get birthYear {
+    final year = int.tryParse(ageClass?.trim() ?? '');
+    return year != null && year >= 1900 && year <= 2100 ? year : null;
+  }
+
   factory RosterPersonSummary.fromJson(Map<String, dynamic> json) {
     return RosterPersonSummary(
       id: json['club_person_id'] as String,

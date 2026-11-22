@@ -13,6 +13,7 @@ import 'assistant_preparation_checklist.dart';
 import 'assistant_task_preferences.dart';
 import '../overview/overview_models.dart';
 import '../overview/overview_services.dart';
+import '../roster/roster_models.dart';
 import 'package:teamzone_app/src/core/observability/app_errors.dart';
 
 /// TeamZone Webtools, where the booking manager lives.
@@ -31,6 +32,7 @@ String _localizedAssistantTitle(BuildContext context, AssistantTask item) {
     'pending_callups' => 'Obesvarade kallelser',
     'team_representation_requests' => 'Representation att godkänna',
     'team_representation_available' => 'Spelare som kan representera laget',
+    'team_contact_details' => 'Nya kontaktuppgifter',
     _ => null,
   };
   return title == null
@@ -61,6 +63,10 @@ String _localizedAssistantExplanation(
       '$count requests from other teams for your players to represent them. A representation applies only once your team approves it.',
     'team_representation_available' =>
       '$count players in the club\'s other teams were made available to represent other teams in the last 14 days. Add them under New if your team wants to use them; their own team then approves.',
+    'team_contact_details' =>
+      count == 1
+          ? 'Someone sent their contact details through the team\'s contact update page. Add them to the squad or update an existing person.'
+          : '$count people sent their contact details through the team\'s contact update page. Add them to the squad or update an existing person.',
     'inbox_messages' =>
       'An unread message or announcement in your inbox. It is marked read when you open it.',
     'inbox_notices' =>
@@ -133,6 +139,7 @@ class AssistantPageContext {
         'missing_attendance',
         'team_representation_requests',
         'team_representation_available',
+        'team_contact_details',
       }.contains(task.task.kind),
       _ when path.startsWith('${ProductRouteContract.team}/member/') => {
         'pending_callups',
@@ -261,6 +268,7 @@ class AssistantTask {
     'module_tdp_checkins' => 'Stäm av lagets mål',
     'team_representation_requests' => 'Granska representationer',
     'team_representation_available' => 'Visa representationer',
+    'team_contact_details' => 'Granska kontaktuppgifter',
     'inbox_messages' || 'inbox_notices' => 'Läs',
     'personal_calendar_conflict' => 'Öppna aktivitet och hantera krock',
     'calendar_conflict' => 'Välj aktivitet och ändra tid',
@@ -297,6 +305,10 @@ class AssistantTask {
       task.count == 1
           ? 'En spelare i ett annat lag i klubben har de senaste 14 dagarna markerats som tillgänglig att representera andra lag. Lägg till spelaren under Ny om laget vill använda spelaren; spelarens lag godkänner sedan.'
           : '${task.count} spelare i klubbens andra lag har de senaste 14 dagarna markerats som tillgängliga att representera andra lag. Lägg till dem under Ny om laget vill använda dem; spelarnas lag godkänner sedan.',
+    'team_contact_details' =>
+      task.count == 1
+          ? 'Någon har skickat in sina kontaktuppgifter via lagets sida för kontaktuppgifter. Lägg till personen i truppen eller uppdatera en befintlig person.'
+          : '${task.count} personer har skickat in sina kontaktuppgifter via lagets sida för kontaktuppgifter. Lägg till dem i truppen eller uppdatera befintliga personer.',
     'inbox_messages' =>
       'Ett oläst meddelande eller anslag i din inkorg. Det markeras som läst när du öppnar det.',
     'inbox_notices' =>
@@ -367,6 +379,8 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
   TeamZoneContext? activeContext,
   required OverviewServices overview,
   required Future<EventDetails> Function(String) loadEvent,
+  // The roster's intake overview for a club, for new contact details.
+  Future<IntakeOverview> Function(String clubId)? loadIntake,
 }) async {
   var preferences = const AssistantTaskPreferences();
   if (overview is AssistantTaskPreferencesServices) {
@@ -842,6 +856,12 @@ Future<AssistantTaskSnapshot> loadAssistantTasks({
       overview: overview,
       preferences: preferences,
     ),
+    ...await loadAssistantIntakeTasks(
+      contexts: contexts,
+      activeContext: activeContext,
+      loadIntake: loadIntake,
+      preferences: preferences,
+    ),
     ...await loadAssistantInboxTasks(
       contexts: contexts,
       activeContext: activeContext,
@@ -890,12 +910,16 @@ class AssistantTaskSections extends StatefulWidget {
     required this.onOpen,
     this.preparation,
     this.calendar,
+    this.loadIntake,
   });
   final List<TeamZoneContext> contexts;
   final TeamZoneContext activeContext;
   final AssistantPageContext page;
   final OverviewServices overview;
   final Future<EventDetails> Function(String) loadEvent;
+
+  /// The roster's intake overview for a club, for new contact details.
+  final Future<IntakeOverview> Function(String clubId)? loadIntake;
   final Future<void> Function(AssistantTask) onOpen;
   final EventPreparationServices? preparation;
 
@@ -932,6 +956,7 @@ class _AssistantTaskSectionsState extends State<AssistantTaskSections>
       activeContext: widget.activeContext,
       overview: widget.overview,
       loadEvent: widget.loadEvent,
+      loadIntake: widget.loadIntake,
     );
     if (mounted) {
       _wakeTimer?.cancel();

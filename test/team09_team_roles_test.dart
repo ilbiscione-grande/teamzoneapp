@@ -866,6 +866,71 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('a player menu offers actions; asking turns representation on', (
+    tester,
+  ) async {
+    final roster = _Roster(
+      roles: [
+        const TeamRole(personId: 'ada', name: 'Ada Spelare', role: 'player'),
+      ],
+      people: [
+        const RosterPersonSummary(
+          id: 'ada',
+          displayName: 'Ada Spelare',
+          teamId: 'team',
+          teamName: 'F2012',
+          assignmentState: 'active',
+          safeguardingRequired: false,
+        ),
+      ],
+    );
+    await _openRoster(tester, roster);
+    final menu = find.byKey(const ValueKey('roster-player-menu-ada'));
+    expect(menu, findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('roster-player-ada')),
+        matching: find.byIcon(Icons.chevron_right),
+      ),
+      findsNothing,
+    );
+    await tester.tap(menu);
+    await tester.pumpAndSettle();
+    for (final action in [
+      'profile',
+      'edit',
+      'details',
+      'represent',
+      'move',
+      'invite',
+      'archive',
+    ]) {
+      expect(
+        find.byKey(ValueKey('roster-player-action-$action')),
+        findsOneWidget,
+        reason: action,
+      );
+    }
+    // No switch first: sending the request makes the player available.
+    await tester.tap(
+      find.byKey(const ValueKey('roster-player-action-represent')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Representation i annat lag'), findsOneWidget);
+    await tester.tap(find.text('Skicka'));
+    await tester.pumpAndSettle();
+    expect(roster.representationCalls, [
+      'available:ada:true',
+      'request:ada:team-p13',
+    ]);
+
+    // The row itself still opens the profile.
+    await tester.tap(find.text('Ada Spelare'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('person-profile-title')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('leader profile manages role, title and permissions', (
     tester,
   ) async {
@@ -1247,6 +1312,49 @@ class _Roster extends UnconfiguredRosterServices {
     ),
   ];
   final intakeForms = <IntakeFormLink>[];
+  // Representation from the squad menu: in the order the app calls them.
+  final representationCalls = <String>[];
+
+  @override
+  Future<IntraClubMoveOptions> getIntraClubMoveOptions({
+    required String clubId,
+    required String sourceTeamId,
+  }) async => const IntraClubMoveOptions(
+    people: [],
+    teams: [IntraClubMoveTeam(id: 'team-p13', name: 'P13')],
+  );
+
+  @override
+  Future<int> setRepresentationAvailable({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required bool available,
+    required int expectedRevision,
+    required String idempotencyKey,
+  }) async {
+    representationCalls.add('available:$personId:$available');
+    return expectedRevision + 1;
+  }
+
+  @override
+  Future<String> createPlayEligibility({
+    required String clubId,
+    required String teamId,
+    required String personId,
+    required String kind,
+    required String validityKind,
+    required DateTime startsAt,
+    DateTime? endsAt,
+    DateTime? seasonEndsOn,
+    DateTime? reviewDueAt,
+    required String sourceNote,
+    required String idempotencyKey,
+  }) async {
+    representationCalls.add('request:$personId:$teamId');
+    return 'eligibility-1';
+  }
+
   final acceptedIntake = <(String, String, String)>[];
   final mergedIntake = <(String, String, String)>[];
 

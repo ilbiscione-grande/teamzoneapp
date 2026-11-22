@@ -13,6 +13,7 @@ const assistantTaskTypes = <String, String>{
   'unfinished_preparation': 'Återstående förberedelser',
   'team_representation_requests': 'Representationer att godkänna',
   'team_representation_available': 'Spelare som kan representera laget',
+  'team_contact_details': 'Nya kontaktuppgifter',
   'inbox_messages': 'Olästa meddelanden och anslag',
   'inbox_notices': 'Olästa notiser',
 };

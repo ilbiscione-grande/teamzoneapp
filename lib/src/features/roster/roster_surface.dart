@@ -46,12 +46,14 @@ class _RosterSurfaceState extends State<_RosterSurface> {
   String _show = 'all';
   // Several positions can be shown at once; empty means all.
   Set<String> _positions = const {};
+  _RosterAgeFilter _age = const _RosterAgeFilter();
   String _sortBy = 'name';
   final _rosterSearch = TextEditingController();
   bool get _rosterFiltered =>
       _status != 'active' ||
       _show != 'all' ||
       _positions.isNotEmpty ||
+      _age.active ||
       _sortBy != 'name';
   List<RosterPersonSummary>? _syncedPeople;
   late int _selectedTab = _teamTabIndex(widget.initialTab);
@@ -510,7 +512,8 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                   };
                   // A position or another order looks at the whole match,
                   // not one page of it.
-                  final whole = _positions.isNotEmpty || _sortBy != 'name';
+                  final whole =
+                      _positions.isNotEmpty || _age.active || _sortBy != 'name';
                   final people =
                       (whole ? _list.matchingItems : allPeople)
                           .where(
@@ -518,6 +521,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                                 _show != 'leaders' &&
                                 (person.assignmentState == 'active' ||
                                     !leaderIds.contains(person.id)) &&
+                                _age.matches(person.birthYear) &&
                                 (_positions.isEmpty ||
                                     _positions.any(
                                       (position) => _hasPosition(
@@ -615,7 +619,23 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                               '' => null,
                               final text => Text(text),
                             },
-                            trailing: canOpenPersonDetails
+                            // Leaders who manage the squad get the common
+                            // actions in a menu; the row opens the profile.
+                            trailing: canManage && canOpenPersonDetails
+                                ? _RosterPlayerMenu(
+                                    contextValue: widget.contextValue,
+                                    roster: widget.roster,
+                                    profileServices: widget.profileServices,
+                                    person: person,
+                                    roles: rolesSnapshot.data,
+                                    onOpenProfile: () =>
+                                        _openPersonDetails(person),
+                                    onChanged: () {
+                                      _refreshTeamRoles();
+                                      unawaited(_data.refresh());
+                                    },
+                                  )
+                                : canOpenPersonDetails
                                 ? const Icon(Icons.chevron_right)
                                 : null,
                             onTap: canOpenPersonDetails
@@ -971,7 +991,8 @@ class _RosterSurfaceState extends State<_RosterSurface> {
     if (data == null ||
         _list.filterKey == 'other' ||
         _show == 'players' ||
-        _positions.isNotEmpty) {
+        _positions.isNotEmpty ||
+        _age.active) {
       return const [];
     }
     final query = _list.query.trim().toLowerCase();
@@ -1068,6 +1089,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
       _status = 'active';
       _show = 'all';
       _positions = const {};
+      _age = const _RosterAgeFilter();
       _sortBy = 'name';
     });
     _setRosterStatusFilter('active');
@@ -1095,6 +1117,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
         if (ib >= 0) return 1;
         return a.toLowerCase().compareTo(b.toLowerCase());
       });
+    final birthYears = _rosterBirthYears(_data.state.data ?? const []);
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -1151,6 +1174,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                           _status = 'active';
                           _show = 'all';
                           _positions = const {};
+                          _age = const _RosterAgeFilter();
                           _sortBy = 'name';
                         });
                         _setRosterStatusFilter('active');
@@ -1209,6 +1233,25 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                       ),
                     ),
                 ]),
+              if (birthYears.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        strings.feature('Födelseår'),
+                        style: Theme.of(sheetContext).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      _RosterAgeFilterFields(
+                        filter: _age,
+                        years: birthYears,
+                        onChanged: (value) => update(() => _age = value),
+                      ),
+                    ],
+                  ),
+                ),
               section('Sortera', [
                 for (final (value, label) in const [
                   ('name', 'Namn A–Ö'),
@@ -3307,8 +3350,6 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
       int.tryParse((widget.initial?.ageClass ?? '').replaceFirst('F', ''));
   late DateTime? _birthDate = widget.initial?.birthDate;
   late bool _guardianRequired = widget.initial?.safeguardingRequired ?? false;
-  late bool _representationAvailable =
-      widget.initial?.representationAvailable ?? false;
   late final _email = TextEditingController(text: widget.contact?.contactEmail);
   late final _phone = TextEditingController(text: widget.contact?.phone);
   late final _street = TextEditingController(
@@ -3425,17 +3466,6 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
               teamId: teamId,
               personId: widget.initial!.id,
               guardianRequired: _guardianRequired,
-              expectedRevision: revision,
-              idempotencyKey: _newUuid(),
-            );
-          }
-          if (_representationAvailable !=
-              (widget.initial!.representationAvailable ?? false)) {
-            revision = await widget.roster.setRepresentationAvailable(
-              clubId: widget.contextValue.clubId,
-              teamId: teamId,
-              personId: widget.initial!.id,
-              available: _representationAvailable,
               expectedRevision: revision,
               idempotencyKey: _newUuid(),
             );
@@ -3689,26 +3719,6 @@ class _RosterPersonFormSheetState extends State<_RosterPersonFormSheet> {
                       value: _guardianRequired,
                       onChanged: (value) {
                         setState(() => _guardianRequired = value);
-                        _submission.markDirty();
-                      },
-                    ),
-                  if (_isEditing && widget.initial!.homeMember)
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        strings.feature('Tillåt representation i andra lag'),
-                      ),
-                      subtitle: Text(
-                        strings.feature(
-                          'Gör personen valbar när ett annat lag i klubben '
-                          'vill be om representation. Ingen börjar '
-                          'representera automatiskt -- ditt lag godkänner '
-                          'varje sådan begäran för sig.',
-                        ),
-                      ),
-                      value: _representationAvailable,
-                      onChanged: (value) {
-                        setState(() => _representationAvailable = value);
                         _submission.markDirty();
                       },
                     ),
@@ -4877,17 +4887,6 @@ Future<void> _representFromProfile({
 }) async {
   final strings = AppStrings.of(context);
   final title = strings.feature('Representation i annat lag');
-  if (person.representationAvailable != true) {
-    await _showProfileActionMessage(
-      context,
-      title: title,
-      message: strings.feature(
-        'Slå på "Tillåt representation i andra lag" under Redigera person '
-        'innan du fortsätter här.',
-      ),
-    );
-    return;
-  }
   IntraClubMoveOptions options;
   try {
     options = await roster
@@ -4932,7 +4931,10 @@ Future<void> _representFromProfile({
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Expanded so long labels shorten instead of overflowing on a
+              // phone.
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: targetTeamId,
                 decoration: InputDecoration(
                   labelText: AppStrings.of(context).feature('Lag'),
@@ -4949,6 +4951,7 @@ Future<void> _representFromProfile({
                     setDialogState(() => targetTeamId = value ?? targetTeamId),
               ),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: kind,
                 decoration: InputDecoration(
                   labelText: AppStrings.of(context).feature('Typ'),
@@ -4965,6 +4968,7 @@ Future<void> _representFromProfile({
                     setDialogState(() => kind = value ?? kind),
               ),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: validity,
                 decoration: InputDecoration(
                   labelText: AppStrings.of(context).feature('Giltighet'),
@@ -5044,6 +5048,18 @@ Future<void> _representFromProfile({
       59,
       59,
     );
+    // Sending the request is the consent: the player becomes available for
+    // representation first, so no separate setting is needed.
+    if (person.representationAvailable != true) {
+      await roster.setRepresentationAvailable(
+        clubId: contextValue.clubId,
+        teamId: contextValue.teamId!,
+        personId: person.id,
+        available: true,
+        expectedRevision: person.personRevision ?? 1,
+        idempotencyKey: _newUuid(),
+      );
+    }
     await roster.createPlayEligibility(
       clubId: contextValue.clubId,
       teamId: targetTeamId,

@@ -2,6 +2,7 @@ import '../../app/product_route_contract.dart';
 import '../../core/identity/identity_models.dart';
 import '../overview/overview_models.dart';
 import '../overview/overview_services.dart';
+import '../roster/roster_models.dart';
 import 'assistant_task_preferences.dart';
 import 'assistant_tasks.dart';
 import 'package:teamzone_app/src/core/observability/app_errors.dart';
@@ -74,6 +75,81 @@ Future<List<AssistantTask>> loadAssistantRepresentationTasks({
     }
   } catch (error) {
     AppErrors.caught('assistant_inbox_tasks.representation', error);
+  }
+  return result;
+}
+
+/// New contact details sent through a team's contact update page, for the
+/// teams whose squad you manage: one task per team with the number waiting,
+/// opening the team's contact update view. Details sent to the club rather
+/// than a team stay in the inbox only. [loadIntake] is the roster's intake
+/// overview for a club; a club that fails to load is left out.
+Future<List<AssistantTask>> loadAssistantIntakeTasks({
+  required List<TeamZoneContext> contexts,
+  required TeamZoneContext? activeContext,
+  required Future<IntakeOverview> Function(String clubId)? loadIntake,
+  required AssistantTaskPreferences preferences,
+}) async {
+  const kind = 'team_contact_details';
+  if (loadIntake == null || !preferences.shows(kind)) return const [];
+  bool manages(TeamZoneContext item) =>
+      item.teamId != null &&
+      (item.can('team.roster.manage') || item.can('club.memberships.manage'));
+  final teams = [
+    for (final item in contexts)
+      if (manages(item) &&
+          (!preferences.currentTeamOnly ||
+              (activeContext != null &&
+                  item.clubId == activeContext.clubId &&
+                  item.teamId == activeContext.teamId)))
+        item,
+  ];
+  final result = <AssistantTask>[];
+  for (final clubId in {for (final item in teams) item.clubId}) {
+    final IntakeOverview overview;
+    try {
+      overview = await loadIntake(clubId).timeout(const Duration(seconds: 15));
+    } catch (error) {
+      AppErrors.caught('assistant_inbox_tasks.intake', error);
+      continue;
+    }
+    final counts = <String, int>{};
+    for (final submission in overview.submissions) {
+      if (submission.teamId case final teamId?) {
+        counts[teamId] = (counts[teamId] ?? 0) + 1;
+      }
+    }
+    for (final MapEntry(key: teamId, value: count) in counts.entries) {
+      bool inTeam(TeamZoneContext item) =>
+          item.clubId == clubId && item.teamId == teamId;
+      // The active context first, then a leader context for the team.
+      final context = activeContext != null && inTeam(activeContext)
+          ? activeContext
+          : teams
+                .where((item) => inTeam(item) && item.rolePackage == 'leader')
+                .followedBy(teams.where(inTeam))
+                .firstOrNull;
+      if (context == null) continue;
+      result.add(
+        AssistantTask(
+          context: context,
+          task: LeaderHomeTask(
+            kind: kind,
+            title: 'Nya kontaktuppgifter',
+            count: count,
+            route: Uri(
+              path: ProductRouteContract.team,
+              queryParameters: {'action': 'intake', 'context': context.id},
+            ).toString(),
+            priority: 40,
+          ),
+          eventId: teamId,
+          generatedAt: DateTime.now(),
+          stale: false,
+          eventTitle: context.teamName ?? context.clubName,
+        ),
+      );
+    }
   }
   return result;
 }
