@@ -581,6 +581,7 @@ class AppStrings {
     'Säsong': 'Season',
     'Säsongsplanering': 'Season planning',
     'Utvecklingsplan': 'Development plan',
+    'Enkäter': 'Surveys',
     'Period': 'Period',
     'Lagplanering': 'Team planning',
     'Träningsstöd': 'Training support',

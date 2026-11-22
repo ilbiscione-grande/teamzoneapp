@@ -141,7 +141,10 @@ class SurveyInvite {
     required this.token,
     required this.hasAccount,
     this.notifiedAt,
+    this.remindedAt,
     this.answeredAt,
+    this.phone,
+    this.email,
   });
   factory SurveyInvite.fromJson(Map<String, dynamic> json) => SurveyInvite(
     id: json['id'] as String,
@@ -150,11 +153,88 @@ class SurveyInvite {
     token: json['token'] as String,
     hasAccount: json['has_account'] == true,
     notifiedAt: _time(json['notified_at']),
+    remindedAt: _time(json['reminded_at']),
     answeredAt: _time(json['answered_at']),
+    phone: json['phone'] as String?,
+    email: json['email'] as String?,
   );
   final String id, personId, name, token;
   final bool hasAccount;
-  final DateTime? notifiedAt, answeredAt;
+  final DateTime? notifiedAt, remindedAt, answeredAt;
+
+  /// The player's contact, shown to the team's leaders only.
+  final String? phone, email;
+  String get url => surveyLinkUrl(token);
+}
+
+/// A text with a personal link, for a text message, WhatsApp or email.
+String surveyInviteMessage({
+  required String name,
+  required String title,
+  required String url,
+  bool swedish = true,
+}) {
+  final first = name.trim().split(RegExp(r'\s+')).first;
+  final hello = first.isEmpty ? '' : ' $first';
+  return swedish
+      ? 'Hej$hello! Svara gärna på ledarnas enkät "$title". Länken är din egen, så dela den inte med någon annan: $url'
+      : 'Hi$hello! Please answer your coaches\' survey "$title". The link is your own, so do not share it: $url';
+}
+
+/// A phone number for wa.me: digits only, a Swedish 07… as 467….
+String? whatsAppNumber(String? phone) {
+  if (phone == null) return null;
+  var digits = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+  if (digits.startsWith('+')) {
+    digits = digits.substring(1);
+  } else if (digits.startsWith('00')) {
+    digits = digits.substring(2);
+  } else if (digits.startsWith('0')) {
+    digits = '46${digits.substring(1)}';
+  }
+  digits = digits.replaceAll('+', '');
+  return digits.length < 7 ? null : digits;
+}
+
+/// Opens WhatsApp with [text], to [phone] when it is known (otherwise
+/// WhatsApp asks whom to send it to).
+Uri whatsAppUri(String text, {String? phone}) {
+  final number = whatsAppNumber(phone) ?? '';
+  return Uri.parse('https://wa.me/$number?text=${Uri.encodeComponent(text)}');
+}
+
+/// Opens the text messages with [text], to [phone] when it is known.
+Uri smsUri(String text, {String? phone}) {
+  final to = (phone ?? '').replaceAll(RegExp(r'[^0-9+]'), '');
+  return Uri.parse('sms:$to?body=${Uri.encodeComponent(text)}');
+}
+
+/// Opens the email app with [text], to [email] when it is known.
+Uri emailUri(String text, {String? email, required String subject}) =>
+    Uri.parse(
+      'mailto:${Uri.encodeComponent(email ?? '')}'
+      '?subject=${Uri.encodeComponent(subject)}'
+      '&body=${Uri.encodeComponent(text)}',
+    );
+
+/// One of the signed-in person's own links to an open survey.
+class MySurvey {
+  const MySurvey({
+    required this.surveyId,
+    required this.title,
+    required this.teamName,
+    required this.token,
+    this.answeredAt,
+  });
+  factory MySurvey.fromJson(Map<String, dynamic> json) => MySurvey(
+    surveyId: json['survey_id'] as String,
+    title: json['title'] as String? ?? '',
+    teamName: json['team_name'] as String? ?? '',
+    token: json['token'] as String,
+    answeredAt: _time(json['answered_at']),
+  );
+  final String surveyId, title, teamName, token;
+  final DateTime? answeredAt;
   String get url => surveyLinkUrl(token);
 }
 
@@ -217,6 +297,7 @@ class TeamSurvey {
     this.invites = const [],
     this.responses = const [],
     this.players = const [],
+    this.reminded,
   });
   factory TeamSurvey.fromJson(Map<String, dynamic> json) => TeamSurvey(
     id: json['id'] as String,
@@ -242,6 +323,7 @@ class TeamSurvey {
       for (final item in json['players'] as List? ?? const [])
         SurveyPlayer.fromJson(item as Map<String, dynamic>),
     ],
+    reminded: (json['reminded'] as num?)?.toInt(),
   );
   final String id, teamId, title, intro, state;
   final List<SurveyQuestion> questions;
@@ -250,6 +332,9 @@ class TeamSurvey {
   final List<SurveyInvite> invites;
   final List<SurveyResponse> responses;
   final List<SurveyPlayer> players;
+
+  /// After a reminder: how many were reminded.
+  final int? reminded;
 
   bool get draft => state == 'draft';
   bool get open => state == 'open';
@@ -265,6 +350,91 @@ class TeamSurvey {
 
   SurveyResponse? responseOf(SurveyInvite invite) =>
       responses.where((response) => response.inviteId == invite.id).firstOrNull;
+
+  /// Players with an account who have not answered and were not reminded
+  /// in the last 12 hours: a reminder reaches them.
+  int get remindable => invites
+      .where(
+        (invite) =>
+            invite.hasAccount &&
+            invite.answeredAt == null &&
+            (invite.remindedAt == null ||
+                DateTime.now().difference(invite.remindedAt!) >
+                    const Duration(hours: 12)),
+      )
+      .length;
+
+  /// The share of personal links answered, or null without links.
+  double? get responseRate => invites.isEmpty
+      ? null
+      : invites.where((invite) => invite.answeredAt != null).length /
+            invites.length;
+
+  /// The answers given to [question].
+  List<SurveyResponse> answersTo(SurveyQuestion question) => [
+    for (final response in responses)
+      if (response.answers[question.id] != null) response,
+  ];
+
+  /// A scale question's answers, 1–5.
+  List<int> scaleValues(SurveyQuestion question) => [
+    for (final response in answersTo(question))
+      if (response.answers[question.id] case final num value) value.toInt(),
+  ];
+
+  /// A scale question's average, or null before anyone answered.
+  double? average(SurveyQuestion question) {
+    final values = scaleValues(question);
+    return values.isEmpty
+        ? null
+        : values.reduce((a, b) => a + b) / values.length;
+  }
+
+  /// How many chose each option of a choice question, in the options'
+  /// order.
+  Map<String, int> optionCounts(SurveyQuestion question) => {
+    for (final option in question.options)
+      option: answersTo(question).where((response) {
+        final answer = response.answers[question.id];
+        return answer == option || (answer is List && answer.contains(option));
+      }).length,
+  };
+
+  /// The average of all the scale questions' averages.
+  double? get scaleAverage {
+    final averages = [
+      for (final question in questions)
+        if (question.kind == SurveyQuestionKind.scale)
+          if (average(question) case final double value) value,
+    ];
+    return averages.isEmpty
+        ? null
+        : averages.reduce((a, b) => a + b) / averages.length;
+  }
+
+  /// The answers as a table (one row per person, one column per question),
+  /// with tabs between the columns, as a spreadsheet takes a paste.
+  String toTable({bool swedish = true}) {
+    String cell(String value) =>
+        value.replaceAll(RegExp(r'[\t\r\n]+'), ' ').trim();
+    String time(DateTime at) =>
+        at.toIso8601String().substring(0, 16).replaceFirst('T', ' ');
+    final rows = [
+      [
+        swedish ? 'Namn' : 'Name',
+        swedish ? 'Svarade' : 'Answered',
+        for (final question in questions) question.label,
+      ],
+      for (final response in responses)
+        [
+          response.name,
+          time(response.updatedAt),
+          for (final question in questions)
+            question.describe(response.answers[question.id], swedish: swedish),
+        ],
+    ];
+    return rows.map((row) => row.map(cell).join('\t')).join('\n');
+  }
 }
 
 /// A player's answer in one of the team's surveys, for the player's page.
@@ -275,6 +445,8 @@ class PlayerSurveyAnswer {
     required this.questions,
     required this.answers,
     required this.updatedAt,
+    this.responseCount = 0,
+    this.averages = const {},
   });
   factory PlayerSurveyAnswer.fromJson(Map<String, dynamic> json) =>
       PlayerSurveyAnswer(
@@ -286,11 +458,22 @@ class PlayerSurveyAnswer {
         ],
         answers: Map<String, dynamic>.from(json['answers'] as Map? ?? const {}),
         updatedAt: DateTime.parse(json['updated_at'] as String).toLocal(),
+        responseCount: (json['response_count'] as num?)?.toInt() ?? 0,
+        averages: {
+          for (final MapEntry(:key, :value)
+              in (json['averages'] as Map? ?? const {}).entries)
+            if (value is num) '$key': value.toDouble(),
+        },
       );
   final String surveyId, title;
   final List<SurveyQuestion> questions;
   final Map<String, dynamic> answers;
   final DateTime updatedAt;
+
+  /// How many answered the survey, and the team's average per scale
+  /// question.
+  final int responseCount;
+  final Map<String, double> averages;
 }
 
 /// A change the server refused, with what to tell the leader.
@@ -308,6 +491,7 @@ class TeamSurveyException implements Exception {
     'invite_needs_player_role',
     'link_needs_player_role',
     'too_many_surveys',
+    'survey_not_open',
     'read_only',
     'not_found',
   ];
@@ -336,6 +520,10 @@ class TeamSurveyException implements Exception {
       swedish
           ? 'Bara lagets spelare kan få en länk.'
           : 'Only the team\'s players can get a link.',
+    'survey_not_open' =>
+      swedish
+          ? 'Öppna enkäten först, så att länkarna tar emot svar.'
+          : 'Open the survey first.',
     'too_many_surveys' =>
       swedish ? 'Laget har för många enkäter.' : 'Too many surveys.',
     'read_only' =>
@@ -372,6 +560,12 @@ abstract interface class TeamSurveyServices {
     String teamId,
     String personId,
   );
+
+  /// A notification to the players with an account who have not answered.
+  Future<TeamSurvey> remind(String surveyId);
+
+  /// The signed-in person's own links to open surveys.
+  Future<List<MySurvey>> mine();
 }
 
 class UnconfiguredTeamSurveyServices implements TeamSurveyServices {
@@ -412,6 +606,10 @@ class UnconfiguredTeamSurveyServices implements TeamSurveyServices {
     String teamId,
     String personId,
   ) => Future.error(_error);
+  @override
+  Future<TeamSurvey> remind(String surveyId) => Future.error(_error);
+  @override
+  Future<List<MySurvey>> mine() async => const [];
 }
 
 class SupabaseTeamSurveyServices implements TeamSurveyServices {
@@ -520,6 +718,19 @@ class SupabaseTeamSurveyServices implements TeamSurveyServices {
     return [
       for (final item in value as List? ?? const [])
         PlayerSurveyAnswer.fromJson(item as Map<String, dynamic>),
+    ];
+  }
+
+  @override
+  Future<TeamSurvey> remind(String surveyId) =>
+      _survey('remind_team_survey', {'target_survey_id': surveyId});
+
+  @override
+  Future<List<MySurvey>> mine() async {
+    final value = await _rpc('list_my_team_surveys', const {});
+    return [
+      for (final item in value as List? ?? const [])
+        MySurvey.fromJson(item as Map<String, dynamic>),
     ];
   }
 }

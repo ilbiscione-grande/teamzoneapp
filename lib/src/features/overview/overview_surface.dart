@@ -333,6 +333,8 @@ class _OverviewSurfaceState extends State<_OverviewSurface> {
                 // REF-02: Domartillsättning and Mina domaruppdrag, whatever
                 // the role in the active context.
                 RefereeHomeCards(services: _refereeServices()),
+                // Enkäter: the player's own open surveys to answer.
+                const _MySurveysCard(),
                 // DR-01: the meetings of your club role (board, club
                 // functionary) also show in your team. The duties
                 // themselves are in the menu.

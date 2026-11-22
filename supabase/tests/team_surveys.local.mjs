@@ -16,15 +16,19 @@ create table core.clubs(id uuid primary key, name text);
 insert into core.clubs values ('${club}','IF Test');
 create table core.teams(id uuid primary key, club_id uuid, name text, status text default 'active');
 insert into core.teams values ('${team}','${club}','P2012'),('${other}','${club}','F2013');
-create table core.club_people(id uuid primary key, club_id uuid, display_name text, status text default 'active');
+create table core.club_people(id uuid primary key, club_id uuid, display_name text, status text default 'active',
+  phone text, contact_email text);
 insert into core.club_people values ('${ada}','${club}','Ada'),('${bo}','${club}','Bo'),
  ('${leaderPerson}','${club}','Coach'),('${otherPlayer}','${club}','Cia');
+update core.club_people set phone = '070-111 22 33' where id = '${bo}';
+create table core.profiles(id uuid primary key, phone text, contact_email text);
+insert into core.profiles values ('${adaLogin}', '+46701234567', 'ada@example.test');
 create table core.assignments(id uuid primary key default gen_random_uuid(), club_id uuid, team_id uuid, club_person_id uuid,
   role_package text, state text, starts_at timestamptz default now() - interval '1 day', ends_at timestamptz);
 insert into core.assignments(club_id, team_id, club_person_id, role_package, state) values
   ('${club}','${team}','${ada}','player','active'),('${club}','${team}','${bo}','player','active'),
   ('${club}','${team}','${leaderPerson}','leader','active'),('${club}','${other}','${otherPlayer}','player','active');
-create table core.person_account_links(club_person_id uuid, profile_id uuid, state text);
+create table core.person_account_links(club_person_id uuid, profile_id uuid, state text, created_at timestamptz default now());
 insert into core.person_account_links values ('${ada}','${adaLogin}','active');
 create table audit.command_events(club_id uuid, actor_profile_id uuid, command_type text, aggregate_type text,
   aggregate_id uuid, aggregate_revision int, metadata jsonb);
@@ -37,9 +41,11 @@ begin
     raise insufficient_privilege using message = 'not_found'; end if;
   return '${club}';
 end$$;
+create function internal.actor_leads_team(c uuid, t uuid) returns boolean language sql stable as $$ select auth.uid() = '${coach}'::uuid $$;
 create function internal.tdp_can_edit(c uuid) returns boolean language sql stable as $$ select auth.uid() = '${coach}'::uuid $$;
 grant usage on schema api, internal, core, auth, audit to authenticated, service_role;`);
 await db.exec(read('supabase/migrations/20270417090000_team_surveys.sql'));
+await db.exec(read('supabase/migrations/20270418090000_team_survey_sharing.sql'));
 await db.exec('begin');
 
 const as = who => db.query("select set_config('request.jwt.claim.sub',$1,false)", [who]);
@@ -108,6 +114,31 @@ assert.equal(outbox[0].event_type, 'team.survey.invited.v1');
 await one('select api.invite_team_survey_players($1,$2::uuid[]) v', [survey.id, [ada]]);
 assert.equal((await asOwner('select count(*)::int n from internal.notification_outbox'))[0].n, 1, 'told once');
 assert.equal(survey.invites.find(i => i.person_id === ada).token, adaLink, 'a link stays the same');
+// The leaders see the contact to send a link to; a reader does not.
+survey = await one('select api.get_team_survey($1) v', [survey.id]);
+assert.equal(survey.invites.find(i => i.person_id === ada).phone, '+46701234567', 'the account phone first');
+assert.equal(survey.invites.find(i => i.person_id === ada).email, 'ada@example.test');
+assert.equal(survey.invites.find(i => i.person_id === bo).phone, '070-111 22 33', 'the club record without an account');
+await as(viewer);
+assert.equal((await one('select api.get_team_survey($1) v', [survey.id])).invites.find(i => i.person_id === ada).phone, undefined);
+await as(coach);
+
+// A reminder to those with an account who have not answered, once in 12 hours.
+const reminded = await one('select api.remind_team_survey($1) v', [survey.id]);
+assert.equal(reminded.reminded, 1, 'Ada; Bo has no account');
+assert.ok(reminded.invites.find(i => i.person_id === ada).reminded_at);
+assert.equal((await one('select api.remind_team_survey($1) v', [survey.id])).reminded, 0, 'not again so soon');
+assert.equal((await asOwner("select count(*)::int n from internal.notification_outbox where event_type = 'team.survey.reminded.v1'"))[0].n, 1);
+await as(viewer);
+await rejects(() => one('select api.remind_team_survey($1) v', [survey.id]), 'read_only');
+
+// Ada's own open surveys, for her home page.
+await as(adaLogin);
+let mine = await one('select api.list_my_team_surveys() v');
+assert.deepEqual(mine.map(m => [m.title, m.token, m.team_name, m.answered_at]), [['Inför spelarsamtal', adaLink, 'P2012', null]]);
+await as(viewer);
+assert.deepEqual(await one('select api.list_my_team_surveys() v'), []);
+await as(coach);
 
 // Answering on Webtools (service role only).
 await rejects(() => one('select api.public_get_team_survey($1) v', [adaLink]), 'permission denied for function public_get_team_survey');
@@ -142,7 +173,7 @@ await db.exec('reset role; set role authenticated');
 survey = await one('select api.get_team_survey($1) v', [survey.id]);
 assert.equal(survey.responses.length, 11);
 assert.ok(survey.invites.find(i => i.person_id === ada).answered_at, 'Ada has answered');
-assert.equal(survey.invites.find(i => i.person_id === bo).answered_at, null);
+assert.equal(survey.invites.find(i => i.person_id === bo).answered_at, undefined, 'not answered (left out)');
 await rejects(() => save(survey.id, 'Ny titel', questions.slice(0, 2)), 'survey_has_answers');
 survey = await save(survey.id, 'Ny titel');
 assert.equal(survey.title, 'Ny titel', 'the title can change');
@@ -164,9 +195,19 @@ assert.deepEqual(answers[0].answers, { q1abc: 3 });
 answers = await one('select api.get_player_survey_answers($1,$2) v', [team, ada]);
 assert.equal(answers[0].title, 'Ny titel');
 assert.equal(answers[0].questions.length, 4);
+assert.equal(answers[0].response_count, 11);
+assert.equal(Number(answers[0].averages.q1abc), 1.64, 'team average: (5 + 3 + 2 + 8 × 1) / 11');
+await as(adaLogin);
+mine = await one('select api.list_my_team_surveys() v');
+assert.ok(mine[0].answered_at, 'answered');
+await as(coach);
 
 // Closing: links stop taking answers, but show it.
 await one('select api.set_team_survey_state($1,$2) v', [survey.id, 'closed']);
+await rejects(() => one('select api.remind_team_survey($1) v', [survey.id]), 'survey_not_open');
+await as(adaLogin);
+assert.deepEqual(await one('select api.list_my_team_surveys() v'), [], 'a closed survey is not on the home page');
+await as(coach);
 await db.exec('reset role; set role service_role');
 assert.equal((await one('select api.public_get_team_survey($1) v', [adaLink])).state, 'closed');
 assert.deepEqual(await submit(adaLink, { q1abc: 1 }), { closed: true });

@@ -1,12 +1,16 @@
 part of '../../app/teamzone_app.dart';
 
 typedef _SurveyChange =
-    Future<bool> Function(Future<TeamSurvey> Function() run, {String? done});
+    Future<bool> Function(
+      Future<TeamSurvey> Function() run, {
+      String? done,
+      String Function(TeamSurvey saved)? doneFor,
+    });
 
 /// Enkät → Dela: open or close the survey, the players' personal links and
 /// the open link. Registered players are told in the app when the survey
-/// is open; the others get their link from a leader (copied into a text
-/// message, an email or a chat).
+/// is open and can be reminded there; every link can also be sent with
+/// WhatsApp, a text message, email or another app.
 class _SurveySharing extends StatelessWidget {
   const _SurveySharing({
     required this.survey,
@@ -23,11 +27,20 @@ class _SurveySharing extends StatelessWidget {
 
   TeamSurveyServices get _services => TeamSurveysFeature.services;
 
-  Future<void> _copy(BuildContext context, String url) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final text = _tdpText(context, 'Länken är kopierad.', 'Link copied.');
-    await Clipboard.setData(ClipboardData(text: url));
-    messenger.showSnackBar(SnackBar(content: Text(text)));
+  Future<void> _remind(BuildContext context) async {
+    final swedish = AppStrings.of(context).isSwedish;
+    await onChange(
+      () => _services.remind(survey.id),
+      doneFor: (saved) => switch (saved.reminded ?? 0) {
+        0 =>
+          swedish
+              ? 'Ingen att påminna just nu. En spelare påminns högst en gång per 12 timmar.'
+              : 'No one to remind right now.',
+        1 => swedish ? 'En spelare har fått en påminnelse.' : 'One reminded.',
+        final n =>
+          swedish ? '$n spelare har fått en påminnelse.' : '$n reminded.',
+      },
+    );
   }
 
   Future<void> _addPlayers(BuildContext context) async {
@@ -209,8 +222,8 @@ class _SurveySharing extends StatelessWidget {
           Text(
             _tdpText(
               context,
-              'Svaren kopplas direkt till spelaren. Spelare med konto får en notis i appen. Kopiera länken till de andra och skicka den till exempel som sms. Länken är personlig, så dela den inte i en gruppchatt.',
-              'The answers belong to the player at once. Players with an account get a notification. Copy the link for the others and send it, for example by text message. The link is personal: do not share it in a group chat.',
+              'Svaren kopplas direkt till spelaren. Spelare med konto får en notis i appen och ser enkäten på sin startsida. Tryck på en spelare för att skicka länken med WhatsApp, sms eller e-post. Länken är personlig, så dela den inte i en gruppchatt.',
+              'The answers belong to the player at once. Players with an account are notified and see the survey on their home page. Tap a player to send the link with WhatsApp, a text message or email. The link is personal: do not share it in a group chat.',
             ),
             style: muted,
           ),
@@ -226,10 +239,34 @@ class _SurveySharing extends StatelessWidget {
                 style: theme.textTheme.labelLarge,
               ),
             ),
+          if (survey.canEdit && survey.open && survey.remindable > 0)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: OutlinedButton.icon(
+                  key: const Key('survey-remind'),
+                  onPressed: canEdit ? () => _remind(context) : null,
+                  icon: const Icon(Icons.notifications_active_outlined),
+                  label: Text(
+                    _tdpText(
+                      context,
+                      'Påminn i appen (${survey.remindable})',
+                      'Remind in the app (${survey.remindable})',
+                    ),
+                  ),
+                ),
+              ),
+            ),
           for (final invite in survey.invites)
             ListTile(
               key: Key('survey-invite-${invite.personId}'),
               contentPadding: EdgeInsets.zero,
+              onTap: () => _SurveyShareSheet.personal(
+                context,
+                survey: survey,
+                invite: invite,
+              ),
               leading: Icon(
                 invite.answeredAt != null
                     ? Icons.check_circle
@@ -249,7 +286,13 @@ class _SurveySharing extends StatelessWidget {
                     )
                   else
                     _tdpText(context, 'Inte svarat', 'Not answered'),
-                  if (invite.notifiedAt != null)
+                  if (invite.remindedAt case final at?)
+                    _tdpText(
+                      context,
+                      'påmind ${_surveyDate(at)}',
+                      'reminded ${_surveyDate(at)}',
+                    )
+                  else if (invite.notifiedAt != null)
                     _tdpText(context, 'notis skickad', 'notified')
                   else if (!invite.hasAccount)
                     _tdpText(context, 'inget konto', 'no account'),
@@ -259,9 +302,14 @@ class _SurveySharing extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    tooltip: _tdpText(context, 'Kopiera länk', 'Copy link'),
-                    icon: const Icon(Icons.copy),
-                    onPressed: () => _copy(context, invite.url),
+                    key: Key('survey-share-${invite.personId}'),
+                    tooltip: _tdpText(context, 'Skicka länken', 'Send link'),
+                    icon: const Icon(Icons.send_outlined),
+                    onPressed: () => _SurveyShareSheet.personal(
+                      context,
+                      survey: survey,
+                      invite: invite,
+                    ),
                   ),
                   if (survey.canEdit && invite.answeredAt == null)
                     IconButton(
@@ -322,9 +370,10 @@ class _SurveySharing extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  tooltip: _tdpText(context, 'Kopiera länk', 'Copy link'),
-                  icon: const Icon(Icons.copy),
-                  onPressed: () => _copy(context, openUrl),
+                  key: const Key('survey-share-open'),
+                  tooltip: _tdpText(context, 'Dela länken', 'Share link'),
+                  icon: const Icon(Icons.send_outlined),
+                  onPressed: () => _SurveyShareSheet.open(context, survey),
                 ),
               ],
             ),

@@ -1,8 +1,7 @@
 part of '../../app/teamzone_app.dart';
 
-/// Enkät → Svar: each answer by person, and per question what the answers
-/// say together (a scale's average and spread, how many chose each
-/// option, the written answers with names).
+/// Enkät → Svar: each answer by person, and all of them as a table to keep
+/// in a spreadsheet. What they say together is under Statistik.
 class _SurveyResults extends StatelessWidget {
   const _SurveyResults({
     required this.survey,
@@ -12,6 +11,21 @@ class _SurveyResults extends StatelessWidget {
   final TeamSurvey survey;
   final _SurveyChange onChange;
   final Future<void> Function() onRefresh;
+
+  Future<void> _copyTable(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final swedish = AppStrings.of(context).isSwedish;
+    await Clipboard.setData(ClipboardData(text: survey.toTable(swedish: swedish)));
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          swedish
+              ? 'Svaren är kopierade. Klistra in dem i ett kalkylark.'
+              : 'The answers are copied. Paste them into a spreadsheet.',
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,170 +94,35 @@ class _SurveyResults extends StatelessWidget {
                 onChange: onChange,
               ),
             ),
-          const Divider(height: 32),
-          Text(
-            _tdpText(context, 'Per fråga', 'By question'),
-            style: theme.textTheme.titleMedium,
-          ),
-          for (final (index, question) in survey.questions.indexed)
-            _SurveyQuestionSummary(
-              number: index + 1,
-              question: question,
-              responses: responses,
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SurveyQuestionSummary extends StatelessWidget {
-  const _SurveyQuestionSummary({
-    required this.number,
-    required this.question,
-    required this.responses,
-  });
-  final int number;
-  final SurveyQuestion question;
-  final List<SurveyResponse> responses;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final answered = [
-      for (final response in responses)
-        if (response.answers[question.id] != null) response,
-    ];
-    final muted = theme.textTheme.bodySmall?.copyWith(
-      color: theme.colorScheme.onSurfaceVariant,
-    );
-    final body = <Widget>[];
-    switch (question.kind) {
-      case SurveyQuestionKind.scale:
-        final values = [
-          for (final response in answered)
-            (response.answers[question.id] as num).toInt(),
-        ];
-        if (values.isNotEmpty) {
-          final average = values.reduce((a, b) => a + b) / values.length;
-          body.add(
-            Text(
-              _tdpText(
-                context,
-                'Snitt ${average.toStringAsFixed(1).replaceAll('.', ',')} av 5',
-                'Average ${average.toStringAsFixed(1)} of 5',
-              ),
-              style: theme.textTheme.titleSmall,
-            ),
-          );
-          for (var step = 5; step >= 1; step--) {
-            body.add(
-              _SurveyBar(
-                label: '$step',
-                count: values.where((v) => v == step).length,
-                total: values.length,
-              ),
-            );
-          }
-          if (question.low.isNotEmpty || question.high.isNotEmpty) {
-            body.add(
-              Text(
-                [
-                  if (question.low.isNotEmpty) '1 = ${question.low}',
-                  if (question.high.isNotEmpty) '5 = ${question.high}',
-                ].join(' · '),
-                style: muted,
-              ),
-            );
-          }
-        }
-      case SurveyQuestionKind.single || SurveyQuestionKind.multi:
-        for (final option in question.options) {
-          body.add(
-            _SurveyBar(
-              label: option,
-              count: answered.where((response) {
-                final answer = response.answers[question.id];
-                return answer == option ||
-                    (answer is List && answer.contains(option));
-              }).length,
-              total: answered.length,
-            ),
-          );
-        }
-      case SurveyQuestionKind.text || SurveyQuestionKind.longText:
-        for (final response in answered) {
-          body.add(
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: '${response.name}: ',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    TextSpan(text: '${response.answers[question.id]}'),
-                  ],
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              key: const Key('survey-copy-table'),
+              onPressed: () => _copyTable(context),
+              icon: const Icon(Icons.table_view_outlined),
+              label: Text(
+                _tdpText(
+                  context,
+                  'Kopiera svaren som tabell',
+                  'Copy the answers as a table',
                 ),
               ),
             ),
-          );
-        }
-    }
-    return Padding(
-      padding: const EdgeInsets.only(top: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('$number. ${question.label}', style: theme.textTheme.titleSmall),
-          Text(
-            _tdpText(
-              context,
-              '${answered.length} av ${responses.length} har svarat',
-              '${answered.length} of ${responses.length} answered',
-            ),
-            style: muted,
           ),
-          const SizedBox(height: 6),
-          ...body,
-        ],
-      ),
-    );
-  }
-}
-
-class _SurveyBar extends StatelessWidget {
-  const _SurveyBar({
-    required this.label,
-    required this.count,
-    required this.total,
-  });
-  final String label;
-  final int count, total;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 110,
-            child: Text(label, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: total == 0 ? 0 : count / total,
-                minHeight: 10,
-                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              _tdpText(
+                context,
+                'Klistra in i Excel, Numbers eller Google Kalkylark. Statistiken per fråga finns under fliken Statistik.',
+                'Paste into Excel, Numbers or Google Sheets. The statistics per question are under Statistics.',
+              ),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ),
-          SizedBox(width: 36, child: Text('$count', textAlign: TextAlign.end)),
         ],
       ),
     );
@@ -252,9 +131,16 @@ class _SurveyBar extends StatelessWidget {
 
 /// One person's answers, question by question.
 class _SurveyAnswerList extends StatelessWidget {
-  const _SurveyAnswerList({required this.questions, required this.answers});
+  const _SurveyAnswerList({
+    required this.questions,
+    required this.answers,
+    this.averages = const {},
+  });
   final List<SurveyQuestion> questions;
   final Map<String, dynamic> answers;
+
+  /// The team's average per scale question, shown beside the answer.
+  final Map<String, double> averages;
 
   @override
   Widget build(BuildContext context) {
@@ -277,10 +163,16 @@ class _SurveyAnswerList extends StatelessWidget {
                 Text(
                   answers[question.id] == null
                       ? (swedish ? 'Inget svar' : 'No answer')
-                      : question.describe(
-                          answers[question.id],
-                          swedish: swedish,
-                        ),
+                      : [
+                          question.describe(
+                            answers[question.id],
+                            swedish: swedish,
+                          ),
+                          if (averages[question.id] case final double average)
+                            swedish
+                                ? 'laget i snitt ${_surveyNumber(average, true)}'
+                                : 'team average ${_surveyNumber(average, false)}',
+                        ].join(' · '),
                   style: answers[question.id] == null
                       ? theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
@@ -402,6 +294,13 @@ class _SurveyResponseDialog extends StatelessWidget {
             _SurveyAnswerList(
               questions: survey.questions,
               answers: response.answers,
+              averages: survey.responses.length > 1
+                  ? {
+                      for (final question in survey.questions)
+                        if (survey.average(question) case final double average)
+                          question.id: average,
+                    }
+                  : const {},
             ),
           ],
         ),

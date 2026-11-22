@@ -87,8 +87,8 @@ class _PlayerSurveyAnswersViewState extends State<_PlayerSurveyAnswersView> {
                     subtitle: Text(
                       _tdpText(
                         context,
-                        'Svarade ${_surveyDate(answer.updatedAt)}',
-                        'Answered ${_surveyDate(answer.updatedAt)}',
+                        'Svarade ${_surveyDate(answer.updatedAt)} · ${answer.responseCount} svar i laget',
+                        'Answered ${_surveyDate(answer.updatedAt)} · ${answer.responseCount} in the team',
                       ),
                     ),
                     childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -96,6 +96,9 @@ class _PlayerSurveyAnswersViewState extends State<_PlayerSurveyAnswersView> {
                       _SurveyAnswerList(
                         questions: answer.questions,
                         answers: answer.answers,
+                        averages: answer.responseCount > 1
+                            ? answer.averages
+                            : const {},
                       ),
                     ],
                   ),

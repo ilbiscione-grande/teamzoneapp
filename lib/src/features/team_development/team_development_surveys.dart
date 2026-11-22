@@ -295,6 +295,7 @@ class _SurveyPageState extends State<_SurveyPage> {
   Future<bool> _change(
     Future<TeamSurvey> Function() run, {
     String? done,
+    String Function(TeamSurvey saved)? doneFor,
   }) async {
     final messenger = ScaffoldMessenger.of(context);
     final swedish = AppStrings.of(context).isSwedish;
@@ -302,7 +303,8 @@ class _SurveyPageState extends State<_SurveyPage> {
     try {
       final survey = await run();
       if (mounted) setState(() => _survey = survey);
-      if (done != null) messenger.showSnackBar(SnackBar(content: Text(done)));
+      final told = doneFor?.call(survey) ?? done;
+      if (told != null) messenger.showSnackBar(SnackBar(content: Text(told)));
       return true;
     } on TeamSurveyException catch (refused) {
       messenger.showSnackBar(SnackBar(content: Text(refused.message(swedish))));
@@ -391,7 +393,7 @@ class _SurveyPageState extends State<_SurveyPage> {
       );
     }
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text(survey.title),
@@ -427,6 +429,7 @@ class _SurveyPageState extends State<_SurveyPage> {
                   'Answers (${survey.responses.length})',
                 ),
               ),
+              Tab(text: _tdpText(context, 'Statistik', 'Statistics')),
             ],
           ),
         ),
@@ -448,6 +451,7 @@ class _SurveyPageState extends State<_SurveyPage> {
                     onChange: _change,
                     onRefresh: _reload,
                   ),
+                  _SurveyStatistics(survey: survey, onRefresh: _reload),
                 ],
               ),
             ),
