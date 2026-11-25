@@ -341,7 +341,10 @@ const playerAttributeLabels = <String, (String, String)>{
   'set_pieces': ('Fasta situationer', 'Set pieces'),
   'goalkeeping': ('Målvaktsspel', 'Goalkeeping'),
   'goalkeeping_hands': ('Målvakt – räddningar', 'Goalkeeper – saves'),
-  'goalkeeping_feet': ('Målvakt – kort passningsspel', 'Goalkeeper – short passing'),
+  'goalkeeping_feet': (
+    'Målvakt – kort passningsspel',
+    'Goalkeeper – short passing',
+  ),
   'defending_1v1': ('1 mot 1 i försvar', '1v1 defending'),
   'interceptions': ('Brytningar', 'Interceptions'),
   'marking': ('Markering', 'Marking'),
