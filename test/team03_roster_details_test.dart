@@ -30,6 +30,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Person 00'), findsOneWidget);
+    // Plain A–Ö is paged; the default position groups show everyone.
+    await tester.tap(find.byKey(const ValueKey('roster-filter')));
+    await tester.pumpAndSettle();
+    final byName = find.byKey(const ValueKey('roster-sort-name'));
+    await tester.ensureVisible(byName);
+    await tester.tap(byName);
+    await tester.pumpAndSettle();
+    Navigator.of(tester.element(byName)).pop();
+    await tester.pumpAndSettle();
     final rosterList = find.ancestor(
       of: find.text('Person 00'),
       matching: find.byType(ListView),

@@ -833,6 +833,10 @@ class AppStrings {
     'Röda kort': 'Red cards',
     'Räddningar': 'Saves',
     'Målvakter': 'Goalkeepers',
+    'Nior': 'Back court players',
+    'Kanter': 'Wings',
+    'Utan position': 'No position',
+    'Övriga positioner': 'Other positions',
     // English acceptance follow-up: assistant, preparation, TDP and match.
     'Viktigt': 'Important',
     'Värde': 'Value',

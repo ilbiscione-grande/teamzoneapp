@@ -47,14 +47,16 @@ class _RosterSurfaceState extends State<_RosterSurface> {
   // Several positions can be shown at once; empty means all.
   Set<String> _positions = const {};
   _RosterAgeFilter _age = const _RosterAgeFilter();
-  String _sortBy = 'name';
+  // Grouped by position, A–Ö in each group.
+  static const _defaultSort = 'position';
+  String _sortBy = _defaultSort;
   final _rosterSearch = TextEditingController();
   bool get _rosterFiltered =>
       _status != 'active' ||
       _show != 'all' ||
       _positions.isNotEmpty ||
       _age.active ||
-      _sortBy != 'name';
+      _sortBy != _defaultSort;
   List<RosterPersonSummary>? _syncedPeople;
   late int _selectedTab = _teamTabIndex(widget.initialTab);
   late Future<TeamRoles> _teamRoles = _loadTeamRoles();
@@ -124,7 +126,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
         person.ageClass,
         person.teamName,
       ].whereType<String>().join(' '),
-    )..setSort((a, b) => a.displayName.compareTo(b.displayName));
+    )..setSort((a, b) => _compareSwedishNames(a.displayName, b.displayName));
     _setRosterStatusFilter('active');
     _data.addListener(_syncList);
     unawaited(_data.load());
@@ -510,8 +512,13 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                         in rolesSnapshot.data?.roles ?? const <TeamRole>[])
                       if (role.role == 'player') role.personId: role,
                   };
-                  // A position or another order looks at the whole match,
-                  // not one page of it.
+                  final catalog =
+                      rolesSnapshot.data?.positionCatalog ??
+                      const <SportPosition>[];
+                  String? groupOf(RosterPersonSummary person) =>
+                      _positionGroup(playerRoles[person.id], catalog);
+                  // Only plain A–Ö is paged; the position groups, a filter
+                  // or the age order look at the whole match.
                   final whole =
                       _positions.isNotEmpty || _age.active || _sortBy != 'name';
                   final people =
@@ -535,10 +542,24 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                           (a, b) => _compareRosterPeople(
                             a,
                             b,
-                            playerRoles[a.id],
-                            playerRoles[b.id],
+                            groupOf(a),
+                            groupOf(b),
                           ),
                         );
+                  final groupCounts = <String?, int>{};
+                  if (_sortBy == 'position') {
+                    for (final person in people) {
+                      groupCounts.update(
+                        groupOf(person),
+                        (count) => count + 1,
+                        ifAbsent: () => 1,
+                      );
+                    }
+                  }
+                  // Without any positions the list is just A–Ö.
+                  final grouped = groupCounts.keys.any(
+                    (group) => group != null,
+                  );
                   if (people.isEmpty && leaders.isEmpty) {
                     return _StateCard(
                       icon: Icons.search_off,
@@ -586,7 +607,15 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                               strings.feature('Inga spelare i truppen ännu.'),
                             ),
                           ),
-                        for (final person in people) ...[
+                        for (final (index, person) in people.indexed) ...[
+                          if (grouped &&
+                              (index == 0 ||
+                                  groupOf(people[index - 1]) !=
+                                      groupOf(person)))
+                            _RosterPositionHeader(
+                              group: groupOf(person),
+                              count: groupCounts[groupOf(person)]!,
+                            ),
                           ListTile(
                             key: ValueKey('roster-player-${person.id}'),
                             leading: _RosterAvatar(
@@ -1045,31 +1074,20 @@ class _RosterSurfaceState extends State<_RosterSurface> {
           role.positions.contains(position) ||
           role.customPositions.contains(position));
 
-  /// A–Ö by name, or by main position in catalog order (own positions after,
-  /// none last), or by age class; the name breaks ties.
+  /// By position group, A–Ö in each; or only A–Ö, or by age class. The name
+  /// breaks ties.
   int _compareRosterPeople(
     RosterPersonSummary a,
     RosterPersonSummary b,
-    TeamRole? aRole,
-    TeamRole? bRole,
+    String? aGroup,
+    String? bGroup,
   ) {
-    final byName = a.displayName.toLowerCase().compareTo(
-      b.displayName.toLowerCase(),
-    );
+    final byName = _compareSwedishNames(a.displayName, b.displayName);
     if (_sortBy == 'position') {
-      const order = _playingPositionLabels;
-      int rank(TeamRole? role) {
-        final main =
-            role?.mainPosition ??
-            role?.positions.firstOrNull ??
-            role?.customPositions.firstOrNull;
-        if (main == null) return 1 << 20;
-        final index = order.keys.toList().indexOf(main);
-        return index < 0 ? 1 << 19 : index;
-      }
-
-      final byPosition = rank(aRole).compareTo(rank(bRole));
-      return byPosition != 0 ? byPosition : byName;
+      final byGroup = _positionGroupOrder
+          .indexOf(aGroup)
+          .compareTo(_positionGroupOrder.indexOf(bGroup));
+      return byGroup != 0 ? byGroup : byName;
     }
     if (_sortBy == 'age_class') {
       final aAge = a.ageClass, bAge = b.ageClass;
@@ -1090,7 +1108,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
       _show = 'all';
       _positions = const {};
       _age = const _RosterAgeFilter();
-      _sortBy = 'name';
+      _sortBy = _defaultSort;
     });
     _setRosterStatusFilter('active');
   }
@@ -1175,7 +1193,7 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                           _show = 'all';
                           _positions = const {};
                           _age = const _RosterAgeFilter();
-                          _sortBy = 'name';
+                          _sortBy = _defaultSort;
                         });
                         _setRosterStatusFilter('active');
                       },
@@ -1254,8 +1272,8 @@ class _RosterSurfaceState extends State<_RosterSurface> {
                 ),
               section('Sortera', [
                 for (final (value, label) in const [
-                  ('name', 'Namn A–Ö'),
                   ('position', 'Position'),
+                  ('name', 'Namn A–Ö'),
                   ('age_class', 'Åldersklass'),
                 ])
                   choice(

@@ -1795,6 +1795,78 @@ const _teamManager = [
 ];
 
 void multiPositionTests() {
+  testWidgets('the squad is grouped by position, A–Ö in each group', (
+    tester,
+  ) async {
+    const players = [
+      ('anna', 'Anna Anfall', ['forward', 'striker'], 'striker'),
+      ('orjan', 'Örjan Back', ['defender'], 'defender'),
+      ('mia', 'Mia Mitt', ['midfielder'], null),
+      ('arne', 'Ärna Back', ['centre_back'], 'centre_back'),
+      ('asa', 'Åsa Back', ['left_back'], 'left_back'),
+      ('zoe', 'Zoe Mål', ['goalkeeper'], 'goalkeeper'),
+      ('bea', 'Bea Mål', ['goalkeeper'], 'goalkeeper'),
+      ('alma', 'Alma Utan', <String>[], null),
+    ];
+    final roster = _Roster(
+      roles: [
+        for (final (id, name, positions, main) in players)
+          TeamRole(
+            personId: id,
+            name: name,
+            role: 'player',
+            positions: positions,
+            mainPosition: main,
+          ),
+      ],
+      people: [
+        for (final (id, name, _, _) in players)
+          RosterPersonSummary(
+            id: id,
+            displayName: name,
+            teamId: 'team',
+            teamName: 'F2012',
+            assignmentState: 'active',
+            safeguardingRequired: false,
+          ),
+      ],
+    );
+    await _openRoster(tester, roster);
+    // Tall enough to show every group.
+    tester.view.physicalSize = const Size(390, 2000);
+    await tester.pumpAndSettle();
+    double top(String key) => tester.getTopLeft(find.byKey(ValueKey(key))).dy;
+    final expected = [
+      'roster-group-goalkeeper',
+      'roster-player-bea',
+      'roster-player-zoe',
+      'roster-group-defender',
+      'roster-player-asa',
+      'roster-player-arne',
+      'roster-player-orjan',
+      'roster-group-midfielder',
+      'roster-player-mia',
+      'roster-group-forward',
+      'roster-player-anna',
+      'roster-group-none',
+      'roster-player-alma',
+    ];
+    expect([...expected]..sort((a, b) => top(a).compareTo(top(b))), expected);
+    expect(find.text('Försvarare (3)'), findsOneWidget);
+
+    // Only names: no group headings.
+    await tester.tap(find.byKey(const ValueKey('roster-filter')));
+    await tester.pumpAndSettle();
+    final byName = find.byKey(const ValueKey('roster-sort-name'));
+    await tester.ensureVisible(byName);
+    await tester.tap(byName);
+    await tester.pumpAndSettle();
+    Navigator.of(tester.element(byName)).pop();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('roster-group-defender')), findsNothing);
+    expect(top('roster-player-alma'), lessThan(top('roster-player-anna')));
+  });
+
   testWidgets('several positions can be shown at once', (tester) async {
     RosterPersonSummary person(String id, String name) => RosterPersonSummary(
       id: id,
