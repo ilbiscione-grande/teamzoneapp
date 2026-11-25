@@ -334,29 +334,42 @@ class _SurveyPageState extends State<_SurveyPage> {
   }
 
   Future<void> _delete(TeamSurvey survey) async {
-    final sure = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(_tdpText(context, 'Ta bort enkäten?', 'Delete survey?')),
-        content: Text(
-          _tdpText(
-            context,
-            'Enkäten, länkarna och alla ${survey.responses.length} svar tas bort för gott.',
-            'The survey, its links and all ${survey.responses.length} answers are deleted for good.',
-          ),
+    final bool? sure;
+    if (survey.hasAnswers) {
+      sure = await confirmSurveyAnswersDeletion(
+        context,
+        title: _tdpText(context, 'Ta bort enkäten?', 'Delete survey?'),
+        message: _tdpText(
+          context,
+          'Enkäten, länkarna och alla ${survey.responses.length} svar tas bort.',
+          'The survey, its links and all ${survey.responses.length} answers are deleted.',
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(_tdpText(context, 'Avbryt', 'Cancel')),
+      );
+    } else {
+      sure = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(_tdpText(context, 'Ta bort enkäten?', 'Delete survey?')),
+          content: Text(
+            _tdpText(
+              context,
+              'Enkäten och länkarna tas bort för gott.',
+              'The survey and its links are deleted for good.',
+            ),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(_tdpText(context, 'Ta bort', 'Delete')),
-          ),
-        ],
-      ),
-    );
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(_tdpText(context, 'Avbryt', 'Cancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(_tdpText(context, 'Ta bort', 'Delete')),
+            ),
+          ],
+        ),
+      );
+    }
     if (sure != true || !mounted) return;
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);

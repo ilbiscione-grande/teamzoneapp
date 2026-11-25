@@ -93,12 +93,23 @@ class _PlayerSurveyAnswersViewState extends State<_PlayerSurveyAnswersView> {
                     ),
                     childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                     children: [
-                      _SurveyAnswerList(
-                        questions: answer.questions,
-                        answers: answer.answers,
-                        averages: answer.responseCount > 1
-                            ? answer.averages
-                            : const {},
+                      _surveyTalkAnswers(answer),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: FilledButton.tonalIcon(
+                          key: Key('survey-talk-${answer.surveyId}'),
+                          onPressed: () => PlayerTalkPage.open(
+                            context,
+                            teamId: widget.teamId,
+                            personId: widget.personId,
+                            answerView: _surveyTalkAnswers,
+                            responseId: answer.responseId,
+                          ),
+                          icon: const Icon(Icons.forum_outlined),
+                          label: Text(
+                            _tdpText(context, 'Spelarsamtal', 'Player talk'),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -131,6 +142,13 @@ class _PlayerSurveyAnswersViewState extends State<_PlayerSurveyAnswersView> {
     );
   }
 }
+
+/// A player's answers as they show on the profile and beside a talk.
+Widget _surveyTalkAnswers(PlayerSurveyAnswer answer) => _SurveyAnswerList(
+  questions: answer.questions,
+  answers: answer.answers,
+  averages: answer.responseCount > 1 ? answer.averages : const {},
+);
 
 /// `/enkat/<token>`, from a notification: the player's own survey opens on
 /// Webtools' page in the browser.

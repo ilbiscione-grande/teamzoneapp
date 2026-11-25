@@ -1,5 +1,5 @@
 -- Enkäter: the reminder (team.survey.reminded.v1, queued by
--- internal.remind_team_survey_for_actor in 20270418090000) in the
+-- internal.remind_team_survey_for_actor in 20270418090002) in the
 -- notification list and as a push, opening the player's own link like the
 -- invitation. No push once answered or closed.
 

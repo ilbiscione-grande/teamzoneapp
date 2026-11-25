@@ -45,7 +45,7 @@ create function internal.actor_leads_team(c uuid, t uuid) returns boolean langua
 create function internal.tdp_can_edit(c uuid) returns boolean language sql stable as $$ select auth.uid() = '${coach}'::uuid $$;
 grant usage on schema api, internal, core, auth, audit to authenticated, service_role;`);
 await db.exec(read('supabase/migrations/20270417090000_team_surveys.sql'));
-await db.exec(read('supabase/migrations/20270418090000_team_survey_sharing.sql'));
+await db.exec(read('supabase/migrations/20270418090002_team_survey_sharing.sql'));
 await db.exec('begin');
 
 const as = who => db.query("select set_config('request.jwt.claim.sub',$1,false)", [who]);

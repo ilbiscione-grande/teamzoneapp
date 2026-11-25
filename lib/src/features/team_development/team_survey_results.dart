@@ -242,30 +242,16 @@ class _SurveyResponseDialog extends StatelessWidget {
 
   Future<void> _delete(BuildContext context) async {
     final navigator = Navigator.of(context);
-    final sure = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(_tdpText(context, 'Ta bort svaret?', 'Delete answer?')),
-        content: Text(
-          _tdpText(
-            context,
-            '${response.name}s svar tas bort för gott.',
-            '${response.name}\'s answer is deleted for good.',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(_tdpText(context, 'Avbryt', 'Cancel')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(_tdpText(context, 'Ta bort', 'Delete')),
-          ),
-        ],
+    final sure = await confirmSurveyAnswersDeletion(
+      context,
+      title: _tdpText(context, 'Ta bort svaret?', 'Delete answer?'),
+      message: _tdpText(
+        context,
+        '${response.name}s svar tas bort.',
+        '${response.name}\'s answer is deleted.',
       ),
     );
-    if (sure != true) return;
+    if (!sure) return;
     if (await onChange(() => _services.deleteResponse(response.id))) {
       navigator.pop();
     }
@@ -307,6 +293,19 @@ class _SurveyResponseDialog extends StatelessWidget {
       ),
     ),
     actions: [
+      if (response.personId case final personId?)
+        TextButton.icon(
+          key: const Key('survey-response-talk'),
+          onPressed: () => PlayerTalkPage.open(
+            context,
+            teamId: survey.teamId,
+            personId: personId,
+            answerView: _surveyTalkAnswers,
+            responseId: response.id,
+          ),
+          icon: const Icon(Icons.forum_outlined),
+          label: Text(_tdpText(context, 'Spelarsamtal', 'Player talk')),
+        ),
       if (survey.canEdit) ...[
         TextButton(
           onPressed: () => _delete(context),

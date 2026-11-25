@@ -441,6 +441,7 @@ class TeamSurvey {
 class PlayerSurveyAnswer {
   const PlayerSurveyAnswer({
     required this.surveyId,
+    this.responseId = '',
     required this.title,
     required this.questions,
     required this.answers,
@@ -451,6 +452,7 @@ class PlayerSurveyAnswer {
   factory PlayerSurveyAnswer.fromJson(Map<String, dynamic> json) =>
       PlayerSurveyAnswer(
         surveyId: json['survey_id'] as String,
+        responseId: json['response_id'] as String? ?? '',
         title: json['title'] as String? ?? '',
         questions: [
           for (final item in json['questions'] as List? ?? const [])
@@ -465,7 +467,7 @@ class PlayerSurveyAnswer {
             if (value is num) '$key': value.toDouble(),
         },
       );
-  final String surveyId, title;
+  final String surveyId, responseId, title;
   final List<SurveyQuestion> questions;
   final Map<String, dynamic> answers;
   final DateTime updatedAt;

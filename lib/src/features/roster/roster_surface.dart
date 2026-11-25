@@ -4633,8 +4633,8 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
                     person.homeMember &&
                     person.assignmentState == 'active' &&
                     contextValue.can('team.roster.manage');
-                // The player's survey answers, for leaders with
-                // Säsongsplanering (development.manage).
+                // The player's survey answers and the talks, for leaders
+                // with Säsongsplanering (development.manage).
                 final showSurveys =
                     person != null &&
                     !person.isSelf &&
@@ -4688,6 +4688,22 @@ class _RosterPersonDetailsPageState extends State<_RosterPersonDetailsPage> {
                         key: ValueKey('surveys-$_generation'),
                         teamId: person.teamId,
                         personId: person.id,
+                        header: _PersonProfileHero(
+                          person: person,
+                          clubName: contextValue.clubName,
+                          roles: _roles,
+                          contact: _contact,
+                        ),
+                      ),
+                    ),
+                  if (showSurveys)
+                    (
+                      _attrText(context, 'Samtal', 'Talks'),
+                      PlayerTalksView(
+                        key: ValueKey('talks-$_generation'),
+                        teamId: person.teamId,
+                        personId: person.id,
+                        answerView: _surveyTalkAnswers,
                         header: _PersonProfileHero(
                           person: person,
                           clubName: contextValue.clubName,
