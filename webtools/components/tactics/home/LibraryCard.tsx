@@ -35,7 +35,7 @@ export function LibraryCard({ item, keeping, busy, onUse, onFavorite, onPick, on
   return (
     <li className="tb-card">
       <button type="button" className="tb-card-picture" tabIndex={-1} aria-hidden="true" onClick={onUse} disabled={busy}>
-        <ProjectThumb preview={item.preview} />
+        <ProjectThumb preview={item.preview} detail />
         <span className={`tb-card-kind tb-lib-${item.kind}`}>{t(libraryKindLabels[item.kind])}</span>
       </button>
       <button type="button" className={`tb-pin${item.favorite ? " on" : ""}`} onClick={onFavorite} aria-pressed={item.favorite}

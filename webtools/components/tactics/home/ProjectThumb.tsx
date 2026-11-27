@@ -4,13 +4,14 @@
 // boards shows an empty pitch.
 import { ballPattern, svgPoints } from "../../../lib/tactics/ball-look.ts";
 import { teamColors } from "../../../lib/tactics/document.ts";
-import { viewRect } from "../../../lib/tactics/geometry.ts";
 import type { Board } from "../../../lib/tactics/model.ts";
-import { previewOf } from "../../../lib/tactics/preview.ts";
+import { previewOf, previewRect } from "../../../lib/tactics/preview.ts";
 import { ThumbExtras } from "./ThumbExtras.tsx";
 
-/** What a project's summary brings of its first board (20270109090000). */
-export type BoardPreview = { view: Board["view"] | null; teams: Partial<Board["teams"]> | null; objects: Board["frames"][number]["objects"] };
+/** What a project's summary brings of its first board (20270109090000; its crop since 20270426090000). */
+export type BoardPreview = {
+  view: Board["view"] | null; teams: Partial<Board["teams"]> | null; crop?: Board["crop"]; objects: Board["frames"][number]["objects"];
+};
 
 const BALL = 1.6;
 const ball = ballPattern(BALL);
@@ -26,11 +27,11 @@ export function ProjectThumb({ preview, labels = false, detail = false, strokes 
   preview: BoardPreview | null | undefined; labels?: boolean; detail?: boolean; strokes?: ThumbStroke[];
 }) {
   const teams = { home: { ...teamColors.home, ...preview?.teams?.home }, away: { ...teamColors.away, ...preview?.teams?.away } };
-  const board = { view: preview?.view ?? "full", teams, frames: [{ objects: preview?.objects ?? [] }] } as unknown as Board;
+  const board = { view: preview?.view ?? "full", crop: preview?.crop ?? null, teams, frames: [{ objects: preview?.objects ?? [] }] } as unknown as Board;
   const { lines, dots, aspect } = previewOf(board);
   const width = 100, height = width / aspect;
-  // As previewOf places the pitch: the board's view with a margin.
-  const rect = viewRect(board.view === "empty" ? "full" : board.view, 3);
+  // As previewOf places the pitch: the board's crop, or its view with a margin.
+  const rect = previewRect(board);
   const place = (points: number[]) => points.map((value, index) => index % 2 === 0 ? (value - rect.x) / rect.width * width : (value - rect.y) / rect.height * height);
   const at = (points: number[]) => place(points).join(" ");
   return (

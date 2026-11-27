@@ -32,3 +32,12 @@ test("half a pitch leaves out what is off it; the summary counts boards", () => 
   assert.equal(previewSummary("Match", 1, null), "Match · 1 tavla");
   assert.equal(previewSummary("Träning", 3, "P12"), "Träning · 3 tavlor · P12");
 });
+
+test("a board with a crop shows only that part, filling the picture", () => {
+  const board: Board = { ...newDocument().boards[0], view: "empty", crop: { x: 40, y: 26, width: 25, height: 16 } };
+  board.frames[0].objects = [player("a", 52.5, 34, "home", 6), player("b", 80, 34, "away", 2)];
+  const preview = previewOf(board);
+  assert.deepEqual(preview.dots.map(dot => dot.label), ["6"], "the one outside the crop is left out");
+  assert.ok(Math.abs(preview.dots[0].left - 0.5) < 1e-9 && Math.abs(preview.dots[0].top - 0.5) < 1e-9);
+  assert.equal(preview.aspect, 25 / 16);
+});

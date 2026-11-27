@@ -2,7 +2,7 @@
 // a board's first frame as plain boxes and dots, in shares (0–1) of the
 // picture, for the server to draw without the board's own canvas. The
 // lines of the pitch and its players and ball; nothing else.
-import { viewRect } from "./geometry.ts";
+import { viewRect, type Rect } from "./geometry.ts";
 import { translator, type Translate } from "../i18n/translate.ts";
 import { PITCH_LENGTH as L, PITCH_WIDTH as W, type Board, type ProjectKind } from "./model.ts";
 
@@ -15,9 +15,14 @@ export type Preview = { lines: PreviewBox[]; dots: PreviewDot[]; aspect: number 
 
 const BOX = { depth: 16.5, width: 40.32 }, SIX = { depth: 5.5, width: 18.32 }, CIRCLE = 9.15;
 
-/** The board's first frame for a preview; `aspect` is the view's width over its height. */
+/** The part of the pitch a preview shows: the board's crop where it has one, else its view with a margin. */
+export function previewRect(board: Pick<Board, "view" | "crop">): Rect {
+  return board.crop ?? viewRect(board.view === "empty" ? "full" : board.view, 3);
+}
+
+/** The board's first frame for a preview; `aspect` is the shown part's width over its height. */
 export function previewOf(board: Board): Preview {
-  const rect = viewRect(board.view === "empty" ? "full" : board.view, 3);
+  const rect = previewRect(board);
   const box = (x: number, y: number, width: number, height: number, round = false): PreviewBox => ({
     left: (x - rect.x) / rect.width, top: (y - rect.y) / rect.height, width: width / rect.width, height: height / rect.height, round,
   });
